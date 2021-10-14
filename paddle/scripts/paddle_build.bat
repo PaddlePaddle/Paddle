@@ -381,7 +381,7 @@ if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
     pip install wget
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
-    cd %THIRD_PARTY_HOME%
+    cd /d %THIRD_PARTY_HOME%
     echo Getting third party: downloading ...
     %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
     if !ERRORLEVEL! EQU 0 (
@@ -397,7 +397,7 @@ if not exist %THIRD_PARTY_PATH% (
         echo Get third party failed, reason: download failed, will build locally.
     )
     if not exist %THIRD_PARTY_PATH% set UPLOAD_TP_FILE=ON
-    cd %work_dir%\%BUILD_DIR%
+    cd /d %work_dir%\%BUILD_DIR%
 ) else (
     echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
 )
@@ -519,16 +519,16 @@ if "%UPLOAD_TP_FILE%"=="ON" (
     echo Uploading third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-0.8.33 (
         echo There is no bce in this PC, will install bce.
-        cd %cache_dir%
+        cd /d %cache_dir%
         echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
         %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
         %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
-        cd %cache_dir%\bce-python-sdk-0.8.33
+        cd /d %cache_dir%\bce-python-sdk-0.8.33
         %PYTHON_ROOT%\python.exe setup.py install 1>nul
         del %cache_dir%\bce-python-sdk-0.8.33.tar.gz
     )
     if !errorlevel! EQU 0 (
-        cd %THIRD_PARTY_HOME%
+        cd /d %THIRD_PARTY_HOME%
         echo Uploading third_party: compressing ...
         tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
@@ -546,7 +546,7 @@ if "%UPLOAD_TP_FILE%"=="ON" (
     ) else (
         echo Failed upload third party to bos, reason: install bce failed.
     )
-    cd %work_dir%\%BUILD_DIR%
+    cd /d %work_dir%\%BUILD_DIR%
 )
 
 echo Build Paddle successfully!
@@ -711,7 +711,7 @@ for /F %%i in ("%libsize%") do (
     echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 )
 
-cd %work_dir%\paddle\fluid\inference\api\demo_ci
+cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
 goto:eof
 
@@ -811,7 +811,7 @@ echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
-cd %work_dir%\paddle\fluid\inference\tests\infer_ut
+cd /d %work_dir%\paddle\fluid\inference\tests\infer_ut
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
 goto:eof
 

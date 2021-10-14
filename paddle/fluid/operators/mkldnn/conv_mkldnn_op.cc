@@ -78,7 +78,8 @@ class ConvMKLDNNHandlerT
                                  mkldnn::convolution_backward_weights>(
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
-                                unique_name)) {
+                                unique_name)),
+        is_test_(ctx.Attr<bool>("is_test")) {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           input->layout(), framework::DataLayout::kMKLDNN,
@@ -159,7 +160,6 @@ class ConvMKLDNNHandlerT
           framework::slice_ddim(filter_dims, 2, filter_dims.size());
 
       const auto ksize = framework::vectorize(filter_data_dims);
-      const bool is_test = ctx.Attr<bool>("is_test");
 
       auto strides_temp = ctx.Attr<std::vector<int>>("strides");
       std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
@@ -214,9 +214,8 @@ class ConvMKLDNNHandlerT
 
       const auto dst_md = platform::MKLDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
-      const auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
-                                         : mkldnn::prop_kind::forward_training;
-
+      const auto fwd_prop_kind = is_test_ ? mkldnn::prop_kind::forward_inference
+                                          : mkldnn::prop_kind::forward_training;
       float sum_scale = 1.0f;
       std::vector<float> output_shift_scale;
       if (platform::is_int8<T>())
@@ -261,7 +260,8 @@ class ConvMKLDNNHandlerT
                                  mkldnn::convolution_backward_weights>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(in->dims()),
-                                unique_name)) {
+                                unique_name)),
+        is_test_(false) {
     if (!this->isBwdCached()) {
       PADDLE_ENFORCE_EQ(
           in->layout(), framework::DataLayout::kMKLDNN,
@@ -291,7 +291,7 @@ class ConvMKLDNNHandlerT
                             "Wrong format set for output_grad tensor"));
 
       PADDLE_ENFORCE_EQ(
-          ctx.Attr<bool>("is_test"), false,
+          is_test_, false,
           platform::errors::InvalidArgument(
               "is_test attribute should be set to False in training phase."));
 
@@ -557,13 +557,14 @@ class ConvMKLDNNHandlerT
           framework::vectorize(in_mem->dims()),
           platform::MKLDNNGetDataType<T>(), in_mem->format());
       return this->AcquireMemoryWithReorder(
-          user_mem_md, mem_md, platform::to_void_cast<T>(in_mem_data), key_mem);
+          user_mem_md, mem_md, platform::to_void_cast<T>(in_mem_data), key_mem,
+          is_test_);
     } else {
       const std::string target_key_suffix{key_mem_target};
       const auto target_mem_p = this->AcquireMemory(target_key_suffix);
       user_mem_p->set_data_handle(platform::to_void_cast<T>(in_mem_data));
       if (user_mem_p != target_mem_p) {
-        this->AcquireReorder(user_mem_p, target_mem_p, key_mem);
+        this->AcquireReorder(user_mem_p, target_mem_p);
       }
       return target_mem_p;
     }
@@ -571,12 +572,11 @@ class ConvMKLDNNHandlerT
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryWithReorder(
       const framework::Tensor* filter, const int groups, const bool is_conv3d,
-      const bool is_test, const std::vector<float>& scale_data = {1.0f},
-      int mask = 0) {
+      const std::vector<float>& scale_data = {1.0f}, int mask = 0) {
     // This is workaround to make execution faster, delete
     // if statement after including md inside Tensor
     auto weights_mem_p = this->AcquireMemory("@weights_mem_p_target");
-    if (is_test && weights_mem_p) {
+    if (is_test_ && weights_mem_p) {
       return weights_mem_p;
     } else {
       const K* filter_data = filter->data<K>();
@@ -589,16 +589,16 @@ class ConvMKLDNNHandlerT
 
       return this->AcquireMemoryWithReorder(
           user_src_md, this->fwd_pd_->weights_desc(),
-          platform::to_void_cast<K>(filter_data), "@weights_mem_p", is_test, {},
-          scale_data, mask);
+          platform::to_void_cast<K>(filter_data), "@weights_mem_p", is_test_,
+          {}, scale_data, mask);
     }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
-      const framework::Tensor* bias, const bool is_test,
+      const framework::Tensor* bias,
       const std::vector<float>& scale_data = {1.0f}, int mask = 0) {
     auto bias_mem_p = this->AcquireMemory("@bias_mem_p_target");
-    if (is_test && bias_mem_p) {
+    if (is_test_ && bias_mem_p) {
       return bias_mem_p;
     } else {
       const K* bias_data = bias->data<K>();
@@ -608,7 +608,7 @@ class ConvMKLDNNHandlerT
 
       return this->AcquireMemoryWithReorder(
           user_bias_md, this->fwd_pd_->bias_desc(),
-          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test, {},
+          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test_, {},
           scale_data, mask);
     }
   }
@@ -641,7 +641,7 @@ class ConvMKLDNNHandlerT
         platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc())) {
       auto residual_memory_p = this->AcquireResidualMemory(residual_param);
       dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-      this->AcquireReorder(residual_memory_p, dst_memory_p, "@residual_dst");
+      this->AcquireReorder(residual_memory_p, dst_memory_p);
     } else {
       // Changing ShareDataWith to TensorCopy results in performance drop
       // on ResNet architectures
@@ -651,6 +651,9 @@ class ConvMKLDNNHandlerT
     }
     return dst_memory_p;
   }
+
+ private:
+  const bool is_test_;
 };
 
 }  // anonymous namespace
@@ -695,7 +698,6 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const bool is_test = ctx.Attr<bool>("is_test");
     const bool is_conv3d = ctx.Attr<std::vector<int>>("strides").size() == 3U;
     const bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
 
@@ -712,7 +714,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, ctx.Attr<int>("groups"), is_conv3d, is_test);
+        filter, ctx.Attr<int>("groups"), is_conv3d);
 
     std::shared_ptr<dnnl::memory> dst_memory_p;
     if (fuse_residual_conn) {
@@ -731,7 +733,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {MKLDNN_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias, is_test);
+      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 
@@ -783,11 +785,10 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<float>>("Scale_weights");
     const bool is_multi_channel = scale_weights_data.size() > 1;
     const int& groups = ctx.Attr<int>("groups");
-    const bool& is_test = ctx.Attr<bool>("is_test");
     int mask_reorder =
         is_multi_channel ? ((groups != 1) ? (1 << 1) + (1 << 0) : 1 << 0) : 0;
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, groups, false, is_test, scale_weights_data, mask_reorder);
+        filter, groups, false, scale_weights_data, mask_reorder);
 
     std::shared_ptr<dnnl::memory> dst_memory_p;
     if (fuse_residual_conn) {
@@ -822,7 +823,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
           handler.get_int8_bias_scales(ctx);
 
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-          bias, is_test, scale_bias_data, mask_reorder);
+          bias, scale_bias_data, mask_reorder);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 
