@@ -18,7 +18,7 @@ from ..fluid import framework
 from ..fluid.dygraph import grad
 from ..tensor.creation import assign
 from ..tensor import reshape, zeros_like, to_tensor
-from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor, _construct_one_tensor
+from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
 
 
 @contextlib.contextmanager
@@ -534,8 +534,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             their gradients if allow_unused=True. Default False.
     Returns:
         output (tuple): tuple with:
-            func_output (Tensor|list(Tensor)|tuple(Tensor)): output of
-                ``func(inputs)``
+            func_output (Tensor): output of ``func(inputs)``
             vhp (list(Tensor)): result of the vector hessian product
             with the same shape and dtype as the inputs.
     Examples 1:
@@ -591,18 +590,19 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             #        [[8., 8.],
             #         [8., 8.]]), None])
     '''
-    inputs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
+    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
 
     with gradient_scope(
-            inputs, v, create_graph=create_graph,
-            allow_unused=allow_unused) as [inputs, v, grad_fn, return_fn]:
-        outputs = _tensors(func(*inputs), "outputs")
-        assert len(outputs) == 1 and isinstance(
-            outputs[0], paddle.Tensor
-        ) and outputs[0].shape == [
+            xs, v, create_graph=create_graph,
+            allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
+        outputs = func(*xs)
+        ys = _tensors(outputs, "outputs")
+        assert len(ys) == 1 and isinstance(
+            ys[0], paddle.Tensor
+        ) and ys[0].shape == [
             1
         ], "The function to compute vhp should return a Tensor with a single element"
-        jac = grad_fn(outputs, inputs, create_graph=True)
-        vhp = grad_fn(jac, inputs, v)
+        jac = grad_fn(ys, xs, create_graph=True)
+        vhp = grad_fn(jac, xs, v)
         outputs, vhp = return_fn(outputs), return_fn(vhp)
-    return outputs[0], vhp
+    return outputs, vhp
