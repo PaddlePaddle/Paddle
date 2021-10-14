@@ -54,7 +54,7 @@ DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
 DEFINE_string(mkl_dir, "",
-              "Specify path for loading libmkl_core.so. "
+              "Specify path for loading libmkl_rt.so. "
               "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
               "If default, "
               "dlopen will search mkl from LD_LIBRARY_PATH");

@@ -357,12 +357,12 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
 // FFT Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
-#define MKL_DFTI_CHECK(expr)                                      \
-  do {                                                            \
-    MKL_LONG status = (expr);                                     \
-    if (platform::dynload::DftiErrorClass(status, DFTI_NO_ERROR)) \
-      PADDLE_THROW(platform::errors::External(                    \
-          platform::dynload::DftiErrorMessage(status)));          \
+#define MKL_DFTI_CHECK(expr)                                       \
+  do {                                                             \
+    MKL_LONG status = (expr);                                      \
+    if (!platform::dynload::DftiErrorClass(status, DFTI_NO_ERROR)) \
+      PADDLE_THROW(platform::errors::External(                     \
+          platform::dynload::DftiErrorMessage(status)));           \
   } while (0);
 
 namespace {
