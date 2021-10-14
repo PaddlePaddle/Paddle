@@ -20,7 +20,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class StackNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -49,7 +49,7 @@ class StackNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class StackGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -81,15 +81,18 @@ class StackGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
+REGISTER_OP_NPU_KERNEL(
+    stack, paddle::operators::StackNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    paddle::operators::StackNPUKernel<int64_t>,
+#endif
+    paddle::operators::StackNPUKernel<float>,
+    paddle::operators::StackNPUKernel<paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    stack, ops::StackNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::StackNPUKernel<paddle::platform::NPUDeviceContext,
-                        paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    stack_grad,
-    ops::StackGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::StackGradNPUKernel<paddle::platform::NPUDeviceContext,
-                            paddle::platform::float16>);
+    stack_grad, paddle::operators::StackGradNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    paddle::operators::StackGradNPUKernel<int64_t>,
+#endif
+    paddle::operators::StackGradNPUKernel<float>,
+    paddle::operators::StackGradNPUKernel<paddle::platform::float16>);

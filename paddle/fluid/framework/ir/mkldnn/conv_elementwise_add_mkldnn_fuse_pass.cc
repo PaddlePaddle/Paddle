@@ -74,11 +74,11 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
 }
 
 template <typename T>
-boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
+paddle::optional<T> HasAttribute(const Node& op, const std::string& attr) {
   if (op.Op()->HasAttr(attr))
     return BOOST_GET_CONST(T, op.Op()->GetAttr(attr));
   else
-    return boost::none;
+    return paddle::none;
 }
 
 ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
@@ -158,11 +158,6 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
   Node* elementwise_add_op;
   Node* elementwise_add_identity;
   Node* elementwise_add_out;
-  if (!pass_->IsCompat(subgraph, graph)) {
-    LOG(WARNING)
-        << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
-    return;
-  }
 
   std::tie(conv_op, conv_input, conv_filter, conv_output) =
       get_node_from_conv_op(subgraph);
@@ -174,6 +169,12 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
   if (!IsReachable(graph, elementwise_add_identity, conv_output)) return;
 
   if (HasFusedActivation(conv_op)) return;
+
+  if (!pass_->IsCompat(subgraph, graph)) {
+    LOG(WARNING)
+        << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
+    return;
+  }
 
   conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
   conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});

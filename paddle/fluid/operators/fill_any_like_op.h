@@ -45,15 +45,18 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
          static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
             (common_type_value <=
              static_cast<CommonType>(std::numeric_limits<T>::max())),
-        true, platform::errors::InvalidArgument(
-                  "filled value is out of range for"
-                  " targeted type in fill_any_like, your kernel type is %s"
-                  ", please check value you set.",
-                  typeid(T).name()));
+        true,
+        platform::errors::InvalidArgument(
+            "The filled value is out of range for target type, "
+            "current kernel type is %s, the range should between %f "
+            "and %f, but now value is %f.",
+            typeid(T).name(),
+            static_cast<CommonType>(std::numeric_limits<T>::lowest()),
+            static_cast<CommonType>(std::numeric_limits<T>::max()), value));
+
     PADDLE_ENFORCE_EQ(
         std::isnan(value), false,
-        platform::errors::InvalidArgument("filled value should not be NaN,"
-                                          " but received NaN"));
+        platform::errors::InvalidArgument("The filled value is NaN."));
 
     math::SetConstant<DeviceContext, T> setter;
     setter(context.template device_context<DeviceContext>(), out,

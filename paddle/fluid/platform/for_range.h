@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace platform {
@@ -65,6 +66,11 @@ struct ForRange<CUDADeviceContext> {
 #ifdef __HIPCC__
     // HIP will throw core dump when threads > 256
     constexpr int num_threads = 256;
+#elif WITH_NV_JETSON
+    // JETSON_NANO will throw core dump when threads > 128
+    int num_thread = 256;
+    platform::ChangeThreadNum(dev_ctx_, &num_thread, 128);
+    const int num_threads = num_thread;
 #else
     constexpr int num_threads = 1024;
 #endif

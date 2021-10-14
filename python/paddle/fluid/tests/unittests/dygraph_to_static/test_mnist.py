@@ -32,6 +32,9 @@ from predictor_utils import PredictorTools
 
 SEED = 2020
 
+if paddle.fluid.is_compiled_with_cuda():
+    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
@@ -48,7 +51,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  conv_dilation=1,
                  conv_groups=1,
                  act=None,
-                 use_cudnn=False,
+                 use_cudnn=True,
                  param_attr=None,
                  bias_attr=None):
         super(SimpleImgConvPool, self).__init__()
@@ -101,7 +104,6 @@ class MNIST(fluid.dygraph.Layer):
                     loc=0.0, scale=scale)),
             act="softmax")
 
-    @paddle.jit.to_static
     def forward(self, inputs, label=None):
         x = self.inference(inputs)
         if label is not None:
@@ -167,14 +169,14 @@ class TestMNISTWithToStatic(TestMNIST):
                 dygraph_loss_cpu, dygraph_loss_mkldnn))
 
     def train(self, to_static=False):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
 
         loss_data = []
         with fluid.dygraph.guard(self.place):
             fluid.default_main_program().random_seed = SEED
             fluid.default_startup_program().random_seed = SEED
             mnist = MNIST()
+            if to_static:
+                mnist = paddle.jit.to_static(mnist)
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=mnist.parameters())
 

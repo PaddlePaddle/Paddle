@@ -35,34 +35,30 @@ using Tensor = framework::Tensor;
 template <typename T, typename IndexT = int>
 typename std::enable_if<std::is_floating_point<T>::value>::type
 elementwise_inner_add(const framework::ExecutionContext& ctx,
-                      const T* src_pointer, const T* dist_pointer,
-                      T* result_dist_pointer, const framework::Tensor& src,
-                      framework::Tensor* dist, const int& src_index,
-                      const IndexT& dist_index, const int& slice_size,
-                      const size_t& slice_bytes) {
+                      const T* src_pointer, T* dst_pointer, size_t src_index,
+                      IndexT dst_index, size_t slice_size) {
   auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-
   blas.VADD(slice_size, src_pointer + src_index * slice_size,
-            dist_pointer + dist_index * slice_size,
-            result_dist_pointer + dist_index * slice_size);
+            dst_pointer + dst_index * slice_size,
+            dst_pointer + dst_index * slice_size);
 }
 
 template <typename T, typename IndexT = int>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
 elementwise_inner_add(const framework::ExecutionContext& ctx,
-                      const T* src_pointer, const T* dist_pointer,
-                      T* result_dist_pointer, const framework::Tensor& src,
-                      framework::Tensor* dist, const int& src_index,
-                      const IndexT& dist_index, const int& slice_size,
-                      const size_t& slice_bytes) {
-  auto src_slice = src.Slice(src_index, src_index + 1);
-  auto dist_slice = dist->Slice(dist_index, dist_index + 1);
+                      const T* src_pointer, T* dst_pointer, size_t src_index,
+                      IndexT dst_index, size_t slice_size) {
+  using EigenVector = typename framework::EigenTensor<T, 1>::Type;
+  using ConstEigenVector = typename framework::EigenTensor<T, 1>::ConstType;
 
-  auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
-  auto eigen_dist = framework::EigenVector<T>::Flatten(dist_slice);
+  framework::EigenDim<1>::Type dim;
+  dim[0] = slice_size;
 
-  eigen_dist += eigen_src;
+  ConstEigenVector eigen_src(src_pointer + src_index * slice_size, dim);
+  EigenVector eigen_dst(dst_pointer + dst_index * slice_size, dim);
+  eigen_dst += eigen_src;
 }
+
 /**
  * Return an updated tensor from source tensor, scattered according to index:
  * dst[i] = src[index[i]]
@@ -91,7 +87,7 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
                           "But received value is [%d]",
                           index.dims().size()));
   }
-  int index_size = index.dims()[0];
+  int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
   auto dst_dims = output->dims();
@@ -116,7 +112,7 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
-  for (int i = 0; i < index_size; ++i) {
+  for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
 
     PADDLE_ENFORCE_GE(index_, 0,
@@ -146,7 +142,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
                 "expect index'dims shape is 1 or 2 and index.dims[1] is 1"
                 "but got index'dims shape is %d",
                 index.dims().size()));
-  int index_size = index.dims()[0];
+  int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
   auto dst_dims = output->dims();
@@ -154,8 +150,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
 
-  const T* p_output = output->data<T>();
-  T* result_p_output = output->data<T>();
+  T* p_output = output->data<T>();
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
@@ -174,26 +169,25 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   const size_t& slice_bytes = slice_size * sizeof(T);
 
   // if not in overwrite mode, need to init output data
-  for (int i = 0; i < index_size; ++i) {
-    const IndexT& index_ = p_index[i];
-    memset(result_p_output + slice_size * index_, 0, slice_bytes);
+  for (int64_t i = 0; i < index_size; ++i) {
+    const IndexT& index_val = p_index[i];
+    memset(p_output + slice_size * index_val, 0, slice_bytes);
   }
 
   // if not in overwrite mode, need to init output data
-  for (int i = 0; i < index_size; ++i) {
-    const IndexT& index_ = p_index[i];
+  for (int64_t i = 0; i < index_size; ++i) {
+    const IndexT& index_val = p_index[i];
 
-    PADDLE_ENFORCE_GE(index_, 0,
+    PADDLE_ENFORCE_GE(index_val, 0,
                       platform::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
                           "be greater than or equal to 0, but received [%d]",
-                          index_));
+                          index_val));
 
-    elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, result_p_output, src,
-                                     output, i, index_, slice_size,
-                                     slice_bytes);
+    elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, i, index_val,
+                                     slice_size);
   }
 }
 
@@ -202,14 +196,14 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
 template <typename T, typename IndexT = int>
 void CPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
                         Tensor* output) {
-  int index_size = index.dims()[0];
+  int64_t index_size = index.dims()[0];
   auto dst_dims = output->dims();
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
   size_t slice_size = 1;
   for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
   const size_t slice_bytes = slice_size * sizeof(T);
-  for (int i = 0; i < index_size; ++i) {
+  for (int64_t i = 0; i < index_size; ++i) {
     const IndexT& index_ = p_index[i];
     memset(p_output + slice_size * index_, 0, slice_bytes);
   }
@@ -231,8 +225,7 @@ void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
 
   const T* p_update = update.data<T>();
   const IndexT* p_index = index.data<IndexT>();
-  T* result_p_output = output->data<T>();
-  const T* p_output = output->data<T>();
+  T* p_output = output->data<T>();
 
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
@@ -244,10 +237,9 @@ void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
   for (int64_t i = end_size; i < output_dims_size; ++i) {
     slice_size *= output_dims[i];
   }
-  const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int64_t i = 0; i < remain_numel; ++i) {
-    IndexT index_ = 0;
+    IndexT index_val = 0;
     IndexT temp = 1;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
@@ -260,12 +252,11 @@ void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
               "be less than [%d] and greater or equal to 0, but received [%d]",
               output_dims[j], index_value));
 
-      index_ += (index_value * temp);
+      index_val += (index_value * temp);
       temp *= output_dims[j];
     }
-    elementwise_inner_add<T, IndexT>(ctx, p_update, p_output, result_p_output,
-                                     update, output, i, index_, slice_size,
-                                     slice_bytes);
+    elementwise_inner_add<T, IndexT>(ctx, p_update, p_output, i, index_val,
+                                     slice_size);
   }
 }
 

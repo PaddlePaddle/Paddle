@@ -45,11 +45,11 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   auto this_worker =
       std::dynamic_pointer_cast<paddle::framework::SectionWorker>(worker_);
   this_worker->SetPlace(place_);
-  this_worker->Initialize(trainer_desc);
   this_worker->SetMicrobatchNum(num_microbatches_);
   this_worker->SetPipelineStageNum(num_pipeline_stages_);
   this_worker->SetPipelineStage(pipeline_stage_);
   this_worker->SetScheduleMode(schedule_mode_);
+  this_worker->Initialize(trainer_desc);
 }
 
 void PipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {

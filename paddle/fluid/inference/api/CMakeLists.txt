@@ -20,22 +20,22 @@ endif(APPLE)
 add_subdirectory(details)
 
 if(WITH_MKLDNN)
-  set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/mkldnn_quantizer.cc)
   set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
+  set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/mkldnn_quantizer.cc)
   cc_library(${mkldnn_quantizer_cfg} SRCS mkldnn_quantizer_config.cc DEPS lod_tensor paddle_pass_builder)
-  set(mkldnn_quantizer_src_file ${mkldnn_quantizer_src} PARENT_SCOPE)
   set(mkldnn_quantizer_cfg ${mkldnn_quantizer_cfg} PARENT_SCOPE)
 endif()
 
 cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer)
+cc_library(paddle_infer_contrib SRCS paddle_infer_contrib.cc DEPS zero_copy_tensor)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 if(WITH_CRYPTO)
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config zero_copy_tensor trainer_desc_proto paddle_crypto custom_operator)
+              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto paddle_crypto custom_operator)
 else()
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config zero_copy_tensor trainer_desc_proto custom_operator)
+              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator)
 endif()
 
 if(WIN32)
@@ -49,7 +49,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
-          zero_copy_tensor ir_pass_manager op_compatible_info)
+          zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
 
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 
@@ -71,6 +71,16 @@ elseif (WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 endif()
+
+if(WITH_TESTING AND WITH_MKLDNN)
+  if (NOT APPLE AND NOT WIN32)
+    cc_test(test_mkldnn_quantizer SRCS mkldnn_quantizer_tester.cc DEPS paddle_inference_shared ARGS --dirname=${WORD2VEC_MODEL_DIR})
+  elseif (WIN32)
+    cc_test(test_mkldnn_quantizer SRCS mkldnn_quantizer_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
+            ARGS --dirname=${WORD2VEC_MODEL_DIR})
+  endif()
+endif()
+
 if(WITH_TESTING AND TEST test_api_impl)
     if(NOT APPLE)
         set_tests_properties(test_api_impl PROPERTIES TIMEOUT 120)

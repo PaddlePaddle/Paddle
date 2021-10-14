@@ -25,6 +25,70 @@ using Tensor = framework::Tensor;
 using framework::DataLayout;
 
 template <typename T>
+class TransposeMKLDNNHandler {
+ public:
+  TransposeMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+                         std::vector<int>& axis,      // NOLINT
+                         mkldnn::engine engine)
+      : dims_(dims),
+        axis_(axis),
+        logical_axis_(dims.size(), 0),
+        engine_(engine) {}
+
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
+      const MKLDNNMemoryFormat& fmt, void* ptr) {
+    // Make memory descriptor using input format, unless it
+    // cannot be trusted (nchw) then make up memory fmt manually
+    for (size_t i = 0; i < this->logical_axis_.size(); ++i) {
+      this->logical_axis_[i] = i;
+    }
+
+    auto src_md = fmt != MKLDNNMemoryFormat::nchw
+                      ? platform::MKLDNNMemDesc(
+                            dims_, platform::MKLDNNGetDataType<T>(), fmt)
+                      : Axis2MemoryDesc(dims_, logical_axis_);
+    return std::make_shared<mkldnn::memory>(src_md, engine_, ptr);
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output,
+                                                   platform::Place place) {
+    auto dst_md = Axis2MemoryDesc(dims_, axis_);
+    auto dst_data = output->mutable_data<T>(place, dst_md.get_size());
+    return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
+  }
+
+  std::shared_ptr<mkldnn::reorder> AcquireTranspose(
+      std::shared_ptr<mkldnn::memory> dst_memory_p,
+      std::shared_ptr<mkldnn::memory> src_memory_p) {
+    return std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
+  }
+
+ protected:
+  mkldnn::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
+                                       std::vector<int>& axis          // NOLINT
+                                       ) {
+    size_t ndims = axis.size();
+
+    std::vector<int64_t> strides(ndims);
+    unsigned int total_stride = 1;
+    for (int i = ndims - 1; i >= 0; --i) {
+      strides[axis[i]] = total_stride;
+      total_stride *= nchw_tz[axis[i]];
+    }
+    mkldnn::memory::desc mem_d(nchw_tz, platform::MKLDNNGetDataType<T>(),
+                               strides);
+
+    return mem_d;
+  }
+
+ private:
+  std::vector<int64_t> dims_;
+  std::vector<int> axis_;
+  std::vector<int> logical_axis_;
+  mkldnn::engine engine_;
+};
+
+template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
@@ -48,11 +112,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto nchw_tz = paddle::framework::vectorize<int64_t>(input->dims());
 
-    const std::string key =
-        platform::CreateKey(dev_ctx, nchw_tz, ctx.OutputName("Out"));
-
-    platform::TransposeMKLDNNHandler<T> handler(nchw_tz, axis, dev_ctx,
-                                                mkldnn_engine, key);
+    TransposeMKLDNNHandler<T> handler(nchw_tz, axis, mkldnn_engine);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
         input->format(), platform::to_void_cast<T>(input_data));
@@ -103,11 +163,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto nchw_tz = paddle::framework::vectorize<int64_t>(out_grad->dims());
 
-    const std::string key = platform::CreateKey(
-        dev_ctx, nchw_tz, ctx.OutputName(framework::GradVarName("X")));
-
-    platform::TransposeMKLDNNHandler<T> handler(nchw_tz, reversed_axis, dev_ctx,
-                                                mkldnn_engine, key);
+    TransposeMKLDNNHandler<T> handler(nchw_tz, reversed_axis, mkldnn_engine);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
         out_grad->format(), platform::to_void_cast<T>(out_grad_data));

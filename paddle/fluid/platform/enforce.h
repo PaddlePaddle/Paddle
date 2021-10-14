@@ -31,6 +31,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
+#include <cufft.h>
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
@@ -101,6 +102,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/type_defs.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
 namespace paddle {
 namespace platform {
@@ -270,12 +272,14 @@ inline std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
-inline std::string GetCurrentTraceBackString() {
+inline std::string GetCurrentTraceBackString(bool for_signal = false) {
   std::ostringstream sout;
 
-  sout << "\n\n--------------------------------------\n";
-  sout << "C++ Traceback (most recent call last):";
-  sout << "\n--------------------------------------\n";
+  if (!for_signal) {
+    sout << "\n\n--------------------------------------\n";
+    sout << "C++ Traceback (most recent call last):";
+    sout << "\n--------------------------------------\n";
+  }
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
   static constexpr int TRACE_STACK_LIMIT = 100;
 
@@ -284,7 +288,12 @@ inline std::string GetCurrentTraceBackString() {
   auto symbols = backtrace_symbols(call_stack, size);
   Dl_info info;
   int idx = 0;
-  for (int i = size - 1; i >= 0; --i) {
+  // `for_signal` used to remove the stack trace introduced by
+  // obtaining the error stack trace when the signal error occurred,
+  // that is not related to the signal error self, remove it to
+  // avoid misleading users and developers
+  int end_idx = for_signal ? 2 : 0;
+  for (int i = size - 1; i >= end_idx; --i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
       std::string path(info.dli_fname);
@@ -706,6 +715,7 @@ DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
 DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
 DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
 DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
+DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS, CUFFT);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
@@ -743,6 +753,8 @@ inline const char* GetErrorMsgUrl(T status) {
       return "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/"
              "types.html#ncclresult-t";
       break;
+    case platform::proto::ApiType::CUFFT:
+      return "https://docs.nvidia.com/cuda/cufft/index.html#cufftresult";
     default:
       return "Unknown type of External API, can't get error message URL!";
       break;
@@ -831,6 +843,7 @@ template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
 template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
 template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
 template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
+template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 #endif
@@ -888,6 +901,15 @@ inline bool is_error(cusolverStatus_t stat) {
 inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
   std::ostringstream sout;
   sout << "CUSOLVER error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
+}
+
+/*************** CUFFT ERROR ***************/
+inline bool is_error(cufftResult_t stat) { return stat != CUFFT_SUCCESS; }
+
+inline std::string build_nvidia_error_msg(cufftResult_t stat) {
+  std::ostringstream sout;
+  sout << "CUFFT error(" << stat << "). " << GetExternalErrorMsg(stat);
   return sout.str();
 }
 

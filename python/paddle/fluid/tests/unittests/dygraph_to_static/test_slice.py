@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
@@ -174,6 +175,87 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
             path="./layer_use_set_value",
             input_spec=[x],
             output_spec=None)
+
+
+class TestSliceSupplementSpecialCase(unittest.TestCase):
+    # unittest for slice index which abs(step)>0. eg: x[::2]
+    def test_static_slice_step(self):
+        paddle.enable_static()
+        array = np.arange(4**3).reshape((4, 4, 4)).astype('int64')
+
+        x = paddle.static.data(name='x', shape=[4, 4, 4], dtype='int64')
+        z1 = x[::2]
+        z2 = x[::-2]
+
+        place = paddle.CPUPlace()
+        prog = paddle.static.default_main_program()
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+
+        out = exe.run(prog, feed={'x': array}, fetch_list=[z1, z2])
+
+        self.assertTrue(np.array_equal(out[0], array[::2]))
+        self.assertTrue(np.array_equal(out[1], array[::-2]))
+
+    def test_static_slice_step_dygraph2static(self):
+        paddle.disable_static()
+
+        array = np.arange(4**2 * 5).reshape((5, 4, 4)).astype('int64')
+        inps = paddle.to_tensor(array)
+
+        def func(inps):
+            return inps[::2], inps[::-2]
+
+        origin_result = func(inps)
+        sfunc = paddle.jit.to_static(
+            func, input_spec=[InputSpec(shape=[None, 4, 4])])
+        static_result = sfunc(inps)
+
+        self.assertTrue(
+            np.array_equal(origin_result[0].numpy(), static_result[0].numpy()))
+        self.assertTrue(
+            np.array_equal(origin_result[1].numpy(), static_result[1].numpy()))
+
+
+class TestPaddleStridedSlice(unittest.TestCase):
+    def test_compare_paddle_strided_slice_with_numpy(self):
+        paddle.disable_static()
+        array = np.arange(5)
+        pt = paddle.to_tensor(array)
+
+        s1 = 3
+        e1 = 1
+        stride1 = -2
+        sl = paddle.strided_slice(
+            pt, axes=[0, ], starts=[s1, ], ends=[e1, ], strides=[stride1, ])
+
+        self.assertTrue(array[s1:e1:stride1], sl)
+
+        array = np.arange(6 * 6).reshape((6, 6))
+        pt = paddle.to_tensor(array)
+        s2 = [8, -1]
+        e2 = [1, -5]
+        stride2 = [-2, -3]
+        sl = paddle.strided_slice(
+            pt, axes=[0, 1], starts=s2, ends=e2, strides=stride2)
+
+        self.assertTrue(
+            np.array_equal(sl.numpy(), array[s2[0]:e2[0]:stride2[0], s2[1]:e2[
+                1]:stride2[1]]))
+
+        array = np.arange(6 * 7 * 8).reshape((6, 7, 8))
+        pt = paddle.to_tensor(array)
+        s2 = [7, -1]
+        e2 = [2, -5]
+        stride2 = [-2, -3]
+        sl = paddle.strided_slice(
+            pt, axes=[0, 2], starts=s2, ends=e2, strides=stride2)
+
+        array_slice = array[s2[0]:e2[0]:stride2[0], ::, s2[1]:e2[1]:stride2[1]]
+        self.assertTrue(
+            np.array_equal(sl.numpy(), array_slice),
+            msg="paddle.strided_slice:\n {} \n numpy slice:\n{}".format(
+                sl.numpy(), array_slice))
 
 
 if __name__ == '__main__':

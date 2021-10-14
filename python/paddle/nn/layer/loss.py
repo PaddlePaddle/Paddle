@@ -20,11 +20,12 @@ import paddle.fluid.core as core
 import paddle
 from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
+from .. import Layer
 
 __all__ = []
 
 
-class BCEWithLogitsLoss(fluid.dygraph.Layer):
+class BCEWithLogitsLoss(Layer):
     r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
@@ -39,18 +40,18 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
     First this operator calculate loss function as follows:
 
     .. math::
-           Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
+           Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. By substituting this we get:
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + e^{-Logit}}`. By substituting this we get:
 
     .. math::
-           Out = Logit - Logit * Labels + \\log(1 + \\e^{-Logit})
+           Out = Logit - Logit * Labels + \log(1 + e^{-Logit})
 
-    For stability and to prevent overflow of :math:`\\e^{-Logit}` when Logit < 0,
+    For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\e^{-\|Logit\|})
+           Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
@@ -128,7 +129,7 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
         return out
 
 
-class CrossEntropyLoss(fluid.dygraph.Layer):
+class CrossEntropyLoss(Layer):
     r"""
     By default, this operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
@@ -407,7 +408,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         return ret
 
 
-class HSigmoidLoss(fluid.dygraph.Layer):
+class HSigmoidLoss(Layer):
     """
     Hierarchical Sigmoid Layer.
     
@@ -529,7 +530,7 @@ class HSigmoidLoss(fluid.dygraph.Layer):
         return out
 
 
-class MSELoss(fluid.dygraph.layers.Layer):
+class MSELoss(Layer):
     r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
@@ -596,8 +597,7 @@ class MSELoss(fluid.dygraph.layers.Layer):
             fluid.data_feeder.check_variable_and_dtype(
                 label, 'label', ['float32', 'float64'], 'MSELoss')
 
-        square_out = fluid.layers.square(
-            fluid.layers.elementwise_sub(input, label))
+        square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
             return square_out
 
@@ -608,7 +608,7 @@ class MSELoss(fluid.dygraph.layers.Layer):
         return getattr(fluid.layers, reduce_op)(square_out)
 
 
-class L1Loss(fluid.dygraph.Layer):
+class L1Loss(Layer):
     r"""
     This interface is used to construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
@@ -687,7 +687,7 @@ class L1Loss(fluid.dygraph.Layer):
             input, label, self.reduction, name=self.name)
 
 
-class BCELoss(fluid.dygraph.Layer):
+class BCELoss(Layer):
     """
     This interface is used to construct a callable object of the ``BCELoss`` class.
     The BCELoss layer measures the binary_cross_entropy loss between input predictions ``input``
@@ -777,10 +777,8 @@ class BCELoss(fluid.dygraph.Layer):
         return out
 
 
-class NLLLoss(fluid.dygraph.Layer):
+class NLLLoss(Layer):
     r"""
-	:alias_main: paddle.nn.NLLLoss
-	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
 
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
@@ -800,20 +798,25 @@ class NLLLoss(fluid.dygraph.Layer):
     The unreduced (i.e. with :attr:`reduction` set to ``'none'``) loss can be described as:
 
     .. math::
-        \ell(x, y) = L = \{l_1,\dots,l_N\}^\\top, \quad
+
+        \ell(x, y) = L = \{l_1,\dots,l_N\}^\top, \quad
         l_n = - w_{y_n} x_{n,y_n}, \quad
-        w_{c} = \\text{weight}[c] \cdot \mathbb{1}\{c \\not= \\text{ignore\\_index}\},
+        w_{c} = \text{weight}[c] \cdot \mathbb{1}\{c \not= \text{ignore\_index}\},
 
     where :math:`N` is the batch size. If :attr:`reduction` is not ``'none'``
     (default ``'mean'``), then
 
     .. math::
-        \ell(x, y) = \\begin{cases}
-            \\sum_{n=1}^N \\frac{1}{\\sum_{n=1}^N w_{y_n}} l_n, &
-            \\text{if reduction} = \\text{'mean';}\\\\
-            \\sum_{n=1}^N l_n,  &
-            \\text{if reduction} = \\text{'sum'.}
-        \\end{cases}
+
+        \ell(x, y) =
+        \left\{
+            \begin{array}{lcl}
+            \sum_{n=1}^N \frac{1}{\sum_{n=1}^N w_{y_n}} l_n, &
+            \text{if  reduction} = \text{'mean';}\\
+            \sum_{n=1}^N l_n,  &
+            \text{if  reduction} = \text{'sum'.}
+            \end{array}
+        \right.
 
     Parameters:
         weight (Tensor, optional): Weight tensor, a manual rescaling weight given
@@ -886,7 +889,7 @@ class NLLLoss(fluid.dygraph.Layer):
             name=self._name)
 
 
-class KLDivLoss(fluid.dygraph.Layer):
+class KLDivLoss(Layer):
     r"""
     This interface calculates the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
@@ -959,7 +962,7 @@ class KLDivLoss(fluid.dygraph.Layer):
         return out
 
 
-class MarginRankingLoss(fluid.dygraph.Layer):
+class MarginRankingLoss(Layer):
     r"""
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
@@ -1031,7 +1034,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         return out
 
 
-class CTCLoss(fluid.dygraph.Layer):
+class CTCLoss(Layer):
     """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
@@ -1116,7 +1119,9 @@ class CTCLoss(fluid.dygraph.Layer):
                 labels,
                 input_lengths,
                 label_lengths,
-                norm_by_times=False):
+                norm_by_times=False,
+                norm_by_batchsize=False,
+                norm_by_total_logits_len=False):
         return paddle.nn.functional.ctc_loss(
             log_probs,
             labels,
@@ -1124,10 +1129,12 @@ class CTCLoss(fluid.dygraph.Layer):
             label_lengths,
             self.blank,
             self.reduction,
-            norm_by_times=norm_by_times)
+            norm_by_times=norm_by_times,
+            norm_by_batchsize=norm_by_batchsize,
+            norm_by_total_logits_len=norm_by_total_logits_len)
 
 
-class SmoothL1Loss(fluid.dygraph.Layer):
+class SmoothL1Loss(Layer):
     r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
@@ -1136,16 +1143,16 @@ class SmoothL1Loss(fluid.dygraph.Layer):
 
     .. math::
 
-         loss(x,y) = \\frac{1}{n}\\sum_{i}z_i
+         loss(x,y) = \frac{1}{n}\sum_{i}z_i
 
     where z_i is given by:
 
     .. math::
 
-         \\mathop{z_i} = \\left\\{\\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
+        \mathop{z_i} = \left\{\begin{array}{rcl}
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
         delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \\end{array} \\right.
+        \end{array} \right.
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,

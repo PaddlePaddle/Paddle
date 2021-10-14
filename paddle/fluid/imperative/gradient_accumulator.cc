@@ -31,6 +31,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/operators/npu_op_runner.h"
+#endif
 
 namespace paddle {
 namespace imperative {
@@ -184,6 +187,12 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   auto data_type = src_tensor.type();
   auto place = src_tensor.place();
 
+  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
+                    platform::errors::PreconditionNotMet(
+                        "The data type of source tensor and destination tensor "
+                        "should be equal, Otherwise, the calculation results "
+                        "will be incorrect."));
+
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
@@ -193,6 +202,30 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
     return;                                                          \
   }
 
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::DeviceContext* ctx = pool.Get(place);
+    auto dev_ctx = dynamic_cast<platform::NPUDeviceContext*>(ctx);
+    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+      dst_tensor->mutable_data<float>(place);
+    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
+      dst_tensor->mutable_data<double>(place);
+    } else if (data_type ==
+               framework::DataTypeTrait<platform::float16>::DataType()) {
+      dst_tensor->mutable_data<platform::float16>(place);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+    }
+    const auto& runner = operators::NpuOpRunner(
+        "Add", {*dst_tensor, src_tensor}, {*dst_tensor}, {});
+    runner.Run(dev_ctx->stream());
+    return;
+  }
+#endif
   PADDLE_TENSOR_ADD(float);
 #ifndef PADDLE_WITH_XPU
   // NOTE(phlrain): xpu only support float
@@ -422,9 +455,9 @@ void GradientAccumulator::AccumulateGrad() {
   auto* src = inner_var_->MutableVar();
   auto* dst = var_->MutableVar();
   if (!var_->IsEmpty()) {
-    VLOG(6) << "Leaf Gradient Var(" << var_->Name()
-            << ") has been calculated by previous graph, will accumulate on "
-               "previous graph.";
+    VLOG(6) << "Leaf Var(" << var_->Name()
+            << ")'s Gradient has been initizlized, will accumulate on "
+               "previous gradient.";
     if (dst->IsType<framework::LoDTensor>()) {
       if (src->IsType<framework::LoDTensor>()) {
         TensorAdd(*src, dst);
@@ -444,8 +477,9 @@ void GradientAccumulator::AccumulateGrad() {
           "Only support LoDTensor and SelectedRows for gradient var"));
     }
   } else {
-    VLOG(6) << "Leaf Gradient Var(" << var_->Name()
-            << ") has not been initialized, not accumulate. Just move";
+    VLOG(6)
+        << "Leaf Var(" << var_->Name()
+        << ")'s Gradient has not been initialized, not accumulate. Just move";
     *(dst) = std::move(*src);
     var_->SetType(inner_var_->Type());
     var_->SetDataType(inner_var_->DataType());

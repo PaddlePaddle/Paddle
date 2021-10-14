@@ -33,7 +33,8 @@ void CopyValidData(framework::Tensor* dst_tensor,
                    const framework::Tensor* src_tensor,
                    const framework::Vector<size_t>& seq_offsets,
                    int pad_seq_len, int step_width, bool norm_by_len,
-                   CopyType type, PadLayout layout) {
+                   bool norm_by_batchsize, bool norm_by_total_logits_len,
+                   int total_logits_len, CopyType type, PadLayout layout) {
   int seq_num = seq_offsets.size() - 1;
   const T* src_data = src_tensor->data<T>();
   T* dst_data = dst_tensor->data<T>();
@@ -54,7 +55,21 @@ void CopyValidData(framework::Tensor* dst_tensor,
     int pad_data_offset = layout == kBatchLengthWidth
                               ? seq_idx * pad_seq_len * step_width
                               : seq_idx * step_width;
-    float scale = 1.0f / static_cast<float>(valid_seq_len);
+
+    float scale = 1.0f;
+    if (norm_by_total_logits_len) {
+      scale = 1.0f / static_cast<float>(total_logits_len);
+      VLOG(3) << "[warpctc grad][norm_by_total_logits_len]: scale " << scale
+              << "total_logits_len " << total_logits_len;
+    } else if (norm_by_batchsize) {
+      scale = 1.0f / static_cast<float>(seq_num);
+      VLOG(3) << "[warpctc grad][norm_by_batchsize]: scale " << scale << "B "
+              << seq_num;
+    } else if (norm_by_len) {
+      scale = 1.0f / static_cast<float>(valid_seq_len);
+      VLOG(3) << "[warpctc grad][norm_by_len]: scale " << scale << "T "
+              << valid_seq_len;
+    }
 
     for (int step_idx = 0; step_idx < valid_seq_len; ++step_idx) {
       const T* src =
@@ -97,6 +112,8 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                   framework::LoDTensor* pad_tensor,
                   const framework::LoDTensor& pad_value, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
+                  bool norm_by_batchsize = false,
+                  bool norm_by_total_logits_len = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
     const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
@@ -131,7 +148,8 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
     }
 
     CopyValidData<T>(pad_tensor, &seq_tensor, seq_offsets, pad_seq_len,
-                     step_width, norm_by_times, kSeqToPad, layout);
+                     step_width, norm_by_times, false, false, 0, kSeqToPad,
+                     layout);
   }
 };
 
@@ -142,6 +160,8 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
+                  bool norm_by_batchsize = false,
+                  bool norm_by_total_logits_len = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
@@ -149,13 +169,16 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
+    int total_logits_len = TotalSequenceLength(seq_offsets);
     int step_width = seq_tensor->numel() / seq_tensor_dims[0];
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
 
     CopyValidData<T>(seq_tensor, &pad_tensor, seq_offsets, pad_seq_len,
-                     step_width, norm_by_times, kPadToSeq, layout);
+                     step_width, norm_by_times, norm_by_batchsize,
+                     norm_by_total_logits_len, total_logits_len, kPadToSeq,
+                     layout);
   }
 };
 

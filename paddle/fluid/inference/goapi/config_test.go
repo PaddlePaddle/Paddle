@@ -69,7 +69,7 @@ func TestNewConfig(t *testing.T) {
 
 	config.EnableMKLDNN()
 
-	config.EnableMemoryOptim()
+	config.EnableMemoryOptim(true)
 	t.Logf("MemoryOptimEnabled:%+v", config.MemoryOptimEnabled())
 
 	config.EnableProfile()

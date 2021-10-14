@@ -212,6 +212,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  bool scale_sparse_gradient_with_batch_size_;
   TrainerDesc trainer_desc_;
 
   // dump params or grads for debug
@@ -453,7 +454,6 @@ class PSGPUWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
   virtual void CacheProgram(const ProgramDesc& main_program) {
@@ -466,7 +466,6 @@ class PSGPUWorker : public HogwildWorker {
 
  protected:
   void PushGradients();
-  void DumpParam();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
@@ -474,18 +473,12 @@ class PSGPUWorker : public HogwildWorker {
  private:
   int mpi_rank_;
   std::mutex mutex_;
-  std::vector<std::string> send_var_list_;
   int worker_num_;
   ProgramDesc program_;
   HeterObjectPool<HeterTask> object_pool_;
-  bool need_dump_param_;
-  std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
-  bool need_dump_field_;
   bool dump_slot_;
   bool need_to_push_sparse_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
   // just save the value in param_ for easy access
@@ -548,6 +541,7 @@ class SectionWorker : public DeviceWorker {
   ~SectionWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
+  void PrepareUnusedVar();
 
   void BindingDataFeedMemory() override {}
   void CreateDeviceResource(const ProgramDesc& main_prog) override{};
@@ -581,7 +575,8 @@ class SectionWorker : public DeviceWorker {
   void RunUpdate(
       std::unique_ptr<GarbageCollector>&,
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
-  void PrepareUnusedVar();
+  void RunFThenB(std::unique_ptr<GarbageCollector>&);
+  void Run1F1B(std::unique_ptr<GarbageCollector>&);
 
  protected:
   int section_id_;
@@ -591,10 +586,17 @@ class SectionWorker : public DeviceWorker {
   int pipeline_stage_;
   int schedule_mode_;  // 0 for F-then-B and 1 for 1F1B
   std::vector<Scope*> microbatch_scopes_;
-  std::vector<std::string> skip_vars_;
   const Scope* minibatch_scope_;
 
+  // skip&backward vars are only used in 1F1B
+  std::vector<std::string> skip_vars_;
+  std::vector<std::string> backward_send_vars_;
+
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::vector<OperatorBase*> forward_and_lr_ops_;
+  std::vector<OperatorBase*> forward_ops_;
+  std::vector<OperatorBase*> backward_ops_;
+  std::vector<OperatorBase*> optimizer_ops_;
   std::shared_ptr<framework::ProgramDesc> program_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;

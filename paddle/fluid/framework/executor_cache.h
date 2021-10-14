@@ -45,121 +45,92 @@ void ParseSafeEagerDeletionSkipVars(
     std::vector<std::string>* skip_eager_delete_vars);
 
 }  // namespace details
+
+class ExecutorInfo {
+ public:
+  struct CacheValue {
+    std::shared_ptr<ParallelExecutor> executor_{nullptr};
+    std::shared_ptr<ir::Graph> graph_{nullptr};
+
+    std::vector<std::string> skip_eager_delete_vars_;
+  };
+
+  bool IsAvailable(bool is_grad) {
+    const auto& executor =
+        is_grad ? backward_info_.executor_ : forward_info_.executor_;
+    return executor != nullptr;
+  }
+
+  CacheValue& GetMutable(bool is_grad) {
+    return is_grad ? backward_info_ : forward_info_;
+  }
+
+ private:
+  CacheValue forward_info_;
+  CacheValue backward_info_;
+};
+
 class ExecutorInfoCache {
  public:
-  struct CacheKey {
-    CacheKey(const ProgramDesc* program_desc, const platform::Place& place,
-             int64_t start_op_index, int64_t end_op_index, bool is_grad)
-        : program_desc_(program_desc),
-          place_(place),
-          start_op_index_(start_op_index),
-          end_op_index_(end_op_index),
-          is_grad_(is_grad) {
-      device_type_ = platform::Place2DeviceType(place);
-      PADDLE_ENFORCE_NOT_NULL(program_desc_,
-                              "program_desc should not be null.");
-    }
-
-    std::string DebugString() const {
-      std::stringstream ss;
-
-      ss << "\n CacheKey(program_desc: " << program_desc_;
-      ss << ", start_op_index: " << start_op_index_;
-      ss << ", end_op_index: " << end_op_index_;
-      ss << ", is_grad: " << is_grad_;
-      ss << ", device_type: " << device_type_ << ")";
-
-      return ss.str();
-    }
-
-    const ProgramDesc* program_desc_;
-    platform::Place place_;
-    int64_t start_op_index_;
-    int64_t end_op_index_;
-    bool is_grad_;
-    platform::DeviceType device_type_;
-  };
-
-  using KeyType = size_t;
-  using ValueType =
-      std::pair<std::shared_ptr<ParallelExecutor>, std::shared_ptr<ir::Graph>>;
-
-  struct KeyHasher {
-    size_t operator()(const CacheKey& key) const noexcept {
-      size_t seed = 10;
-      auto* prog_desc = key.program_desc_;
-      /*
-       * Note(Aurelius84): DO NOT use only ProgramDesc* to calculate hash value
-       * because a new program will hold same pointer address after an older
-       * program is destructed with a small probability. Add op size while
-       * hashing because program may contains at least one block.
-       */
-      hash_combine(&seed, prog_desc);
-      for (size_t i = 0; i < prog_desc->Size(); ++i) {
-        hash_combine(&seed, &prog_desc->Block(i));
-        hash_combine(&seed, prog_desc->Block(i).OpSize());
-      }
-      hash_combine(&seed, static_cast<int>(key.device_type_));
-      hash_combine(&seed, key.start_op_index_);
-      hash_combine(&seed, key.end_op_index_);
-      hash_combine(&seed, key.is_grad_);
-      VLOG(3) << "hash value is : " << seed
-              << " of key:  " << key.DebugString();
-      return seed;
-    }
-
-    template <typename T>
-    void hash_combine(size_t* seed, const T& val) const {
-      std::hash<T> hasher;
-      (*seed) ^= hasher(val) + 0x9e3779b9 + ((*seed) << 6) + ((*seed >> 2));
-    }
-  };
-
   static ExecutorInfoCache& Instance();
 
-  ValueType GetMutable(const CacheKey& key) {
-    auto key_val = key_hash_func_(key);
+  const BuildStrategy& GetBuildStrategy(int64_t program_id) {
+    // If not found, insert build_strategy with default value.
+    return strategy_map_[program_id];
+  }
+
+  void SetBuildStrategy(int64_t program_id,
+                        const BuildStrategy& build_strategy) {
     PADDLE_ENFORCE_EQ(
-        Has(key_val), true,
-        platform::errors::NotFound("%s doesn't exist in ExecutorInfoCache",
-                                   key.DebugString()));
-    return info_map_[key_val];
+        strategy_map_.count(program_id), 0,
+        platform::errors::PreconditionNotMet(
+            "program_id: %s already exist in ExecutorInfoCache", program_id));
+    strategy_map_[program_id] = build_strategy;
   }
 
-  bool Has(const CacheKey& key) const {
-    auto key_val = key_hash_func_(key);
-    return Has(key_val);
+  bool Has(int64_t program_id, bool is_grad) {
+    return info_map_.find(program_id) != info_map_.end() &&
+           info_map_[program_id].IsAvailable(is_grad);
   }
 
-  bool Has(const KeyType& key) const {
-    return info_map_.find(key) != info_map_.end();
+  ExecutorInfo::CacheValue& GetMutable(int64_t program_id, bool is_grad) {
+    return info_map_[program_id].GetMutable(is_grad);
   }
 
-  void Insert(const CacheKey& key, ValueType value) {
-    auto key_val = key_hash_func_(key);
-    PADDLE_ENFORCE_EQ(
-        Has(key_val), false,
-        platform::errors::NotFound("%s has existed in ExecutorInfoCache",
-                                   key.DebugString()));
-    info_map_.insert({key_val, value});
+  void UpdateSkipEagerDeleteVars(int64_t program_id, bool is_grad,
+                                 const std::vector<std::string>& skip_vars) {
+    auto& cached_value = GetMutable(program_id, is_grad);
+    cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
+  }
+
+  std::vector<std::string>& SkipEagerDeleteVars(int64_t program_id,
+                                                bool is_grad) {
+    auto& cached_value = GetMutable(program_id, is_grad);
+    return cached_value.skip_eager_delete_vars_;
   }
 
   size_t Size() const { return info_map_.size(); }
 
-  void Finalize();
+  void Finalize() {
+    // NOTE(Aurelius84): DO NOT perform finalize in destructor
+    // to avoid problems caused by destructor order of static
+    // object.
+    info_map_.clear();
+    strategy_map_.clear();
+  }
 
  private:
-  ExecutorInfoCache() = default;
-  DISABLE_COPY_AND_ASSIGN(ExecutorInfoCache);
-
-  KeyHasher key_hash_func_;
-  std::unordered_map<KeyType, ValueType> info_map_;
+  std::unordered_map<int64_t, ExecutorInfo> info_map_;
+  std::unordered_map<int64_t, BuildStrategy> strategy_map_;
 };
 
 using CacheInfo =
     std::pair<std::shared_ptr<ParallelExecutor>, bool /*is_new_created*/>;
 
-CacheInfo GetExecutorInfoFromCache(const ExecutorInfoCache::CacheKey& cache_key,
+CacheInfo GetExecutorInfoFromCache(const ProgramDesc& program_desc,
+                                   const platform::Place& place,
+                                   int64_t start_op_index, int64_t end_op_index,
+                                   bool is_grad, int64_t program_id,
                                    framework::Scope* scope);
 
 }  // namespace framework

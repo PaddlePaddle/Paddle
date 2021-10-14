@@ -26,8 +26,6 @@ import paddle.fluid.core as core
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSeedOpFixSeed(OpTest):
     def setUp(self):
         self.set_npu()
@@ -43,8 +41,6 @@ class TestSeedOpFixSeed(OpTest):
         self.check_output_with_place(paddle.NPUPlace(0))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSeedOpDiffSeed(OpTest):
     def setUp(self):
         self.set_npu()
