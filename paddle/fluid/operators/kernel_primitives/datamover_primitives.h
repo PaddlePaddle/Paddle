@@ -127,8 +127,7 @@ struct BroadcastConfig {
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
- * the index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
  * NX x NY x blockDim, boundary judgment is required to avoid memory access
@@ -232,8 +231,7 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
- * the index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
  * NX x NY x blockDim, boundary judgment is required to avoid memory access
@@ -283,8 +281,7 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
- * the index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -341,8 +338,7 @@ __device__ __forceinline__ void ReadDataBc(
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
- * the index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -423,8 +419,7 @@ __device__ __forceinline__ void ReadDataReduce(
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
- * the index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
  * NX x NY x blockDim, boundary judgment is required to avoid memory access
@@ -464,6 +459,91 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
 }
 
 /**
+ * @brief Write 2D data from register to global memory according to Tx type, and
+ * store it as Ty type.
+ *
+ * @template paraments
+ * Tx: The type of data that needs to be stored in registers.
+ * Ty: The type of data stored in the global memory.
+ * NX: The number of data columns loaded by each thread.
+ * NY: The number of data rows loaded by each thread.
+ * BlockSize: Identifies the current device thread index method. For GPU,
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: Data pointer of the current block.
+ * src: The register pointer of the thread, the size is NX * NY.
+ * size_nx: The current block needs to load size_nx columns of data, this
+ * parameter will be used when IsBoundary = true.
+ * size_ny: The current block needs to load size_ny rows of data. This parameter
+ * will be used when IsBoundary = true.
+ * stride_nx: Each read one element stride stride_nx elements in the last dim.
+ * stride_ny: Each read one element stride stride_ny elements in the first dim.
+ */
+template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
+          bool IsBoundary = false>
+__device__ __forceinline__ void WriteData(Ty* dst, const Tx* __restrict__ src,
+                                          int size_nx, int size_ny,
+                                          int stride_nx, int stride_ny) {
+  int thread_offset = threadIdx.x;
+  int left_size_nx = size_nx - thread_offset;
+
+  // Each branch is added for better performance
+  if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
+    if (IsBoundary) {
+      if (left_size_nx > 0) {
+        dst[thread_offset] = static_cast<Ty>(src[0]);
+      }
+    } else {
+      dst[thread_offset] = static_cast<Ty>(src[0]);
+    }
+  } else if (NX == 1) {  // for NX == 1 and NY != 1
+#pragma unroll
+    for (int idy = 0; idy < NY; ++idy) {
+      if (IsBoundary) {
+        if (idy * stride_ny >= size_ny) {
+          break;
+        }
+      }
+      dst[thread_offset + idy * stride_ny] = static_cast<Ty>(src[idy]);
+    }
+  } else if (NY == 1) {  // for NY == 1 and NX != 1
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (IsBoundary) {
+        if (idx * stride_nx >= left_size_nx) {
+          break;
+        }
+      }
+      dst[thread_offset + idx * stride_nx] = static_cast<Ty>(src[idx]);
+    }
+  } else {  // for NX != 1 and NY != 1
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (IsBoundary) {
+        if (idx * stride_nx >= left_size_nx) {
+          break;
+        }
+      }
+#pragma unroll
+      for (int idy = 0; idy < NY; ++idy) {
+        if (IsBoundary) {
+          if (idy * stride_ny >= size_ny) {
+            break;
+          }
+        }
+        dst[thread_offset + idx * stride_nx + idy * stride_ny] =
+            static_cast<Ty>(src[idy * NX + idx]);
+      }
+    }
+  }
+}
+
+/**
  * @brief Initialize register with init_data.
  *
  * @template paraments
@@ -495,8 +575,7 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
- * the index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -535,7 +614,7 @@ __device__ __forceinline__ void ReadDataBc(
       index_output = fast_divmoder.val[0];
       index_src += fast_divmoder.val[1] * config.strides[i];
     }
-    dst[nx + ny * NX] = src[index_src];
+    dst[nx] = src[index_src];
   }
 }
 
