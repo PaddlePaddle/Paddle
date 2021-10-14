@@ -57,6 +57,7 @@ from .model_summary import summary
 __all__ = []
 
 _parallel_context_initialized = False
+AMP_LEVEL = core.AmpLevel
 
 
 def to_list(value):
@@ -702,26 +703,29 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        if self._amp_level != "O0":
-            scaler = paddle.amp.GradScaler(**self._amp_configs)
+        # scaler should be initialized only once
+        if self._amp_level != "O0" and self.model._scaler is None:
+            self.model._scaler = paddle.amp.GradScaler(**self._amp_configs)
         with paddle.amp.auto_cast(
-                enable=self._amp_level != 'O0', **self._amp_custom_lists):
+                enable=self._amp_level != 'O0',
+                **self._amp_custom_lists,
+                level=self._amp_level):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
             else:
                 outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
 
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
 
         if self._amp_level != "O0":
-            scaled = scaler.scale(final_loss)
+            scaled = self.model._scaler.scale(final_loss)
             scaled.backward()
             if update:
-                scaler.minimize(self.model._optimizer, scaled)
+                self.model._scaler.minimize(self.model._optimizer, scaled)
                 self.model.network.clear_gradients()
         else:
             final_loss.backward()
@@ -732,7 +736,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -746,7 +750,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -777,7 +781,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -804,16 +808,22 @@ class DynamicGraphAdapter(object):
     def save(self, path):
         params = self.model.network.state_dict()
         fluid.save_dygraph(params, path)
-        if self.model._optimizer is None:
-            return
-        if self.model._optimizer.state_dict():
-            optim = self.model._optimizer.state_dict()
-            fluid.save_dygraph(optim, path)
+        if self.model._optimizer is not None:
+            if self.model._optimizer.state_dict():
+                optim = self.model._optimizer.state_dict()
+                fluid.save_dygraph(optim, path)
+        if self.model._scaler is not None:
+            if self.model._scaler.state_dict():
+                scaler = self.model._scaler.state_dict()
+                fluid.save_dygraph(scaler, path)
 
-    def load(self, param_state_pairs, optim_state):
+    def load(self, param_state_pairs, optim_state, scaler_state=None):
         # restore parameter states
         for param, state in param_state_pairs:
             param.set_value(state)
+
+        if self.model._scaler and scaler_state:
+            self.model._scaler.set_state_dict(scaler_state)
 
         # resotre optimizer states
         if not self.model._optimizer or not optim_state:
@@ -871,6 +881,14 @@ class DynamicGraphAdapter(object):
             self.model._optimizer.set_dict(converted_state)
         else:
             self.model._optimizer.set_state_dict(converted_state)
+
+    def prepare(self):
+        if self._amp_level == "O2" and mode == 'train' and core.is_compiled_with_cuda(
+        ):
+            self.model.network, self.model._optimizer = paddle.amp.decorate(
+                models=self.model.network,
+                optimizers=self.model._optimizer,
+                level='O2')
 
 
 class Model(object):
@@ -1364,14 +1382,9 @@ class Model(object):
         def _check_pure_fp16_configs():
             # pure float16 training has some restricts now
             if self._adapter._amp_level == "O2":
-                if in_dygraph_mode():
-                    warnings.warn(
-                        "Pure float16 training is not supported in dygraph mode now, and it will be supported in future version."
-                    )
-                else:
-                    # grad clip is not supported in pure fp16 training now
-                    assert self._optimizer._grad_clip is None, \
-                        "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
+                # grad clip is not supported in pure fp16 training now
+                assert isinstance(grad_clip, (paddle.nn.clip.GradientClipByNorm, paddle.nn.clip.GradientClipByGlobalNorm)), \
+                     "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -1515,8 +1528,7 @@ class Model(object):
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 
-        if not in_dygraph_mode():
-            self._adapter.prepare()
+        self._adapter.prepare()
 
     def fit(self,
             train_data=None,
