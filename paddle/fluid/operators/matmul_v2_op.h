@@ -792,7 +792,7 @@ struct DotTripleGradFunction {
 };
 
 // TODO(wuweilong): enable this function when the unittests framewark for multi
-// grad is ok
+// grad is ok (dtype: complex64 or complex128).
 template <typename DeviceContext, typename T>
 struct DotTripleGradFunction<DeviceContext, T, math::EnableComplex<T>> {
   void operator()(const Tensor* in_tensor_x, const Tensor* in_tensor_y,
