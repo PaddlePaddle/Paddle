@@ -77,6 +77,7 @@ if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
 set task_name=%1
+set UPLOAD_TP_FILE=OFF
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -382,7 +383,6 @@ if "%WITH_GPU%"=="ON" (
 )
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
-set UPLOAD_TP_FILE=OFF
 
 if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
@@ -395,15 +395,15 @@ if not exist %THIRD_PARTY_PATH% (
         echo Getting third party: extracting ...
         tar -xf %md5%.tar.gz
         if !ERRORLEVEL! EQU 0 ( 
-            echo Get third party from bos successfully
+            echo Get third party from bos successfully.
         ) else (
-            echo Get third party failed, reason: extract failed, will build locally
+            echo Get third party failed, reason: extract failed, will build locally.
         )
         del %md5%.tar.gz
     ) else (
-        echo Get third party failed, reason: download failed, will build locally
+        echo Get third party failed, reason: download failed, will build locally.
     )
-    if not exist %THIRD_PARTY_PATH% ( set UPLOAD_TP_FILE=ON ) 
+    if not exist %THIRD_PARTY_PATH% set UPLOAD_TP_FILE=ON
     cd %work_dir%\%BUILD_DIR%
 ) else (
     echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
@@ -521,8 +521,8 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
-if %UPLOAD_TP_FILE%==ON (
+if "%UPLOAD_TP_FILE%"=="ON" (
+    set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
     echo Uploading third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-0.8.33 (
         echo There is no bce in this PC, will install bce.
@@ -540,18 +540,18 @@ if %UPLOAD_TP_FILE%==ON (
         tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
             echo Uploading third_party: uploading ...
-            %PYTHON_ROOT%\python.exe %BCE_FILE% %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
+            %PYTHON_ROOT%\python.exe !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
-                echo Upload third party to bos paddle-windows/third_party/%sub_dir% successfully 
+                echo Upload third party %md5% to bos paddle-windows/third_party/%sub_dir% successfully.
             ) else (
-                echo Failed upload third party to bos, reason: upload failed
+                echo Failed upload third party to bos, reason: upload failed.
             )
         ) else (
-            echo Failed upload third party to bos, reason: compress failed
+            echo Failed upload third party to bos, reason: compress failed.
         )
         del %md5%.tar.gz
     ) else (
-        echo Failed upload third party to bos, reason: install bce failed
+        echo Failed upload third party to bos, reason: install bce failed.
     )
     cd %work_dir%\%BUILD_DIR%
 )
