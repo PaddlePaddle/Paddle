@@ -139,10 +139,10 @@ template <typename T, typename MT>
 __global__ void L2NormKernel(
 #endif
     const T* __restrict__ p_data, const T* __restrict__ g_data,
-    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, MT s_buffer[],
-    const int64_t numel, const int repeat_times, const MT rescale_grad,
-    const int thresh = 0, MT* __restrict__ p_n = nullptr,
-    MT* __restrict__ g_n = nullptr) {
+    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const int64_t numel,
+    const int repeat_times, const MT rescale_grad, const int thresh = 0,
+    MT* __restrict__ p_n = nullptr, MT* __restrict__ g_n = nullptr) {
+  __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
   const MT rescale_pow = rescale_grad * rescale_grad;
@@ -286,7 +286,6 @@ __global__ void MergedMomentumLarsKernel(
     MT* __restrict__ g_buffer, const MT* __restrict__ lr, const int op_num,
     const MT mu, const MT lars_coeff, const MT epsilon, const MT rescale_grad,
     const bool is_amp) {
-  __shared__ MT s_buffer[2];
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
@@ -297,9 +296,8 @@ __global__ void MergedMomentumLarsKernel(
     MT param_norm = static_cast<MT>(0);
     MT grad_norm = static_cast<MT>(0);
     L2NormKernel<T, MT>(&cg, lars_warpper.p_arr[i], lars_warpper.g_arr[i],
-                        p_buffer, g_buffer, s_buffer, numel,
-                        lars_warpper.repeat_arr[i], rescale_grad, 0,
-                        &param_norm, &grad_norm);
+                        p_buffer, g_buffer, numel, lars_warpper.repeat_arr[i],
+                        rescale_grad, 0, &param_norm, &grad_norm);
     MomentumUpdate<T, MT>(lars_warpper.p_arr[i], lars_warpper.g_arr[i],
                           lars_warpper.v_arr[i], lars_warpper.GetMasterParam(i),
                           lr, mu, lars_warpper.weight_decay_arr[i], lars_coeff,
@@ -318,17 +316,16 @@ __global__ void MomentumLarsKernel(
     const MT lars_weight_decay, const MT epsilon, const MT rescale_grad,
     const int repeat_times, const int thresh, const int64_t numel,
     const bool is_amp) {
-  __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 11000
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   MT param_norm = static_cast<MT>(0);
   MT grad_norm = static_cast<MT>(0);
-  L2NormKernel<T, MT>(&cg, param, grad, p_buffer, g_buffer, s_buffer, numel,
-                      repeat_times, rescale_grad, gridDim.x, &param_norm,
-                      &grad_norm);
+  L2NormKernel<T, MT>(&cg, param, grad, p_buffer, g_buffer, numel, repeat_times,
+                      rescale_grad, gridDim.x, &param_norm, &grad_norm);
 #else
+  __shared__ MT s_buffer[2];
   const MT rescale_grad_pow = rescale_grad * rescale_grad;
   MT param_part_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
   MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
