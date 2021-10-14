@@ -123,8 +123,6 @@ from .layer.rnn import SimpleRNN  # noqa: F401
 from .layer.rnn import LSTM  # noqa: F401
 from .layer.rnn import GRU  # noqa: F401
 
-from .layer.resnet_unit import ResNetUnit  # noqa: F401
-
 from .layer.transformer import MultiHeadAttention  # noqa: F401
 from .layer.transformer import TransformerEncoderLayer  # noqa: F401
 from .layer.transformer import TransformerEncoder  # noqa: F401
@@ -295,6 +293,5 @@ __all__ = [     #noqa
            'PixelShuffle',
            'ELU',
            'ReLU6',
-           'LayerDict',
-           'ResNetUnit'
+           'LayerDict'
 ]
