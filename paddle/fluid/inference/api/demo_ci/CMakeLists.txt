@@ -160,6 +160,7 @@ else()
       ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags_static libprotobuf xxhash cryptopp-static utf8proc_static
       ${EXTERNAL_LIB})
+  set(DEPS ${DEPS} shlwapi.lib)
 endif(NOT WIN32)
 
 if(WITH_GPU)
