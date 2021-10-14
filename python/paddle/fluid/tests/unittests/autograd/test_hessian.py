@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.compat as cpt
+import paddle.nn.functional as F
 from utils import _compute_numerical_hessian
 
 
@@ -107,10 +108,9 @@ class TestHessian(unittest.TestCase):
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("has no gradient") > 0
 
-    # TODO(levi): enable this test case when matmul_grad_grad_grad is ok
-    def _test_create_graph_true(self):
+    def test_create_graph_true(self):
         def func(x):
-            return paddle.sum(paddle.matmul(x, x))
+            return paddle.sum(F.sigmoid(x))
 
         numerical_hessian = _compute_numerical_hessian(
             func, self.x, self.numerical_delta, self.np_dtype)
