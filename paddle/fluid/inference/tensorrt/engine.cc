@@ -225,6 +225,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
   infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
