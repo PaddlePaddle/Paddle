@@ -55,8 +55,10 @@ pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
   // TODO(zhanlve): which one is more efficient:
   //                1. construct a vector of pointers
   //                2. call "ComputeRequireGrad" multiple times
-  if (EagerUtils::ComputeRequireGrad(&p_autograd_in, 1, &p_autograd_out, 1,
-                                     trace_backward)) {
+  bool require_any_grad = ComputeRequireGrad(trace_backward, p_autograd_in);
+  if (require_any_grad) {
+    PassStopGradient(false /*generate_grad*/, p_autograd_out);
+
     // 2.2.2 Set OutRankInfo for outputs this needs to be as same as Edges's
     // input_rank_
     /** Note:
