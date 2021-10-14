@@ -77,36 +77,21 @@ class PipelineParallel(MetaParallelBase):
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
-        assert isinstance(optimizer, HybridParallelOptimizer), (
-            'optimizer should be HybridParallelOptimizer subclass.')
+    def forward_backward_pipeline(self, data, scaler=None):
+        # use the 1f1b scheduling strategy.
+        # this strategy is inspired by:
+        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
-        assert fluid.framework._dygraph_tracer()._has_grad, (
-            'Please enable the generation of gradients.')
-
-        if self.is_first_stage or self.is_last_stage:
-            assert data is not None, (
-                "For the first and the last stage, the data must be set.")
-        else:
-            data = None
-
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
         self.scaler = scaler
-        self.data = data
-        self._compute_loss = True
 
-        self._layers.train()
+        # store data for train
+        self.data = data
 
         # store total loss of entire batch
         self.total_loss = None
 
         # store data id for micro_batch
         self.micro_batch_id = 0
-
-        # Next, use the 1f1b scheduling strategy.
-        # this strategy is inspired by:
-        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
         startup_steps = (self.num_stages - self.stage_id - 1)
         startup_steps = min(startup_steps, self.accumulate_steps)
@@ -159,13 +144,37 @@ class PipelineParallel(MetaParallelBase):
                                                     output_tensor_grad)
             p2p.send_backward(input_tensor_grad)
 
-        self.train_loss = self._broadcast_final_loss()
+        with paddle.amp.auto_cast(enable=False):
+            self._layers.allreduce_shared_weight_gradients()
+            train_loss = self._broadcast_final_loss()
+        return train_loss
+
+    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+        assert isinstance(optimizer, HybridParallelOptimizer), (
+            'optimizer should be HybridParallelOptimizer subclass.')
+
+        assert fluid.framework._dygraph_tracer()._has_grad, (
+            'Please enable the generation of gradients.')
+
+        if self.is_first_stage or self.is_last_stage:
+            assert data is not None, (
+                "For the first and the last stage, the data must be set.")
+        else:
+            data = None
+
+        self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
+
+        self._layers.train()
+
+        # 1f1b for pipeline
+        train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
         with paddle.amp.auto_cast(enable=False):
-            self._layers.allreduce_shared_weight_gradients()
             self._optimizer_step()
-        return self.train_loss
+
+        return train_loss
 
     def eval_batch(self, data, compute_loss=False):
         self._layers.eval()
@@ -313,20 +322,18 @@ class PipelineParallel(MetaParallelBase):
         if self.is_last_stage:
             assert self.total_loss is not None, "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.detach()
-            with paddle.amp.auto_cast(enable=False):
-                paddle.distributed.broadcast(
-                    loss,
-                    src=self.global_rank,
-                    use_calc_stream=True,
-                    group=self.pp_group)
+            paddle.distributed.broadcast(
+                loss,
+                src=self.global_rank,
+                use_calc_stream=True,
+                group=self.pp_group)
         else:
             loss = paddle.zeros(shape=[1], dtype="float32")
-            with paddle.amp.auto_cast(enable=False):
-                paddle.distributed.broadcast(
-                    loss,
-                    src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                    use_calc_stream=True,
-                    group=self.pp_group)
+            paddle.distributed.broadcast(
+                loss,
+                src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+                use_calc_stream=True,
+                group=self.pp_group)
         return loss
 
     def _optimizer_step(self):
