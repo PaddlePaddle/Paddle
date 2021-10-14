@@ -1,8 +1,11 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -88,14 +91,14 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     const float ln2epsilon = ctx.Attr<float>("ln2epsilon");
 
     float attn_dropout_prob = ctx.Attr<float>("attn_dropout_prob");
-    bool is_test_1 = ctx.Attr<bool>("is_test1");
+    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
     auto &dropout_implementation_1 =
-        ctx.Attr<std::string>("dropout_implementation1");
+        ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
         (dropout_implementation_1 == "upscale_in_train");
     auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
-    bool is_fix_seed_1 = ctx.Attr<bool>("fix_seed1");
-    int seed_val_1 = ctx.Attr<int>("seed1");
+    bool is_fix_seed_1 = ctx.Attr<bool>("attn_dropout_fix_seed");
+    int seed_val_1 = ctx.Attr<int>("attn_dropout_seed");
 
     // final output.
     auto *out = ctx.Output<Tensor>("Y");

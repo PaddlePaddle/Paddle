@@ -1,8 +1,11 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -115,7 +118,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
                       {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
-    if (ctx->Attrs().Get<bool>("is_test1") == false) {
+    if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
                         {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
     }
@@ -220,20 +223,20 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
               platform::errors::InvalidArgument(
                   "'attn_dropout_prob' must be between 0.0 and 1.0."));
         });
-    AddAttr<bool>("is_test1",
+    AddAttr<bool>("attn_dropout_is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed1",
+    AddAttr<bool>("attn_dropout_fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
         .SetDefault(true);
-    AddAttr<int>("seed1", "Dropout random seed.").SetDefault(0);
+    AddAttr<int>("attn_dropout_seed", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
-        "dropout_implementation1",
+        "attn_dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
         "There are two kinds of ways to implement dropout"
         "(the mask below is a tensor have the same shape with input"
@@ -280,19 +283,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
-        "There are two kinds of ways to implement dropout"
-        "(the mask below is a tensor have the same shape with input"
-        "the value of mask is 0 or 1, the ratio of 0 is dropout_prob)"
-        "1. downgrade_in_infer(default), downgrade the outcome at inference "
-        "time"
-        "   train: out = input * mask"
-        "   inference: out = input * (1.0 - dropout_prob)"
-        "2. upscale_in_train, upscale the outcome at training time, do nothing "
-        "in inference"
-        "   train: out = input * mask / ( 1.0 - dropout_prob )"
-        "   inference: out = input"
-        "   dropout op can be removed from the program. the program will be "
-        "efficient")
+        "The meaning is the same as 'attn_dropout_implementation'.")
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
