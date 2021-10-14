@@ -48,7 +48,6 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
         framework::ToMKLDNNDataType(tensor->type()),
         platform::GetPlainMKLDNNFormat(tensor->dims().size()));
 
-    tensor->set_layout(DataLayout::kMKLDNN);
     tensor->set_mem_desc(out_mem_desc);
   }
 };

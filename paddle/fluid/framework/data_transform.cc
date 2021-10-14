@@ -67,7 +67,6 @@ void TransformData(const OpKernelType &expected_kernel_type,
         platform::MatchShapeToLayout(&out, lin, lout);
         paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
             lin);
-        out.set_layout(DataLayout::kMKLDNN);
         mkldnn::memory::desc out_mem_desc(
             vectorize(out.dims()), ToMKLDNNDataType(in.type()), out_format);
         out.set_mem_desc(out_mem_desc);
@@ -118,10 +117,10 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
     auto &in_lod_tensor = in_var.Get<LoDTensor>();
     auto *tran_lod_tensor = out_var->GetMutable<LoDTensor>();
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
-    tran_lod_tensor->set_layout(in_lod_tensor.layout());
 #ifdef PADDLE_WITH_MKLDNN
     tran_lod_tensor->set_mem_desc(in_lod_tensor.mem_desc());
 #endif
+    tran_lod_tensor->set_layout(in_lod_tensor.layout());
     tran_lod_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<SelectedRows>()) {
     auto &in_selected_rows = in_var.Get<SelectedRows>();

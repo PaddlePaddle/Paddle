@@ -89,7 +89,6 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
-      output->set_layout(framework::DataLayout::kMKLDNN);
       output->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
           framework::vectorize<int64_t>(output->dims())));
     } else {
@@ -108,7 +107,6 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       reduction_p->execute(astream, reduction_args);
       astream.wait();
 
-      output->set_layout(framework::DataLayout::kMKLDNN);
       output->set_mem_desc(dst_memory_p->get_desc().reshape(
           framework::vectorize<int64_t>(output->dims())));
     }
@@ -158,30 +156,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
 
-    dx->set_layout(framework::DataLayout::kMKLDNN);
     dx->set_mem_desc(dst_memory_p->get_desc());
-  }
-
- protected:
-  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
-    auto tensor_dims_size = tensor->dims().size();
-    PADDLE_ENFORCE_EQ(
-        tensor_dims_size <= 5 && tensor_dims_size >= 1, true,
-        platform::errors::InvalidArgument(
-            "Dims for reduction_grad oneDNN op must be in range <1, 5>"));
-
-    switch (tensor_dims_size) {
-      case 1:
-        return mkldnn::memory::format_tag::a;
-      case 2:
-        return mkldnn::memory::format_tag::ab;
-      case 3:
-        return mkldnn::memory::format_tag::abc;
-      case 4:
-        return mkldnn::memory::format_tag::abcd;
-    }
-
-    return mkldnn::memory::format_tag::abcde;
   }
 };
 

@@ -116,7 +116,6 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
 
       offset[axis] += num > 0 ? x->dims()[axis] / num : sections[i];
 
-      outs[i]->set_layout(framework::DataLayout::kMKLDNN);
       outs[i]->set_mem_desc(reorder_dst_memory_p->get_desc());
     }
     astream.wait();

@@ -50,7 +50,6 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
                                     {MKLDNN_ARG_TO, *dst_memory_p}});
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_mem_desc(dst_memory_p->get_desc());
   }
 };

@@ -112,7 +112,6 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     astream.wait();
     out->Resize(framework::make_ddim(new_out_dims));
-    out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(new_out_dims));
   }
 };
@@ -195,7 +194,6 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *slice_mem_p);
     astream.wait();
 
-    dx->set_layout(framework::DataLayout::kMKLDNN);
     dx->set_mem_desc(reorder_dst_memory_p->get_desc());
   }
 };

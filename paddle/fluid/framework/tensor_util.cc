@@ -44,7 +44,6 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   src.check_memory_size();
 
   dst->Resize(src.dims());
-  dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
 #ifdef PADDLE_WITH_MKLDNN
@@ -58,6 +57,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 #else
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 #endif
+  dst->set_layout(src.layout());
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
             << dst_place;
@@ -322,10 +322,10 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
           << " to " << dst_place;
   src.check_memory_size();
   dst->Resize(src.dims());
-  dst->set_layout(src.layout());
 #ifdef PADDLE_WITH_MKLDNN
   dst->set_mem_desc(src.mem_desc());
 #endif
+  dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());

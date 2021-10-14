@@ -70,7 +70,6 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     binary_p->execute(astream, args);
     astream.wait();
 
-    out->set_layout(paddle::framework::DataLayout::kMKLDNN);
     out->set_mem_desc(dst_memory_p->get_desc());
   }
 
@@ -127,7 +126,6 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
-      dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
       dx->set_mem_desc(reorder_dst_memory_p->get_desc());
     } else {
       paddle::platform::ReductionMKLDNNHandler<T> handler(
@@ -144,7 +142,6 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
       reduction_p->execute(astream, reduction_args);
       astream.wait();
-      dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
       dx->set_mem_desc(
           dst_memory_p->get_desc().reshape(vectorize<int64_t>(dx->dims())));
     }

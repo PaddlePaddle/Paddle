@@ -105,6 +105,7 @@ class Tensor {
 
   inline void set_mem_desc(const mkldnn::memory::desc& mem_desc) {
     mem_desc_ = mem_desc;
+    layout_ = DataLayout::kMKLDNN;
   }
 
   // TODO jakpiase format is deprecated and will be removed soon, supporting
