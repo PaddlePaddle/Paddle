@@ -59,6 +59,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
+    int8_teller_set.insert("reshape");
+    int8_teller_set.insert("reshape2");
 #endif
   }
 
@@ -91,7 +93,9 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "scale",
                                                   "elementwise_mul",
                                                   "conv2d_transpose",
-                                                  "hard_swish"};
+                                                  "hard_swish",
+                                                  "transpose",
+                                                  "transpose2"};
   std::unordered_set<std::string> teller_set{"mul",
                                              "matmul",
                                              "conv2d",
@@ -174,22 +178,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "pool2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-      if (paddings.size() > 2) return false;
-      if (desc.HasAttr("exclusive")) {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
-          std::vector<int> ksize =
-              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
-          for (size_t i = 0; i < ksize.size(); i++) {
-            if (ksize[i] <= paddings[i]) {
-              VLOG(3) << "the padding size should be less than the filter size "
-                         "for exclusive-counting pooling.";
-              return false;
-            }
-          }
-        }
-      }
-      if (desc.HasAttr("ceil_mode")) {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("ceil_mode"))) return false;
+      if (paddings.size() > 2) {
+        return false;
       }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "TRT Pool2d expect 1 input, but got "
@@ -211,15 +201,32 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                   << pool_type << " pool type.";
           return false;
         }
+        if (pool_type == "avg") {
+          if (desc.HasAttr("global_pooling")) {
+            if (!BOOST_GET_CONST(bool, desc.GetAttr("global_pooling"))) {
+              if (desc.HasAttr("exclusive")) {
+                if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
+                  std::vector<int> ksize =
+                      BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
+                  for (size_t i = 0; i < ksize.size(); i++) {
+                    if (ksize[i] <= paddings[i]) {
+                      VLOG(3) << "the padding size should be less than the "
+                                 "filter size "
+                                 "for exclusive-counting pooling.";
+                      return false;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
         op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
                 << desc.Input("Input").size() << " input.";
