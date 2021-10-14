@@ -1586,15 +1586,16 @@ class Fleet(object):
                 _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
                                                 param_grads_fp32,
                                                 temp_found_inf_fp32)
-            self._found_inf = temp_found_inf_fp16 or temp_found_inf_fp32
+            self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
 
             # TODO(shenliang03) Since dp allreduce in the optimizer is 
             # after the gradscaler, check_finite needs to synchronize global 
             # information. In the future, we should use check_group to speed.
-            self._found_inf = paddle.cast(self._found_inf, dtype="int32")
             paddle.distributed.all_reduce(
-                self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
-            self._found_inf = paddle.cast(self._found_inf, dtype="bool")
+                paddle.to_tensor(
+                    [self._found_inf], dtype="int32"),
+                op=paddle.distributed.ReduceOp.MAX,
+                group=None)
 
         # Only tensor_parallel and pipeline_parallel need to modify scaler
         if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
