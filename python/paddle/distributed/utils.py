@@ -489,9 +489,6 @@ class Pod(object):
     def parse_response(self, res_pods):
         pass
 
-    def rank(self):
-        return self.rank
-
     def get_visible_gpus(self):
         r = ""
         for g in self.gpus:

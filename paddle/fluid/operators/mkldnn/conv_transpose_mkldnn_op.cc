@@ -51,10 +51,10 @@ class ConvTransposeMKLDNNHandlerT
       : platform::MKLDNNHandlerT<T, mkldnn::deconvolution_forward>(
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
-                                unique_name)) {
+                                unique_name)),
+        is_test_(ctx.Attr<bool>("is_test")) {
     if (!this->isCached()) {
-      const bool is_test = ctx.Attr<bool>("is_test");
-      PADDLE_ENFORCE_EQ(is_test, true,
+      PADDLE_ENFORCE_EQ(is_test_, true,
                         platform::errors::InvalidArgument(
                             "ConvTransposeMKLDNN works only for inference. "
                             "The attribute \'is_test\' value should be set to "
@@ -169,8 +169,8 @@ class ConvTransposeMKLDNNHandlerT
 
       const mkldnn::primitive_attr conv_trans_attr =
           CreatePostOps(fuse_activation, fuse_alpha, fuse_beta);
-      auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
-                                   : mkldnn::prop_kind::forward_training;
+      auto fwd_prop_kind = is_test_ ? mkldnn::prop_kind::forward_inference
+                                    : mkldnn::prop_kind::forward_training;
       if (bias) {
         std::vector<int64_t> bias_tz = framework::vectorize(bias->dims());
         const auto bias_md =
@@ -231,18 +231,18 @@ class ConvTransposeMKLDNNHandlerT
       const auto target_src_mem_p = this->AcquireMemory(target_key_suffix);
       user_src_mem_p->set_data_handle(platform::to_void_cast<T>(input_data));
       if (user_src_mem_p != target_src_mem_p) {
-        this->AcquireReorder(user_src_mem_p, target_src_mem_p, "@src_mem_p");
+        this->AcquireReorder(user_src_mem_p, target_src_mem_p);
       }
       return target_src_mem_p;
     }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryWithReorder(
-      const framework::Tensor* filter, const int& groups, const bool& is_test) {
+      const framework::Tensor* filter, const int& groups) {
     // This is workaround to make execution faster, delete
     // if statement after including md inside Tensor
     auto weights_mem_p = this->AcquireMemory("@weights_mem_p_target");
-    if (is_test && weights_mem_p) {
+    if (is_test_ && weights_mem_p) {
       return weights_mem_p;
     } else {
       const K* filter_data = filter->data<K>();
@@ -277,15 +277,15 @@ class ConvTransposeMKLDNNHandlerT
 
       return this->template AcquireMemoryWithReorder<K>(
           user_src_md, this->fwd_pd_->weights_desc(),
-          platform::to_void_cast<K>(filter_data), "@weights_mem_p", is_test,
+          platform::to_void_cast<K>(filter_data), "@weights_mem_p", is_test_,
           iohw2oihw_reorder);
     }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
-      const framework::Tensor* bias, const bool& is_test) {
+      const framework::Tensor* bias) {
     auto bias_mem_p = this->AcquireMemory("@bias_mem_p_target");
-    if (is_test && bias_mem_p) {
+    if (is_test_ && bias_mem_p) {
       return bias_mem_p;
     } else {
       const K* bias_data = bias->data<K>();
@@ -294,9 +294,12 @@ class ConvTransposeMKLDNNHandlerT
           MKLDNNMemoryFormat::x);
       return this->AcquireMemoryWithReorder(
           user_bias_md, this->fwd_pd_->bias_desc(),
-          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test);
+          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test_);
     }
   }
+
+ private:
+  const bool is_test_;
 };
 
 template <typename T, typename K>
@@ -325,8 +328,6 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const bool is_test = ctx.Attr<bool>("is_test");
-
     const auto* input = ctx.Input<Tensor>("Input");
     const auto* filter = ctx.Input<Tensor>("Filter");
     const auto* bias =
@@ -340,7 +341,7 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
         output, unique_name);
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, ctx.Attr<int>("groups"), is_test);
+        filter, ctx.Attr<int>("groups"));
 
     std::shared_ptr<dnnl::memory> dst_memory_p =
         handler.template AcquireDstMemory<T_out>(output);
@@ -352,7 +353,7 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
         {MKLDNN_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias, is_test);
+      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();

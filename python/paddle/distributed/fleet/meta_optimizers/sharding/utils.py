@@ -14,7 +14,7 @@
 import paddle
 from paddle.fluid import core, unique_name
 from functools import reduce
-from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op
+from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op, is_optimizer_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 
 import re
@@ -367,6 +367,24 @@ def insert_allreduce_ops(block,
 
 class FuseHelper(object):
     @staticmethod
+    def sort_vars_by_dtype(block, vars_name):
+        fp32_vars = []
+        fp16_vars = []
+        other_vars = []
+        for var in vars_name:
+            dtype = block.var(var).dtype
+            if dtype == paddle.float32:
+                fp32_vars.append(var)
+            elif dtype == paddle.float16:
+                fp16_vars.append(var)
+            else:
+                other_vars.append(var)
+        assert len(other_vars) == 0, "only support fp32/fp16 vars for fuse"
+
+        fp32_vars.extend(fp16_vars)
+        return fp32_vars
+
+    @staticmethod
     def get_fused_groups(block, vars_name, fuse_size=32.):
         """ coalesce tensor, get fused group """
         groups = []
@@ -637,6 +655,54 @@ def insert_broadcast_param_ops(block,
             })
 
     return param_in_this_device
+
+
+def fuse_opt_broadcast_param_ops(block,
+                                 ring_id,
+                                 shard,
+                                 op_role=OpRole.Optimize,
+                                 strategy=None):
+    """
+    fuse optimizer sharding broadcast param ops
+    """
+    if strategy is None or not strategy.fuse_all_reduce_ops:
+        return
+
+    fuse_size = strategy.fuse_grad_size_in_MB
+
+    nranks = shard.worker_num
+    device_to_vars = [[] for _ in range(nranks)]
+
+    for idx, op in reversed(list(enumerate(block.ops))):
+        if not is_optimizer_op(op) or op.type != 'c_broadcast':
+            break
+        var = op.input_arg_names[0]
+        root_id = op.attr('root')
+        device_to_vars[root_id].insert(0, var)
+        block._remove_op(idx, sync=False)
+
+    insert_idx = idx + 1
+    for root_id, vars_name in enumerate(device_to_vars):
+        vars_name = FuseHelper.sort_vars_by_dtype(block, vars_name)
+        groups = FuseHelper.get_fused_groups(block, vars_name, fuse_size)
+
+        fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
+            block, insert_idx, groups, op_role, prefix="Param")
+
+        for fused_var in fused_vars:
+            block._insert_op_without_sync(
+                insert_idx + insert_num,
+                type='c_broadcast',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': root_id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: op_role
+                })
+
+    block._sync_with_cpp()
 
 
 def get_grad_device(grad_name, shard):

@@ -22,7 +22,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename DeviceContext, typename ValueType, typename T>
+template <typename DeviceContext, typename T>
 class EighKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -31,15 +31,16 @@ class EighKernel : public framework::OpKernel<T> {
     auto output_v = ctx.Output<Tensor>("Eigenvectors");
     std::string lower = ctx.Attr<std::string>("UPLO");
     bool is_lower = (lower == "L");
-    math::MatrixEighFunctor<DeviceContext, ValueType, T> functor;
+    math::MatrixEighFunctor<DeviceContext, T> functor;
     functor(ctx, *input, output_w, output_v, is_lower, true);
   }
 };
 
-template <typename DeviceContext, typename ValueType, typename T>
+template <typename DeviceContext, typename T>
 class EighGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using ValueType = math::Real<T>;
     auto& x_grad = *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     x_grad.mutable_data<T>(ctx.GetPlace());
     auto& output_w = *ctx.Input<Tensor>("Eigenvalues");

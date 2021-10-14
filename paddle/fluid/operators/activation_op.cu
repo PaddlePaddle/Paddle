@@ -1202,6 +1202,59 @@ struct CudaELUGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+template <typename T>
+struct CudaCELUFunctor : public BaseActivationFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT zero = static_cast<CT>(0.0f);
+  CT one = static_cast<CT>(1.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // celu(x) = max(0, x) + min(0, alpha * (exp(x/alpha) - 1))
+  __device__ __forceinline__ T operator()(const T& arg_x) const {
+    CT x = static_cast<CT>(arg_x);
+    CT temp = static_cast<CT>(alpha) * (exp(x / static_cast<CT>(alpha)) - one);
+    CT res = (x > zero ? x : zero) + (temp > zero ? zero : temp);
+    return static_cast<T>(res);
+  }
+};
+
+template <typename T>
+struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+  MPType one = static_cast<MPType>(1.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // dx = dout, if alpha > 0 and x > 0
+  // dx = dout * (x/alpha).exp(), if alpha > 0 and x <= 0
+  // dx = dout , if alpha < 0 and x > 0
+  // dx = dout * (x/alpha).exp(), if alpha < 0 and x <=0
+  __device__ __forceinline__ T operator()(const T& arg_dout,
+                                          const T& arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType a = static_cast<MPType>(alpha);
+    MPType temp_a_pos = static_cast<MPType>(alpha > 0.0f);
+    MPType temp_a_neg = static_cast<MPType>(alpha <= 0.0f);
+    MPType temp_x_pos = static_cast<MPType>(x > zero);
+    MPType temp_x_neg = static_cast<MPType>(x <= zero);
+    return static_cast<T>(
+        dout *
+        (temp_a_pos * temp_x_pos + temp_a_pos * temp_x_neg * exp(x / a) +
+         temp_a_neg * temp_x_pos + exp(x / a) * temp_a_neg * temp_x_neg));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 template <typename DeviceContext, typename Functor>
 class ActivationCudaKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -1341,6 +1394,19 @@ REGISTER_OP_CUDA_KERNEL(
                              ops::ELUGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
+/* ======================== celu register  ============================ */
+REGISTER_ACTIVATION_CUDA_KERNEL(celu, CELU, CudaCELUFunctor,
+                                CudaCELUGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    celu_grad_grad, ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
+                                              ops::CELUGradGradFunctor<float>>,
+    ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
+                              ops::CELUGradGradFunctor<double>>,
+    ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
+                              ops::CELUGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
 /* ===========================    relu register  ============================ */
 #ifdef PADDLE_WITH_HIP
 REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, CudaReluFunctor,
@@ -1398,6 +1464,15 @@ REGISTER_OP_CUDA_KERNEL(
                                  ops::SigmoidGradGradFunctor<double>>,
     ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
                                  ops::SigmoidGradGradFunctor<plat::float16>>);
+
+REGISTER_OP_CUDA_KERNEL(
+    sigmoid_triple_grad,
+    ops::SigmoidTripleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidTripleGradFunctor<float>>,
+    ops::SigmoidTripleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidTripleGradFunctor<double>>,
+    ops::SigmoidTripleGradKernel<plat::CUDADeviceContext,
+                                 ops::SigmoidTripleGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ===========================    tanh register  ============================ */
