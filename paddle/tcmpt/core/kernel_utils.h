@@ -17,6 +17,7 @@
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/core/kernel_def.h"
+#include "paddle/tcmpt/core/scalar.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -162,6 +163,7 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const pt::Scalar&);
 
   /* Output Helpers */
 

@@ -20,3 +20,4 @@ limitations under the License. */
 #include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/core/kernel_factory.h"
 #include "paddle/tcmpt/core/mkldnn_dense_tensor.h"
+#include "paddle/tcmpt/core/scalar.h"

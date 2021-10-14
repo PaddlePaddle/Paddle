@@ -18,6 +18,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/scalar.h"
 
 #include "paddle/fluid/platform/device_context.h"
 
@@ -28,7 +29,7 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 template <typename T>
 void FillAnyLike(const CUDAContext& dev_ctx,
                  const DenseTensor& x,
-                 float val,
+                 const Scalar& val,
                  DenseTensor* out);
 
 }  // namespace pt
