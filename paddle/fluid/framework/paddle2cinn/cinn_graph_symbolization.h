@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 
 #include "cinn/frontend/net_builder.h"
 #include "cinn/frontend/op_mapper_registry.h"
@@ -63,13 +64,13 @@ class CinnGraphSymbolization {
       : graph_id_(graph_id), graph_(graph), feed_targets_(feed_targets) {}
 
   // run all CINN op in graph by topo sorting then return its NetBuilder
-  ::cinn::frontend::Program operator()() const;
+  ::cinn::frontend::Program operator()(framework::Scope* scope) const;
 
   // return the internal variable map
-  const decltype(auto)& var_map() const { return var_map_; }
+  const auto& var_map() const { return var_map_; }
 
   // return the map from the variable name in paddle model to cinn program.
-  const decltype(auto)& var_model_to_program_map() const {
+  const auto& var_model_to_program_map() const {
     return var_model_to_program_map_;
   }
 
@@ -84,7 +85,7 @@ class CinnGraphSymbolization {
 
   using OpMapperContext = ::cinn::frontend::OpMapperContext;
   // transform all paddle var desc in feed list into cinn_var_descs_
-  void AddFeedVarIntoCinn(const OpMapperContext& ctx) const;
+  void AddVarInfoIntoContext(OpMapperContext* ctx) const;
 
   // transform all paddle op desc in graph into cinn op desc
   using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;

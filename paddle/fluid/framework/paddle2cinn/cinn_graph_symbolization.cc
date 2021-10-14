@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
+#include "paddle/fluid/framework/variable.h"
 
 #include "cinn/frontend/op_mappers/use_op_mappers.h"
 #include "cinn/frontend/var_type_utils.h"
@@ -30,35 +31,50 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 namespace utils {
-struct CinnVarInfo {
-  std::vector<int> shape;
-  ::cinn::common::Type type;
-};
 
-CinnVarInfo GetCinnVarInfoFromTensor(const Tensor* tensor) {
-  CinnVarInfo info;
-  const auto& dim = tensor->dims();
+using PdTensor = framework::Tensor;
+using CinnTensor = ::cinn::hlir::framework::Tensor;
+
+auto GetCinnVarInfoFromTensor(const PdTensor& tensor) {
+  OpMapperContext::VarInfo info;
+  const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
     info.shape.emplace_back(sttic_cast<int>(dim[i]));
   }
 
-  auto proto_var_type = tensor->type();
-  auto cinn_var_type = TransformVarTypeToCinn(proto_var_type);
+  auto cinn_var_type = TransformVarTypeToCinn(tensor.type());
   info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
   return info;
 }
+
+void TransformPaddleVariableToCinn(const framework::Variable& pd_var,
+                                   ::cinn::hlir::framework::Variable* cinn_var,
+                                   const ::cinn::common::Target& target) {
+  const auto& tensor = pd_var.Get<PdTensor>();
+}
+
+auto TransformPaddleScopeToCinn(const framework::Scope& pd_scope,
+                                const ::cinn::common::Target& target) {
+  auto cinn_scope = ::cinn::hlir::framework::Scope::Create();
+
+  for (const auto& var_name : pd_scope->LocalVarNames()) {
+    auto* pd_var = pd_scope.FindVar(var_name);
+    auto* cinn_var = cinn_scope->Var<CinnTensor>(
+        ::cinn::utils::TransValidVarName(var.name()));
+
+    TransformPaddleVariableToCinn(*pd_var, cinn_var, target);
+  }
+
+  return cinn_scope;
+}
 }  // namespace utils
 
-void CinnGraphSymbolization::AddFeedVarIntoCinn(
-    const OpMapperContext& ctx) const {
+void CinnGraphSymbolization::AddVarInfoIntoContext(OpMapperContext* ctx) const {
   for (auto& feed_pair : *feed_targets_) {
     const auto& var_name = feed_pair.first;
     const auto* tensor = feed_pair.second;
 
-    auto var = utils::GetCinnVarInfoFromTensor(tensor);
-    auto input = ctx.Builder()->CreateInput(var.type, var.shape, var_name);
-    ctx.AddVar(var_name, input);
-    VLOG(4) << "Add feed variable [" << var_name << "]";
+    ctx->AddVarInfo(var_name, utils::GetCinnVarInfoFromTensor(*tensor));
   }
 }
 
@@ -119,7 +135,7 @@ std::vector<Node*> CinnGraphSymbolization::TopoSortGraph() const {
   return cluster_sorted;
 }
 
-decltype(auto) CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
+auto CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
   std::vector<std::unique_ptr<CinnOpDesc>> cinn_op_descs_;
 
   const auto& sorted_ops = TopoSortGraph();
@@ -152,7 +168,8 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   }
 }
 
-::cinn::frontend::Program CinnGraphSymbolization::operator()() const {
+::cinn::frontend::Program CinnGraphSymbolization::operator()(
+    framework::Scope* scope) const {
   std::string builder_name = "graph_";
   builder_name.append(std::to_string(graph_id_));
   builder_name.append("_of_");
@@ -162,13 +179,13 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
 
   ::cinn::frontend::NetBuilder builder(builder_name);
 
-  auto scope = ::cinn::hlir::framework::Scope::Create();
   auto target = ::cinn::common::DefaultHostTarget();
+  auto cinn_scope = TransformPaddleScopeToCinn(*scope, target);
 
-  OpMapperContext ctx(scope.get(), target, &builder, &var_map_,
+  OpMapperContext ctx(*cinn_scope, target, &builder, &var_map_,
                       &var_model_to_program_map_);
 
-  AddFeedVarIntoCinn(ctx);
+  AddVarInfoIntoContext(&ctx);
   RunGraph(ctx);
 
   return builder.Build();
