@@ -53,8 +53,12 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
               gpuStream_t stream);
+  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
+              gpuStream_t stream, BlockMemoryPool<KeyType>* pool=NULL);
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            gpuStream_t stream);
+  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
+           gpuStream_t stream, BlockMemoryPool<KeyType>* pool=NULL);
   void show();
   void dump_to_cpu(int devid, cudaStream_t stream);
 

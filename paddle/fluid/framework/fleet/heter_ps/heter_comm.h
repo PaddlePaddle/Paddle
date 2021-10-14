@@ -186,6 +186,7 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
+  BlockMemoryPool<KeyType>* mem_pool_;
 };
 
 }  // end namespace framework
