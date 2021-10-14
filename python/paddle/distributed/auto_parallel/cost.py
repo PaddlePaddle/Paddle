@@ -50,13 +50,17 @@ class NodeBase(object):
         self.id = id
         self.node = node
         self.type = node_type
-        self.cost = 0
+        self._cost = 0
 
-    def get_cost(self):
-        return self.cost
+    @property
+    def cost(self):
+        return self._cost
 
-    def set_cost(self, cost):
-        self.cost = cost
+    @cost.setter
+    def cost(self, cost):
+        if cost < 0:
+            raise ValueError('Cost must be above 0.')
+        self._cost = cost
 
 
 class MergedNode(NodeBase):
@@ -79,7 +83,7 @@ class CommNode(NodeBase):
         self.input_shape = input_shape
         self.output_shape = output_shape
 
-    def set_cost(self, cluster=None):
+    def init_comm_cost(self, cluster=None):
         # ref: https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
         # should get from `cluster`
         BANDWIDTH = 32 * 1024 / 1000  # MB/ms, V100 PCIe
@@ -87,19 +91,16 @@ class CommNode(NodeBase):
         comm_volumn = np.prod(self.input_shape) * 4
 
         if 'allreduce' in self.comm_type:
-            self.cost = comm_volumn / (BANDWIDTH * num_ranks /
+            self._cost = comm_volumn / (BANDWIDTH * num_ranks /
                                        (2 * (num_ranks - 1)))
         elif 'gather' in self.comm_type:
-            self.cost = comm_volumn / (BANDWIDTH * num_ranks / (num_ranks - 1))
+            self._cost = comm_volumn / (BANDWIDTH * num_ranks / (num_ranks - 1))
         elif 'broadcast' in self.comm_type:
-            self.cost = comm_volumn / BANDWIDTH
+            self._cost = comm_volumn / BANDWIDTH
         elif 'send' in self.comm_type or 'recv' in self.comm_type:
-            self.cost = comm_volumn / BANDWIDTH
+            self._cost = comm_volumn / BANDWIDTH
         else:
-            self.cost = 0
-
-    def get_cost(self, cluster=None):
-        return self.cost
+            self._cost = 0
 
 
 class VarNode(NodeBase):
@@ -116,7 +117,6 @@ class VarNode(NodeBase):
         self.dtype_factor = 1
         self.persistable = None
         self.shared_node_id = shared_node_id
-        self.cost = 0.0
         if self.dtype == paddle.float32 or node.dtype == paddle.int32:
             self.dtype_factor *= 4
         elif node.dtype == paddle.int64:
@@ -142,16 +142,12 @@ class CompNode(NodeBase):
     def __init__(self, node, node_type, id=None):
         super(CompNode, self).__init__(node, node_type, id)
 
-    def set_cost(self, cost_data):
+    def init_comp_cost(self, cost_data):
         op_name = self.node.type
         if op_name in cost_data.keys():
             self.cost = cost_data[op_name]
         else:
             self.cost = 0.0
-        return self.cost
-
-    def get_cost(self):
-        return self.cost
 
 
 class PipeEvent(object):
@@ -227,7 +223,7 @@ class CostModelContext(object):
                 op_node = CommNode(op, NodeType.COMMUNICATION, op_id)
             else:
                 op_node = CompNode(op, NodeType.COMPUTATION, op_id)
-                op_node.set_cost(cost_data)
+                op_node.init_comp_cost(cost_data)
 
             nodes[op_id] = op_node
             graph[op_id] = [[], []]
@@ -377,21 +373,21 @@ class CostModelContext(object):
                         node.set_ranks(dp_group)
                     else:
                         node.set_ranks(mp_group)
-                    node.set_cost(self.cluster)
+                    node.init_comm_cost(self.cluster)
 
                 elif node_id.startswith('send'):
                     if "@GRAD" in self.origin_graph[sub_idx][node_id][PRED][0]:
                         node.set_ranks([sub_idx, pp_pred_peer])
                     else:
                         node.set_ranks([sub_idx, pp_succ_peer])
-                    node.set_cost(self.cluster)
+                    node.init_comm_cost(self.cluster)
 
                 elif node_id.startswith('recv'):
                     if "@GRAD" in self.origin_graph[sub_idx][node_id][SUCC][0]:
                         node.set_ranks([sub_idx, pp_succ_peer])
                     else:
                         node.set_ranks([sub_idx, pp_pred_peer])
-                    node.set_cost(self.cluster)
+                    node.init_comm_cost(self.cluster)
                 else:
                     pass  # Not communication op
 
@@ -416,7 +412,7 @@ class CostModelContext(object):
         merged_node_id = 'merged_' + str(len(nodes))
         merged_node = MergedNode(
             NodeType.MERGED, id=merged_node_id, base_node_list=nodes_list)
-        merged_node.set_cost(node_cost)
+        merged_node.cost = node_cost
 
         return merged_node_id, merged_node
 
@@ -554,7 +550,7 @@ class CostModelContext(object):
             time_cost = 0.0
             for node_id in self.rt_graph[sub_idx].keys():
                 node = self.nodes[sub_idx][node_id]
-                time_cost += node.get_cost()
+                time_cost += node.cost
                 if isinstance(node, MergedNode):
                     for it in node.node_list:
                         time_cost += self.opcall_overhead
