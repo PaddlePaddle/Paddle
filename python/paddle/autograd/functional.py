@@ -16,7 +16,7 @@ import contextlib
 import paddle
 from ..fluid import framework
 from ..fluid.dygraph import grad
-from ..nn.initializer import assign
+from ..tensor.creation import assign
 from ..tensor import reshape, zeros_like, to_tensor
 from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor, _construct_one_tensor
 
