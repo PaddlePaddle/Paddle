@@ -44,6 +44,18 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 
   access_desc_.resize(platform::GetCUDADeviceCount());
   for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+    if (place.device != dev_id) {
+      int capable = 0;
+      auto result = cuDeviceCanAccessPeer(&capable, place.device, dev_id);
+      if (result != CUDA_SUCCESS) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Call CUDA API cuDeviceCanAccessPeer faild, return %d.", result));
+        return;
+      }
+      if (!capable) {
+        continue;
+      }
+    }
     access_desc_[dev_id].location.type = CU_MEM_LOCATION_TYPE_DEVICE;
     access_desc_[dev_id].location.id = dev_id;
     access_desc_[dev_id].flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
@@ -179,9 +191,16 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   result = paddle::platform::dynload::cuMemMap(ptr, size, 0, handle, 0);
 
   if (result != CUDA_SUCCESS) {
-    paddle::platform::dynload::cuMemRelease(handle);
     PADDLE_THROW(platform::errors::Fatal(
         "Call CUDA API cuMemMap faild, return %d.", result));
+    return nullptr;
+  }
+
+  result = paddle::platform::dynload::cuMemRelease(handle);
+
+  if (result != CUDA_SUCCESS) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Call CUDA API cuMemRelease faild, return %d.", result));
     return nullptr;
   }
 
@@ -190,7 +209,6 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   if (result != CUDA_SUCCESS) {
     paddle::platform::dynload::cuMemUnmap(ptr, size);
-    paddle::platform::dynload::cuMemRelease(handle);
     PADDLE_THROW(platform::errors::Fatal(
         "Call CUDA API cuMemSetAccess faild, return %d.", result));
     return nullptr;
