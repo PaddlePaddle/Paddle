@@ -80,6 +80,7 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
         save_path = './train_with_no_grad'
         paddle.jit.save(net, save_path)
         net = paddle.jit.load(save_path)
+        net.train()
 
         with paddle.no_grad():
             x = paddle.rand([1024], 'float32')
