@@ -15,9 +15,12 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/tcmpt/core/kernel_registry.h"
 #include "paddle/tcmpt/cpu/utils.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
+
+PT_DECLARE_MODULE(UtilsCPU);
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;

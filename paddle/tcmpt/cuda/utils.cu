@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dtype.h"
+#include "paddle/tcmpt/core/kernel_registry.h"
 #include "paddle/tcmpt/cuda/utils.h"
 
 namespace pt {
