@@ -50,9 +50,10 @@ class ResNetUnit(Layer):
                  stride=1,
                  momentum=0.9,
                  eps=1e-5,
-                 data_format='NHWC',
+                 conv_format='NHWC',
+                 bn_format='NHWC',
                  act='relu',
-                 fuse_add=False,
+                 fused_add=False,
                  has_shortcut=False,
                  use_global_stats=False,
                  is_test=False,
@@ -77,19 +78,24 @@ class ResNetUnit(Layer):
         self._groups = 1
         self._momentum = momentum
         self._eps = eps
-        self._data_format = data_format
+        self._conv_format = conv_format
+        self._bn_format = bn_format
         self._act = act
-        self._fuse_add = fuse_add
+        self._fused_add = fused_add
         self._has_shortcut = has_shortcut
         self._use_global_stats = use_global_stats
         self._is_test = is_test
 
         # check format
         valid_format = {'NHWC'}
-        if data_format not in valid_format:
+        if conv_format not in valid_format:
             raise ValueError(
                 "conv_format must be one of {}, but got conv_format='{}'".
-                format(valid_format, data_format))
+                format(valid_format, conv_format))
+        if bn_format not in valid_format:
+            raise ValueError(
+                "bn_format must be one of {}, but got bn_format='{}'".format(
+                    valid_format, bn_format))
 
         def _get_default_param_initializer(channels):
             filter_elem_num = np.prod(self._kernel_size) * channels
@@ -172,14 +178,15 @@ class ResNetUnit(Layer):
             self.var_z = None
 
     def forward(self, x, z=None):
-        if self._fuse_add and z is None:
+        if self._fused_add and z is None:
             raise ValueError("z can not be None")
 
-        out = F.resnet_unit(
-            x, self.filter_x, self.scale_x, self.bias_x, self.mean_x,
-            self.var_x, z, self.filter_z, self.scale_z, self.bias_z,
-            self.mean_z, self.var_z, self._stride, self._stride_z,
-            self._padding, self._dilation, self._groups, self._momentum,
-            self._eps, self._data_format, self._fuse_add, self._has_shortcut,
-            self._use_global_stats, self._is_test, self._act)
+        out = F.resnet_unit(x, self.filter_x, self.scale_x, self.bias_x,
+                            self.mean_x, self.var_x, z, self.filter_z,
+                            self.scale_z, self.bias_z, self.mean_z, self.var_z,
+                            self._stride, self._stride_z, self._padding,
+                            self._dilation, self._groups, self._momentum,
+                            self._eps, self._conv_format, self._bn_format,
+                            self._fused_add, self._has_shortcut,
+                            self._use_global_stats, self._is_test, self._act)
         return out

@@ -39,8 +39,8 @@ __all__ = []
 
 def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
                 scale_z, bias_z, mean_z, var_z, stride, stride_z, padding,
-                dilation, groups, momentum, eps, data_format, fuse_add,
-                has_shortcut, use_global_stats, is_test, act):
+                dilation, groups, momentum, eps, conv_format, bn_format,
+                fused_add, has_shortcut, use_global_stats, is_test, act):
 
     helper = LayerHelper('resnet_unit', **locals())
     bn_param_dtype = fluid.core.VarDesc.VarType.FP32
@@ -87,13 +87,14 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
     attrs = {
         'stride': stride,
         'stride_z': stride_z,
-        'padding': padding,
+        'pad': padding,
         'dilate': dilation,
         'group': groups,
         'momentum': momentum,
         'epsilon': eps,
-        'data_format': data_format,
-        'fuse_add': fuse_add,
+        'conv_format': conv_format,
+        'bn_format': bn_format,
+        'fused_add': fused_add,
         'has_shortcut': has_shortcut,
         'use_global_stats': use_global_stats,
         'is_test': is_test,
