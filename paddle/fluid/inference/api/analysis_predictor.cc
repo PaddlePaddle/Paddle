@@ -1411,6 +1411,7 @@ USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
+USE_TRT_CONVERTER(pool3d)
 #endif
 
 namespace paddle_infer {
