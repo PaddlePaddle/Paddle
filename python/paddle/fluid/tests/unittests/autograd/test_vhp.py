@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.compat as cpt
+import paddle.nn.functional as F
 from utils import _compute_numerical_vhp
 
 
@@ -45,7 +46,8 @@ class TestVHP(unittest.TestCase):
         func_output, vhp = paddle.autograd.vhp(func, self.x, self.vx)
         assert np.allclose(func_output.numpy(), numerical_func_output,
                            self.rtol, self.atol)
-        assert np.allclose(vhp.numpy(), numerical_vhp[0], self.rtol, self.atol)
+        assert np.allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
+                           self.atol)
 
     def test_multi_input(self):
         def func(x, y):
@@ -120,7 +122,7 @@ class TestVHP(unittest.TestCase):
 
     def test_create_graph_false(self):
         def func(x):
-            return paddle.sum(paddle.matmul(x, x))
+            return paddle.sum(F.sigmoid(x))
 
         numerical_func_output = func(self.x).numpy()
         numerical_vhp = _compute_numerical_vhp(
@@ -130,18 +132,18 @@ class TestVHP(unittest.TestCase):
         func_output, vhp = paddle.autograd.vhp(func, self.x, self.vx)
         assert np.allclose(func_output.numpy(), numerical_func_output,
                            self.rtol, self.atol)
-        assert vhp.stop_gradient == True
-        assert np.allclose(vhp.numpy(), numerical_vhp[0], self.rtol, self.atol)
+        assert vhp[0].stop_gradient == True
+        assert np.allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
+                           self.atol)
         try:
             paddle.grad(vhp, self.x)
         except RuntimeError as e:
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("has no gradient") > 0
 
-    # TODO(levi): enable this test case when matmul_grad_grad_grad is ok
-    def _test_create_graph_true(self):
+    def test_create_graph_true(self):
         def func(x):
-            return paddle.sum(paddle.matmul(x, x))
+            return paddle.sum(F.sigmoid(x))
 
         numerical_func_output = func(self.x).numpy()
         numerical_vhp = _compute_numerical_vhp(
@@ -154,8 +156,9 @@ class TestVHP(unittest.TestCase):
                                                create_graph=True)
         assert np.allclose(func_output.numpy(), numerical_func_output,
                            self.rtol, self.atol)
-        assert vhp.stop_gradient == False
-        assert np.allclose(vhp.numpy(), numerical_vhp[0], self.rtol, self.atol)
+        assert vhp[0].stop_gradient == False
+        assert np.allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
+                           self.atol)
         triple_grad = paddle.grad(vhp, self.x)
         assert triple_grad is not None
 

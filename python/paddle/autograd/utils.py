@@ -16,7 +16,9 @@ import paddle
 
 
 def _tensors(ts, name):
-    if isinstance(ts, (list, tuple)):
+    if ts is None:
+        return None
+    elif isinstance(ts, (list, tuple)):
         assert len(ts) > 0, "{} connot be empty".format(name)
         for each_t in ts:
             assert isinstance(
@@ -25,9 +27,7 @@ def _tensors(ts, name):
                 name)
         return list(ts)
     else:
-        assert isinstance(
-            ts, paddle.Tensor
-        ) or ts is None, "{} must be Tensor or list of Tensor".format(name)
+        assert isinstance(ts, paddle.Tensor), "{} must be Tensor".format(name)
         return [ts]
 
 

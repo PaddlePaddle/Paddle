@@ -23,8 +23,8 @@ from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_ze
 
 @contextlib.contextmanager
 def gradient_scope(*var_lists, create_graph=False, allow_unused=False):
-    def grad_fn(ys, xs, v, create_graph=create_graph):
-        assert len(ys) == len(v), (
+    def grad_fn(ys, xs, v=None, create_graph=create_graph):
+        assert v is None or len(ys) == len(v), (
             f'`v` is expected to be of the same size as the output. '
             f'Here the output is {ys}, and `v` is {v}.')
         if allow_unused:
@@ -49,6 +49,8 @@ def gradient_scope(*var_lists, create_graph=False, allow_unused=False):
             return out
 
     def process(vl):
+        if vl is None:
+            return None
         out = []
         # If v is treated as constant in the outer scope, its gradient is guaranteed
         # not to be taken beyond this scope. Within this scope, however, v's gradient
@@ -590,41 +592,17 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             #         [8., 8.]]), None])
     '''
     inputs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
-    outputs = func(*inputs)
-    assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
-        1
-    ], "The function to compute vhp should return a Tensor with a single element"
 
     with gradient_scope(
             inputs, v, create_graph=create_graph,
             allow_unused=allow_unused) as [inputs, v, grad_fn, return_fn]:
-        outputs = func(*inputs)
-        assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
+        outputs = _tensors(func(*inputs), "outputs")
+        assert len(outputs) == 1 and isinstance(
+            outputs[0], paddle.Tensor
+        ) and outputs[0].shape == [
             1
         ], "The function to compute vhp should return a Tensor with a single element"
-        outputs = _tensors(outputs, "outputs")
         jac = grad_fn(outputs, inputs, create_graph=True)
-
-
-
-        ys_grad = grad_fn(xs_grad, ys_grad, v)
-        outputs, ys_grad = return_fn(outputs), return_fn(ys_grad)
-
-
-    jac = grad(
-        outputs,
-        inputs,
-        create_graph=True,
-        retain_graph=True,
-        allow_unused=allow_unused)
-    jac = tuple(
-        _replace_none_with_zero_tensor(jac[i], inputs[i])
-        for i in range(len(inputs)))
-    vhp = grad(
-        jac,
-        inputs,
-        v,
-        create_graph=create_graph,
-        retain_graph=create_graph,
-        allow_unused=allow_unused)
-    return outputs, vhp
+        vhp = grad_fn(jac, inputs, v)
+        outputs, vhp = return_fn(outputs), return_fn(vhp)
+    return outputs[0], vhp
