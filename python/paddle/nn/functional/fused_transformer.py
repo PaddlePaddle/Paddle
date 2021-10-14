@@ -19,22 +19,22 @@ from paddle import _C_ops
 __all__ = []
 
 
-def fused_multihead_attention(x,
-                              qkv_weight,
-                              linear_weight,
-                              pre_layer_norm=False,
-                              pre_ln_scale=None,
-                              pre_ln_bias=None,
-                              ln_scale=None,
-                              ln_bias=None,
-                              pre_ln_epsilon=1e-05,
-                              qkv_bias=None,
-                              linear_bias=None,
-                              attn_mask=None,
-                              dropout_rate=0.5,
-                              attn_dropout_rate=0.5,
-                              ln_epsilon=1e-05,
-                              name=None):
+def fused_multi_head_attention(x,
+                               qkv_weight,
+                               linear_weight,
+                               pre_layer_norm=False,
+                               pre_ln_scale=None,
+                               pre_ln_bias=None,
+                               ln_scale=None,
+                               ln_bias=None,
+                               pre_ln_epsilon=1e-05,
+                               qkv_bias=None,
+                               linear_bias=None,
+                               attn_mask=None,
+                               dropout_rate=0.5,
+                               attn_dropout_rate=0.5,
+                               ln_epsilon=1e-05,
+                               name=None):
     r"""
     """
     if in_dygraph_mode():
@@ -44,7 +44,7 @@ def fused_multihead_attention(x,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, attn_mask,
             linear_weight, linear_bias, ln_scale, ln_bias, 'pre_layer_norm',
-            pre_layer_norm, 'epsilon', pre_ln_epsilon, 'dropout_prob',
-            dropout_rate, 'attn_dropout_prob', attn_dropout_rate, 'ln2epsilon',
+            pre_layer_norm, 'epsilon', pre_ln_epsilon, 'dropout_rate',
+            dropout_rate, 'attn_dropout_rate', attn_dropout_rate, 'ln_epsilon',
             ln_epsilon)
         return final_out

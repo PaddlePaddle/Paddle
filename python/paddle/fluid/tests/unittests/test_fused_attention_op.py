@@ -190,7 +190,7 @@ class TestFusedAttentionOp(OpTest):
 
         if attn_mask is not None:
             attn_mask = _convert_attention_mask(attn_mask, x.dtype)
-        final_out = F.fused_multihead_attention(
+        final_out = F.fused_multi_head_attention(
             x, qkv_weight_tensor, out_linear_weight, self.pre_layer_norm,
             ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon, qkv_bias_tensor,
             out_linear_bias, attn_mask, self.dropout_prob,

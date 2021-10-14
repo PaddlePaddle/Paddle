@@ -75,9 +75,9 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
         ctx.Output<Tensor>("BiasDropoutResidualOut");
     auto *ln_mean_2 = ctx.Output<Tensor>("Ln2Mean");
     auto *ln_var_2 = ctx.Output<Tensor>("Ln2Variance");
-    const float ln2epsilon = ctx.Attr<float>("ln2epsilon");
+    const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
 
-    float attn_dropout_prob = ctx.Attr<float>("attn_dropout_prob");
+    float attn_dropout_rate = ctx.Attr<float>("attn_dropout_rate");
     bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
@@ -156,7 +156,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                      bsz_seq, output_size, input_size, true);
 
     AttnDropoutParam attn_dropout_param(
-        is_test_1, dropout_implementation_1, attn_dropout_prob,
+        is_test_1, dropout_implementation_1, attn_dropout_rate,
         is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
     auto fmha_ref_compute =
         FMHARef<T>(ctx.cuda_device_context(), batch_size, max_seq_len, num_head,
@@ -170,7 +170,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     DropoutParam dropout_param2(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
-        ln2epsilon);
+        ln_epsilon);
 
     if (pre_layer_norm) {
       layer_norm_compute.ComputeForward(x_data, ln_scale_data, ln_bias_data,

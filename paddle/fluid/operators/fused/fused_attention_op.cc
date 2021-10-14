@@ -215,13 +215,13 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     // for dropout in fmha.
-    AddAttr<float>("attn_dropout_prob", "Probability of setting units to zero.")
+    AddAttr<float>("attn_dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'attn_dropout_prob' must be between 0.0 and 1.0."));
+                  "'attn_dropout_rate' must be between 0.0 and 1.0."));
         });
     AddAttr<bool>("attn_dropout_is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -240,14 +240,14 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
         "There are two kinds of ways to implement dropout"
         "(the mask below is a tensor have the same shape with input"
-        "the value of mask is 0 or 1, the ratio of 0 is dropout_prob)"
+        "the value of mask is 0 or 1, the ratio of 0 is dropout_rate)"
         "1. downgrade_in_infer(default), downgrade the outcome at inference "
         "time"
         "   train: out = input * mask"
-        "   inference: out = input * (1.0 - dropout_prob)"
+        "   inference: out = input * (1.0 - dropout_rate)"
         "2. upscale_in_train, upscale the outcome at training time, do nothing "
         "in inference"
-        "   train: out = input * mask / ( 1.0 - dropout_prob )"
+        "   train: out = input * mask / ( 1.0 - dropout_rate )"
         "   inference: out = input"
         "   dropout op can be removed from the program. the program will be "
         "efficient")
@@ -260,12 +260,12 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "upscale_in_train"));
         });
 
-    AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
+    AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
                             platform::errors::InvalidArgument(
-                                "'dropout_prob' must be between 0.0 and 1.0."));
+                                "'dropout_rate' must be between 0.0 and 1.0."));
         });
 
     AddAttr<bool>("dropout_is_test",
@@ -292,16 +292,16 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<float>("ln2epsilon",
+    AddAttr<float>("ln_epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
-        .AddCustomChecker([](const float &ln2epsilon) {
-          PADDLE_ENFORCE_EQ(ln2epsilon >= 0.0f && ln2epsilon <= 0.001f, true,
+        .AddCustomChecker([](const float &ln_epsilon) {
+          PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f, true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' of the second LayerNorm in Fused "
                                 "attention op should be between"
                                 "0.0 and 0.001, But received [%s].",
-                                ln2epsilon));
+                                ln_epsilon));
         });
 
     AddComment(R"DOC(
