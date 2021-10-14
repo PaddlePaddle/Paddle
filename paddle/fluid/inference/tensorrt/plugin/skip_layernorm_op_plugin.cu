@@ -29,7 +29,7 @@ namespace plugin {
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
-int SkipLayerNormPluginDynamic::initialize() {
+int SkipLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
   cudaMemcpy(bias_gpu_, bias_.data(), bias_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
@@ -39,7 +39,7 @@ int SkipLayerNormPluginDynamic::initialize() {
   return 0;
 }
 
-void SkipLayerNormPluginDynamic::terminate() {
+void SkipLayerNormPluginDynamic::terminate() TRT_NOEXCEPT {
   if (bias_gpu_) {
     cudaFree(bias_gpu_);
     bias_gpu_ = nullptr;
@@ -52,13 +52,13 @@ void SkipLayerNormPluginDynamic::terminate() {
 
 nvinfer1::DimsExprs SkipLayerNormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool SkipLayerNormPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -96,7 +96,8 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0,
                     platform::errors::InvalidArgument(
                         "The SkipLayerNorm Plugin only has one input, so the "
@@ -112,7 +113,7 @@ nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
 int SkipLayerNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   size_t num = ProductDim(input_dims);
   int hidden = input_dims.d[2];

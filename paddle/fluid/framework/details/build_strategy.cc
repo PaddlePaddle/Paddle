@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
+DECLARE_bool(convert_all_blocks);
+DECLARE_bool(use_cinn);
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {
@@ -35,8 +37,8 @@ static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
          !strategy.enable_parallel_graph_;
 }
 
-static inline void ConvertDefaultValue(boost::optional<bool> *default_value) {
-  if (*default_value == boost::none) {
+static inline void ConvertDefaultValue(paddle::optional<bool> *default_value) {
+  if (*default_value == paddle::none) {
     *default_value = true;
   }
 }
@@ -70,6 +72,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
 
+    // Note: This pass is used to enable cinn.
+    if (FLAGS_use_cinn) {
+      AppendPass("paddle_to_cinn_pass");
+    }
     SetCollectiveContext();
   }
 
@@ -246,7 +252,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
   }
 
-  void AppendPassWithCheck(const boost::optional<bool> &append_pass,
+  void AppendPassWithCheck(const paddle::optional<bool> &append_pass,
                            const std::string &pass_name) {
     AppendPassWithCheck(append_pass == true, pass_name);
   }
@@ -312,6 +318,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 DeviceType use_device) const {
 #endif
   VLOG(1) << "apply all passes";
+  if (FLAGS_convert_all_blocks) {
+    PADDLE_ENFORCE_EQ(
+        graph->IsMainGraph(), true,
+        platform::errors::InvalidArgument("This graph is not main_graph"));
+  }
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
@@ -432,7 +443,14 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       }
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
-    graph = pass->Apply(graph);
+    if (FLAGS_convert_all_blocks) {
+      for (size_t i = 0; i < graph->SubGraphsSize(); ++i) {
+        VLOG(3) << "Apply Pass " << pass->Type() << "to SubGraph " << i;
+        pass->Apply(graph->GetSubGraph(i));
+      }
+    } else {
+      graph = pass->Apply(graph);
+    }
     VLOG(1) << "Finish Apply Pass " << pass->Type();
   }
   VLOG(1) << "All Passes Applied";

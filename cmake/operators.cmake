@@ -183,6 +183,9 @@ function(op_library TARGET)
         list(REMOVE_ITEM miopen_cu_cc_srcs "affine_grid_cudnn_op.cu.cc")
         list(REMOVE_ITEM miopen_cu_cc_srcs "grid_sampler_cudnn_op.cu.cc")
         list(REMOVE_ITEM hip_srcs "cholesky_op.cu")
+        list(REMOVE_ITEM hip_srcs "matrix_rank_op.cu")
+        list(REMOVE_ITEM hip_srcs "svd_op.cu")
+        list(REMOVE_ITEM hip_srcs "eigh_op.cu")
         list(REMOVE_ITEM hip_srcs "multinomial_op.cu")
         list(REMOVE_ITEM hip_srcs "decode_jpeg_op.cu")
         hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs} ${mkldnn_cc_srcs} ${hip_srcs} DEPS ${op_library_DEPS}
@@ -211,7 +214,7 @@ function(op_library TARGET)
     foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "bitwise_op" "nccl_op"
 "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
 "fusion_transpose_flatten_concat_op" "fusion_conv_inception_op"
-"sync_batch_norm_op" "dgc_op" "fused_fc_elementwise_layernorm_op"
+"sync_batch_norm_op" "sparse_attention_op"  "dgc_op" "fused_fc_elementwise_layernorm_op"
 "skip_layernorm_op" "multihead_matmul_op" "fusion_group_op" "fused_bn_activation_op" "fused_embedding_eltwise_layernorm_op" "fusion_gru_op" "fusion_lstm_op"
 "fused_bn_add_activation_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")

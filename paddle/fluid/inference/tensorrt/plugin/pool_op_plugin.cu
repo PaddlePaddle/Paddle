@@ -22,7 +22,7 @@ namespace plugin {
 
 nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims *inputDims,
-                                               int nbInputs) {
+                                               int nbInputs) TRT_NOEXCEPT {
   assert(nbInputs == 1);
   assert(index == 0);
   assert(inputDims[0].nbDims == 3);
@@ -37,15 +37,16 @@ nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
 
 int PoolPlugin::enqueue(int batchSize, const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
-                        void **outputs, void *workspace, cudaStream_t stream) {
+                        void **outputs, void *workspace,
+                        cudaStream_t stream) TRT_NOEXCEPT {
 #else
                         void *const *outputs, void *workspace,
-                        cudaStream_t stream) {
+                        cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   auto const &input_dims = this->getInputDims(0);
   int input_size = 0;
   float const *idata = reinterpret_cast<float const *>(inputs[0]);
-  float **odatas = reinterpret_cast<float **>(outputs);
+  float *const *odatas = reinterpret_cast<float *const *>(outputs);
 
   std::vector<int> input_shape = input_shape_;
   std::vector<int> output_shape = output_shape_;
@@ -87,14 +88,14 @@ PoolPluginDynamic::PoolPluginDynamic(void const *serialData,
   DeserializeValue(&serialData, &serialLength, &is_global_);
 }
 
-size_t PoolPluginDynamic::getSerializationSize() const {
+size_t PoolPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(ceil_mode_) + SerializedSize(pool_type_.c_str()) +
          SerializedSize(adaptive_) + SerializedSize(ksize_) +
          SerializedSize(strides_) + SerializedSize(paddings_) +
          SerializedSize(is_global_);
 }
 
-void PoolPluginDynamic::serialize(void *buffer) const {
+void PoolPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, ceil_mode_);
   SerializeValue(&buffer, pool_type_.c_str());
   SerializeValue(&buffer, adaptive_);
@@ -106,7 +107,7 @@ void PoolPluginDynamic::serialize(void *buffer) const {
 
 nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nb_inputs, 1,
                     platform::errors::InvalidArgument(
                         "The Split plugin should be only one input."));
@@ -181,7 +182,7 @@ nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
 
 bool PoolPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -198,7 +199,8 @@ bool PoolPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType PoolPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The Pool Plugin only has one input, so the "
                                   "index value should be 0, but get %d.",
@@ -212,7 +214,8 @@ nvinfer1::DataType PoolPluginDynamic::getOutputDataType(
 int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                const nvinfer1::PluginTensorDesc *output_desc,
                                const void *const *inputs, void *const *outputs,
-                               void *workspace, cudaStream_t stream) {
+                               void *workspace,
+                               cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int n = input_dims.d[0];
   int c = input_dims.d[1];

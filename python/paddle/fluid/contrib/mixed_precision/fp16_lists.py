@@ -94,6 +94,7 @@ black_list = {
     'softmax',
     'softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
+    'c_softmax_with_cross_entropy',
     'cross_entropy',
     'cross_entropy2',
     # fp16 is slower than fp32, though fp16 is supported.
@@ -150,6 +151,8 @@ gray_list = {
     'c_identity',
     'c_concat',
     'c_allreduce_sum',
+    'concat',
+    'split',
 }
 
 # The set of ops that don't support fp16 calculation
@@ -158,6 +161,9 @@ _sys_unsupported_fp16_list = []
 if core.is_compiled_with_xpu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'XPU', core.VarDesc.VarType.FP16)
+elif core.is_compiled_with_npu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'NPU', core.VarDesc.VarType.FP16)
 else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'GPU', core.VarDesc.VarType.FP16)

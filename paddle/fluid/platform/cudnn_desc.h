@@ -44,6 +44,9 @@ inline cudnnDataType_t ToCudnnDataType(const T& t) {
 
 inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
   std::vector<int> transformed_dims(dims.begin(), dims.end());
+  if (dims.size() < 4) {
+    return transformed_dims;
+  }
   int H, W, D, C;
   if (dims.size() == 4) {
     H = dims[1];
@@ -155,8 +158,8 @@ class TensorDescriptor {
         dims_with_group.data(), strides.data()));
   }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+  void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
+           const cudnnDataType_t dtype) {
     std::vector<int> transformed_dims;
     if (format == CUDNN_TENSOR_NHWC) {
       transformed_dims = TransformDimOrder(dims);
@@ -164,8 +167,14 @@ class TensorDescriptor {
       transformed_dims = dims;
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
-        desc_.get(), format, ToCudnnDataType(tensor.type()),
-        transformed_dims.size(), transformed_dims.data()));
+        desc_.get(), format, dtype, transformed_dims.size(),
+        transformed_dims.data()));
+  }
+
+  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
+    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dtype = ToCudnnDataType(tensor.type());
+    set(dims, format, dtype);
   }
 
  private:
@@ -191,9 +200,8 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format,
-           const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+  void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
+           const cudnnDataType_t dtype, const int groups = 1) {
     std::vector<int> transformed_dims;
     if (format == CUDNN_TENSOR_NHWC) {
       transformed_dims = TransformDimOrder(dims);
@@ -204,8 +212,15 @@ class FilterDescriptor {
       transformed_dims[1] = transformed_dims[1] / groups;
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
-        desc_.get(), ToCudnnDataType(tensor.type()), format,
-        transformed_dims.size(), transformed_dims.data()));
+        desc_.get(), dtype, format, transformed_dims.size(),
+        transformed_dims.data()));
+  }
+
+  void set(const Tensor& tensor, const cudnnTensorFormat_t format,
+           const int groups = 1) {
+    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dtype = ToCudnnDataType(tensor.type());
+    set(dims, format, dtype, groups);
   }
 
  private:
@@ -253,8 +268,14 @@ class ConvolutionDescriptor {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(desc,
                                                          CUDNN_TENSOR_OP_MATH));
-    } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
 #if CUDA_VERSION >= 11000
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (dtype == CUDNN_DATA_BFLOAT16) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(desc,
+                                                         CUDNN_TENSOR_OP_MATH));
+#endif  // CUDNN_VERSION_MIN(8,1,0)
+    } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(desc, CUDNN_FMA_MATH));
 #endif  // CUDA_VERSION >= 11000

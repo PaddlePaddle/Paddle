@@ -37,17 +37,19 @@ StackPluginDynamic::StackPluginDynamic(void const* serial_data,
 
 StackPluginDynamic::~StackPluginDynamic() {}
 
-nvinfer1::IPluginV2DynamicExt* StackPluginDynamic::clone() const {
+nvinfer1::IPluginV2DynamicExt* StackPluginDynamic::clone() const TRT_NOEXCEPT {
   return new StackPluginDynamic(axis_, num_stack_, with_fp16_);
 }
 
-const char* StackPluginDynamic::getPluginType() const { return "stack_plugin"; }
+const char* StackPluginDynamic::getPluginType() const TRT_NOEXCEPT {
+  return "stack_plugin";
+}
 
-int StackPluginDynamic::getNbOutputs() const { return 1; }
+int StackPluginDynamic::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
-int StackPluginDynamic::initialize() { return 0; }
+int StackPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-size_t StackPluginDynamic::getSerializationSize() const {
+size_t StackPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   size_t serialize_size = 0;
   serialize_size += SerializedSize(axis_);
   serialize_size += SerializedSize(num_stack_);
@@ -55,7 +57,7 @@ size_t StackPluginDynamic::getSerializationSize() const {
   return serialize_size;
 }
 
-void StackPluginDynamic::serialize(void* buffer) const {
+void StackPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, axis_);
   SerializeValue(&buffer, num_stack_);
   SerializeValue(&buffer, with_fp16_);
@@ -63,7 +65,7 @@ void StackPluginDynamic::serialize(void* buffer) const {
 
 nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder) {
+    nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   nvinfer1::DimsExprs output(inputs[0]);
   output.nbDims = inputs[0].nbDims + 1;
 
@@ -76,21 +78,22 @@ nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
 
 void StackPluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) {}
+    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
 
 size_t StackPluginDynamic::getWorkspaceSize(
     const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
-    const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const {
+    const nvinfer1::PluginTensorDesc* outputs,
+    int nbOutputs) const TRT_NOEXCEPT {
   return num_stack_ * sizeof(uintptr_t);
 }
 
-void StackPluginDynamic::destroy() { delete this; }
+void StackPluginDynamic::destroy() TRT_NOEXCEPT { delete this; }
 
-void StackPluginDynamic::terminate() {}
+void StackPluginDynamic::terminate() TRT_NOEXCEPT {}
 
 bool StackPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of stack plugin should not be nullptr."));
@@ -118,7 +121,8 @@ bool StackPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType StackPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType* input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The index should be equal to 0"));
   return input_types[0];
@@ -139,7 +143,8 @@ __global__ void StackKernel(const T* const* input, T* output, int num_stack,
 int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                 const nvinfer1::PluginTensorDesc* output_desc,
                                 const void* const* inputs, void* const* outputs,
-                                void* workspace, cudaStream_t stream) {
+                                void* workspace,
+                                cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;  // (batch, seq, seq)
   auto out_dims = output_desc[0].dims;   // (batch, num_head, seq, seq)
   auto out_num_dims = out_dims.nbDims;
@@ -195,19 +200,21 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
 StackPluginDynamicCreator::StackPluginDynamicCreator() {}
 
-const char* StackPluginDynamicCreator::getPluginName() const {
+const char* StackPluginDynamicCreator::getPluginName() const TRT_NOEXCEPT {
   return "stack_plugin";
 }
 
-const char* StackPluginDynamicCreator::getPluginVersion() const { return "1"; }
+const char* StackPluginDynamicCreator::getPluginVersion() const TRT_NOEXCEPT {
+  return "1";
+}
 
 const nvinfer1::PluginFieldCollection*
-StackPluginDynamicCreator::getFieldNames() {
+StackPluginDynamicCreator::getFieldNames() TRT_NOEXCEPT {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2* StackPluginDynamicCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
   int axis = -1;
   int num_stack = -1;
   bool with_fp16 = false;
@@ -230,16 +237,18 @@ nvinfer1::IPluginV2* StackPluginDynamicCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2* StackPluginDynamicCreator::deserializePlugin(
-    const char* name, const void* serial_data, size_t serial_length) {
+    const char* name, const void* serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new StackPluginDynamic(serial_data, serial_length);
   return plugin;
 }
 
-void StackPluginDynamicCreator::setPluginNamespace(const char* lib_namespace) {
+void StackPluginDynamicCreator::setPluginNamespace(const char* lib_namespace)
+    TRT_NOEXCEPT {
   plugin_namespace_ = lib_namespace;
 }
 
-const char* StackPluginDynamicCreator::getPluginNamespace() const {
+const char* StackPluginDynamicCreator::getPluginNamespace() const TRT_NOEXCEPT {
   return plugin_namespace_.c_str();
 }
 

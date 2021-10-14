@@ -35,6 +35,14 @@ if (LITE_WITH_XPU)
   ENDIF()
 endif()
 
+if (LITE_WITH_NNADAPTER)
+  add_definitions(-DLITE_SUBGRAPH_WITH_NNADAPTER) 
+  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+    add_definitions(-DLITE_SUBGRAPH_WITH_NPU)
+    set(NPU_SDK_ROOT "/usr/local/Ascend/ascend-toolkit/latest" CACHE STRING "default NPU SDK ROOT")
+  endif()
+endif()
+
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
@@ -42,7 +50,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG d3a3a6931b6d22d504d21ba32b3ae972770e9204)
+    set(LITE_GIT_TAG 4ab64daecc11fbf74fffdc6a4733f388472e7d5d)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -67,6 +75,9 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
+                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
                            -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=ON)
     ExternalProject_Add(
@@ -110,6 +121,9 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
+                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
                            -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
 
@@ -120,6 +134,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         GIT_TAG             ${LITE_GIT_TAG}
         PREFIX              ${LITE_SOURCES_DIR}
         UPDATE_COMMAND      ""
+        PATCH_COMMAND       sed -i "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?" ${LITE_SOURCES_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py && sed -i "/general::ssa::ConvertToSSA(cpp_prog)$<SEMICOLON>/d" ${LITE_SOURCES_DIR}/src/extern_lite/lite/model_parser/model_parser.cc
         BUILD_COMMAND       ${LITE_BUILD_COMMAND}
         INSTALL_COMMAND     ""
         CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -146,6 +161,11 @@ endif()
 if (WITH_ARM)
   if(LITE_WITH_XPU)
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
+  elseif(LITE_WITH_NNADAPTER)
+    message("Enable LITE_WITH_NNADAPTER")
+    if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+      set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.nnadapter)
+    endif()
   else()
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
   endif()
@@ -173,6 +193,17 @@ endfunction()
 
 external_lite_libs(lite_full_static ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
 set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
+
+if (LITE_WITH_NNADAPTER)
+  set(LITE_NNADAPTER_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so)
+  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+    external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+    set(LITE_DEPS lite_full_static lite_nnadapter)
+    set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+  endif()
+else()
+  set(LITE_DEPS lite_full_static)
+endif()
 
 add_definitions(-DPADDLE_WITH_LITE)
 add_definitions(-DLITE_WITH_LOG)

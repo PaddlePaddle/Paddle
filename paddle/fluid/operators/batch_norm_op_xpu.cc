@@ -76,26 +76,25 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
                                  W, epsilon, momentum, scale_data, bias_data,
                                  saved_mean_data, saved_variance_data,
                                  mean_out_data, variance_out_data, true);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External("XPU API(batch_norm_train_forward) return "
-                                     "wrong value[%d], please check whether "
-                                     "Baidu Kunlun Card is properly installed.",
-                                     r));
+      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                        platform::errors::External(
+                            "The batch_norm XPU API return wrong value[%d %s]",
+                            r, XPUAPIErrorMsg[r]));
     } else {
       const auto* mean = ctx.Input<Tensor>("Mean");
       const auto* variance = ctx.Input<Tensor>("Variance");
-      const auto* mean_data = mean->data<T>();
-      const auto* variance_data = variance->data<T>();
-      int r = xpu::batch_norm_infer_forward(
-          dev_ctx.x_context(), epsilon, N, C, H, W, x_data, y_data, scale_data,
-          bias_data, mean_data, variance_data);
+      const auto* mean_data = mean->data<float>();
+      const auto* variance_data = variance->data<float>();
+      const auto* x_data = x->data<float>();
+      auto* y_data = y->mutable_data<float>(ctx.GetPlace());
+      int r = xpu::batch_norm_infer(dev_ctx.x_context(), x_data, y_data, N, C,
+                                    H, W, epsilon, scale_data, bias_data,
+                                    mean_data, variance_data, true);
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External("XPU API(batch_norm_infer_forward) return "
-                                     "wrong value[%d], please check whether "
-                                     "Baidu Kunlun Card is properly installed.",
-                                     r));
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External(
+              "The batch_norm_infer XPU API return wrong value[%d %s]", r,
+              XPUAPIErrorMsg[r]));
     }
   }
 };

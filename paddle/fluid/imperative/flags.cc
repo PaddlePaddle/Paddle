@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/flags.h"
-#include "gflags/gflags.h"
+#include "paddle/fluid/platform/flags.h"
 
-DEFINE_uint64(dygraph_debug, 0,
-              "Debug level of dygraph. This flag is not "
-              "open to users");
+PADDLE_DEFINE_EXPORTED_uint64(dygraph_debug, 0,
+                              "Debug level of dygraph. This flag is not "
+                              "open to users");
 
 namespace paddle {
 namespace imperative {

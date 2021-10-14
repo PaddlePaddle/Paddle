@@ -127,6 +127,9 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
       if (!(ends[axis_index] == -1 &&
             strides[axis_index] < 0)) {  // skip None stop condition
         ends[axis_index] = ends[axis_index] + axis_size;
+        if (ends[axis_index] < 0) {
+          ends[axis_index] = 0;
+        }
       }
     }
     if (decrease_axis_affect) {
@@ -136,13 +139,24 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
         ends[axis_index] = starts[axis_index] + 1;
       }
     }
+
+    if ((starts[axis_index] < 0) && (axis_size > 0)) {
+      starts[axis_index] += axis_size;
+      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
+    }
+
     if (strides[axis_index] < 0) {
       reverse_axis[axis_index] = 1;
       strides[axis_index] = -strides[axis_index];
       if (starts[axis_index] > ends[axis_index]) {
         // swap the reverse
-        starts[axis_index] = starts[axis_index] + 1;
-        ends[axis_index] = ends[axis_index] + 1;
+        auto end_dim = axis_size - 1 < starts[axis_index] ? axis_size - 1
+                                                          : starts[axis_index];
+        auto offset = (end_dim - ends[axis_index]) % strides[axis_index];
+        offset = offset == 0 ? strides[axis_index] : offset;
+
+        starts[axis_index] = starts[axis_index] + offset;
+        ends[axis_index] = ends[axis_index] + offset;
       }
       std::swap(starts[axis_index], ends[axis_index]);
     } else {
@@ -156,7 +170,11 @@ template <typename DeviceContext, typename T>
 class StridedSliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    int rank = ctx.Input<framework::Tensor>("Input")->dims().size();
+    const Variable* input_var = ctx.InputVar("Input");
+    bool is_tensor_array = input_var->IsType<LoDTensorArray>();
+    int rank = is_tensor_array
+                   ? 1
+                   : ctx.Input<framework::Tensor>("Input")->dims().size();
     switch (rank) {
       case 1:
         StridedSliceCompute<1>(ctx);
@@ -184,9 +202,17 @@ class StridedSliceKernel : public framework::OpKernel<T> {
   void StridedSliceCompute(const framework::ExecutionContext& context) const {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    auto in = context.Input<framework::Tensor>("Input");
-    auto out = context.Output<framework::Tensor>("Out");
-    auto in_dims = in->dims();
+
+    framework::DDim in_dims;
+    auto* input_var = context.InputVar("Input");
+
+    bool is_input_var_array = input_var->IsType<LoDTensorArray>();
+    if (is_input_var_array) {
+      const int64_t size = input_var->Get<framework::LoDTensorArray>().size();
+      in_dims = framework::make_ddim({size});
+    } else {
+      in_dims = context.Input<framework::Tensor>("Input")->dims();
+    }
 
     auto starts_int = context.Attr<std::vector<int>>("starts");
     auto ends_int = context.Attr<std::vector<int>>("ends");
@@ -289,29 +315,97 @@ class StridedSliceKernel : public framework::OpKernel<T> {
       }
     }
 
-    out->Resize(out_dims);
-    out->mutable_data<T>(context.GetPlace());
-    auto in_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *in);
-    auto out_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *out, out_dims);
-    if (need_reverse) {
-      framework::Tensor tmp;
-      tmp.mutable_data<T>(out_dims, context.GetPlace());
-      auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
-                                          Eigen::DenseIndex>::From(tmp);
-      tmp_t.device(place) =
-          in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
-      out_t.device(place) = tmp_t.reverse(reverse_axis);
-    } else {
-      out_t.device(place) =
-          in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
-    }
+    if (is_input_var_array) {
+      PADDLE_ENFORCE_EQ(
+          starts_indices.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the input of 'strided_slice_op' is `TensorArray`, the "
+              "dimension of start index  should be 1, but received %d.",
+              starts_indices.size()));
 
-    if (decrease_axis.size() > 0) {
-      out->Resize(out_dims_origin);
+      PADDLE_ENFORCE_EQ(
+          ends_indices.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the input of 'strided_slice_op' is `TensorArray`, the "
+              "dimension of end index should be 1, but received %d.",
+              ends_indices.size()));
+
+      PADDLE_ENFORCE_EQ(
+          strides_indices.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the input of 'strided_slice_op' is `TensorArray`, the "
+              "dimension of stride should be 1, but received %d.",
+              strides_indices.size()));
+
+      auto* output_var = context.OutputVar("Out");
+
+      PADDLE_ENFORCE_EQ(
+          output_var->IsType<LoDTensorArray>(), true,
+          platform::errors::InvalidArgument(
+              "When the input of `strided_slice_op` is `TensorArray`. The "
+              "output is excepted `TensorArray` , but received %s.",
+              framework::ToTypeName(output_var->Type())));
+
+      PADDLE_ENFORCE_EQ(
+          out_dims_origin.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the input of 'strided_slice_op' is `TensorArray`, the "
+              "dimension of Output should be 1, but received %d",
+              out_dims_origin.size()));
+
+      auto& in_array = input_var->Get<framework::LoDTensorArray>();
+
+      auto* out_array = context.Output<framework::LoDTensorArray>("Out");
+
+      out_array->resize(out_dims_origin[0]);
+      size_t const in_array_size = in_array.size();
+      for (size_t i = 0; i < out_array->size(); i++) {
+        size_t in_offset =
+            (starts_indices[0] % in_array_size) + i * strides_indices[0];
+
+        int64_t out_offset = i;
+        if (need_reverse) {
+          out_offset = out_array->size() - i - 1;
+        }
+
+        auto& in_tensor = in_array.at(in_offset);
+        PADDLE_ENFORCE_GT(
+            in_tensor.memory_size(), 0,
+            platform::errors::PreconditionNotMet(
+                "The input LoDTensorArray Input[%d] holds no memory.",
+                in_offset));
+        auto* out_tensor = &out_array->at(out_offset);
+
+        out_tensor->set_lod(in_tensor.lod());
+        TensorCopy(in_tensor, context.GetPlace(), out_tensor);
+      }
+
+    } else {
+      auto in = context.Input<framework::Tensor>("Input");
+      auto out = context.Output<framework::Tensor>("Out");
+      out->Resize(out_dims);
+      out->mutable_data<T>(context.GetPlace());
+      auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                         Eigen::DenseIndex>::From(*in);
+      auto out_t =
+          framework::EigenTensor<T, D, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::From(*out, out_dims);
+      if (need_reverse) {
+        framework::Tensor tmp;
+        tmp.mutable_data<T>(out_dims, context.GetPlace());
+        auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                            Eigen::DenseIndex>::From(tmp);
+        tmp_t.device(place) =
+            in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
+        out_t.device(place) = tmp_t.reverse(reverse_axis);
+      } else {
+        out_t.device(place) =
+            in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
+      }
+
+      if (decrease_axis.size() > 0) {
+        out->Resize(out_dims_origin);
+      }
     }
   }
 };
@@ -320,7 +414,11 @@ template <typename DeviceContext, typename T>
 class StridedSliceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    size_t rank = ctx.Input<framework::Tensor>("Input")->dims().size();
+    const Variable* input_var = ctx.InputVar("Input");
+    bool is_tensor_array = input_var->IsType<LoDTensorArray>();
+    int rank = is_tensor_array
+                   ? 1
+                   : ctx.Input<framework::Tensor>("Input")->dims().size();
     switch (rank) {
       case 1:
         StridedSliceGradCompute<1>(ctx);
@@ -349,17 +447,27 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
       const framework::ExecutionContext& context) const {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    auto* d_input =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* d_out =
-        context.Output<framework::Tensor>(framework::GradVarName("Input"));
-    d_out->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(dev_ctx, d_out, static_cast<T>(0));
-    auto out_dims = d_out->dims();
-    auto in_dims = d_input->dims();
+
+    framework::DDim out_dims;
+    auto* out_var = context.OutputVar(framework::GradVarName("Input"));
+    bool is_out_var_array = out_var->IsType<LoDTensorArray>();
+    if (is_out_var_array) {
+      // Note(weixin):Since the shape of `framework::GradVarName("Input")` of
+      // StridedSliceGrad cannot be calculated by
+      // `framework::GradVarName("Output")`, the dim of "Input" is used to
+      // calculate the output shape. when set it to inplace OP, there may be
+      // some problems.
+      const int64_t size =
+          context.Input<framework::LoDTensorArray>("Input")->size();
+
+      out_dims = framework::make_ddim({size});
+    } else {
+      out_dims =
+          context.Output<framework::Tensor>(framework::GradVarName("Input"))
+              ->dims();
+    }
 
     auto starts_int = context.Attr<std::vector<int>>("starts");
     auto ends_int = context.Attr<std::vector<int>>("ends");
@@ -432,25 +540,121 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
         break;
       }
     }
-    auto in_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *d_input);
-    auto out_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *d_out, out_dims);
-    if (need_reverse) {
-      framework::Tensor reverse_input;
-      reverse_input.mutable_data<T>(in_dims, context.GetPlace());
-      auto reverse_in_t =
-          framework::EigenTensor<T, D, Eigen::RowMajor,
-                                 Eigen::DenseIndex>::From(reverse_input);
 
-      reverse_in_t.device(place) = in_t.reverse(reverse_axis);
-      out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
-          .device(place) = reverse_in_t;
+    if (is_out_var_array) {
+      PADDLE_ENFORCE_EQ(
+          starts_indices.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the input of 'strided_slice_grad_op' is `TensorArray`, the "
+              "dimension of start index  should be 1, but received %d.",
+              starts_indices.size()));
+      PADDLE_ENFORCE_EQ(
+          ends_indices.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the input of 'strided_slice_op' is `TensorArray`, the "
+              "dimension of end index should be 1, but received %d.",
+              ends_indices.size()));
+      PADDLE_ENFORCE_EQ(
+          strides_indices.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the input of 'strided_slice_grad_op' is `TensorArray`, the "
+              "dimension of stride should be 1, but received %d.",
+              strides_indices.size()));
+
+      auto* d_input_var = context.InputVar(framework::GradVarName("Out"));
+
+      PADDLE_ENFORCE_EQ(
+          d_input_var->IsType<LoDTensorArray>(), true,
+          platform::errors::InvalidArgument(
+              "When the output of `strided_slice_grad_op` is "
+              "`TensorArray`, the input is excepted `TensorArray` , "
+              "but received %s.",
+              framework::ToTypeName(d_input_var->Type())));
+
+      PADDLE_ENFORCE_EQ(
+          out_dims.size(), 1,
+          platform::errors::InvalidArgument(
+              "When the output of `strided_slice_grad_op` is `TensorArray`, "
+              "the dimension of output should be 1, but received %d.",
+              out_dims.size()));
+      auto& d_in_array = d_input_var->Get<framework::LoDTensorArray>();
+
+      auto* d_out_array = context.Output<framework::LoDTensorArray>(
+          framework::GradVarName("Input"));
+
+      d_out_array->resize(out_dims[0]);
+      auto const d_out_array_size = d_out_array->size();
+      auto* input_tensor_array =
+          context.Input<framework::LoDTensorArray>("Input");
+
+      for (size_t j = 0; j < d_out_array_size; j++) {
+        auto& dim = input_tensor_array->at(j).dims();
+        auto* d_out_tensor = &d_out_array->at(j);
+
+        int64_t sub = j - starts_indices[0];
+
+        int64_t in_offset = sub / strides_indices[0];
+
+        if (need_reverse) {
+          in_offset = d_in_array.size() - in_offset - 1;
+        }
+
+        if ((sub % strides_indices[0] == 0) && (0 <= in_offset) &&
+            (static_cast<size_t>(in_offset) < d_in_array.size())) {
+          auto& in_tensor = d_in_array.at(in_offset);
+          PADDLE_ENFORCE_GT(
+              in_tensor.memory_size(), 0,
+              platform::errors::PreconditionNotMet(
+                  "The input LoDTensorArray Input[%d] holds no memory.",
+                  in_offset));
+
+          d_out_tensor->set_lod(in_tensor.lod());
+          TensorCopy(in_tensor, context.GetPlace(), d_out_tensor);
+
+        } else {
+          d_out_tensor->Resize(dim);
+
+          if (!d_out_tensor->IsInitialized()) {
+            d_out_tensor->mutable_data<T>(context.GetPlace());
+          }
+
+          math::SetConstant<DeviceContext, T> set_zero;
+          set_zero(dev_ctx, d_out_tensor, static_cast<T>(0));
+        }
+      }
+
     } else {
-      out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
-          .device(place) = in_t;
+      auto* d_input =
+          context.Input<framework::Tensor>(framework::GradVarName("Out"));
+      auto* d_out =
+          context.Output<framework::Tensor>(framework::GradVarName("Input"));
+
+      d_out->mutable_data<T>(context.GetPlace());
+
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(dev_ctx, d_out, static_cast<T>(0));
+
+      auto in_dims = d_input->dims();
+
+      auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                         Eigen::DenseIndex>::From(*d_input);
+      auto out_t =
+          framework::EigenTensor<T, D, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::From(*d_out, out_dims);
+      if (need_reverse) {
+        framework::Tensor reverse_input;
+        reverse_input.mutable_data<T>(in_dims, context.GetPlace());
+        auto reverse_in_t =
+            framework::EigenTensor<T, D, Eigen::RowMajor,
+                                   Eigen::DenseIndex>::From(reverse_input);
+
+        reverse_in_t.device(place) = in_t.reverse(reverse_axis);
+        out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
+            .device(place) = reverse_in_t;
+      } else {
+        out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
+            .device(place) = in_t;
+      }
     }
   }
 };

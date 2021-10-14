@@ -98,7 +98,11 @@ class RecomputeFunction(PyLayer):
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
-        ctx.is_fw_autocast = tracer._enable_autocast
+        if tracer._amp_level == core.AmpLevel.O0:
+            ctx.is_fw_autocast = False
+        else:
+            ctx.is_fw_autocast = True
+        ctx.amp_mode = 'O1'
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -128,14 +132,16 @@ class RecomputeFunction(PyLayer):
                     with paddle.amp.auto_cast(
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
-                            custom_black_list=ctx.amp_black_list):
+                            custom_black_list=ctx.amp_black_list,
+                            level=ctx.amp_mode):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
                 with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
-                        custom_black_list=ctx.amp_black_list):
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_mode):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
@@ -145,23 +151,25 @@ class RecomputeFunction(PyLayer):
 
             # run backward() with only tensor that requires grad
             forward_outputs_with_grad = []
-            backward_inputs = list(args)
+            # NOTE In Transformer-like network, if user put the attention mask into the recompute segment output,
+            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of 
+            # tensor that need grad does not match.
+            # the following backward_inputs_with_grad is used to avoid this case.
+            backward_inputs_with_grad = []
             for i in range(len(outputs)):
                 if isinstance(outputs[i],
                               core.VarBase) and not outputs[i].stop_gradient:
                     forward_outputs_with_grad.append(outputs[i])
+                    backward_inputs_with_grad.append(args[i])
+
             if len(forward_outputs_with_grad) == 0:
                 raise RuntimeError(
                     "none of output has requires_grad=True, this recompute() is not necessary"
                 )
 
-            assert len(backward_inputs) == len(
-                forward_outputs_with_grad
-            ), "number of forward outputs is [{}], but the backward got [{}] inputs".format(
-                len(forward_outputs_with_grad), len(backward_inputs))
-
             # actually backward            
-            paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
+            paddle.autograd.backward(forward_outputs_with_grad,
+                                     backward_inputs_with_grad)
 
             grads = list(inp._grad_ivar() for inp in detached_inputs
                          if isinstance(inp, core.VarBase))

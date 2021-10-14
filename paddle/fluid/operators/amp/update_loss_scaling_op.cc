@@ -26,7 +26,6 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasInput("FoundInfinite"), "Input", "FoundInfinite",
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasInput("PrevLossScaling"), "Input", "PrevLossScaling",
@@ -35,16 +34,25 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasInput("InBadSteps"), "Input", "InBadSteps",
                    "update_loss_scaling");
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
-                   "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasOutput("LossScaling"), "Output", "LossScaling",
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasOutput("OutGoodSteps"), "Output", "OutGoodSteps",
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasOutput("OutBadSteps"), "Output", "OutBadSteps",
                    "update_loss_scaling");
-    auto x_dims = ctx->GetInputsDim("X");
-    ctx->SetOutputsDim("Out", x_dims);
+
+    if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
+      PADDLE_ENFORCE_EQ(
+          ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
+          platform::errors::InvalidArgument(
+              "The input(X) and output(Out) should have same size in "
+              "Operator(update_loss_scaling), size of input(X) is %d "
+              "and size of output(Out) is %d.",
+              ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
+      auto x_dims = ctx->GetInputsDim("X");
+      ctx->SetOutputsDim("Out", x_dims);
+    }
+
     ctx->SetOutputDim("LossScaling", {1});
     ctx->SetOutputDim("OutGoodSteps", {1});
     ctx->SetOutputDim("OutBadSteps", {1});
@@ -53,8 +61,12 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    auto dtype = framework::proto::VarType::FP32;
+    if (ctx.MultiInputVar("X").size() >= 1) {
+      dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    }
+
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
 

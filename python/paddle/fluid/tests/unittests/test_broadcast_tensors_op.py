@@ -192,5 +192,47 @@ class TestRaiseBroadcastTensorsError(unittest.TestCase):
         self.assertRaises(TypeError, test_bcast_semantics)
 
 
+class TestRaiseBroadcastTensorsErrorDyGraph(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            inputs = [
+                paddle.to_tensor(
+                    np.ones(
+                        shape=[1, 1, 1, 1], dtype='float32', name="x4")),
+                paddle.to_tensor(
+                    np.ones(
+                        shape=[1, 4, 1, 1], dtype='float64', name="x5"))
+            ]
+            paddle.broadcast_tensors(inputs)
+
+        def test_dtype():
+            inputs = [
+                paddle.to_tensor(
+                    np.ones(
+                        shape=[1, 1, 1, 1], dtype='int8', name="x6")),
+                paddle.to_tensor(
+                    np.ones(
+                        shape=[1, 4, 1, 1], dtype='int8', name="x7"))
+            ]
+            paddle.broadcast_tensors(inputs)
+
+        def test_bcast_semantics():
+            inputs = [
+                paddle.to_tensor(
+                    np.ones(
+                        shape=[1, 3, 1, 1], dtype='float32', name="x9")),
+                paddle.to_tensor(
+                    np.ones(
+                        shape=[1, 8, 1, 1], dtype='float32', name="x10"))
+            ]
+            paddle.broadcast_tensors(inputs)
+
+        paddle.disable_static()
+        self.assertRaises(TypeError, test_type)
+        self.assertRaises(TypeError, test_dtype)
+        self.assertRaises(TypeError, test_bcast_semantics)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

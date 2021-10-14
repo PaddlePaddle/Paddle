@@ -107,6 +107,42 @@ class UnfoldOp : public framework::OperatorWithKernel {
             "But recieved dims(strides: %u) != dims(dilations: %u).",
             strides.size(), dilations.size()));
 
+    // check kernel_sizes
+    PADDLE_ENFORCE_GT(kernel_sizes[0], 0,
+                      platform::errors::InvalidArgument(
+                          "The `kernel_sizes` should be greater than zero, "
+                          "but recieved kernel_height: %d kernel_width: %d.",
+                          kernel_sizes[0], kernel_sizes[1]));
+    PADDLE_ENFORCE_GT(kernel_sizes[1], 0,
+                      platform::errors::InvalidArgument(
+                          "The `kernel_sizes` should be greater than zero, "
+                          "but recieved kernel_height: %d kernel_width: %d.",
+                          kernel_sizes[0], kernel_sizes[1]));
+    // check strides
+    PADDLE_ENFORCE_GT(strides[0], 0,
+                      platform::errors::InvalidArgument(
+                          "The `strides` should be greater than zero, "
+                          "but recieved strides_height: %d strides_width: %d.",
+                          strides[0], strides[1]));
+    PADDLE_ENFORCE_GT(strides[1], 0,
+                      platform::errors::InvalidArgument(
+                          "The `strides` should be greater than zero, "
+                          "but recieved strides_height: %d strides_width: %d.",
+                          strides[0], strides[1]));
+    // check dilations
+    PADDLE_ENFORCE_GT(
+        dilations[0], 0,
+        platform::errors::InvalidArgument(
+            "The `dilations` should be greater than zero, "
+            "but recieved dilations_height: %d dilations_width: %d.",
+            dilations[0], dilations[1]));
+    PADDLE_ENFORCE_GT(
+        dilations[1], 0,
+        platform::errors::InvalidArgument(
+            "The `dilations` should be greater than zero, "
+            "but recieved dilations_height: %d dilations_width: %d.",
+            dilations[0], dilations[1]));
+
     std::vector<int> out_dims;
     out_dims.push_back(in_dims[0]);
 
@@ -118,6 +154,25 @@ class UnfoldOp : public framework::OperatorWithKernel {
                        paddings[2], strides[0]);
     int output_width = CalcOutputSize(in_dims[3], kernel_sizes[1], dilations[1],
                                       paddings[1], paddings[3], strides[1]);
+    // check output height and width
+    PADDLE_ENFORCE_GT(
+        output_height, 0,
+        platform::errors::InvalidArgument(
+            "The sliding blocks calculated from input spatial size (%d, %d), "
+            "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
+            "is (%d, %d), which should be a positive integer.",
+            in_dims[2], in_dims[3], kernel_sizes[0], kernel_sizes[1],
+            strides[0], strides[1], dilations[0], dilations[1], output_height,
+            output_width));
+    PADDLE_ENFORCE_GT(
+        output_width, 0,
+        platform::errors::InvalidArgument(
+            "The sliding blocks calculated from input spatial size (%d, %d), "
+            "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
+            "is (%d, %d), which should be a positive integer.",
+            in_dims[2], in_dims[3], kernel_sizes[0], kernel_sizes[1],
+            strides[0], strides[1], dilations[0], dilations[1], output_height,
+            output_width));
     int output_col_length = output_height * output_width;
     out_dims.push_back(output_col_length);
 

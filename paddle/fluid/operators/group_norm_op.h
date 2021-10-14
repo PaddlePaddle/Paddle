@@ -52,7 +52,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
 
     y->mutable_data<T>(ctx.GetPlace());
     mean->mutable_data<T>(ctx.GetPlace());
@@ -68,9 +68,16 @@ class GroupNormKernel : public framework::OpKernel<T> {
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
-
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
     auto* iter_x_data = x_data;
     auto* iter_y_data = y_data;
     for (int bid = 0; bid < x_dims[0]; bid++) {
@@ -93,7 +100,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
             int imid;
             for (imid = 0; imid < imsize - (imsize % M);
                  imid += M, iter_x_data += M) {
-              // TODO(gaoxiang) ：Because AVX/AVX2/AVX512 can not directly used
+              // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used
               // in template class/function, before we complete high
               // performance cpu vector extension, temporarily unrolling
               // loop to get high precision and performance
@@ -131,7 +138,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
             int imid;
             for (imid = 0; imid < imsize - (imsize % M);
                  imid += M, iter_x_data += M * C) {
-              // TODO(gaoxiang) ：Because AVX/AVX2/AVX512 can not directly used
+              // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used
               // in template class/function, before we complete high
               // performance cpu vector extension, temporarily unrolling
               // loop to get high precision and performance
@@ -229,7 +236,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
 
     d_x->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
@@ -257,8 +264,16 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
     auto* iter_x_data = x_data;
     auto* iter_d_x_data = d_x_data;
     auto* iter_y_data = y_data;

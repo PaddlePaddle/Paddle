@@ -38,7 +38,7 @@ __device__ int upper_bound(T const* vals, int n, T const& key) {
 }
 
 nvinfer1::Dims SplitPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims* input_dims, int num_inputs) {
+    int index, const nvinfer1::Dims* input_dims, int num_inputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(num_inputs, 1,
                     platform::errors::InvalidArgument(
                         "Invalid number of inputs of split TRT plugin. "
@@ -66,7 +66,7 @@ void SplitPlugin::shareData(const SplitPlugin* another) {
   d_output_ptrs_.resize(another->d_output_ptrs_.size(), nullptr);
 }
 
-int SplitPlugin::initialize() {
+int SplitPlugin::initialize() TRT_NOEXCEPT {
   PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS,
                     platform::errors::InvalidArgument(
                         "Axis dimension exceeds max dimension in TensorRT. "
@@ -98,7 +98,7 @@ int SplitPlugin::initialize() {
 }
 
 // nothing to release according to initialize
-void SplitPlugin::terminate() {}
+void SplitPlugin::terminate() TRT_NOEXCEPT {}
 
 // The following part of the code refers to onnx-tensorrt
 // https://github.com/onnx/onnx-tensorrt/blob/master/Split.cu
@@ -129,7 +129,7 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
                          void** outputs, void* workspace, cudaStream_t stream) {
 #else
                          void* const* outputs, void* workspace,
-                         cudaStream_t stream) {
+                         cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   const int* d_segment_offsets_ptr =
       thrust::raw_pointer_cast(&d_segment_offsets_[0]);
@@ -155,14 +155,14 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
 
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
-int SplitPluginDynamic::initialize() { return 0; }
+int SplitPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-size_t SplitPluginDynamic::getSerializationSize() const {
+size_t SplitPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(axis_) + SerializedSize(output_length_) +
          SerializedSize(with_fp16_);
 }
 
-void SplitPluginDynamic::serialize(void* buffer) const {
+void SplitPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, axis_);
   SerializeValue(&buffer, output_length_);
   SerializeValue(&buffer, with_fp16_);
@@ -170,7 +170,7 @@ void SplitPluginDynamic::serialize(void* buffer) const {
 
 nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder) {
+    nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nb_inputs, 1,
                     platform::errors::InvalidArgument(
                         "The Split plugin should be only one input."));
@@ -188,7 +188,7 @@ nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
 
 bool SplitPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of split plugin should not be nullptr."));
@@ -217,14 +217,16 @@ bool SplitPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType SplitPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType* input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
 
 int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                 const nvinfer1::PluginTensorDesc* output_desc,
                                 const void* const* inputs, void* const* outputs,
-                                void* workspace, cudaStream_t stream) {
+                                void* workspace,
+                                cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int outer_rows = 1;
   int inner_cols = 1;

@@ -185,7 +185,10 @@ class QuantizeTranspilerV2(object):
                 new_in_name = var_rename_map[block_id][in_name]
             else:
                 in_var = block.var(in_name)
-                if in_var.dtype != core.VarDesc.VarType.FP32:
+                target_dtype = [
+                    core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP16
+                ]
+                if in_var.dtype not in target_dtype:
                     continue
 
                 quant_bits = self._weight_bits if in_var.persistable \

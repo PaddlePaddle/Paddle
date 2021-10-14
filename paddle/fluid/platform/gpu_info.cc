@@ -14,18 +14,23 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
 #include <cstdlib>
+#include <mutex>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
+#include "paddle/fluid/platform/cuda_graph.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -36,6 +41,10 @@ DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
+static std::once_flag g_device_props_size_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
+static std::vector<paddle::gpuDeviceProp> g_device_props;
 
 USE_GPU_MEM_STAT;
 namespace paddle {
@@ -295,6 +304,44 @@ std::vector<int> GetSelectedDevices() {
   return devices;
 }
 
+const gpuDeviceProp &GetDeviceProperties(int id) {
+  std::call_once(g_device_props_size_init_flag, [&] {
+    int gpu_num = 0;
+    gpu_num = platform::GetCUDADeviceCount();
+    g_device_props_init_flags.resize(gpu_num);
+    g_device_props.resize(gpu_num);
+    for (int i = 0; i < gpu_num; ++i) {
+      g_device_props_init_flags[i] = std::make_unique<std::once_flag>();
+    }
+  });
+
+  if (id == -1) {
+    id = platform::GetCurrentDeviceId();
+  }
+
+  if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
+    PADDLE_THROW(platform::errors::OutOfRange(
+        "The device id %d is out of range [0, %d), where %d is the number of "
+        "devices on this machine. Because the device id should be greater than "
+        "or equal to zero and smaller than the number of gpus. Please input "
+        "appropriate device again!",
+        id, static_cast<int>(g_device_props.size()),
+        static_cast<int>(g_device_props.size())));
+  }
+
+  std::call_once(*(g_device_props_init_flags[id]), [&] {
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaGetDeviceProperties(&g_device_props[id], id));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipGetDeviceProperties(&g_device_props[id], id));
+#endif
+  });
+
+  return g_device_props[id];
+}
+
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(),
@@ -499,7 +546,7 @@ class RecordedCudaMallocHelper {
    */
   gpuError_t Malloc(void **ptr, size_t size) {
     LockGuardPtr<std::mutex> lock(mtx_);
-    if (UNLIKELY(NeedRecord() && cur_size_ + size > limit_size_)) {
+    if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
 #ifdef PADDLE_WITH_HIP
       return hipErrorOutOfMemory;
 #else
@@ -511,12 +558,11 @@ class RecordedCudaMallocHelper {
 #ifdef PADDLE_WITH_HIP
     auto result = hipMalloc(ptr, size);
 #else
+    CUDAGraphCaptureModeGuard capture_mode_guard;
     auto result = cudaMalloc(ptr, size);
 #endif
     if (result == gpuSuccess) {
-      if (NeedRecord()) {
-        cur_size_ += size;
-      }
+      cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return gpuSuccess;
     } else {
@@ -551,10 +597,7 @@ class RecordedCudaMallocHelper {
     if (err != cudaErrorCudartUnloading) {
 #endif
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
-      if (NeedRecord()) {
-        std::lock_guard<std::mutex> guard(*mtx_);
-        cur_size_ -= size;
-      }
+      cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
 #ifdef PADDLE_WITH_HIP
@@ -582,7 +625,7 @@ class RecordedCudaMallocHelper {
 
     if (NeedRecord()) {
       std::lock_guard<std::mutex> guard(*mtx_);
-      *avail = std::min(*actual_avail, limit_size_ - cur_size_);
+      *avail = std::min(*actual_avail, limit_size_ - cur_size_.load());
       *total = std::min(*actual_total, limit_size_);
       return *total < *actual_total;
     } else {
@@ -594,17 +637,14 @@ class RecordedCudaMallocHelper {
 
   inline bool NeedRecord() const { return limit_size_ != 0; }
 
-  uint64_t RecordedSize() const {
-    LockGuardPtr<std::mutex> lock(mtx_);
-    return NeedRecord() ? cur_size_ : 0;
-  }
+  uint64_t RecordedSize() const { return cur_size_.load(); }
 
   uint64_t LimitSize() const { return limit_size_; }
 
  private:
   const int dev_id_;
   const uint64_t limit_size_;
-  uint64_t cur_size_{0};
+  std::atomic<uint64_t> cur_size_{0};
 
   mutable std::unique_ptr<std::mutex> mtx_;
 
@@ -636,6 +676,13 @@ uint64_t RecordedCudaMallocSize(int dev_id) {
 
 bool IsCudaMallocRecorded(int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->NeedRecord();
+}
+
+void EmptyCache(void) {
+  std::vector<int> devices = GetSelectedDevices();
+  for (auto device : devices) {
+    memory::Release(CUDAPlace(device));
+  }
 }
 
 }  // namespace platform

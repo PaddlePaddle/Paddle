@@ -22,7 +22,7 @@ from collections import defaultdict
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-import gast
+from paddle.utils import gast
 from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code

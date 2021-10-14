@@ -227,7 +227,8 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,
                         ops::LookupTableCUDAKernel<plat::float16>,
-                        ops::LookupTableCUDAKernel<int8_t>);
+                        ops::LookupTableCUDAKernel<int8_t>,
+                        ops::LookupTableCUDAKernel<int16_t>);
 REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
                         ops::LookupTableGradCUDAKernel<float>,
                         ops::LookupTableGradCUDAKernel<double>,

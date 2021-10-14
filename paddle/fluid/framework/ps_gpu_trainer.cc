@@ -29,9 +29,12 @@ namespace framework {
 
 void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
-  dataset_ = dataset;
+  SetDataset(dataset);
   thread_num_ = trainer_desc.thread_num();
   param_ = trainer_desc.downpour_param();
+  ParseDumpConfig(trainer_desc);
+  mpi_rank_ = trainer_desc.mpi_rank();
+  mpi_size_ = trainer_desc.mpi_size();
   for (int i = 0; i < param_.dense_table_size(); ++i) {
     uint64_t table_id = static_cast<uint64_t>(param_.dense_table(i).table_id());
     auto table = param_.dense_table(i);
@@ -44,6 +47,8 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   int place_num = trainer_desc.worker_places_size();
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
+  dump_file_num_ = trainer_desc.dump_file_num();
+  user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
   std::vector<int> dev_ids;
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
@@ -57,8 +62,6 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
         trainer_desc.downpour_param().stat_var_names(i));
   }
   VLOG(3) << "going to initialize pull dense worker";
-  pull_dense_worker_ = PullDenseWorker::GetInstance();
-  pull_dense_worker_->Initialize(trainer_desc);
   SetDebug(trainer_desc.debug());
   trainer_desc_ = trainer_desc;
   workers_.resize(place_num);
@@ -66,6 +69,11 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
     workers_[i]->SetDeviceIndex(i);
+    workers_[i]->SetNeedDumpField(need_dump_field_);
+    workers_[i]->SetNeedDumpParam(need_dump_param_);
+    workers_[i]->SetDumpFieldVector(dump_fields_);
+    workers_[i]->SetDumpParamVector(dump_param_);
+    workers_[i]->InitRandomDumpConfig(trainer_desc);
     workers_[i]->SetDataFeed(readers[i]);
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetWorkerNum(place_num);
@@ -73,7 +81,14 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   return;
 }
 
-void PSGPUTrainer::DumpWork(int tid) {}
+std::string PSGPUTrainer::GetDumpPath(int tid) {
+  if (user_define_dump_filename_ != "") {
+    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(), tid);
+  }
+  return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
+                               mpi_rank_, tid);
+}
 
 void PSGPUTrainer::RegisterHeterCallback() {
   /*
@@ -112,14 +127,41 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       }
     }
   }
+  for (auto& var : main_program.Block(0).AllVars()) {
+    if (var->Persistable()) {
+      auto it = std::find(need_merge_var_names_.begin(),
+                          need_merge_var_names_.end(), var->Name());
+      if (it == need_merge_var_names_.end()) {
+        VLOG(2) << "train param: " << var->Name();
+        trainable_param_.push_back(var->Name());
+      }
+    }
+  }
   place_ = place;
   return;
 }
 
-void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  pull_dense_worker_->SetRootScope(root_scope_);
+void PSGPUTrainer::InitDumpEnv() {
+  queue_ = paddle::framework::MakeChannel<std::string>();
   for (size_t i = 0; i < places_.size(); ++i) {
-    pull_dense_worker_->AddThreadScope(workers_[i]->GetThreadScope());
+    workers_[i]->SetChannelWriter(queue_.get());
+  }
+  dump_thread_num_ = 1;
+  if (dump_file_num_ > mpi_size_) {
+    dump_thread_num_ = dump_file_num_ / mpi_size_;
+    if (dump_file_num_ % mpi_size_ > mpi_rank_) {
+      dump_thread_num_ += 1;
+    }
+  }
+  for (int i = 0; i < dump_thread_num_; i++) {
+    dump_thread_.push_back(
+        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
+  }
+}
+
+void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+  if (need_dump_field_ || need_dump_param_) {
+    InitDumpEnv();
   }
   VLOG(3) << "init other env done.";
 }
@@ -141,15 +183,27 @@ Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 template <typename T>
 void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
   LoDTensor tmp_root;
-  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopySync(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   LoDTensor tmp_tensor;
-  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopySync(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
   }
-  TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
+  TensorCopySync(tmp_root, platform::CPUPlace(), root_tensor);
+}
+
+void PSGPUTrainer::MergeDenseParam() {
+  auto thread_scope = workers_[0]->GetThreadScope();
+  for (auto& name : trainable_param_) {
+    VLOG(2) << "merge var " << name << " to root scope";
+    Variable* root_var = root_scope_->FindVar(name);
+    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    Variable* var = thread_scope->FindVar(name);
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    TensorCopySync((*tensor), root_tensor->place(), root_tensor);
+  }
 }
 
 void PSGPUTrainer::Finalize() {
@@ -187,7 +241,10 @@ void PSGPUTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
-  pull_dense_worker_->MergeDenseParam();
+  MergeDenseParam();
+  if (need_dump_field_ || need_dump_param_) {
+    FinalizeDumpEnv();
+  }
   root_scope_->DropKids();
 }
 }  // namespace framework
