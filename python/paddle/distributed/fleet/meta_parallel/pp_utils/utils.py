@@ -201,7 +201,7 @@ class _HPRecomputeFunction(PyLayer):
         ctx.is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
         if tracer._amp_level == core.AmpLevel.O2:
             ctx.amp_level = 'O2'
-        elif tracer._amp_level == core.AmpLevel.O1:
+        elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
             raise ValueError("unsupported amp level: {}".format(

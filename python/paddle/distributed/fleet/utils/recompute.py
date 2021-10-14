@@ -98,8 +98,14 @@ class RecomputeFunction(PyLayer):
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
-        ctx.is_fw_autocast = False if tracer._amp_level == 0 else True
-        ctx.amp_level = 'O2' if tracer._amp_level == 2 else 'O1'
+        ctx.is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
+        if tracer._amp_level == core.AmpLevel.O2:
+            ctx.amp_level = 'O2'
+        elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
+            ctx.amp_level = 'O1'
+        else:
+            raise ValueError("unsupported amp level: {}".format(
+                tracer._amp_level))
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
