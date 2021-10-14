@@ -143,9 +143,9 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     int output_channel = w_dims[0];
     int filter_size = w_dims[2];
     int stride = ctx->Attrs().Get<int>("stride");
-    int pad = ctx->Attrs().Get<int>("pad");
-    int out_h = (x_dims[1] + pad * 2 - filter_size) / stride + 1;
-    int out_w = (x_dims[2] + pad * 2 - filter_size) / stride + 1;
+    int padding = ctx->Attrs().Get<int>("padding");
+    int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
+    int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
     std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
 
     auto y_dims = framework::make_ddim(out_shape);
@@ -235,10 +235,10 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("act_type", "The activation type to be fused.")
         .SetDefault("relu");
     AddComment(R"DOC(
-Fusion op of the basic unit of resnet block. 
+Fusion op of the basic unit of resnet block.
 
 The implementation is based on the latest fusion op interface in cuDNN v8.0.
-For more details: 
+For more details:
 https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnFusedOps_t
 
 )DOC");
