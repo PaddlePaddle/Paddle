@@ -42,6 +42,7 @@ class DistributedEmbedding(DistributedOperator):
 
 register_distributed_operator("lookup_table_v2",
                               DistributedEmbedding("embedding"))
+register_distributed_operator("c_embedding", DistributedEmbedding("embedding"))
 
 
 # RowParallel
@@ -329,4 +330,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl("lookup_table_v2",
+                                   DistributedEmbeddingImpl("row_parallel"))
+register_distributed_operator_impl("c_embedding",
                                    DistributedEmbeddingImpl("row_parallel"))
