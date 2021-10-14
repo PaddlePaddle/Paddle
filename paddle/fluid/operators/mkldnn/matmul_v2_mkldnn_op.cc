@@ -148,8 +148,8 @@ class MatMulV2MKLDNNKernel
     if (x_dims.size() == 1) {
       x_bd_dims[x_bd_dims.size() - 1] = x_dims[0];
     } else if (x_dims.size() == 2) {
-      x_bd_dims[2] = x_dims[1];
-      x_bd_dims[1] = x_dims[0];
+      x_bd_dims[x_bd_dims.size() - 1] = x_dims[1];
+      x_bd_dims[x_bd_dims.size() - 2] = x_dims[0];
     } else {
       for (size_t i = 0; i < x_dims.size(); ++i) {
         x_bd_dims[i] = x_dims[i];
@@ -158,8 +158,8 @@ class MatMulV2MKLDNNKernel
     if (y_dims.size() == 1) {
       y_bd_dims[x_bd_dims.size() - 2] = y_dims[0];
     } else if (y_dims.size() == 2) {
-      y_bd_dims[2] = y_dims[1];
-      y_bd_dims[1] = y_dims[0];
+      y_bd_dims[y_bd_dims.size() - 1] = y_dims[1];
+      y_bd_dims[y_bd_dims.size() - 2] = y_dims[0];
     } else {
       for (size_t i = 0; i < y_dims.size(); ++i) {
         y_bd_dims[i] = y_dims[i];

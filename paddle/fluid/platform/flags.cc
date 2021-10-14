@@ -121,6 +121,13 @@ PADDLE_DEFINE_EXPORTED_string(
     "If proveided, it will be passed to aclInit().");
 PADDLE_DEFINE_EXPORTED_int32(min_loss_scaling, 1,
                              "set minmum loss scaling value!");
+PADDLE_DEFINE_EXPORTED_string(
+    npu_precision_mode, "",
+    "NPU operator precision mode, options are 'force_fp32', 'force_fp16', "
+    "'allow_fp32_to_fp16', 'must_keep_origin_dtype' and "
+    "'allow_mix_precision'. If you want to use the default mode ("
+    "allow_fp32_to_fp16), set this to empty string. For more details, "
+    "please refer to the documents");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -673,3 +680,40 @@ PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
 PADDLE_DEFINE_EXPORTED_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_allreduce_record_one_event
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_allreduce_record_one_event=true makes the allreduce
+ *          operations would only wait one event instead of multiple events.
+ * Note: Make the allreduce operations would only wait one event instead of
+ *       multiple events. Currently, only fuse allreduce supports this.
+ *       Otherwise, the precision may be wrong.
+ */
+PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
+                            "It controls whether the allreduce operations "
+                            "would only wait one event instead of multiple "
+                            "events. Currently, only fuse allreduce supports "
+                            "this. Otherwise, the precision may be wrong.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_use_cinn
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+
+DEFINE_int32(record_pool_max_size, 2000000,
+             "SlotRecordDataset slot record pool max size");
+DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
+DEFINE_bool(enable_slotpool_wait_release, false,
+            "enable slotrecord obejct wait release, default false");
+DEFINE_bool(enable_slotrecord_reset_shrink, false,
+            "enable slotrecord obejct reset shrink memory, default false");
+DEFINE_bool(enable_ins_parser_file, false,
+            "enable parser ins file , default false");

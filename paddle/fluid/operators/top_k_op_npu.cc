@@ -51,7 +51,9 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(ctx.GetPlace());
 
     // prepare assit
-    auto dim = input->dims().size();
+    auto size = input->dims().size();
+    // dim is the last dimension of input
+    auto dim = input->dims()[size - 1];
     framework::Tensor assist_seq_tensor;
     assist_seq_tensor.Resize({2 * dim});
     assist_seq_tensor.mutable_data<T>(ctx.GetPlace());
