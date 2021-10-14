@@ -98,7 +98,7 @@ class RecomputeFunction(PyLayer):
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
-        if tracer._amp_level == 0:
+        if tracer._amp_level == core.AmpLevel.O0:
             ctx.is_fw_autocast = False
         else:
             ctx.is_fw_autocast = True
