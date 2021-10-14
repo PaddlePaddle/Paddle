@@ -346,7 +346,19 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
         val.lr = ptr_val[4];
         val.lr_g2sum = ptr_val[5];
         val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
-
+        val.mf_dim = slot_dim_map_[val.slot];
+        if (dim > 8) {
+          val.mf_size = val.mf_dim;
+          for (int x = 0; x < val.mf_size; x++) {
+            val.mf[x] = ptr_val[x + 8];
+          }
+        } else {
+          val.mf_size = 0;
+          for (int x = 0; x < val.mf_dim; x++) {
+            val.mf[x] = 0;
+          }
+        }
+        /*
         if (dim > 7) {
           val.mf_size = MF_DIM + 1;
           for (int x = 0; x < val.mf_size; x++) {
@@ -358,6 +370,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
             val.mf[x] = 0;
           }
         }
+        */
       }
 #endif
 #ifdef PADDLE_WITH_PSCORE

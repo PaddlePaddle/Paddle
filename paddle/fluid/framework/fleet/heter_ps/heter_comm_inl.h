@@ -325,6 +325,9 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
 
+  // prepare hbm pool
+  mem_pool_ = new BlockMemoryPool<KeyType>(len, sizeof(*h_vals));
+
   std::vector<std::shared_ptr<memory::Allocation>> d_key_bufs;
   std::vector<std::shared_ptr<memory::Allocation>> d_val_bufs;
 
@@ -354,7 +357,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
     tables_[num]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
         reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
-        streams[cur_stream]);
+        streams[cur_stream], mem_pool_);
     cur_stream += 1;
     cur_len += tmp_len;
   }
@@ -526,10 +529,18 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     cudaStreamSynchronize(node.in_stream);
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     tables_[i]->rwlock_->RDLock();
-    tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+    if (mem_pool_ == NULL){
+      tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                     reinterpret_cast<ValType*>(node.val_storage),
                     h_right[i] - h_left[i] + 1,
                     resource_->remote_stream(i, num));
+    } else {
+      tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+                    reinterpret_cast<ValType*>(node.val_storage),
+                    h_right[i] - h_left[i] + 1,
+                    resource_->remote_stream(i, num), mem_pool_);
+    }
+    
   }
   for (int i = 0; i < total_gpu; ++i) {
     cudaStreamSynchronize(resource_->remote_stream(i, num));

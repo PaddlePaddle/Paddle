@@ -43,6 +43,42 @@ __global__ void insert_kernel(Table* table,
 }
 
 template <typename Table>
+__global__ void insert_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              const typename Table::mapped_type* const vals,
+                              size_t len, BlockMemoryPool<Table::key_type>* pool) {
+  ReplaceOp<typename Table::mapped_type> op;
+  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
+
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    kv.first = keys[i];
+    uint32_t addr = pool->acquire(keys[i]);
+    (Table::mapped_type*) optional_ptr = (Table::mapped_type*)pool->mem_address(addr);
+    *optional_ptr = val[i];
+    kv.second = addr;
+    auto it = table->insert(kv, op);
+    assert(it != table->end() && "error: insert fails: table is full");
+  }
+}
+
+template <typename Table>
+__global__ void search_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              typename Table::mapped_type* const vals,
+                              size_t len, BlockMemoryPool<Table::key_type>* pool) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      uint32_t addr = pool->acquire(keys[i]);
+      (Table::mapped_type*) pool_ptr = (Table::mapped_type*)pool->mem_address(addr);
+      vals[i] = *pool_ptr;
+    }
+  }
+}
+
+template <typename Table>
 __global__ void search_kernel(Table* table,
                               const typename Table::key_type* const keys,
                               typename Table::mapped_type* const vals,
@@ -98,6 +134,23 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
 }
 
 template <typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
+                                      size_t len, gpuStream_t stream, BlockMemoryPool<KeyType>* pool=NULL) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  if (pool == NULL) {
+    search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
+                                                       d_vals, len);
+  } else {
+    search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
+                                                       d_vals, len, pool);
+  }
+  
+}
+
+template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
                                          gpuStream_t stream) {
@@ -107,6 +160,23 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_vals, len);
+}
+
+template <typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
+                                         const ValType* d_vals, size_t len,
+                                         gpuStream_t stream, BlockMemoryPool<KeyType>* pool=NULL) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  if (pool == NULL) {
+    insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
+                                                       d_vals, len);
+  } else {
+    insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(continer_, d_keys, d_vals, len, pool, pool->block_size)
+  }
+  
 }
 
 template <typename KeyType, typename ValType>

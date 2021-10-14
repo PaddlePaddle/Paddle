@@ -61,6 +61,43 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
   }
 }
 
+__global__ void PullCopy(float** dest, const FeatureValue* src,
+                         const int64_t* len, int hidden, int slot_num,
+                         int total_len, uint64_t** keys) {
+  CUDA_KERNEL_LOOP(i, total_len) {
+    int low = 0;
+    int high = slot_num - 1;
+    while (low < high) {
+      int mid = (low + high) / 2;
+      if (i < len[mid])
+        high = mid;
+      else
+        low = mid + 1;
+    }
+    int x = low;
+    int y = i - (x ? len[x - 1] : 0);
+    int mf_dim = (src + i)->mf_dim;
+    if (*(keys[x] + y) == 0) {
+      *(dest[x] + y * (mf_dim + 3)) = 0;
+      *(dest[x] + y * (mf_dim + 3) + 1) = 0;
+      *(dest[x] + y * (mf_dim + 3) + 2) = 0;
+    } else {
+      *(dest[x] + y * (mf_dim + 3)) = (src + i)->show;
+      *(dest[x] + y * (mf_dim + 3) + 1) = (src + i)->clk;
+      *(dest[x] + y * (mf_dim + 3) + 2) = (src + i)->lr;
+    }
+    if ((src + i)->mf_size == 0 || *(keys[x] + y) == 0) {
+      for (int j = 0; j < mf_dim; j++) {
+        *(dest[x] + y * (mf_dim + 3) + 3 + j) = 0;
+      }
+    } else {
+      for (int j = 0; j < mf_dim; j++) {
+        *(dest[x] + y * (mf_dim + 3) + 3 + j) = (src + i)->mf[1 + j];
+      }
+    }
+  }
+}
+
 __global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
                                const int64_t* len, int slot_num,
                                int total_len) {
@@ -101,6 +138,33 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
     (dest + i)->lr_g = *(src[x] + y * hidden + 2) * -1. * bs;
     for (int j = 0; j < hidden - 3; j++) {
       (dest + i)->mf_g[j] = *(src[x] + y * hidden + 3 + j) * -1. * bs;
+    }
+  }
+}
+
+__global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
+                         int hidden, int slot_num, int total_len, int bs,
+                         int* slot_vector, int mf_dim_vector) {
+  CUDA_KERNEL_LOOP(i, total_len) {
+    int low = 0;
+    int high = slot_num - 1;
+    while (low < high) {
+      int mid = (low + high) / 2;
+      if (i < len[mid])
+        high = mid;
+      else
+        low = mid + 1;
+    }
+    int x = low;
+    int y = i - (x ? len[low - 1] : 0);
+    int mf_dim = mf_dim_vector[x];
+    (dest + i)->slot = slot_vector[x];
+    (dest + i)->mf_dim = mf_dim;
+    (dest + i)->show = *(src[x] + y * (mf_dim + 3));
+    (dest + i)->clk = *(src[x] + y * (mf_dim + 3) + 1);
+    (dest + i)->lr_g = *(src[x] + y * (mf_dim + 3) + 2) * -1. * bs;
+    for (int j = 0; j < mf_dim; j++) {
+      (dest + i)->mf_g[j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
     }
   }
 }
