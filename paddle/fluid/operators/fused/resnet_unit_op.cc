@@ -20,6 +20,18 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+// Shape of bitmask
+static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
+  int c = out_shape.back();
+  int64_t nhw = std::accumulate(out_shape.begin(), out_shape.end(), 1,
+                                std::multiplies<int>()) /
+                c;
+  int32_t c_int32_elems = ((c + 63) & ~63) / 32;
+  int32_t nhw_int32_elems = ((nhw + 31) & ~31);
+  std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
+  return framework::make_ddim(bitmask_shape);
+}
+
 class ResNetUnitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -34,9 +46,9 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("MeanX"), "Input", "MeanX", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasInput("VarX"), "Input", "VarX", "ResNetUnitOp");
 
-    bool fused_add = ctx->Attrs().Get<bool>("fused_add");
+    bool fuse_add = ctx->Attrs().Get<bool>("fuse_add");
     bool has_shortcut = ctx->Attrs().Get<bool>("has_shortcut");
-    if (fused_add || has_shortcut) {
+    if (fuse_add || has_shortcut) {
       OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitOp");
     }
     if (has_shortcut) {
@@ -98,50 +110,46 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const auto w_dims = ctx->GetInputDim("FilterX");
     const auto bn_param_dims = ctx->GetInputDim("ScaleX");
-    PADDLE_ENFORCE_EQ(
-        x_dims.size(), 4,
-        platform::errors::InvalidArgument("ShapeError: the dimensions of input "
-                                          "must equal to 4."
-                                          "But received: the shape of input "
-                                          "= [%s], the dimension of input = "
-                                          "[%d]",
-                                          x_dims, x_dims.size()));
+    PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
+                                            "The dimensions of input "
+                                            "must equal to 4."
+                                            "But received: the shape of input "
+                                            "= [%s], the dimension of input = "
+                                            "[%d]",
+                                            x_dims, x_dims.size()));
     PADDLE_ENFORCE_EQ(w_dims.size(), 4,
                       platform::errors::InvalidArgument(
-                          "ShapeError: the dimensions of filter "
+                          "The dimensions of filter "
                           "must equal to 4."
                           "But received: the shape of filter "
-                          "= [%s], the dimension of filter = "
-                          "[%d]",
+                          "= [%s], the dimension of filter = [%d] ",
                           w_dims, w_dims.size()));
     PADDLE_ENFORCE_EQ(bn_param_dims.size(), 4,
                       platform::errors::InvalidArgument(
-                          "ShapeError: the dimensions of bn param "
+                          "The dimensions of bn param "
                           "must equal to 4."
                           "But received: the shape of bn param "
-                          "= [%s], the dimension of bn param = "
-                          "[%d]",
+                          "= [%s], the dimension of bn param = [%d] ",
                           bn_param_dims, bn_param_dims.size()));
+    auto data_format = ctx->Attrs().Get<std::string>("data_format");
+    PADDLE_ENFORCE_EQ(
+        data_format, "NHWC",
+        platform::errors::InvalidArgument("The data format must equal to NHWC. "
+                                          "But received: the data format "
+                                          "= [%s]",
+                                          data_format));
     // Calculate the dims of outputs
     int batch = x_dims[0];
     int output_channel = w_dims[0];
     int filter_size = w_dims[2];
     int stride = ctx->Attrs().Get<int>("stride");
-    int pad = ctx->Attrs().Get<int>("pad");
-    int out_h = (x_dims[1] + pad * 2 - filter_size) / stride + 1;
-    int out_w = (x_dims[2] + pad * 2 - filter_size) / stride + 1;
+    int padding = ctx->Attrs().Get<int>("padding");
+    int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
+    int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
     std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
-    // Shape of bitmask
-    int C = output_channel;
-    int64_t NHW = std::accumulate(out_shape.begin(), out_shape.end(), 1,
-                                  std::multiplies<int>()) /
-                  output_channel;
-    int32_t C_int32Elems = ((C + 63) & ~63) / 32;
-    int32_t NHW_int32Elems = ((NHW + 31) & ~31);
-    std::vector<int> bitmask_shape = {NHW_int32Elems, C_int32Elems, 1};
 
     auto y_dims = framework::make_ddim(out_shape);
-    auto bitmask_dims = framework::make_ddim(bitmask_shape);
+    auto bitmask_dims = GetBitmaskDims(out_shape);
     // Set dims of outputs
     ctx->SetOutputDim("Y", y_dims);
     ctx->SetOutputDim("BitMask", bitmask_dims);
@@ -211,14 +219,13 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("RunningVarZ", "Shared memory with VarZ").AsDispensable();
     AddAttr<int>("stride", "").SetDefault(1);
     AddAttr<int>("stride_z", "").SetDefault(1);
-    AddAttr<int>("pad", "").SetDefault(0);
-    AddAttr<int>("dilate", "").SetDefault(1);
+    AddAttr<int>("padding", "").SetDefault(0);
+    AddAttr<int>("dilation", "").SetDefault(1);
     AddAttr<int>("group", "").SetDefault(1);
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
-    AddAttr<std::string>("conv_format", "").SetDefault("NHWC");
-    AddAttr<std::string>("bn_format", "").SetDefault("NHWC");
-    AddAttr<bool>("fused_add", "").SetDefault(false);
+    AddAttr<std::string>("data_format", "").SetDefault("NHWC");
+    AddAttr<bool>("fuse_add", "").SetDefault(false);
     AddAttr<bool>("has_shortcut", "").SetDefault(false);
     AddAttr<bool>("use_global_stats", "").SetDefault(false);
     AddAttr<bool>("is_test",
@@ -259,9 +266,9 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("SavedInvstdX"), "Input", "SavedInvstdX",
                    "ResNetUnitGradOp");
 
-    bool fused_add = ctx->Attrs().Get<bool>("fused_add");
+    bool fuse_add = ctx->Attrs().Get<bool>("fuse_add");
     bool has_shortcut = ctx->Attrs().Get<bool>("has_shortcut");
-    if (fused_add || has_shortcut) {
+    if (fuse_add || has_shortcut) {
       OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitGradOp");
     }
     if (has_shortcut) {
@@ -293,7 +300,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
                    framework::GradVarName("ScaleX"), "ResNetUnitGradOp");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasX")), "Output",
                    framework::GradVarName("BiasX"), "ResNetUnitGradOp");
-    if (fused_add) {
+    if (fuse_add) {
       OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Z")), "Output",
                      framework::GradVarName("Z"), "ResNetUnitGradOp");
     }
@@ -313,7 +320,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("FilterX"), filter_x_dims);
     ctx->SetOutputDim(framework::GradVarName("ScaleX"), param_dims);
     ctx->SetOutputDim(framework::GradVarName("BiasX"), param_dims);
-    if (fused_add || has_shortcut) {
+    if (fuse_add || has_shortcut) {
       const auto z_dims = ctx->GetInputDim("Z");
       ctx->SetOutputDim(framework::GradVarName("Z"), z_dims);
     }

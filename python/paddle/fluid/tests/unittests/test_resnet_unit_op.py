@@ -69,7 +69,7 @@ class TestResNetUnitAPI(unittest.TestCase):
                 num_filters=256,
                 filter_size=1,
                 stride=1,
-                fused_add=True,
+                fuse_add=True,
                 has_shortcut=True,
                 filter_x_attr=self.conv_param_attr1,
                 scale_x_attr=self.bn_scale_attr1,
