@@ -28,8 +28,6 @@ limitations under the License. */
 #define LARS_BLOCK_SIZE 512
 #endif
 
-#define LARS_MAX_MERGED_OPS 60
-
 namespace paddle {
 namespace operators {
 
@@ -314,7 +312,7 @@ __global__ void MomentumLarsKernel(
     const MT* __restrict__ learn_rate, MT* __restrict__ p_buffer,
     MT* __restrict__ g_buffer, const MT mu, const MT lars_coeff,
     const MT lars_weight_decay, const MT epsilon, const MT rescale_grad,
-    const int repeat_times, const int thresh, const int64_t numel,
+    const int repeat_times, int thresh, const int64_t numel,
     const bool is_amp) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
@@ -326,7 +324,7 @@ __global__ void MomentumLarsKernel(
                       rescale_grad, gridDim.x, &param_norm, &grad_norm);
 #else
   __shared__ MT s_buffer[2];
-  const MT rescale_grad_pow = rescale_grad * rescale_grad;
+  const MT rescale_pow = rescale_grad * rescale_grad;
   MT param_part_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
   MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   MT tmp0 = math::blockReduceSum<MT>(param_part_norm, FINAL_MASK);
@@ -347,10 +345,10 @@ __global__ void MomentumLarsKernel(
 template <typename T, typename MT>
 inline void SeparatedLarsMomentumOpCUDAKernel(
     const platform::CUDADeviceContext& cuda_ctx, T* param_data,
-    MT* velocity_data, const T* grad_data, const MT* lr, MT* p_buffer,
-    MT* g_buffer, const MT mu, const MT lars_coeff, const MT weight_decay,
-    const MT epsilon, const MT rescale_grad, const int64_t numel,
-    const MT* master_param_data, const bool is_amp) {
+    MT* velocity_data, const T* grad_data, MT* master_param_data, const MT* lr,
+    MT* p_buffer, MT* g_buffer, const MT mu, const MT lars_coeff,
+    const MT weight_decay, const MT epsilon, const MT rescale_grad,
+    const int64_t numel, const bool is_amp) {
   LarsThreadConfig<T> lars_thread_config(numel);
   L2NormKernel<T, MT><<<lars_thread_config.grid_for_norm, LARS_BLOCK_SIZE, 0,
                         cuda_ctx.stream()>>>(
@@ -429,6 +427,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           MergedMomentumLarsKernel<T, MT, decltype(lars_warpper)>,
           LARS_BLOCK_SIZE, sizeof(MT) << 1);
 
+      VLOG(10) << "Num of ops merged in lars_warpper is " << lars_warpper.kNum;
+
       int merge_times = (op_num + lars_warpper.kNum - 1) / lars_warpper.kNum;
       for (int j = 0; j < merge_times; ++j) {
         size_t total_numel = 0;
@@ -471,10 +471,12 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
                 MergedMomentumLarsKernel<T, MT, decltype(lars_warpper)>),
             lars_thread_config.grid_for_lars, LARS_BLOCK_SIZE, cuda_param, 0,
             cuda_ctx.stream());
+
+        VLOG(10) << "Lanuched ops number is " << loop_num;
       }
     } else {
-      auto* param_data = param[0]->data<T>();
       auto* grad_data = grad[0]->data<T>();
+      auto* param_data = param_out[0]->data<T>();
       auto* velocity_data = velocity_out[0]->data<MT>();
       auto* lr = learning_rate[0]->data<MT>();
       const MT* master_param_data =
@@ -516,13 +518,13 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     }
 #else
     for (int i = 0; i < op_num; ++i) {
-      const MT* master_param_data =
+      MT* master_param_data =
           multi_precision ? master_param_out[i]->data<MT>() : nullptr;
       SeparatedLarsMomentumOpCUDAKernel<T, MT>(
           cuda_ctx, param_out[i]->data<T>(), velocity_out[i]->data<MT>(),
-          grad[i]->data<T>(), lr, p_buffer, g_buffer, mu, lars_coeff,
-          weight_decay_arr[i], epsilon, rescale_grad, param[i]->numel(),
-          master_param_data, multi_precision);
+          grad[i]->data<T>(), master_param_data, lr, p_buffer, g_buffer, mu,
+          lars_coeff, weight_decay_arr[i], epsilon, rescale_grad,
+          param[i]->numel(), multi_precision);
     }
 #endif
   }
