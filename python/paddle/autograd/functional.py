@@ -12,9 +12,228 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import framework
-from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
+import contextlib
 import paddle
+from ..fluid import framework
+from ..fluid.dygraph import grad
+from ..tensor.creation import assign
+from ..tensor import reshape, zeros_like, to_tensor
+from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
+
+
+@contextlib.contextmanager
+def gradient_scope(*var_lists, create_graph=False, allow_unused=False):
+    def grad_fn(ys, xs, v, create_graph=create_graph):
+        assert len(ys) == len(v), (
+            f'`v` is expected to be of the same size as the output. '
+            f'Here the output is {ys}, and `v` is {v}.')
+        if allow_unused:
+            ys = [
+                to_tensor(
+                    [0.0], stop_gradient=False) if y is None else y for y in ys
+            ]
+        return grad(
+            ys, xs, v, create_graph=create_graph, allow_unused=allow_unused)
+
+    def return_fn(out):
+        if isinstance(out, paddle.Tensor):
+            if not create_graph:
+                out = out.detach()
+            return out
+        if isinstance(out, list):
+            return list(return_fn(x) for x in out)
+        elif isinstance(out, tuple):
+            return tuple(return_fn(x) for x in out)
+        else:
+            assert out is None
+            return out
+
+    def process(vl):
+        out = []
+        # If v is treated as constant in the outer scope, its gradient is guaranteed
+        # not to be taken beyond this scope. Within this scope, however, v's gradient
+        # may be computed. We only need to detach v in this case.
+        # Otherwise, v's gradient is valid, and is subject to update beyond this scope.
+        # In this case we must not confuse the gradient in the outer scope with the
+        # inner one's. Moreover, we need to make sure that the result from the inner
+        # scope can flow back to the outer scope. This can be satisfied by extending
+        # the original variable with a duplication operation v1 = v so that v still
+        # maintains the complete lineage.
+        for v in vl:
+            if v is None:
+                out.append(v)
+                continue
+            if create_graph and not v.stop_gradient:
+                v = assign(v)
+            else:
+                v = v.detach()
+                v.stop_gradient = False
+            out.append(v)
+        return out
+
+    try:
+        var_lists = [process(vl) for vl in var_lists]
+        bundle = var_lists + [grad_fn, return_fn]
+        yield bundle
+    finally:
+        pass
+
+
+@framework.dygraph_only
+def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
+    r"""Computes the Vector-Jacobian product, a functional form of
+    reverse mode automatic differentiation.
+
+    Args:
+        func(Callable): `func` takes as input a tensor or a list/tuple
+            of tensors and returns a tensor or a list/tuple of tensors.
+        inputs(list[Tensor]|tuple[Tensor]|Tensor): used as positional
+            arguments to evaluate `func`. `inputs` is accepted as one
+            tensor or a list of tensors.
+        v(list[Tensor]|tuple[Tensor]|Tensor|None, optional): the
+            cotangent vector invovled in the VJP computation. `v` matches
+            the size and shape of `func`'s output. Default value is None
+            and in this case is equivalent to all ones the same size
+            of `func`'s output.
+        create_graph(bool, optional): if `True`, gradients can be
+            evaluated on the results. If `False`, taking gradients on
+            the results is invalid. Default value is False.
+        allow_unused(bool, optional): In case that some Tensors of
+            `inputs` do not contribute to the computation of the output.
+            If `allow_unused` is False, an error will be raised,
+            Otherwise, the gradients of the said inputs are returned
+            None. Default value is False.
+
+    Returns:
+        output(tuple):
+            func_out(list[Tensor]|tuple[Tensor]|Tensor): the output of
+                `func(inputs)`
+            vjp(list[Tensor]): the pullback results of `v` on `func`
+
+    Examples:
+      .. code-block:: python
+
+        def func(x):
+          return paddle.matmul(x, x)
+
+        x = paddle.ones(shape=[2, 2], dtype='float32')
+        output, inputs_grad = vjp(func, x)
+        print(inputs_grad)
+        # [Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [[4., 4.],
+        #         [4., 4.]])]
+
+        v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
+        output, inputs_grad = vjp(func, x, v)
+        print(inputs_grad)
+        # [Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [[2., 1.],
+        #         [1., 0.]])]
+
+        output, inputs_grad = vjp(func, x, v, create_graph=True)
+        print(inputs_grad)
+        # [Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+        #        [[2., 1.],
+        #         [1., 0.]])]
+
+        y = paddle.ones(shape=[2, 2], dtype='float32')
+        def func_unused(x, y):
+          return paddle.matmul(x, x)
+
+        output, inputs_grad = vjp(func, [x, y], v)
+        # ValueError: (InvalidArgument) The 1-th input does not appear in the backward graph. 
+        # Please check the input variable or set allow_unused=True to get None result.
+        # [Hint: Expected allow_unused_ == true, but received allow_unused_:0 != true:1.]     
+
+        output, inputs_grad = vjp(func, [x, y], v, allow_unused=True)
+        print(inputs_grad)
+        # [Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [[2., 1.],
+        #         [1., 0.]]), None]
+    """
+    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
+
+    with gradient_scope(
+            xs, v, create_graph=create_graph,
+            allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
+        outputs = func(*xs)
+        ys = _tensors(outputs, "outputs")
+        grads = grad_fn(ys, xs, v)
+        outputs, grads = return_fn(outputs), return_fn(grads)
+
+    return outputs, grads
+
+
+@framework.dygraph_only
+def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
+    r"""
+    Computes the Jacobian-Vector product for a function at the given
+    inputs and a vector in the tangent space induced by the inputs.
+
+    .. note::
+        **This API is ONLY available in imperative mode.**
+
+    Args:
+        func(Callable): `func` takes as input a tensor or a list/tuple
+            of tensors and returns a tensor or a list/tuple of tensors.
+        inputs(list[Tensor]|tuple[Tensor]|Tensor): used as positional
+            arguments to evaluate `func`. `inputs` is accepted as one
+            tensor or a list/tuple of tensors.
+        v(list[Tensor]|tuple[Tensor]|Tensor|None, optional): the
+            tangent vector invovled in the JVP computation. `v` matches
+            the size and shape of `inputs`. `v` is Optional if `func`
+            returns a single tensor. Default value is None and in this
+            case is equivalent to all ones the same size of `inputs`.
+        create_graph(bool, optional): if `True`, gradients can
+            be evaluated on the results. If `False`, taking gradients
+            on the results is invalid. Default value is False.
+        allow_unused(bool, optional): In case that some Tensors of
+            `inputs` do not contribute to the computation of the output.
+            If `allow_unused` is False, an error will be raised,
+            Otherwise, the gradients of the said inputs are returned
+            None. Default value is False.
+
+    Returns:
+        output(tuple):
+            func_out(list[Tensor]|tuple[Tensor]|Tensor): the output of
+                `func(inputs)`
+            jvp(list[Tensor]): the pullback results of `v` on `func`
+
+    Examples:
+    .. code-block:: python
+
+        def func(x):
+          return paddle.matmul(x, x)
+
+        x = paddle.ones(shape=[2, 2], dtype='float32')
+
+        output, inputs_grad = jvp(func, x)
+        print(inputs_grad)
+        # [Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [[2., 2.],
+        #         [2., 2.]])]
+
+        v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
+        output, inputs_grad = vjp(func, x, v)
+        print(inputs_grad)
+        # [Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [[1., 1.],
+        #         [0., 0.]])]
+
+    """
+    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
+
+    with gradient_scope(
+            xs, v, create_graph=create_graph,
+            allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
+        outputs = func(*xs)
+        ys = _tensors(outputs, "outputs")
+        ys_grad = [zeros_like(y) for y in ys]
+        xs_grad = grad_fn(ys, xs, ys_grad, create_graph=True)
+        ys_grad = grad_fn(xs_grad, ys_grad, v)
+        outputs, ys_grad = return_fn(outputs), return_fn(ys_grad)
+
+    return outputs, ys_grad
 
 
 @framework.dygraph_only
@@ -60,7 +279,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x):
                 return paddle.matmul(x, x)
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             jacobian = paddle.autograd.jacobian(func, x)
@@ -78,7 +297,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x, y):
                 return paddle.matmul(x, y)
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             y = paddle.ones(shape=[2, 2], dtype='float32') * 2
             x.stop_gradient = False
@@ -127,18 +346,16 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
             #         [0., 0., 0., 2.]]), None))
 
     '''
-    inputs = _check_tensors(inputs, "inputs")
-    outputs = _check_tensors(func(*inputs), "outputs")
+    inputs = _tensors(inputs, "inputs")
+    outputs = _tensors(func(*inputs), "outputs")
     fin_size = len(inputs)
     fout_size = len(outputs)
-    flat_outputs = tuple(
-        paddle.reshape(
-            output, shape=[-1]) for output in outputs)
+    flat_outputs = tuple(reshape(output, shape=[-1]) for output in outputs)
     jacobian = tuple()
     for i, flat_output in enumerate(flat_outputs):
         jac_i = list([] for _ in range(fin_size))
         for k in range(len(flat_output)):
-            row_k = paddle.grad(
+            row_k = grad(
                 flat_output[k],
                 inputs,
                 create_graph=create_graph,
@@ -146,7 +363,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
                 allow_unused=allow_unused)
             for j in range(fin_size):
                 jac_i[j].append(
-                    paddle.reshape(
+                    reshape(
                         row_k[j], shape=[-1])
                     if isinstance(row_k[j], paddle.Tensor) else None)
         jacobian += (tuple(
@@ -266,14 +483,14 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
             #         [0., 1., 1., 2.]]), None), (None, None))
 
     '''
-    inputs = _check_tensors(inputs, "inputs")
+    inputs = _tensors(inputs, "inputs")
     outputs = func(*inputs)
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
     ], "The function to compute Hessian matrix should return a Tensor with a single element"
 
     def jac_func(*ins):
-        grad_inputs = paddle.grad(
+        grad_inputs = grad(
             outputs,
             ins,
             create_graph=True,

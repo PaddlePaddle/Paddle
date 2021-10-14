@@ -54,25 +54,7 @@ def attach_error_data(error, in_runtime=False):
 
     setattr(error, ERROR_DATA, error_data)
 
-    remove_static_file()
     return error
-
-
-def remove_static_file():
-    """
-    Removes temporary files created during the transformation of dygraph to static graph.
-    """
-    del_files = set()
-    for loc in global_origin_info_map:
-        static_filepath = loc[0]
-        del_files.add(static_filepath)
-
-        filename, extension = os.path.splitext(static_filepath)
-        del_files.add(filename + ".pyc")
-
-    for filepath in del_files:
-        if os.path.exists(filepath):
-            os.remove(filepath)
 
 
 class TraceBackFrame(OriginInfo):
