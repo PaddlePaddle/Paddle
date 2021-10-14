@@ -287,7 +287,6 @@ def grad_check(x,
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
         for xi in x
     ]
-
     # [y_idx, x_idx]
     analytical = []
     for yi in y:
@@ -304,7 +303,6 @@ def grad_check(x,
                 if b.has_var(xi.name):
                     clone_x.append(b.var(xi.name))
                     break
-
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
@@ -317,6 +315,7 @@ def grad_check(x,
                   'with respect to input %s on %s,\n' \
                   'numerical:%s\nanalytical:%s\n' \
                   % (y[y_idx].name, x[x_idx].name, str(place), n, a)
+            print("msg:", msg)
             return fail_test(msg)
     return True
 
@@ -389,7 +388,6 @@ def double_grad_check(x,
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init
-
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
 
 
@@ -482,12 +480,13 @@ def triple_grad_check(x,
             var_to_np_array_in_scope(scope, place, v.name)
             for v in x_grads_grads
         ]
-    # append second order grads
-    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
 
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init
+
+    # append second order grads
+    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
 
     x += x_grads_grads
     x_init += x_grads_grads_init
