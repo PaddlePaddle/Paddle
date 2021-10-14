@@ -91,5 +91,6 @@ if(WITH_ASCEND_CL)
 	  CANN_VERSION "${CANN_VERSION_FILE_CONTENTS}")
   if("${CANN_VERSION}" EQUAL "5.0.3.alpha003")
       add_definitions(-DPADDLE_WITH_ASCEND_VERSION_503_alpha3)
+  endif()
 
 endif()
