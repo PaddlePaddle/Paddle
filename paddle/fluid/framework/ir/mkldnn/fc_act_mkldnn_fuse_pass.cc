@@ -68,9 +68,9 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
       bool approximate = BOOST_GET_CONST(bool, act_op->GetAttr("approximate"));
       std::string type = approximate ? "_tanh" : "_erf";
       fc_op->SetAttr("activation_type", act_type + type);
-    } else
+    } else {
       fc_op->SetAttr("activation_type", act_type);
-
+    }
     fc_op->SetAttr("use_mkldnn", true);
 
     fc_op->SetOutput("Out", {act_out->Name()});
@@ -82,8 +82,9 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
 
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
-  PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
-                  act_type);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
+                    act_type);
 }
 
 }  // namespace ir

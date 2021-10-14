@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 import numpy as np
 
@@ -70,6 +69,9 @@ class TestVisonModels(unittest.TestCase):
 
     def test_resnet152(self):
         self.models_infer('resnet152')
+
+    def test_alexnet(self):
+        self.models_infer('alexnet')
 
     def test_densenet121(self):
         self.models_infer("densenet121")

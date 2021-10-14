@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
@@ -196,28 +197,9 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                     config.thread_per_block.x * vec_size) +
                    1) *
                   vec_size;
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()).GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
-    if ((seed) && platform::is_gpu_place(seed->place())) {
-      framework::Tensor seed_cpu_tensor;
-      TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
-      seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
-      increment = offset;
-    } else if (gen_cuda->GetIsInitPy() && (!is_fix_seed)) {
-      auto seed_offset = gen_cuda->IncrementOffset(offset);
-      seed_data = seed_offset.first;
-      increment = seed_offset.second;
-    } else {
-      if (seed) {
-        seed_data = *(seed->data<int>());
-      } else {
-        std::random_device rnd;
-        seed_data = is_fix_seed ? seed_val : rnd();
-      }
-      increment = offset;
-    }
+    GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
+                            &seed_data, &increment);
 
 #ifdef __HIPCC__
     if (vec_size == 4 && size % 4 == 0) {

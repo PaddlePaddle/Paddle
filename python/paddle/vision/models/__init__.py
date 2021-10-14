@@ -28,11 +28,14 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
+
 from .densenet import DenseNet  # noqa: F401
 from .densenet import densenet121  # noqa: F401
 from .densenet import densenet161  # noqa: F401
 from .densenet import densenet169  # noqa: F401
 from .densenet import densenet201  # noqa: F401
+from .alexnet import AlexNet  # noqa: F401
+from .alexnet import alexnet  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -51,6 +54,8 @@ __all__ = [ #noqa
     'MobileNetV2',
     'mobilenet_v2',
     'LeNet',
+    'AlexNet',
+    'alexnet'
     'DenseNet',
     'densenet121',
     'densenet161',

@@ -15,6 +15,8 @@
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
@@ -23,68 +25,133 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    'densenet121': ('', ''),
-    'densenet161': ('', ''),
-    'densenet169': ('', ''),
-    'densenet201': ('', '')
+    'densenet121':
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet121_pretrained.pdparams',
+     'db1b239ed80a905290fd8b01d3af08e4'),
+    'densenet161':
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet161_pretrained.pdparams',
+     '62158869cb315098bd25ddbfd308a853'),
+    'densenet169':
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet169_pretrained.pdparams',
+     '82cc7c635c3f19098c748850efb2d796'),
+    'densenet201':
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet161_pretrained.pdparams',
+     '16ca29565a7712329cf9e36e02caaf58')
 }
 
 
-class _DenseLayer(nn.Sequential):
-    def __init__(self, num_input_features, growth_rate, bn_size, drop_rate):
-        super(_DenseLayer, self).__init__()
-        self.add_sublayer('norm1', nn.BatchNorm2D(num_input_features)),
-        self.add_sublayer('relu1', nn.ReLU()),
-        self.add_sublayer(
-            'conv1',
-            nn.Conv2D(
-                num_input_features,
-                bn_size * growth_rate,
-                kernel_size=1,
-                stride=1)),
-        self.add_sublayer('norm2', nn.BatchNorm2D(bn_size * growth_rate)),
-        self.add_sublayer('relu2', nn.ReLU()),
-        self.add_sublayer(
-            'conv2',
-            nn.Conv2D(
-                bn_size * growth_rate,
-                growth_rate,
-                kernel_size=3,
-                stride=1,
-                padding=1)),
-        self.drop_rate = drop_rate
+class BNConvLayer(nn.Layer):
+    def __init__(self,
+                 num_input_features,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 pad=0,
+                 groups=1,
+                 act="relu"):
+        super(BNConvLayer, self).__init__()
+
+        self._batch_norm = nn.BatchNorm(num_input_features, act=act)
+
+        self._conv = nn.Conv2D(
+            in_channels=num_input_features,
+            out_channels=num_filters,
+            kernel_size=filter_size,
+            stride=stride,
+            padding=pad,
+            groups=groups,
+            bias_attr=False)
 
     def forward(self, x):
-        new_features = super(_DenseLayer, self).forward(x)
+        out = self._batch_norm(x)
+        out = self._conv(out)
+        return out
+
+
+class _DenseLayer(nn.Layer):
+    def __init__(self, num_input_features, growth_rate, bn_size,
+                 drop_rate=None):
+        super(_DenseLayer, self).__init__()
+        self.bn_ac_func1 = BNConvLayer(
+            num_input_features=num_input_features,
+            num_filters=bn_size * growth_rate,
+            filter_size=1,
+            pad=0,
+            stride=1)
+
+        self.bn_ac_func2 = BNConvLayer(
+            num_input_features=bn_size * growth_rate,
+            num_filters=growth_rate,
+            filter_size=3,
+            pad=1,
+            stride=1)
+
+        self.drop_rate = drop_rate
+        if self.drop_rate:
+            self.dropout_func = nn.Dropout(
+                p=self.drop_rate, mode="downscale_in_infer")
+
+    def forward(self, x):
+        new_features = self.bn_ac_func1(x)
+        out = self.bn_ac_func2(new_features)
         if self.drop_rate > 0:
-            new_features = nn.Dropout(
-                new_features, p=self.drop_rate, training=self.training)
-        return fluid.layers.concat([x, new_features], axis=1)
+            out = self.dropout_func(out)
+        out = paddle.concat([x, out], axis=1)
+        return out
 
 
 class _DenseBlock(nn.Sequential):
-    def __init__(self, num_layers, num_input_features, bn_size, growth_rate,
-                 drop_rate):
+    def __init__(self,
+                 num_layers,
+                 num_input_features,
+                 bn_size,
+                 growth_rate,
+                 drop_rate,
+                 name=None):
         super(_DenseBlock, self).__init__()
         for i in range(num_layers):
             layer = _DenseLayer(num_input_features + i * growth_rate,
                                 growth_rate, bn_size, drop_rate)
-            self.add_sublayer('denselayer%d' % (i + 1), layer)
+            self.add_sublayer("{}_{}".format(name, i + 1), layer)
 
 
 class _Transition(nn.Sequential):
     def __init__(self, num_input_features, num_output_features):
         super(_Transition, self).__init__()
-        self.add_sublayer('norm', nn.BatchNorm2D(num_input_features))
-        self.add_sublayer('relu', nn.ReLU())
-        self.add_sublayer(
-            'conv',
-            nn.Conv2D(
-                num_input_features,
-                num_output_features,
-                kernel_size=1,
-                stride=1))
-        self.add_sublayer('pool', nn.AvgPool2D(kernel_size=2, stride=2))
+        self.conv_ac_func = BNConvLayer(
+            num_input_features=num_input_features,
+            num_filters=num_output_features,
+            filter_size=1,
+            pad=0,
+            stride=1)
+        self.pool2d_avg = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
+
+
+class ConvBNLayer(nn.Layer):
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 pad=0,
+                 groups=1,
+                 act="relu"):
+        super(ConvBNLayer, self).__init__()
+
+        self._conv = nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
+            stride=stride,
+            padding=pad,
+            groups=groups,
+            bias_attr=False)
+        self._batch_norm = nn.BatchNorm(num_filters, act=act)
+
+    def forward(self, input):
+        y = self._conv(input)
+        y = self._batch_norm(y)
+        return y
 
 
 class DenseNet(nn.Layer):
@@ -98,6 +165,7 @@ class DenseNet(nn.Layer):
         bn_size (int) - multiplicative factor for number of bottle neck layers
         drop_rate (float) - dropout rate after each dense layer
         num_classes (int) - number of classification classes
+        with_pool (bool) - use pool before the last fc layer or not
 
     Examples:
     .. code-block:: python
@@ -115,43 +183,76 @@ class DenseNet(nn.Layer):
                  num_init_features=64,
                  bn_size=4,
                  drop_rate=0,
-                 num_classes=1000):
+                 num_classes=1000,
+                 with_pool=True):
 
         super(DenseNet, self).__init__()
-
-        self.features = nn.Sequential(
-            nn.Conv2D(
-                3, num_init_features, kernel_size=7, stride=2, padding=3),
-            nn.BatchNorm2D(num_init_features),
-            nn.ReLU(),
-            nn.MaxPool2D(
-                kernel_size=3, stride=2, padding=1), )
+        self.conv1_func = ConvBNLayer(
+            num_channels=3,
+            num_filters=num_init_features,
+            filter_size=7,
+            stride=2,
+            pad=3,
+            act='relu')
+        self.pool2d_max = nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         num_features = num_init_features
+
+        self.block_config = block_config
+
+        self.dense_blocks = []
+        self.transition_layers = []
+
         for i, num_layers in enumerate(block_config):
-            block = _DenseBlock(
-                num_layers=num_layers,
-                num_input_features=num_features,
-                bn_size=bn_size,
-                growth_rate=growth_rate,
-                drop_rate=drop_rate)
-            self.features.add_sublayer('denseblock%d' % (i + 1), block)
+            self.dense_blocks.append(
+                self.add_sublayer(
+                    "db_conv_{}".format(i + 2),
+                    _DenseBlock(
+                        num_layers=num_layers,
+                        num_input_features=num_features,
+                        bn_size=bn_size,
+                        growth_rate=growth_rate,
+                        drop_rate=drop_rate,
+                        name='conv' + str(i + 2))))
             num_features = num_features + num_layers * growth_rate
             if i != len(block_config) - 1:
-                trans = _Transition(
-                    num_input_features=num_features,
-                    num_output_features=num_features // 2)
-                self.features.add_sublayer('transition%d' % (i + 1), trans)
+                self.transition_layers.append(
+                    self.add_sublayer(
+                        "tr_conv{}_blk".format(i + 2),
+                        _Transition(
+                            num_input_features=num_features,
+                            num_output_features=num_features // 2)))
                 num_features = num_features // 2
-        self.features.add_sublayer('norm5', nn.BatchNorm2D(num_features))
-        self.classifier = nn.Linear(num_features, num_classes)
+
+        self.batch_norm = nn.BatchNorm(num_features, act="relu")
+        # self.features.add_sublayer('norm5', nn.BatchNorm2D(num_features))
+        self.with_pool = with_pool
+        if with_pool:
+            self.pool2d_avg = nn.AdaptiveAvgPool2D((1, 1))
+        self.num_classes = num_classes
+        if num_classes > 0:
+            stdv = 1.0 / np.sqrt(num_features * 1.0)
+            self.out = nn.Linear(
+                num_features,
+                num_classes,
+                weight_attr=paddle.ParamAttr(
+                    initializer=nn.initializer.Uniform(-stdv, stdv)))
 
     def forward(self, x):
-        features = self.features(x)
-        out = nn.ReLU(features, )
-        out = nn.AvgPool2D(
-            out, kernel_size=7, stride=1).view(features.size(0), -1)
-        out = self.classifier(out)
+        conv = self.conv1_func(x)
+        conv = self.pool2d_max(conv)
+
+        for i, num_layers in enumerate(self.block_config):
+            conv = self.dense_blocks[i](conv)
+            if i != len(self.block_config) - 1:
+                conv = self.transition_layers[i](conv)
+
+        conv = self.batch_norm(conv)
+        if self.with_pool:
+            out = self.pool2d_avg(conv)
+        if self.num_classes > 0:
+            out = paddle.flatten(out, 1)
+            out = self.out(out)
         return out
 
 
@@ -163,9 +264,8 @@ def _densenet(arch, block_cfg, pretrained, **kwargs):
             arch)
         weight_path = get_weights_path_from_url(model_urls[arch][0],
                                                 model_urls[arch][1])
-
         param = paddle.load(weight_path)
-        model.load_dict(param)
+        model.set_dict(param)
     return model
 
 
@@ -184,7 +284,7 @@ def densenet121(pretrained=False, **kwargs):
         # build model
         model = densenet121()
     """
-    model_name = 'DenseNet121'
+    model_name = 'densenet121'
     return _densenet(model_name, (6, 12, 24, 16), pretrained, **kwargs)
 
 
@@ -203,8 +303,8 @@ def densenet161(pretrained=False, **kwargs):
         # build model
         model = densenet161()
     """
-    model_name = 'DenseNet161'
-    return _densenet(model_name, (6, 12, 32, 32), pretrained, **kwargs)
+    model_name = 'densenet161'
+    return _densenet(model_name, [6, 12, 36, 24], pretrained, **kwargs)
 
 
 def densenet169(pretrained=False, **kwargs):
@@ -222,8 +322,8 @@ def densenet169(pretrained=False, **kwargs):
         # build model
         model = densenet169()
     """
-    model_name = 'DenseNet169'
-    return _densenet(model_name, (6, 12, 48, 32), pretrained, **kwargs)
+    model_name = 'densenet169'
+    return _densenet(model_name, [6, 12, 32, 32], pretrained, **kwargs)
 
 
 def densenet201(pretrained=False, **kwargs):
@@ -241,5 +341,5 @@ def densenet201(pretrained=False, **kwargs):
         # build model
         model = densenet201()
     """
-    model_name = 'DenseNet201'
-    return _densenet(model_name, (6, 12, 64, 48), pretrained, **kwargs)
+    model_name = 'densenet201'
+    return _densenet(model_name, [6, 12, 48, 32], pretrained, **kwargs)

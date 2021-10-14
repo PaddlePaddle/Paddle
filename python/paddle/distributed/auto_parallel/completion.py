@@ -23,6 +23,7 @@ from .utils import compute_compatible_dims_mapping
 from .utils import print_program_with_distributed_attr
 from .context import get_default_distributed_context
 from .operators import find_best_compatible_distributed_operator_impl
+from .attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 
 ELEMENTWISE_LIKE_OP_LIST = ["elementwise_add", "gelu", "dropout", "cast"]
 
@@ -597,3 +598,172 @@ def complete_annotation(program, dist_context=None):
     dist_context.amend_distributed_attr_for_program()
 
     return program
+
+
+def complete_backward_annotation(auto_parallel_main_prog, dist_context):
+    """Complete the annotation of vars and ops in the backward phase for parallel program."""
+
+    def _is_grad_var_name(name):
+        if "@GRAD" in name:
+            return True
+        return False
+
+    grad_start_idx = None
+    for idx, op in enumerate(auto_parallel_main_prog.global_block().ops):
+        for var_name in op.output_arg_names:
+            # TODO: use _is_loss_op to judge
+            if "@GRAD" in var_name and op.type == "fill_constant":
+                grad_start_idx = idx
+                break
+    assert grad_start_idx is not None, "No backward procedure found in this program."
+
+    ops = list(auto_parallel_main_prog.global_block().ops)
+    vars = auto_parallel_main_prog.global_block().vars
+    for idx in range(grad_start_idx, len(ops)):
+        # complete the loss op
+        if idx == grad_start_idx:
+            grad_var = vars[ops[idx].output_arg_names[0]]
+            grad_var_name = grad_var.name
+            forward_var_name = grad_var_name[:grad_var_name.find("@GRAD")]
+            forward_var = vars[forward_var_name]
+            tensor_attr = TensorDistributedAttribute(grad_var, dist_context)
+            process_mesh = dist_context.get_tensor_distributed_attr_for_program(
+                forward_var).get_process_mesh()
+            dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                forward_var).get_dims_mapping()
+            tensor_attr.set_dims_mapping(dims_mapping)
+            tensor_attr.set_process_mesh(process_mesh)
+            dist_context.set_tensor_distributed_attr_for_program(grad_var,
+                                                                 tensor_attr)
+            op_attr = OperatorDistributedAttribute(ops[idx], dist_context)
+            op_attr.set_process_mesh(process_mesh)
+            dist_context.set_op_distributed_attr_for_program(ops[idx], op_attr)
+
+            # in the data parallel mode, the loss op followed by scale op.
+            if ops[idx + 1].type == "scale" and grad_var_name in ops[idx + 1].input_arg_names \
+                    and grad_var_name in ops[idx + 1].output_arg_names:
+                op_attr = OperatorDistributedAttribute(ops[idx + 1],
+                                                       dist_context)
+                op_attr.set_process_mesh(process_mesh)
+                dist_context.set_op_distributed_attr_for_program(ops[idx + 1],
+                                                                 op_attr)
+            continue
+
+        # complete the annotation of the optimizer op.
+        # TODO: use _is_optimizer_op to judge
+        if "Grad" in ops[idx].input_names and "Param" in ops[idx].input_names:
+            assert len(ops[idx].input(
+                "Param")) == 1, "Only support one-to-one now."
+            assert len(ops[idx].input(
+                "Grad")) == 1, "Only support one-to-one now."
+            var = vars[ops[idx].input("Param")[0]]
+            grad_var = vars[ops[idx].input("Grad")[0]]
+            process_mesh = dist_context.get_tensor_distributed_attr_for_program(
+                var).get_process_mesh()
+            dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                var).get_dims_mapping()
+            op_attr = OperatorDistributedAttribute(ops[idx], dist_context)
+            op_attr.set_process_mesh(process_mesh)
+            op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
+            dist_context.set_op_distributed_attr_for_program(ops[idx], op_attr)
+            continue
+
+        # complete the c_allreduce_sum op for gradient in the data parallel mode.
+        if ops[idx].type == "c_allreduce_sum" and ops[
+                idx].input_arg_names == ops[idx].output_arg_names:
+            grad_var = vars[ops[idx].output_arg_names[0]]
+            op_attr = OperatorDistributedAttribute(ops[idx], dist_context)
+            process_mesh = dist_context.get_tensor_distributed_attr_for_program(
+                grad_var).get_process_mesh()
+            op_attr.set_process_mesh(process_mesh)
+            dist_context.set_op_distributed_attr_for_program(ops[idx], op_attr)
+            continue
+
+        # complete the annotation of grad op
+        grad_op = ops[idx]
+        for i, op in enumerate(ops[:grad_start_idx]):
+            match_op = None
+            grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
+                                                                      set(),
+                                                                      [])
+            grad_op_input = []
+            for input_arg_name in grad_op.desc.input_arg_names():
+                if "@GRAD" in input_arg_name:
+                    name = input_arg_name[:input_arg_name.find("@GRAD") + 5]
+                    grad_op_input.append(name)
+                else:
+                    grad_op_input.append(input_arg_name)
+
+            # like sum op: the count of grad op will larger than 1
+            if len(grad_op_desc_list) > 1:
+                for grad_op_desc in grad_op_desc_list:
+                    if grad_op_input == grad_op_desc.input_arg_names() \
+                            and grad_op.desc.type() == grad_op_desc.type():
+                        match_op = op
+                        break
+            elif len(grad_op_desc_list) == 1:
+                if grad_op_input == grad_op_desc_list[0].input_arg_names() \
+                        and grad_op.desc.type() == grad_op_desc_list[0].type():
+                    match_op = op
+
+            if match_op is not None:
+                op_attr = dist_context.get_op_distributed_attr_for_program(op)
+                grad_op_attr = OperatorDistributedAttribute(grad_op,
+                                                            dist_context)
+                grad_op_attr.set_process_mesh(op_attr.get_process_mesh())
+                for var_name in grad_op.input_arg_names:
+                    if "@GRAD" in var_name:
+                        dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                            vars[var_name]).get_dims_mapping()
+                        grad_op_attr.set_input_dims_mapping(var_name,
+                                                            dims_mapping)
+                    else:
+                        dims_mapping = op_attr.get_input_dims_mapping(var_name)
+                        grad_op_attr.set_input_dims_mapping(var_name,
+                                                            dims_mapping)
+                dist_context.set_op_distributed_attr_for_program(grad_op,
+                                                                 grad_op_attr)
+
+                for var_name in grad_op.output_arg_names:
+                    if "@GRAD" in var_name:
+                        forward_var = vars[var_name[:var_name.find("@GRAD")]]
+                        tensor_attr = TensorDistributedAttribute(vars[var_name],
+                                                                 dist_context)
+                        process_mesh = grad_op_attr.get_process_mesh()
+                        dims_mapping = grad_op_attr.get_input_dims_mapping(
+                            forward_var.name)
+                        tensor_attr.set_process_mesh(process_mesh)
+                        tensor_attr.set_dims_mapping(dims_mapping)
+                        dist_context.set_tensor_distributed_attr_for_program(
+                            vars[var_name], tensor_attr)
+                break
+
+        # complete the annotation of sum op for multiple renamed grad var
+        if grad_op.type == "sum" and all(
+                map(_is_grad_var_name, grad_op.input_arg_names)):
+            assert len(grad_op.output_arg_names
+                       ) == 1, "The output count of sum op should be one."
+            grad_op_attr = OperatorDistributedAttribute(grad_op, dist_context)
+            for var_name in grad_op.input_arg_names:
+                if "@GRAD" in var_name:
+                    forward_var = vars[var_name[:var_name.find("@GRAD")]]
+                    dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                        forward_var).get_dims_mapping()
+                    grad_op_attr.set_input_dims_mapping(var_name, dims_mapping)
+            for var_name in grad_op.output_arg_names:
+                forward_var = vars[var_name[:var_name.find("@GRAD")]]
+                tensor_attr = TensorDistributedAttribute(vars[var_name],
+                                                         dist_context)
+                process_mesh = dist_context.get_tensor_distributed_attr_for_program(
+                    forward_var).get_process_mesh()
+                dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                    forward_var).get_dims_mapping()
+                tensor_attr.set_dims_mapping(dims_mapping)
+                tensor_attr.set_process_mesh(process_mesh)
+                dist_context.set_tensor_distributed_attr_for_program(
+                    vars[var_name], tensor_attr)
+                grad_op_attr.set_process_mesh(
+                    dist_context.get_tensor_distributed_attr_for_program(
+                        forward_var).get_process_mesh())
+            dist_context.set_op_distributed_attr_for_program(grad_op,
+                                                             grad_op_attr)

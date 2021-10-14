@@ -49,6 +49,8 @@ from .models import densenet161  # noqa: F401
 from .models import densenet169  # noqa: F401
 from .models import densenet201  # noqa: F401
 from .models import LeNet  # noqa: F401
+from .models import AlexNet  # noqa: F401
+from .models import alexnet  # noqa: F401
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
 from .transforms import Resize  # noqa: F401
