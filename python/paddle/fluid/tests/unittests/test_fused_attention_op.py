@@ -24,15 +24,15 @@ from paddle.nn.layer.transformer import _convert_attention_mask
 from paddle import tensor
 from paddle.fluid import layers
 import unittest
+from op_test import OpTest
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
-class TestFusedAttentionOp(unittest.TestCase):
+class TestFusedAttentionOp(OpTest):
     def setUp(self):
         self.config()
         self.generate_input_data()
         paddle.set_default_dtype(self.x_type)
+        self.__class__.op_type = "fused_attention"
         self.q_proj = Linear(
             self.embed_dim,
             self.embed_dim,
@@ -206,8 +206,6 @@ class TestFusedAttentionOp(unittest.TestCase):
             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-5)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
 class TestFusedAttentionOpFp16(TestFusedAttentionOp):
     def config(self):
         self.x_type = np.float16
