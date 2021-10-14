@@ -46,12 +46,8 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
     if (place.device != dev_id) {
       int capable = 0;
-      auto result = cuDeviceCanAccessPeer(&capable, place.device, dev_id);
-      if (result != CUDA_SUCCESS) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "Call CUDA API cuDeviceCanAccessPeer faild, return %d.", result));
-        return;
-      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaDeviceCanAccessPeer(&capable, place.device, dev_id));
       if (!capable) {
         continue;
       }
