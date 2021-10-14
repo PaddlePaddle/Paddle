@@ -15,10 +15,9 @@
 #include "paddle/tcmpt/cuda/linalg.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
+#include "paddle/tcmpt/eigen/dot.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/complex.h"
 
 namespace pt {
@@ -28,22 +27,7 @@ void Dot(const CUDAContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          DenseTensor* out) {
-  out->mutable_data();
-  if (1 == out->dims().size()) {
-    auto eigen_out = paddle::framework::EigenScalar<T>::From(*out);
-    auto eigen_x = paddle::framework::EigenVector<T>::Flatten(x);
-    auto eigen_y = paddle::framework::EigenVector<T>::Flatten(y);
-
-    auto& dev = *dev_ctx.eigen_device();
-    eigen_out.device(dev) = (eigen_x * eigen_y).sum();
-  } else {
-    auto eigen_out = paddle::framework::EigenMatrix<T>::From(*out);
-    auto eigen_x = paddle::framework::EigenMatrix<T>::From(x);
-    auto eigen_y = paddle::framework::EigenMatrix<T>::From(y);
-
-    auto& dev = *dev_ctx.eigen_device();
-    eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
-  }
+  eigen::Dot<CUDAContext, T>(dev_ctx, x, y, out);
 }
 
 }  // namespace pt

@@ -1,4 +1,10 @@
-# TODO(chenweihang): keep message comment for debuging, remove it if needless
+# `kernel_instantiate` functionis used to declare the template instantiation of
+# the Kernel function generated through code analysis, only for windows
+# (because the windows platform msvc compiler cannot automatically instantiate
+# the template function through decltype)
+# TODO(chenweihang): keep message comment for debuging, it is still useful,
+# I will remove it if needless later
+
 function(kernel_instantiate TARGET)
     set(target_file ${CURRENT_BINARY_DIR}/${TARGET}.tmp CACHE INTERNAL "${CURRENT_BINARY_DIR}/${TARGET} file")
     set(target_file_final ${CURRENT_BINARY_DIR}/${TARGET})
@@ -36,7 +42,6 @@ function(kernel_instantiate TARGET)
     endforeach()
     # message(STATUS "INST CONTENT: ${instantiate_context}")
     file(APPEND ${target_file} "${instantiate_context}\n")
-    # copy_if_different(${target_file} ${target_file_final})
     string(REPLACE "." "_" cmd_name ${TARGET})
     # this is a dummy target for custom command, should always be run firstly to update ${target_file_final}
     # TODO(chenweihang): nameing rule need to enchance

@@ -1155,7 +1155,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
 
-  // VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
   if (FLAGS_use_pt_kernel &&
       pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
@@ -1263,17 +1262,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-static bool ContainSelectedRows(const VariableValueMap& inputs) {
-  for (auto& var_pair : inputs) {
-    for (auto* var : var_pair.second) {
-      if (var->IsType<SelectedRows>()) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 // TODO(chenweihang): now only check single var input
 static bool IsValidVar(const std::string& name,
                        const VariableValueMap& inputs) {
@@ -1303,9 +1291,6 @@ static pt::KernelName ConstructPtKernelName(const std::string& op_type,
                                             const VariableValueMap& inputs) {
   std::string overload_name;
   // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-  // if (ContainSelectedRows(inputs)) {
-  //   overload_name = pt::kContainSelectedRowsSuffix;
-  // }
   if (ContainHostTensor(op_proto, inputs)) {
     if (overload_name != "") {
       overload_name += ".";

@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-
 template <typename DeviceContext, typename T>
 class ScaleXPUKernel : public framework::OpKernel<T> {
  public:

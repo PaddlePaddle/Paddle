@@ -15,8 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/eigen/common.h"
 
-#include "paddle/fluid/framework/eigen.h"
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace pt {
@@ -50,7 +51,7 @@ void fill(const DeviceContext& context, DenseTensor* tensor, VType val) {
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(val)));
 
-  auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
+  auto t = pt::EigenVector<T>::Flatten(*tensor);
   t.device(*context.eigen_device()) = t.constant(static_cast<T>(val));
 }
 

@@ -1,5 +1,6 @@
 if(WIN32)
     set(CURRENT_BINARY_DIR ${PADDLE_BINARY_DIR}/paddle/tcmpt/cpu)
+    kernel_instantiate(creation.cc)
     kernel_instantiate(math.cc)
     kernel_instantiate(linalg.cc)
 endif()

@@ -117,7 +117,7 @@ function(find_fluid_modules TARGET_NAME)
 endfunction(find_fluid_modules)
 
 set_property(GLOBAL PROPERTY TCMPT_MODULES "")
-# find all top modules is used for paddle static library
+# find all tcmpt modules is used for paddle static library
 # for building inference libs
 function(find_tcmpt_modules TARGET_NAME)
   get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
