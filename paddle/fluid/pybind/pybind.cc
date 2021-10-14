@@ -3293,18 +3293,6 @@ All parameter, weight, gradient are variables in Paddle.
                    BOOST_GET(paddle::framework::FetchUnmergedList, ret)));
              }
            })
-      .def("run_from_cinn",
-           [](ParallelExecutor &self,
-              const std::unordered_map<std::string, LoDTensor> &feed_tensors,
-              const std::vector<std::string> &fetch_names) -> py::object {
-             paddle::framework::FetchResultType ret;
-             {
-               pybind11::gil_scoped_release release;
-               ret = self.RunFromCinn(feed_tensors, fetch_names);
-             }
-             return py::cast(
-                 std::move(BOOST_GET(paddle::framework::FetchList, ret)));
-           })
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
