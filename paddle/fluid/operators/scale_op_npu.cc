@@ -12,11 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/scale_op.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
