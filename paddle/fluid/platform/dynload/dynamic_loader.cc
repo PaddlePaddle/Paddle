@@ -524,7 +524,7 @@ void* GetCUFFTDsoHandle() {
 #endif
 }
 
-void* GetMKLDFTIDsoHandle() {
+void* GetMKLRTDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.dylib");
 #elif defined(_WIN32)

@@ -43,7 +43,7 @@ void* GetLAPACKDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
 void* GetNvtxDsoHandle();
 void* GetCUFFTDsoHandle();
-void* GetMKLDFTIDsoHandle();
+void* GetMKLRTDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
 }  // namespace dynload
