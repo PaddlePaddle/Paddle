@@ -17,6 +17,7 @@
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -358,6 +359,8 @@ void InterpreterCore::ExecuteInstructionList(
   async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
   op_run_number_ = 0;
 
+  exception_holder_.Clear();
+
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       async_work_queue_.AddTask(vec_instr[i].type_,
@@ -430,11 +433,29 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   auto& instr_node = vec_instruction_[instr_id];
-  platform::RecordEvent instruction_event(
-      instr_node.kernel_func_.operator_base_->Type());
-  event_manager_.WaitEvent(instr_node, place_);
+  auto* op = instr_node.kernel_func_.operator_base_;
+  platform::RecordEvent instruction_event(op->Type());
 
-  RunInstruction(instr_node);
+  event_manager_.WaitEvent(instr_node, place_);
+  try {
+    RunInstruction(instr_node);
+  } catch (platform::EnforceNotMet& ex) {
+    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+  } catch (platform::EOFException&) {
+    exception_holder_.Catch(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << op->Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::current_exception());
+  } catch (...) {
+    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    exception_holder_.Catch(std::current_exception());
+  }
+
+  if (UNLIKELY(!exception_holder_.IsCaught())) {
+    Notify();
+  }
 
   event_manager_.RecordEvent(instr_node, place_);
   op_run_number_.fetch_add(1, std::memory_order_relaxed);

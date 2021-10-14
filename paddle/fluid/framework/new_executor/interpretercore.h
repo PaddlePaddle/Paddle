@@ -34,6 +34,10 @@
 
 namespace paddle {
 namespace framework {
+namespace details {
+class ExceptionHolder;
+}  // namespace details
+
 using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
@@ -99,6 +103,8 @@ class InterpreterCore {
   InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   std::atomic<size_t> op_run_number_{0};
+
+  details::ExceptionHolder exception_holder_;
 };
 }  // namespace framework
 }  // namespace paddle
