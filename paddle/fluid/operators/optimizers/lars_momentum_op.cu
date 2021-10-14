@@ -247,7 +247,6 @@ __forceinline__ __device__ void MomentumUpdate(
 }
 
 #if CUDA_VERSION >= 11000
-
 template <typename MT, int kOpNum, typename T>
 struct MergedLarsMasterParam {
   DEVICE inline MT* GetMasterParam(size_t) const { return nullptr; }
@@ -270,7 +269,7 @@ template <typename T, typename MT,
 struct LarsParamWarpper : public MergedLarsMasterParam<MT, kOpNum, T> {
   static constexpr int kNum = kOpNum;
 
-  int64_t numel_arr[kOpNum];
+  int numel_arr[kOpNum];
   int repeat_arr[kOpNum];
   const T* __restrict__ g_arr[kOpNum];
   T* __restrict__ p_arr[kOpNum];
