@@ -1521,13 +1521,9 @@ class Fleet(object):
             # i.e. users can not modify current computation graph anymore
             context["graph_optimize_ops"] = optimize_ops
             context["graph_optimize_grads"] = params_grads
-<<<<<<< HEAD
-        
-=======
         else:
             apply_ir_passes(loss.block.program, startup_program, self)
 
->>>>>>> d7064f0435ce1c35c2b57bf6fcbef6b2597c5f4f
         program = paddle.static.default_main_program()
         opt_info = {}
         opt_info["mpi_size"] = self.worker_num()

@@ -30,7 +30,7 @@
 #include "paddle/fluid/string/string_helper.h"
 
 #define PSERVER_SAVE_SUFFIX ".shard"
-using boost::lexical_cast;
+//using boost::lexical_cast;
 
 namespace paddle {
 namespace distributed {

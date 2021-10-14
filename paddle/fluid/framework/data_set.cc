@@ -545,7 +545,6 @@ void DatasetImpl<T>::LocalShuffle() {
 }
 
 void MultiSlotDataset::GlobalShuffle(int thread_num) {
-#ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "MultiSlotDataset::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
@@ -647,7 +646,6 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   timeline.Pause();
   VLOG(1) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
-//#endif
 }
 
 template <typename T>
