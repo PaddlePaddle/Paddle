@@ -38,6 +38,8 @@ ExternalProject_Add(
   PREFIX                ${UTF8PROC_PREFIX_DIR}
   UPDATE_COMMAND        ""
   CMAKE_ARGS            -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                        -DBUILD_SHARED=ON
+                        -DBUILD_STATIC=ON
                         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
                         -DCMAKE_INSTALL_PREFIX:PATH=${UTF8PROC_INSTALL_DIR}
                         -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
