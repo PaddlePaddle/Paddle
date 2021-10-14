@@ -69,17 +69,10 @@ class TestNpuIouSimilarityOp(OpTest):
     def set_outputs(self):
         self.output = random.rand(self.N, self.M).astype(self.dtype)
         self._compute_iou()
-        if self.use_lod:
-            self.output_lod = [[1 for _ in range(self.N)]]
-            self.outputs = {'Out': (self.output, self.output_lod)}
-        else:
-            self.outputs = {'Out': self.output}
+        self.outputs = {'Out': self.output}
 
     def test_check_output(self):
-        if self.use_lod:
-            self.check_output_with_place(self.place, check_dygraph=False)
-        else:
-            self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place)
 
     def _compute_iou(self, ):
         for row in range(self.boxes1.shape[0]):
