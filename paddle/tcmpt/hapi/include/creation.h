@@ -14,12 +14,20 @@
 
 #pragma once
 
+#include "paddle/tcmpt/core/dtype.h"
+#include "paddle/tcmpt/core/scalar.h"
 #include "paddle/tcmpt/hapi/include/tensor.h"
 
 namespace paddle {
 namespace experimental {
 
-Tensor full_like(const Tensor& x, float value);
+Tensor full_like(const Tensor& x,
+                 const pt::Scalar& value,
+                 pt::DataType dtype = pt::DataType::kUndef);
+
+Tensor ones_like(const Tensor& x, pt::DataType dtype = pt::DataType::kUndef);
+
+Tensor zeros_like(const Tensor& x, pt::DataType dtype = pt::DataType::kUndef);
 
 }  // namespace experimental
 }  // namespace paddle

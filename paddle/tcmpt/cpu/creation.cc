@@ -22,13 +22,9 @@ namespace pt {
 template <typename T>
 void FillAnyLike(const CPUContext& dev_ctx,
                  const DenseTensor& x,
-                 float val,
+                 const Scalar& val,
                  DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      std::isnan(val),
-      false,
-      paddle::platform::errors::InvalidArgument("The filled value is NaN."));
-  eigen::fill<CPUContext, T>(dev_ctx, out, val);
+  eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
 }
 
 }  // namespace pt
