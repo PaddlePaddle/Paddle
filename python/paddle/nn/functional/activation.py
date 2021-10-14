@@ -80,6 +80,7 @@ def elu_(x, alpha=1.0, name=None):
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
     """
+    assert alpha >= 0., "elu_ only support alpha >= 0, please use elu instead."
     return _C_ops.elu_(x, 'alpha', alpha)
 
 

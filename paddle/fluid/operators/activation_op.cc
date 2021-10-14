@@ -1239,7 +1239,8 @@ REGISTER_OPERATOR(
                                paddle::framework::OpDesc>,
     ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
+    std::conditional<ops::CanInplaceAct<ops::ELUGradFunctor<float>>(),
+                     ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
                   ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
