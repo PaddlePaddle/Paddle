@@ -102,7 +102,7 @@ TEST(OpCompatSensiblePass, compatOpAttribute) {
   EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
 
   OpCompat compat_1("fc_test");
-  info.checker_->AddAttrChecker<int>("in_num_col_dims").SetDefault(1);
+  info.checker_->AddAttrChecker<int>("in_num_col_dims", nullptr).SetDefault(1);
   EXPECT_TRUE(compat_1.Judge(fc_op, "test_pass"));
   delete info.checker_;
   delete info.proto_;

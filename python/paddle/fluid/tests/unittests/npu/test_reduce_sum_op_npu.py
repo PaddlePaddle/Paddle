@@ -26,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestReduceSum(OpTest):
     def setUp(self):
         np.random.seed(SEED)
@@ -66,10 +64,10 @@ class TestReduceSum(OpTest):
 
     def initTestCase(self):
         self.shape = (5, 6)
-        self.axis = (0, )
+        self.axis = (0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     # TODO(ascendrc): Add grad test
     # def test_check_grad(self):
@@ -84,8 +82,6 @@ class TestReduceSum2(OpTest):
         self.dtype = np.int32
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestReduceSumNet(unittest.TestCase):
     def set_reduce_sum_function(self, x):
         # keep_dim = False
@@ -151,16 +147,12 @@ class TestReduceSumNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestReduceSumNet2(TestReduceSumNet):
     def set_reduce_sum_function(self, x):
         # keep_dim = True
         return paddle.fluid.layers.reduce_sum(x, dim=-1, keep_dim=True)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestReduceSumNet3(TestReduceSumNet):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

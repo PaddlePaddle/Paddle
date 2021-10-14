@@ -469,6 +469,34 @@ int32_t GraphTable::get_node_feat(const std::vector<uint64_t> &node_ids,
   return 0;
 }
 
+int32_t GraphTable::set_node_feat(
+    const std::vector<uint64_t> &node_ids,
+    const std::vector<std::string> &feature_names,
+    const std::vector<std::vector<std::string>> &res) {
+  size_t node_num = node_ids.size();
+  std::vector<std::future<int>> tasks;
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    uint64_t node_id = node_ids[idx];
+    tasks.push_back(_shards_task_pool[get_thread_pool_index(node_id)]->enqueue(
+        [&, idx, node_id]() -> int {
+          size_t index = node_id % this->shard_num - this->shard_start;
+          auto node = shards[index].add_feature_node(node_id);
+          node->set_feature_size(this->feat_name.size());
+          for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+            const std::string &feature_name = feature_names[feat_idx];
+            if (feat_id_map.find(feature_name) != feat_id_map.end()) {
+              node->set_feature(feat_id_map[feature_name], res[feat_idx][idx]);
+            }
+          }
+          return 0;
+        }));
+  }
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    tasks[idx].get();
+  }
+  return 0;
+}
+
 std::pair<int32_t, std::string> GraphTable::parse_feature(
     std::string feat_str) {
   // Return (feat_id, btyes) if name are in this->feat_name, else return (-1,

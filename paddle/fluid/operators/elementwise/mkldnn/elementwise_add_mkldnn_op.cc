@@ -43,10 +43,8 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
     auto tz = paddle::framework::vectorize<int64_t>(dout->dims());
     memory::data_type dout_type = framework::ToMKLDNNDataType(dout->type());
-    std::string key = platform::CreateKey(dev_ctx, tz, dout->format(),
-                                          dout->format(), dout_type);
-    platform::ReorderMKLDNNHandler handler(tz, dout->type(), dout_type, dev_ctx,
-                                           onednn_engine, key);
+    platform::ReorderMKLDNNHandler handler(tz, dout->type(), dout_type,
+                                           onednn_engine);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     auto reorder_src_memory_p = handler.AcquireSrcMemory(
@@ -84,10 +82,8 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       } else {
         // Broadcasting
         platform::ReductionMKLDNNHandler<T> handler_sum(
-            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
-            ctx.GetPlace(), dout, dy,
-            ctx.InputName(framework::GradVarName("Out")),
-            CalculateBroadcastedDims(dout, dy));
+            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
+            ctx.GetPlace(), dout, dy, CalculateBroadcastedDims(dout, dy));
         auto dy_memory_p = handler_sum.AcquireDstMemory(dy);
         auto reduction_p = handler_sum.AcquireForwardPrimitive();
         reduction_p->execute(astream, {{DNNL_ARG_SRC, *reorder_src_memory_p},

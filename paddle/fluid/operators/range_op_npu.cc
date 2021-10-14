@@ -12,24 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include <memory>
-#include <string>
-
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/range_op.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class RangeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -41,19 +30,19 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     framework::Tensor n;
     framework::TensorCopy(
         *start_t, platform::CPUPlace(),
-        context.template device_context<platform::DeviceContext>(), &n);
+        context.template device_context<platform::NPUDeviceContext>(), &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
     T start = n.data<T>()[0];
     framework::TensorCopy(
         *end_t, platform::CPUPlace(),
-        context.template device_context<platform::DeviceContext>(), &n);
+        context.template device_context<platform::NPUDeviceContext>(), &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
     T end = n.data<T>()[0];
     framework::TensorCopy(
         *step_t, platform::CPUPlace(),
-        context.template device_context<platform::DeviceContext>(), &n);
+        context.template device_context<platform::NPUDeviceContext>(), &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
     T step = n.data<T>()[0];
@@ -78,11 +67,9 @@ class RangeNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-
-REGISTER_OP_NPU_KERNEL(
-    range, ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, double>)
-
+REGISTER_OP_NPU_KERNEL(range, paddle::operators::RangeNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       paddle::operators::RangeNPUKernel<int64_t>,
 #endif
+                       paddle::operators::RangeNPUKernel<float>,
+                       paddle::operators::RangeNPUKernel<double>)

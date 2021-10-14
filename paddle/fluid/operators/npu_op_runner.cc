@@ -26,6 +26,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 
+DECLARE_string(npu_precision_mode);
+
 namespace paddle {
 namespace operators {
 
@@ -33,6 +35,7 @@ static std::map<framework::proto::VarType::Type, aclDataType>
     DTYPE_2_ACL_DTYPE = {
         {framework::proto::VarType::BOOL, ACL_BOOL},
         {framework::proto::VarType::UINT8, ACL_UINT8},
+        {framework::proto::VarType::INT8, ACL_INT8},
         {framework::proto::VarType::INT16, ACL_INT16},
         {framework::proto::VarType::INT32, ACL_INT32},
         {framework::proto::VarType::INT64, ACL_INT64},
@@ -240,6 +243,38 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<float> &&values) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(values, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<double> &&values) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(values, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
   // create aclTensorDesc
   output_descs_.emplace_back(CreateTensorDesc(tensor));
@@ -370,6 +405,12 @@ void NpuOpRunner::Run(aclrtStream stream) const {
   VLOG(4) << "output_desc.size: " << output_descs_.size();
   VLOG(4) << "attr: " << attr_;
   VLOG(4) << "stream: " << stream;
+
+  if (!FLAGS_npu_precision_mode.empty()) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclSetCompileopt(ACL_PRECISION_MODE, FLAGS_npu_precision_mode.c_str()));
+    VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mode;
+  }
 
   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),

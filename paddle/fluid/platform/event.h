@@ -22,6 +22,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace paddle {
 namespace platform {
@@ -115,6 +116,83 @@ class MemEvent {
   Place place_;
   int64_t thread_id_;
   std::string annotation_;
+};
+
+class CudaEvent {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+ public:
+  CudaEvent() {
+#ifdef PADDLE_WITH_HIP
+    hipEventCreateWithFlags(&event_, flags_);
+#else
+    cudaEventCreateWithFlags(&event_, flags_);
+#endif
+  }
+
+  explicit CudaEvent(unsigned int flags) : flags_(flags) {
+#ifdef PADDLE_WITH_HIP
+    hipEventCreateWithFlags(&event_, flags_);
+#else
+    cudaEventCreateWithFlags(&event_, flags_);
+#endif
+  }
+
+  ~CudaEvent() {
+#ifdef PADDLE_WITH_HIP
+    hipEventDestroy(event_);
+#else
+    cudaEventDestroy(event_);
+#endif
+  }
+
+  void Record(const paddle::platform::stream::CUDAStream& stream) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+#endif
+  }
+
+  bool Query() {
+#ifdef PADDLE_WITH_HIP
+    gpuError_t err = hipEventQuery(event_);
+    if (err == hipSuccess) {
+      return true;
+    }
+    if (err == hipErrorNotReady) {
+      return false;
+    }
+#else
+    gpuError_t err = cudaEventQuery(event_);
+    if (err == cudaSuccess) {
+      return true;
+    }
+    if (err == cudaErrorNotReady) {
+      return false;
+    }
+#endif
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    return false;
+  }
+
+  void Synchronize() {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventSynchronize(event_));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventSynchronize(event_));
+#endif
+  }
+  gpuEvent_t GetRawCudaEvent() { return event_; }
+
+ private:
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags_ = hipEventDefault;
+#else
+  unsigned int flags_ = cudaEventDefault;
+#endif
+  gpuEvent_t event_;
+#endif
 };
 
 }  // namespace platform

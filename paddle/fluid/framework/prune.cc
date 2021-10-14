@@ -180,6 +180,35 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
 
+    // TODO(wanghaipeng03) reconstruct the follwing if/else block
+    //                     to extract common code
+    //
+    // bool should_run_flag = false;
+    // if (IsTarget........) {
+    //   should_run_flag = true;
+    // } else {
+    //   if (parent......) {
+    //     for (....) {
+    //       for (.....) {
+    //         if (.....) {
+    //           should_run_flag = true;
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+    //
+    // should_run.push_back(should_run_flag);
+    // if (should_run_flag) {
+    //   for (auto & var: op_desc.iputs()) {
+    //     for (....) {
+    //       if (.....) {
+    //         dependent_vars->insert(argu);
+    //       }
+    //     }
+    //   }
+    // }
+
     if (IsTarget(op_desc) ||
         (HasDependentOutputVar(op_desc, *dependent_vars) &&
          (GetOpRole(op_desc) & static_cast<int>(OpRole::kOptimize)) == 0)) {
@@ -213,6 +242,13 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
         }
         if (flag) {
           should_run.back() = true;
+
+          // If any op should run, then there inputs are dependent_vars
+          for (auto& var : op_desc.inputs()) {
+            for (auto& argu : var.arguments()) {
+              dependent_vars->insert(argu);
+            }
+          }
         }
       }
     }

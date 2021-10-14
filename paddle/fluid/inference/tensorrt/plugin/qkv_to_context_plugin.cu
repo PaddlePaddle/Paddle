@@ -147,11 +147,11 @@ inline void TransposeQKV(const int batch, const int seq_len,
   }
 }
 
-int QkvToContextPluginDynamic::initialize() { return 0; }
+int QkvToContextPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   // input[0], (B, S, 3 * N * H, 1, 1)
   // input[1], (B, head_num, seq_len, seq_len)
   // output, (B, seq_len, hidden)
@@ -177,7 +177,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
 
 bool QkvToContextPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -215,7 +215,8 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       index, 0, platform::errors::InvalidArgument(
                     "The EmbEltwiseLayernorm Plugin only has one input, so the "
@@ -232,10 +233,28 @@ __global__ void apply_scale(T *data, T scale, int n) {
 #endif
 }
 
+inline int round_up(int seq_len, int multiple = 32) {
+  PADDLE_ENFORCE_GT(
+      multiple, 0,
+      platform::errors::InvalidArgument(
+          "multiple should be a positive number，but it's (%d)", multiple));
+  return ((seq_len + multiple - 1) / multiple) * multiple;
+}
+
+template <typename T>
+__global__ void broadcast(const T *src, T *dst, const int seq_len,
+                          const int head_num) {
+  int batch_id = blockIdx.x / (head_num * seq_len);
+  int dst_offset = blockIdx.x * seq_len;
+  if (threadIdx.x < seq_len) {
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x + batch_id * seq_len];
+  }
+}
+
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int input_num = ProductDim(input_dims);
   // input[0], (B, S, 3 * N * H, 1, 1)
@@ -257,7 +276,21 @@ int QkvToContextPluginDynamic::enqueue(
     auto *tptr = multihead_temp_data + scratch_size;
 
     const float *input0_data = static_cast<const float *>(inputs[0]);
-    const float *input1_data = static_cast<const float *>(inputs[1]);
+    // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
+    framework::Tensor temp_qk_bias_tensor;
+    float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[1]));
+    if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
+      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      auto *temp_qk_bias = temp_qk_bias_tensor.mutable_data<float>(
+          platform::CUDAPlace(device_id));
+      int grid = batch * head_number_ * seq_len;
+      int block = round_up(seq_len);
+      broadcast<<<grid, block, 0, stream>>>(
+          static_cast<const float *>(inputs[1]), temp_qk_bias, seq_len,
+          head_number_);
+      qk_bias = temp_qk_bias;
+    }
+    const float *input1_data = static_cast<const float *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
                  stream);
@@ -289,7 +322,22 @@ int QkvToContextPluginDynamic::enqueue(
     half *tptr = qkptr + scratch_size;
 
     const half *input0_data = static_cast<const half *>(inputs[0]);
-    const half *input1_data = static_cast<const half *>(inputs[1]);
+    // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
+    framework::Tensor temp_qk_bias_tensor;
+    half *qk_bias = const_cast<half *>(static_cast<const half *>(inputs[1]));
+    if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
+      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      auto *temp_qk_bias =
+          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
+      int grid = batch * head_number_ * seq_len;
+      int block = round_up(seq_len);
+      broadcast<<<grid, block, 0, stream>>>(
+          static_cast<const half *>(inputs[1]), temp_qk_bias, seq_len,
+          head_number_);
+      qk_bias = temp_qk_bias;
+    }
+    const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
                  stream);

@@ -29,8 +29,6 @@ SEED = 2021
 NPUPlace = 0
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIncrement(OpTest):
     def setUp(self):
         self.set_npu()
@@ -54,11 +52,9 @@ class TestIncrement(OpTest):
         self.dtype = np.int64
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIncrementFP16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -82,11 +78,35 @@ class TestIncrementFP16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+class TestIncrementINT64(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(NPUPlace)
+        self.op_type = "increment"
+        self.init_dtype()
+
+        self.inputs = {
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+        }
+        self.pre_input_id = id(self.inputs['X'])
+
+        self.attrs = {"Step": 1}
+        self.outputs = {'Out': np.array([2])}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
 class TestIncrementInplace(unittest.TestCase):
     def test_npu(self):
         main_prog = paddle.static.Program()

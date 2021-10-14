@@ -39,8 +39,6 @@ def output_hist(out):
     return hist, prob
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUUniformRandomOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -76,8 +74,6 @@ class TestNPUUniformRandomOp(OpTest):
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
     def get_places(self):
         places = [core.CPUPlace()]

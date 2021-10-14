@@ -22,7 +22,7 @@ import paddle.nn as nn
 paddle.enable_static()
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -897,6 +897,25 @@ class TestConv2DTransposeOpException(unittest.TestCase):
                 data_format='NHWC')
 
         self.assertRaises(ValueError, attr_padding_with_data_format)
+
+        error_input = fluid.layers.data(
+            name='error_data', shape=[1], dtype="float32")
+
+        def error_input_size():
+            out = fluid.layers.conv2d_transpose(
+                input=error_input, groups=1, num_filters=6, filter_size=3)
+
+        self.assertRaises(ValueError, error_input_size)
+
+        def error_groups():
+            out = fluid.layers.conv2d_transpose(
+                input=data,
+                groups=0,
+                num_filters=6,
+                filter_size=3,
+                data_format='NHWC')
+
+        self.assertRaises(ValueError, error_groups)
 
 
 class TestConv2DTransposeRepr(unittest.TestCase):

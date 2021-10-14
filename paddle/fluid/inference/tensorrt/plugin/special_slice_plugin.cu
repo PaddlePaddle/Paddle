@@ -30,28 +30,29 @@ SpecialSlicePluginDynamic::SpecialSlicePluginDynamic(void const* serial_data,
 
 SpecialSlicePluginDynamic::~SpecialSlicePluginDynamic() {}
 
-nvinfer1::IPluginV2DynamicExt* SpecialSlicePluginDynamic::clone() const {
+nvinfer1::IPluginV2DynamicExt* SpecialSlicePluginDynamic::clone() const
+    TRT_NOEXCEPT {
   return new SpecialSlicePluginDynamic();
 }
 
-const char* SpecialSlicePluginDynamic::getPluginType() const {
+const char* SpecialSlicePluginDynamic::getPluginType() const TRT_NOEXCEPT {
   return "special_slice_plugin";
 }
 
-int SpecialSlicePluginDynamic::getNbOutputs() const { return 1; }
+int SpecialSlicePluginDynamic::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
-int SpecialSlicePluginDynamic::initialize() { return 0; }
+int SpecialSlicePluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-size_t SpecialSlicePluginDynamic::getSerializationSize() const {
+size_t SpecialSlicePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   size_t serialize_size = 0;
   return serialize_size;
 }
 
-void SpecialSlicePluginDynamic::serialize(void* buffer) const {}
+void SpecialSlicePluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {}
 
 nvinfer1::DimsExprs SpecialSlicePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder) {
+    nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   nvinfer1::DimsExprs output(inputs[0]);
   output.nbDims++;
   for (int i = output.nbDims - 1; i > 1; i--) {
@@ -69,21 +70,22 @@ nvinfer1::DimsExprs SpecialSlicePluginDynamic::getOutputDimensions(
 
 void SpecialSlicePluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) {}
+    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
 
 size_t SpecialSlicePluginDynamic::getWorkspaceSize(
     const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
-    const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const {
+    const nvinfer1::PluginTensorDesc* outputs,
+    int nbOutputs) const TRT_NOEXCEPT {
   return 0;
 }
 
-void SpecialSlicePluginDynamic::destroy() { delete this; }
+void SpecialSlicePluginDynamic::destroy() TRT_NOEXCEPT { delete this; }
 
-void SpecialSlicePluginDynamic::terminate() {}
+void SpecialSlicePluginDynamic::terminate() TRT_NOEXCEPT {}
 
 bool SpecialSlicePluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* desc, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   if (pos == 0)  // slice tensor
     return (desc[pos].type == nvinfer1::DataType::kHALF &&
             desc[pos].format ==
@@ -101,7 +103,8 @@ bool SpecialSlicePluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType SpecialSlicePluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType* input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The index should be equal to 0"));
   return input_types[0];
@@ -120,7 +123,7 @@ __global__ void SpecialSliceKernel(const T* slice_input,
 int SpecialSlicePluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
-    void* const* outputs, void* workspace, cudaStream_t stream) {
+    void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;  // (sum(S), 768, 1, 1)
   auto out_dims = output_desc[0].dims;   // (batch, 768, 1, 1)
 
@@ -142,36 +145,40 @@ int SpecialSlicePluginDynamic::enqueue(
 
 SpecialSlicePluginDynamicCreator::SpecialSlicePluginDynamicCreator() {}
 
-const char* SpecialSlicePluginDynamicCreator::getPluginName() const {
+const char* SpecialSlicePluginDynamicCreator::getPluginName() const
+    TRT_NOEXCEPT {
   return "special_slice_plugin";
 }
 
-const char* SpecialSlicePluginDynamicCreator::getPluginVersion() const {
+const char* SpecialSlicePluginDynamicCreator::getPluginVersion() const
+    TRT_NOEXCEPT {
   return "1";
 }
 
 const nvinfer1::PluginFieldCollection*
-SpecialSlicePluginDynamicCreator::getFieldNames() {
+SpecialSlicePluginDynamicCreator::getFieldNames() TRT_NOEXCEPT {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2* SpecialSlicePluginDynamicCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
   return new SpecialSlicePluginDynamic();
 }
 
 nvinfer1::IPluginV2* SpecialSlicePluginDynamicCreator::deserializePlugin(
-    const char* name, const void* serial_data, size_t serial_length) {
+    const char* name, const void* serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new SpecialSlicePluginDynamic(serial_data, serial_length);
   return plugin;
 }
 
 void SpecialSlicePluginDynamicCreator::setPluginNamespace(
-    const char* lib_namespace) {
+    const char* lib_namespace) TRT_NOEXCEPT {
   plugin_namespace_ = lib_namespace;
 }
 
-const char* SpecialSlicePluginDynamicCreator::getPluginNamespace() const {
+const char* SpecialSlicePluginDynamicCreator::getPluginNamespace() const
+    TRT_NOEXCEPT {
   return plugin_namespace_.c_str();
 }
 

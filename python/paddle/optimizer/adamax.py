@@ -33,13 +33,13 @@ class Adamax(Optimizer):
 
         t & = t + 1
 
-        moment\_out & = {\\beta}_1 * moment + (1 - {\\beta}_1) * grad
+        moment\_out & = {\beta}_1 * moment + (1 - {\beta}_1) * grad
 
-        inf\_norm\_out & = max({\\beta}_2 * inf\_norm + \epsilon, |grad|)
+        inf\_norm\_out & = max({\beta}_2 * inf\_norm + \epsilon, |grad|)
 
-        learning\_rate & = \\frac{learning\_rate}{1 - {\\beta}_1^t}
+        learning\_rate & = \frac{learning\_rate}{1 - {\beta}_1^t}
 
-        param\_out & = param - learning\_rate * \\frac{moment\_out}{inf\_norm\_out}
+        param\_out & = param - learning\_rate * \frac{moment\_out}{inf\_norm\_out}
 
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 

@@ -66,13 +66,13 @@ void TestSequencePadding(const DeviceContext &context,
   }
 
   paddle::operators::math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-      context, seq, &padding, pad_value, -1, 0, false,
+      context, seq, &padding, pad_value, -1, 0, false, false, false,
       paddle::operators::math::kLengthBatchWidth);
 
   seq_back.set_lod(lod);
   seq_back.mutable_data<T>(seq_dims, place);
   paddle::operators::math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-      context, padding, &seq_back, -1, 0, false,
+      context, padding, &seq_back, -1, 0, false, false, false,
       paddle::operators::math::kLengthBatchWidth);
 
   if (paddle::platform::is_cpu_place(place)) {

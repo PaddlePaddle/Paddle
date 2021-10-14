@@ -32,6 +32,13 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
                  "InstanceNorm");
 
   const auto x_dims = ctx->GetInputDim("X");
+  PADDLE_ENFORCE_NE(framework::product(x_dims), 0,
+                    platform::errors::PreconditionNotMet(
+                        "The Input variable X(%s) has not "
+                        "been initialized. You may need to confirm "
+                        "if you put exe.run(startup_program) "
+                        "after optimizer.minimize function.",
+                        ctx->Inputs("X").front()));
   PADDLE_ENFORCE_GE(
       x_dims.size(), 2,
       platform::errors::InvalidArgument(
@@ -142,11 +149,13 @@ void InstanceNormOpMaker::Make() {
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddOutput("SavedVariance",
             "Variance of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddComment(R"DOC(
 Instance Normalization.
 
