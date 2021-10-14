@@ -18,7 +18,6 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/core/selected_rows_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -42,28 +41,12 @@ void Scale(const CUDAContext& dev_ctx,
            DenseTensor* out);
 
 template <typename T>
-void ScaleSelectedRows(const CUDAContext& dev_ctx,
-                       const SelectedRowsTensor& x,
-                       float scale,
-                       float bias,
-                       bool bias_after_scale,
-                       SelectedRowsTensor* out);
-
-template <typename T>
 void ScaleHost(const CUDAContext& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& scale,
                float bias,
                bool bias_after_scale,
                DenseTensor* out);
-
-template <typename T>
-void ScaleSelectedRowsHost(const CUDAContext& dev_ctx,
-                           const SelectedRowsTensor& x,
-                           const DenseTensor& scale,
-                           float bias,
-                           bool bias_after_scale,
-                           SelectedRowsTensor* out);
 
 }  // namespace pt
 

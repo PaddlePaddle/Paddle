@@ -98,19 +98,6 @@ void Scale(const CUDAContext& dev_ctx,
 }
 
 template <typename T>
-void ScaleSelectedRows(const CUDAContext& dev_ctx,
-                       const SelectedRowsTensor& x,
-                       float scale,
-                       float bias,
-                       bool bias_after_scale,
-                       SelectedRowsTensor* out) {
-  out->set_rows(x.rows());
-  out->set_height(x.height());
-  Scale<T>(
-      dev_ctx, x.value(), scale, bias, bias_after_scale, out->mutable_value());
-}
-
-template <typename T>
 void ScaleHost(const CUDAContext& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& scale,
@@ -126,23 +113,6 @@ void ScaleHost(const CUDAContext& dev_ctx,
                                bias,
                                bias_after_scale,
                                out);
-}
-
-template <typename T>
-void ScaleSelectedRowsHost(const CUDAContext& dev_ctx,
-                           const SelectedRowsTensor& x,
-                           const DenseTensor& scale,
-                           float bias,
-                           bool bias_after_scale,
-                           SelectedRowsTensor* out) {
-  out->set_rows(x.rows());
-  out->set_height(x.height());
-  Scale<T>(dev_ctx,
-           x.value(),
-           static_cast<float>(*scale.data<T>()),
-           bias,
-           bias_after_scale,
-           out->mutable_value());
 }
 
 }  // namespace pt
@@ -165,36 +135,10 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.sr",
-                   CUDA,
-                   NCHW,
-                   pt::ScaleSelectedRows,
-                   float,
-                   double,
-                   float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
 PT_REGISTER_KERNEL("scale.host",
                    CUDA,
                    NCHW,
                    pt::ScaleHost,
-                   float,
-                   double,
-                   float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(1).SetBackend(pt::Backend::kCPU);
-}
-PT_REGISTER_KERNEL("scale.sr.host",
-                   CUDA,
-                   NCHW,
-                   pt::ScaleSelectedRowsHost,
                    float,
                    double,
                    float16,

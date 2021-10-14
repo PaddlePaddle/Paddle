@@ -52,13 +52,10 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
               ) {
 #endif
         // do nothing, skip context arg now
-      } else if (arg_type == std::type_index(typeid(const DenseTensor&)) ||
-                 arg_type ==
-                     std::type_index(typeid(const SelectedRowsTensor&))) {
+      } else if (arg_type == std::type_index(typeid(const DenseTensor&))) {
         args_def->AppendInput(
             default_key.backend(), default_key.layout(), default_key.dtype());
-      } else if (arg_type == std::type_index(typeid(DenseTensor*)) ||
-                 arg_type == std::type_index(typeid(SelectedRowsTensor*))) {
+      } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
         args_def->AppendOutput(
             default_key.backend(), default_key.layout(), default_key.dtype());
       } else {
