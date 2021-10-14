@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/tcmpt/core/dtype.h"
 #include "paddle/tcmpt/core/scalar.h"
 #include "paddle/tcmpt/hapi/include/tensor.h"
 

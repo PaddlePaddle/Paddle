@@ -45,7 +45,7 @@ TEST(API, full_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = pt::full_like(x, val, pt::DataType::kFLOAT32);
+  auto out = paddle::experimental::full_like(x, val, pt::DataType::kFLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
@@ -74,10 +74,10 @@ TEST(API, zeros_like) {
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 1;
 
-  pt::Tensor x(dense_x);
+  paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = pt::zeros_like(x, pt::DataType::kFLOAT32);
+  auto out = paddle::experimental::zeros_like(x, pt::DataType::kFLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
@@ -106,10 +106,10 @@ TEST(API, ones_like) {
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
 
-  pt::Tensor x(dense_x);
+  paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = pt::ones_like(x, pt::DataType::kINT32);
+  auto out = paddle::experimental::ones_like(x, pt::DataType::kINT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
