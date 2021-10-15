@@ -279,7 +279,6 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 
     // 2. Backward of Conv for x, get x_grad and filter_x_grad
     bool use_addto = ctx.Attr<bool>("use_addto");
-    Tensor *z_grad = ctx.Output<Tensor>(framework::GradVarName("Z"));
     CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx, x_shape, filter_x_shape,
                                           output_shape, padding, stride,
                                           dilation, group);
