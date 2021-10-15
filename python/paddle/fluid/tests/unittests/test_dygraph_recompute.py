@@ -121,14 +121,10 @@ def run_model(recompute_block=[],
         x_data = np.random.randn(batch_size, input_size).astype(np.float32)
         x = paddle.to_tensor(x_data)
         # x.stop_gradient = False
-        if not pure_fp16:
-            with paddle.amp.auto_cast(True):
-                y_pred = model(x)
-                loss = y_pred.mean()
-        else:
-            with paddle.amp.auto_cast(True, level='O2'):
-                y_pred = model(x)
-                loss = y_pred.mean()
+        level = 'O2' if pure_fp16 else 'O1'
+        with paddle.amp.auto_cast(True, level=level):
+            y_pred = model(x)
+            loss = y_pred.mean()
         if enable_autocast:
             scaler.scale(loss).backward()
             scaler.minimize(optimizer, loss)

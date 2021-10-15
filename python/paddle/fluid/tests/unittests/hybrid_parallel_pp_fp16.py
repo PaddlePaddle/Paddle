@@ -125,16 +125,13 @@ class TestDistPPTraning(unittest.TestCase):
                     scaler_a.minimize(optimizer_a, loss_a)
                 optimizer_a.clear_grad()
                 scheduler_a.step()
-                print("\n loss_a : ", loss_a, "\n")
 
-            with paddle.amp.auto_cast(enable=True, level='O2'):
                 loss_b = model_b.train_batch(
                     [img, label], optimizer_b, scheduler_b, scaler=scaler_b)
-                print("\n loss_b : ", loss_b, "\n")
 
             print("loss: ", loss_a.numpy(), loss_b.numpy())
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-4)
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-3)
 
 
 if __name__ == "__main__":
