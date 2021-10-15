@@ -1966,7 +1966,6 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   }
 
   for (size_t i = 0; i < attr_defs.size(); ++i) {
-    paddle::any attr_item;
     if (attr_defs[i].type_index == std::type_index(typeid(pt::Scalar))) {
       // TODO(chenweihang): support other attrs
       // In principle, the attr required by the dynamic mode should be
