@@ -66,7 +66,7 @@ def decorate(optimizer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.fluid.contrib import sparsity
+            from paddle.static import sparsity
 
             main_program = fluid.Program()
             startup_program = fluid.Program()
@@ -128,7 +128,7 @@ def prune_model(place,
             import paddle
             import paddle.fluid as fluid
             import paddle.fluid.core as core
-            from paddle.fluid.contrib import sparsity
+            from paddle.static import sparsity
 
             paddle.enable_static()
 
@@ -348,7 +348,7 @@ class ASPHelper(object):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              from paddle.fluid.contrib.sparsity.asp import ASPHelper
+              from paddle.static.sparsity.asp import ASPHelper
 
               main_program = fluid.Program()
               startup_program = fluid.Program()

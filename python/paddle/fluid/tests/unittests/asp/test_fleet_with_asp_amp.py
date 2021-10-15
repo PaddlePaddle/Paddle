@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import os
-from paddle.fluid.contrib import sparsity
+from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')

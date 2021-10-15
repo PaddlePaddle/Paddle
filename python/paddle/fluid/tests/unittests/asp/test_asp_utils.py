@@ -18,7 +18,7 @@ from __future__ import print_function
 import unittest
 import threading, time
 import paddle
-from paddle.fluid.contrib import sparsity
+from paddle.static import sparsity
 import numpy as np
 
 
