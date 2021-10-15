@@ -19,22 +19,45 @@
 
 namespace egr {
 
-void benchmark_eager_accuracy_check(const pt::Tensor& tensor);
-void benchmark_eager(const pt::Tensor& tensor);
+/* ---- Eager Scale ---- */
+void benchmark_eager_scale_accuracy_check(const pt::Tensor& tensor);
+void benchmark_eager_scale(const pt::Tensor& tensor);
+
+/* ---- Eager MatMul ---- */
+void benchmark_eager_intermediate_matmul_accuracy_check(const pt::Tensor& X,
+                                                        const pt::Tensor& Y);
+void benchmark_eager_intermediate_matmul(const pt::Tensor& X,
+                                         const pt::Tensor& Y);
 
 }  // namespace egr
 
 namespace paddle {
 namespace imperative {
+/* ---- Fluid Scale ---- */
 // TODO(jiabin): Change this and remove nolint
-void benchmark_fluid_accuracy_check(
-    std::shared_ptr<imperative::VarBase>& X,    // NOLINT
-    std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
+void benchmark_fluid_scale_accuracy_check(
+    const std::shared_ptr<imperative::VarBase>& X,    // NOLINT
+    const std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
     const paddle::platform::Place& place);
+
 // TODO(jiabin): Change this and remove nolint
-void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X,    // NOLINT
-                     std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
-                     const paddle::platform::Place& place);
+void benchmark_fluid_scale(
+    const std::shared_ptr<imperative::VarBase>& X,    // NOLINT
+    const std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
+    const paddle::platform::Place& place);
+
+/* ---- Fluid MatMul ---- */
+void benchmark_fluid_matmul_accuracy_check(
+    const std::shared_ptr<imperative::VarBase>& X,    // NOLINT
+    const std::shared_ptr<imperative::VarBase>& Y,    // NOLINT
+    const std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
+    const paddle::platform::Place& place);
+
+void benchmark_fluid_matmul(
+    const std::shared_ptr<imperative::VarBase>& X,
+    const std::shared_ptr<imperative::VarBase>& Y,    // NOLINT
+    const std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
+    const paddle::platform::Place& place);
 
 }  // namespace imperative
 }  // namespace paddle

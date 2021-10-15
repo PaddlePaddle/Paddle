@@ -99,7 +99,7 @@ bool EagerUtils::ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
   for (size_t i = 0; i < ins_num; ++i) {
     auto ins_stop_gradient = ins[i]->StopGradient();
     if (!ins_stop_gradient) {
-      PassStopGradient(outs, outs_num, ins_stop_gradient);
+      EagerUtils::PassStopGradient(outs, outs_num, ins_stop_gradient);
       return true;
     }
   }

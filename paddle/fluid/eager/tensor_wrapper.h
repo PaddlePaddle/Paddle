@@ -31,6 +31,7 @@
 namespace egr {
 class TensorWrapper {
  public:
+  TensorWrapper() = default;
   explicit TensorWrapper(const pt::Tensor& tensor, bool full_reserved = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
@@ -39,7 +40,6 @@ class TensorWrapper {
      * **/
 
     if (full_reserved_) {
-      VLOG(0) << "Fully reserved ";
       intermidiate_tensor_ = tensor;
       return;
     }
@@ -61,15 +61,11 @@ class TensorWrapper {
       return pt::Tensor();
     }
 
-    std::shared_ptr<GradNodeBase> new_grad_node =
-        full_reserved_ ? std::static_pointer_cast<GradNodeBase>(
-                             EagerUtils::grad_node(intermidiate_tensor_))
-                       : grad_node;
-
     // if it's full_reserved just return the full copy of tensor
     if (full_reserved_) {
       return intermidiate_tensor_;
     } else {
+      std::shared_ptr<GradNodeBase> new_grad_node = grad_node;
       auto p_ab_autograd_meta =
           std::make_shared<AutogradMeta>(Edge(new_grad_node, out_rank_info_));
       intermidiate_tensor_.set_autograd_meta(
@@ -80,7 +76,7 @@ class TensorWrapper {
   }
 
  private:
-  bool full_reserved_;
+  bool full_reserved_ = false;
   std::pair<size_t, size_t> out_rank_info_;
   pt::Tensor intermidiate_tensor_;
 };
