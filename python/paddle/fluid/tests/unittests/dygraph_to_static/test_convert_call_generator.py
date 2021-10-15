@@ -33,7 +33,7 @@ def dyfunc_generator():
 
 
 class TestConvertGenerator(unittest.TestCase):
-    def test_raise_error():
+    def test_raise_error(self):
         to_static(dyfunc_generator)
 
 
