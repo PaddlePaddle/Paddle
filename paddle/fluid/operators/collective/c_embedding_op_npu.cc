@@ -69,18 +69,19 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
 
   NpuOpRunner sub_runner;
 #ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
-    Tensor factor_tensor(ids_t.type());
-    factor_tensor.mutable_data<T>({1}, context.GetPlace());
-    TensorFromVector(std::vector<T>{static_cast<T>(start_idx)}, context.device_context(),&factor_tensor);
-    sub_runner.SetType("Sub")
-        .AddInput(ids_t)
-        .AddInput(factor_tensor)
-        .AddOutput(id_t);
+  Tensor factor_tensor(ids_t.type());
+  factor_tensor.mutable_data<T>({1}, context.GetPlace());
+  TensorFromVector(std::vector<T>{static_cast<T>(start_idx)},
+                   context.device_context(), &factor_tensor);
+  sub_runner.SetType("Sub")
+      .AddInput(ids_t)
+      .AddInput(factor_tensor)
+      .AddOutput(id_t);
 #else
-    sub_runner.SetType("Sub")
-        .AddInput(ids_t)
-        .AddInput(std::vector<T>{static_cast<T>(start_idx)})
-        .AddOutput(id_t);
+  sub_runner.SetType("Sub")
+      .AddInput(ids_t)
+      .AddInput(std::vector<T>{static_cast<T>(start_idx)})
+      .AddOutput(id_t);
 #endif
   sub_runner.Run();
 
@@ -147,9 +148,9 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       .AddInput(table_t_pad)
       .AddInput(ids_t_local)
       .AddInput(std::vector<int32_t>{0})
-  #ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
-      .AddAttrs({{"batch_dims",0}})
-  #endif
+#ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
+      .AddAttrs({{"batch_dims", 0}})
+#endif
       .AddOutput(*output_t);
   runner.Run();
 }
