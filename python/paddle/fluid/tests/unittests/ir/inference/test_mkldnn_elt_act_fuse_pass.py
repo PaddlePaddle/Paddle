@@ -1,0 +1,134 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import PassVersionChecker
+
+
+class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
+    act_alpha = None
+    act_beta = None
+
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data_A = fluid.data(
+                name="data_A", shape=[-1, 3, 100, 100], dtype="float32")
+            data_B = fluid.data(
+                name="data_B", shape=[-1, 3, 100, 100], dtype="float32")
+            elt_out = self.operand(data_A, data_B)
+            if self.act_beta is not None:
+                act_out = self.act(elt_out, self.act_alpha, self.act_beta)
+            elif self.act_alpha is not None:
+                act_out = self.act(elt_out, self.act_alpha)
+            else:
+                act_out = self.act(elt_out)
+
+        self.feeds = {
+            "data_A": np.random.random((1, 3, 100, 100)).astype("float32"),
+            "data_B": np.random.random((1, 3, 100, 100)).astype("float32")
+        }
+        self.fetch_list = [act_out]
+        self.enable_mkldnn = True
+
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.relu
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+    def test_check_output(self):
+        use_gpu = False
+        self.check_output_with_option(use_gpu)
+
+    def test_pass_compatible(self):
+        # import pudb
+        # pudb.set_trace()
+        self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_Relu(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.relu
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_Tanh(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.tanh
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_LeakyRelu(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act_alpha = 0.2
+        self.act = fluid.layers.leaky_relu
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_Swish(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.swish
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_HardSwish(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.hard_swish
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_SQRT(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.sqrt
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_ABS(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.abs
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_Clip(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.clip
+        self.act_alpha = 0.0
+        self.act_beta = 10.0
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+class ElementwiseActivationMkldnnFusePassTest_Add_Gelu(ElementwiseActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act = fluid.layers.gelu
+        self.pass_name = 'elt_act_onednn_fuse_pass'
+
+
+if __name__ == "__main__":
+    unittest.main()
