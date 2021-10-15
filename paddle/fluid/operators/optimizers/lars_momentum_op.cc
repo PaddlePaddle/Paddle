@@ -177,6 +177,11 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
         "(float, default 1.0) Multiply the gradient with `rescale_grad`"
         "before updating. Often choose to be `1.0/batch_size`.")
         .SetDefault(1.0f);
+    AddAttr<bool>(
+        "merge_option",
+        "(float, default 1.0) Multiply the gradient with `rescale_grad`"
+        "before updating. Often choose to be `1.0/batch_size`.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Lars Momentum Optimizer.

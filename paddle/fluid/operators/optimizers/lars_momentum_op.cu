@@ -82,18 +82,17 @@ class LarsThreadConfig {
 
 template <typename T, typename MT, int VecSize, bool IsAmp = false>
 __device__ inline void VectorizeLarsUpdate(
-    const T* __restrict__ grad, MT* __restrict__ param,
-    MT* __restrict__ velocity, const MT mu, MT local_lr,
-    const MT lars_weight_decay, const MT rescale_grad, const int tid,
-    const int grid_stride, const int numel) {
+    const T* __restrict__ grad, MT* param, MT* velocity, const MT mu,
+    MT local_lr, const MT lars_weight_decay, const MT rescale_grad,
+    const int tid, const int grid_stride, const int numel) {
   using VecType = paddle::platform::AlignedVector<T, VecSize>;
   using VecMType = paddle::platform::AlignedVector<MT, VecSize>;
   int main = numel >> (VecSize >> 1);
   int tail_offset = main * VecSize;
 
   const VecType* __restrict__ grad_vec = reinterpret_cast<const VecType*>(grad);
-  VecMType* __restrict__ velocity_vec = reinterpret_cast<VecMType*>(velocity);
-  VecMType* __restrict__ param_vec = reinterpret_cast<VecMType*>(param);
+  VecMType* velocity_vec = reinterpret_cast<VecMType*>(velocity);
+  VecMType* param_vec = reinterpret_cast<VecMType*>(param);
 
   for (int i = tid; i < main; i += grid_stride) {
     VecMType velocity_tmp, param_tmp;
@@ -136,10 +135,9 @@ __forceinline__ __device__ void L2NormKernel(
 template <typename T, typename MT>
 __global__ void L2NormKernel(
 #endif
-    const T* __restrict__ p_data, const T* __restrict__ g_data,
-    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const int64_t numel,
-    const int repeat_times, const MT rescale_grad, const int thresh = 0,
-    MT* __restrict__ p_n = nullptr, MT* __restrict__ g_n = nullptr) {
+    T* p_data, const T* __restrict__ g_data, MT* p_buffer, MT* g_buffer,
+    const int64_t numel, const int repeat_times, const MT rescale_grad,
+    const int thresh = 0, MT* p_n = nullptr, MT* g_n = nullptr) {
   __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
@@ -215,8 +213,7 @@ __global__ void L2NormKernel(
 
 template <typename T, typename MT>
 __forceinline__ __device__ void MomentumUpdate(
-    T* __restrict__ param, const T* __restrict__ grad,
-    MT* __restrict__ velocity, MT* __restrict__ master_param,
+    T* param, const T* __restrict__ grad, MT* velocity, MT* master_param,
     const MT* __restrict__ learn_rate, const MT mu, const MT lars_weight_decay,
     const MT lars_coeff, const MT epsilon, const MT rescale_grad,
     const MT param_norm, const MT grad_norm, const int tid,
@@ -255,9 +252,9 @@ struct MergedLarsMasterParam {
 
 template <typename MT, int kOpNum>
 struct MergedLarsMasterParam<MT, kOpNum, paddle::platform::float16> {
-  MT* __restrict__ master_params[kOpNum];
+  MT* master_params[kOpNum];
 
-  DEVICE inline MT* __restrict__ GetMasterParam(size_t idx) const {
+  DEVICE inline MT* GetMasterParam(size_t idx) const {
     return master_params[idx];
   }
   void SetMasterParam(size_t idx, MT* p) { master_params[idx] = p; }
@@ -265,24 +262,23 @@ struct MergedLarsMasterParam<MT, kOpNum, paddle::platform::float16> {
 
 template <typename T, typename MT,
           int kOpNum =
-              std::is_same<T, paddle::platform::float16>::value ? 85 : 90>
+              std::is_same<T, paddle::platform::float16>::value ? 80 : 90>
 struct LarsParamWarpper : public MergedLarsMasterParam<MT, kOpNum, T> {
   static constexpr int kNum = kOpNum;
 
   int numel_arr[kOpNum];
   int repeat_arr[kOpNum];
   const T* __restrict__ g_arr[kOpNum];
-  T* __restrict__ p_arr[kOpNum];
-  MT* __restrict__ v_arr[kOpNum];
+  T* p_arr[kOpNum];
+  MT* v_arr[kOpNum];
   MT weight_decay_arr[kOpNum];
 };
 
 template <typename T, typename MT, typename LarsWarpperType>
 __global__ void MergedMomentumLarsKernel(
-    LarsWarpperType lars_warpper, MT* __restrict__ p_buffer,
-    MT* __restrict__ g_buffer, const MT* __restrict__ lr, const int op_num,
-    const MT mu, const MT lars_coeff, const MT epsilon, const MT rescale_grad,
-    const bool is_amp) {
+    LarsWarpperType lars_warpper, MT* p_buffer, MT* g_buffer, const MT* lr,
+    const int op_num, const MT mu, const MT lars_coeff, const MT epsilon,
+    const MT rescale_grad, const bool is_amp) {
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
@@ -306,13 +302,11 @@ __global__ void MergedMomentumLarsKernel(
 
 template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
-    T* __restrict__ param, const T* __restrict__ grad,
-    MT* __restrict__ velocity, MT* __restrict__ master_param,
-    const MT* __restrict__ learn_rate, MT* __restrict__ p_buffer,
-    MT* __restrict__ g_buffer, const MT mu, const MT lars_coeff,
-    const MT lars_weight_decay, const MT epsilon, const MT rescale_grad,
-    const int repeat_times, int thresh, const int64_t numel,
-    const bool is_amp) {
+    T* param, const T* __restrict__ grad, MT* velocity, MT* master_param,
+    const MT* __restrict__ learn_rate, MT* p_buffer, MT* g_buffer, const MT mu,
+    const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
+    const MT rescale_grad, const int repeat_times, int thresh,
+    const int64_t numel, const bool is_amp) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 11000
@@ -375,12 +369,12 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
             {LARS_BLOCK_SIZE << 1}, cuda_ctx);
     auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
-
     bool multi_precision = ctx.Attr<bool>("multi_precision");
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
     MT lars_coeff = static_cast<MT>(ctx.Attr<float>("lars_coeff"));
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
+    bool merge_option = ctx.Attr<bool>("merge_option");
 
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
     auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
@@ -412,7 +406,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
 #if CUDA_VERSION >= 11000
-    if (op_num > 1) {
+    // if (op_num > 1) {
+    if (merge_option) {
       LarsParamWarpper<T, MT> lars_warpper;
       /* Implementation of lars optimizer consists of following two steps:
         1. Figure out the L2 norm statistic result of grad data and param data.
