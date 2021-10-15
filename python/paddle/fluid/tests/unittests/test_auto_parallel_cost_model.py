@@ -27,7 +27,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.completion import complete_backward_annotation
 from paddle.distributed.auto_parallel.reshard import reshard
-from paddle.distributed.auto_parallel.cost import estimate_cost
+from cost import estimate_cost
 import paddle.fluid.core as core
 
 paddle.enable_static()
@@ -40,6 +40,7 @@ PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], parent=ROOT_MESH)
 NUM_RANKS = 8
 STAGE_0_CNT = 5
 STAGE_1_CNT = 10
+pp_cfg = [[0, 1,4,5],[2,3,6,7]]
 
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
@@ -195,13 +196,14 @@ class TestCostModel(unittest.TestCase):
     def test_empty_program_cost_model(self):
         empty_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        single_cost_data = [{}]
+        standalone_cost_data = [{}]
+        empty_pp_cfg = None
         cluster = None
         cost = estimate_cost(
             [empty_program],
             cluster=cluster,
-            process_mesh=_global_process_mesh,
-            single_cost_data=single_cost_data,
+            pipeline_config=empty_pp_cfg,
+            standalone_cost_data=standalone_cost_data,
             batch_size=1)
 
         self.assertTrue(check_empty_program_runtime(cost))
@@ -212,7 +214,6 @@ class TestCostModel(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         op2cost = get_single_node_data()
-
         distributed_program, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, 0)
         for rank_id in range(NUM_RANKS):
@@ -224,8 +225,8 @@ class TestCostModel(unittest.TestCase):
         cost = estimate_cost(
             distributed_program,
             cluster=cluster,
-            process_mesh=_global_process_mesh,
-            single_cost_data=op2cost,
+            pipeline_config=pp_cfg,
+            standalone_cost_data=op2cost,
             batch_size=4)
         self.assertTrue(check_runtime_estimation(cost))
         self.assertTrue(check_memory_estimation(cost))
