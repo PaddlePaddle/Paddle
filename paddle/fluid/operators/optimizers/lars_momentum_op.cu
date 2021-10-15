@@ -161,58 +161,22 @@ __global__ void L2NormKernel(
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
   const MT rescale_pow = rescale_grad * rescale_grad;
-  if (threadIdx.x == 0) {
-    s_buffer[0] = static_cast<MT>(0);
-    s_buffer[1] = static_cast<MT>(0);
-  }
+
   MT p_tmp = static_cast<MT>(0);
   MT g_tmp = static_cast<MT>(0);
-
-  if (repeat_times == 0) {
-    if (tid < numel) {
-      p_tmp = static_cast<MT>(p_data[tid]);
-      g_tmp = static_cast<MT>(g_data[tid]);
-    }
-    MT tmp0 = math::blockReduceSum<MT>(p_tmp * p_tmp, FINAL_MASK);
-    MT tmp1 = math::blockReduceSum<MT>(g_tmp * g_tmp, FINAL_MASK);
-    if (threadIdx.x == 0) {
-      s_buffer[0] += tmp0;
-      s_buffer[1] += tmp1;
-    }
-  } else {
-    /* Avoid occupy too much temp buffer. Slice the whole data into 2 parts,
-    the front of data whose quantity is excatly multiple of grid-thread
-    number, and delt in for loop, the rest is delt with another step. */
-    for (int i = 0; i < repeat_times; ++i) {
-      p_tmp = static_cast<MT>(p_data[tid]);
-      g_tmp = static_cast<MT>(g_data[tid]);
-      tid += grid_stride;
-      MT tmp0 = math::blockReduceSum<MT>(p_tmp * p_tmp, FINAL_MASK);
-      MT tmp1 = math::blockReduceSum<MT>(g_tmp * g_tmp, FINAL_MASK);
-      if (threadIdx.x == 0) {
-        s_buffer[0] += tmp0;
-        s_buffer[1] += tmp1;
-      }
-      __syncthreads();
-    }
-    MT p_val = 0;
-    MT g_val = 0;
-    if (tid < numel) {
-      p_val = static_cast<MT>(p_data[tid]);
-      g_val = static_cast<MT>(g_data[tid]);
-    }
-    MT tmp0 = math::blockReduceSum<MT>(p_val * p_val, FINAL_MASK);
-    MT tmp1 = math::blockReduceSum<MT>(g_val * g_val, FINAL_MASK);
-    if (threadIdx.x == 0) {
-      s_buffer[0] += tmp0;
-      s_buffer[1] += tmp1;
-    }
+  while (tid < numel) {
+    MT tmp0 = static_cast<MT>(p_data[tid]);
+    MT tmp1 = static_cast<MT>(g_data[tid]);
+    p_tmp += (tmp0 * tmp0);
+    g_tmp += (tmp1 * tmp1);
+    tid += grid_stride;
   }
-  __syncthreads();
+  p_tmp = math::blockReduceSum<MT>(p_tmp, FINAL_MASK);
+  g_tmp = math::blockReduceSum<MT>(g_tmp, FINAL_MASK);
 
   if (threadIdx.x == 0) {
-    p_buffer[blockIdx.x] = s_buffer[0];
-    g_buffer[blockIdx.x] = s_buffer[1];
+    p_buffer[blockIdx.x] = p_tmp;
+    g_buffer[blockIdx.x] = g_tmp;
   }
 #if CUDA_VERSION >= 11000
   cg->sync();  // Grid sync for writring partial result to gloabl memory
