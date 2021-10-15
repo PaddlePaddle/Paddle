@@ -739,10 +739,11 @@ void BindZeroCopyTensor(py::module *m) {
 void BindPaddleInferTensor(py::module *m) {
   py::class_<paddle_infer::Tensor>(*m, "PaddleInferTensor")
       .def("reshape", &paddle_infer::Tensor::Reshape)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<int32_t>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<int64_t>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
+      .def("copy_from_cpu_bind",
+           &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
