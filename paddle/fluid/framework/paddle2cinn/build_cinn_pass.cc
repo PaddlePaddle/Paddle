@@ -83,7 +83,7 @@ void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
     var->inputs = {op};
 
     // link feed var to cluster op
-    std::copy_if() for (auto* old_op : node->outputs) {
+    for (auto* old_op : node->outputs) {
       if (cluster.count(old_op)) {
         var->outputs.emplace_back(old_op2new_op[old_op]);
       }
