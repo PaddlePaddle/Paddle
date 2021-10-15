@@ -34,7 +34,6 @@ from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.param_attr import ParamAttr
 from paddle import _C_ops
-__all__ = ['resnet_unit', 'ResNetUnit']
 
 
 def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
@@ -57,17 +56,6 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         dtype=bn_param_dtype, stop_gradient=True)
     running_mean_x = mean_x
     running_var_x = var_x
-    # intermediate_out for z
-    conv_z = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    saved_mean_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True)
-    saved_invstd_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True)
-    running_mean_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True) if mean_z is None else mean_z
-    running_var_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True) if var_z is None else var_z
 
     inputs = {
         'X': x,
@@ -76,13 +64,47 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'BiasX': bias_x,
         'MeanX': mean_x,
         'VarX': var_x,
-        'Z': z,
-        'FilterZ': filter_z,
-        'ScaleZ': scale_z,
-        'BiasZ': bias_z,
-        'MeanZ': mean_z,
-        'VarZ': var_z
     }
+
+    outputs = {
+        'Y': out,
+        'BitMask': bit_mask,
+        'ConvX': conv_x,
+        'SavedMeanX': saved_mean_x,
+        'SavedInvstdX': saved_invstd_x,
+        'RunningMeanX': running_mean_x,
+        'RunningVarX': running_var_x
+    }
+
+    if fuse_add or has_shortcut:
+        inputs['Z'] = z
+        # intermediate_out for z
+        conv_z = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True)
+        outputs['ConvZ'] = conv_z
+
+    if has_shortcut:
+        inputs['FilterZ'] = filter_z
+        inputs['ScaleZ'] = scale_z
+        inputs['BiasZ'] = bias_z
+        inputs['MeanZ'] = mean_z
+        inputs['VarZ'] = var_z
+
+        # intermediate_out for z
+        saved_mean_z = helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype, stop_gradient=True)
+        saved_invstd_z = helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype, stop_gradient=True)
+        running_mean_z = helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype,
+            stop_gradient=True) if mean_z is None else mean_z
+        running_var_z = helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype,
+            stop_gradient=True) if var_z is None else var_z
+        outputs['SavedMeanZ'] = saved_mean_z
+        outputs['SavedInvstdZ'] = saved_invstd_z
+        outputs['RunningMeanZ'] = running_mean_z
+        outputs['RunningVarZ'] = running_var_z
 
     attrs = {
         'stride': stride,
@@ -98,21 +120,6 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'use_global_stats': use_global_stats,
         'is_test': is_test,
         'act_type': act
-    }
-
-    outputs = {
-        'Y': out,
-        'BitMask': bit_mask,
-        'ConvX': conv_x,
-        'SavedMeanX': saved_mean_x,
-        'SavedInvstdX': saved_invstd_x,
-        'RunningMeanX': running_mean_x,
-        'RunningVarX': running_var_x,
-        'ConvZ': conv_z,
-        'SavedMeanZ': saved_mean_z,
-        'SavedInvstdZ': saved_invstd_z,
-        'RunningMeanZ': running_mean_z,
-        'RunningVarZ': running_var_z,
     }
 
     helper.append_op(

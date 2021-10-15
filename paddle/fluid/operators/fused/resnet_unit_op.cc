@@ -356,6 +356,9 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
+    auto fuse_add = BOOST_GET_CONST(bool, this->GetAttr("fuse_add"));
+    auto has_shortcut = BOOST_GET_CONST(bool, this->GetAttr("has_shortcut"));
+
     op->SetType("resnet_unit_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("FilterX", this->Input("FilterX"));
@@ -364,13 +367,17 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("BiasX", this->Input("BiasX"));
     op->SetInput("SavedMeanX", this->Output("SavedMeanX"));
     op->SetInput("SavedInvstdX", this->Output("SavedInvstdX"));
-    op->SetInput("Z", this->Input("Z"));
-    op->SetInput("FilterZ", this->Input("FilterZ"));
-    op->SetInput("ConvZ", this->Output("ConvZ"));
-    op->SetInput("ScaleZ", this->Input("ScaleZ"));
-    op->SetInput("BiasZ", this->Input("BiasZ"));
-    op->SetInput("SavedMeanZ", this->Output("SavedMeanZ"));
-    op->SetInput("SavedInvstdZ", this->Output("SavedInvstdZ"));
+    if (fuse_add || has_shortcut) {
+      op->SetInput("Z", this->Input("Z"));
+    }
+    if (has_shortcut) {
+      op->SetInput("FilterZ", this->Input("FilterZ"));
+      op->SetInput("ConvZ", this->Output("ConvZ"));
+      op->SetInput("ScaleZ", this->Input("ScaleZ"));
+      op->SetInput("BiasZ", this->Input("BiasZ"));
+      op->SetInput("SavedMeanZ", this->Output("SavedMeanZ"));
+      op->SetInput("SavedInvstdZ", this->Output("SavedInvstdZ"));
+    }
     op->SetInput("Y", this->Output("Y"));
     op->SetInput("BitMask", this->Output("BitMask"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
@@ -382,11 +389,16 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
                   this->InputGrad("FilterX"));
     op->SetOutput(framework::GradVarName("ScaleX"), this->InputGrad("ScaleX"));
     op->SetOutput(framework::GradVarName("BiasX"), this->InputGrad("BiasX"));
-    op->SetOutput(framework::GradVarName("Z"), this->InputGrad("Z"));
-    op->SetOutput(framework::GradVarName("FilterZ"),
-                  this->InputGrad("FilterZ"));
-    op->SetOutput(framework::GradVarName("ScaleZ"), this->InputGrad("ScaleZ"));
-    op->SetOutput(framework::GradVarName("BiasZ"), this->InputGrad("BiasZ"));
+    if (fuse_add || has_shortcut) {
+      op->SetOutput(framework::GradVarName("Z"), this->InputGrad("Z"));
+    }
+    if (has_shortcut) {
+      op->SetOutput(framework::GradVarName("FilterZ"),
+                    this->InputGrad("FilterZ"));
+      op->SetOutput(framework::GradVarName("ScaleZ"),
+                    this->InputGrad("ScaleZ"));
+      op->SetOutput(framework::GradVarName("BiasZ"), this->InputGrad("BiasZ"));
+    }
   }
 };
 
