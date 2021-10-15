@@ -1212,7 +1212,8 @@ def prepend_feed_ops(inference_program,
         if not global_block.has_var(name):
             warnings.warn(
                 "The computation graph analysis shows that the calculation of fetch_targets does not require feeded_var_names[{i}]: `{name}` as input, so just skip this input.".
-                format(i, name))
+                format(
+                    i=i, name=name))
             continue
         out = global_block.var(name)
         global_block._prepend_op(

@@ -5170,8 +5170,6 @@ class Program(object):
                             target_op = op
                     # NOTE: Distributed scenario: recv op only has Out, if the output arg is feed target, the op also needs to be retained.
                     if op.type in ['recv_v2', 'partial_recv']:
-                        print('op_type is recv_v2', 'out arg name is',
-                              op.output_arg_names[0])
                         if op.output_arg_names[0] in feeded_var_names:
                             target_op = op
 

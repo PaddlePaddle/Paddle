@@ -60,14 +60,12 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        with self.assertRaisesRegexp(
-                ValueError, "not involved in the target_vars calculation"):
-            fluid.io.save_inference_model(
-                dirname='./model',
-                feeded_var_names=['x', 'y'],
-                target_vars=[z],
-                executor=exe,
-                main_program=main_prog)
+        fluid.io.save_inference_model(
+            dirname='./model',
+            feeded_var_names=['x', 'y'],
+            target_vars=[z],
+            executor=exe,
+            main_program=main_prog)
 
 
 class TestWhenTrainWithNoGrad(unittest.TestCase):
