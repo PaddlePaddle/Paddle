@@ -27,7 +27,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.completion import complete_backward_annotation
 from paddle.distributed.auto_parallel.reshard import reshard
-from paddle.distributed.cost_model import estimate_cost
+from paddle.distributed.auto_parallel.cost_model import estimate_cost
 import paddle.fluid.core as core
 
 paddle.enable_static()
@@ -213,7 +213,7 @@ class TestCostModel(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
-        op2cost = get_single_node_data()
+        standalone_cost_data = get_single_node_data()
         distributed_program, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, 0)
         for rank_id in range(NUM_RANKS):
@@ -226,7 +226,7 @@ class TestCostModel(unittest.TestCase):
             distributed_program,
             cluster=cluster,
             pipeline_config=pp_cfg,
-            standalone_cost_data=op2cost,
+            standalone_cost_data=standalone_cost_data,
             batch_size=4)
         self.assertTrue(check_runtime_estimation(cost))
         self.assertTrue(check_memory_estimation(cost))
