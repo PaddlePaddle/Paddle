@@ -11,75 +11,67 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/batch_norm_op.h"
 
+#include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
+using NPUDeviceContext = platform::NPUDeviceContext;
+
 template <typename T>
 class NPUBatchNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
     const float epsilon = ctx.Attr<float>("epsilon");
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
-    const bool test_mode = is_test && (!trainable_stats);
-    const std::string data_layout = ctx.Attr<std::string>("data_layout");
+
+    bool test_mode = is_test && (!trainable_stats);
+    bool training = !test_mode && !use_global_stats;
+
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimension must equal to 4. But "
-                          "received X's shape = [%s], X's dimension = [%d].",
-                          x_dims, x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        (x_dims.size() == 4UL || x_dims.size() == 3UL), true,
+        platform::errors::InvalidArgument(
+            "The input tensor X's dimension must equal to 3 or 4. "
+            " But got X's shape = [%s], X's dimension = [%d].",
+            x_dims.to_str(), x_dims.size()));
+
+    const auto *running_mean = ctx.Input<Tensor>("Mean");
+    const auto *running_var = ctx.Input<Tensor>("Variance");
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
 
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
-
-    Tensor x_tensor, y_tesnor;
+    auto &dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto x_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(x->dims(), dev_ctx);
+    auto y_tesnor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(y->dims(), dev_ctx);
     x_tensor.ShareDataWith(*x);
     y_tesnor.ShareDataWith(*y);
-    if (data_layout == "NHWC") {
+    if (data_layout == DataLayout::kNHWC) {
       x_tensor.set_layout(DataLayout::kNHWC);
       y_tesnor.set_layout(DataLayout::kNHWC);
     }
 
-    bool training = !test_mode && !use_global_stats;
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (!training) {
-      const auto *est_mean = ctx.Input<Tensor>("Mean");
-      const auto *est_var = ctx.Input<Tensor>("Variance");
-      framework::Tensor reserve_space1, reserve_space2;
-      reserve_space1.mutable_data<float>(est_mean->dims(), ctx.GetPlace());
-      reserve_space2.mutable_data<float>(est_var->dims(), ctx.GetPlace());
-
-      const auto &runner = NpuOpRunner(
-          "BatchNorm", {x_tensor, *scale, *bias, *est_mean, *est_var},
-          {y_tesnor, reserve_space1, reserve_space2, reserve_space1,
-           reserve_space2},
-          {{"epsilon", epsilon},
-           {"is_training", training},
-           {"data_format", data_layout}});
-      auto stream = dev_ctx.stream();
-      runner.Run(stream);
+      const auto &runner_infer = NpuOpRunner(
+          "BNInfer", {x_tensor, *scale, *bias, *running_mean, *running_var},
+          {y_tesnor}, {{"epsilon", epsilon}});
+      runner_infer.Run(stream);
     } else {
-      // if MomentumTensor is set, use MomentumTensor value, momentum
-      // is only used in this training branch
-      if (ctx.HasInput("MomentumTensor")) {
-        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
-        Tensor mom_cpu;
-        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
-        momentum = mom_cpu.data<float>()[0];
-      }
-
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       auto *saved_mean = ctx.Output<Tensor>("SavedMean");
@@ -89,45 +81,42 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       saved_mean->mutable_data<T>(ctx.GetPlace());
       saved_variance->mutable_data<T>(ctx.GetPlace());
 
-      framework::Tensor mean_tmp, variance_tmp;
-      mean_tmp.mutable_data<float>(mean_out->dims(), ctx.GetPlace());
-      variance_tmp.mutable_data<float>(variance_out->dims(), ctx.GetPlace());
+      // if MomentumTensor is set, use MomentumTensor value, momentum
+      // is only used in this training branch
+      if (ctx.HasInput("MomentumTensor")) {
+        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+        Tensor mom_cpu;
+        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        momentum = mom_cpu.data<float>()[0];
+      }
 
-      const auto &runner = NpuOpRunner(
-          "BatchNorm", {x_tensor, *scale, *bias},
-          {y_tesnor, mean_tmp, variance_tmp, *saved_mean, *saved_variance},
-          {{"epsilon", epsilon},
-           {"is_training", training},
-           {"data_format", data_layout}});
-      auto stream = dev_ctx.stream();
-      runner.Run(stream);
-      // Ascend can't output the estimated mean and variance
-      framework::Tensor this_factor_tensor;
-      this_factor_tensor.mutable_data<float>(framework::make_ddim({1}),
-                                             ctx.GetPlace());
-      framework::TensorFromVector<float>({static_cast<float>(1. - momentum)},
-                                         dev_ctx, &this_factor_tensor);
-      framework::Tensor momentum_tensor;
-      momentum_tensor.mutable_data<float>(framework::make_ddim({1}),
-                                          ctx.GetPlace());
-      framework::TensorFromVector<float>({static_cast<float>(momentum)},
-                                         dev_ctx, &momentum_tensor);
-      framework::Tensor ones_tensor;
-      ones_tensor.mutable_data<float>(mean_out->dims(), ctx.GetPlace());
-      framework::TensorFromVector<float>(
-          std::vector<float>(framework::product(mean_out->dims()), 1.0f),
-          dev_ctx, &ones_tensor);
+      framework::Tensor sum, square_sum;
+      sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
+      square_sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
 
-      const auto &runner1 = NpuOpRunner("AddMatMatElements",
-                                        {*mean_out, *saved_mean, ones_tensor,
-                                         momentum_tensor, this_factor_tensor},
-                                        {*mean_out}, {});
-      runner1.Run(stream);
-      const auto &runner2 = NpuOpRunner(
-          "AddMatMatElements", {*variance_out, *saved_variance, ones_tensor,
-                                momentum_tensor, this_factor_tensor},
-          {*variance_out}, {});
-      runner2.Run(stream);
+      // BNTrainingReduce ONLY support rank = 4
+      if (x->dims().size() == 3) {
+        auto x_shape_vec = framework::vectorize(x->dims());
+        if (data_layout == DataLayout::kNCHW) {
+          x_shape_vec.push_back(1);  // expand NCL -> NCL1
+        } else {
+          x_shape_vec.insert(x_shape_vec.begin() + 2, 1);  // expand NLC -> NL1C
+        }
+        auto x_new_shape = framework::make_ddim(x_shape_vec);
+        x_tensor.Resize(x_new_shape);
+        x_tensor.Resize(x_new_shape);
+      }
+      const auto &runner_reduce =
+          NpuOpRunner("BNTrainingReduce", {x_tensor}, {sum, square_sum},
+                      {{"epsilon", epsilon}});
+      runner_reduce.Run(stream);
+
+      const auto &runner_update = NpuOpRunner(
+          "BNTrainingUpdate", {x_tensor, sum, square_sum, *scale, *bias,
+                               *running_mean, *running_var},
+          {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
+          {{"factor", momentum}, {"epsilon", epsilon}});
+      runner_update.Run(stream);
     }
   }
 };
@@ -136,85 +125,99 @@ template <typename T>
 class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
-    const float epsilon = ctx.Attr<float>("epsilon");
-    const std::string data_layout = ctx.Attr<std::string>("data_layout");
-    bool use_global_stats = ctx.Attr<bool>("use_global_stats");
-
-    const auto *y_grad = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-    auto *saved_mean = ctx.Input<Tensor>("SavedMean");
-    auto *saved_variance = ctx.Input<Tensor>("SavedVariance");
-
-    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *scale_grad = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *bias_grad = ctx.Output<Tensor>(framework::GradVarName("Bias"));
-
+    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    // SavedVariance have been reverted in forward operator
+    const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
+    const float epsilon = ctx.Attr<float>("epsilon");
+    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
     use_global_stats = is_test || use_global_stats;
 
-    const Tensor *x = ctx.Input<Tensor>("X");
-    const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimension must equal to 4. But "
-                          "received X's shape = [%s], X's dimension = [%d].",
-                          x_dims, x_dims.size()));
-
-    // init output
-    Tensor scale_grad_tmp, bias_grad_tmp, x_grad_tmp;
-    if (scale_grad && bias_grad) {
-      scale_grad->mutable_data<T>(ctx.GetPlace());
-      bias_grad->mutable_data<T>(ctx.GetPlace());
-      scale_grad_tmp.ShareDataWith(*scale_grad);
-      bias_grad_tmp.ShareDataWith(*bias_grad);
-    } else {
-      scale_grad_tmp.mutable_data<T>(scale->dims(), ctx.GetPlace());
-      bias_grad_tmp.mutable_data<T>(bias->dims(), ctx.GetPlace());
-    }
-
-    Tensor x_tensor, y_grad_tensor, x_grad_tensor;
+    auto &dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto x_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(x->dims(), dev_ctx);
+    auto dy_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(d_y->dims(), dev_ctx);
     x_tensor.ShareDataWith(*x);
-    y_grad_tensor.ShareDataWith(*y_grad);
-    if (x_grad) {
-      x_grad->mutable_data<T>(ctx.GetPlace());
-      x_grad_tensor.ShareDataWith(*x_grad);
-    } else {
-      x_grad_tensor.mutable_data<T>(x->dims(), ctx.GetPlace());
-    }
-    if (data_layout == "NHWC") {
+    dy_tensor.ShareDataWith(*d_y);
+    if (data_layout == DataLayout::kNHWC) {
       x_tensor.set_layout(DataLayout::kNHWC);
-      y_grad_tensor.set_layout(DataLayout::kNHWC);
-      x_grad_tensor.set_layout(DataLayout::kNHWC);
+      dy_tensor.set_layout(DataLayout::kNHWC);
     }
-    if (!use_global_stats) {
-      const auto &runner = NpuOpRunner(
-          "BatchNormGrad",
-          {y_grad_tensor, x_tensor, *scale, *saved_mean, *saved_variance},
-          {x_grad_tensor, scale_grad_tmp, bias_grad_tmp, *saved_mean,
-           *saved_variance},  // segment fault if no reserve_space_3 and
-                              // reserve_space_4
-          {{"epsilon", epsilon},
-           {"is_training", true},
-           {"data_format", data_layout}});
-      auto stream = dev_ctx.stream();
-      runner.Run(stream);
-    } else {
-      const auto *running_mean = ctx.Input<Tensor>("Mean");
-      const auto *running_var = ctx.Input<Tensor>("Variance");
 
-      const auto &runner = NpuOpRunner(
-          "BatchNormGrad",
-          {y_grad_tensor, x_tensor, *scale, *running_mean, *running_var},
-          {x_grad_tensor, scale_grad_tmp, bias_grad_tmp, *running_mean,
-           *running_var},  // segment fault if no reserve_space_3 and
-                           // reserve_space_4
-          {{"epsilon", epsilon},
-           {"is_training", true},
-           {"data_format", data_layout}});
-      auto stream = dev_ctx.stream();
-      runner.Run(stream);
+    auto scale_grad_tmp =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(scale->dims(), dev_ctx);
+    auto bias_grad_tmp =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(bias->dims(), dev_ctx);
+    if (d_scale == nullptr) {
+      d_scale = &scale_grad_tmp;
+    }
+    if (d_bias == nullptr) {
+      d_bias = &bias_grad_tmp;
+    }
+
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+    if (d_scale && d_bias) {
+      d_scale->mutable_data<T>(ctx.GetPlace());
+      d_bias->mutable_data<T>(ctx.GetPlace());
+      if (use_global_stats) {
+        const auto *running_mean = ctx.Input<Tensor>("Mean");
+        const auto *running_variance = ctx.Input<Tensor>("Variance");
+        const auto &runner_update =
+            NpuOpRunner("BNTrainingUpdateGrad",
+                        {dy_tensor, x_tensor, *running_mean, *running_variance},
+                        {*d_scale, *d_bias}, {{"epsilon", epsilon}});
+        runner_update.Run(stream);
+      } else {
+        const auto &runner_update =
+            NpuOpRunner("BNTrainingUpdateGrad",
+                        {dy_tensor, x_tensor, *saved_mean, *saved_inv_variance},
+                        {*d_scale, *d_bias}, {{"epsilon", epsilon}});
+        runner_update.Run(stream);
+      }
+    }
+    if (d_x) {
+      d_x->mutable_data<T>(ctx.GetPlace());
+      auto dx_tensor =
+          ctx.AllocateTmpTensor<T, NPUDeviceContext>(d_x->dims(), dev_ctx);
+      dx_tensor.ShareDataWith(*d_x);
+      if (use_global_stats) {
+        if (x->dims().size() == 3) {
+          // BNInferGrad only support x rank = 4,
+          auto x_shape_vec = framework::vectorize(d_x->dims());
+          if (data_layout == DataLayout::kNCHW) {
+            x_shape_vec.push_back(1);  // expand NCL -> NCL1
+          } else {
+            x_shape_vec.insert(x_shape_vec.begin() + 2,
+                               1);  // expand NLC -> NL1C
+          }
+          auto x_new_shape = framework::make_ddim(x_shape_vec);
+          dx_tensor.Resize(x_new_shape);
+          dy_tensor.Resize(x_new_shape);
+        }
+        const auto *running_var = ctx.Input<Tensor>("Variance");
+        const auto &runner_infer =
+            NpuOpRunner("BNInferGrad", {dy_tensor, *scale, *running_var},
+                        {dx_tensor}, {{"epsilon", epsilon}});
+        runner_infer.Run(stream);
+      } else {
+        const auto &runner_reduce = NpuOpRunner(
+            "BNTrainingReduceGrad", {dy_tensor, x_tensor, *d_scale, *d_bias,
+                                     *scale, *saved_mean, *saved_inv_variance},
+            {dx_tensor}, {{"epsilon", epsilon}});
+        runner_reduce.Run(stream);
+      }
     }
   }
 };

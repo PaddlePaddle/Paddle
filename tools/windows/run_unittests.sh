@@ -96,7 +96,6 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_bmn$|\
 ^test_mobile_net$|\
 ^test_resnet_v2$|\
-^test_resnet_amp$|\
 ^test_build_strategy$|\
 ^test_se_resnet$|\
 ^disable_wincpu_test$"

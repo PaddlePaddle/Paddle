@@ -247,6 +247,12 @@ class Blas {
   template <typename T>
   void BatchedMatInv(int n, const T** a, T** a_inv, int* info,
                      int batch_size) const;
+
+  // cuBlas solve
+  template <typename T>
+  void BatchedGETRS(CBLAS_TRANSPOSE trans, int n, int nrhs, const T** a,
+                    int lda, int* ipiv, T** b, int ldb, int* info,
+                    int batch_size) const;
 #endif
 
  private:
@@ -401,6 +407,12 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void BatchedMatInv(ARGS... args) const {
     Base()->template BatchedMatInv<T>(args...);
+  }
+
+  // solve
+  template <typename... ARGS>
+  void BatchedGETRS(ARGS... args) const {
+    Base()->template BatchedGETRS<T>(args...);
   }
 #endif
 

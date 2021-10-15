@@ -49,7 +49,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
-          zero_copy_tensor ir_pass_manager op_compatible_info)
+          zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
 
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 

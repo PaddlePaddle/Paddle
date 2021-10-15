@@ -28,7 +28,7 @@ namespace paddle {
 namespace imperative {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   framework::Tensor *tensor =
@@ -42,9 +42,12 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
     DivNRanks(tensor, nranks, context);
 #endif
   } else if (platform::is_cpu_place(tensor->place())) {
+    VLOG(4) << "before div 2" << *tensor;
+    VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
     framework::VisitDataTypeSmall(
         dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
                     tensor, nranks, context));
+    VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
 // TODO(liuyuhui) support xpu about div nranks in the future
@@ -448,6 +451,21 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
           platform::errors::NotFound("Grad pending node should not be null"));
+      // py_layer is not supported in DataParallel
+      auto begin = grad_pending_node->begin();
+      auto end = grad_pending_node->end();
+      for (auto op_base = begin; op_base != end; op_base++) {
+        PADDLE_ENFORCE_EQ(
+            op_base->Type() != "py_layer", true,
+            platform::errors::PreconditionNotMet(
+                "Note: Currently PyLayer is not supported in DataParallel. For "
+                "using PyLayer in a DataParallel model, you can skip gradient "
+                "synchronization among multiple cards by 'no_sync', and "
+                "manually implement 'all_reduce' before model optimization. "
+                "There is an example showing specific implemetation processing "
+                "in offical docs: https://www.paddlepaddle.org.cn/documentation"
+                "/docs/api/paddle/DataParallel_cn.html"));
+      }
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
         visited.insert(grad_pending_node.get());
@@ -764,8 +782,8 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
-    auto &group = groups_[next_group_];
-    const int run_order = next_group_ % nrings_;
+    UNUSED auto &group = groups_[next_group_];
+    UNUSED const int run_order = next_group_ % nrings_;
 
     // For CUDA or XPU, compute_stream --> comm_stream.
     // For CPU, do nothing.
@@ -792,11 +810,12 @@ void Reducer::MarkGroupReady(size_t group_index) {
         cv_.notify_all();
       }
     });
-#elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
+    defined(PADDLE_WITH_GLOO)
     FusedAllReduceSchedule(run_order, group, next_group_);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Not compiled with BKCL or NCCL."));
+        "Not compiled with BKCL or NCCL or GLOO."));
 #endif
   }
 }
@@ -974,7 +993,8 @@ void Reducer::FinalizeBackward() {
 
   if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_GLOO)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars

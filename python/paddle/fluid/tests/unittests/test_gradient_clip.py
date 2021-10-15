@@ -71,14 +71,18 @@ class TestGradientClip(unittest.TestCase):
     def check_clip_result(self, out, out_clip):
         pass
 
-    def check_gradient_clip(self, place):
+    def check_gradient_clip(self, place, dtype='float32'):
         prog = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(
                 main_program=prog, startup_program=startup_program):
             image = fluid.data(name="a", shape=[-1, 784], dtype='float32')
             label = fluid.data(name="b", shape=[-1, 1], dtype='int64')
-            hidden = fluid.layers.fc(input=image, size=32, act='relu')
+            if dtype != 'float32':
+                image_cast = paddle.cast(image, dtype)
+                hidden = fluid.layers.fc(input=image_cast, size=32, act='relu')
+            else:
+                hidden = fluid.layers.fc(input=image, size=32, act='relu')
             predict = fluid.layers.fc(input=hidden, size=10, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=predict, label=label)
@@ -176,6 +180,15 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         self.clip_gradient = func
         self.check_gradient_clip(fluid.CPUPlace())
 
+    # test whether the ouput is right when use grad_clip under float64
+    def test_new_gradient_clip_fp64(self):
+        def func(params_grads):
+            clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
+            return clip(params_grads)
+
+        self.clip_gradient = func
+        self.check_gradient_clip(fluid.CPUPlace(), "float64")
+
     # invoke 'set_gradient_clip' in a wrong order
     def test_wrong_API_order(self):
         def backward_func(cost):
@@ -192,35 +205,51 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         for place in self.get_places():
             self.check_sparse_gradient_clip(place)
 
-    # if grad is None or not need clip
-    def test_none_grad(self):
-        clip = fluid.clip.GradientClipByGlobalNorm(self.clip_norm)
-        x = fluid.default_main_program().global_block().create_parameter(
-            name="x", shape=[2, 3], dtype="float32")
-        y = fluid.default_main_program().global_block().create_parameter(
-            name="y", shape=[2, 3], dtype="float32")
-
-        # (x, None) should not be returned
-        params_grads = [(x, None), (x, y), (y, x)]
-        params_grads = clip(params_grads)
-        self.assertTrue(
-            len(params_grads) == 2,
-            "ClipByGlobalNorm: when grad is None, it shouldn't be returned by gradient clip!"
-        )
-
-        ops = [op.type for op in x.block.ops]
-        self.assertListEqual(ops, [
-            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sqrt',
-            'fill_constant', 'elementwise_max', 'elementwise_div',
-            'elementwise_mul', 'elementwise_mul'
-        ])
-
     # raise typeError
     def test_tpyeError(self):
         # the type of optimizer(grad_clip=) must be an instance of GradientClipBase's derived class
         with self.assertRaises(TypeError):
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1,
                                                 grad_clip="test")
+
+    # if grad is None or not need clip
+    def test_none_grad_fp32(self):
+        ops = self._test_none_grad_helper("float32")
+        self.assertListEqual(ops, [
+            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div',
+            'elementwise_mul', 'elementwise_mul'
+        ])
+
+    def test_none_grad_fp16(self):
+        ops = self._test_none_grad_helper("float16")
+        self.assertListEqual(ops, [
+            'square', 'reduce_sum', 'square', 'reduce_sum', 'sum', 'cast',
+            'sqrt', 'fill_constant', 'elementwise_max', 'elementwise_div',
+            'cast', 'elementwise_mul', 'cast', 'elementwise_mul'
+        ])
+
+    def _test_none_grad_helper(self, dtype):
+        prog = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(
+                main_program=prog, startup_program=startup_program):
+            clip = fluid.clip.GradientClipByGlobalNorm(self.clip_norm)
+            x = fluid.default_main_program().global_block().create_parameter(
+                name="x", shape=[2, 3], dtype=dtype)
+            y = fluid.default_main_program().global_block().create_parameter(
+                name="y", shape=[2, 3], dtype=dtype)
+
+            # (x, None) should not be returned
+            params_grads = [(x, None), (x, y), (y, x)]
+            params_grads = clip(params_grads)
+            self.assertTrue(
+                len(params_grads) == 2,
+                "ClipByGlobalNorm: when grad is None, it shouldn't be returned by gradient clip!"
+            )
+
+            ops = [op.type for op in x.block.ops]
+        return ops
 
 
 class TestGradientClipByNorm(TestGradientClip):
@@ -422,6 +451,119 @@ class TestDygraphGradientClipByValue(TestDygraphGradientClip):
                 np.allclose(
                     a=u, b=v, rtol=1e-6, atol=1e-8),
                 "gradient clip by value has wrong results!")
+
+
+class SimpleNet(paddle.nn.Layer):
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.linear = paddle.nn.Linear(5, 5)
+        self.batch_norm = paddle.nn.BatchNorm(5)
+
+    def forward(self, x):
+        x = self.linear(x)
+        x = self.batch_norm(x)
+        return x
+
+
+class TestDygraphGradientClipFP16(unittest.TestCase):
+    def test_gradient_clip(self):
+        if fluid.core.is_compiled_with_cuda():
+            with fluid.dygraph.guard():
+                paddle.seed(10)
+                model = SimpleNet()
+                sgd_optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.0, parameters=model.parameters())
+                model, sgd_optimizer = paddle.amp.decorate(
+                    models=model, optimizers=sgd_optimizer, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                inputs = fluid.layers.uniform_random(
+                    [1, 5], min=-10, max=10).astype('float32')
+                with paddle.amp.auto_cast(level='O2'):
+                    out = model(fluid.dygraph.to_variable(inputs))
+                    loss = fluid.layers.reduce_mean(out)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.unscale_(sgd_optimizer)
+                # before clip
+                params_grads = []
+                for param in model.parameters():
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        params_grads.append((param, param._grad_ivar()))
+                _, grads = zip(*params_grads)
+                # clip grads
+                clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=0.8)
+                params_grads = clip(params_grads)
+                _, grads_clip = zip(*params_grads)
+                # param update                      
+                scaler.step(sgd_optimizer)
+                scaler.update()
+
+                global_norm = 0
+                for u in grads:
+                    u = u.numpy()
+                    global_norm += np.sum(np.power(u, 2))
+                global_norm = np.sqrt(global_norm)
+                global_norm_clip = 0
+                for v in grads_clip:
+                    v = v.numpy()
+                    global_norm_clip += np.sum(np.power(v, 2))
+                global_norm_clip = np.sqrt(global_norm_clip)
+
+                a = np.minimum(global_norm, 0.8)
+                b = global_norm_clip
+                self.assertTrue(
+                    np.isclose(
+                        a=a, b=b, rtol=1e-3, atol=1e-8),
+                    "gradient clip by global norm has wrong results, expetcd:%f, but recieved:%f"
+                    % (a, b))
+
+
+class TestDygraphGradientClipFP64(unittest.TestCase):
+    def test_gradient_clip(self):
+        with fluid.dygraph.guard():
+            inputs = fluid.layers.uniform_random(
+                [16, 5], min=-10, max=10).astype('float64')
+            linear = fluid.dygraph.Linear(5, 5, dtype="float64")
+            out = linear(fluid.dygraph.to_variable(inputs))
+            loss = fluid.layers.reduce_mean(out)
+            loss.backward()
+            # before clip
+            params_grads = []
+            for param in linear.parameters():
+                if param.stop_gradient:
+                    continue
+                if param._grad_ivar() is not None:
+                    params_grads.append((param, param._grad_ivar()))
+            _, grads = zip(*params_grads)
+            # clip grads
+            clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=0.1)
+            params_grads = clip(params_grads)
+            _, grads_clip = zip(*params_grads)
+
+            global_norm = 0
+            for u in grads:
+                u = u.numpy()
+                global_norm += np.sum(np.power(u, 2))
+            global_norm = np.sqrt(global_norm)
+
+            global_norm_clip = 0
+            for v in grads_clip:
+                v = v.numpy()
+                print(v)
+                global_norm_clip += np.sum(np.power(v, 2))
+            global_norm_clip = np.sqrt(global_norm_clip)
+            print(global_norm_clip)
+
+            a = np.minimum(global_norm, 0.1)
+            b = global_norm_clip
+
+            self.assertTrue(
+                np.isclose(
+                    a=a, b=b, rtol=1e-6, atol=1e-8),
+                "gradient clip by global norm has wrong results, expetcd:%f, but recieved:%f"
+                % (a, b))
 
 
 if __name__ == '__main__':

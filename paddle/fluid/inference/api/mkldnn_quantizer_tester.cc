@@ -62,6 +62,12 @@ class MkldnnQuantizerTest : public testing::Test {
     return mkldnn_quantizer->GetMaxChGRUScalingFactor(wx_tensor, wh_tensor);
   }
 
+  std::pair<bool, framework::LoDTensor> GetMaxChLSTMScalingFactor(
+      const framework::LoDTensor& wx_tensor,
+      const framework::LoDTensor& wh_tensor) const {
+    return mkldnn_quantizer->GetMaxChLSTMScalingFactor(wx_tensor, wh_tensor);
+  }
+
  protected:
   std::unique_ptr<PaddlePredictor> predictor;
   std::unique_ptr<AnalysisPredictor::MkldnnQuantizer> mkldnn_quantizer;
@@ -297,4 +303,33 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
     ASSERT_NEAR(lod_tensor.data<double>()[i], scales[i], abs_error);
   }
 }
+
+TEST_F(MkldnnQuantizerTest, max_ch_lstm_scaling_factor) {
+  framework::LoDTensor wx_tensor, wh_tensor, lod_tensor;
+
+  wx_tensor.Resize(framework::make_dim(wx.size(), wx[0].size()));
+  for (size_t i = 0; i < wx.size(); i++)
+    std::copy(
+        begin(wx[i]), end(wx[i]),
+        wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
+
+  wh_tensor.Resize(framework::make_dim(wh.size(), wh[0].size()));
+  for (size_t i = 0; i < wh.size(); i++)
+    std::copy(
+        begin(wh[i]), end(wh[i]),
+        wh_tensor.mutable_data<float>(platform::CPUPlace()) + i * wh[0].size());
+
+  bool is_unsigned;
+  std::tie(is_unsigned, lod_tensor) =
+      GetMaxChLSTMScalingFactor(wx_tensor, wh_tensor);
+
+  std::vector<double> scales = {2.35381475, 1.10797026, 1.00151656,
+                                1.19001095, 1.09045166, 1.01785819};
+  ASSERT_EQ(is_unsigned, false);
+  ASSERT_EQ(lod_tensor.numel(), static_cast<int64_t>(scales.size()));
+  for (int64_t i = 0; i < lod_tensor.numel(); i++) {
+    ASSERT_NEAR(lod_tensor.data<double>()[i], scales[i], abs_error);
+  }
+}
+
 }  // namespace paddle

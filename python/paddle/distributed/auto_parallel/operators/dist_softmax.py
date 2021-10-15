@@ -47,7 +47,6 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         x_name = op_desc.input('X')[0]
         axis = op_desc.attr('axis')
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        # print("softmax axis", axis)
 
         if axis != -1 and axis != len(x_dims_mapping) - 1:
             return False

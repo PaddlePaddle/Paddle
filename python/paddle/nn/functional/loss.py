@@ -1120,13 +1120,13 @@ def margin_cross_entropy(logits,
         The API supports model parallel and single GPU. And logits.shape[-1] can be different at each rank.
 
     Args:
-    	logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
+        logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
                 The logits is shard_logits when using model parallel.
-    	label (Tensor): shape[N] or shape[N, 1], the groud truth label.
-    	margin1 (float, optional): m1 of margin loss, default value is `1.0`.
-    	margin2 (float, optional): m2 of margin loss, default value is `0.5`.
-    	margin3 (float, optional): m3 of margin loss, default value is `0.0`.
-    	scale (float, optional): s of margin loss, default value is `64.0`.
+        label (Tensor): shape[N] or shape[N, 1], the groud truth label.
+        margin1 (float, optional): m1 of margin loss, default value is `1.0`.
+        margin2 (float, optional): m2 of margin loss, default value is `0.5`.
+        margin3 (float, optional): m3 of margin loss, default value is `0.0`.
+        scale (float, optional): s of margin loss, default value is `64.0`.
         group (Group, optional): The abstract representation of group, see paddle.distributed.collective.Group.
             Default `None`.
         return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
@@ -1644,6 +1644,9 @@ def cross_entropy(input,
             ignore_index)
 
     input_dims = len(list(input.shape))
+    if input_dims == 0:
+        raise ValueError('The dimention of input should be larger than zero!')
+
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
@@ -1665,12 +1668,13 @@ def cross_entropy(input,
                     format(invalid_label[0], 0))
             # TODO: Temporarily use paddle.nonzero instead of paddle.max 
             # to detect and find out possible illegal label values
-            if len(paddle.nonzero(valid_label >= input.shape[-1])) > 0:
+            if len(paddle.nonzero(valid_label >= input.shape[axis])) > 0:
                 invalid_label = paddle.gather_nd(
-                    valid_label, paddle.nonzero(valid_label >= input.shape[-1]))
+                    valid_label,
+                    paddle.nonzero(valid_label >= input.shape[axis]))
                 raise ValueError(
                     "Target({}) is out of class_dimension's upper bound({})".
-                    format(invalid_label[0], input.shape[-1] - 1))
+                    format(invalid_label[0], input.shape[axis] - 1))
 
         _, out = _C_ops.softmax_with_cross_entropy(
             input, label, 'soft_label', soft_label, 'ignore_index',
@@ -1697,19 +1701,28 @@ def cross_entropy(input,
                 out = _C_ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
-                if input.shape[-1] != weight.shape[-1]:
+                if input.shape[axis] != weight.shape[-1]:
                     raise ValueError(
-                        "input's class_dimension({}) must equal to \
-                        weight's class_dimension({}) \
-                            when weight is provided"
-                        .format(input.shape[-1], weight.shape[-1]))
+                        "input's class_dimension({}) must equal to "
+                        "weight's class_dimension({}) "
+                            "when weight is provided"\
+                        .format(input.shape[axis], weight.shape[-1]))
 
                 ignore_weight_mask = paddle.cast((label != ignore_index),
                                                  out.dtype)
                 if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
-                        -1] == 1:
-                    ignore_weight_mask.squeeze_(-1)
-                weight_gather = _C_ops.gather_nd(weight, valid_label)
+                        axis] == 1:
+                    # TODO: Temporarily use squeeze instead of squeeze_
+                    ignore_weight_mask = paddle.squeeze(ignore_weight_mask,
+                                                        axis)
+                if axis != -1 and axis != valid_label.ndim - 1:
+                    temp_perm = list(range(axis % valid_label.ndim)) \
+                                + list(range((axis % valid_label.ndim + 1) , valid_label.ndim)) \
+                                + [axis % valid_label.ndim]
+                    weight_gather = _C_ops.gather_nd(
+                        weight, valid_label.transpose(temp_perm))
+                else:
+                    weight_gather = _C_ops.gather_nd(weight, valid_label)
                 weight_gather = _C_ops.elementwise_mul(weight_gather,
                                                        ignore_weight_mask)
                 input_shape = list(label.shape)
@@ -1804,20 +1817,27 @@ def cross_entropy(input,
             weight_gather_reshape = reshape(weight_gather, shape=out_shape)
             out = paddle.cast(out, weight_gather_reshape.dtype)
         else:
-            if input.shape[-1] != weight.shape[-1]:
-                raise ValueError("input's class_dimension({}) must equal to "\
-                        "weight's class_dimension({}) "\
-                            "when weight is provided"
-                                 .format(input.shape[-1], weight.shape[-1]))
+            if input.shape[axis] != weight.shape[-1]:
+                raise ValueError("input's class_dimension({}) must equal to "
+                        "weight's class_dimension({}) "
+                            "when weight is provided"\
+                                 .format(input.shape[axis], weight.shape[-1]))
 
             valid_label = paddle.where(label == ignore_index,
                                        paddle.zeros_like(label), label)
             ignore_weight_mask = paddle.cast((label != ignore_index),
                                              input.dtype)
             if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
-                    -1] == 1:
-                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, -1)
-            weight_gather = paddle.gather_nd(weight, valid_label)
+                    axis] == 1:
+                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, axis)
+            if axis != -1 and axis != valid_label.ndim - 1:
+                temp_perm = list(range(axis % valid_label.ndim)) \
+                            + list(range((axis % valid_label.ndim + 1), valid_label.ndim)) \
+                            + [axis % valid_label.ndim]
+                weight_gather = paddle.gather_nd(
+                    weight, paddle.transpose(valid_label, temp_perm))
+            else:
+                weight_gather = paddle.gather_nd(weight, valid_label)
             weight_gather = paddle.multiply(weight_gather, ignore_weight_mask)
 
             input_shape = list(label.shape)

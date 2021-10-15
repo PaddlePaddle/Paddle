@@ -52,7 +52,7 @@ std::map<std::string, paddle::test::Record> PrepareInput(int batch_size) {
   return my_input_data_map;
 }
 
-TEST(test_ernie_text_cls, analysis_gpu_bz2_buffer) {
+TEST(gpu_tester_ernie_text_cls, analysis_gpu_bz2_buffer) {
   // init input data
   auto my_input_data_map = PrepareInput(2);
   // init output data
@@ -84,7 +84,7 @@ TEST(test_ernie_text_cls, analysis_gpu_bz2_buffer) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
+TEST(mkldnn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
   int thread_num = 4;
   // init input data
   auto my_input_data_map = PrepareInput(2);
