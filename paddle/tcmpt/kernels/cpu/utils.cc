@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/tcmpt/cpu/utils.h"
+#include "paddle/tcmpt/kernels/cpu/utils.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dtype.h"

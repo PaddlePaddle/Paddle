@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cpu/creation.h"
+#include "paddle/tcmpt/kernels/cpu/creation.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
-#include "paddle/tcmpt/eigen/fill.h"
+#include "paddle/tcmpt/kernels/common/eigen/fill.h"
 
 namespace pt {
 
