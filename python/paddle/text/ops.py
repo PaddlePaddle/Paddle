@@ -26,24 +26,38 @@ def crf_decode(potentials,
                include_start_end_tag=True,
                name=None):
     """
-    Decode the highest scoring sequence of tags.
+    Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path. 
     Args:
-        potentials (`Tensor` | `Varaiable`):  
-            The unary emission tensor. Its dtype is float32 or float64 and has a shape of `[batch_size, sequence_length, num_tags]`.
-        transition_params (`Tensor`| `Varaiable`): 
-            The transition matrix.  Its dtype is float32 or float64 and has a shape of `[num_tags, num_tags]`.
-        sequence_length (`Tensor`| `Varaiable`):  
-            The input length tensor storing real length of each sequence for correctness. Its dtype is int64 and has a shape of `[batch_size]`.
-        include_start_end_tag (`bool`, optional): 
-                    If set to True, the last row and the last column of transitions will be considered as start tag,
-                    the the penultimate row and the penultimate column of transitions will be considered as stop tag.
-                    Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
+        potentials (Tensor): The input tensor of unary emission. This is a 3-D
+            tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
+        transition_params (Tensor): The input tensor of transition matrix. This is a 2-D
+            tensor with shape of [num_tags, num_tags]. The data type is float32 or float64. 
+        sequence_length (Tensor):  The input tensor of real length of each sequence. This is a 1-D
+            tensor with shape of [batch_size]. The data type is int64. 
+        include_start_end_tag (bool, optional): Whether include start and end tag in transition_params. If set to True, 
+            the last row and the last column of transitions will be considered as start tag, the the penultimate row and 
+            the penultimate column of transitions will be considered as stop tag. Else, all the rows and columns will be
+            considered as the real tag. Defaults to ``True``.
         name (str|None) – A name for this layer(optional). If set None, the layer will be named automatically.
     Returns:
-        scores(`Tensor`| `Varaiable`): 
-            The scores tensor containing the score for the Viterbi sequence. Its dtype is float32 and has a shape of `[batch_size]`.
-        paths(`Tensor`| `Varaiable`): 
-            The paths tensor containing the highest scoring tag indices. Its dtype is int64 and has a shape of `[batch_size, sequence_length`].
+        scores(Tensor): The output tensor containing the score for the Viterbi sequence. The shape is [batch_size]
+            and the data type is float32 or float64.
+        paths(Tensor): The output tensor containing the highest scoring tag indices.  The shape is [batch_size, sequence_length]
+            and  the data type is int64.
+    Example:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            paddle.seed(102)
+            batch_size, seq_len, num_tags = 2, 4, 3
+            emission = paddle.rand((batch_size, seq_len, num_tags), dtype='float32')
+            length = paddle.randint(1, seq_len + 1, [batch_size])
+            tags = paddle.randint(0, num_tags, [batch_size, seq_len])
+            transition = paddle.rand((num_tags, num_tags), dtype='float32')
+            scores, path = paddle.text.ops.crf_decode(emission, transition, length, False)
+            # scores: Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True, [3.37089300, 1.56825531])
+            # path: Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True, [[1, 0, 0], [1, 1, 0]])
     """
     if in_dygraph_mode():
         return core.ops.viterbi_decode(potentials, transition_params,
@@ -77,7 +91,7 @@ def crf_decode(potentials,
 
 class ViterbiDecoder(Layer):
     """ 
-    ViterbiDecoder can decode the highest scoring sequence of tags, it should only be used at test time.
+    Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path. 
     Args:
         transitions (`Tensor`): 
             The transition matrix.  Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
@@ -85,6 +99,31 @@ class ViterbiDecoder(Layer):
             If set to True, the last row and the last column of transitions will be considered as start tag,
             the the penultimate row and the penultimate column of transitions will be considered as stop tag.
             Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
+    Shape:
+        potentials (Tensor): The input tensor of unary emission. This is a 3-D
+            tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
+        length (Tensor):  The input tensor of real length of each sequence. This is a 1-D
+            tensor with shape of [batch_size]. The data type is int64. 
+    Returns:
+        scores(Tensor): The output tensor containing the score for the Viterbi sequence. The shape is [batch_size]
+            and the data type is float32 or float64.
+        paths(Tensor): The output tensor containing the highest scoring tag indices.  The shape is [batch_size, sequence_length]
+            and  the data type is int64.
+    Example:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            paddle.seed(102)
+            batch_size, seq_len, num_tags = 2, 4, 3
+            emission = paddle.rand((batch_size, seq_len, num_tags), dtype='float32')
+            length = paddle.randint(1, seq_len + 1, [batch_size])
+            tags = paddle.randint(0, num_tags, [batch_size, seq_len])
+            transition = paddle.rand((num_tags, num_tags), dtype='float32')
+            decoder = paddle.text.ops.ViterbiDecoder(transition, include_start_end_tag=False)
+            scores, path = decoder(emission, length)
+            # scores: Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True, [3.37089300, 1.56825531])
+            # path: Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True, [[1, 0, 0], [1, 1, 0]])
     """
 
     def __init__(self, transitions, include_start_end_tag=True, name=None):
@@ -93,19 +132,6 @@ class ViterbiDecoder(Layer):
         self.include_start_end_tag = include_start_end_tag
         self.name = name
 
-    def forward(self, inputs, lengths):
-        """
-        Decode the highest scoring sequence of tags.
-        Args:
-            inputs (`Tensor`):  
-                The unary emission tensor. Its dtype is float32 and has a shape of `[batch_size, sequence_length, num_tags]`.
-            length (`Tensor`):  
-                The input length tensor storing real length of each sequence for correctness. Its dtype is int64 and has a shape of `[batch_size]`.
-        Returns:
-            scores(`Tensor`): 
-                The scores tensor containing the score for the Viterbi sequence. Its dtype is float32 and has a shape of `[batch_size]`.
-            paths(`Tensor`): 
-                The paths tensor containing the highest scoring tag indices. Its dtype is int64 and has a shape of `[batch_size, sequence_length`].
-        """
-        return crf_decode(inputs, self.transitions, lengths,
+    def forward(self, potentials, lengths):
+        return crf_decode(potentials, self.transitions, lengths,
                           self.include_start_end_tag, self.name)
