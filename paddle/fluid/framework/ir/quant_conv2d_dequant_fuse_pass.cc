@@ -434,9 +434,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     int range = ((1 << (bit_length - 1)) - 1);
     std::vector<float> weight_scale;
     int quant_axis = 0;
-    if (!dequant_op_node->Op()->HasAttr("quant_axis")) {
-      quant_axis = 0;
-    } else {
+    if (dequant_op_node->Op()->HasAttr("quant_axis")) {
       quant_axis =
           BOOST_GET_CONST(int, dequant_op_node->Op()->GetAttr("quant_axis"));
     }
