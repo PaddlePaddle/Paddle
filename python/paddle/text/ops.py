@@ -17,13 +17,13 @@ from ..fluid.framework import core, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 
-__all__ = []
+__all__ = ['crf_decode', 'ViterbiDecoder']
 
 
 def crf_decode(potentials,
                transition_params,
                sequence_length,
-               with_start_stop_tag=True,
+               include_start_end_tag=True,
                name=None):
     """
     Decode the highest scoring sequence of tags.
@@ -34,7 +34,7 @@ def crf_decode(potentials,
             The transition matrix.  Its dtype is float32 or float64 and has a shape of `[num_tags, num_tags]`.
         sequence_length (`Tensor`| `Varaiable`):  
             The input length tensor storing real length of each sequence for correctness. Its dtype is int64 and has a shape of `[batch_size]`.
-        with_start_stop_tag (`bool`, optional): 
+        include_start_end_tag (`bool`, optional): 
                     If set to True, the last row and the last column of transitions will be considered as start tag,
                     the the penultimate row and the penultimate column of transitions will be considered as stop tag.
                     Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
@@ -47,19 +47,19 @@ def crf_decode(potentials,
     """
     if in_dygraph_mode():
         return core.ops.viterbi_decode(potentials, transition_params,
-                                       sequence_length, 'with_start_stop_tag',
-                                       with_start_stop_tag)
+                                       sequence_length, 'include_start_end_tag',
+                                       include_start_end_tag)
     check_variable_and_dtype(potentials, 'input', ['float32', 'float64'],
                              'viterbi_decode')
     check_variable_and_dtype(transition_params, 'transitions',
                              ['float32', 'float64'], 'viterbi_decode')
     check_variable_and_dtype(sequence_length, 'lengths', ['int64'],
                              'viterbi_decode')
-    check_type(with_start_stop_tag, 'with_start_stop_tag', (bool, ),
+    check_type(include_start_end_tag, 'include_start_end_tag', (bool, ),
                'viterbi_decode')
 
     helper = LayerHelper('viterbi_decode', **locals())
-    attrs = {'with_start_stop_tag': with_start_stop_tag}
+    attrs = {'include_start_end_tag': include_start_end_tag}
     scores = helper.create_variable_for_type_inference(potentials.dtype)
     path = helper.create_variable_for_type_inference('int64')
     helper.append_op(
@@ -81,16 +81,16 @@ class ViterbiDecoder(Layer):
     Args:
         transitions (`Tensor`): 
             The transition matrix.  Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
-        with_start_stop_tag (`bool`, optional): 
+        include_start_end_tag (`bool`, optional): 
             If set to True, the last row and the last column of transitions will be considered as start tag,
             the the penultimate row and the penultimate column of transitions will be considered as stop tag.
             Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
     """
 
-    def __init__(self, transitions, with_start_stop_tag=True, name=None):
+    def __init__(self, transitions, include_start_end_tag=True, name=None):
         super(ViterbiDecoder, self).__init__()
         self.transitions = transitions
-        self.with_start_stop_tag = with_start_stop_tag
+        self.include_start_end_tag = include_start_end_tag
         self.name = name
 
     def forward(self, inputs, lengths):
@@ -108,4 +108,4 @@ class ViterbiDecoder(Layer):
                 The paths tensor containing the highest scoring tag indices. Its dtype is int64 and has a shape of `[batch_size, sequence_length`].
         """
         return crf_decode(inputs, self.transitions, lengths,
-                          self.with_start_stop_tag, self.name)
+                          self.include_start_end_tag, self.name)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import ops
 from .datasets import Conll05st  # noqa: F401
 from .datasets import Imdb  # noqa: F401
 from .datasets import Imikolov  # noqa: F401
@@ -19,7 +20,6 @@ from .datasets import Movielens  # noqa: F401
 from .datasets import UCIHousing  # noqa: F401
 from .datasets import WMT14  # noqa: F401
 from .datasets import WMT16  # noqa: F401
-from .crf import crf_decode, ViterbiDecoder
 
 __all__ = [ #noqa
            'Conll05st',
@@ -29,6 +29,4 @@ __all__ = [ #noqa
            'UCIHousing',
            'WMT14',
            'WMT16',
-           'crf_decode',
-           'ViterbiDecoder',
 ]

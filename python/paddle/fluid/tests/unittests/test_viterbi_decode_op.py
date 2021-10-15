@@ -126,8 +126,8 @@ class TestViterbiAPI(unittest.TestCase):
             Transition = fluid.data(
                 name="Transition", shape=[ntags, ntags], dtype="float32")
             Length = fluid.data(name="Length", shape=[bz], dtype="int64")
-            decoder = paddle.text.ViterbiDecoder(Transition,
-                                                 self.with_start_stop_tag)
+            decoder = paddle.text.ops.ViterbiDecoder(Transition,
+                                                     self.with_start_stop_tag)
             score, path = decoder(Input, Length)
             exe = fluid.Executor(place)
             feed_list = {

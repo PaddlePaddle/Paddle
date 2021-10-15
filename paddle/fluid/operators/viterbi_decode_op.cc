@@ -87,7 +87,7 @@ class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Path",
               "The paths tensor containing the highest scoring tag indices. "
               "The shape of Scores MUST be (batch_size, sequence_length).");
-    AddAttr<bool>("with_start_stop_tag",
+    AddAttr<bool>("include_start_end_tag",
                   "If set to True, the last row and the last column of "
                   "transitions will be considered as start tag.")
         .SetDefault(true);
