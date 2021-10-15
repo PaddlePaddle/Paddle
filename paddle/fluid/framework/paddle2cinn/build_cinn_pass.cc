@@ -64,10 +64,38 @@ using framework::ir::Node;
 using GraphNodeVec = std::vector<Node*>;
 using GraphNodeSet = std::unordered_set<Node*>;
 
+void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
+                     const GraphNodeSet& cluster,
+                     const std::unordered_map<Node*, Node*>& old_op2new_op,
+                     Graph* graph) {
+  for (auto* node : feed_vars) {
+    // create feed op
+    OpDesc desc;
+    desc.SetType("feed");
+    desc.SetOutput("Out", {node->Name()});
+    auto op = graph->CreateOpNode(&desc);
+
+    // create new feed var node (SSAGraph)
+    auto var = graph->CreateVarNode(node->Var());
+
+    // link feed op and feed var
+    op->outputs = {var};
+    var->inputs = {op};
+
+    // link feed var to cluster op
+    std::copy_if() for (auto* old_op : node->outputs) {
+      if (cluster.count(old_op)) {
+        var->outputs.emplace_back(old_op2new_op[old_op]);
+      }
+    }
+  }
+}
+
 // Create new subgraph with and op nodes are cluster nodes, and all
 // var node are from internal nodes
-std::unique_ptr<Graph> CreateNewSubGraph(
-    const GraphNodeSet& cluster, const GraphNodeSet& cluster_internals) {
+std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
+                                         const GraphNodeSet& cluster_internals,
+                                         const GraphNodeSet& cluster_inputs) {
   // Graph's constructor must has one parameter, and in our code,
   // the ProgramDesc is useless, so here we pass a temporary object.
   auto sub_graph = std::make_unique<Graph>(framework::ProgramDesc());
@@ -84,6 +112,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(
     old_var2new_var[var] = sub_node;
   }
 
+  std::unordered_set<Node*> need_feed_vars;
   // the subgraph is independently, so here we only need link
   // to the node in new subgraph, and discard the link to
   // out-graph.
@@ -91,6 +120,19 @@ std::unique_ptr<Graph> CreateNewSubGraph(
     for (auto* var : op->inputs) {
       if (cluster_internals.count(var)) {
         old_op2new_op[op]->inputs.emplace_back(old_var2new_var[var]);
+      } else if (cluster_inputs.count(var)) {
+        if (var->Var()->IsParameter()) {
+          // When the var is subgraph input and the var is not parameter,
+          // we need add a new feed op to feed the var.
+          need_feed_vars.insert(var);
+        } else {
+          // Parameters have been preserved in scope, so we do not feed
+          // and create new var node, re-use the old graph's var node
+          // is satisfactory.
+          // The var is used for check whether we need preserve the tensor
+          // when transform paddle scope to CINN scope.
+          old_op2new_op[op]->inputs.emplace_back(var);
+        }
       }
     }
     for (auto* var : op->outputs) {
@@ -99,6 +141,8 @@ std::unique_ptr<Graph> CreateNewSubGraph(
       }
     }
   }
+
+  AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, sub_graph.get());
 
   for (auto* var : cluster_internals) {
     for (auto* op : var->inputs) {

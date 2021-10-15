@@ -17,8 +17,6 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 #include <queue>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
@@ -30,13 +28,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
-namespace utils {
 
-using PdTensor = framework::Tensor;
+using ir::Graph;
+using ir::Node;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 
-auto GetCinnVarInfoFromTensor(const PdTensor& tensor) {
-  OpMapperContext::VarInfo info;
+namespace utils {
+
+auto GetCinnFeedInfoFromTensor(const Tensor& tensor) {
+  OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
     info.shape.emplace_back(sttic_cast<int>(dim[i]));
@@ -47,34 +47,68 @@ auto GetCinnVarInfoFromTensor(const PdTensor& tensor) {
   return info;
 }
 
-void TransformPaddleVariableToCinn(const framework::Variable& pd_var,
-                                   ::cinn::hlir::framework::Variable* cinn_var,
-                                   const ::cinn::common::Target& target) {
-  const auto& tensor = pd_var.Get<PdTensor>();
+void TransformPaddleVariableToCinn(
+    const Variable& pd_var, ::cinn::hlir::framework::Variable* cinn_var) {
+  const auto& pd_tensor = pd_var.Get<Tensor>();
+  auto& cinn_tensor = absl::get<CinnTensor>(*cinn_var);
+
+  auto feed_info = GetCinnFeedInfoFromTensor(pd_tensor);
+  // here we only need preserve dtype and shape, do not need preserve data
+  cinn_tensor.set_type(feed_info.type);
+  cinn_tensor.Resize(::cinn::hlir::framework::Shape(feed_info.shape));
+}
+}  // namespace utils
+
+// get the graph's op input Parameter var name set
+auto CinnGraphSymbolization::GetGraphInputParameterNames() const {
+  std::unordered_set<std::string> names;
+
+  for (auto* node : graph_.Nodes()) {
+    if (node->IsOp()) {
+      for (auto* var : node->inputs) {
+        if (var->Var()->IsParameter()) {
+          // Only need preserve the input parameter var of graph,
+          // others do not.
+          names.insert(var->Name());
+        }
+      }
+    }
+  }
+
+  return names;
 }
 
-auto TransformPaddleScopeToCinn(const framework::Scope& pd_scope,
-                                const ::cinn::common::Target& target) {
+// Transform paddle scope to cinn, note that we only preserve the graph’s
+// input parameter variable and ignore others.
+auto CinnGraphSymbolization::TransformPaddleScopeToCinn() const {
   auto cinn_scope = ::cinn::hlir::framework::Scope::Create();
 
-  for (const auto& var_name : pd_scope->LocalVarNames()) {
-    auto* pd_var = pd_scope.FindVar(var_name);
+  // get the graph's input parameter variable name list
+  auto parameter_names = GetGraphInputParameterNames();
+
+  for (const auto& var_name : scope_.LocalVarNames()) {
+    // if cannot find var in graph input, skip
+    if (parameter_names.count(var_name) == 0) continue;
+
+    auto* pd_var = scope_.FindLocalVar(var_name);
+
+    // scope accepte the CINN format name, so here we need transform
+    // paddle format name to CINN format.
     auto* cinn_var = cinn_scope->Var<CinnTensor>(
         ::cinn::utils::TransValidVarName(var.name()));
 
-    TransformPaddleVariableToCinn(*pd_var, cinn_var, target);
+    utils::TransformPaddleVariableToCinn(*pd_var, cinn_var);
   }
 
   return cinn_scope;
 }
-}  // namespace utils
 
-void CinnGraphSymbolization::AddVarInfoIntoContext(OpMapperContext* ctx) const {
-  for (auto& feed_pair : *feed_targets_) {
-    const auto& var_name = feed_pair.first;
+void CinnGraphSymbolization::AddFeedVarIntoContext(OpMapperContext* ctx) const {
+  for (auto& feed_pair : feed_targets_) {
+    const auto& feed_name = feed_pair.first;
     const auto* tensor = feed_pair.second;
 
-    ctx->AddVarInfo(var_name, utils::GetCinnVarInfoFromTensor(*tensor));
+    ctx.AddFeedInfo(feed_name, utils::GetCinnFeedInfoFromTensor(*tensor));
   }
 }
 
@@ -87,8 +121,8 @@ std::vector<Node*> CinnGraphSymbolization::TopoSortGraph() const {
                std::inserter(cluster_set, cluster_set.begin()),
                [](Node* node) { return node->IsOp(); });
 
-  std::unordered_map<Node*, size_t> indegree;
-  std::unordered_map<Node*, std::unordered_map<Node*, size_t>> adj_list;
+  absl::flat_hash_map<Node*, size_t> indegree;
+  absl::flat_hash_map<Node*, absl::flat_hash_map<Node*, size_t>> adj_list;
   std::queue<Node*> topo_queue;
 
   // record all op's input op and output op
@@ -168,8 +202,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   }
 }
 
-::cinn::frontend::Program CinnGraphSymbolization::operator()(
-    framework::Scope* scope) const {
+::cinn::frontend::Program CinnGraphSymbolization::operator()() const {
   std::string builder_name = "graph_";
   builder_name.append(std::to_string(graph_id_));
   builder_name.append("_of_");
@@ -180,12 +213,12 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   ::cinn::frontend::NetBuilder builder(builder_name);
 
   auto target = ::cinn::common::DefaultHostTarget();
-  auto cinn_scope = TransformPaddleScopeToCinn(*scope, target);
+  auto cinn_scope = TransformPaddleScopeToCinn();
 
   OpMapperContext ctx(*cinn_scope, target, &builder, &var_map_,
                       &var_model_to_program_map_);
 
-  AddVarInfoIntoContext(&ctx);
+  AddFeedVarIntoContext(&ctx);
   RunGraph(ctx);
 
   return builder.Build();
