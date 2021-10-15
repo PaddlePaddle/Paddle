@@ -87,8 +87,7 @@ if(WITH_ASCEND_CL)
   add_custom_target(extern_ascend_cl DEPENDS ascendcl acl_op_compiler)
 
   file(READ ${ASCEND_DIR}/ascend-toolkit/latest/arm64-linux/ascend_toolkit_install.info CANN_VERSION_FILE_CONTENTS)
-  string(REGEX MATCH "[0-9]\.[0-9].[0-9]\.alpha[0-9]+"
-	  CANN_VERSION "${CANN_VERSION_FILE_CONTENTS}")
+  string(REGEX MATCH "[0-9]\.[0-9].[0-9]\.alpha[0-9]+" CANN_VERSION "${CANN_VERSION_FILE_CONTENTS}")
   if("${CANN_VERSION}" EQUAL "5.0.3.alpha003")
       add_definitions(-DPADDLE_WITH_ASCEND_VERSION_503_alpha3)
   endif()
