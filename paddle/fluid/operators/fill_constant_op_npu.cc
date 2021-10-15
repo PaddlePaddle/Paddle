@@ -70,7 +70,9 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     runner.SetType("FillD")
         .AddInput(tensor_value)
         .AddOutput(*out_var)
-        .AddAttrs({{"dims",framework::vectorize(shape)}})
+        .AddAttrs(
+            {{ "dims",
+               framework::vectorize(shape) }})
         .Run(stream);
 #else
     runner.SetType("Fill")
