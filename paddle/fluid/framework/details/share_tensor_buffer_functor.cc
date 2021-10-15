@@ -35,27 +35,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-// TODO(zjl): support SelectedRows
-static inline const Tensor &GetTensorFromVar(const Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
-        framework::ToTypeName(var->Type())));
-  }
-}
-
-static inline Tensor *GetMutableTensorFromVar(Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
-        framework::ToTypeName(var->Type())));
-  }
-}
-
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,

@@ -30,22 +30,24 @@ from paddle.fluid.executor import global_scope
 class TensorConfig:
     '''
     A config builder for a input or a weight.
-  
-    InputVar's shape can be [-1, xxx], batch_size
     '''
 
     def __init__(self,
-                 shape: [List[int]],
-                 dtype: [str]="float32",
-                 data: Optional[np.array]=None):
+                 lod: Optional[List[List[int]]]=None,
+                 data_gen: Optional[Callable[..., np.array]]=None):
         '''
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
         data: The value of WeightVar. for input, it should be None 
         '''
-        self.shape = shape
-        self.dtype = dtype
-        self.data = data
+        self.lod = lod
+        self.data_gen = data_gen
+        self.data = data_gen()
+        self.dtype = data_gen().dtype
+        self.shape = data_gen().shape
+
+    def __repr__(self):
+        return str({'shape': self.shape, 'lod': self.lod, 'dtype': self.dtype})
 
 
 class OpConfig:
@@ -61,6 +63,11 @@ class OpConfig:
         self.outputs = outputs
         self.attrs = attrs
 
+    def __repr__(self):
+        log_str = self.type
+        log_str += str(self.attrs)
+        return log_str
+
 
 class ProgramConfig:
     '''  A config builder for generating a Program.  '''
@@ -71,9 +78,34 @@ class ProgramConfig:
                  inputs: Dict[str, TensorConfig],
                  outputs: List[str]):
         self.ops = ops
-        self.weights = weights
+        # if no weight need to save, we create a place_holder to help seriazlie params.
+        if not weights:
+
+            def generate_weight():
+                return np.array([1]).astype(np.float32)
+
+            self.weights = {
+                "place_holder_weight": TensorConfig(data_gen=generate_weight)
+            }
+        else:
+            self.weights = weights
         self.inputs = inputs
         self.outputs = outputs
+
+    def __repr__(self):
+        log_str = ''
+        for i in range(len(self.ops)):
+            if i != len(self.ops) - 1:
+                log_str += repr(self.ops[i]) + ' + '
+            else:
+                log_str += repr(self.ops[i])
+        log_str += ' -- '
+        for t, v in self.inputs.items():
+            log_str += '[' + t + ': ' + str(v) + ']'
+        for t, v in self.weights.items():
+            log_str += '[' + t + ': ' + str(v) + ']'
+
+        return log_str
 
 
 def create_fake_model(program_config):
@@ -186,13 +218,6 @@ def create_quant_model(model,
          params_filename=params)
     graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
 
-    transform_pass = QuantizationTransformPass(
-        scope=scope,
-        place=place,
-        activation_quantize_type=activation_quantize_type,
-        weight_quantize_type=weight_quantize_type)
-    transform_pass.apply(graph)
-
     out_scale_op_list = [
         "conv2d",
         "depthwise_conv2d",
@@ -298,6 +323,13 @@ def create_quant_model(model,
             else:
                 var_names.append(var_name)
         return var_names
+
+    transform_pass = QuantizationTransformPass(
+        scope=scope,
+        place=place,
+        activation_quantize_type=activation_quantize_type,
+        weight_quantize_type=weight_quantize_type)
+    transform_pass.apply(graph)
 
     op_nodes = graph.all_op_nodes()
     for op_node in op_nodes:

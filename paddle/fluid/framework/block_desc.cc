@@ -263,7 +263,27 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
   }
   ops_.clear();
   for (const auto &src_op : block->ops_) {
-    AppendOp()->CopyFrom(*src_op);
+    auto *dst_op = AppendOp();
+    dst_op->CopyFrom(*src_op);
+    for (const auto &pair : src_op->GetAttrMap()) {
+      const auto &attr_name = pair.first;
+      const auto &attr_value = pair.second;
+      auto attr_type = static_cast<proto::AttrType>(attr_value.which() - 1);
+      if (attr_type == proto::AttrType::BLOCK) {
+        auto block_id = BOOST_GET_CONST(BlockDesc *, attr_value)->ID();
+        dst_op->SetBlockAttr(attr_name, prog_->MutableBlock(block_id));
+        VLOG(10) << "Set block attr " << attr_name << " id " << block_id;
+      } else if (attr_type == proto::AttrType::BLOCKS) {
+        auto old_blocks = BOOST_GET_CONST(std::vector<BlockDesc *>, attr_value);
+        std::vector<BlockDesc *> new_blocks;
+        new_blocks.reserve(old_blocks.size());
+        for (auto *b : old_blocks) {
+          VLOG(10) << "Set block attr " << attr_name << " id " << b->ID();
+          new_blocks.push_back(prog_->MutableBlock(b->ID()));
+        }
+        dst_op->SetBlocksAttr(attr_name, new_blocks);
+      }
+    }
   }
   need_update_ = true;
   Flush();

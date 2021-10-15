@@ -28,9 +28,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    int numel = x->numel();
-
     int rid = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
         rid, 0,
@@ -56,6 +53,25 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
+
+    auto* x_var = ctx.InputVar("X");
+    if (x_var->IsType<framework::LoDTensorArray>()) {
+      auto& x_array = x_var->Get<framework::LoDTensorArray>();
+      for (size_t idx = 0; idx < x_array.size(); idx++) {
+        VLOG(3) << "LodTensorArray: idx(" << idx << ")";
+        auto& x = x_array.at(idx);
+        int numel = x.numel();
+        ncclDataType_t dtype = platform::ToNCCLDataType(x.type());
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+            x.data<T>(), numel, dtype, peer, comm->comm(), stream));
+        VLOG(3) << "rank " << comm->rank() << " send "
+                << framework::product(x.dims()) << " to " << peer;
+      }
+      return;
+    }
+    auto x = ctx.Input<framework::LoDTensor>("X");
+    int numel = x->numel();
+
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));

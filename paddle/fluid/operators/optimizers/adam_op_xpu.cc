@@ -113,27 +113,27 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
     VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
-    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+    float beta1 = static_cast<float>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
       auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
-      beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
+      beta1 = static_cast<float>(GetAttrFromTensor(beta1_tensor));
     }
-    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+    float beta2 = static_cast<float>(ctx.Attr<float>("beta2"));
     if (ctx.HasInput("Beta2Tensor")) {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
-      beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+      beta2 = static_cast<float>(GetAttrFromTensor(beta2_tensor));
     }
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    float epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     if (ctx.HasInput("EpsilonTensor")) {
       auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
-      epsilon = static_cast<T>(GetAttrFromTensor(epsilon_tensor));
+      epsilon = static_cast<float>(GetAttrFromTensor(epsilon_tensor));
     }
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input",
                                    "Grad", "Adam");
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      const T* beta1_pow_ptr = beta1_pow.template data<T>();
-      const T* beta2_pow_ptr = beta2_pow.template data<T>();
+      const float* beta1_pow_ptr = beta1_pow.template data<float>();
+      const float* beta2_pow_ptr = beta2_pow.template data<float>();
       Tensor xpu_beta1_pow;
       Tensor xpu_beta2_pow;
       if (beta1_pow.place() == platform::CPUPlace() &&
@@ -141,50 +141,49 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
         TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx, &xpu_beta1_pow);
         TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx, &xpu_beta2_pow);
         dev_ctx.Wait();
-        beta1_pow_ptr = xpu_beta1_pow.template data<T>();
-        beta2_pow_ptr = xpu_beta2_pow.template data<T>();
+        beta1_pow_ptr = xpu_beta1_pow.template data<float>();
+        beta2_pow_ptr = xpu_beta2_pow.template data<float>();
       }
-      int r = xpu::adam(
-          dev_ctx.x_context(), grad.template data<T>(), mom1.template data<T>(),
-          mom2.template data<T>(), param.template data<T>(), beta1_pow_ptr,
-          beta2_pow_ptr, beta1, beta2, epsilon, lr.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()),
-          param_out.template mutable_data<T>(ctx.GetPlace()), param.numel());
+
+      int r = xpu::adam(dev_ctx.x_context(), grad.template data<T>(),
+                        mom1.template data<T>(), mom2.template data<T>(),
+                        param.template data<float>(), beta1_pow_ptr,
+                        beta2_pow_ptr, lr.template data<float>(),
+                        mom1_out.template mutable_data<float>(ctx.GetPlace()),
+                        mom2_out.template mutable_data<float>(ctx.GetPlace()),
+                        param_out.template mutable_data<float>(ctx.GetPlace()),
+                        beta1, beta2, epsilon, param.numel());
       if (!use_global_beta_pow) {
         // update in cpu and then copy to xpu
         if (beta1_pow.place() == platform::CPUPlace() &&
             beta2_pow.place() == platform::CPUPlace()) {
-          const T* beta1_pow_p = beta1_pow.template data<T>();
-          beta1_pow_out->mutable_data<T>(platform::CPUPlace())[0] =
+          const float* beta1_pow_p = beta1_pow.template data<float>();
+          beta1_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
               beta1 * beta1_pow_p[0];
-          const T* beta2_pow_p = beta2_pow.template data<T>();
-          beta2_pow_out->mutable_data<T>(platform::CPUPlace())[0] =
+          const float* beta2_pow_p = beta2_pow.template data<float>();
+          beta2_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
               beta2 * beta2_pow_p[0];
-
+          xpu_wait(dev_ctx.x_context()->xpu_stream);
         } else {
-          T cpu_beta1_pow_out_data;
-          T cpu_beta2_pow_out_data;
-
-          memory::Copy(platform::CPUPlace(), &cpu_beta1_pow_out_data,
-                       BOOST_GET_CONST(platform::XPUPlace, beta1_pow.place()),
-                       beta1_pow_ptr, sizeof(T));
-
-          cpu_beta1_pow_out_data = cpu_beta1_pow_out_data * beta1;
-          memory::Copy(platform::CPUPlace(), &cpu_beta2_pow_out_data,
-                       BOOST_GET_CONST(platform::XPUPlace, beta2_pow.place()),
-                       beta2_pow_ptr, sizeof(T));
-
-          cpu_beta2_pow_out_data = cpu_beta2_pow_out_data * beta2;
-
-          T* beta1_pow_out_p = beta1_pow_out->mutable_data<T>(ctx.GetPlace());
-          T* beta2_pow_out_p = beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-          memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                       beta1_pow_out_p, platform::CPUPlace(),
-                       &cpu_beta1_pow_out_data, sizeof(T));
-          memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                       beta2_pow_out_p, platform::CPUPlace(),
-                       &cpu_beta2_pow_out_data, sizeof(T));
+          float* beta1_pow_out_p =
+              beta1_pow_out->mutable_data<float>(ctx.GetPlace());
+          float* beta2_pow_out_p =
+              beta2_pow_out->mutable_data<float>(ctx.GetPlace());
+          int r =
+              xpu::scale(dev_ctx.x_context(), beta1_pow_ptr, beta1_pow_out_p,
+                         beta1_pow.numel(), false, beta1, 0.0f);
+          PADDLE_ENFORCE_EQ(
+              r, xpu::SUCCESS,
+              platform::errors::External(
+                  "XPU kernel scale occur error in adamw error code ", r,
+                  XPUAPIErrorMsg[r]));
+          r = xpu::scale(dev_ctx.x_context(), beta2_pow_ptr, beta2_pow_out_p,
+                         beta2_pow.numel(), false, beta2, 0.0f);
+          PADDLE_ENFORCE_EQ(
+              r, xpu::SUCCESS,
+              platform::errors::External(
+                  "XPU kernel scale occur error in adamw error code ", r,
+                  XPUAPIErrorMsg[r]));
         }
 
         PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,

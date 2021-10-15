@@ -61,8 +61,8 @@ static void check_tensor(const LoDTensor& tensor) {
                                                  "Tensor dimension is empty."));
 }
 
-void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForGRUWeights(
-    const paddle::framework::OpDesc* op) {
+void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForRNNWeights(
+    const paddle::framework::OpDesc* op, bool gru) {
   const auto& wx_names = op->Input("WeightX");
   const auto& wh_names = op->Input("WeightH");
   for (size_t i = 0; i < wx_names.size(); ++i) {
@@ -74,14 +74,20 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForGRUWeights(
     check_var(wh_var, wh_name);
     LoDTensor* wx_tensor = wx_var->GetMutable<LoDTensor>();
     LoDTensor* wh_tensor = wh_var->GetMutable<LoDTensor>();
-    scales_[wx_name] = GetMaxChGRUScalingFactor(*wx_tensor, *wh_tensor);
+    if (gru) {
+      scales_[wx_name] = GetMaxChGRUScalingFactor(*wx_tensor, *wh_tensor);
+    } else {
+      scales_[wx_name] = GetMaxChLSTMScalingFactor(*wx_tensor, *wh_tensor);
+    }
   }
 }
 
 void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpInputs(
     const paddle::framework::OpDesc* op) {
   if (op->Type() == "fusion_gru" || op->Type() == "multi_gru") {
-    CalculateScalesForGRUWeights(op);
+    CalculateScalesForRNNWeights(op, true);
+  } else if (op->Type() == "fusion_lstm") {
+    CalculateScalesForRNNWeights(op, false);
   }
   for (auto const& input : op->Inputs()) {
     for (const auto& var_name : input.second) {
@@ -460,6 +466,41 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChGRUScalingFactor(
   LoDTensor scale_tensor = CreateScaleTensor(scale_ur.size());
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scale_ur.begin(), scale_ur.end(), scale_ptr);
+  bool is_unsigned = false;
+  return std::make_pair(is_unsigned, scale_tensor);
+}
+
+std::pair<bool, LoDTensor>
+AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
+    const LoDTensor& wx_tensor, const LoDTensor& wh_tensor) const {
+  check_tensor(wx_tensor);
+  check_tensor(wh_tensor);
+
+  std::vector<float> scale(wx_tensor.dims()[1]);
+
+  for (int row_id = 0; row_id < wx_tensor.dims()[0]; row_id++) {
+    for (int col_id = 0; col_id < wx_tensor.dims()[1]; col_id++) {
+      int idx = (row_id * wx_tensor.dims()[1]) + col_id;
+      auto abs_value = std::abs(wx_tensor.data<float>()[idx]);
+      if (row_id == 0) {
+        scale[col_id] = abs_value;
+      } else {
+        if (abs_value > scale[col_id]) scale[col_id] = abs_value;
+      }
+    }
+  }
+  for (int row_id = 0; row_id < wh_tensor.dims()[0]; row_id++) {
+    for (int col_id = 0; col_id < wh_tensor.dims()[1]; col_id++) {
+      int idx = (row_id * wh_tensor.dims()[1]) + col_id;
+      auto abs_value = std::abs(wh_tensor.data<float>()[idx]);
+      if (abs_value > scale[col_id]) scale[col_id] = abs_value;
+    }
+  }
+  transform(scale.begin(), scale.end(), scale.begin(),
+            [](float& c) { return 1 / c; });
+  LoDTensor scale_tensor = CreateScaleTensor(scale.size());
+  auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
+  std::copy(scale.begin(), scale.end(), scale_ptr);
   bool is_unsigned = false;
   return std::make_pair(is_unsigned, scale_tensor);
 }

@@ -431,6 +431,8 @@ function(cc_test_run TARGET_NAME)
     if (APPLE)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 20)
     endif()
+  elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
+    add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip ${TARGET_NAME}.)
   endif()
 endfunction()
 
@@ -459,6 +461,8 @@ function(cc_test TARGET_NAME)
         COMMAND ${TARGET_NAME}
         ARGS ${cc_test_ARGS})
     endif()
+  elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
+    add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip ${TARGET_NAME}.)
   endif()
 endfunction(cc_test)
 

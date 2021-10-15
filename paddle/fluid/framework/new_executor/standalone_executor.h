@@ -45,6 +45,9 @@ class StandaloneExecutor : public ExecutorBase {
       const std::vector<framework::Tensor>& feed_tensors,
       const std::vector<std::string>& fetch_names);
 
+  const CostInfo& DryRun(const std::vector<std::string>& feed_names,
+                         const std::vector<framework::Tensor>& feed_tensors);
+
  private:
   void BuildVariableOuterScope(const framework::ProgramDesc& pdesc,
                                VariableScope* var_scope, Scope* outer_scope);

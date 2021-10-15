@@ -56,11 +56,11 @@ def strided_slice_native_forward(input, axes, starts, ends, strides):
     return result
 
 
-@skip_check_grad_ci(
-    reason='''forward only, it doesn't need to call check_grad.''')
 class TestStridedSliceOp(OpTest):
     def setUp(self):
         self.initTestCase()
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
         self.op_type = 'strided_slice'
         self.output = strided_slice_native_forward(
             self.input, self.axes, self.starts, self.ends, self.strides)
@@ -75,12 +75,17 @@ class TestStridedSliceOp(OpTest):
             'infer_flags': self.infer_flags
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
     def test_check_output(self):
-        place = paddle.NPUPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
     def initTestCase(self):
-        self.input = np.random.rand(10)
+        self.input = np.random.rand(100)
         self.axes = [0]
         self.starts = [2]
         self.ends = [7]
@@ -283,12 +288,12 @@ class TestStridedSliceOpBool6D(TestStridedSliceOpBool):
         self.infer_flags = [1, 1, 1, 1, 1]
 
 
-@skip_check_grad_ci(
-    reason='''forward only, it doesn't need to call check_grad.''')
 class TestStridedSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
+        self.place = paddle.NPUPlace(0)
         self.op_type = "strided_slice"
         self.config()
+        self.set_npu()
 
         starts_tensor = []
         for index, ele in enumerate(self.starts):
@@ -305,6 +310,9 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
             'infer_flags': self.infer_flags
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
@@ -318,16 +326,18 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
         self.starts_infer = [1, 10, 2]
 
     def test_check_output(self):
-        place = paddle.NPUPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
-@skip_check_grad_ci(
-    reason='''forward only, it doesn't need to call check_grad.''')
 class TestStridedSliceOp_ends_ListTensor(OpTest):
     def setUp(self):
+        self.place = paddle.NPUPlace(0)
         self.op_type = "strided_slice"
         self.config()
+        self.set_npu()
 
         ends_tensor = []
         for index, ele in enumerate(self.ends):
@@ -344,6 +354,9 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
             'infer_flags': self.infer_flags
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 0]
@@ -357,16 +370,19 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
         self.ends_infer = [3, 1, 4]
 
     def test_check_output(self):
-        place = paddle.NPUPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
-@skip_check_grad_ci(
-    reason='''forward only, it doesn't need to call check_grad.''')
 class TestStridedSliceOp_starts_Tensor(OpTest):
     def setUp(self):
+        self.place = paddle.NPUPlace(0)
         self.op_type = "strided_slice"
         self.config()
+        self.set_npu()
+
         self.inputs = {
             'Input': self.input,
             "StartsTensor": np.array(
@@ -381,6 +397,9 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
             'infer_flags': self.infer_flags,
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
@@ -392,16 +411,19 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
             self.input, self.axes, self.starts, self.ends, self.strides)
 
     def test_check_output(self):
-        place = paddle.NPUPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
-@skip_check_grad_ci(
-    reason='''forward only, it doesn't need to call check_grad.''')
 class TestStridedSliceOp_ends_Tensor(OpTest):
     def setUp(self):
+        self.place = paddle.NPUPlace(0)
         self.op_type = "strided_slice"
         self.config()
+        self.set_npu()
+
         self.inputs = {
             'Input': self.input,
             "EndsTensor": np.array(
@@ -416,6 +438,9 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
             'infer_flags': self.infer_flags,
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
@@ -427,20 +452,23 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
             self.input, self.axes, self.starts, self.ends, self.strides)
 
     def test_check_output(self):
-        place = paddle.NPUPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
-@skip_check_grad_ci(
-    reason='''forward only, it doesn't need to call check_grad.''')
 class TestStridedSliceOp_listTensor_Tensor(OpTest):
     def setUp(self):
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "strided_slice"
+        self.set_npu()
         self.config()
+
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(("x" + str(index), np.ones(
                 (1)).astype('int32') * ele))
-        self.op_type = "strided_slice"
 
         self.inputs = {
             'Input': self.input,
@@ -457,6 +485,9 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
             'infer_flags': self.infer_flags,
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
@@ -468,16 +499,19 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
             self.input, self.axes, self.starts, self.ends, self.strides)
 
     def test_check_output(self):
-        place = paddle.NPUPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
-@skip_check_grad_ci(
-    reason='''forward only, it doesn't need to call check_grad.''')
 class TestStridedSliceOp_strides_Tensor(OpTest):
     def setUp(self):
+        self.place = paddle.NPUPlace(0)
         self.op_type = "strided_slice"
+        self.set_npu()
         self.config()
+
         self.inputs = {
             'Input': self.input,
             "StridesTensor": np.array(
@@ -492,6 +526,9 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
             'infer_flags': self.infer_flags,
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, -1, 2]
@@ -503,8 +540,10 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
             self.input, self.axes, self.starts, self.ends, self.strides)
 
     def test_check_output(self):
-        place = paddle.NPUPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
     # Test python API

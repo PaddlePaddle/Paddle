@@ -820,7 +820,6 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
   OverHead overhead;
-
   AnalyzeEvent(analyze_events, &events_table, &child_map, sorted_func,
                sorted_by, &max_name_width, &overhead, merge_thread);
 
