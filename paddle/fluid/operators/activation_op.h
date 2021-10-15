@@ -536,6 +536,61 @@ struct TanhGradGradFunctor : public BaseActivationFunctor<T> {
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
+/*
+    Out
+    DOut                            D_Dout
+    DDx     -> TanhTripleGrad ->    D_DDx
+    D_DDout                         d_OutNew
+    D_Dout_new
+
+    D_Dout = (-2) * Out * DDx * D_Dout_new
+    D_DDx = (1-Out^2)*D_DDout + (-2) * Out * DOut * D_Dout_new
+    D_OutNew = (-2) * Out * DDx * D_DDout + (-2) * DOut * DDx * D_Dout_new
+
+    Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    D_OutNew, D_DOut, D_DDx               // output
+*/
+template <typename T>
+struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev, const framework::Tensor* Out,
+                  const framework::Tensor* ddX, const framework::Tensor* dOut,
+                  const framework::Tensor* d_DDOut,
+                  const framework::Tensor* d_dOut_New,
+                  framework::Tensor* d_d_Out, framework::Tensor* d_Out_New,
+                  framework::Tensor* d_DDx) const {
+    auto* d = dev.eigen_device();
+    auto ddx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "TanhTripleGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "TanhTripleGrad"));
+    auto dout = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhTripleGrad"));
+    auto d_ddOut = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+    auto d_dOutNew = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+
+    if (d_Out_New) {
+      auto d_OutNew = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_Out_New, "Output", "D_OutNew", "TanhTripleGrad"));
+      d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
+                            (static_cast<T>(2) * dout * ddx * d_dOutNew);
+    }
+    if (d_d_Out) {
+      auto d_dOut = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "TanhTripleGrad"));
+      d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
+    }
+    if (d_DDx) {
+      auto d_ddx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "TanhTripleGrad"));
+      d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
+                         static_cast<T>(2) * out * dout * d_dOutNew;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
 
 // tanhshrink(x) = x - tanh(x)
 // where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
@@ -2137,6 +2192,63 @@ class TanhDoubleGradKernel
     functor(place, Out, ddX, dOut, dOutNew, ddOut);
   }
 };
+
+template <typename DeviceContext, typename Functor>
+class TanhTripeGradKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *Out, *ddX, *dOut, *d_ddOut, *d_dOutNew;
+    framework::Tensor *d_OutNew, *d_dOut, *d_ddx;
+    Out = ddX = dOut = d_ddOut = d_dOutNew = nullptr;
+    d_OutNew = d_dOut = d_ddx = nullptr;
+
+    // extract ddx(input), out(input), dOut(input), d_ddOut(input),
+    // d_dOutNew(input)
+    ddX = ctx.Input<framework::Tensor>("DDX");
+    Out = ctx.Input<framework::Tensor>("Out");
+    dOut = ctx.Input<framework::Tensor>("DOut");
+    d_ddOut = ctx.Input<framework::Tensor>("D_DDOut");
+    d_dOutNew = ctx.Input<framework::Tensor>("D_DOut_New");
+
+    PADDLE_ENFORCE_NOT_NULL(
+        ddX, platform::errors::NotFound(
+                 "Cannot get input Variable ddX, variable name = %s",
+                 ctx.InputName("DDX")));
+    PADDLE_ENFORCE_NOT_NULL(
+        Out, platform::errors::NotFound(
+                 "Cannot get input Variable Out, variable name = %s",
+                 ctx.InputName("Out")));
+    PADDLE_ENFORCE_NOT_NULL(
+        dOut, platform::errors::NotFound(
+                  "Cannot get input Variable dOut, variable name = %s",
+                  ctx.InputName("DOut")));
+    PADDLE_ENFORCE_NOT_NULL(
+        d_ddOut, platform::errors::NotFound(
+                     "Cannot get input Variable d_ddOut, variable name = %s",
+                     ctx.InputName("D_DDOut")));
+    PADDLE_ENFORCE_NOT_NULL(
+        d_dOutNew,
+        platform::errors::NotFound(
+            "Cannot get input Variable d_dOutNew, variable name = %s",
+            ctx.InputName("D_DOutNew")));
+
+    // set output d_OutNew、d_dOut、d_ddx
+    d_dOut = ctx.Output<framework::Tensor>("D_DOut");
+    d_OutNew = ctx.Output<framework::Tensor>("D_OutNew");
+    d_ddx = ctx.Output<framework::Tensor>("D_DDx");
+
+    if (d_dOut) d_dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    if (d_OutNew) d_OutNew->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    if (d_ddx) d_ddx->mutable_data<T>(ddX->dims(), ctx.GetPlace());
+    auto& place = ctx.template device_context<DeviceContext>();
+    Functor functor;
+    functor(place, Out, ddX, dOut, d_ddOut, d_dOutNew,  // input
+            d_dOut, d_OutNew, d_ddx);                   // output
+  }
+};
+
 template <typename DeviceContext, typename Functor>
 class SquareDoubleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
