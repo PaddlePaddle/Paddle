@@ -5165,16 +5165,18 @@ class Program(object):
                             target_op = op
 
                     # NOTE: Distributed scenario: send op only has Input, if the input arg is fetch target, the op also needs to be retained.
-                    if op.type in ['send_v2', 'partial_send']:
+                    if op.type in ['send_v2', 'partial_send'
+                                   ] and target_op is None:
                         if name in op.input_arg_names:
                             target_op = op
                     # NOTE: Distributed scenario: recv op only has Out, if the output arg is feed target, the op also needs to be retained.
-                    if op.type in ['recv_v2', 'partial_recv']:
+                    if op.type in ['recv_v2', 'partial_recv'
+                                   ] and target_op is None:
                         if op.output_arg_names[0] in feeded_var_names:
                             target_op = op
 
-                if target_op is not None:
-                    targets_idx.append([target_op.block.idx, target_op.idx])
+                    if target_op is not None:
+                        targets_idx.append([target_op.block.idx, target_op.idx])
             else:
                 targets_idx.append([t.block.idx, t.idx])
 
