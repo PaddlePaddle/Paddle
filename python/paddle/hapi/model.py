@@ -823,7 +823,7 @@ class DynamicGraphAdapter(object):
             if self.model._optimizer.state_dict():
                 optim = self.model._optimizer.state_dict()
                 fluid.save_dygraph(optim, path)
-        if self.model._scaler is not None:
+        if hasattr(self.model, '_scaler') and self.model._scaler is not None:
             if self.model._scaler.state_dict():
                 scaler = self.model._scaler.state_dict()
                 fluid.save_dygraph(scaler, path)
@@ -833,8 +833,9 @@ class DynamicGraphAdapter(object):
         for param, state in param_state_pairs:
             param.set_value(state)
 
-        if self.model._scaler and scaler_state:
-            self.model._scaler.set_state_dict(scaler_state)
+        if hasattr(self.model, '_scaler') and self.model._scaler is not None:
+            if scaler_state:
+                self.model._scaler.set_state_dict(scaler_state)
 
         # resotre optimizer states
         if not self.model._optimizer or not optim_state:
