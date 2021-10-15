@@ -27,7 +27,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.completion import complete_backward_annotation
 from paddle.distributed.auto_parallel.reshard import reshard
-from cost import estimate_cost
+from paddle.distributed.cost_model import estimate_cost
 import paddle.fluid.core as core
 
 paddle.enable_static()
@@ -40,7 +40,7 @@ PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], parent=ROOT_MESH)
 NUM_RANKS = 8
 STAGE_0_CNT = 5
 STAGE_1_CNT = 10
-pp_cfg = [[0, 1,4,5],[2,3,6,7]]
+pp_cfg = [[0, 1, 4, 5], [2, 3, 6, 7]]
 
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 

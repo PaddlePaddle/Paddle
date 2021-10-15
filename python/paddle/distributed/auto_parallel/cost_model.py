@@ -73,7 +73,12 @@ class MergedOpsCostNode(CostNode):
 
 
 class CommOpCostNode(CostNode):
-    def __init__(self, node, node_type, id=None, comm_node_list=None, is_bwd=False):
+    def __init__(self,
+                 node,
+                 node_type,
+                 id=None,
+                 comm_node_list=None,
+                 is_bwd=False):
         super(CommOpCostNode, self).__init__(node, node_type, id)
         self.node_list = comm_node_list
         self.ranks = []
@@ -96,7 +101,7 @@ class CommOpCostNode(CostNode):
 
         if 'allreduce' in self.comm_type:
             self._cost = comm_volumn / (BANDWIDTH * num_ranks /
-                                       (2 * (num_ranks - 1)))
+                                        (2 * (num_ranks - 1)))
         elif 'gather' in self.comm_type:
             self._cost = comm_volumn / (BANDWIDTH * num_ranks / (num_ranks - 1))
         elif 'broadcast' in self.comm_type:
@@ -149,6 +154,7 @@ class CompOpCostNode(CostNode):
         self.is_optim = is_optim
 
     def init_comp_cost(self, cost_data):
+        # TODO: improve fluid.CostModel for more specific cost_data
         op_name = self.node.type
         if op_name in cost_data.keys():
             self.cost = cost_data[op_name]
@@ -229,11 +235,13 @@ class CostModel(object):
                     is_bwd = '@GRAD' in op.output('Out')[0]
                 elif op.type.startswith('send'):
                     is_bwd = '@GRAD' in op.input('X')[0]
-                op_node = CommOpCostNode(op, CostNodeType.COMMUNICATION, op_id, is_bwd)
+                op_node = CommOpCostNode(op, CostNodeType.COMMUNICATION, op_id,
+                                         is_bwd)
             else:
                 is_bwd = '_grad' in op.type
                 is_optim = 'LearningRate' in op.input_names
-                op_node = CompOpCostNode(op, CostNodeType.COMPUTATION, op_id, is_bwd, is_optim)
+                op_node = CompOpCostNode(op, CostNodeType.COMPUTATION, op_id,
+                                         is_bwd, is_optim)
                 op_node.init_comp_cost(cost_data)
 
             nodes[op_id] = op_node
@@ -306,10 +314,10 @@ class CostModel(object):
             self.origin_graph.append({})
             self.op_graph.append({})
             self.runtime_graph.append({})
-            self._parse_sub_program(sub_prog, self.nodes[sub_idx],
-                                    self.origin_graph[sub_idx],
-                                    self.cost_data[0 if self.rank2pp is None else self.rank2pp[sub_idx]],
-                                    sub_idx)
+            self._parse_sub_program(
+                sub_prog, self.nodes[sub_idx], self.origin_graph[sub_idx],
+                self.cost_data[0 if self.rank2pp is None else self.rank2pp[
+                    sub_idx]], sub_idx)
         return self.nodes
 
     def _find_succ_op(self, node_id, sub_idx=0):
@@ -383,7 +391,9 @@ class CostModel(object):
         merged_node_id = 'merged_' + str(len(nodes))
         is_bwd = to_merge_node_list[0].is_bwd
         merged_node = MergedOpsCostNode(
-            CostNodeType.MERGED, id=merged_node_id, base_node_list=nodes_list,
+            CostNodeType.MERGED,
+            id=merged_node_id,
+            base_node_list=nodes_list,
             is_bwd=is_bwd)
         merged_node.cost = node_cost
         return merged_node_id, merged_node
@@ -398,12 +408,10 @@ class CostModel(object):
         '''
         cnt = 0
         for sub_idx in range(self.total_rank):
-            cnt += self._merge_linear(self.nodes[sub_idx],
-                                      self.runtime_graph[sub_idx],
-                                      is_bwd=False)
-            cnt += self._merge_linear(self.nodes[sub_idx],
-                                      self.runtime_graph[sub_idx],
-                                      is_bwd=True)
+            cnt += self._merge_linear(
+                self.nodes[sub_idx], self.runtime_graph[sub_idx], is_bwd=False)
+            cnt += self._merge_linear(
+                self.nodes[sub_idx], self.runtime_graph[sub_idx], is_bwd=True)
         return cnt
 
     def merge_branch(self):
@@ -419,12 +427,10 @@ class CostModel(object):
         '''
         cnt = 0
         for sub_idx in range(self.total_rank):
-            cnt += self._merge_branch(self.nodes[sub_idx],
-                                      self.runtime_graph[sub_idx],
-                                      is_bwd=False)
-            cnt += self._merge_branch(self.nodes[sub_idx],
-                                      self.runtime_graph[sub_idx],
-                                      is_bwd=True)
+            cnt += self._merge_branch(
+                self.nodes[sub_idx], self.runtime_graph[sub_idx], is_bwd=False)
+            cnt += self._merge_branch(
+                self.nodes[sub_idx], self.runtime_graph[sub_idx], is_bwd=True)
         return cnt
 
     def _merge_linear(self, nodes, runtime_graph, is_bwd=False):
@@ -455,7 +461,8 @@ class CostModel(object):
                     succ = runtime_graph[pred_id][SUCC]
                     succ.remove(node_id)
                     runtime_graph[merged_node_id][SUCC] += succ
-                runtime_graph[merged_node_id][PRED] = runtime_graph[pred_id][PRED]
+                runtime_graph[merged_node_id][PRED] = runtime_graph[pred_id][
+                    PRED]
                 for i in runtime_graph[pred_id][PRED]:
                     runtime_graph[i][SUCC].remove(pred_id)
                     runtime_graph[i][SUCC].append(merged_node_id)
@@ -528,8 +535,6 @@ class CostModel(object):
         return reduct_cnt
 
     def get_runtime_cost(self):
-        self.time_list = []
-
         def get_node_cost(node):
             node_cost = node.cost + self.opcall_overhead
             if isinstance(node, MergedOpsCostNode):
@@ -594,7 +599,8 @@ class CostModel(object):
                     static_mem += size
                 cur_mem += size
             edges = sim_graph[node_id]
-            if not (node.type == CostNodeType.VARIABLE and node.node.persistable):
+            if not (node.type == CostNodeType.VARIABLE and
+                    node.node.persistable):
                 for succ_id in edges[SUCC]:
                     sim_graph[succ_id][PRED].remove(node_id)
                     if len(sim_graph[succ_id][PRED]) == 0:
@@ -687,9 +693,32 @@ class CostModel(object):
             total_time = max(total_time, t)
         return total_time
 
+    def get_cost(self):
+        cost = Cost()
+        static_mem, peak_mem = self.get_mem()
+        cost.static_mem = static_mem
+        cost.peak_mem = peak_mem
+        self.merge_comm()
+        while True:
+            cnt = 0
+            cnt += self.merge_linear()
+            cnt += self.merge_branch()
+            if cnt == 0:  # can't be further merged
+                break
+        self.get_runtime_cost()
+        cost.runtime = self.get_pipeline_time()
+        return cost
 
-def estimate_cost(distributed_program, cluster, pipeline_config, standalone_cost_data,
-                  batch_size):
+    def init(self, distributed_program):
+        self.parse_program(distributed_program)
+        self.build_op_graph()
+        for sub_idx in range(self.total_rank):
+            self.eliminate_multi_edges(self.op_graph[sub_idx])
+        self.build_runtime_graph()
+
+
+def estimate_cost(distributed_program, cluster, pipeline_config,
+                  standalone_cost_data, batch_size):
     """
     Estimated cost from distributed program, cluster model and distributed settings.
     
@@ -702,32 +731,11 @@ def estimate_cost(distributed_program, cluster, pipeline_config, standalone_cost
     """
     # the following line is left for now, cluster model will be involved in the future
     assert cluster is None, "For now, cluster remains None"
-
-    cost = Cost()
     cm_ctx = CostModel(
         cluster=cluster,
         batch_size=batch_size,
         standalone_cost_data=standalone_cost_data,
         pipeline_config=pipeline_config)
-    cm_ctx.parse_program(distributed_program)
-    cm_ctx.build_op_graph()
-    for sub_idx in range(len(distributed_program)):
-        cm_ctx.eliminate_multi_edges(cm_ctx.op_graph[sub_idx])
-    cm_ctx.build_runtime_graph()
-
-    static_mem, peak_mem = cm_ctx.get_mem()
-    cost.static_mem = static_mem
-    cost.peak_mem = peak_mem
-
-    cm_ctx.merge_comm()
-    while True:
-        cnt = 0
-        cnt += cm_ctx.merge_linear()
-        cnt += cm_ctx.merge_branch()
-        if cnt == 0:  # can't be further merged
-            break
-
-    cm_ctx.get_runtime_cost()
-    cost.runtime = cm_ctx.get_pipeline_time()
-
+    cm_ctx.init(distributed_program)
+    cost = cm_ctx.get_cost()
     return cost

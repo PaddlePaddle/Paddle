@@ -21,6 +21,6 @@ from .interface import ProcessMesh  # noqa: F401
 from .completion import complete_annotation  # noqa: F401
 from .completion import complete_backward_annotation  # noqa: F401
 from .reshard import reshard  # noqa: F401
-from .cost import estimate_cost
+from .cost_model import estimate_cost
 
 __all__ = []
