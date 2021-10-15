@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,14 +36,13 @@ TEST(BENCHMARK, LargeScaleKV) {
 
   auto* feature_value = shard->Init(key);
   feature_value->resize(vec.size());
-  memcpy(const_cast<float*>(feature_value->data()), vec.data(),
-         vec.size() * sizeof(float));
+  memcpy(feature_value->data(), vec.data(), vec.size() * sizeof(float));
 
   itr = shard->Find(key);
   ASSERT_TRUE(itr != shard->end());
 
   feature_value = itr->second;
-  float* value_data = const_cast<float*>(feature_value->data());
+  float* value_data = feature_value->data();
 
   ASSERT_FLOAT_EQ(value_data[0], 0.0);
   ASSERT_FLOAT_EQ(value_data[1], 0.1);

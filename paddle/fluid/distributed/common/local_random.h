@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_DISTRIBUTED_COMMON_LOCAL_RANDOM_H_
-#define PADDLE_FLUID_DISTRIBUTED_COMMON_LOCAL_RANDOM_H_
+#pragma once
 #include <assert.h>
 #include <time.h>
 #include <atomic>
@@ -64,4 +63,3 @@ T uniform_real(T a, T b) {
 }
 }  // namespace distributed
 }  // namespace paddle
-#endif  // PADDLE_FLUID_DISTRIBUTED_COMMON_LOCAL_RANDOM_H_
