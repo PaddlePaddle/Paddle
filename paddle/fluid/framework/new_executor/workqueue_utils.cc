@@ -63,15 +63,14 @@ EventsWaiter::EventsWaiter()
 EventsWaiter::EventId EventsWaiter::RegisterEvent(EventChecker checker) {
   checkers_.push_back(std::move(checker));
   EventId id = checkers_.size() - 1;
-  Notifier n(id, *this);
-  notifiers_.push_back(n);
+  notifiers_.push_back(Notifier(id, *this));
   return id;
 }
 
 std::reference_wrapper<EventsWaiter::Notifier> EventsWaiter::GetEventNotifier(
     const EventId& id) {
   int64_t event_num = checkers_.size();
-  if (id < 0 || id > event_num) {
+  if (id < 0 || id >= event_num) {
     PADDLE_THROW(platform::errors::OutOfRange("Invalid EventId"));
   }
   return notifiers_[id];
