@@ -30,11 +30,11 @@ import time
 place = paddle.CUDAPlace(0)
 
 ##
-x_type = np.float16
+x_type = np.float32
 pre_layer_norm = True
 training = True
 
-batch_size = 8
+batch_size = 64
 query_length = 128
 head_dim = 64
 num_heads = 16
@@ -49,23 +49,17 @@ kdim, vdim = embed_dim, embed_dim
 key_length, value_length = query_length, query_length
 
 ## 
-query = np.random.rand(batch_size, query_length,
-                            embed_dim).astype(x_type)
+query = np.random.rand(batch_size, query_length, embed_dim).astype(x_type)
 key, value = query, query
 seq_len_vec = np.full((batch_size, ), query_length, dtype=np.int32)
 attn_low_windows = np.zeros((query_length, ), dtype=np.int32)
 attn_high_windows = np.full((query_length, ), query_length, dtype=np.int32)
-dout = np.random.random((batch_size, query_length,
-                                embed_dim)).astype(x_type)
+dout = np.random.random((batch_size, query_length, embed_dim)).astype(x_type)
 
 ## 
 paddle.set_default_dtype(x_type)
 q_proj = Linear(embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
-k_proj = Linear(
-    kdim,
-    embed_dim,
-    weight_attr,
-    bias_attr=bias_attr)
+k_proj = Linear(kdim, embed_dim, weight_attr, bias_attr=bias_attr)
 v_proj = Linear(vdim, embed_dim, weight_attr, bias_attr=bias_attr)
 out_proj = Linear(embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
 paddle.set_default_dtype(np.float32)
@@ -74,12 +68,15 @@ norm2 = LayerNorm(embed_dim)
 paddle.set_default_dtype(x_type)
 dropout = Dropout(dropout_prob, mode="upscale_in_train")
 
-iters = 1001
+iters = 101
+
 
 def print_time(desc, times):
     #times *= 1000
-    print(desc, " total time = ", times, "s, avg time = ", times / (iters-1), "s")
+    print(desc, " total time = ", times, "s, avg time = ", times / (iters - 1),
+          "s")
     print()
+
 
 def GetBaselineOut():
     tensor_query = paddle.to_tensor(query, stop_gradient=False)
@@ -91,6 +88,18 @@ def GetBaselineOut():
     for i in range(iters):
         if i == 1:
             t0 = time.time()
+            #profiler.reset_profiler()
+            core.nvprof_start()
+            core.nvprof_enable_record_event()
+            core.nvprof_nvtx_push(str(i))
+        if i == 30:
+            core.nvprof_nvtx_pop()
+            core.nvprof_stop()
+        if i > 1 and i < 30:
+            core.nvprof_nvtx_pop()
+            core.nvprof_nvtx_push(str(i))
+
+        core.nvprof_nvtx_push("forward")
 
         ln1_out = tensor_query
         if pre_layer_norm:
@@ -127,8 +136,7 @@ def GetBaselineOut():
         fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
 
         out_linear_in = tensor.reshape(
-            x=fmha_out,
-            shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
+            x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
         # project to output
         out = out_proj(out_linear_in)
 
@@ -137,25 +145,28 @@ def GetBaselineOut():
             final_out = norm1(residual_out)
         if pre_layer_norm:
             final_out = norm2(residual_out)
+        core.nvprof_nvtx_pop()
 
-        paddle.autograd.backward(
-            [final_out], [dout_tensor], retain_graph=True)
+        core.nvprof_nvtx_push("backward")
+        paddle.autograd.backward([final_out], [dout_tensor], retain_graph=True)
+        core.nvprof_nvtx_pop()
     paddle.device.cuda.synchronize(place)
     t1 = time.time()
     print_time("baseline dynamic: ", (t1 - t0))
     #return ln1_out, out, final_out, final_out.grad, out.grad, ln1_out.grad, tensor_query.grad
     return ln1_out, out, final_out
 
+
 def GetFusedAttentionCuDNNFMHAOut():
-    out_linear_bias = paddle.to_tensor(
-        out_proj.bias, stop_gradient=False)
+    out_linear_bias = paddle.to_tensor(out_proj.bias, stop_gradient=False)
 
     ln1_scale = paddle.to_tensor(norm1.weight, stop_gradient=False)
     ln1_bias = paddle.to_tensor(norm1.bias, stop_gradient=False)
     ln2_scale = paddle.to_tensor(norm2.weight, stop_gradient=False)
     ln2_bias = paddle.to_tensor(norm2.bias, stop_gradient=False)
 
-    weight = np.concatenate((q_proj.weight, k_proj.weight, v_proj.weight, out_proj.weight))
+    weight = np.concatenate(
+        (q_proj.weight, k_proj.weight, v_proj.weight, out_proj.weight))
     # print("weight shape: ")
     # print(weight.shape)
 
@@ -185,18 +196,14 @@ def GetFusedAttentionCuDNNFMHAOut():
 
         core.nvprof_nvtx_push("forward")
         ln_out, out_linear_out, final_out = F.fused_multihead_attention_cudnn_impl(
-            x, weight_tensor, seq_len_tensor, num_heads,
-            pre_layer_norm, ln1_scale, ln1_bias, 
-            ln2_scale, ln2_bias, epsilon, out_linear_bias, 
-            dropout_prob, attn_dropout_prob, 
-            ln2_epsilon, attn_low_windows, 
-            attn_high_windows, 
-            seq_len_vec, seq_len_vec)
+            x, weight_tensor, seq_len_tensor, num_heads, pre_layer_norm,
+            ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon, out_linear_bias,
+            dropout_prob, attn_dropout_prob, ln2_epsilon, attn_low_windows,
+            attn_high_windows, seq_len_vec, seq_len_vec)
         core.nvprof_nvtx_pop()
 
         core.nvprof_nvtx_push("backward")
-        paddle.autograd.backward(
-            [final_out], [dout_tensor], retain_graph=True)
+        paddle.autograd.backward([final_out], [dout_tensor], retain_graph=True)
         core.nvprof_nvtx_pop()
     paddle.device.cuda.synchronize(place)
     #profiler.stop_profiler('total', 'cudnn-fmha-profiler-res')
@@ -206,6 +213,7 @@ def GetFusedAttentionCuDNNFMHAOut():
     #return ln_out, out_linear_out, final_out, final_out.grad, out_linear_out.grad, ln_out.grad, x.grad
     return ln_out, out_linear_out, final_out
 
+
 def test_fused_attention_cudnn_fmha_op():
     print(
         "self.batch_size, self.query_length, self.embed_dim, self.num_heads, self.head_dim = "
@@ -213,12 +221,12 @@ def test_fused_attention_cudnn_fmha_op():
     print(batch_size, query_length, embed_dim, num_heads, head_dim)
     #ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = GetBaselineOut()
     #ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = GetFusedAttentionCuDNNFMHAOut()
-    #ln_out_ref, out_linear_out_ref, final_out_ref = GetBaselineOut()
-    ln_out, out_linear_out, final_out = GetFusedAttentionCuDNNFMHAOut()
-    
+    ln_out_ref, out_linear_out_ref, final_out_ref = GetBaselineOut()
+    #ln_out, out_linear_out, final_out = GetFusedAttentionCuDNNFMHAOut()
+
     # np.testing.assert_allclose(
     #     ln_out_ref, ln_out.numpy(), rtol=1e-5, atol=1e-5)
-    
+
     # np.testing.assert_allclose(
     #     out_linear_out_ref, out_linear_out.numpy(), rtol=1e-5, atol=1e-3)
 
@@ -234,5 +242,5 @@ def test_fused_attention_cudnn_fmha_op():
     # np.testing.assert_allclose(
     #     x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-2)
 
-test_fused_attention_cudnn_fmha_op()
 
+test_fused_attention_cudnn_fmha_op()
