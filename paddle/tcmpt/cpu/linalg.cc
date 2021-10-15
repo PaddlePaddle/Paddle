@@ -18,6 +18,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/complex.h"
 
 namespace pt {
@@ -43,6 +44,14 @@ void Dot(const CPUContext& dev_ctx,
     z[j] = ss;
   }
 }
+
+template <typename T>
+void matmul(const CPUContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            bool transpose_x,
+            bool transpose_y,
+            DenseTensor* out) {}
 
 }  // namespace pt
 
