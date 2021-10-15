@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cpu/linalg.h"
+#include "paddle/tcmpt/kernels/cpu/linalg.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
 
