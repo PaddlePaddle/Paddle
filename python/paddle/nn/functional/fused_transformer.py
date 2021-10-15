@@ -14,10 +14,8 @@
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
-from ...fluid import core
+from ...fluid.framework import in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-import paddle
 from paddle import _C_ops
 
 __all__ = []
@@ -47,31 +45,50 @@ def fused_feedforward(x,
                       pre_layer_norm=False,
                       name=None):
     """
-        the fused_feedforward operator is the same as the following pseudo code:
-        residual = src;
-        if pre_layer_norm:
-            src = layer_norm(src)
-        src = linear(dropout(activation(dropout(linear(src)))))
-        if not pre_layer_norm:
-            src = layer_norm(out)
+    the fused_feedforward operator is the same as the following pseudo code:
+    residual = src;
+    if pre_layer_norm:
+        src = layer_norm(src)
+    src = linear(dropout(activation(dropout(linear(src)))))
+    if not pre_layer_norm:
+        src = layer_norm(out)
 
-        Args:
-            x (Tensor): The input tensor of fused_feedforward.
-            linear1_weight (Tensor): The weight of first linear.
-            linear2_weight (Tensor): The weight of second linear.
-            linear1_bias (Tensor, optional): The bias of first linear. Default None.
-            linear2_bias (Tensor, optional): The bias of second linear. Default None.
-            ln1_scale (Tensor, optional): the weight of first layer_norm. Default None.
-            ln1_bias (Tensor, optional): The bias of first layer_norm. Default None.
-            ln2_scale (Tensor, optional): The weight of second layer_norm. Default None.
-            ln2_bias (Tensor, optional): The bias of second layer_norm. Default None.
-            dropout1_rate (float, optional): The first dropout probability of setting units to zero. Default 0.5.
-            dropout2_rate (float, optional): The second dropout probability of setting units to zero. Default 0.5.
-            activation (str, optional): The activation. Default "relu".
-            ln1_epsilon (float, optional): Small float of first layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
-            ln2_epsilon (float, optional): Small float of second layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
-            pre_layer_norm (bool, optional):
-            name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Args:
+        x (Tensor): The input tensor of fused_feedforward.
+        linear1_weight (Tensor): The weight of first linear.
+        linear2_weight (Tensor): The weight of second linear.
+        linear1_bias (Tensor, optional): The bias of first linear. Default None.
+        linear2_bias (Tensor, optional): The bias of second linear. Default None.
+        ln1_scale (Tensor, optional): the weight of first layer_norm. Default None.
+        ln1_bias (Tensor, optional): The bias of first layer_norm. Default None.
+        ln2_scale (Tensor, optional): The weight of second layer_norm. Default None.
+        ln2_bias (Tensor, optional): The bias of second layer_norm. Default None.
+        dropout1_rate (float, optional): The first dropout probability of setting units to zero. Default 0.5.
+        dropout2_rate (float, optional): The second dropout probability of setting units to zero. Default 0.5.
+        activation (str, optional): The activation. Default "relu".
+        ln1_epsilon (float, optional): Small float of first layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
+        ln2_epsilon (float, optional): Small float of second layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
+        pre_layer_norm (bool, optional):
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import numpy as np
+        x_data = np.random.random((1, 8, 8)).astype("float32")
+        linear1_weight_data = np.random.random((8, 8)).astype("float32")
+        linear2_weight_data = np.random.random((8, 8)).astype("float32")
+        x = paddle.to_tensor(x_data)
+        linear1_weight = paddle.to_tensor(linear1_weight_data)
+        linear2_weight = paddle.to_tensor(linear2_weight_data)
+        out = paddle.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
+        print(out.numpy().shape)
+        # (1, 8, 8)
 
     """
     _verify_dropout_rate(dropout1_rate)
