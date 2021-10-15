@@ -53,7 +53,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
-    W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(dtype)
+    W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
@@ -66,7 +66,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMHALayer(unittest.TestCase):
+class TestFP32CUDNNMHALayer(unittest.TestCase):
     def setUp(self):
         batch_size = 4
         nheads = 4
@@ -128,13 +128,19 @@ class TestMHALayer(unittest.TestCase):
                 self.place):
             return
 
-        ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
-                                  self.v_3dim_tensor, self.attn_tensor)
-        cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
-                                      self.v_tensor, self.seq_data)
+        enable_amp = False
+        if self.dtype == np.float16:
+            enable_amp = True
+
+        with paddle.amp.auto_cast(enable=enable_amp, custom_white_list={'mha'}):
+            ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
+                                      self.v_3dim_tensor, self.attn_tensor)
+            cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
+                                          self.v_tensor, self.seq_data)
         self.assertEqual(
             is_equal_atol(ref_output.numpy(), cudnn_output.numpy(), self.atol),
             True)
+        print(f'CUDNNMultiHeadAttention Layer {self.dtype} fwd passed.')
 
     def test_full_grads(self):
         self.q_tensor.stop_gradient = False
@@ -145,6 +151,9 @@ class TestMHALayer(unittest.TestCase):
         self.v_3dim_tensor.stop_gradient = False
 
         self._cehck_grads()
+        print(
+            f'CUDNNMultiHeadAttention Layer {self.dtype} bwd with stop_gradient passed.'
+        )
 
     def test_weight_grads_only(self):
         self.q_tensor.stop_gradient = True
@@ -155,17 +164,28 @@ class TestMHALayer(unittest.TestCase):
         self.v_3dim_tensor.stop_gradient = True
 
         self._cehck_grads(False)
+        print(f'CUDNNMultiHeadAttention Layer {self.dtype} bwd passed.')
 
     def _cehck_grads(self, check_data_grads=True):
-        ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
-                                  self.v_3dim_tensor, self.attn_tensor)
-        cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
-                                      self.v_tensor, self.seq_data)
 
-        ref_loss = paddle.mean(ref_output)
-        cudnn_loss = paddle.mean(cudnn_output)
+        enable_amp = False
+        if self.dtype == np.float16:
+            enable_amp = True
 
-        paddle.autograd.backward([ref_loss, cudnn_loss])
+        scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+        with paddle.amp.auto_cast(enable=enable_amp, custom_white_list={'mha'}):
+            ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
+                                      self.v_3dim_tensor, self.attn_tensor)
+            cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
+                                          self.v_tensor, self.seq_data)
+
+            ref_loss = paddle.mean(ref_output)
+            cudnn_loss = paddle.mean(cudnn_output)
+
+            if enable_amp:
+                ref_loss = scaler.scale(ref_loss)
+                cudnn_loss = scaler.scale(cudnn_loss)
+            paddle.autograd.backward([ref_loss, cudnn_loss])
 
         ref_weight_grad = self._get_grads_from_ref()
         cudnn_weight_grad = self.cudnn_mha.weight.grad.numpy()
@@ -190,6 +210,15 @@ class TestMHALayer(unittest.TestCase):
              self.ref_mha.v_proj.weight.grad.numpy(),
              self.ref_mha.out_proj.weight.grad.numpy()),
             axis=0)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFP16CUDNNMHALayer(TestFP32CUDNNMHALayer):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.atol = 1e-3
+        self.rtol = 1e-2
 
 
 if __name__ == "__main__":
