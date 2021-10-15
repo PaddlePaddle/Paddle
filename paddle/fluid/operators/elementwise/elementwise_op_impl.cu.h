@@ -25,10 +25,6 @@ limitations under the License. */
 #define ELEMENTWISE_BLOCK_SIZE 512
 #endif
 
-#ifdef PADDLE_WITH_XPU
-#define ELEMENTWISE_BLOCK_SIZE 64
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -287,6 +283,7 @@ __device__ void ElementwiseKernelImpl(
   OutT result[VecSize];
 
   int num = numel - block_offset;
+
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
@@ -313,9 +310,9 @@ __global__ void ElementwiseKernel(
     int main_tid, Functor func) {
 #ifdef PADDLE_WITH_XPU
   int data_offset = VecSize * cluster_id() * core_num();
-  int stride = cluster_num() * ncores * VecSize;
+  int stride = cluster_num() * core_num() * VecSize;
   for (int offset = data_offset; offset < numel; offset += stride) {
-    if (offset + ncores * VecSize < numel) {
+    if (offset + core_num() * VecSize < numel) {
       ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, false>(
           ins, out, use_broadcast, numel, configs, offset, func);
     } else {
@@ -344,10 +341,6 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
                   DimensionsTransform merge_dims,
                   framework::Array<bool, Arity> use_broadcast) {
   int numel = out->numel();
-  const int threads = GetThreadsConfig(ctx, numel, VecSize);
-  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
-
-  int main_tid = numel / (VecSize * threads);
   auto stream = ctx.stream();
   OutT *out_data = out->data<OutT>();
 
@@ -367,12 +360,17 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
 
 #ifdef PADDLE_WITH_XPU
   int cluster_num = 8;
+  int blocks = 64;
+  int main_tid = numel / (VecSize * blocks);
   ElementwiseKernel<InT, OutT, Functor, VecSize, Arity,
-                    Rank><<<cluster_num, threads, 0, stream>>>(
+                    Rank><<<cluster_num, blocks, stream>>>(
       ins_data, out_data, use_broadcast, numel, configs, main_tid, func);
 #else
+  const int threads = GetThreadsConfig(ctx, numel, VecSize);
+  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  int main_tid = numel / (VecSize * threads);
   ElementwiseKernel<InT, OutT, Functor, VecSize, Arity,
-                    Rank><<<blocks, threads, stream>>>(
+                    Rank><<<blocks, threads, 0, stream>>>(
       ins_data, out_data, use_broadcast, numel, configs, main_tid, func);
 #endif
 }
