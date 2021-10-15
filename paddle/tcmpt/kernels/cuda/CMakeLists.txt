@@ -1,5 +1,5 @@
 if(WIN32)
-    set(CURRENT_BINARY_DIR ${PADDLE_BINARY_DIR}/paddle/tcmpt/cuda)
+    set(CURRENT_BINARY_DIR ${PADDLE_BINARY_DIR}/paddle/tcmpt/kernels/cuda)
     kernel_instantiate(creation.cu)
     kernel_instantiate(math.cu)
     kernel_instantiate(linalg.cu)

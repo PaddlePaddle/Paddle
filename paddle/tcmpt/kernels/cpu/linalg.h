@@ -29,4 +29,12 @@ void Dot(const CPUContext& dev_ctx,
          const DenseTensor& y,
          DenseTensor* out);
 
+template <typename T>
+void matmul(const CPUContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            bool transpose_x,
+            bool transpose_y,
+            DenseTensor* out);
+
 }  // namespace pt

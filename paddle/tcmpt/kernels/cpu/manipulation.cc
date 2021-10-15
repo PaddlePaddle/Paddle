@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cuda/manipulation.h"
-#include "paddle/tcmpt/cuda/utils.h"
+#include "paddle/tcmpt/kernels/cpu/manipulation.h"
 #include "paddle/tcmpt/infershape/unary.h"
+#include "paddle/tcmpt/kernels/cpu/utils.h"
 
 namespace pt {
 
 template <typename T>
-void Flatten(const CUDAContext& dev_ctx,
+void Flatten(const CPUContext& dev_ctx,
              const DenseTensor& x,
              int start_axis,
              int stop_axis,
@@ -34,7 +34,7 @@ void Flatten(const CUDAContext& dev_ctx,
 // Output Tensor，
 // is there a more flexible way to deal with this case?
 template <typename T>
-void FlattenWithXShape(const CUDAContext& dev_ctx,
+void FlattenWithXShape(const CPUContext& dev_ctx,
                        const DenseTensor& x,
                        int start_axis,
                        int stop_axis,
@@ -54,17 +54,15 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
 }  // namespace pt
 
 // TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(ManipulationCUDA);
+PT_REGISTER_MODULE(ManipulationCPU);
 
-using float16 = paddle::platform::float16;
 // TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
 // architecture, kernel_name should be "flatten".
 PT_REGISTER_KERNEL("flatten_contiguous_range",
-                   CUDA,
+                   CPU,
                    NCHW,
                    pt::Flatten,
                    float,
-                   float16,
                    double,
                    uint8_t,
                    int8_t,
@@ -72,7 +70,7 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
                    int64_t) {}
 
 PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
-                   CUDA,
+                   CPU,
                    NCHW,
                    pt::FlattenWithXShape,
                    float,

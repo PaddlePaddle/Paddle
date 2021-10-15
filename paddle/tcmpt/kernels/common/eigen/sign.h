@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/eigen/common.h"
+#include "paddle/tcmpt/kernels/common/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -24,17 +24,21 @@ namespace pt {
 namespace eigen {
 
 template <typename DevCtx, typename T>
-void Mean(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+void Sign(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  VLOG(1) << "enter module::Sign";
+  // out->mutable_data<T>(x.place());
   out->mutable_data<T>();
 
+  VLOG(1) << "module::Sign, calc by eigen.";
   // TODO(chenweihang): if we design new tensor, we should support
   // the low-level calc functor use new tensor as input,
   // which may be a big project!
+  auto eigen_out = pt::EigenVector<T>::Flatten(*out);
   auto eigen_x = pt::EigenVector<T>::Flatten(x);
-  auto eigen_out = pt::EigenScalar<T>::From(*out);
 
   auto& dev = *dev_ctx.eigen_device();
-  eigen_out.device(dev) = eigen_x.mean();
+  paddle::operators::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
+      dev, eigen_out, eigen_x);
 }
 
 }  // namespace eigen

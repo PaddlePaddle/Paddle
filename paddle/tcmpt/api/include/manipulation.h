@@ -15,5 +15,5 @@
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
-#include "paddle/tcmpt/cpu/manipulation.h"
-#include "paddle/tcmpt/cuda/manipulation.h"
+#include "paddle/tcmpt/kernels/cpu/manipulation.h"
+#include "paddle/tcmpt/kernels/cuda/manipulation.h"

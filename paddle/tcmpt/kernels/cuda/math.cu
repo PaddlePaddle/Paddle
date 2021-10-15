@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/tcmpt/cuda/math.h"
+#include "paddle/tcmpt/kernels/cuda/math.h"
 
-#include "paddle/tcmpt/eigen/mean.h"
-#include "paddle/tcmpt/eigen/scale.h"
-#include "paddle/tcmpt/eigen/sign.h"
+#include "paddle/tcmpt/kernels/common/eigen/mean.h"
+#include "paddle/tcmpt/kernels/common/eigen/scale.h"
+#include "paddle/tcmpt/kernels/common/eigen/sign.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"

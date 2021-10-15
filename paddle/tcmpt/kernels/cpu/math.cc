@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cpu/math.h"
+#include "paddle/tcmpt/kernels/cpu/math.h"
 
-#include "paddle/tcmpt/eigen/mean.h"
-#include "paddle/tcmpt/eigen/scale.h"
-#include "paddle/tcmpt/eigen/sign.h"
+#include "paddle/tcmpt/kernels/common/eigen/mean.h"
+#include "paddle/tcmpt/kernels/common/eigen/scale.h"
+#include "paddle/tcmpt/kernels/common/eigen/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/eigen/common.h"
+#include "paddle/tcmpt/kernels/common/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -24,26 +24,17 @@ namespace pt {
 namespace eigen {
 
 template <typename DevCtx, typename T>
-void Dot(const DevCtx& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out) {
-  out->mutable_data();
-  if (1 == out->dims().size()) {
-    auto eigen_out = pt::EigenScalar<T>::From(*out);
-    auto eigen_x = pt::EigenVector<T>::Flatten(x);
-    auto eigen_y = pt::EigenVector<T>::Flatten(y);
+void Mean(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  out->mutable_data<T>();
 
-    auto& dev = *dev_ctx.eigen_device();
-    eigen_out.device(dev) = (eigen_x * eigen_y).sum();
-  } else {
-    auto eigen_out = pt::EigenMatrix<T>::From(*out);
-    auto eigen_x = pt::EigenMatrix<T>::From(x);
-    auto eigen_y = pt::EigenMatrix<T>::From(y);
+  // TODO(chenweihang): if we design new tensor, we should support
+  // the low-level calc functor use new tensor as input,
+  // which may be a big project!
+  auto eigen_x = pt::EigenVector<T>::Flatten(x);
+  auto eigen_out = pt::EigenScalar<T>::From(*out);
 
-    auto& dev = *dev_ctx.eigen_device();
-    eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
-  }
+  auto& dev = *dev_ctx.eigen_device();
+  eigen_out.device(dev) = eigen_x.mean();
 }
 
 }  // namespace eigen
