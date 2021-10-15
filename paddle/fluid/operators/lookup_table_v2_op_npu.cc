@@ -41,7 +41,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         .AddInput(*ids_t)
         .AddInput(std::vector<int32_t>{0})
 #ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
-    .AddAttrs({{"batch_dims",0}})
+        .AddAttrs({{"batch_dims", 0}})
 #endif
         .AddOutput(*output_t);
     runner.Run();
