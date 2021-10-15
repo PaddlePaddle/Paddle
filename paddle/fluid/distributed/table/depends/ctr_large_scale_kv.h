@@ -49,7 +49,7 @@ namespace distributed {
 
 static const int CTR_SPARSE_SHARD_BUCKET_NUM_BITS = 6;
 static const size_t CTR_SPARSE_SHARD_BUCKET_NUM =
-    static_cast < size_t < (1) << CTR_SPARSE_SHARD_BUCKET_NUM_BITS;
+    static_cast<size_t>(1) << CTR_SPARSE_SHARD_BUCKET_NUM_BITS;
 
 class CtrFixedFeatureValue {
  public:
