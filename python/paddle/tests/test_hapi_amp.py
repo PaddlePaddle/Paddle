@@ -61,7 +61,7 @@ class TestHapiWithAmp(unittest.TestCase):
 
     def run_amp(self, amp_level):
         for dynamic in [True, False]:
-            print(dynamic, amp_level)
+            print('dynamic' if dynamic else 'static', amp_level)
             paddle.seed(2021)
             paddle.enable_static() if not dynamic else None
             paddle.set_device('gpu')
