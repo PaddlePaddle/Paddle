@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace pt {
 
-// Common InferShape Functions for unary operators, The format like:
+// Common InferShape Functions for binary operators, The format like:
 //
 //   1. TensorMeta [OpName]InferShape(const TensorMeta& x_meta, ...) {}
 //   2. std::pair<TensorMeta, TensorMeta> [OpName]InferShape(const TensorMeta&
@@ -30,12 +30,6 @@ namespace pt {
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-TensorMeta UnchangedInferShape(const TensorMeta& x_meta);
-
-TensorMeta ReductionInferShape(const TensorMeta& x_meta);
-
-TensorMeta FlattenInferShape(const TensorMeta& x_meta,
-                             int start_axis,
-                             int stop_axis);
+TensorMeta DotInferShape(const TensorMeta& x_meta, const TensorMeta& y_meta);
 
 }  // namespace pt

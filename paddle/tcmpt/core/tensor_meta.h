@@ -48,7 +48,7 @@ namespace pt {
  */
 // using LoD = std::vector<paddle::framework::Vector<size_t>>;
 using LoD = std::vector<std::vector<size_t>>;
-
+using DDim = paddle::framework::DDim;
 /**
  * The Meta data member of DenseTensor.
  *
