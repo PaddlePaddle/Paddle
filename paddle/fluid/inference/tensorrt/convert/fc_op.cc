@@ -164,10 +164,9 @@ class FcOpConverter : public OpConverter {
         auto* fc_layer_int8 =
             TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
                                  nv_ksize, weight.get(), bias.get());
+        engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
         auto* fc_after_reshape_int8 = reshape_after_fc(
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
-        engine_->SetTensorDynamicRange(fc_after_reshape_int8->getOutput(0),
-                                       out_scale);
         if (activation_type == "relu") {
           nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
               engine_, Activation, *(fc_after_reshape_int8->getOutput(0)),

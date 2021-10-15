@@ -139,6 +139,7 @@ class PRChecker(object):
         """ judge is white file in pr's files. """
         isWhiteFile = False
         not_white_files = (PADDLE_ROOT + 'cmake/', PADDLE_ROOT + 'patches/',
+                           PADDLE_ROOT + 'paddle/testing/',
                            PADDLE_ROOT + 'tools/dockerfile/',
                            PADDLE_ROOT + 'tools/windows/',
                            PADDLE_ROOT + 'tools/test_runner.py',
@@ -328,7 +329,7 @@ class PRChecker(object):
                     if f_judge.endswith('.md'):
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
-                    elif 'tests/unittests/xpu' in f_judge or 'tests/unittests/npu' in f_judge:
+                    elif 'tests/unittests/xpu' in f_judge or 'tests/unittests/npu' in f_judge or 'op_npu.cc' in f_judge:
                         ut_list.append('xpu_npu_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif f_judge.endswith(('.h', '.cu', '.cc', 'py')):

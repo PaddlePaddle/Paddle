@@ -16,8 +16,179 @@ import sys
 import numpy as np
 from . import unique_name
 from . import core
+import paddle
 
 MAX_INTEGER = 2**31 - 1
+
+
+def is_list_tuple(index, contain_type):
+    def _is_list_tuple(item):
+        if not (isinstance(item, (list, tuple)) or type(item) == contain_type):
+            return False
+        if isinstance(item, (tuple, list)):
+            for s in item:
+                if not _is_list_tuple(s):
+                    return False
+        return True
+
+    if not isinstance(index, (tuple, list)):
+        return False
+    for s in index:
+        if not _is_list_tuple(s):
+            return False
+    return True
+
+
+def is_one_dim_list(index, contain_type):
+    if isinstance(index, list):
+        for i in index:
+            if not isinstance(i, contain_type):
+                return False
+    else:
+        return False
+    return True
+
+
+def get_list_index_shape(var_dims, index_dims):
+    var_dims_size = len(var_dims)
+    index_dims_size = len(index_dims)
+
+    out_dims_size = var_dims_size - index_dims[0] + index_dims_size - 1
+
+    out_dims_shape = [1] * out_dims_size
+
+    out_dims_shape[:index_dims_size - 1] = index_dims[1:]
+
+    out_dims_shape[index_dims_size - 1:] = var_dims[index_dims[0]:]
+    return out_dims_shape
+
+
+class SliceInfo:
+    def __init__(self):
+        self.pre_shape = None
+        self.indexes = []
+        self.dtype = None
+
+    def update(self, index):
+        if is_list_tuple(index, int) or isinstance(index, (
+                paddle.fluid.Variable, np.ndarray)):
+            # convert index to Tensor
+            if not isinstance(index, paddle.fluid.Variable):
+                index = paddle.assign(index)
+
+            if self.dtype is None:
+                self.dtype = index.dtype
+            else:
+                if index.dtype != self.dtype:
+                    raise IndexError(
+                        "Data type of Tensor/List index should be same. The current data type is {}, but the previous data type is {}.".
+                        format(index.dtype, self.dtype))
+
+            self.indexes.append(index)
+
+            if self.pre_shape is None:
+                self.pre_shape = index.shape
+            else:
+                if self.pre_shape != index.shape:
+                    # broadcast 
+                    cur_shape = paddle.broadcast_shape(self.pre_shape,
+                                                       index.shape)
+                    for i in range(len(self.indexes)):
+                        self.indexes[i] = paddle.broadcast_to(self.indexes[i],
+                                                              cur_shape)
+                self.pre_shape = self.indexes[-1].shape
+        else:
+            raise ValueError(
+                "Index should be list/tuple of int or Tensor, but received {}.".
+                format(index))
+
+    def shape_stride(self, shape):
+        s = [1] * len(shape)
+        for i in range(len(shape) - 2, -1, -1):
+            s[i] = shape[i + 1] * s[i + 1]
+
+        return s
+
+    def numel(self, shape):
+        return reduce(lambda x, y: x * y, shape)
+
+    def get_offset_stride(self, tensor_shape):
+        for index in self.indexes:
+            if not isinstance(index, paddle.fluid.Variable):
+                raise ValueError(
+                    "only support list/tensor index, but received {}.".format(
+                        type(index)))
+
+        if len(self.indexes) <= len(tensor_shape) or len(self.indexes) == 1:
+            shape = paddle.stack(self.indexes)
+            axes = list(range(1, len(self.pre_shape) + 1)) + [0, ]
+
+        else:
+            raise ValueError(
+                "too many indices for tensor: tensor is {}-dimensional, but {} were indexed".
+                format(len(tensor_shape), self.pre_shape[0]))
+
+        shape_transpose = paddle.transpose(shape, axes)
+        return shape_transpose
+
+    def get_item(self, tensor):
+        shape_transpose = self.get_offset_stride(tensor.shape)
+        index = paddle.assign(shape_transpose)
+        return paddle.gather_nd(tensor, index)
+
+    def set_item(self, tensor_origin, value):
+
+        if not isinstance(value, paddle.fluid.Variable):
+            value = paddle.assign(value)
+        tensor_type = None
+
+        if tensor_origin.dtype in [
+                core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
+        ]:
+            tensor = tensor_origin
+        else:
+            tensor_type = tensor_origin.dtype
+            tensor = tensor_origin.astype(core.VarDesc.VarType.FP32)
+
+        if value.dtype != tensor.dtype:
+            value = value.astype(tensor.dtype)
+
+        shape_transpose = self.get_offset_stride(tensor_origin.shape)
+        index = paddle.assign(shape_transpose)
+
+        gather_tensor_shape = get_list_index_shape(
+            tensor.shape, [len(self.indexes), ] + list(self.indexes[-1].shape))
+
+        value_dims_bd = [1, ] * len(gather_tensor_shape)
+        value_dims_bd[-len(value.shape):] = list(value.shape)
+
+        for i in range(len(gather_tensor_shape)):
+            if not (value_dims_bd[i] == gather_tensor_shape[i] or
+                    value_dims_bd[i] == 1):
+                raise ValueError("{} can not broadcast into {}".format(
+                    value.shape, gather_tensor_shape))
+
+        value_broadcast = paddle.broadcast_to(value, gather_tensor_shape)
+
+        value_1d = value_broadcast.reshape([-1] + gather_tensor_shape[len(
+            index.shape) - 1:])
+
+        index_1d = index.reshape([-1, index.shape[-1]])
+
+        tensor_stride = paddle.assign(
+            self.shape_stride(tensor.shape[:index.shape[-1]]))
+        inds = []
+        for i in range(index_1d.shape[0]):
+            temp = (index_1d[i] * tensor_stride).sum()
+            inds.append(temp)
+        index_1d = paddle.stack(inds).reshape([-1])
+        t_reshape = tensor.reshape([-1] + list(tensor.shape[index.shape[-1]:]))
+        out = paddle.scatter(t_reshape, index_1d, value_1d)
+        if tensor_type is not None:
+            out = out.astype(tensor_type)
+        tensor_origin[:] = out.reshape(tensor_origin.shape)
+
+        return tensor_origin
 
 
 def replace_ellipsis(var, item):
@@ -32,7 +203,9 @@ def replace_ellipsis(var, item):
     item = list(item)
 
     # Remove Variable to skip bug when counting Ellipsis
-    item_remove_var = [ele for ele in item if not isinstance(ele, Variable)]
+    item_remove_var = [
+        ele for ele in item if not isinstance(ele, (Variable, np.ndarray))
+    ]
     ell_count = item_remove_var.count(Ellipsis)
     if ell_count == 0:
         return item
@@ -48,6 +221,16 @@ def replace_ellipsis(var, item):
             len(var.shape) - len(item) + 1)
 
     return item
+
+
+def replace_ndarray(item):
+    new_item = []
+    for slice_item in item:
+        if isinstance(slice_item, np.ndarray):
+            new_item.append(paddle.assign(slice_item))
+        else:
+            new_item.append(slice_item)
+    return new_item
 
 
 def replace_none(item):
@@ -99,6 +282,9 @@ def _getitem_impl_(var, item):
         Sliced variable
     """
     from .framework import default_main_program, Variable
+    if isinstance(item, list):
+        if not is_one_dim_list(item, int):
+            item = tuple(item)
 
     if not isinstance(item, tuple):
         item = (item, )
@@ -111,8 +297,10 @@ def _getitem_impl_(var, item):
     reverse_axes = []
 
     use_strided_slice = False
+    item = replace_ndarray(item)
     item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
+    slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item):
@@ -151,6 +339,11 @@ def _getitem_impl_(var, item):
 
         elif isinstance(slice_item, list):
             all_bool = True
+
+            if is_list_tuple(slice_item, int):
+                slice_info.update(slice_item)
+                continue
+
             for i in slice_item:
                 if type(i) is int:
                     all_bool = False
@@ -188,35 +381,40 @@ def _getitem_impl_(var, item):
             idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
-        elif isinstance(slice_item, Variable):
-            if len(item) != 1:
-                raise IndexError(
-                    "When index contains a Tensor, its length must be 1, but received {}.".
-                    format(len(item)))
+        elif isinstance(slice_item, (Variable)):
+            if len(item) == 1:
 
-            from ..tensor import index_select, gather_nd
-            from .layers.nn import where
+                from ..tensor import index_select, gather_nd
+                from .layers.nn import where
 
-            if slice_item.dtype == core.VarDesc.VarType.BOOL:
-                if len(slice_item.shape) > len(var.shape):
-                    raise IndexError(
-                        "The dims of bool index doesn't match indexed array, "
-                        "the dims of bool index except to be equal or less "
-                        "than {}, but received {}.".format(
-                            len(var.shape), len(slice_item.shape)))
-                for i, dim_len in enumerate(slice_item.shape):
-                    if dim_len != var.shape[i]:
+                if slice_item.dtype == paddle.bool:
+                    if len(slice_item.shape) > len(var.shape):
                         raise IndexError(
-                            "The dimension of bool index doesn't match indexed array along "\
-                            "dimension {}, the target dimension is {}, but received {}.".
-                            format(i, var.shape[i], dim_len))
-                bool_2_idx = where(slice_item == True)
-                return gather_nd(var, bool_2_idx)
-            return index_select(var, index=slice_item, axis=0)
+                            "The dims of bool index doesn't match indexed array, "
+                            "the dims of bool index except to be equal or less "
+                            "than {}, but received {}.".format(
+                                len(var.shape), len(slice_item.shape)))
+                    for i, dim_len in enumerate(slice_item.shape):
+                        if dim_len != var.shape[i]:
+                            raise IndexError(
+                                "The dimension of bool index doesn't match indexed array along "\
+                                "dimension {}, the target dimension is {}, but received {}.".
+                                format(i, var.shape[i], dim_len))
+                    bool_2_idx = where(slice_item == True)
+                    return gather_nd(var, bool_2_idx)
+                else:
+                    if len(slice_item.shape) == 1:
+                        return index_select(var, index=slice_item, axis=0)
+                    else:
+                        slice_info.update(slice_item)
+                        continue
+            else:
+                slice_info.update(slice_item)
+                continue
 
         else:
             raise IndexError(
-                "Valid index accept int or slice or ellipsis, but received {}.".
+                "Valid index accept int or slice or ellipsis or list, but received {}.".
                 format(slice_item))
 
         axes.append(dim)
@@ -224,6 +422,13 @@ def _getitem_impl_(var, item):
         ends.append(end)
         steps.append(step)
         use_strided_slice = True if step != 1 else use_strided_slice
+
+    if slice_info.indexes:
+        if len(slice_info.indexes) != len(item):
+            raise IndexError(
+                "Valid index accept int or slice or ellipsis or list, but received {}.".
+                format(item))
+        return slice_info.get_item(var)
 
     inputs = {'Input': [var]}
     attrs = {
@@ -298,7 +503,9 @@ def _setitem_impl_(var, item, value):
     from .framework import default_main_program, Variable
 
     inputs = {'Input': var}
-
+    if isinstance(item, list):
+        if not is_one_dim_list(item, int):
+            item = tuple(item)
     # 1. Parse item
     if not isinstance(item, tuple):
         item = (item, )
@@ -309,9 +516,10 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
+    item = replace_ndarray(item)
     item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
-
+    slice_info = SliceInfo()
     dim = 0
     for _, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item):
@@ -347,10 +555,39 @@ def _setitem_impl_(var, item, value):
 
             if end is None:
                 end = MAX_INTEGER if step > 0 else (0 - MAX_INTEGER)
+        elif isinstance(slice_item, list):
+            if is_list_tuple(slice_item, int):
+                slice_info.update(slice_item)
+                continue
+
+            for i in slice_item:
+                if not isinstance(i, bool):
+                    raise TypeError("Doesn't support {} in index list.".format(
+                        type(i)))
+
+            if len(item) != 1:
+                raise IndexError(
+                    "When index contains a bool list, its length must be 1, but received {}.".
+                    format(len(item)))
+
+            from .layers import assign
+            idx_tensor = assign(slice_item)
+            return set_value_for_bool_tensor(var, idx_tensor, value)
+
+        elif isinstance(slice_item, Variable):
+            if slice_item.dtype == core.VarDesc.VarType.BOOL:
+                if len(item) != 1:
+                    raise IndexError(
+                        "When index contains a bool tensor, its length must be 1, but received {}.".
+                        format(len(item)))
+                return set_value_for_bool_tensor(var, slice_item, value)
+            else:
+                slice_info.update(slice_item)
+                continue
         else:
             raise IndexError(
-                "Valid index accept int, slice, ellipsis or None, but received {}.".
-                format(slice_item))
+                "Valid index accept int, slice, ellipsis, None, list of bool, Variable, "
+                "but received {}.".format(slice_item))
 
         axes.append(dim)
         starts.append(start)
@@ -358,7 +595,12 @@ def _setitem_impl_(var, item, value):
         steps.append(step)
 
         dim += 1
-
+    if slice_info.indexes:
+        if len(slice_info.indexes) != len(item):
+            raise IndexError(
+                "Valid index accept int or slice or ellipsis or list, but received {}.".
+                format(item))
+        return slice_info.set_item(var, value)
     attrs = {
         'axes': axes,
         'starts': starts,
@@ -425,5 +667,49 @@ def _setitem_impl_(var, item, value):
     cur_block = default_main_program().current_block()
     cur_block.append_op(
         type="set_value", inputs=inputs, outputs={'Out': var}, attrs=attrs)
+
+    return var
+
+
+# the item is a tensor of bool 
+def set_value_for_bool_tensor(var, item, value):
+
+    # TODO(zyfncg): Now scatter_nd_add only support float32 and float64 tensor, 
+    # so in the current version we also only support float32 and float64 tensor, 
+    # this problem will be fixed in the future.
+    if var.dtype != core.VarDesc.VarType.FP32 and var.dtype != core.VarDesc.VarType.FP64:
+        raise TypeError("Only support float and double tensor for bool index, "
+                        "but received {}.".format(var.dtype))
+
+    if len(item.shape) > len(var.shape):
+        raise IndexError("The dims of bool index doesn't match indexed array, "
+                         "the dims of bool index except to be equal or less "
+                         "than {}, but received {}.".format(
+                             len(var.shape), len(item.shape)))
+    for i, dim_len in enumerate(item.shape):
+        if dim_len != var.shape[i]:
+            raise IndexError(
+                "The dimension of bool index doesn't match indexed array along "
+                "dimension {}, the target dimension is {}, but received {}.".
+                format(i, var.shape[i], dim_len))
+
+    def idx_not_empty(var, item, value):
+        from .framework import Variable
+        from .layers import assign
+        from .layers.nn import where
+        from ..tensor import gather_nd, scatter_nd_add
+
+        if not isinstance(value, Variable):
+            value = assign(value).cast(var.dtype)
+
+        idx = where(item)
+        gather_val = gather_nd(var, idx)
+        gather_val_new = value - gather_val
+        out = scatter_nd_add(var, idx, gather_val_new)
+        var[:] = out
+
+    from .layers.control_flow import cond
+    # If all the bool index is False, just do nothing
+    cond(item.any(), lambda: idx_not_empty(var, item, value))
 
     return var

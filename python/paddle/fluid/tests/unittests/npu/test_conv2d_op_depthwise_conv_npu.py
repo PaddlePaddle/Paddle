@@ -20,10 +20,14 @@ import paddle
 import paddle.fluid as fluid
 import sys
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
+from paddle import ParamAttr
+from paddle.regularizer import L2Decay
+from paddle.nn.initializer import KaimingNormal
 
 paddle.enable_static()
+SEED = 2021
 
 
 def create_test_channel_last_class(parent):
@@ -62,14 +66,22 @@ def create_test_padding_VALID_class(parent):
     globals()[cls_name] = TestPaddingVALIDCase
 
 
-@skip_check_grad_ci(
-    reason='''Inference only, it doesn't need to call check_grad.''')
+def create_test_fp16_class(parent):
+    class TestFp16Case(parent):
+        def init_data_type(self):
+            self.dtype = np.float16
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestFp16Case
+
+
 class TestDepthwiseConvNPU(OpTest):
     def setUp(self):
-        self.op_type = "depthwise_conv2d"
-        self.dtype = np.float16
         self.set_npu()
+        self.op_type = "depthwise_conv2d"
         self.init_data_format()
+        self.init_data_type()
         self.init_test_case()
         self.init_test_case_2()
 
@@ -110,17 +122,51 @@ class TestDepthwiseConvNPU(OpTest):
         self.pad = [1, 1]
         self.dilations = [1, 1]
         self.stride = [2, 2]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.groups = 3
+        self.input_size = [2, 12, 5, 5]  # NCHW
+        self.groups = 12
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, atol=1e-2)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        if self.dilations[0] == 1 and self.dilations[1] == 1:
+            self.check_grad_with_place(
+                self.place, {'Input', 'Filter'},
+                'Output',
+                max_relative_error=0.03,
+                numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            self.place, ['Input'],
+            'Output',
+            no_grad_set=set(['Filter']),
+            max_relative_error=0.03,
+            numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            return
+        if self.dilations[0] == 1 and self.dilations[1] == 1:
+            self.check_grad_with_place(
+                self.place, ['Filter'],
+                'Output',
+                no_grad_set=set(['Input']),
+                max_relative_error=0.03,
+                numeric_place=paddle.CPUPlace())
 
     def init_data_format(self):
         self.data_format = "NCHW"
+
+    def init_data_type(self):
+        self.dtype = np.float32
 
     def init_test_case_2(self):
         pass
@@ -131,45 +177,44 @@ class TestDepthwiseConvNPU2(TestDepthwiseConvNPU):
         self.pad = [1, 1]
         self.dilations = [1, 1]
         self.stride = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.groups = 3
+        self.input_size = [2, 12, 5, 5]  # NCHW
+        self.groups = 12
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
 
 class TestDepthwiseConvNPU3(TestDepthwiseConvNPU):
     def init_test_case(self):
         self.pad = [1, 1]
-        self.dilations = [2, 2]
+        self.dilations = [1, 1]
         self.stride = [2, 2]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.groups = 3
+        self.input_size = [2, 12, 5, 5]  # NCHW
+        self.groups = 12
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
 
 class TestDepthwiseConvNPU4(TestDepthwiseConvNPU):
     def init_test_case(self):
         self.pad = [1, 1]
-        self.dilations = [2, 2]
+        self.dilations = [1, 1]
         self.stride = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.groups = 3
+        self.input_size = [2, 12, 5, 5]  # NCHW
+        self.groups = 12
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
 
-@skip_check_grad_ci(
-    reason='''Inference only, it doesn't need to call check_grad.''')
 class TestDepthwiseConvNPU_Padding(OpTest):
     def setUp(self):
         self.op_type = "depthwise_conv2d"
-        self.dtype = np.float16
+        self.dtype = np.float32
         self.set_npu()
         self.init_data_format()
+        self.init_data_type()
         self.init_paddings()
         self.init_test_case()
         self.init_test_case_2()
@@ -211,17 +256,49 @@ class TestDepthwiseConvNPU_Padding(OpTest):
         self.pad = [1, 1, 0, 1]
         self.dilations = [1, 1]
         self.stride = [2, 2]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.groups = 3
+        self.input_size = [2, 12, 5, 5]  # NCHW
+        self.groups = 12
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, atol=1e-2)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            self.place, {'Input', 'Filter'},
+            'Output',
+            max_relative_error=0.03,
+            numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            self.place, ['Input'],
+            'Output',
+            max_relative_error=0.03,
+            no_grad_set=set(['Filter']),
+            numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            self.place, ['Filter'],
+            'Output',
+            max_relative_error=0.03,
+            no_grad_set=set(['Input']),
+            numeric_place=paddle.CPUPlace())
 
     def init_data_format(self):
         self.data_format = "NCHW"
+
+    def init_data_type(self):
+        self.dtype = np.float32
 
     def init_paddings(self):
         self.pad = [1, 1, 0, 1]
@@ -236,11 +313,11 @@ class TestDepthwiseConvNPU2_Padding(TestDepthwiseConvNPU_Padding):
         self.pad = [1, 1, 0, 1]
         self.dilations = [1, 1]
         self.stride = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.groups = 3
+        self.input_size = [2, 12, 5, 5]  # NCHW
+        self.groups = 12
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
     def init_paddings(self):
         self.pad = [0, 1, 0, 2]
@@ -252,11 +329,11 @@ class TestDepthwiseConvNPU3_Padding(TestDepthwiseConvNPU_Padding):
         self.pad = [1, 1, 0, 1]
         self.dilations = [1, 1]
         self.stride = [2, 2]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        self.groups = 3
+        self.input_size = [2, 12, 5, 5]  # NCHW
+        self.groups = 12
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
     def init_paddings(self):
         self.pad = [2, 1, 2, 3]
@@ -278,6 +355,12 @@ create_test_padding_SAME_class(TestDepthwiseConvNPU3_Padding)
 create_test_padding_VALID_class(TestDepthwiseConvNPU_Padding)
 create_test_padding_VALID_class(TestDepthwiseConvNPU2_Padding)
 create_test_padding_VALID_class(TestDepthwiseConvNPU3_Padding)
+
+create_test_fp16_class(TestDepthwiseConvNPU)
+create_test_fp16_class(TestDepthwiseConvNPU2)
+create_test_fp16_class(TestDepthwiseConvNPU_Padding)
+create_test_fp16_class(TestDepthwiseConvNPU2_Padding)
+create_test_fp16_class(TestDepthwiseConvNPU3_Padding)
 
 if __name__ == '__main__':
     unittest.main()

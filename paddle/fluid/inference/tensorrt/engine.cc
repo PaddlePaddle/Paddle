@@ -196,6 +196,10 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
+      VLOG(4) << "TRT dynamic_shape set " << input.first
+              << " min: " << Vec2Str(input.second)
+              << ", max: " << Vec2Str(max_input_shape_[input.first])
+              << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
       optim_profile_->setDimensions(
           input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
           Vec2TRT_Dims(input.second, input.first, true));
@@ -221,6 +225,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
   infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));

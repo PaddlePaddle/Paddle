@@ -59,22 +59,24 @@ class NearestInterpolateOpConverter : public OpConverter {
     float scale_w = 1.f;
 
     std::vector<float> scales;
-
-    if (scale > 0.f && (out_h <= 0 && out_w <= 0)) {
+    if (scale > 0.f) {
       scale_h = scale;
       scale_w = scale;
     } else {
       // axis are different in static/dynamic mode
       bool with_dynamic = engine_->with_dynamic_shape();
 
-      int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
-      int w_axis =
-          (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
+      if (!with_dynamic) {
+        int h_axis =
+            (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
+        int w_axis =
+            (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
 
-      scale_h =
-          static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
-      scale_w =
-          static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
+        scale_h =
+            static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
+        scale_w =
+            static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
+      }
     }
 
     if (engine_->with_dynamic_shape()) {

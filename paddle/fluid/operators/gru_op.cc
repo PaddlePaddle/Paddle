@@ -33,13 +33,15 @@ class GRUOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRU");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRU");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "GRU");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchResetHiddenPrev"), "Output",
-                   "BatchResetHiddenPrev", "GRU");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchHidden"), "Output", "BatchHidden",
-                   "GRU");
     OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "GRU");
-
+    bool is_test = ctx->Attrs().Get<bool>("is_test");
+    if (!is_test) {
+      OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "GRU");
+      OP_INOUT_CHECK(ctx->HasOutput("BatchResetHiddenPrev"), "Output",
+                     "BatchResetHiddenPrev", "GRU");
+      OP_INOUT_CHECK(ctx->HasOutput("BatchHidden"), "Output", "BatchHidden",
+                     "GRU");
+    }
     auto input_dims = ctx->GetInputDim("Input");
     auto weight_dims = ctx->GetInputDim("Weight");
     int input_size = input_dims[1];
@@ -84,9 +86,11 @@ class GRUOp : public framework::OperatorWithKernel {
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height, bias_width, frame_size * 3));
     }
-    ctx->SetOutputDim("BatchGate", input_dims);
-    ctx->SetOutputDim("BatchResetHiddenPrev", {input_dims[0], frame_size});
-    ctx->SetOutputDim("BatchHidden", {input_dims[0], frame_size});
+    if (!is_test) {
+      ctx->SetOutputDim("BatchGate", input_dims);
+      ctx->SetOutputDim("BatchResetHiddenPrev", {input_dims[0], frame_size});
+      ctx->SetOutputDim("BatchHidden", {input_dims[0], frame_size});
+    }
     ctx->SetOutputDim("Hidden", {input_dims[0], frame_size});
     ctx->ShareLoD("Input", "Hidden");
   }
@@ -124,19 +128,22 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
               "organized in batches. The LoD size is 2. The first LoD contains "
               "the batch offsets and the second LoD contains the indexes in "
               "the raw sequence data.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput(
         "BatchResetHiddenPrev",
         "(LoDTensor) The reset hidden state LoDTensor organized in batches. "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
         "with `BatchGate`.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput(
         "BatchHidden",
         "(LoDTensor) The hidden state LoDTensor organized in batches.  "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
         "with `BatchGate`.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput(
         "Hidden",
         "(LoDTensor) the hidden state LoDTensor organized in sequences. "
@@ -155,6 +162,9 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default: False) "
                   "whether to compute reversed GRU.")
         .SetDefault(false);
+    AddAttr<bool>("is_test", "True if in test phase.")
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<bool>("origin_mode",
                   "bool"
                   "use origin mode in article https://arxiv.org/abs/1412.3555")
@@ -269,23 +279,41 @@ class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     using DeviceContext = paddle::platform::CPUDeviceContext;
+    using LodTensorPtr = LoDTensor*;
+    bool is_test = context.Attr<bool>("is_test");
+
     bool origin_mode = context.Attr<bool>("origin_mode");
     auto* input = context.Input<LoDTensor>("Input");
     auto* h0 = context.Input<Tensor>("H0");
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* bias = context.Input<Tensor>("Bias");
-    auto* batch_gate = context.Output<LoDTensor>("BatchGate");
-    batch_gate->mutable_data<T>(context.GetPlace());
-    auto* batch_reset_hidden_prev =
-        context.Output<LoDTensor>("BatchResetHiddenPrev");
-    batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());
-    auto* batch_hidden = context.Output<LoDTensor>("BatchHidden");
-    batch_hidden->mutable_data<T>(context.GetPlace());
     auto* hidden = context.Output<LoDTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
+    auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
+
+    LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
+    LoDTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
+    if (is_test) {
+      batch_gate = &batch_gate_tmp;
+      batch_gate->Resize(input_dims);
+
+      batch_reset_hidden_prev = &batch_reset_hidden_prev_tmp;
+      batch_reset_hidden_prev->Resize(hidden_dims);
+
+      batch_hidden = &batch_hidden_tmp;
+      batch_hidden->Resize(hidden_dims);
+    } else {
+      batch_gate = context.Output<LoDTensor>("BatchGate");
+      batch_hidden = context.Output<LoDTensor>("BatchHidden");
+      batch_reset_hidden_prev =
+          context.Output<LoDTensor>("BatchResetHiddenPrev");
+    }
+    batch_gate->mutable_data<T>(context.GetPlace());
+    batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());
+    batch_hidden->mutable_data<T>(context.GetPlace());
 
     bool is_reverse = context.Attr<bool>("is_reverse");
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;

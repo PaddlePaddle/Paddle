@@ -37,7 +37,7 @@ def _append_attr_suffix(name):
 
 
 LAST_PP_STAGE = 3
-MASK = [[0, 1], [1, 0], [1, 1]]
+MASK = [[0, 1, 1], [0, 1, 1]]
 MESH = dist.ProcessMesh([[0, 1, 2], [3, 4, 5]])
 
 
@@ -58,7 +58,7 @@ class SimpleNet(nn.Layer):
         dist.set_pipeline_stage(LAST_PP_STAGE)
 
         y = dist.shard_tensor(y, self.mesh, dim_mapping=[0, -1])
-        dist.set_offload_device(y, "gpu:3")
+        dist.set_offload_device(y, "cpu")
         linear1 = self.dense1(y)
         out = self.dense2(linear1)
 
@@ -86,9 +86,9 @@ class TestAutoParallelAPI(unittest.TestCase):
             x._get_attr(shard_mask_attr), _flatten_nested_list(MASK))
         self.assertEqual(x.shard_mask, _flatten_nested_list(MASK))
         offload_attr = _append_attr_suffix('offload_device')
-        self.assertEqual(y._get_attr(offload_attr), "gpu:3")
+        self.assertEqual(y._get_attr(offload_attr), "cpu")
         self.assertEqual(y.desc.has_attr(offload_attr), True)
-        self.assertEqual(y.offload_device, "gpu:3")
+        self.assertEqual(y.offload_device, "cpu")
         y._remove_attr(offload_attr)
         self.assertEqual(y._has_attr(offload_attr), False)
         ops = paddle.static.default_main_program().block(0).ops
@@ -97,8 +97,8 @@ class TestAutoParallelAPI(unittest.TestCase):
 
         self.assertEqual(last_op.pipeline_stage, LAST_PP_STAGE)
 
-        DIMS_MAPPING1 = [0, 1, -1]
-        DIMS_MAPPING2 = [-1, 2, 0]
+        DIMS_MAPPING1 = [0, 1]
+        DIMS_MAPPING2 = [-1, 0]
         kwargs = {'x': data2, 'y': data3}
         dist.shard_op(
             paddle.add,

@@ -203,6 +203,14 @@ class Conv2D(layers.Layer):
         else:
             self._l_type = 'conv2d'
 
+        # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+        if core.is_compiled_with_npu():
+            if (self._num_channels == self._groups and
+                    self._num_channels == self._num_filters):
+                l_type = 'depthwise_conv2d'
+            else:
+                l_type = 'conv2d'
+
         self._num_channels = num_channels
         if self._groups is None:
             num_filter_channels = self._num_channels

@@ -115,6 +115,10 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .AddAttr("quant_axis")
       .IsIntIn({0, 1})
       .IsOptional()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsType<int>()
+      .IsOptional()
       .End();
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
@@ -580,7 +584,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     std::string new_input = quantized_op_input_node->Name();
     std::string new_output = dequant_op_out_node->Name();
 
-    framework::OpDesc new_op_desc(base_op_desc, nullptr);
+    framework::OpDesc new_op_desc(base_op_desc,
+                                  quantized_op_node->Op()->Block());
     new_op_desc.SetType(quantized_op_type);
     new_op_desc.SetAttr("enable_int8", true);
     if (quantized_op_type == "conv2d" || quantized_op_type == "conv2d_fusion" ||

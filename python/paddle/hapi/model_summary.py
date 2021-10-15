@@ -147,6 +147,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             input_size = []
             for key in input.keys():
                 input_size.append(tuple(input[key].shape))
+        elif isinstance(input, paddle.fluid.framework.Variable):
+            input_size = tuple(input.shape)
         else:
             raise ValueError(
                 "Input is not tensor, list, tuple and dict, unable to determine input_size, please input input_size."
