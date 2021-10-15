@@ -14,6 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/tcmpt/infershape/binary.h"
-#include "paddle/tcmpt/infershape/unary.h"
+#include "paddle/tcmpt/hapi/include/tensor.h"
+
+namespace paddle {
+namespace experimental {
+
+Tensor flatten(const Tensor& x, int start_axis, int stop_axis);
+
+}  // namespace experimental
+}  // namespace paddle

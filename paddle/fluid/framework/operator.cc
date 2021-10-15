@@ -1155,7 +1155,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
 
-  // VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
   if (FLAGS_use_pt_kernel &&
       pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
@@ -1263,17 +1262,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-static bool ContainSelectedRows(const VariableValueMap& inputs) {
-  for (auto& var_pair : inputs) {
-    for (auto* var : var_pair.second) {
-      if (var->IsType<SelectedRows>()) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 // TODO(chenweihang): now only check single var input
 static bool IsValidVar(const std::string& name,
                        const VariableValueMap& inputs) {
@@ -1298,19 +1286,36 @@ static bool ContainHostTensor(const proto::OpProto& op_proto,
   return false;
 }
 
+// TODO(yuanrisheng): enhance rules, for get kernel that contains Intermediate
+// Tensor
+static bool ContainMidOutputTensor(const proto::OpProto& op_proto,
+                                   const VariableValueMap& outputs) {
+  for (int i = 0; i < op_proto.outputs_size(); ++i) {
+    auto output = op_proto.outputs()[i];
+    if (output.has_intermediate() && output.intermediate()) {
+      return IsValidVar(output.name(), outputs);
+    }
+  }
+  return false;
+}
+
 static pt::KernelName ConstructPtKernelName(const std::string& op_type,
                                             const proto::OpProto& op_proto,
-                                            const VariableValueMap& inputs) {
+                                            const VariableValueMap& inputs,
+                                            const VariableValueMap& outputs) {
   std::string overload_name;
   // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-  // if (ContainSelectedRows(inputs)) {
-  //   overload_name = pt::kContainSelectedRowsSuffix;
-  // }
   if (ContainHostTensor(op_proto, inputs)) {
     if (overload_name != "") {
       overload_name += ".";
     }
     overload_name += pt::kContainHostTensorSuffix;
+  }
+  if (ContainMidOutputTensor(op_proto, outputs)) {
+    if (overload_name != "") {
+      overload_name += ".";
+    }
+    overload_name += pt::kContainMidOutputTensorSuffix;
   }
   return pt::KernelName(op_type, overload_name);
 }
@@ -1320,7 +1325,7 @@ void OperatorWithKernel::ChoosePtKernel(
   // 1. construct operation name
   // TODO(chenweihang): add rules for construct op name
   auto kernel_name =
-      ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs);
+      ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs, ctx.outputs);
 
   // 2. construct op kernel key
   pt_kernel_key_.reset(new pt::KernelKey(

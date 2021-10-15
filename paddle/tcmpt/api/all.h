@@ -19,4 +19,5 @@ limitations under the License. */
 #include "paddle/tcmpt/api/include/creation.h"
 #include "paddle/tcmpt/api/include/infershape.h"
 #include "paddle/tcmpt/api/include/linalg.h"
+#include "paddle/tcmpt/api/include/manipulation.h"
 #include "paddle/tcmpt/api/include/math.h"

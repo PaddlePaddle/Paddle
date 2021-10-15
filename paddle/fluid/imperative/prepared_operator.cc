@@ -137,18 +137,6 @@ static framework::VariableValueMap BuildInputMap(
   return inputs;
 }
 
-template <typename VarType>
-static bool ContainSelectedRows(const NameVarMap<VarType>& inputs) {
-  for (auto& var_pair : inputs) {
-    for (auto& var : var_pair.second) {
-      if (var->Var().template IsType<framework::SelectedRows>()) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 // TODO(chenweihang): enhance rules, not all dispensable inputs
 // are host tensor, now only for scale kernel verify
 template <typename VarType>
@@ -169,9 +157,6 @@ static pt::KernelName ConstructPtKernelName(
     const NameVarMap<VarType>& inputs) {
   std::string overload_name;
   // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-  // if (ContainSelectedRows<VarType>(inputs)) {
-  //   overload_name = pt::kContainSelectedRowsSuffix;
-  // }
   if (ContainHostTensor<VarType>(op_proto, inputs)) {
     if (overload_name != "") {
       overload_name += ".";

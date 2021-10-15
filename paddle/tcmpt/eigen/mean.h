@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace pt {
@@ -30,8 +30,8 @@ void Mean(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   // TODO(chenweihang): if we design new tensor, we should support
   // the low-level calc functor use new tensor as input,
   // which may be a big project!
-  auto eigen_x = paddle::framework::EigenVector<T>::Flatten(x);
-  auto eigen_out = paddle::framework::EigenScalar<T>::From(*out);
+  auto eigen_x = pt::EigenVector<T>::Flatten(x);
+  auto eigen_out = pt::EigenScalar<T>::From(*out);
 
   auto& dev = *dev_ctx.eigen_device();
   eigen_out.device(dev) = eigen_x.mean();

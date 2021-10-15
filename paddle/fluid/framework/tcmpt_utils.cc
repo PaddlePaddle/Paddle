@@ -13,18 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tcmpt_utils.h"
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
-
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/tcmpt/api/include/core.h"
-#include "paddle/tcmpt/api/include/symbols.h"
 
 namespace paddle {
 namespace framework {
 
 // TODO(chenweihang, shixiaowei): adapt SelectedRows
-
 template <>
 std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor, LoDTensor>(
     const LoDTensor& tensor, pt::Backend backend, pt::DataType dtype,
@@ -166,39 +163,6 @@ std::shared_ptr<pt::TensorInterface> OutputVariableToPtTensor(
 
   return nullptr;
 }
-
-/* For MKLDNNDenseTensor (move this part into a single file later) */
-#ifdef PADDLE_WITH_MKLDNN
-
-template <>
-std::shared_ptr<pt::MKLDNNDenseTensor> MakeTensorImpl<pt::MKLDNNDenseTensor>(
-    const Tensor& tensor, const platform::Place& place,
-    proto::VarType::Type type) {
-  auto holder = tensor.Holder();
-  auto tensor_impl = std::make_shared<pt::MKLDNNDenseTensor>(
-      pt::TensorMeta(tensor.dims(), pt::TransToPtBackend(place),
-                     pt::TransToPtDataType(type),
-                     pt::TransToPtLayout(tensor.layout()), tensor.offset()),
-      pt::TensorStatus());
-
-  if (holder != nullptr) {
-    tensor_impl->ShareAllocation(tensor.Holder());
-  } else {
-    VLOG(1) << "Old MKLDNN Tensor holder is nullptr.";
-  }
-
-  tensor_impl->set_format(tensor.format());
-  return tensor_impl;
-}
-
-template <>
-void ShareTensorImpl(pt::MKLDNNDenseTensor* tensor_impl, Tensor* out) {
-  out->ResetHolderWithType(tensor_impl->allocation(),
-                           pt::TransToProtoVarType(tensor_impl->type()));
-  out->set_format(tensor_impl->format());
-}
-
-#endif
 
 }  // namespace framework
 }  // namespace paddle
