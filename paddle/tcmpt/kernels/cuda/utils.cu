@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dtype.h"
 #include "paddle/tcmpt/core/kernel_registry.h"
-#include "paddle/tcmpt/cuda/utils.h"
+#include "paddle/tcmpt/kernels/cuda/utils.h"
 
 namespace pt {
 
