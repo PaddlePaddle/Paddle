@@ -57,7 +57,6 @@ from .model_summary import summary
 __all__ = []
 
 _parallel_context_initialized = False
-AMP_LEVEL = core.AmpLevel
 
 
 def to_list(value):
@@ -279,7 +278,7 @@ class StaticGraphAdapter(object):
         self._amp_level = "O0"
         self._amp_configs = {}
         self._amp_custom_lists = {}
-        self._use_fp16_guard = True
+        self._use_fp16_guard = None
 
     @property
     def mode(self):
@@ -456,10 +455,19 @@ class StaticGraphAdapter(object):
 
         feed = {}
         input_names = [v.name for v in self._input_vars[self.mode]]
+        input_dtypes = [v.dtype for v in self._input_vars[self.mode]]
+
         for idx, n in enumerate(input_names):
             # train and test may take different arguments
             if inputs[idx] is not None:
                 feed[n] = inputs[idx]
+            if self._amp_level == 'O2' and input_dtypes[
+                    idx] == core.VarDesc.VarType.FP16:
+                if isinstance(feed[n], core.LoDTensor):
+                    feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
+                elif isinstance(feed[n], numpy.array):
+                    feed[n] = feed[n].astype('float16')
+
         if labels is not None:
             for idx, v in enumerate(self._label_vars[self.mode]):
                 feed[v.name] = labels[idx]
@@ -561,7 +569,11 @@ class StaticGraphAdapter(object):
             inputs = [k._create_feed_layer() for k in to_list(inputs)]
             labels = [k._create_feed_layer() for k in to_list(labels)]
             self._label_vars[mode] = labels
-            outputs = to_list(self.model.network.forward(*inputs))
+            if self._amp_level == "O2" and core.is_compiled_with_cuda:
+                with paddle.static.amp.fp16_guard():
+                    outputs = to_list(self.model.network.forward(*inputs))
+            else:
+                outputs = to_list(self.model.network.forward(*inputs))
 
             if mode != 'test' and self.model._loss:
                 losses = self.model._loss(*(outputs + labels))
@@ -593,7 +605,6 @@ class StaticGraphAdapter(object):
                     amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                         **self.
                         _amp_custom_lists) if self._amp_custom_lists else None
-
                     self.model._optimizer = paddle.static.amp.decorate(
                         self.model._optimizer,
                         amp_lists=amp_lists,
@@ -883,12 +894,14 @@ class DynamicGraphAdapter(object):
             self.model._optimizer.set_state_dict(converted_state)
 
     def prepare(self):
-        if self._amp_level == "O2" and mode == 'train' and core.is_compiled_with_cuda(
+        if self._amp_level == "O2" and self.model.mode == 'train' and core.is_compiled_with_cuda(
         ):
             self.model.network, self.model._optimizer = paddle.amp.decorate(
                 models=self.model.network,
                 optimizers=self.model._optimizer,
                 level='O2')
+        if self._amp_level != "O0":
+            self.model._scaler = None
 
 
 class Model(object):
@@ -1381,9 +1394,9 @@ class Model(object):
     def _prepare_amp(self, amp_configs):
         def _check_pure_fp16_configs():
             # pure float16 training has some restricts now
-            if self._adapter._amp_level == "O2":
-                # grad clip is not supported in pure fp16 training now
-                assert isinstance(grad_clip, (paddle.nn.clip.GradientClipByNorm, paddle.nn.clip.GradientClipByGlobalNorm)), \
+            if self._adapter._amp_level == "O2" and self._optimizer._grad_clip:
+                # clip by value is not supported
+                assert isinstance(self._optimizer._grad_clip, (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm)), \
                      "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
@@ -1492,7 +1505,6 @@ class Model(object):
         Returns:
             None
         """
-
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized

@@ -30,6 +30,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -1115,6 +1116,15 @@ PYBIND11_MODULE(core_noavx, m) {
              std::stringstream ostr;
              ostr << self;
              return ostr.str();
+           })
+      .def("_as_type",
+           [](const LoDTensor &self,
+              paddle::framework::proto::VarType::Type type) {
+             LoDTensor dst;
+             if (self.IsInitialized() && self.numel() > 0) {
+               TransDataType(self, type, &dst);
+             }
+             return dst;
            })
       .def("_copy", [](const LoDTensor &self, const platform::Place &place) {
         // follow fetch_op's inplementation
