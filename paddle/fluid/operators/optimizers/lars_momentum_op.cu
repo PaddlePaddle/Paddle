@@ -84,22 +84,18 @@ class LarsThreadConfig {
 
 template <typename T, typename MT, int VecSize, bool IsAmp = false>
 __device__ inline void VectorizeLarsUpdate(
-    const T* __restrict__ grad, const MT* __restrict__ param,
-    const MT* __restrict__ velocity, T* __restrict__ param_out,
-    MT* __restrict__ velocity_out, const MT mu, MT local_lr,
+    const T* __restrict__ grad, const MT* param, const MT* velocity,
+    T* param_out, MT* velocity_out, const MT mu, MT local_lr,
     const MT lars_weight_decay, const MT rescale_grad, const int tid,
-    const int grid_stride, const int numel,
-    MT* __restrict__ master_param_out = nullptr) {
+    const int grid_stride, const int numel, MT* master_param_out = nullptr) {
   using VecType = paddle::platform::AlignedVector<T, VecSize>;
   using VecMType = paddle::platform::AlignedVector<MT, VecSize>;
   int main = numel >> (VecSize >> 1);
   int tail_offset = main * VecSize;
 
-  const VecType* __restrict__ grad_vec = reinterpret_cast<const VecType*>(grad);
-  const VecMType* __restrict__ param_vec =
-      reinterpret_cast<const VecMType*>(param);
-  const VecMType* __restrict__ velocity_vec =
-      reinterpret_cast<const VecMType*>(velocity);
+  const VecType* grad_vec = reinterpret_cast<const VecType*>(grad);
+  const VecMType* param_vec = reinterpret_cast<const VecMType*>(param);
+  const VecMType* velocity_vec = reinterpret_cast<const VecMType*>(velocity);
   VecType* param_out_vec = reinterpret_cast<VecType*>(param_out);
   VecMType* velocity_out_vec = reinterpret_cast<VecMType*>(velocity_out);
 
@@ -157,10 +153,10 @@ __forceinline__ __device__ void L2NormKernel(
 template <typename T, typename MT>
 __global__ void L2NormKernel(
 #endif
-    const T* __restrict__ p_data, const T* __restrict__ g_data,
-    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const int64_t numel,
-    const int repeat_times, const MT rescale_grad, const int thresh = 0,
-    MT* __restrict__ p_n = nullptr, MT* __restrict__ g_n = nullptr) {
+    const T* p_data, const T* __restrict__ g_data, MT* __restrict__ p_buffer,
+    MT* __restrict__ g_buffer, const int64_t numel, const int repeat_times,
+    const MT rescale_grad, const int thresh = 0, MT* __restrict__ p_n = nullptr,
+    MT* __restrict__ g_n = nullptr) {
   __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
@@ -236,10 +232,9 @@ __global__ void L2NormKernel(
 
 template <typename T, typename MT>
 __forceinline__ __device__ void MomentumUpdate(
-    const T* __restrict__ param, const T* __restrict__ grad,
-    const MT* __restrict__ velocity, T* param_out, MT* velocity_out,
-    const MT* __restrict__ master_param, MT* __restrict__ master_param_out,
-    const MT* __restrict__ learning_rate, const MT mu,
+    const T* param, const T* __restrict__ grad, const MT* velocity,
+    T* param_out, MT* velocity_out, const MT* master_param,
+    MT* master_param_out, const MT* __restrict__ learning_rate, const MT mu,
     const MT lars_weight_decay, const MT lars_coeff, const MT epsilon,
     const MT rescale_grad, const MT param_norm, const MT grad_norm,
     const int tid, const int grid_stride, const int64_t numel,
@@ -316,14 +311,13 @@ __global__ void MergedMomentumLarsKernel(LarsParamWarpper<T, MT> lars_warpper,
 
 template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
-    const T* __restrict__ param, const T* __restrict__ grad,
-    const MT* __restrict__ velocity, T* param_out, MT* velocity_out,
-    const MT* __restrict__ master_param, MT* __restrict__ master_param_out,
-    const MT* __restrict__ learning_rate, MT* __restrict__ p_buffer,
-    MT* __restrict__ g_buffer, const MT mu, const MT lars_coeff,
-    const MT lars_weight_decay, const MT epsilon, const MT rescale_grad,
-    const int repeat_times, const int thresh, const int64_t numel,
-    const bool is_amp) {
+    const T* param, const T* __restrict__ grad, const MT* velocity,
+    T* param_out, MT* velocity_out, const MT* master_param,
+    MT* master_param_out, const MT* __restrict__ learning_rate,
+    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const MT mu,
+    const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
+    const MT rescale_grad, const int repeat_times, const int thresh,
+    const int64_t numel, const bool is_amp) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 11000
