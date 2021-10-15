@@ -20,7 +20,11 @@ limitations under the License. */
 
 #include "paddle/tcmpt/api/include/core.h"
 #include "paddle/tcmpt/api/include/infershape.h"
+#include "paddle/tcmpt/core/convert_utils.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/hapi/lib/kernel_generate.h"
+#include "paddle/tcmpt/infershape/binary.h"
 
 namespace paddle {
 namespace experimental {
@@ -49,15 +53,13 @@ Tensor dot(const Tensor& x, const Tensor& y) {
 
   // 4. InferShape
   // TODO(chenweihang): how to auto selected infershape?
-  auto out_dims = pt::DotInferShape(dense_x->dims());
+  auto out_meta = DotInferShape(dense_x->meta(), dense_y->meta());
 
   // 5. Prepare outputs
   Tensor out;
   // TODO(chenweihang): deal with multiple outputs
-  auto out_def = kernel.args_def().output_defs()[0];
-  auto dense_out = std::make_shared<pt::DenseTensor>(
-      pt::TensorMeta(out_dims, out_def.backend, out_def.dtype, out_def.layout),
-      pt::TensorStatus());
+  auto dense_out =
+      std::make_shared<pt::DenseTensor>(out_meta, pt::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 

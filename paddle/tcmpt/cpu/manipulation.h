@@ -14,6 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/tcmpt/infershape/binary.h"
-#include "paddle/tcmpt/infershape/unary.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/kernel_registry.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
+
+namespace pt {
+
+using CPUContext = paddle::platform::CPUDeviceContext;
+
+template <typename T>
+void Flatten(const CPUContext& dev_ctx,
+             const DenseTensor& x,
+             int start_axis,
+             int stop_axis,
+             DenseTensor* out);
+
+}  // namespace pt

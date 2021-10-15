@@ -38,4 +38,6 @@ enum class DataLayout {
 
 std::ostream& operator<<(std::ostream& os, DataLayout dtype);
 
+DataLayout& operator++(DataLayout& layout, int);
+
 }  // namespace pt
