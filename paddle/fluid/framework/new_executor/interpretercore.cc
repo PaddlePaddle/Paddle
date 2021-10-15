@@ -37,7 +37,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       main_program_(main_prog),
       global_scope_(global_scope),
       stream_analyzer_(place),
-      async_work_queue_(kHostNumThreads, main_thread_blocker_) {
+      async_work_queue_(kHostNumThreads) {
   is_build_ = false;
 
   feed_names_ = feed_names;
@@ -365,8 +365,7 @@ void InterpreterCore::ExecuteInstructionList(
     }
   }
 
-  auto event_id = main_thread_blocker_.WaitEvent();
-  VLOG(3) << "event_id " << event_id;
+  async_work_queue_.WaitEmpty();
 
   PADDLE_ENFORCE_EQ(
       op_run_number_.load(), vec_instr.size(),

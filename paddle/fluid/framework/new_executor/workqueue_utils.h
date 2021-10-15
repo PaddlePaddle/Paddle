@@ -18,9 +18,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
-#include <set>
-#include <vector>
-#include "paddle/fluid/framework/new_executor/event_count.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -66,53 +63,6 @@ class CounterGuard {
 void* AlignedMalloc(size_t size, size_t alignment);
 
 void AlignedFree(void* memory_ptr);
-
-// A multiplexing waiter, be able to wait multi events simultaneously
-// Blocking the calling thread to wait any of the registered events
-class EventsWaiter {
- public:
-  using EventId = int64_t;
-
-  using EventChecker = std::function<bool()>;
-
-  class Notifier {
-   public:
-    void NotifyEvent();
-
-   private:
-    friend EventsWaiter;
-    Notifier(EventId id, EventsWaiter& waiter) : id_(id), waiter_(waiter) {}
-
-    EventId id_;
-    EventsWaiter& waiter_;
-  };
-
-  EventsWaiter();
-
-  EventsWaiter(const EventsWaiter&) = delete;
-
-  EventsWaiter& operator=(const EventsWaiter&) = delete;
-
-  // RegisterEvent must be called before WaitEvent
-  EventId RegisterEvent(EventChecker checker);
-
-  std::reference_wrapper<Notifier> GetEventNotifier(const EventId& id);
-
-  // Wait any of the registered events
-  EventId WaitEvent();
-
-  const std::set<EventId> WaitEvents();
-
- private:
-  friend Notifier;
-  void SetTriggerEvent(const EventId& id);
-
-  std::vector<EventChecker> checkers_;
-  std::vector<Notifier> notifiers_;
-  std::atomic<EventId> trigger_event_;
-  std::atomic<bool> waiting_;
-  EventCount cv_;
-};
 
 }  // namespace framework
 }  // namespace paddle
