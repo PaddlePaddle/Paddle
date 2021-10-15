@@ -442,7 +442,6 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
       quant_axis =
           BOOST_GET_CONST(int, dequant_op_node->Op()->GetAttr("quant_axis"));
     }
-
     // Get weight scale
     if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
       Node* dequant_channel_scale_node =
