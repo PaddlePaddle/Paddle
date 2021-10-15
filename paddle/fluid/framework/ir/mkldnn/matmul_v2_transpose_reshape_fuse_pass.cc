@@ -37,7 +37,7 @@ MatmulV2TransposeReshapeMKLDNNPass::MatmulV2TransposeReshapeMKLDNNPass() {
       .AddAttr("trans_x")
       .IsType<bool>()
       .End()
-      .AddAttr("trans_x")
+      .AddAttr("trans_y")
       .IsType<bool>()
       .End();
 
@@ -82,7 +82,7 @@ MatmulV2TransposeReshapeMKLDNNPass::MatmulV2TransposeReshapeMKLDNNPass() {
 }  // namespace paddle
 
 REGISTER_PASS(matmul_v2_transpose_reshape_fuse_pass,
-              paddle::framework::ir::MatmulTransposeReshapeMKLDNNPass);
+              paddle::framework::ir::MatmulV2TransposeReshapeMKLDNNPass);
 
 REGISTER_PASS_CAPABILITY(matmul_v2_transpose_reshape_fuse_pass)
     .AddCombination(
