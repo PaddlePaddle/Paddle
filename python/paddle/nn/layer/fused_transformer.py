@@ -227,7 +227,7 @@ class FusedMultiHeadAttention(Layer):
         self.name = name
 
     # user: input_x ,attn_mask or seq_len
-    def forward(self, query, key=None, value=None, attn_mask=None, seq_len=None, attn_low_window=None, attn_high_window=None, cache=None):
+    def forward(self, query, key=None, value=None, attn_mask=None, seq_len=None, attn_low_window=None, attn_high_window=None, seq_len_host=None, cache=None):
         """
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
@@ -295,7 +295,9 @@ class FusedMultiHeadAttention(Layer):
                 attn_dropout=self.attn_dropout,
                 ln2_epsilon=1e-05,
                 attn_low_windows=attn_low_window,
-                attn_high_windows=attn_high_window)
+                attn_high_windows=attn_high_window,
+                attn_qo_seqlen=seq_len_host,
+                attn_kv_seqlen=seq_len_host)
         else:
             out = F.fused_multihead_attention(
                 x=query,

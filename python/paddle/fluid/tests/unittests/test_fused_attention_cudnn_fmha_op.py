@@ -106,6 +106,7 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         #seq_len_vec = paddle.to_tensor(self.seq_len_vec, stop_gradient=True) # device
         #residual = paddle.to_tensor(self.query)
         residual = tensor_query
+        dout_tensor = paddle.to_tensor(self.dout)
 
         for i in range(1):
             ln1_out = tensor_query
@@ -155,7 +156,7 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
                 final_out = self.norm2(residual_out)
 
             paddle.autograd.backward(
-                [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
+                [final_out], [dout_tensor], retain_graph=True)
         return ln1_out, out, final_out, final_out.grad, out.grad, ln1_out.grad, tensor_query.grad
 
     def GetFusedAttentionCuDNNFMHAOut(self):
@@ -187,13 +188,14 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         #     (3, self.num_heads, self.head_dim, self.embed_dim))
 
         weight = np.concatenate((self.q_proj.weight, self.k_proj.weight, self.v_proj.weight, self.out_proj.weight))
-        print("weight shape: ")
-        print(weight.shape)
+        # print("weight shape: ")
+        # print(weight.shape)
     
         x = paddle.to_tensor(self.query, stop_gradient=False)
         seq_len_tensor = paddle.to_tensor(self.seq_len_vec, stop_gradient=True)
         #attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         weight_tensor = paddle.to_tensor(weight, stop_gradient=False)
+        dout_tensor = paddle.to_tensor(self.dout)
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
@@ -208,9 +210,10 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
                 ln2_scale, ln2_bias, epsilon, out_linear_bias, 
                 self.dropout_prob, self.attn_dropout_prob, 
                 ln2_epsilon, self.attn_low_windows, 
-                self.attn_high_windows)
+                self.attn_high_windows,
+                self.seq_len_vec, self.seq_len_vec)
             paddle.autograd.backward(
-                [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
+                [final_out], [dout_tensor], retain_graph=True)
 
         return ln_out, out_linear_out, final_out, final_out.grad, out_linear_out.grad, ln_out.grad, x.grad
 
@@ -242,56 +245,56 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-2)
 
 # fp16 is not supported when cudnn > 8.2 
-# @unittest.skipIf(not core.is_compiled_with_cuda(),
-#                  "Paddle core is not compiled with CUDA")
-# class TestFusedAttentionCuDNNFMHAOpFp16(TestFusedAttentionCuDNNFMHAOp):
-#     def config(self):
-#         self.x_type = np.float16
-#         #self.attn_mask_type = np.float64
-#         self.pre_layer_norm = True
-#         self.training = True
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "Paddle core is not compiled with CUDA")
+class TestFusedAttentionCuDNNFMHAOpFp16(TestFusedAttentionCuDNNFMHAOp):
+    def config(self):
+        self.x_type = np.float16
+        #self.attn_mask_type = np.float64
+        self.pre_layer_norm = True
+        self.training = True
 
-#         self.batch_size = 8
-#         self.query_length = 128
-#         self.head_dim = 64
-#         self.num_heads = 16
-#         self.embed_dim = self.head_dim * self.num_heads
+        self.batch_size = 8
+        self.query_length = 128
+        self.head_dim = 64
+        self.num_heads = 16
+        self.embed_dim = self.head_dim * self.num_heads
 
-#         self.dropout_prob = 0.0
-#         self.attn_dropout_prob = 0.0
+        self.dropout_prob = 0.0
+        self.attn_dropout_prob = 0.0
 
-#         self.weight_attr = None
-#         self.bias_attr = None
+        self.weight_attr = None
+        self.bias_attr = None
 
-#         self.kdim, self.vdim = self.embed_dim, self.embed_dim
-#         self.key_length, self.value_length = self.query_length, self.query_length
+        self.kdim, self.vdim = self.embed_dim, self.embed_dim
+        self.key_length, self.value_length = self.query_length, self.query_length
 
-#     def test_fused_attention_cudnn_fmha_op(self):
-#         print(
-#             "self.batch_size, self.query_length, self.embed_dim, self.num_heads, self.head_dim = "
-#         )
-#         print(self.batch_size, self.query_length, self.embed_dim,
-#               self.num_heads, self.head_dim)
-#         ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
-#         ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = self.GetFusedAttentionFMHAOut()
+    def test_fused_attention_cudnn_fmha_op(self):
+        print(
+            "self.batch_size, self.query_length, self.embed_dim, self.num_heads, self.head_dim = "
+        )
+        print(self.batch_size, self.query_length, self.embed_dim,
+              self.num_heads, self.head_dim)
+        ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
+        ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
         
-#         np.testing.assert_allclose(
-#             ln_out_ref, ln_out.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            ln_out_ref, ln_out.numpy(), rtol=1e-5, atol=1e-1)
         
-#         np.testing.assert_allclose(
-#             out_linear_out_ref, out_linear_out.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            out_linear_out_ref, out_linear_out.numpy(), rtol=1e-5, atol=1e-1)
 
-#         np.testing.assert_allclose(
-#             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
 
-#         np.testing.assert_allclose(
-#             final_grad_ref, final_grad.numpy(), rtol=1e-5, atol=1e-1)
-#         np.testing.assert_allclose(
-#             out_linear_grad_ref, out_linear_grad.numpy(), rtol=1e-5, atol=1e-1)
-#         np.testing.assert_allclose(
-#             ln_grad_ref, ln_grad.numpy(), rtol=1e-5, atol=1e-1)
-#         np.testing.assert_allclose(
-#             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            final_grad_ref, final_grad.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            out_linear_grad_ref, out_linear_grad.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            ln_grad_ref, ln_grad.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1638,24 +1638,29 @@ def fused_multihead_attention_cudnn_impl(x,
                               ln2_epsilon=1e-05,
                               attn_low_windows=None, 
                               attn_high_windows=None,
+                              attn_qo_seqlen=None,
+                              attn_kv_seqlen=None,
                               name=None):
     r"""
     """
     if in_dygraph_mode():
-        print("attn_low_windows = ")
-        print(attn_low_windows)
-        print("attn_high_windows = ")
-        print(attn_high_windows)
-        print("seq_len = ")
-        print(seq_len)
+        # print("attn_low_windows = ")
+        # print(attn_low_windows)
+        # print("attn_high_windows = ")
+        # print(attn_high_windows)
+        # print("seq_len = ")
+        # print(seq_len)
+        # print("weight.name = ", weight.name)
         ## finally code
-        ln_mean, ln_variance, ln_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention_cudnn_fmha(
+        ln_mean, ln_variance, ln_out, _, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention_cudnn_fmha(
             x, weight, seq_len, seq_len, ln_scale, ln_bias, out_linear_bias, ln_2_scale, ln_2_bias,
             'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon, 
             'ln2_epsilon', ln2_epsilon, 'attn_heads', num_heads, 
             'attn_dropout_prob', attn_dropout, 'dropout_prob', dropout, 
             'attn_low_windows', attn_low_windows, 
-            'attn_high_windows', attn_high_windows)
+            'attn_high_windows', attn_high_windows,
+            'attn_qo_seqlen', attn_qo_seqlen,
+            'attn_kv_seqlen', attn_kv_seqlen)
         #return ln_out, out_linear_out, bias_dropout_residual_out, final_out
         return ln_out, out_linear_out, final_out
     else:
@@ -1693,6 +1698,8 @@ def fused_multihead_attention_cudnn_impl(x,
             'dropout_prob': dropout,
             'attn_low_windows': attn_low_windows,
             'attn_high_windows': attn_high_windows,
+            'attn_qo_seq_len': attn_qo_seqlen,
+            'attn_kv_seqlen': attn_kv_seqlen,
         }
 
         # set outputs

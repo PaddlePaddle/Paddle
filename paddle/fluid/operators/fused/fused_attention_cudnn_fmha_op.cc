@@ -87,7 +87,7 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
     ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
+    if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
     ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
@@ -111,7 +111,8 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
   }
 };
 
-class FusedAttentionCuDNNFMHAOpMaker : public framework::OpProtoAndCheckerMaker {
+class FusedAttentionCuDNNFMHAOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
 #if CUDNN_VERSION >= 8000
@@ -152,6 +153,11 @@ class FusedAttentionCuDNNFMHAOpMaker : public framework::OpProtoAndCheckerMaker 
         .AsIntermediate();
     AddOutput("LnOut", "The output of pre layer_norm.").AsIntermediate();
 
+    AddOutput("ReserveSpace",
+              "Reserve GPU space for triggering the new semi-persistent "
+              "NHWC kernel")
+        .AsDispensable()
+        .AsExtra();
     AddOutput("OutLinearOut", "Result after out_linear.").AsIntermediate();
 
     AddOutput("DropoutMaskOut", "The random sampled dropout mask.")
@@ -183,6 +189,9 @@ class FusedAttentionCuDNNFMHAOpMaker : public framework::OpProtoAndCheckerMaker 
     AddAttr<std::vector<int>>("attn_low_windows", "(Tensor), attn_low_windows");
     AddAttr<std::vector<int>>("attn_high_windows",
                               "(Tensor), attn_high_windows");
+    AddAttr<std::vector<int>>("attn_qo_seqlen", "(Tensor), attn_qo_seqlen");
+    AddAttr<std::vector<int>>("attn_kv_seqlen", "(Tensor), attn_kv_seqlen");
+
     AddAttr<float>("attn_dropout_prob", "");
     AddAttr<int>("attn_heads", "");
     //  AddAttr<float>("attn_sm_scaler", "");
@@ -203,18 +212,18 @@ class FusedAttentionCuDNNFMHAOpMaker : public framework::OpProtoAndCheckerMaker 
                                 "'dropout_prob' must be between 0.0 and 1.0."));
         });
 
-    AddAttr<bool>("is_test",
+    AddAttr<bool>("dropout_is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed",
+    AddAttr<bool>("dropout_fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
         .SetDefault(true);
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<int>("dropout_seed", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
@@ -263,9 +272,10 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
 #if CUDNN_VERSION >= 8000
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
-                      platform::errors::InvalidArgument(
-                          "GradOp is only callable when is_test is false"));
+    PADDLE_ENFORCE_EQ(
+        ctx->Attrs().Get<bool>("dropout_is_test"), false,
+        platform::errors::InvalidArgument(
+            "GradOp is only callable when dropout_is_test is false"));
 
     // mha
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
@@ -288,7 +298,9 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
     //     ctx->SetOutputDim(grad_name, dims);
     //   }
     // }
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionCuDNNFMHAGrad");
+
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FusedAttentionCuDNNFMHAGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     }
@@ -345,7 +357,8 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class FusedAttentionCuDNNFMHAGradOpMaker : public framework::SingleGradOpMaker<T> {
+class FusedAttentionCuDNNFMHAGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -373,6 +386,10 @@ class FusedAttentionCuDNNFMHAGradOpMaker : public framework::SingleGradOpMaker<T
                     this->InputGrad("LnBias"));
     }
     op->SetInput("OutLinearBias", this->Input("OutLinearBias"));
+
+    if (this->HasOutput("ReserveSpace")) {
+      op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
+    }
 
     if (this->HasInput("Ln2Scale")) {
       op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
@@ -429,4 +446,5 @@ REGISTER_OPERATOR(
     ops::FusedAttentionCuDNNFMHAGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedAttentionCuDNNFMHAGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(fused_attention_cudnn_fmha_grad, ops::FusedAttentionCuDNNFMHAGradOp);
+REGISTER_OPERATOR(fused_attention_cudnn_fmha_grad,
+                  ops::FusedAttentionCuDNNFMHAGradOp);
