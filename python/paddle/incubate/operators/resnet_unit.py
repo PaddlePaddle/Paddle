@@ -185,7 +185,7 @@ class ResNetUnit(Layer):
         bn_param_shape = [1, 1, 1, num_filters]
         filter_x_shape = [num_filters, filter_size, filter_size, num_channels_x]
         filter_z_shape = [num_filters, filter_size, filter_size, num_channels_z]
-        I.set_global_initializer(I.TruncatedNormal)
+        I.set_global_initializer(I.TruncatedNormal())
 
         self.filter_x = self.create_parameter(
             shape=filter_x_shape, attr=filter_x_attr, default_initializer=None)
