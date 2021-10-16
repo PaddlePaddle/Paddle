@@ -85,7 +85,7 @@ EventsWaiter::EventId EventsWaiter::WaitEvent() {
     PADDLE_THROW(
         platform::errors::ResourceExhausted("Another thread is waiting."));
   }
-  EventId id = trigger_event_.load(std::memory_order_acquire);
+  EventId id = kEmptyEventId;
   auto w = cv_.GetWaiter(0);
   cv_.Prewait();
   int64_t event_num = checkers_.size();
@@ -98,8 +98,9 @@ EventsWaiter::EventId EventsWaiter::WaitEvent() {
     cv_.CancelWait();
   } else {
     cv_.CommitWait(w);
+    id = trigger_event_.load(std::memory_order_relaxed);
   }
-  trigger_event_.store(kEmptyEventId);
+  trigger_event_.store(kEmptyEventId, std::memory_order_relaxed);
   waiting_.store(false);
   return id;
 }
@@ -117,12 +118,7 @@ const std::set<EventsWaiter::EventId> EventsWaiter::WaitEvents() {
 }
 
 void EventsWaiter::SetTriggerEvent(const EventId& id) {
-  EventId expected_id = kEmptyEventId;
-  if (!trigger_event_.compare_exchange_strong(expected_id, id,
-                                              std::memory_order_seq_cst,
-                                              std::memory_order_release)) {
-    return;
-  }
+  trigger_event_.store(id, std::memory_order_relaxed);
   cv_.Notify(true);
 }
 
