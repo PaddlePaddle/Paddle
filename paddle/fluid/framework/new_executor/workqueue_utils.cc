@@ -71,7 +71,8 @@ std::reference_wrapper<EventsWaiter::Notifier> EventsWaiter::GetEventNotifier(
     const EventId& id) {
   int64_t event_num = checkers_.size();
   if (id < 0 || id >= event_num) {
-    PADDLE_THROW(platform::errors::OutOfRange("Invalid EventId"));
+    PADDLE_THROW(
+        platform::errors::OutOfRange("Invalid EventId for EventsWaiter"));
   }
   return notifiers_[id];
 }
