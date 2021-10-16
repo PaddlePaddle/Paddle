@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import math
 from . import framework
 from . import core
 from .framework import in_dygraph_mode, default_main_program
@@ -421,6 +422,10 @@ class TruncatedNormalInitializer(Initializer):
 
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        if len(var.shape) == 4:
+            fan_in = np.prod(var.shape[1:])
+            self._std_dev = math.sqrt(self._std_dev / fan_in)
 
         # to be compatible of fp16 initalizers
         if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
