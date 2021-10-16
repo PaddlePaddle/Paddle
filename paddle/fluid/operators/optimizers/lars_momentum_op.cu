@@ -314,8 +314,7 @@ inline void SeparatedLarsMomentumOpCUDAKernel(
                               0, cuda_ctx.stream()>>>(
       param_data, grad_data, velocity_data, param_out_data, velocity_out_data,
       master_param_data, master_out_data, lr, p_buffer, g_buffer, mu,
-      lars_coeff, weight_decay, epsilon, rescale_grad, 0,
-      lars_thread_config.grid_for_norm, numel, is_amp);
+      lars_coeff, weight_decay, epsilon, rescale_grad, numel, is_amp);
 }
 
 template <typename DeviceContext, typename T>
