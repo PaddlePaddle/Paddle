@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.contrib.layers import pow2_warmup
+from paddle.fluid.contrib.layers.nn import pow2_warmup
 from paddle.optimizer.lr import LinearWarmup
 from paddle.optimizer.lr import PolynomialDecay
 import unittest
