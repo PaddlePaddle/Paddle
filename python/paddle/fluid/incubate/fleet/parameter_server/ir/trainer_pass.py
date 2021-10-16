@@ -105,6 +105,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
                 param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
+                param_name += op.input("Ids")[0][0] 
                 ops = pull_sparse_ops.get(param_name, [])
                 ops.append(op)
                 pull_sparse_ops[param_name] = ops
@@ -114,6 +115,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
         for param, ops in pull_sparse_ops.items():
             all_ops = program.global_block().ops
             op_idxs = [all_ops.index(op) for op in ops]
+            op_device = ops[0].attr("op_device")
             inputs = [
                 program.global_block().vars[op.input("Ids")[0]] for op in ops
             ]
@@ -158,7 +160,12 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                             outputs_idxs[out_id] = idx
 
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
-                distributed_idx = max(inputs_idxs) + 1
+                
+                if max(inputs_idxs) == -1:
+                    distributed_idx = min(op_idxs)
+                else:
+                    distributed_idx = max(inputs_idxs) + 1
+                #distributed_idx = max(inputs_idxs) + 1
 
                 if use_ps_gpu:
                     program.global_block()._insert_op(
@@ -183,7 +190,8 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                             "is_distributed": is_distributed,
                             "padding_idx": padding_idx,
                             "table_id": table_id,
-                            "lookup_table_version": op_type
+                            "lookup_table_version": op_type,
+                            "op_device": op_device 
                         })
             else:
                 for i in range(len(inputs_idxs)):
@@ -199,7 +207,8 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                             "is_distributed": is_distributed,
                             "padding_idx": padding_idx,
                             "table_id": table_id,
-                            "lookup_table_version": op_type
+                            "lookup_table_version": op_type,
+                            "op_device": op_device 
                         })
 
     pull_sparse_ops = _get_pull_sparse_ops(program)
@@ -452,7 +461,7 @@ def find_heter_ops(program, default_device="cpu"):
         elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
             # for distributed communciate ops: send & recv & barrier etc.
             # Todo: need update this method
-            op._set_attr('op_device', current_heter_device)
+            #op._set_attr('op_device', current_heter_device)
             return True
         elif op_device == None or op_device == default_device:
             op._set_attr('op_device', default_device)
@@ -507,6 +516,39 @@ def find_heter_ops(program, default_device="cpu"):
                    var2idx.pop(param_name)
                    for var_ in var2idx:
                        var2idx[var_] += 1
+            elif forward_op_type == "elementwise_mul":
+                """
+                get output varname of pre op
+
+                """
+                output_vars_no_grad = []
+                for key in pre_op.output_names:
+                    for varname in op.output(key):
+                        if varname == "@EMPTY@":
+                            continue
+                        if "lod_tensor_blocking_queue" in varname:
+                            continue
+                        output_vars_no_grad.append(varname.split("@GRAD")[0])
+                for no_grad_var in output_vars_no_grad:
+                    if no_grad_var in var2idx:
+                       """
+                       insert sum op & remove sum op from var2idx and origin place
+  
+                       """
+                       op_list = list(block.ops)
+                       sum_op = op_list[var2idx[no_grad_var]]
+                       sum_op_inputs = {sum_op.input_names[0]: [block.vars[input] for input in sum_op.input_arg_names]}
+                       sum_op_outputs = {sum_op.output_names[0]: [block.vars[output] for output in sum_op.output_arg_names]}
+                       block._insert_op(
+                           index= i + 1,
+                           type=sum_op.type,
+                           inputs=sum_op_inputs,
+                           outputs=sum_op_outputs,
+                           attrs=sum_op.all_attrs())
+                       block._remove_op(var2idx[no_grad_var] + 1)
+                       var2idx.pop(no_grad_var)
+                       for var_ in var2idx:
+                           var2idx[var_] += 1 
         else:
             if op.type == "sum":
               var = op.output("Out")[0]
@@ -522,8 +564,40 @@ def find_heter_ops(program, default_device="cpu"):
                            continue
                        else:
                            var2idx[origin_var] = i
+                   elif forward_op_type == "elementwise_mul":
+                       output_vars = []
+                       for key in pre_op.output_names:
+                           for varname in pre_op.output(key):
+                               if varname == "@EMPTY@":
+                                   continue
+                               if "lod_tensor_blocking_queue" in varname:
+                                   continue
+                               output_vars.append(varname)
+                       input_vars = []
+                       for key in op.input_names:
+                           for varname in op.input(key):
+                               if varname == "@EMPTY@":
+                                   continue
+                               if "lod_tensor_blocking_queue" in varname:
+                                   continue
+                               input_vars.append(varname)
+                       is_match = False
+                       for varname in output_vars:
+                           if varname in input_vars:
+                               is_match = True
+                               break
+                       if is_match:
+                           continue
+                       else:
+                           var2idx[origin_var] = i
                 else:
                    var2idx[origin_var] = i
+
+
+
+
+
+
 
     origin_porgram = program.clone()
     block = program.global_block()
@@ -1274,11 +1348,13 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
             if not var in current_block_entrance:
                 current_block_entrance.append(var)  
     
-
     for index in range(0, len(block_var_detail) - 1, 1):
         previous_block_exit = block_var_detail[index + 1]["backward"]["exit"]
         previous_block_exit.sort()
         current_block_entrance = block_var_detail[index]["backward"]["entrance"]
+
+
+ 
         current_block_entrance.sort()
 
         if previous_block_exit == current_block_entrance:
@@ -1377,6 +1453,8 @@ def screen_persistables(program, var_list):
     need_remove = []
     for var_name in var_list:
         if "@GRAD" in var_name:
+            if "GRAD" != var_name.split("@")[-1]:
+                continue
             origin_var_name = var_name.split("@GRAD")[0]
             var = program.global_block().vars[origin_var_name]
         else:

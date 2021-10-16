@@ -181,10 +181,14 @@ void HeterClient::SendAndRecvAsync(
     closure->cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
     auto& request_io_buffer = closure->cntl.request_attachment();
 
+
     distributed::SerializeToMultiVarMsgAndIOBuf(
         message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
         &request, &request_io_buffer);
 
+
+
+    // TODO get micro id from request
     // get micro id from p_scope
     auto* var = p_scope->FindVar("microbatch_id");
     PADDLE_ENFORCE_NE(var, nullptr,

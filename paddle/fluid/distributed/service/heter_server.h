@@ -306,10 +306,12 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   }
 
   void batch_finished(int minibatch_idx, int microbatch_idx) {
-    std::unique_lock<std::mutex> lk(this->batch_finished_mutex);
-    this->batch_finished_cond_var.wait(
+    std::cout <<  "waiting for micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
+    std::unique_lock<std::mutex> lk(this->batch_finished_mutex[minibatch_idx]);
+    this->batch_finished_cond_var[minibatch_idx].wait(
         lk, [&]() { return micro_cnt_[minibatch_idx][microbatch_idx] == 1; });
     micro_cnt_[minibatch_idx][microbatch_idx] = 0;
+    std::cout <<  "micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
   }
 
   void Process(int minibatch_idx) {
@@ -330,12 +332,12 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
           micro_cnt_[minibatch_index][microbatch_index]++;
           if (micro_cnt_[minibatch_index][microbatch_index] == 1) {
             {
-            std::unique_lock<std::mutex> lk(this->batch_finished_mutex);
+            //std::unique_lock<std::mutex> lk(this->batch_finished_mutex[minibatch_idx]);
             (*executor_)[minibatch_idx].RunPreparedContext(
                 (*message_to_prepared_ctx_)[message_name].get(), &micro_scope,
                 false);
-            this->batch_finished_cond_var.notify_all();
             }
+            this->batch_finished_cond_var[minibatch_idx].notify_all();
           }
         } else {
         (*executor_)[minibatch_idx].RunPreparedContext(
@@ -397,7 +399,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
       int minibatch_index = micro_id / num_microbatch_;
       int microbatch_index = micro_id % num_microbatch_;
 
-
       if (message_name == "barrier_batch_finish") {
         PADDLE_ENFORCE_EQ(is_first_stage_, true,
                           platform::errors::InvalidArgument(
@@ -426,16 +427,16 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
  private:
   std::unordered_map<int, std::unordered_map<int,int>> micro_cnt_;
-  std::vector<int> done_;
-  std::vector<int> real_microbatch_;
-  std::mutex batch_finished_mutex;
-  std::condition_variable batch_finished_cond_var;
+  //std::vector<int> done_;
 
-
+  //std::mutex batch_finished_mutex;
+  //std::condition_variable batch_finished_cond_var;
+  std::unordered_map<int, std::mutex> batch_finished_mutex;
+  std::unordered_map<int, std::condition_variable> batch_finished_cond_var;
 
   bool is_first_stage_ = false;
   bool is_last_stage_ = false;
-  std::vector<bool> batch_finished_;
+  //std::vector<bool> batch_finished_;
 
   std::vector<std::shared_ptr<std::thread>> process_thread_;
   std::vector<std::shared_ptr<
