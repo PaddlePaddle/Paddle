@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,10 +51,10 @@ static const int CTR_SPARSE_SHARD_BUCKET_NUM_BITS = 6;
 static const size_t CTR_SPARSE_SHARD_BUCKET_NUM =
     static_cast<size_t>(1) << CTR_SPARSE_SHARD_BUCKET_NUM_BITS;
 
-class CtrFixedFeatureValue {
+class FixedFeatureValue {
  public:
-  CtrFixedFeatureValue() {}
-  ~CtrFixedFeatureValue() {}
+  FixedFeatureValue() {}
+  ~FixedFeatureValue() {}
   float *data() { return data_.data(); }
   size_t size() { return data_.size(); }
   void resize(size_t size) { data_.resize(size); }
@@ -66,38 +66,38 @@ class CtrFixedFeatureValue {
 
 class CtrValueBlock {
  public:
-  typedef typename robin_hood::unordered_map<uint64_t, CtrFixedFeatureValue *>
+  typedef typename robin_hood::unordered_map<uint64_t, FixedFeatureValue *>
       map_type;
   CtrValueBlock() {}
   ~CtrValueBlock() {}
 
-  CtrFixedFeatureValue *Init(const uint64_t &id) {
-    size_t hash = _hasher(id);
+  FixedFeatureValue *Init(const uint64_t &id) {
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
-    CtrFixedFeatureValue *value = nullptr;
-    value = butil::get_object<CtrFixedFeatureValue>();
+    FixedFeatureValue *value = nullptr;
+    value = butil::get_object<FixedFeatureValue>();
     table[id] = value;
     return value;
   }
 
   // dont judge if (has(id))
   float *Get(const uint64_t &id) {
-    size_t hash = _hasher(id);
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
     // auto &value = table.at(id);
     // return value->data_.data();
     auto res = table.find(id);
-    CtrFixedFeatureValue *value = res->second;
+    FixedFeatureValue *value = res->second;
     return value->data();
   }
 
   // for load, to reset count, unseen_days
-  CtrFixedFeatureValue *GetValue(const uint64_t &id) {
-    size_t hash = _hasher(id);
+  FixedFeatureValue *GetValue(const uint64_t &id) {
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
 
     auto &table = values_[bucket];
@@ -106,7 +106,7 @@ class CtrValueBlock {
   }
 
   void erase(uint64_t feasign) {
-    size_t hash = _hasher(feasign);
+    size_t hash = hasher_(feasign);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
@@ -132,7 +132,7 @@ class CtrValueBlock {
   }
 
   map_type::iterator Find(uint64_t id) {
-    size_t hash = _hasher(id);
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
@@ -146,7 +146,7 @@ class CtrValueBlock {
 
  private:
   bool Has(const uint64_t id) {
-    size_t hash = _hasher(id);
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
@@ -160,7 +160,7 @@ class CtrValueBlock {
 
  public:
   map_type values_[CTR_SPARSE_SHARD_BUCKET_NUM];
-  std::hash<uint64_t> _hasher;
+  std::hash<uint64_t> hasher_;
 };
 
 }  // namespace distributed

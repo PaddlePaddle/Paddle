@@ -25,7 +25,7 @@ void CtrSparseNaiveSGDRule::load_config(
     const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto naive_param = param.naive();
-  _learning_rate = naive_param.learning_rate();
+  learning_rate_ = naive_param.learning_rate();
   _initial_range = naive_param.initial_range();
   if (naive_param.weight_bounds_size() == 0) {
     _min_bound = -std::numeric_limits<float>::max();
@@ -43,7 +43,7 @@ void CtrSparseNaiveSGDRule::update_value_work(float* w, float* sgd,
                                               const float* push_value,
                                               float scale) {
   for (size_t i = 0; i < _embedding_dim; ++i) {
-    w[i] -= _learning_rate * push_value[i];
+    w[i] -= learning_rate_ * push_value[i];
     bound_value(w[i]);
   }
 }
@@ -68,7 +68,7 @@ void CtrSparseAdaGradSGDRule::load_config(
     const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adagrad_param = param.adagrad();
-  _learning_rate = adagrad_param.learning_rate();
+  learning_rate_ = adagrad_param.learning_rate();
   _initial_g2sum = adagrad_param.initial_g2sum();
   _initial_range = adagrad_param.initial_range();
 
@@ -92,7 +92,7 @@ void CtrSparseAdaGradSGDRule::update_value_work(float* w, float* sgd,
 
   for (int i = 0; i < _embedding_dim; i++) {
     double scaled_grad = grad[i] / scale;
-    w[i] -= _learning_rate * scaled_grad *
+    w[i] -= learning_rate_ * scaled_grad *
             sqrt(_initial_g2sum / (_initial_g2sum + g2sum));
     bound_value(w[i]);
     add_g2sum += scaled_grad * scaled_grad;
@@ -123,7 +123,7 @@ void CtrStdAdaGradSGDRule::load_config(
     const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adagrad_param = param.adagrad();
-  _learning_rate = adagrad_param.learning_rate();
+  learning_rate_ = adagrad_param.learning_rate();
   _initial_g2sum = adagrad_param.initial_g2sum();
   _initial_range = adagrad_param.initial_range();
 
@@ -144,7 +144,7 @@ void CtrStdAdaGradSGDRule::update_value_work(float* w, float* sgd,
   for (int i = 0; i < _embedding_dim; i++) {
     float& g2sum = sgd[g2sum_index() + i];
     double scaled_grad = grad[i] / scale;
-    w[i] -= _learning_rate * scaled_grad *
+    w[i] -= learning_rate_ * scaled_grad *
             sqrt(_initial_g2sum / (_initial_g2sum + g2sum));
     bound_value(w[i]);
     g2sum += scaled_grad * scaled_grad;
@@ -173,7 +173,7 @@ void CtrSparseAdamSGDRule::load_config(
     const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adam_param = param.adam();
-  _learning_rate = adam_param.learning_rate();
+  learning_rate_ = adam_param.learning_rate();
   _initial_range = adam_param.initial_range();
   _beta1_decay_rate = adam_param.beta1_decay_rate();
   _beta2_decay_rate = adam_param.beta2_decay_rate();
@@ -198,7 +198,7 @@ void CtrSparseAdamSGDRule::update_value_work(float* w, float* sgd,
   float* beta2_pow = sgd + beta2_pow_index();
   const float* g = grad;
 
-  float lr = _learning_rate;
+  float lr = learning_rate_;
   float beta1_pow_ = *beta1_pow;
   float beta2_pow_ = *beta2_pow;
 

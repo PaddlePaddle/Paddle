@@ -21,7 +21,7 @@ limitations under the License. */
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/table/depends/ctr_large_scale_kv.h"
+#include "paddle/fluid/distributed/table/depends/feature_value.h"
 
 namespace paddle {
 namespace distributed {

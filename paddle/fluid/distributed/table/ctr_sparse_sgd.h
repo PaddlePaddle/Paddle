@@ -78,7 +78,7 @@ class CtrSparseNaiveSGDRule : public CtrSparseValueSGDRule {
   virtual size_t dim() { return 0; }
 
  private:
-  float _learning_rate;
+  float learning_rate_;
 };
 
 class CtrSparseAdaGradSGDRule : public CtrSparseValueSGDRule {
@@ -92,7 +92,7 @@ class CtrSparseAdaGradSGDRule : public CtrSparseValueSGDRule {
   size_t g2sum_index() { return 0; }
 
  private:
-  float _learning_rate;
+  float learning_rate_;
   float _initial_g2sum;
 };
 
@@ -107,7 +107,7 @@ class CtrStdAdaGradSGDRule : public CtrSparseValueSGDRule {
   size_t g2sum_index() { return 0; }
 
  private:
-  float _learning_rate;
+  float learning_rate_;
   float _initial_g2sum;
 };
 
@@ -125,7 +125,7 @@ class CtrSparseAdamSGDRule : public CtrSparseValueSGDRule {
   size_t beta2_pow_index() { return beta1_pow_index() + 1; }
 
  protected:
-  float _learning_rate;
+  float learning_rate_;
   float _beta1_decay_rate;
   float _beta2_decay_rate;
   float _ada_epsilon;
