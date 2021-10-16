@@ -63,16 +63,11 @@ class LarsThreadConfig {
     grid_stride = LARS_BLOCK_SIZE * grid_for_lars;
   }
 
-  int GetRepeatTimes(int64_t numel) {
-    return (numel + grid_stride - 1) / grid_stride - 1;
-  }
 #else
-  int repeat_times;
   explicit LarsThreadConfig(const int64_t numel) {
     int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
     grid_for_norm = std::min(grid, LARS_BLOCK_SIZE);
     const int grid_stride = grid_for_norm * LARS_BLOCK_SIZE;
-    repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
     // Determine to read 4 fp16 or float data once, but 2 double data once.
     grid_for_lars =
         std::is_same<double, T>::value
@@ -154,9 +149,8 @@ template <typename T, typename MT>
 __global__ void L2NormKernel(
 #endif
     const T* p_data, const T* __restrict__ g_data, MT* __restrict__ p_buffer,
-    MT* __restrict__ g_buffer, const int64_t numel, const int repeat_times,
-    const MT rescale_grad, const int thresh = 0, MT* __restrict__ p_n = nullptr,
-    MT* __restrict__ g_n = nullptr) {
+    MT* __restrict__ g_buffer, const int64_t numel, const MT rescale_grad,
+    MT* __restrict__ p_n = nullptr, MT* __restrict__ g_n = nullptr) {
   __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
@@ -235,7 +229,6 @@ __forceinline__ __device__ void MomentumUpdate(
 template <typename T, typename MT>
 struct LarsParamWarpper {
   int64_t numel_arr[LARS_MAX_MERGED_OPS];
-  int repeat_arr[LARS_MAX_MERGED_OPS];
   const T* __restrict__ g_arr[LARS_MAX_MERGED_OPS];
   const MT* __restrict__ lr_arr[LARS_MAX_MERGED_OPS];
   T* __restrict__ p_out_arr[LARS_MAX_MERGED_OPS];
@@ -260,8 +253,8 @@ __global__ void MergedMomentumLarsKernel(LarsParamWarpper<T, MT> lars_warpper,
     MT param_norm = static_cast<MT>(0);
     MT grad_norm = static_cast<MT>(0);
     L2NormKernel<T, MT>(&cg, lars_warpper.p_out_arr[i], lars_warpper.g_arr[i],
-                        p_buffer, g_buffer, numel, lars_warpper.repeat_arr[i],
-                        rescale_grad, 0, &param_norm, &grad_norm);
+                        p_buffer, g_buffer, numel, rescale_grad, &param_norm,
+                        &grad_norm);
     MomentumUpdate<T, MT>(
         lars_warpper.p_out_arr[i], lars_warpper.g_arr[i],
         lars_warpper.v_out_arr[i], lars_warpper.p_out_arr[i],
@@ -280,16 +273,15 @@ __global__ void MomentumLarsKernel(
     MT* master_param_out, const MT* __restrict__ learning_rate,
     MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const MT mu,
     const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
-    const MT rescale_grad, const int repeat_times, const int thresh,
-    const int64_t numel, const bool is_amp) {
+    const MT rescale_grad, const int64_t numel, const bool is_amp) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 11000
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   MT param_norm = static_cast<MT>(0);
   MT grad_norm = static_cast<MT>(0);
-  L2NormKernel<T, MT>(&cg, param, grad, p_buffer, g_buffer, numel, repeat_times,
-                      rescale_grad, gridDim.x, &param_norm, &grad_norm);
+  L2NormKernel<T, MT>(&cg, param, grad, p_buffer, g_buffer, numel, rescale_grad,
+                      &param_norm, &grad_norm);
 #else
   const MT rescale_grad_pow = rescale_grad * rescale_grad;
   MT param_part_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
@@ -315,9 +307,8 @@ inline void SeparatedLarsMomentumOpCUDAKernel(
     MT* master_out_data, const bool is_amp) {
   LarsThreadConfig<T> lars_thread_config(numel);
   L2NormKernel<T, MT><<<lars_thread_config.grid_for_norm, LARS_BLOCK_SIZE, 0,
-                        cuda_ctx.stream()>>>(
-      param_data, grad_data, p_buffer, g_buffer, numel,
-      lars_thread_config.repeat_times, rescale_grad);
+                        cuda_ctx.stream()>>>(param_data, grad_data, p_buffer,
+                                             g_buffer, numel, rescale_grad);
 
   MomentumLarsKernel<T, MT><<<lars_thread_config.grid_for_lars, LARS_BLOCK_SIZE,
                               0, cuda_ctx.stream()>>>(
@@ -405,10 +396,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       int64_t avg_numel = total_numel / op_num;
       LarsThreadConfig<float> lars_thread_config(avg_numel, sm_num,
                                                  num_blocks_per_sm);
-      for (int i = 0; i < op_num; ++i) {
-        lars_warpper.repeat_arr[i] =
-            lars_thread_config.GetRepeatTimes(lars_warpper.numel_arr[i]);
-      }
       if (multi_precision) {
         for (int i = 0; i < op_num; ++i) {
           lars_warpper.master_p_out_arr[i] =
@@ -457,28 +444,23 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           sizeof(MT) << 1);
       LarsThreadConfig<float> lars_thread_config(numel, sm_num,
                                                  num_blocks_per_sm);
-      int repeat_times = lars_thread_config.GetRepeatTimes(numel);
-      int thresh = 0;
-      void* cuda_param[] = {
-          reinterpret_cast<void*>(&param_data),
-          reinterpret_cast<void*>(&grad_data),
-          reinterpret_cast<void*>(&velocity_data),
-          reinterpret_cast<void*>(&param_out_data),
-          reinterpret_cast<void*>(&velocity_out_data),
-          reinterpret_cast<void*>(&master_param_data),
-          reinterpret_cast<void*>(&master_param_out_data),
-          reinterpret_cast<void*>(&lr),
-          reinterpret_cast<void*>(&p_buffer),
-          reinterpret_cast<void*>(&g_buffer),
-          reinterpret_cast<void*>(&mu),
-          reinterpret_cast<void*>(&lars_coeff),
-          reinterpret_cast<void*>(&lars_weight_decay),
-          reinterpret_cast<void*>(&epsilon),
-          reinterpret_cast<void*>(&rescale_grad),
-          reinterpret_cast<void*>(&repeat_times),
-          reinterpret_cast<void*>(&thresh),  // Just a placeholder
-          reinterpret_cast<void*>(&numel),
-          reinterpret_cast<void*>(&multi_precision)};
+      void* cuda_param[] = {reinterpret_cast<void*>(&param_data),
+                            reinterpret_cast<void*>(&grad_data),
+                            reinterpret_cast<void*>(&velocity_data),
+                            reinterpret_cast<void*>(&param_out_data),
+                            reinterpret_cast<void*>(&velocity_out_data),
+                            reinterpret_cast<void*>(&master_param_data),
+                            reinterpret_cast<void*>(&master_param_out_data),
+                            reinterpret_cast<void*>(&lr),
+                            reinterpret_cast<void*>(&p_buffer),
+                            reinterpret_cast<void*>(&g_buffer),
+                            reinterpret_cast<void*>(&mu),
+                            reinterpret_cast<void*>(&lars_coeff),
+                            reinterpret_cast<void*>(&lars_weight_decay),
+                            reinterpret_cast<void*>(&epsilon),
+                            reinterpret_cast<void*>(&rescale_grad),
+                            reinterpret_cast<void*>(&numel),
+                            reinterpret_cast<void*>(&multi_precision)};
       // Lanuch all sm theads.
       cudaLaunchCooperativeKernel(
           reinterpret_cast<void*>(MomentumLarsKernel<T, MT>),
