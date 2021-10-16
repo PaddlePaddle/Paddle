@@ -33,6 +33,13 @@ from .squeezenet import squeezenet1_0  # noqa: F401
 from .squeezenet import squeezenet1_1  # noqa: F401
 from .alexnet import AlexNet  # noqa: F401
 from .alexnet import alexnet  # noqa: F401
+from .resnext import ResNeXt  # noqa: F401
+from .resnext import resnext50_32x4d  # noqa: F401
+from .resnext import resnext50_64x4d  # noqa: F401
+from .resnext import resnext101_32x4d  # noqa: F401
+from .resnext import resnext101_64x4d  # noqa: F401
+from .resnext import resnext152_32x4d  # noqa: F401
+from .resnext import resnext152_64x4d  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -55,5 +62,12 @@ __all__ = [ #noqa
     'squeezenet1_0',
     'squeezenet1_1',
     'AlexNet',
-    'alexnet'
+    'alexnet',
+    'ResNeXt',
+    'resnext50_32x4d',
+    'resnext50_64x4d',
+    'resnext101_32x4d',
+    'resnext101_64x4d',
+    'resnext152_32x4d',
+    'resnext152_64x4d'
 ]
