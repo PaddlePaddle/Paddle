@@ -2046,16 +2046,9 @@ class LarsMomentumOptimizer(Optimizer):
             self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if (not self._merge_option):
-            assert isinstance(block, framework.Block)
-            _lars_weight_decay = self._lars_weight_decay
-            param_name = param_and_grad[0].name
-            if len(self._exclude_from_weight_decay) > 0:
-                for name in self._exclude_from_weight_decay:
-                    if name in param_name:
-                        _lars_weight_decay = 0.0
-                        break
-
+        assert isinstance(block, framework.Block)
+        if not isinstance(param_and_grad, list):
+            _lars_weight_decay = 0.0
             velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                                  param_and_grad[0])
             lr = self._create_param_lr(param_and_grad)
@@ -2072,7 +2065,6 @@ class LarsMomentumOptimizer(Optimizer):
                 "multi_precision": find_master,
                 "rescale_grad": self._rescale_grad
             }
-
             inputs = {
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
@@ -2091,85 +2083,75 @@ class LarsMomentumOptimizer(Optimizer):
 
             # create the momentum optimize op
             momentum_op = block.append_op(
-                type=self.type if _lars_weight_decay != 0.0 else 'momentum',
+                type='momentum',
                 inputs=inputs,
                 outputs=outputs,
                 attrs=attrs,
                 stop_gradient=True)
-            return momentum_op
 
+            return momentum_op
         else:
+            assert isinstance(
+                param_and_grad, list
+            ), "Once merging all lars ops, argument `param_and_grad` must be list type."
+
+            lr_array = []
+            grad_array = []
+            param_array = []
+            velocity_array = []
+            lars_weight_decay_array = []
+            find_master = self._multi_precision and param_and_grad[0][
+                0].dtype == core.VarDesc.VarType.FP16
+            master_weight_array = [] if find_master else None
+
+            for param_and_grad_element in param_and_grad:
+                param_array.append(param_and_grad_element[0])
+                grad_array.append(param_and_grad_element[1])
+                velocity_array.append(
+                    self._get_accumulator(self._velocity_acc_str,
+                                          param_and_grad_element[0]))
+                lr_array.append(self._create_param_lr(param_and_grad_element))
+                if find_master:
+                    master_weight_array.append(self._master_weights[
+                        param_and_grad_element[0].name])
+
+                if len(self._exclude_from_weight_decay) > 0:
+                    _lars_weight_decay = self._lars_weight_decay
+                    for name in self._exclude_from_weight_decay:
+                        if name in param_and_grad_element[0].name:
+                            _lars_weight_decay = 0.0
+                            break
+                    lars_weight_decay_array.append(_lars_weight_decay)
+                else:
+                    lars_weight_decay_array.append(self._lars_weight_decay)
+
+            inputs = {
+                "Param": param_array,
+                "Grad": grad_array,
+                "Velocity": velocity_array,
+                "LearningRate": lr_array
+            }
+            outputs = {"ParamOut": param_array, "VelocityOut": velocity_array}
             attrs = {
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
                 "rescale_grad": self._rescale_grad,
-                "multi_precision": False,
-                "merge_option": True
+                "multi_precision": find_master,
+                "lars_weight_decay": lars_weight_decay_array
             }
 
-            if self._merge_option and not framework.in_dygraph_mode():
-                assert isinstance(
-                    param_and_grad, list
-                ), "Once merging all lars ops, argument `param_and_grad` must be list type."
+            if find_master:
+                inputs["MasterParam"] = master_weight_array
+                outputs["MasterParamOut"] = master_weight_array
 
-                lr_array = []
-                grad_array = []
-                param_array = []
-                velocity_array = []
-                lars_weight_decay_array = []
-                find_master = self._multi_precision and param_and_grad[0][
-                    0].dtype == core.VarDesc.VarType.FP16
-                master_weight_array = [] if find_master else None
-
-                for param_and_grad_element in param_and_grad:
-                    param_array.append(param_and_grad_element[0])
-                    grad_array.append(param_and_grad_element[1])
-                    velocity_array.append(
-                        self._get_accumulator(self._velocity_acc_str,
-                                              param_and_grad_element[0]))
-                    lr_array.append(
-                        self._create_param_lr(param_and_grad_element))
-                    if find_master:
-                        master_weight_array.append(self._master_weights[
-                            param_and_grad_element[0].name])
-
-                    if len(self._exclude_from_weight_decay) > 0:
-                        _lars_weight_decay = self._lars_weight_decay
-                        for name in self._exclude_from_weight_decay:
-                            if name in param_and_grad_element[0].name:
-                                _lars_weight_decay = 0.0
-                                break
-                        lars_weight_decay_array.append(_lars_weight_decay)
-                    else:
-                        lars_weight_decay_array.append(self._lars_weight_decay)
-
-                inputs = {
-                    "Param": param_array,
-                    "Grad": grad_array,
-                    "Velocity": velocity_array,
-                    "LearningRate": lr_array
-                }
-                outputs = {
-                    "ParamOut": param_array,
-                    "VelocityOut": velocity_array
-                }
-
-                # param lars_weight_decay combination 
-                attrs["lars_weight_decay"] = lars_weight_decay_array
-
-                if find_master:
-                    attrs["multi_precision"] = True
-                    inputs["MasterParam"] = master_weight_array
-                    outputs["MasterParamOut"] = master_weight_array
-
-                # create the momentum optimize op
-                lars_momentum_op = block.append_op(
-                    type=self.type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs,
-                    stop_gradient=True)
-                return lars_momentum_op
+            # create the momentum optimize op
+            lars_momentum_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True)
+            return lars_momentum_op
 
     def _create_optimization_pass(self, parameters_and_grads):
         global_block = framework.default_main_program().global_block()
@@ -2188,27 +2170,25 @@ class LarsMomentumOptimizer(Optimizer):
                 if param_and_grad[0].trainable is True:
                     self._append_optimize_op(target_block, param_and_grad)
         else:
-            if (not self._merge_option):
-                for param_and_grad in parameters_and_grads:
-                    with param_and_grad[0].block.program._optimized_guard(
-                            param_and_grad), name_scope("optimizer"):
-                        if param_and_grad[0].trainable is True:
-                            device = self._get_device_for_param(param_and_grad[
-                                0].name)
-                            with device_guard(device):
-                                optimize_op = self._append_optimize_op(
-                                    target_block, param_and_grad)
-            else:
-                normal_parameters_and_grad = []
-                multi_precision_parameters_and_grads = []
-                has_amp_lars = False
-                has_lars = False
-                for param_and_grad in parameters_and_grads:
-                    with param_and_grad[0].block.program._optimized_guard(
-                            param_and_grad), name_scope("optimizer"):
-                        if param_and_grad[0].trainable is True:
-                            device = self._get_device_for_param(param_and_grad[
-                                0].name)
+            normal_parameters_and_grad = []
+            multi_precision_parameters_and_grads = []
+            has_amp_lars = False
+            has_lars = False
+            for param_and_grad in parameters_and_grads:
+                with param_and_grad[0].block.program._optimized_guard(
+                        param_and_grad), name_scope("optimizer"):
+                    if param_and_grad[0].trainable is True:
+                        device = self._get_device_for_param(param_and_grad[0]
+                                                            .name)
+
+                        if len(self._exclude_from_weight_decay) > 0:
+                            for name in self._exclude_from_weight_decay:
+                                if name in param_and_grad[0].name:
+                                    with device_guard(device):
+                                        # While weight_decay is zero, lars is momentum.
+                                        optimize_op = self._append_optimize_op(
+                                            target_block, param_and_grad)
+                        else:
                             if self._multi_precision and param_and_grad[
                                     0].dtype == core.VarDesc.VarType.FP16:
                                 has_amp_lars = True
@@ -2218,13 +2198,13 @@ class LarsMomentumOptimizer(Optimizer):
                                 has_lars = True
                                 normal_parameters_and_grad.append(
                                     param_and_grad)
-                with device_guard(device):
-                    if has_amp_lars:
-                        multi_precision_optimize_op = self._append_optimize_op(
-                            target_block, multi_precision_parameters_and_grads)
-                    if has_lars:
-                        normal_optimize_op = self._append_optimize_op(
-                            target_block, normal_parameters_and_grad)
+            with device_guard(device):
+                if has_amp_lars:
+                    multi_precision_optimize_op = self._append_optimize_op(
+                        target_block, multi_precision_parameters_and_grads)
+                if has_lars:
+                    normal_optimize_op = self._append_optimize_op(
+                        target_block, normal_parameters_and_grad)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies

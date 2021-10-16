@@ -232,13 +232,14 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
+    AddAttr<bool>("use_addto", "").SetDefault(false);
     AddAttr<std::string>("act_type", "The activation type to be fused.")
         .SetDefault("relu");
     AddComment(R"DOC(
-Fusion op of the basic unit of resnet block.
+Fusion op of the basic unit of resnet block. 
 
 The implementation is based on the latest fusion op interface in cuDNN v8.0.
-For more details:
+For more details: 
 https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnFusedOps_t
 
 )DOC");
