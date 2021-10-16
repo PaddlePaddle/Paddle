@@ -187,9 +187,7 @@ class ResNetUnit(Layer):
         filter_z_shape = [num_filters, filter_size, filter_size, num_channels_z]
 
         self.filter_x = self.create_parameter(
-            shape=filter_x_shape,
-            attr=filter_x_attr,
-            default_initializer=_get_default_param_initializer(num_channels_x))
+            shape=filter_x_shape, attr=filter_x_attr, default_initializer=None)
         self.scale_x = self.create_parameter(
             shape=bn_param_shape,
             attr=scale_x_attr,
@@ -220,8 +218,7 @@ class ResNetUnit(Layer):
             self.filter_z = self.create_parameter(
                 shape=filter_z_shape,
                 attr=filter_z_attr,
-                default_initializer=_get_default_param_initializer(
-                    num_channels_z))
+                default_initializer=None)
             self.scale_z = self.create_parameter(
                 shape=bn_param_shape,
                 attr=scale_z_attr,
