@@ -736,7 +736,7 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
-      .def("_copy_from",
+      .def("copy_from",
            [](framework::Tensor &self, const framework::Tensor &other,
               const platform::Place &place, int64_t batch_size) {
              if (batch_size < 0) {
