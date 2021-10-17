@@ -372,7 +372,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     if (op_num > 1) {
       LarsParamWarpper<T, MT> lars_warpper;
       VLOG(10) << "Num of ops merged in lars_warpper is " << lars_warpper.kNum;
-
       /* Implementation of lars optimizer consists of following two steps:
         1. Figure out the L2 norm statistic result of grad data and param data.
         2. Update param and velocity with usage of L2 norm statistic result.
