@@ -160,7 +160,6 @@ __global__ void L2NormKernel(
   __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
-  const MT rescale_pow = rescale_grad * rescale_grad;
 
   MT p_tmp = static_cast<MT>(0);
   MT g_tmp = static_cast<MT>(0);
@@ -190,7 +189,7 @@ __global__ void L2NormKernel(
   }
   __syncthreads();
   *p_n = Sqrt(s_buffer[0]);
-  *g_n = Sqrt(rescale_pow * s_buffer[1]);
+  *g_n = rescale_grad * Sqrt(s_buffer[1]);
 #endif
 }
 
