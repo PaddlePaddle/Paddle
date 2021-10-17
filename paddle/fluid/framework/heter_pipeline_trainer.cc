@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,10 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();
-  // TODO check thread_num_ == readers.size()
+  // change thread num is not supported
+  PADDLE_ENFORCE_EQ(thread_num_, readers.size(),
+                    platform::errors::InvalidArgument(
+                        "change Dataset thread_num is not supported"));
   for (int i = 0; i < thread_num_; ++i) {
     auto this_worker =
       std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[i]);

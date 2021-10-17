@@ -28,6 +28,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
 
+  trainer_desc_ = trainer_desc;
   ParseDumpConfig(trainer_desc);
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();

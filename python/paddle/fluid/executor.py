@@ -1460,74 +1460,22 @@ class Executor(object):
                           fetch_list=None,
                           fetch_info=None,
                           print_period=100,
-                          fetch_handler=None,
-                          use_program_cache=False):
-        if (program._pipeline_opt is not None
-            ) and program._pipeline_opt["trainer"] != "HeterPipelineTrainer":
-            import paddle
-            if dataset is not None:
-                raise RuntimeError("dataset should be None for pipeline mode")
-            # The following fake dataset is created to call 
-            # the _prepare_trainer api, and it is meaningless.
-            data_vars = []
-            for var in program.global_block().vars.values():
-                if var.is_data:
-                    data_vars.append(var)
-            if core.is_compiled_with_npu():
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset')
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset')
-            dataset.set_batch_size(1)
-            dataset.set_thread(1)
-            dataset.set_filelist(['None'])
-            dataset.set_use_var(data_vars)
-        else:
-            if dataset is None:
-                raise RuntimeError("dataset is need and should be initialized")
+                          fetch_handler=None):
+        if dataset is None:
+            raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
-        real_fetch_list = []
-        if program._pipeline_opt and program._pipeline_opt[
-                "trainer"] != "HeterPipelineTrainer":
-            real_program = program._pipeline_opt["section_program"]
-            for fetch_var in fetch_list:
-                if isinstance(fetch_var, Variable):
-                    fetch_var_name = fetch_var.name
-                else:
-                    fetch_var_name = fetch_var
-                if fetch_var_name in real_program.global_block().vars:
-                    real_fetch_list.append(fetch_var)
-
-            program._pipeline_opt["section_program"] = self._add_feed_fetch_ops(
-                program=program._pipeline_opt["section_program"],
-                feed=[],
-                fetch_list=real_fetch_list,
-                feed_var_name='feed',
-                fetch_var_name='fetch')
-            main_block = program._pipeline_opt["section_program"].block(0)
-            for op in main_block.ops:
-                # set the op_role of fetch op to Optimize to avoid
-                # erase the fetched vars by gc for pipeline
-                if op.type == 'fetch':
-                    op._set_attr(
-                        'op_role',
-                        core.op_proto_and_checker_maker.OpRole.Optimize)
-            fetch_list = None
-            fetch_info = None
+        if fetch_list is not None:
+            if isinstance(fetch_list, Variable) or isinstance(
+                    fetch_list, str) or isinstance(fetch_list,
+                                                   six.string_types):
+                fetch_list = [fetch_list]
+            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "but the input type is {}. For more information please refer to \n"\
+                "the executor.run(...).".format(type(fetch_list))
         else:
-            if fetch_list is not None:
-                if isinstance(fetch_list, Variable) or isinstance(
-                        fetch_list, str) or isinstance(fetch_list,
-                                                       six.string_types):
-                    fetch_list = [fetch_list]
-                assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-                    "Currently , The fetch_list type only should be list or tuple, \n"\
-                    "but the input type is {}. For more information please refer to \n"\
-                    "the executor.run(...).".format(type(fetch_list))
-            else:
-                fetch_list = []
+            fetch_list = []
 
         scope, trainer = self._prepare_trainer(
             program=program,
@@ -1550,17 +1498,18 @@ class Executor(object):
             dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        if not use_program_cache:
+        if program._pipeline_opt is None:
             trainer_instance = self._default_executor.init_for_dataset(
                 program.desc, trainer._desc(), scope, dataset.dataset)
         else:
+            # cache trainer instance for heterps pipeline training
             cache_key = _get_strong_program_cache_key(program, None, fetch_list)
             trainer_instance = self._get_trainer_cache(cache_key)
             if trainer_instance is None:
                 trainer_instance = self._default_executor.init_for_dataset(
                     program.desc, trainer._desc(), scope, dataset.dataset)
                 self._add_trainer_cache(cache_key, trainer_instance)
-            else:
+            else: 
                 trainer_instance.ResetDataset(dataset.dataset)
 
         if fetch_handler is not None:
@@ -1569,19 +1518,15 @@ class Executor(object):
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()
-            if not use_program_cache:
+            if program._pipeline_opt is None:
                 self._default_executor.release_trainer(trainer_instance)
         else:
             self._default_executor.run_from_dataset(trainer_instance)
-            if not use_program_cache:
+            if program._pipeline_opt is None:
                 self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
-        if real_fetch_list:
-            arr = scope.find_var('fetch').get_fetch_list()
-            tensors = arr._move_to_list()
-            return as_numpy(tensors)
 
     def _prepare_pipeline_ctx(self,
                               program=None,
