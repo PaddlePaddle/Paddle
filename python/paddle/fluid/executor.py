@@ -1668,6 +1668,7 @@ class Executor(object):
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
             fetch_info = None
+            
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
