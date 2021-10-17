@@ -48,13 +48,13 @@ class LarsThreadConfig {
  public:
   int grid_for_lars;
 #if CUDA_VERSION >= 11000
-
  public:
   explicit LarsThreadConfig(int64_t numel, int sm_num, int num_blocks_per_sm) {
     int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
     grid_for_lars =
         std::min(std::min(sm_num * num_blocks_per_sm, grid), LARS_BLOCK_SIZE);
   }
+
 #else
   int grid_for_norm;
   explicit LarsThreadConfig(const int64_t numel) {
@@ -71,10 +71,10 @@ class LarsThreadConfig {
 
 template <typename T, typename MT, int VecSize, bool IsAmp = false>
 __device__ inline void VectorizeLarsUpdate(
-    const T* __restrict__ grad, MT* param, MT* velocity, T* param_out,
-    const MT mu, MT local_lr, const MT lars_weight_decay, const MT rescale_grad,
-    const int tid, const int grid_stride, const int numel,
-    MT* master_param_out = nullptr) {
+    const T* __restrict__ grad, const MT* param, const MT* velocity,
+    T* param_out, MT* velocity_out, const MT mu, MT local_lr,
+    const MT lars_weight_decay, const MT rescale_grad, const int tid,
+    const int grid_stride, const int numel, MT* master_param_out = nullptr) {
   using VecType = paddle::platform::AlignedVector<T, VecSize>;
   using VecMType = paddle::platform::AlignedVector<MT, VecSize>;
   int main = numel >> (VecSize >> 1);
@@ -82,8 +82,9 @@ __device__ inline void VectorizeLarsUpdate(
 
   const VecType* grad_vec = reinterpret_cast<const VecType*>(grad);
   const VecMType* param_vec = reinterpret_cast<const VecMType*>(param);
-  VecMType* velocity_vec = reinterpret_cast<VecMType*>(velocity);
+  const VecMType* velocity_vec = reinterpret_cast<const VecMType*>(velocity);
   VecType* param_out_vec = reinterpret_cast<VecType*>(param_out);
+  VecMType* velocity_out_vec = reinterpret_cast<VecMType*>(velocity_out);
 
   VecMType* master_param_out_vec;
   if (IsAmp) {
@@ -106,7 +107,7 @@ __device__ inline void VectorizeLarsUpdate(
       param_out_tmp[j] = static_cast<T>(param_tmp[j]);
     }
     param_out_vec[i] = param_out_tmp;
-    velocity_vec[i] = velocity_tmp;
+    velocity_out_vec[i] = velocity_tmp;
     if (IsAmp) {
       master_param_out_vec[i] = param_tmp;
     }
@@ -119,7 +120,7 @@ __device__ inline void VectorizeLarsUpdate(
                                                           param_val, grad_val));
     MT param_tmp = param_val - velocity_tmp;
     param_out[i] = static_cast<T>(param_tmp);
-    velocity[i] = velocity_tmp;
+    velocity_out[i] = velocity_tmp;
     if (IsAmp) {
       master_param_out[i] = param_tmp;
     }
@@ -142,10 +143,8 @@ __global__ void L2NormKernel(
     const T* p_data, const T* __restrict__ g_data, MT* __restrict__ p_buffer,
     MT* __restrict__ g_buffer, const int64_t numel, const MT rescale_grad,
     MT* __restrict__ p_n = nullptr, MT* __restrict__ g_n = nullptr) {
-  __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
-  const MT rescale_pow = rescale_grad * rescale_grad;
 
   MT p_tmp = static_cast<MT>(0);
   MT g_tmp = static_cast<MT>(0);
@@ -164,6 +163,7 @@ __global__ void L2NormKernel(
     g_buffer[blockIdx.x] = g_tmp;
   }
 #if CUDA_VERSION >= 11000
+  __shared__ MT s_buffer[2];
   cg->sync();  // Grid sync for writring partial result to gloabl memory
   MT p_part_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_part_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
@@ -175,14 +175,15 @@ __global__ void L2NormKernel(
   }
   __syncthreads();
   *p_n = Sqrt(s_buffer[0]);
-  *g_n = Sqrt(rescale_pow * s_buffer[1]);
+  *g_n = rescale_grad * Sqrt(s_buffer[1]);
 #endif
 }
 
 template <typename T, typename MT>
 __forceinline__ __device__ void MomentumUpdate(
-    const T* __restrict__ grad, T* param, MT* velocity, MT* master_param,
-    T* param_out, const MT* __restrict__ learning_rate, const MT mu,
+    const T* param, const T* __restrict__ grad, const MT* velocity,
+    T* param_out, MT* velocity_out, const MT* master_param,
+    MT* master_param_out, const MT* __restrict__ learning_rate, const MT mu,
     const MT lars_weight_decay, const MT lars_coeff, const MT epsilon,
     const MT rescale_grad, const MT param_norm, const MT grad_norm,
     const int tid, const int grid_stride, const int64_t numel,
@@ -195,19 +196,22 @@ __forceinline__ __device__ void MomentumUpdate(
   }
   if (is_amp) {
     VectorizeLarsUpdate<T, MT, /*VecSize=*/4, /*IsAmp=*/true>(
-        grad, master_param, velocity, param_out, mu, local_lr,
-        lars_weight_decay, rescale_grad, tid, grid_stride, numel);
+        grad, master_param, velocity, param_out, velocity_out, mu, local_lr,
+        lars_weight_decay, rescale_grad, tid, grid_stride, numel,
+        master_param_out);
   } else {
     if (std::is_same<T, float>::value ||
         std::is_same<T, paddle::platform::float16>::value) {
       /* TODO(limingshu): pointer cast may damage memory accessing for fp16 */
       VectorizeLarsUpdate<T, MT, /*VecSize=*/4, /*IsAmp=*/false>(
-          grad, reinterpret_cast<MT*>(param), velocity, param_out, mu, local_lr,
-          lars_weight_decay, rescale_grad, tid, grid_stride, numel);
+          grad, reinterpret_cast<const MT*>(param), velocity, param_out,
+          velocity_out, mu, local_lr, lars_weight_decay, rescale_grad, tid,
+          grid_stride, numel);
     } else {
       VectorizeLarsUpdate<T, MT, /*VecSize=*/2, /*IsAmp=*/false>(
-          grad, reinterpret_cast<MT*>(param), velocity, param_out, mu, local_lr,
-          lars_weight_decay, rescale_grad, tid, grid_stride, numel);
+          grad, reinterpret_cast<const MT*>(param), velocity, param_out,
+          velocity_out, mu, local_lr, lars_weight_decay, rescale_grad, tid,
+          grid_stride, numel);
     }
   }
 }
@@ -236,15 +240,15 @@ struct LarsParamWarpper : public MergedLarsMasterParam<MT, kOpNum, T> {
   static constexpr int kNum = kOpNum;
 
   int numel_arr[kOpNum];
-  const T* __restrict__ g_arr[kOpNum];
   const MT* __restrict__ lr_arr[kOpNum];
+  const T* __restrict__ g_arr[kOpNum];
   T* p_arr[kOpNum];
   MT* v_arr[kOpNum];
-  MT weight_decay_arr[kOpNum];
+  MT weight_decay[kOpNum];
 };
 
-template <typename T, typename MT, typename LarsWarpperType>
-__global__ void MergedMomentumLarsKernel(LarsWarpperType lars_warpper,
+template <typename T, typename MT>
+__global__ void MergedMomentumLarsKernel(LarsParamWarpper<T, MT> lars_warpper,
                                          MT* __restrict__ p_buffer,
                                          MT* __restrict__ g_buffer,
                                          const int op_num, const MT mu,
@@ -254,31 +258,33 @@ __global__ void MergedMomentumLarsKernel(LarsWarpperType lars_warpper,
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
-  for (int i = 0; i < lars_warpper.kNum; ++i) {
-    if (i > op_num) break;
+  for (int i = 0; i < op_num; ++i) {
     int numel = lars_warpper.numel_arr[i];
     MT param_norm = static_cast<MT>(0);
     MT grad_norm = static_cast<MT>(0);
     L2NormKernel<T, MT>(&cg, lars_warpper.p_arr[i], lars_warpper.g_arr[i],
                         p_buffer, g_buffer, numel, rescale_grad, &param_norm,
                         &grad_norm);
-    MomentumUpdate<T, MT>(lars_warpper.g_arr[i], lars_warpper.p_arr[i],
-                          lars_warpper.v_arr[i], lars_warpper.GetMasterParam(i),
-                          lars_warpper.p_arr[i], lars_warpper.lr_arr[i], mu,
-                          lars_warpper.weight_decay_arr[i], lars_coeff, epsilon,
-                          rescale_grad, param_norm, grad_norm, tid, grid_stride,
-                          numel, is_amp);
+    MomentumUpdate<T, MT>(
+        lars_warpper.p_arr[i], lars_warpper.g_arr[i], lars_warpper.v_arr[i],
+        lars_warpper.p_arr[i], lars_warpper.v_arr[i],
+        lars_warpper.GetMasterParam(i), lars_warpper.GetMasterParam(i),
+        lars_warpper.lr_arr[i], mu, lars_warpper.weight_decay[i], lars_coeff,
+        epsilon, rescale_grad, param_norm, grad_norm, tid, grid_stride, numel,
+        is_amp);
   }
 }
 #endif
 
 template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
-    const T* __restrict__ grad, T* param, MT* velocity, MT* master_param,
-    const MT* __restrict__ learning_rate, MT* __restrict__ p_buffer,
-    MT* __restrict__ g_buffer, const MT mu, const MT lars_coeff,
-    const MT lars_weight_decay, const MT epsilon, const MT rescale_grad,
-    const int thresh, const int64_t numel, const bool is_amp) {
+    const T* param, const T* __restrict__ grad, const MT* velocity,
+    T* param_out, MT* velocity_out, const MT* master_param,
+    MT* master_param_out, const MT* __restrict__ learning_rate,
+    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const MT mu,
+    const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
+    const MT rescale_grad, const int thresh, const int64_t numel,
+    const bool is_amp) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 11000
@@ -288,33 +294,33 @@ __global__ void MomentumLarsKernel(
   L2NormKernel<T, MT>(&cg, param, grad, p_buffer, g_buffer, numel, rescale_grad,
                       &param_norm, &grad_norm);
 #else
-  __shared__ MT s_buffer[2];
-  const MT rescale_pow = rescale_grad * rescale_grad;
-  MT param_part_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
-  MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
-  MT tmp0 = math::blockReduceSum<MT>(param_part_norm, FINAL_MASK);
-  MT tmp1 = math::blockReduceSum<MT>(param_part_norm, FINAL_MASK);
+  MT p_part_sum = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
+  MT g_part_sum = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
+  MT tmp0 = math::blockReduceSum<MT>(p_part_sum, FINAL_MASK);
+  MT tmp1 = math::blockReduceSum<MT>(g_part_sum, FINAL_MASK);
   if (threadIdx.x == 0) {
     s_buffer[0] = tmp0;
     s_buffer[1] = tmp1;
   }
   __syncthreads();
   MT param_norm = Sqrt(s_buffer[0]);
-  MT grad_norm = Sqrt(rescale_pow * s_buffer[1]);
+  MT grad_norm = rescale_grad * Sqrt(s_buffer[1]);
+
 #endif
-  MomentumUpdate<T, MT>(grad, param, velocity, master_param, param /*inplace*/,
-                        learning_rate, mu, lars_weight_decay, lars_coeff,
-                        epsilon, rescale_grad, param_norm, grad_norm, tid,
-                        grid_stride, numel, is_amp);
+  MomentumUpdate<T, MT>(param, grad, velocity, param_out, velocity_out,
+                        master_param, master_param_out, learning_rate, mu,
+                        lars_weight_decay, lars_coeff, epsilon, rescale_grad,
+                        param_norm, grad_norm, tid, grid_stride, numel, is_amp);
 }
 
 template <typename T, typename MT>
 inline void SeparatedLarsMomentumOpCUDAKernel(
-    const platform::CUDADeviceContext& cuda_ctx, const T* grad_data,
-    T* param_data, MT* velocity_data, MT* master_param_data, const MT* lr,
-    MT* p_buffer, MT* g_buffer, const MT mu, const MT lars_coeff,
-    const MT weight_decay, const MT epsilon, const MT rescale_grad,
-    const int64_t numel, const bool is_amp) {
+    const platform::CUDADeviceContext& cuda_ctx, const T* param_data,
+    T* param_out_data, const MT* velocity_data, MT* velocity_out_data,
+    const T* grad_data, const MT* lr, MT* p_buffer, MT* g_buffer, const MT mu,
+    const MT lars_coeff, const MT weight_decay, const MT epsilon,
+    const MT rescale_grad, const int64_t numel, const MT* master_param_data,
+    MT* master_out_data, const bool is_amp) {
   LarsThreadConfig<T> lars_thread_config(numel);
   L2NormKernel<T, MT><<<lars_thread_config.grid_for_norm, LARS_BLOCK_SIZE, 0,
                         cuda_ctx.stream()>>>(param_data, grad_data, p_buffer,
@@ -322,11 +328,11 @@ inline void SeparatedLarsMomentumOpCUDAKernel(
 
   MomentumLarsKernel<T, MT><<<lars_thread_config.grid_for_lars, LARS_BLOCK_SIZE,
                               0, cuda_ctx.stream()>>>(
-      grad_data, param_data, velocity_data, master_param_data, lr, p_buffer,
-      g_buffer, mu, lars_coeff, weight_decay, epsilon, rescale_grad,
+      param_data, grad_data, velocity_data, param_out_data, velocity_out_data,
+      master_param_data, master_out_data, lr, p_buffer, g_buffer, mu,
+      lars_coeff, weight_decay, epsilon, rescale_grad,
       lars_thread_config.grid_for_norm, numel, is_amp);
 }
-
 template <typename DeviceContext, typename T>
 class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
   using MT = MultiPrecisionType<T>;
@@ -334,6 +340,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_blocks_per_sm = 0;
+    bool multi_precision = ctx.Attr<bool>("multi_precision");
     auto& cuda_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     int sm_num = cuda_ctx.GetSMCount();
     framework::Tensor tmp_buffer_t =
@@ -342,13 +349,12 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
 
-    bool multi_precision = ctx.Attr<bool>("multi_precision");
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
     MT lars_coeff = static_cast<MT>(ctx.Attr<float>("lars_coeff"));
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
-    auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
 
+    auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
     auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
     auto param = ctx.MultiInput<framework::LoDTensor>("Param");
     auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
@@ -360,25 +366,11 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
         ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
 
     int op_num = grad.size();
-    for (size_t i = 0; i < op_num; ++i) {
-      PADDLE_ENFORCE_EQ(
-          param[i], param_out[i],
-          platform::errors::InvalidArgument(
-              "Input(Param) and Output(ParamOut) must be the same Tensors."));
-      PADDLE_ENFORCE_EQ(velocity[i], velocity_out[i],
-                        platform::errors::InvalidArgument(
-                            "Input(Velocity) and Output(VelocityOut) must be "
-                            "the same Tensors."));
-      if (multi_precision) {
-        PADDLE_ENFORCE_EQ(master_param[i], master_param_out[i],
-                          platform::errors::InvalidArgument(
-                              "Input(MasterParam) and Output(MasterParamOut) "
-                              "must be the same Tensors."));
-      }
-    }
 #if CUDA_VERSION >= 11000
     if (op_num > 1) {
       LarsParamWarpper<T, MT> lars_warpper;
+      VLOG(10) << "Num of ops merged in lars_warpper is " << lars_warpper.kNum;
+
       /* Implementation of lars optimizer consists of following two steps:
         1. Figure out the L2 norm statistic result of grad data and param data.
         2. Update param and velocity with usage of L2 norm statistic result.
@@ -387,11 +379,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
         - The thread quantity shall less than pyhsical SM limited threads
         - Launche as thread-block can synchronizlly execute. */
       cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-          &num_blocks_per_sm,
-          MergedMomentumLarsKernel<T, MT, decltype(lars_warpper)>,
-          LARS_BLOCK_SIZE, sizeof(MT) << 1);
-
-      VLOG(10) << "Num of ops merged in lars_warpper is " << lars_warpper.kNum;
+          &num_blocks_per_sm, MergedMomentumLarsKernel<T, MT>, LARS_BLOCK_SIZE,
+          sizeof(MT) << 1);
 
       int merge_times = (op_num + lars_warpper.kNum - 1) / lars_warpper.kNum;
       for (int j = 0; j < merge_times; ++j) {
@@ -404,21 +393,39 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           total_numel += temp_numel;
           lars_warpper.numel_arr[i] = temp_numel;
           lars_warpper.g_arr[i] = grad[start_idx + i]->data<T>();
-          lars_warpper.p_arr[i] = param_out[start_idx + i]->data<T>();
-          lars_warpper.v_arr[i] = velocity_out[start_idx + i]->data<MT>();
-          lars_warpper.lr_arr[i] = learning_rate[i]->data<MT>();
-          lars_warpper.weight_decay_arr[i] =
-              static_cast<MT>(weight_decay_arr[start_idx + i]);
+          lars_warpper.p_arr[i] =
+              param_out[start_idx + i]->mutable_data<T>(ctx.GetPlace());
+          lars_warpper.v_arr[i] =
+              velocity_out[start_idx + i]->mutable_data<MT>(ctx.GetPlace());
+          lars_warpper.lr_arr[i] = learning_rate[start_idx + i]->data<MT>();
+          lars_warpper.weight_decay[i] = static_cast<MT>(weight_decay_arr[i]);
+          if (multi_precision) {
+            auto master_param_data =
+                master_param_out[start_idx + i]->mutable_data<MT>(
+                    ctx.GetPlace());
+            lars_warpper.SetMasterParam(i, master_param_data);
+            PADDLE_ENFORCE_EQ(
+                master_param[start_idx + i]->data<MT>(), master_param_data,
+                platform::errors::InvalidArgument(
+                    "Input(MasterParam) and Output(MasterParamOut) of lars "
+                    "optimizer must be the same Tensors."));
+          }
+          PADDLE_ENFORCE_EQ(
+              param[start_idx + i]->data<T>(), lars_warpper.p_arr[i],
+              platform::errors::InvalidArgument(
+                  "Input(Param) and Output(ParamOut) of lars optimizer "
+                  "must be the same Tensors."));
+          PADDLE_ENFORCE_EQ(velocity[start_idx + i]->data<MT>(),
+                            lars_warpper.v_arr[i],
+                            platform::errors::InvalidArgument(
+                                "Input(Velocity) and Output(VelocityOut) of "
+                                "lars optimizer must be "
+                                "the same Tensors."));
         }
+        VLOG(10) << "Op number delt in loop " << j << " is : " << loop_num;
         int64_t avg_numel = total_numel / loop_num;
         LarsThreadConfig<float> lars_thread_config(avg_numel, sm_num,
                                                    num_blocks_per_sm);
-        for (int i = 0; i < loop_num; ++i) {
-          if (multi_precision) {
-            lars_warpper.SetMasterParam(
-                i, master_param_out[i]->mutable_data<MT>(ctx.GetPlace()));
-          }
-        }
         void* cuda_param[] = {reinterpret_cast<void*>(&lars_warpper),
                               reinterpret_cast<void*>(&p_buffer),
                               reinterpret_cast<void*>(&g_buffer),
@@ -428,21 +435,26 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
                               reinterpret_cast<void*>(&epsilon),
                               reinterpret_cast<void*>(&rescale_grad),
                               reinterpret_cast<void*>(&multi_precision)};
+        // Lanuch all sm theads,thead of each block synchronizedly cooperate.
         cudaLaunchCooperativeKernel(
-            reinterpret_cast<void*>(
-                MergedMomentumLarsKernel<T, MT, decltype(lars_warpper)>),
+            reinterpret_cast<void*>(MergedMomentumLarsKernel<T, MT>),
             lars_thread_config.grid_for_lars, LARS_BLOCK_SIZE, cuda_param, 0,
             cuda_ctx.stream());
-
-        VLOG(10) << "Lanuched ops number is " << loop_num;
       }
     } else {
+      auto* param_data = param[0]->data<T>();
       auto* grad_data = grad[0]->data<T>();
-      auto* param_data = param_out[0]->data<T>();
-      auto* velocity_data = velocity_out[0]->data<MT>();
+      auto* velocity_data = velocity[0]->data<MT>();
       auto* lr = learning_rate[0]->data<MT>();
+      auto* param_out_data = param_out[0]->mutable_data<T>(ctx.GetPlace());
+      auto* velocity_out_data =
+          velocity_out[0]->mutable_data<MT>(ctx.GetPlace());
       const MT* master_param_data =
-          multi_precision ? master_param_out[0]->data<MT>() : nullptr;
+          multi_precision ? master_param[0]->data<MT>() : nullptr;
+      MT* master_param_out_data =
+          multi_precision
+              ? master_param_out[0]->mutable_data<MT>(ctx.GetPlace())
+              : nullptr;
       int64_t numel = param[0]->numel();
       MT lars_weight_decay = weight_decay_arr[0];
 
@@ -453,12 +465,14 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       LarsThreadConfig<float> lars_thread_config(numel, sm_num,
                                                  num_blocks_per_sm);
       int thresh = 0;
-
       void* cuda_param[] = {
-          reinterpret_cast<void*>(&grad_data),
           reinterpret_cast<void*>(&param_data),
+          reinterpret_cast<void*>(&grad_data),
           reinterpret_cast<void*>(&velocity_data),
+          reinterpret_cast<void*>(&param_out_data),
+          reinterpret_cast<void*>(&velocity_out_data),
           reinterpret_cast<void*>(&master_param_data),
+          reinterpret_cast<void*>(&master_param_out_data),
           reinterpret_cast<void*>(&lr),
           reinterpret_cast<void*>(&p_buffer),
           reinterpret_cast<void*>(&g_buffer),
@@ -478,14 +492,20 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     }
 #else
     for (int i = 0; i < op_num; ++i) {
-      MT* master_param_data =
-          multi_precision ? master_param_out[i]->data<MT>() : nullptr;
+      const MT* master_param_data =
+          multi_precision ? master_param[i]->data<MT>() : nullptr;
+      MT* master_param_out_data =
+          multi_precision
+              ? master_param_out[i]->mutable_data<MT>(ctx.GetPlace())
+              : nullptr;
       SeparatedLarsMomentumOpCUDAKernel<T, MT>(
-          cuda_ctx, grad[i]->data<T>(), param_out[i]->data<T>(),
-          velocity_out[i]->data<MT>(), master_param_data,
+          cuda_ctx, param[i]->data<T>(),
+          param_out[i]->mutable_data<T>(ctx.GetPlace()),
+          velocity[i]->data<MT>(),
+          velocity_out[i]->mutable_data<MT>(ctx.GetPlace()), grad[i]->data<T>(),
           learning_rate[i]->data<MT>(), p_buffer, g_buffer, mu, lars_coeff,
           weight_decay_arr[i], epsilon, rescale_grad, param[i]->numel(),
-          multi_precision);
+          master_param_data, master_param_out_data, multi_precision);
     }
 #endif
   }
