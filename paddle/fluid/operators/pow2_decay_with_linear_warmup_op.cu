@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/pow2_warmup_op.h"
+#include "paddle/fluid/operators/pow2_decay_with_linear_warmup_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    pow2_warmup, ops::Pow2WarmupOpKernel<plat::CUDADeviceContext, double>,
-    ops::Pow2WarmupOpKernel<plat::CUDADeviceContext, float>,
-    ops::Pow2WarmupOpKernel<plat::CUDADeviceContext, plat::float16>);
+    pow2_decay_with_linear_warmup,
+    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CUDADeviceContext, double>,
+    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CUDADeviceContext, float>,
+    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CUDADeviceContext,
+                                           plat::float16>);

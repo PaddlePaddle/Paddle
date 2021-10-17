@@ -1934,18 +1934,18 @@ def fused_bn_add_act(x,
     return batch_norm_out
 
 
-def pow2_warmup(warmup_steps,
-                total_steps,
-                start_lr,
-                base_lr,
-                end_lr,
-                dtype='float32',
-                name=None):
+def pow2_decay_with_linear_warmup(warmup_steps,
+                                  total_steps,
+                                  start_lr,
+                                  base_lr,
+                                  end_lr,
+                                  dtype='float32',
+                                  name=None):
     if paddle.fluid.in_dygraph_mode():
         raise NotImplementedError(
             "pow2_warmup does not support dygraph mode yet.")
 
-    helper = LayerHelper("pow2_warmup", **locals())
+    helper = LayerHelper("pow2_decay_with_linear_warmup", **locals())
     lr = helper.create_global_variable(persistable=True, dtype=dtype, shape=[1])
     helper.set_variable_initializer(lr, Constant(value=start_lr))
 
@@ -1955,7 +1955,7 @@ def pow2_warmup(warmup_steps,
     assert warmup_steps <= total_steps, "warmup_steps cannot be larger than total_steps"
 
     helper.append_op(
-        type="pow2_warmup",
+        type="pow2_decay_with_linear_warmup",
         inputs={"LearningRate": lr,
                 "Step": step},
         outputs={"LearningRateOut": lr,

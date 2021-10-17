@@ -23,12 +23,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename AttrT>
-struct Pow2WarmupFunctor {
+struct Pow2DecayWithLinearWarmupFunctor {
  public:
-  HOSTDEVICE Pow2WarmupFunctor(T *PADDLE_RESTRICT lr,
-                               int64_t *PADDLE_RESTRICT step,
-                               size_t warmup_steps, size_t total_steps,
-                               AttrT start_lr, AttrT base_lr, AttrT end_lr)
+  HOSTDEVICE Pow2DecayWithLinearWarmupFunctor(
+      T *PADDLE_RESTRICT lr, int64_t *PADDLE_RESTRICT step, size_t warmup_steps,
+      size_t total_steps, AttrT start_lr, AttrT base_lr, AttrT end_lr)
       : lr_(lr),
         step_(step),
         warmup_steps_(warmup_steps),
@@ -68,7 +67,7 @@ struct Pow2WarmupFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class Pow2WarmupOpKernel : public framework::OpKernel<T> {
+class Pow2DecayWithLinearWarmupOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const {
     const auto *lr = ctx.Input<framework::Tensor>("LearningRate");
@@ -100,7 +99,7 @@ class Pow2WarmupOpKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, 1);
     using AttrT = float;
-    Pow2WarmupFunctor<T, AttrT> functor(
+    Pow2DecayWithLinearWarmupFunctor<T, AttrT> functor(
         lr_data, step_data, warmup_steps, total_steps,
         static_cast<AttrT>(start_lr), static_cast<AttrT>(base_lr),
         static_cast<AttrT>(end_lr));

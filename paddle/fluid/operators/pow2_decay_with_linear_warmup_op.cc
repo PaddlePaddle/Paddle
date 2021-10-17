@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/pow2_warmup_op.h"
+#include "paddle/fluid/operators/pow2_decay_with_linear_warmup_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
-class Pow2WarmupOp : public framework::OperatorWithKernel {
+class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -38,7 +38,8 @@ class Pow2WarmupOp : public framework::OperatorWithKernel {
   }
 };
 
-class Pow2WarmupOpMaker : public framework::OpProtoAndCheckerMaker {
+class Pow2DecayWithLinearWarmupOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("LearningRate", "(Tensor) The input learning rate Tensor.");
@@ -60,7 +61,7 @@ class Pow2WarmupOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("end_lr",
                    "(float) The final learning rate value after total_steps.");
     AddComment(R"DOC(
-The Pow2Warmup learning rate scheduler.
+The Pow2DecayWithLinearWarmup learning rate scheduler.
 
 When step_num < warmup_steps, lr = (base_lr - start_lr) * step_num / warmup_steps + start_lr  
 
@@ -80,9 +81,12 @@ When step_num > total_steps, lr = end_lr
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(pow2_warmup, ops::Pow2WarmupOp,
-                             ops::Pow2WarmupOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(pow2_decay_with_linear_warmup,
+                             ops::Pow2DecayWithLinearWarmupOp,
+                             ops::Pow2DecayWithLinearWarmupOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    pow2_warmup, ops::Pow2WarmupOpKernel<plat::CPUDeviceContext, double>,
-    ops::Pow2WarmupOpKernel<plat::CPUDeviceContext, float>,
-    ops::Pow2WarmupOpKernel<plat::CPUDeviceContext, plat::float16>);
+    pow2_decay_with_linear_warmup,
+    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, double>,
+    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, float>,
+    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext,
+                                           plat::float16>);

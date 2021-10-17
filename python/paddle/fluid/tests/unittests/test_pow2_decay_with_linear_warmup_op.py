@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.contrib.layers.nn import pow2_warmup
+from paddle.fluid.contrib.layers.nn import pow2_decay_with_linear_warmup
 from paddle.optimizer.lr import LinearWarmup
 from paddle.optimizer.lr import PolynomialDecay
 import unittest
@@ -24,7 +24,8 @@ def gen_pow2_warmup_op_lr(warmup_steps, total_steps, start_lr, base_lr, end_lr,
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        lr = pow2_warmup(warmup_steps, total_steps, start_lr, base_lr, end_lr)
+        lr = pow2_decay_with_linear_warmup(warmup_steps, total_steps, start_lr,
+                                           base_lr, end_lr)
         exe = paddle.static.Executor(place)
     with paddle.static.scope_guard(paddle.static.Scope()):
         exe.run(startup)
