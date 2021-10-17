@@ -22,13 +22,13 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename AttrT>
 struct Pow2WarmupFunctor {
  public:
   HOSTDEVICE Pow2WarmupFunctor(T *PADDLE_RESTRICT lr,
                                int64_t *PADDLE_RESTRICT step,
                                size_t warmup_steps, size_t total_steps,
-                               double start_lr, double base_lr, double end_lr)
+                               AttrT start_lr, AttrT base_lr, AttrT end_lr)
       : lr_(lr),
         step_(step),
         warmup_steps_(warmup_steps),
@@ -41,13 +41,16 @@ struct Pow2WarmupFunctor {
     size_t step = static_cast<size_t>(*step_);
     *step_ = static_cast<int64_t>(step + 1);
     if (step < warmup_steps_) {
-      auto new_lr = (base_lr_ - start_lr_) * step / warmup_steps_ + start_lr_;
+      auto new_lr =
+          static_cast<double>(base_lr_ - start_lr_) * step / warmup_steps_ +
+          start_lr_;
       *lr_ = static_cast<T>(new_lr);
     } else if (step < total_steps_) {
       auto factor = 1 -
                     static_cast<double>(step - warmup_steps_) /
                         (total_steps_ - warmup_steps_);
-      auto new_lr = (base_lr_ - end_lr_) * factor * factor + end_lr_;
+      auto new_lr =
+          static_cast<double>(base_lr_ - end_lr_) * factor * factor + end_lr_;
       *lr_ = static_cast<T>(new_lr);
     } else {
       *lr_ = static_cast<T>(end_lr_);
@@ -59,9 +62,9 @@ struct Pow2WarmupFunctor {
   int64_t *PADDLE_RESTRICT step_;
   size_t warmup_steps_;
   size_t total_steps_;
-  double start_lr_;
-  double base_lr_;
-  double end_lr_;
+  AttrT start_lr_;
+  AttrT base_lr_;
+  AttrT end_lr_;
 };
 
 template <typename DeviceContext, typename T>
@@ -88,16 +91,19 @@ class Pow2WarmupOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(warmup_steps, total_steps,
                       platform::errors::InvalidArgument(
                           "warmup_steps must not be larger than total_steps."));
-    auto start_lr = static_cast<double>(ctx.Attr<float>("start_lr"));
-    auto base_lr = static_cast<double>(ctx.Attr<float>("base_lr"));
-    auto end_lr = static_cast<double>(ctx.Attr<float>("end_lr"));
+    auto start_lr = ctx.Attr<float>("start_lr");
+    auto base_lr = ctx.Attr<float>("base_lr");
+    auto end_lr = ctx.Attr<float>("end_lr");
 
     auto *lr_data = lr_out->data<T>();
     auto *step_data = step_out->data<int64_t>();
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, 1);
-    Pow2WarmupFunctor<T> functor(lr_data, step_data, warmup_steps, total_steps,
-                                 start_lr, base_lr, end_lr);
+    using AttrT = float;
+    Pow2WarmupFunctor<T, AttrT> functor(
+        lr_data, step_data, warmup_steps, total_steps,
+        static_cast<AttrT>(start_lr), static_cast<AttrT>(base_lr),
+        static_cast<AttrT>(end_lr));
     for_range(functor);
   }
 };
