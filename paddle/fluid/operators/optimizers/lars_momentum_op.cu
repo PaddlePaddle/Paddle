@@ -140,20 +140,35 @@ __device__ inline void VectorizeLarsUpdate(
   }
 }
 
+#define PADDLE_LAUNCH_LARS_L2_NORM_KERNEL(__is_amp, __master_param_ptr, \
+                                          __param_ptr, ...)             \
+  do {                                                                  \
+    if (__is_amp) {                                                     \
+      constexpr bool kIsAmp = true;                                     \
+      auto* PARAM_PTR = __master_param_ptr;                             \
+      __VA_ARGS__;                                                      \
+    } else {                                                            \
+      constexpr bool kIsAmp = false;                                    \
+      auto* PARAM_PTR = __param_ptr;                                    \
+      __VA_ARGS__;                                                      \
+    }                                                                   \
+  } while (0)
+
 #if CUDA_VERSION >= 11000
 /* Once CUDA_VERSION is beyond 11, cooperative_groups can be involved in without
   --rdc=true compile flag, then L2_norm kernel can be set with __device__ and
   cooperative_groups::grid_group also can be involved. Otherwise, adding this
   flag may affect much, L2_norm kernel shall be set with __global__.*/
 // TODO(limingshu): declaration of cooperative_groups wapper is invalid in host.
-template <typename T, typename MT>
+template <typename T, typename MT, bool kIsAmp>
 __forceinline__ __device__ void L2NormKernel(
     const cooperative_groups::grid_group* cg,
 #else
-template <typename T, typename MT>
+template <typename T, typename MT, bool kIsAmp>
 __global__ void L2NormKernel(
 #endif
-    const T* p_data, const T* __restrict__ g_data, MT* __restrict__ p_buffer,
+    const typename std::conditional<kIsAmp, MT, T>::type* p_data,
+    const T* __restrict__ g_data, MT* __restrict__ p_buffer,
     MT* __restrict__ g_buffer, const int64_t numel, const int repeat_times,
     const MT rescale_grad, const int thresh = 0, MT* __restrict__ p_n = nullptr,
     MT* __restrict__ g_n = nullptr) {
@@ -259,9 +274,12 @@ __global__ void MergedMomentumLarsKernel(LarsParamWarpper<T, MT> lars_warpper,
     int numel = lars_warpper.numel_arr[i];
     MT param_norm = static_cast<MT>(0);
     MT grad_norm = static_cast<MT>(0);
-    L2NormKernel<T, MT>(&cg, lars_warpper.p_out_arr[i], lars_warpper.g_arr[i],
-                        p_buffer, g_buffer, numel, lars_warpper.repeat_arr[i],
-                        rescale_grad, 0, &param_norm, &grad_norm);
+    PADDLE_LAUNCH_LARS_L2_NORM_KERNEL(
+        is_amp, lars_warpper.master_p_out_arr[i], lars_warpper.p_out_arr[i],
+        L2NormKernel<T, MT, kIsAmp>(&cg, PARAM_PTR, lars_warpper.g_arr[i],
+                                    p_buffer, g_buffer, numel,
+                                    lars_warpper.repeat_arr[i], rescale_grad, 0,
+                                    &param_norm, &grad_norm));
     MomentumUpdate<T, MT>(
         lars_warpper.p_out_arr[i], lars_warpper.g_arr[i],
         lars_warpper.v_out_arr[i], lars_warpper.p_out_arr[i],
@@ -288,8 +306,11 @@ __global__ void MomentumLarsKernel(
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   MT param_norm = static_cast<MT>(0);
   MT grad_norm = static_cast<MT>(0);
-  L2NormKernel<T, MT>(&cg, param, grad, p_buffer, g_buffer, numel, repeat_times,
-                      rescale_grad, gridDim.x, &param_norm, &grad_norm);
+  PADDLE_LAUNCH_LARS_L2_NORM_KERNEL(
+      is_amp, master_param, param,
+      L2NormKernel<T, MT, kIsAmp>(&cg, PARAM_PTR, grad, p_buffer, g_buffer,
+                                  numel, repeat_times, rescale_grad, gridDim.x,
+                                  &param_norm, &grad_norm));
 #else
   const MT rescale_grad_pow = rescale_grad * rescale_grad;
   MT param_part_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
@@ -314,10 +335,12 @@ inline void SeparatedLarsMomentumOpCUDAKernel(
     const MT rescale_grad, const int64_t numel, const MT* master_param_data,
     MT* master_out_data, const bool is_amp) {
   LarsThreadConfig<T> lars_thread_config(numel);
-  L2NormKernel<T, MT><<<lars_thread_config.grid_for_norm, LARS_BLOCK_SIZE, 0,
-                        cuda_ctx.stream()>>>(
-      param_data, grad_data, p_buffer, g_buffer, numel,
-      lars_thread_config.repeat_times, rescale_grad);
+  PADDLE_LAUNCH_LARS_L2_NORM_KERNEL(
+      is_amp, master_param_data, param_data,
+      L2NormKernel<T, MT, kIsAmp><<<lars_thread_config.grid_for_norm,
+                                    LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
+          PARAM_PTR, grad_data, p_buffer, g_buffer, numel,
+          lars_thread_config.repeat_times, rescale_grad));
 
   MomentumLarsKernel<T, MT><<<lars_thread_config.grid_for_lars, LARS_BLOCK_SIZE,
                               0, cuda_ctx.stream()>>>(
