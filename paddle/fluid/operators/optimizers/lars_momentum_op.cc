@@ -44,8 +44,6 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
     auto grad_dim = ctx->GetInputsDim("Grad");
     auto param_dim = ctx->GetInputsDim("Param");
     auto velocity_dim = ctx->GetInputsDim("Velocity");
-    auto lars_weight_decays =
-        ctx->Attrs().Get<std::vector<float>>("lars_weight_decay");
     auto multi_precision = ctx->Attrs().Get<bool>("multi_precision");
 
     PADDLE_ENFORCE_EQ(
@@ -61,13 +59,6 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
             "have same quantity. But number of Param is [%d] and Velocity "
             "is [%d].",
             param_dim.size(), velocity_dim.size()));
-    PADDLE_ENFORCE_EQ(
-        lars_weight_decays.size(), grad_dim.size(),
-        platform::errors::InvalidArgument(
-            "Attr(Lars_weight_decay) and "
-            "Input(Grad) of LarsMomentumOp should have same quantity. "
-            "But number of Lars_weight_decay is [%d] and Grad is [%d].",
-            lars_weight_decays.size(), grad_dim.size()));
 
     if (multi_precision) {
       OP_INOUT_CHECK(ctx->HasInputs("MasterParam"), "Input", "MasterParam",

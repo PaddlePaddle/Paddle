@@ -2122,16 +2122,6 @@ class LarsMomentumOptimizer(Optimizer):
                     master_weight_array.append(self._master_weights[
                         param_and_grad_element[0].name])
 
-                if len(self._exclude_from_weight_decay) > 0:
-                    _lars_weight_decay = self._lars_weight_decay
-                    for name in self._exclude_from_weight_decay:
-                        if name in param_and_grad_element[0].name:
-                            _lars_weight_decay = 0.0
-                            break
-                    lars_weight_decay_array.append(_lars_weight_decay)
-                else:
-                    lars_weight_decay_array.append(self._lars_weight_decay)
-
             inputs = {
                 "Param": param_array,
                 "Grad": grad_array,
@@ -2144,7 +2134,7 @@ class LarsMomentumOptimizer(Optimizer):
                 "lars_coeff": self._lars_coeff,
                 "rescale_grad": self._rescale_grad,
                 "multi_precision": find_master,
-                "lars_weight_decay": lars_weight_decay_array
+                "lars_weight_decay": [self._lars_weight_decay]
             }
 
             if find_master:

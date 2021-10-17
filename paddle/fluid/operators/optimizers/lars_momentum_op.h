@@ -33,11 +33,12 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
     T epsilon = ctx.Attr<float>("epsilon");
+    T lars_weight_decay = weight_decay_arr[0];
 
     int op_num = param.size();
     for (int i = 0; i < op_num; ++i) {
       auto* lr = learning_rate[i]->data<T>();
-      T lars_weight_decay = weight_decay_arr[i];
+
       param_out[i]->mutable_data<T>(ctx.GetPlace());
       velocity_out[i]->mutable_data<T>(ctx.GetPlace());
 
