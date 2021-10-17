@@ -19,6 +19,7 @@ from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
+from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
 from .pp_utils import p2p_communication as p2p
@@ -34,6 +35,8 @@ class PipelineParallel(MetaParallelBase):
         super(PipelineParallel, self).__init__(layers, hcg, strategy)
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
+        self.use_sharding_parallel = self._hcg.get_sharding_parallel_world_size(
+        ) > 1
 
         self.total_loss = None
 
@@ -66,42 +69,29 @@ class PipelineParallel(MetaParallelBase):
             logger.info("start broadcast mp parameters")
             broadcast_mp_parameters(self._layers, self._hcg)
 
+        if self.use_sharding_parallel:
+            logger.info("start broadcast sharding parameters")
+            broadcast_sharding_parameters(self._layers, self._hcg)
+
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
-        assert isinstance(optimizer, HybridParallelOptimizer), (
-            'optimizer should be HybridParallelOptimizer subclass.')
-        if scaler is not None:
-            assert isinstance(scaler, HybridParallelGradScaler), (
-                'scaler should be HybridParallelGradScaler subclass or None.')
-        assert fluid.framework._dygraph_tracer()._has_grad, (
-            'Please enable the generation of gradients.')
+    def forward_backward_pipeline(self, data, scaler=None):
+        # use the 1f1b scheduling strategy.
+        # this strategy is inspired by:
+        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
-        if self.is_first_stage or self.is_last_stage:
-            assert data is not None, (
-                "For the first and the last stage, the data must be set.")
-        else:
-            data = None
-
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
         self.scaler = scaler
-        self.data = data
-        self._compute_loss = True
 
-        self._layers.train()
+        # store data for train
+        self.data = data
 
         # store total loss of entire batch
         self.total_loss = None
 
         # store data id for micro_batch
         self.micro_batch_id = 0
-
-        # Next, use the 1f1b scheduling strategy.
-        # this strategy is inspired by:
-        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
         startup_steps = (self.num_stages - self.stage_id - 1)
         startup_steps = min(startup_steps, self.accumulate_steps)
@@ -156,11 +146,35 @@ class PipelineParallel(MetaParallelBase):
 
         self._layers.allreduce_shared_weight_gradients()
 
-        self.train_loss = self._broadcast_final_loss()
+        train_loss = self._broadcast_final_loss()
+
+        return train_loss
+
+    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+        assert isinstance(optimizer, HybridParallelOptimizer), (
+            'optimizer should be HybridParallelOptimizer subclass.')
+
+        assert fluid.framework._dygraph_tracer()._has_grad, (
+            'Please enable the generation of gradients.')
+
+        if self.is_first_stage or self.is_last_stage:
+            assert data is not None, (
+                "For the first and the last stage, the data must be set.")
+        else:
+            data = None
+
+        self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
+
+        self._layers.train()
+
+        # 1f1b for pipeline
+        train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
         self._optimizer_step()
-        return self.train_loss
+
+        return train_loss
 
     def eval_batch(self, data, compute_loss=False):
         self._layers.eval()
@@ -205,7 +219,12 @@ class PipelineParallel(MetaParallelBase):
             if not last_iter:
                 input_tensor = p2p.recv_forward()
 
-        return self.total_loss if self._compute_loss else output_buffers
+        if self._compute_loss:
+            self.train_loss = self._broadcast_final_loss()
+        else:
+            self.train_loss = output_buffers
+
+        return self.train_loss
 
     def _forward_step(self, input_tensor):
         if self.stage_id == 0:
@@ -318,7 +337,8 @@ class PipelineParallel(MetaParallelBase):
 
     def _optimizer_step(self):
         if self.scaler:
-            self.scaler.minimize(self.optimizer, self.train_loss)
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
         else:
             self.optimizer.step()
 

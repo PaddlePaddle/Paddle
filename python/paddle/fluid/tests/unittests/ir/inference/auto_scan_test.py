@@ -96,6 +96,9 @@ class AutoScanTest(unittest.TestCase):
         for group in tensors[1:]:
             for key, arr in group.items():
                 self.assertTrue(
+                    first[key].shape == arr.shape,
+                    "The output shape of GPU and TensorRT are not equal.")
+                self.assertTrue(
                     np.allclose(
                         first[key], arr, atol=threshold),
                     "Output has diff between GPU and TensorRT. ")

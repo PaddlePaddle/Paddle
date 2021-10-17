@@ -59,6 +59,9 @@ class DistributedContext:
             if self._process_mesh.ndim == 1:
                 self._data_parallel_axis = 0
                 self._model_parallel_axis = 0
+            elif self._process_mesh.ndim == 3:
+                self._data_parallel_axis = 1
+                self._model_parallel_axis = 2
             else:
                 self._data_parallel_axis = 0
                 self._model_parallel_axis = 1

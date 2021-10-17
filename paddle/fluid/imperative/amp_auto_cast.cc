@@ -24,6 +24,17 @@ namespace imperative {
 
 class VarBase;
 
+AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
+    : tracer_(tracer) {
+  pre_amp_level_ = tracer_->GetAmpLevel();
+
+  if (pre_amp_level_ != level) {
+    tracer_->SetAmpLevel(level);
+  }
+}
+
+AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
+
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
       block_ops_(new std::unordered_set<std::string>()),
@@ -117,7 +128,7 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
   imperative::NameVarBaseMap outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(tracer, false);
+    AutoCastGuard guard(tracer, AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 
@@ -221,6 +232,31 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
+  }
+  return new_ins;
+}
+
+NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
+                                  const NameVarBaseMap& ins) {
+  NameVarBaseMap new_ins(ins);
+  auto dst_type = framework::proto::VarType::FP16;
+  if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
+      AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+    dst_type = framework::proto::VarType::FP32;
+  }
+  for (auto& pair : new_ins) {
+    if ((op_type == "batch_norm" || op_type == "layer_norm" ||
+         op_type == "sync_batch_norm") &&
+        pair.first != "X") {
+      continue;
+    }
+    VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+            << GetDtypeStr(*pair.second.cbegin()) << " to "
+            << framework::DataTypeToString(dst_type);
+    for (auto& var : pair.second) {
+      var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
+                                                         : CastToFP16(var));
+    }
   }
   return new_ins;
 }

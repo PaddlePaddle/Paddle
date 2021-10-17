@@ -55,6 +55,7 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
+    'is_compiled_with_npu',
     'Variable',
     'require_version',
     'device_guard',
@@ -380,6 +381,15 @@ def _xpu_ids():
     return device_ids
 
 
+def _npu_ids():
+    npus_env = os.getenv("FLAGS_selected_npus")
+    if npus_env:
+        device_ids = [int(s) for s in npus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_npu_device_count())
+    return device_ids
+
+
 def is_compiled_with_xpu():
     """
     Whether this whl package can be used to run the model on XPU.
@@ -393,6 +403,21 @@ def is_compiled_with_xpu():
             support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
+
+
+def is_compiled_with_npu():
+    """
+    Whether this whl package can be used to run the model on NPU.
+
+    Returns (bool): support npu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_npu = fluid.is_compiled_with_npu()
+    """
+    return core.is_compiled_with_npu()
 
 
 def disable_signal_handler():
@@ -502,17 +527,17 @@ def xpu_places(device_ids=None):
     """
     **Note**:
         For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
-    This function creates a list of :code:`paddle.XPUPlace` objects.
-    If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_xpus` would be checked first. For example, if
-    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
-    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
-    If :code:`FLAGS_selected_xpus` is not set, all visible
-    xpu places would be returned.
-    If :code:`device_ids` is not None, it should be the device
-    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
-    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+        This function creates a list of :code:`paddle.XPUPlace` objects.
+        If :code:`device_ids` is None, environment variable of
+        :code:`FLAGS_selected_xpus` would be checked first. For example, if
+        :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+        be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+        If :code:`FLAGS_selected_xpus` is not set, all visible
+        xpu places would be returned.
+        If :code:`device_ids` is not None, it should be the device
+        ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
+        the returned list would be 
+        [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
     
     Parameters:
         device_ids (list or tuple of int, optional): list of XPU device ids.
@@ -520,6 +545,7 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
+
             # required: xpu
 
             import paddle
@@ -535,6 +561,47 @@ def xpu_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
+
+
+def npu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
+    
+    This function creates a list of :code:`paddle.NPUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_npus` would be checked first. For example, if
+    :code:`FLAGS_selected_npus=0,1,2`, the returned list would
+    be [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
+    If :code:`FLAGS_selected_npus` is not set, all visible
+    npu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of NPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of NPU device ids.
+    Returns:
+        list of paddle.NPUPlace: Created NPU place list.
+    Examples:
+        .. code-block:: python
+
+            # required: npu
+
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            npu_places = static.npu_places()
+    """
+    assert core.is_compiled_with_npu(), \
+        "Not compiled with NPU"
+    if device_ids is None:
+        device_ids = _npu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.NPUPlace(dev_id) for dev_id in device_ids]
 
 
 def cpu_places(device_count=None):
@@ -864,6 +931,7 @@ class Variable(object):
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
                                                 dtype='float32')
+
         In `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_  Mode:
 
         .. code-block:: python
@@ -1395,8 +1463,8 @@ class Variable(object):
         Indicating name of the gradient Variable of current Variable.
 
         **Notes: This is a read-only property. It simply returns name of
-          gradient Variable from a naming convention but doesn't guarantee
-          the gradient exists.**
+        gradient Variable from a naming convention but doesn't guarantee
+        the gradient exists.**
 
         Examples:
           .. code-block:: python
@@ -1925,6 +1993,10 @@ class Variable(object):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_npu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.NPUPlace(p.npu_device_id())
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -3954,6 +4026,23 @@ class IrGraph(object):
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
+    def all_sub_graphs(self, for_test=False):
+        """
+        Return all sub_graphs included in the main graph as a set.
+        """
+
+        return [
+            IrGraph(
+                self.graph.get_sub_graph(i), for_test=for_test)
+            for i in range(self.graph.sub_graph_size())
+        ]
+
+    def get_sub_graph(self, i, for_test=False):
+        """
+        Return i-th sub_graph in the main graph.
+        """
+        return IrGraph(self.graph.get_sub_graph(i), for_test=for_test)
+
     def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
         Create a persistable variable node in the graph. In IrGraph,
@@ -4100,8 +4189,10 @@ class IrGraph(object):
             node_in(IrNode): the input node.
             node_out(IrNode): the output node.
         """
-        assert node_in.node in self.graph.nodes() and node_out.node in self.graph.nodes(), \
-            'The two arguments(node_in&node_out) must be in the graph nodes.'
+        assert node_in.node in self.graph.nodes(), (
+            'node_in(%s) must be in the graph nodes.' % node_in.node.name())
+        assert node_out.node in self.graph.nodes(), (
+            'node_out(%s) must be in the graph nodes.' % node_out.node.name())
         node_in.append_output(node_out)
         node_out.append_input(node_in)
 
@@ -4263,7 +4354,8 @@ class IrGraph(object):
         for n in nodes:
             if n.name() == node_name:
                 target_node = n
-        assert target_node is not None, "Cannot find the target node in the giving set."
+        assert target_node is not None, (
+            "Cannot find the target node (%s)in the giving set." % node_name)
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
@@ -4379,6 +4471,8 @@ class Program(object):
 
         # compiled program, i.e. Graph
         self._graph = None
+        # to tag whether is startup_program
+        self._is_start_up_program_ = False
 
     def _find_var_class_kwargs(self, new_desc):
         # NOTE: not all variables support shape/dtype/lod_level methods.
@@ -5017,6 +5111,22 @@ class Program(object):
                     "All feeded_var_names of Program._prune_with_input() can only be "
                     "str, but received %s." % type(var))
 
+        # find out all variables that can be generated or updated with given feed
+        generatable_vars = set()
+
+        for idx, op in enumerate(self.global_block().ops):
+            runnable_op = True
+            for name in op.input_arg_names:
+                if not self.global_block().has_var(name):
+                    continue
+                if self.global_block().var(name).persistable:
+                    continue
+                if name not in generatable_vars.union(feeded_var_names):
+                    runnable_op = False
+                    break
+            if runnable_op:
+                generatable_vars = generatable_vars.union(op.output_arg_names)
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -5034,7 +5144,9 @@ class Program(object):
                 # (2) the variable is not leaf, and we need to prune the op that generates it.
                 # In both cases, wo can just skip target_op of that it.
                 if name in feeded_var_names:
-                    continue
+                    # however if the var is also updated by a runnable op, will shall keep it
+                    if name not in generatable_vars:
+                        continue
 
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
@@ -5051,12 +5163,8 @@ class Program(object):
                             continue
                         else:
                             target_op = op
-                            break
-                if target_op is None:
-                    raise ValueError(
-                        "The target variable used for pruning should have an "
-                        "associated operator that generates it.")
-                else:
+
+                if target_op is not None:
                     targets_idx.append([target_op.block.idx, target_op.idx])
             else:
                 targets_idx.append([t.block.idx, t.idx])
@@ -5131,7 +5239,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def _remove_training_info(self):
+    def _remove_training_info(self, clip_extra=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all variable's `is_parameter` attribute if exist.
@@ -5156,6 +5264,71 @@ class Program(object):
             for var in block.all_vars():
                 var.clear_is_parameter()
                 var.clear_stop_gradient()
+            if not clip_extra:
+                continue
+            for op_idx in range(0, block.op_size()):
+                op = block.op(op_idx)
+                if op.type() not in OpProtoHolder.instance().op_proto_map:
+                    continue
+                proto = OpProtoHolder.instance().get_op_proto(op.type())
+                remove_input_list = []
+                for name in op.input_names():
+                    find = False
+                    for input_proto in proto.inputs:
+                        if input_proto.name != name:
+                            continue
+                        if input_proto.extra:
+                            remove_input_list.append(name)
+                        find = True
+                        break
+                    if not find:
+                        remove_input_list.append(name)
+                for name in remove_input_list:
+                    op.remove_input(name)
+
+                remove_output_list = []
+                for name in op.output_names():
+                    find = False
+                    for output_proto in proto.outputs:
+                        if output_proto.name != name:
+                            continue
+                        if output_proto.extra:
+                            remove_output_list.append(name)
+                        find = True
+                        break
+                    if not find:
+                        remove_output_list.append(name)
+                for name in remove_output_list:
+                    op.remove_output(name)
+
+                remove_attr_list = []
+                op_quant_name = core.op_proto_and_checker_maker.kOpWithQuantAttrName(
+                )
+                quant = bool(op.attr(op_quant_name)
+                             ) if op_quant_name in op.attr_names() else False
+                quant_attrs = [
+                    op_quant_name, "quantization_type", "skip_quant",
+                    "activation_bits", "bit_length", "quantize_weight_bits",
+                    "weight_quant_scale"
+                ]
+                for name in op.attr_names():
+                    if quant:
+                        if name in quant_attrs:
+                            continue
+                        if name.endswith("_threshold"):
+                            continue
+                    find = False
+                    for attr_proto in proto.attrs:
+                        if attr_proto.name != name:
+                            continue
+                        if attr_proto.extra:
+                            remove_attr_list.append(name)
+                        find = True
+                        break
+                    if not find:
+                        remove_attr_list.append(name)
+                for name in remove_attr_list:
+                    op.remove_attr(name)
         return res
 
     @staticmethod
@@ -5980,7 +6153,6 @@ class ParamBase(core.VarBase):
         return new_param
 
     def _copy_to(self, device, blocking):
-        print("in ParamBase copy_to func")
         state = copy.deepcopy(self.__dict__)
         new_param = ParamBase(self.shape, self.dtype, **state)
         core.varbase_copy(self, new_param, device, blocking)
@@ -5992,6 +6164,7 @@ class ParamBase(core.VarBase):
 # program is a global instance.
 _main_program_ = Program()
 _startup_program_ = Program()
+_startup_program_._is_start_up_program_ = True
 
 
 def default_startup_program():
@@ -6140,6 +6313,8 @@ def program_guard(main_program, startup_program=None):
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
                    'paddle.static.program_guard')
+        # Tag the program __is_start_up as True
+        startup_program._is_start_up_program_ = True
         startup_program = switch_startup_program(startup_program)
     try:
         yield
@@ -6271,6 +6446,7 @@ def device_guard(device=None):
 def set_flags(flags):
     """
     This function sets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
 
     Args:
         flags (dict): A dict contains flags and its value.
@@ -6278,8 +6454,8 @@ def set_flags(flags):
     Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+                import paddle
+                paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
     """
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
@@ -6294,6 +6470,7 @@ def set_flags(flags):
 def get_flags(flags):
     """
     This function gets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
 
     Args:
         flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
@@ -6304,10 +6481,10 @@ def get_flags(flags):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
-            res = fluid.get_flags(flags)
+            res = paddle.get_flags(flags)
             print(res)
             # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
     """

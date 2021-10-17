@@ -360,6 +360,7 @@ class ImperativePTQ(object):
                                                                  in_var_name)
                     op._set_attr(argname + str(index) + "_threshold",
                                  in_threshold)
+                    op._set_attr("with_quant_attr", True)
                 else:
                     for out_var_name in utils._get_op_output_var_names(
                             previous_op):
@@ -376,6 +377,7 @@ class ImperativePTQ(object):
                             op, in_var_name)
                         attr_name = argname + str(index) + "_threshold"
                         op._set_attr(attr_name, threshold)
+                        op._set_attr("with_quant_attr", True)
 
     def _clean_up(self, program):
         """
@@ -394,6 +396,7 @@ class ImperativePTQ(object):
                 op._remove_attr(old_attr_name)
                 next_op._remove_attr(old_attr_name)
                 next_op._set_attr(new_attr_name, threshold)
+                next_op._set_attr("with_quant_attr", True)
 
         for op in utils.program_all_ops(program):
             if "quantize_dequantize" in op.type:

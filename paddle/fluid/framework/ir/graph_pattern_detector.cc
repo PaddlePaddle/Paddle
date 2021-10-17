@@ -1615,6 +1615,25 @@ PDNode *patterns::Matmul::operator()() {
   return matmul_out;
 }
 
+PDNode *patterns::MatmulV2::operator()() {
+  auto matmul_op =
+      pattern->NewNode(matmul_op_repr())->assert_is_op("matmul_v2");
+
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul_v2", "X");
+  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
+                         ->assert_is_persistable_var()
+                         ->AsInput()
+                         ->assert_is_op_input("matmul_v2", "Y");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul_v2", "Out");
+
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
 PDNode *patterns::Squeeze2Matmul::operator()() {
   auto squeeze2_in_x = pattern->NewNode(squeeze2_in_x_repr())
                            ->assert_is_op_input("squeeze2", "X")
@@ -2263,15 +2282,34 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>(
-          {"concat",          "conv2d",          "conv2d_transpose",
-           "elementwise_add", "elementwise_mul", "fc",
-           "fusion_gru",      "fusion_lstm",     "gelu",
-           "layer_norm",      "matmul",          "matmul_v2",
-           "pool2d",          "prelu",           "relu",
-           "reshape2",        "softmax",         "split",
-           "squeeze",         "squeeze2",        "sum",
-           "transpose2"});
+      std::unordered_set<std::string>({"cast",
+                                       "clip",
+                                       "concat",
+                                       "conv2d",
+                                       "conv2d_transpose",
+                                       "elementwise_add",
+                                       "elementwise_mul",
+                                       "expand_v2",
+                                       "fc",
+                                       "fusion_gru",
+                                       "fusion_lstm",
+                                       "gelu",
+                                       "layer_norm",
+                                       "matmul",
+                                       "matmul_v2",
+                                       "pool2d",
+                                       "prelu",
+                                       "relu",
+                                       "reshape2",
+                                       "scale",
+                                       "sigmoid",
+                                       "slice",
+                                       "softmax",
+                                       "split",
+                                       "squeeze",
+                                       "squeeze2",
+                                       "sum",
+                                       "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
@@ -2547,39 +2585,28 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   reshape2_out->LinksFrom({reshape2_op});
 }
 
-void patterns::DeleteQuantDequantOpPattern::operator()() {
-  auto any_op_out =
-      pattern->NewNode(any_op_out_repr())
-          ->assert_is_op_input(
-              "fake_quantize_dequantize_moving_average_abs_max", "X")
-          ->AsInput();
-
+void patterns::DeleteQuantDequantOpPattern::operator()(
+    PDNode *input_node, const std::string &quantdequant_types) {
   auto quant_dequant_op_inscale =
       pattern->NewNode(quant_dequant_op_inscale_repr())
-          ->assert_is_op_input(
-              "fake_quantize_dequantize_moving_average_abs_max", "InScale")
+          ->assert_is_op_input(quantdequant_types, "InScale")
           ->AsInput();
-  auto quant_dequant_op =
-      pattern->NewNode(quant_dequant_op_repr())
-          ->assert_is_op("fake_quantize_dequantize_moving_average_abs_max");
+  auto quant_dequant_op = pattern->NewNode(quant_dequant_op_repr())
+                              ->assert_is_op(quantdequant_types);
 
-  auto quant_dequant_out =
+  auto quant_dequant_op_out =
       pattern->NewNode(quant_dequant_op_out_repr())
-          ->assert_is_op_output(
-              "fake_quantize_dequantize_moving_average_abs_max", "Out")
-          ->AsIntermediate();
+          ->assert_is_op_output(quantdequant_types, "Out")
+          ->AsOutput();
 
   auto quant_dequant_op_outscale =
       pattern->NewNode(quant_dequant_op_outscale_repr())
-          ->assert_is_op_output(
-              "fake_quantize_dequantize_moving_average_abs_max", "OutScale")
+          ->assert_is_op_output(quantdequant_types, "OutScale")
           ->AsOutput();
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
 
-  quant_dequant_op->LinksFrom({any_op_out, quant_dequant_op_inscale});
+  quant_dequant_op->LinksFrom({quant_dequant_op_inscale, input_node});
   quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
-  quant_dequant_out->LinksFrom({quant_dequant_op});
-  any_op2->LinksFrom({quant_dequant_out});
+  quant_dequant_op_out->LinksFrom({quant_dequant_op});
 }
 
 void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
@@ -2976,6 +3003,29 @@ PDNode *patterns::LayerNorm::operator()() {
   shift->LinksFrom({scale_out, beta}).LinksTo({shift_out});
 
   return shift_out;
+}
+
+// Add support int8 flag
+PDNode *patterns::AddSupportInt8::operator()() {
+  auto prev_op =
+      pattern->NewNode(prev_op_repr())
+          ->assert_is_op()
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("out_threshold") ? true : false;
+          });
+  auto prev_out = pattern->NewNode(prev_out_repr())->assert_is_var();
+  auto quant_op =
+      pattern->NewNode(quant_op_repr())
+          ->assert_is_op()
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("out_threshold") ? true : false;
+          });
+  auto quant_out =
+      pattern->NewNode(quant_out_repr())->assert_is_var()->AsOutput();
+  prev_op->LinksTo({prev_out});
+  prev_out->LinksTo({quant_op});
+  quant_op->LinksTo({quant_out});
+  return quant_out;
 }
 
 }  // namespace ir
