@@ -26,7 +26,8 @@ def crf_decode(potentials,
                include_start_end_tag=True,
                name=None):
     """
-    Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path. 
+    Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path.
+ 
     Args:
         potentials (Tensor): The input tensor of unary emission. This is a 3-D
             tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
@@ -39,11 +40,13 @@ def crf_decode(potentials,
             the penultimate column of transitions will be considered as stop tag. Else, all the rows and columns will be
             considered as the real tag. Defaults to ``True``.
         name (str|None) – A name for this layer(optional). If set None, the layer will be named automatically.
+
     Returns:
         scores(Tensor): The output tensor containing the score for the Viterbi sequence. The shape is [batch_size]
             and the data type is float32 or float64.
         paths(Tensor): The output tensor containing the highest scoring tag indices.  The shape is [batch_size, sequence_length]
             and  the data type is int64.
+
     Example:
         .. code-block:: python
 
@@ -92,6 +95,7 @@ def crf_decode(potentials,
 class ViterbiDecoder(Layer):
     """ 
     Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path. 
+
     Args:
         transitions (`Tensor`): 
             The transition matrix.  Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
@@ -99,16 +103,19 @@ class ViterbiDecoder(Layer):
             If set to True, the last row and the last column of transitions will be considered as start tag,
             the the penultimate row and the penultimate column of transitions will be considered as stop tag.
             Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
+
     Shape:
         potentials (Tensor): The input tensor of unary emission. This is a 3-D
             tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
         length (Tensor):  The input tensor of real length of each sequence. This is a 1-D
             tensor with shape of [batch_size]. The data type is int64. 
+
     Returns:
         scores(Tensor): The output tensor containing the score for the Viterbi sequence. The shape is [batch_size]
             and the data type is float32 or float64.
         paths(Tensor): The output tensor containing the highest scoring tag indices.  The shape is [batch_size, sequence_length]
             and  the data type is int64.
+
     Example:
         .. code-block:: python
 
