@@ -24,15 +24,15 @@ namespace framework {
 
 std::wstring_convert<std::codecvt_utf8<wchar_t>> kConverter;
 
-// Convert the std::string type to the std::string type.
-int ConvertStrToWstr(const std::string& src, std::wstring* res) {
+// Convert the std::string type to the std::wstring type.
+bool ConvertStrToWstr(const std::string& src, std::wstring* res) {
   try {
     *res = kConverter.from_bytes(src);
   } catch (std::range_error& e) {
     VLOG(3) << "The string " << src << " was converted to unicode failedly! ";
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
 
 // Convert the std::wstring type to the std::string type.
@@ -52,7 +52,7 @@ void NFD(const std::string& s, std::string* ret) {
 }
 
 // Write the data which is type of
-// std::unordered_map<td::string, int32_t> to ostream.
+// std::unordered_map<std::string, int32_t> to ostream.
 void StringMapToStream(std::ostream& os,
                        const std::unordered_map<std::string, int32_t>& data) {
   {

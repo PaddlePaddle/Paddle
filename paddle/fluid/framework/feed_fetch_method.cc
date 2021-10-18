@@ -34,9 +34,10 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  boost::get<LoDTensor>(feed_inputs[index]).ShareDataWith(input);
+  auto& val = BOOST_GET(LoDTensor, feed_inputs[index]);
+  val.ShareDataWith(input);
   // set lod
-  boost::get<LoDTensor>(feed_inputs[index]).set_lod(input.lod());
+  val.set_lod(input.lod());
 }
 
 void SetFeedVariable(Scope* scope, const Strings& input,

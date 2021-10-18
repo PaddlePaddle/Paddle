@@ -362,6 +362,7 @@ class BertTokenizer(PretrainedTokenizer):
                 "`tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`"
                 .format(vocab_file))
         self.vocab = self.load_vocabulary(vocab_file, unk_token=unk_token)
+        self.do_lower_case = do_lower_case
         self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
         self.wordpiece_tokenizer = WordpieceTokenizer(
             vocab=self.vocab, unk_token=unk_token)

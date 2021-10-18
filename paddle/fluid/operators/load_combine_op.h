@@ -98,7 +98,8 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
             continue;
           }
           std::wstring token;
-          framework::ConvertStrToWstr(tmp, &token);
+          bool status = framework::ConvertStrToWstr(tmp, &token);
+          if (!status) continue;
           tensor->emplace(token, it->second);
         }
       } else {

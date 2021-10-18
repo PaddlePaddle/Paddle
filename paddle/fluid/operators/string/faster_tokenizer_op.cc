@@ -95,7 +95,7 @@ wchar_t BasicTokenizer::do_lower_case(wchar_t ch) const {
 
 void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
   std::wstring unicode_text;
-  int status = framework::ConvertStrToWstr(text, &unicode_text);
+  bool status = framework::ConvertStrToWstr(text, &unicode_text);
   if (!status) {
     // String is converted into wstring failedly.
     return;
@@ -249,7 +249,6 @@ void BertTokenizer::BuildInputsWithSpecialTokens(
       ++i;
     }
     inputs->at(i) = std::move(sep_token_id_);
-    // inputs->emplace_back(sep_token_id_);
   } else {
     inputs->clear();
     inputs->resize(token_ids_0.size() + token_ids_1.size() + 3);
@@ -323,7 +322,7 @@ int BertTokenizer::Encode(
     }
   } else {
     std::wstring unicode_text;
-    int status_a = framework::ConvertStrToWstr(text, &unicode_text);
+    bool status_a = framework::ConvertStrToWstr(text, &unicode_text);
     if (!status_a) {
       return 0;
     }

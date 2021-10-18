@@ -164,9 +164,9 @@ struct VarTypeRegistryImpl {
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
-    Strings, LoDTensorArray, platform::PlaceList, ReaderHolder, std::string,
-    Scope *, operators::reader::LoDTensorBlockingQueueHolder, FetchList,
-    FeedList, operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
+    Strings, LoDTensorArray, platform::PlaceList, ReaderHolder, String, Scope *,
+    operators::reader::LoDTensorBlockingQueueHolder, FetchList, FeedList,
+    operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
@@ -214,6 +214,7 @@ REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
+REG_PROTO_VAR_TYPE_TRAIT(String, proto::VarType::STRING);
 REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
 
 /** End of variable type registration */

@@ -39,7 +39,7 @@ def to_string_tensor(string_values, name):
         string_values(list[string]): The value will be setted to the tensor.
         name(string): The name of the tensor.
     """
-    tensor = paddle.Tensor(core.VarDesc.VarType.STRINGS, [], name,
+    tensor = paddle.Tensor(core.VarDesc.VarType.STRING, [], name,
                            core.VarDesc.VarType.STRINGS, False)
     tensor.value().set_string_list(string_values)
     return tensor
@@ -55,7 +55,7 @@ def to_map_tensor(string_dict, name):
         string_dict(dict): The value will be setted to the tensor.
         name(string): The name of the tensor.
     """
-    tensor = paddle.Tensor(core.VarDesc.VarType.VOCAB, [], name,
+    tensor = paddle.Tensor(core.VarDesc.VarType.RAW, [], name,
                            core.VarDesc.VarType.VOCAB, True)
     tensor.value().set_vocab(string_dict)
     return tensor
@@ -70,17 +70,19 @@ class FasterTokenizer(nn.Layer):
     def forward(self,
                 text,
                 text_pair=None,
+                do_lower_case=True,
                 max_seq_len=-1,
                 is_split_into_words=False,
                 pad_to_max_seq_len=False):
         if in_dygraph_mode():
             input_ids, seg_ids = core.ops.faster_tokenizer(
-                self.vocab, text, text_pair, "max_seq_len", max_seq_len,
-                "pad_to_max_seq_len", pad_to_max_seq_len, "is_split_into_words",
-                is_split_into_words)
+                self.vocab, text, text_pair, "do_lower_case", do_lower_case,
+                "max_seq_len", max_seq_len, "pad_to_max_seq_len",
+                pad_to_max_seq_len, "is_split_into_words", is_split_into_words)
             return input_ids, seg_ids
 
         attrs = {
+            "do_lower_case": do_lower_case,
             "max_seq_len": max_seq_len,
             "pad_to_max_seq_len": pad_to_max_seq_len,
             "is_split_into_words": is_split_into_words,
@@ -184,6 +186,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         # case 1: only one text (batch_size = 1)
         input_ids, token_type_ids = self.faster_tokenizer(
             text=self.text_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
             max_seq_len=self.max_seq_len,
             pad_to_max_seq_len=self.pad_to_max_seq_len,
             is_split_into_words=self.is_split_into_words)
@@ -207,6 +210,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         input_ids, token_type_ids = self.faster_tokenizer(
             text=self.text_tensor,
             text_pair=self.text_pair_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
             max_seq_len=self.max_seq_len,
             pad_to_max_seq_len=self.pad_to_max_seq_len,
             is_split_into_words=self.is_split_into_words)
@@ -230,6 +234,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         # case 3: only texts (batch_size = 3)
         input_ids, token_type_ids = self.faster_tokenizer(
             text=self.texts_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
             max_seq_len=self.max_seq_len,
             pad_to_max_seq_len=self.pad_to_max_seq_len,
             is_split_into_words=self.is_split_into_words)
@@ -254,6 +259,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         input_ids, token_type_ids = self.faster_tokenizer(
             text=self.texts_tensor,
             text_pair=self.text_pairs_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
             max_seq_len=self.max_seq_len,
             pad_to_max_seq_len=self.pad_to_max_seq_len,
             is_split_into_words=self.is_split_into_words)
@@ -283,6 +289,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         # case 1: only one text (batch_size = 1)
         input_ids, token_type_ids = self.faster_tokenizer(
             text=self.text_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
             max_seq_len=self.max_seq_len,
             pad_to_max_seq_len=self.pad_to_max_seq_len,
             is_split_into_words=self.is_split_into_words)
@@ -306,6 +313,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         input_ids, token_type_ids = self.faster_tokenizer(
             self.text_tensor,
             self.text_pair_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
             max_seq_len=self.max_seq_len,
             pad_to_max_seq_len=self.pad_to_max_seq_len,
             is_split_into_words=self.is_split_into_words)
@@ -330,7 +338,9 @@ class TestBertTokenizerOp(unittest.TestCase):
         self.is_split_into_words = True
 
         input_ids, token_type_ids = self.faster_tokenizer(
-            self.text_tensor, is_split_into_words=self.is_split_into_words)
+            self.text_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
+            is_split_into_words=self.is_split_into_words)
         input_ids = input_ids.numpy()
         token_type_ids = token_type_ids.numpy()
         encoded_inputs = self.bert_tokenizer(

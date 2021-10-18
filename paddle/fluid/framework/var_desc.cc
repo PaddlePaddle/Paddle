@@ -212,7 +212,7 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
     case proto::VarType::STRINGS:
       return desc_.type().strings();
     case proto::VarType::VOCAB:
-      return desc_.type().string_map();
+      return desc_.type().vocab();
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Getting 'tensor_desc' is not supported by the %s type variable.",
@@ -256,7 +256,7 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
     case proto::VarType::STRINGS:
       return desc_.mutable_type()->mutable_strings();
     case proto::VarType::VOCAB:
-      return desc_.mutable_type()->mutable_string_map();
+      return desc_.mutable_type()->mutable_vocab();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Getting 'mutable_tensor_desc' is not "

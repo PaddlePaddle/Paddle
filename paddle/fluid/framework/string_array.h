@@ -24,11 +24,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+using String = std::string;
 using Strings = std::vector<std::string>;
 using Vocab = std::unordered_map<std::wstring, std::int32_t>;
 
 // Convert the std::string type to the std::string type.
-int ConvertStrToWstr(const std::string& src, std::wstring* res);
+bool ConvertStrToWstr(const std::string& src, std::wstring* res);
 // Convert the std::wstring type to the std::string type.
 void ConvertWstrToStr(const std::wstring& src, std::string* res);
 // Normalization Form Canonical Decomposition.
