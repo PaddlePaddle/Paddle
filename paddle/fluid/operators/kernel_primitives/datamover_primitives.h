@@ -136,10 +136,10 @@ struct BroadcastConfig {
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
  * src: The data pointer of the current block.
- * size_nx: The current block needs to load size_nx columns of data, this
- * parameter will participate in the calculation when isboundary = true.
- * size_ny: The current block needs to load size_ny rows of data, this parameter
- * will participate in the calculation when isboundary = true.
+ * size_nx: The maximum offset of the current block is size_nx elements in the
+ * lowest dimension. The parameters are only calculated when isboundary = true.
+ * size_ny: The maximum offset of the current block is size_ny elements in the
+ * first dimension. The parameters are only calculated when isboundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
@@ -222,7 +222,7 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
 }
 
 /**
- * @brief Read 2D data from global memory to register. When IsBoundary = true
+ * @brief Read 1D data from global memory to register. When IsBoundary = true
  * and (NX % 4 == 0 or Nx % 2 == 0), vectorized load data will be used to
  * improve memory access efficiency.
  *
@@ -475,10 +475,10 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
  * @param：
  * dst: The data pointer of the current block.
  * src: The register pointer of the thread, the size is NX * NY.
- * size_nx: The current block needs to write size_nx columns of data, this
- * parameter will participate in the calculation when isboundary = true.
- * size_ny: The current block needs to write size_ny rows of data, this
- * parameter will participate in the calculation when isboundary = true.
+ * size_nx: The maximum offset of the current block is size_nx elements in the
+ * lowest dimension. The parameters are only calculated when isboundary = true.
+ * size_ny: The maximum offset of the current block is size_ny elements in the
+ * first dimension. The parameters are only calculated when isboundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
