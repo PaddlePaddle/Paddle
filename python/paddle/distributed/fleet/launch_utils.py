@@ -821,8 +821,8 @@ def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
             # e.g. mapped ranks of node: 3,4,7 -> 0,1,2
             relative_rank = ranks_per_node.index(ranks_per_node[i])
             trainer.accelerators.append(relative_rank)
-            pod.accelerators.append(relative_rank)
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            # global mapped ranks
             trainer.rank = ranks_per_node[i]
 
             pod.trainers.append(trainer)
@@ -835,6 +835,7 @@ def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
 def get_mapped_cluster_from_args(args, device_mode):
     assert device_mode == DeviceMode.GPU, \
         "Only support get mapped cluster for gpu now."
+    gpus_num = fluid.core.get_cuda_device_count()
     node_ips = [x.strip() for x in args.ips.split(',')]
     if len(node_ips) == 1:
         node_ip = node_ips[0]
@@ -848,16 +849,17 @@ def get_mapped_cluster_from_args(args, device_mode):
         "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
-    assert args.ranks is not None, \
-        "ranks should be provided when enable_rank_mapping is set."
-    node_mapping_ranks_tmp = [x.strip() for x in args.ranks.split(';')]
+    assert args.ranks_mapped is not None, \
+        "ranks_mapped should be provided when enable_rank_mapping is set."
+    # for example: 0,1;4,5,6;3,7 -> [[0,1], [4,5,6], [3,7]]
+    node_mapping_ranks_tmp = [x.strip() for x in args.ranks_mapped.split(';')]
     node_mapping_ranks = []
     for s in node_mapping_ranks_tmp:
         ranks_in_node = [int(x.strip()) for x in s.split(',')]
         node_mapping_ranks.append(ranks_in_node)
-    gpus_num = fluid.core.get_cuda_device_count()
+
     assert len(node_mapping_ranks[node_rank]) <= gpus_num, \
-        "number of ranks should not exceed the max."
+        "number of ranks mapped to one node should not exceed the max."
     assert len(node_mapping_ranks) == len(node_ips), \
         "ranks length should be equal to ips length."
 
