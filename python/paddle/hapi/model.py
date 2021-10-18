@@ -569,11 +569,7 @@ class StaticGraphAdapter(object):
             inputs = [k._create_feed_layer() for k in to_list(inputs)]
             labels = [k._create_feed_layer() for k in to_list(labels)]
             self._label_vars[mode] = labels
-            if self._amp_level == "O2" and core.is_compiled_with_cuda:
-                with paddle.static.amp.fp16_guard():
-                    outputs = to_list(self.model.network.forward(*inputs))
-            else:
-                outputs = to_list(self.model.network.forward(*inputs))
+            outputs = to_list(self.model.network.forward(*inputs))
 
             if mode != 'test' and self.model._loss:
                 losses = self.model._loss(*(outputs + labels))
@@ -717,6 +713,7 @@ class DynamicGraphAdapter(object):
         # scaler should be initialized only once
         if self._amp_level != "O0" and self.model._scaler is None:
             self.model._scaler = paddle.amp.GradScaler(**self._amp_configs)
+
         with paddle.amp.auto_cast(
                 enable=self._amp_level != 'O0',
                 **self._amp_custom_lists,
@@ -728,9 +725,9 @@ class DynamicGraphAdapter(object):
                 outputs = self.model.network.forward(
                     *[to_variable(x) for x in inputs])
 
-            losses = self.model._loss(*(to_list(outputs) + labels))
-            losses = to_list(losses)
-            final_loss = fluid.layers.sum(losses)
+        losses = self.model._loss(*(to_list(outputs) + labels))
+        losses = to_list(losses)
+        final_loss = fluid.layers.sum(losses)
 
         if self._amp_level != "O0":
             scaled = self.model._scaler.scale(final_loss)
@@ -914,9 +911,9 @@ class Model(object):
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
 
-    When training on GPU, auto mixed precision (AMP) training is supported, and
-    pure float16 training is also supported in static mode while using Adam,
-    AdamW and Momentum optimizer. Before using pure float16 training,
+    When training on GPU, auto mixed precision (AMP O1) and pure float16 
+    (AMP O2) training are both supported in static mode and dynamic mode.
+    In static graph mode, before traing with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
     should be cast to float16 by users. `paddle.static.amp.fp16_guard` API
