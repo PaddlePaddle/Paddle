@@ -30,14 +30,16 @@
 
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/tcmpt/api/all.h"
+#include "paddle/tcmpt/hapi/all.h"
 
 namespace egr {
 
-pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
-                 bool bias_after_scale, bool trace_backward) {
+paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
+                                   float scale, float bias,
+                                   bool bias_after_scale, bool trace_backward) {
   // 1. Run Forward
   // 1.1 Create outputs
-  pt::Tensor out;
+  paddle::experimental::Tensor out;
   // 1.2 Need by original op, we assemble ins, outs, attrs here
 
   // 1.3 Call forward C++ api

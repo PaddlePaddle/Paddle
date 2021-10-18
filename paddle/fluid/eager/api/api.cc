@@ -20,8 +20,9 @@
 namespace egr {
 
 void RegisterGradientHookForTensor(
-    const pt::Tensor& tensor,
-    std::function<pt::Tensor(const pt::Tensor&)>& hook) {
+    const paddle::experimental::Tensor& tensor,
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
@@ -29,7 +30,7 @@ void RegisterGradientHookForTensor(
   grad_node->RegisterGradientHook(rank_info.first, rank_info.second, hook);
 }
 
-void RegisterReduceHookForTensor(const pt::Tensor& tensor,
+void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  const std::function<void(void)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
@@ -37,17 +38,18 @@ void RegisterReduceHookForTensor(const pt::Tensor& tensor,
   grad_node->RegisterReduceHook(hook);
 }
 
-void RetainGradForTensor(const pt::Tensor& tensor) {
+void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
   // TODO(jiabin): Support More Tensor type here
   auto tensor_instance =
       std::dynamic_pointer_cast<pt::DenseTensor>(tensor.impl());
 
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
-  pt::Tensor* grad_tensor = meta->MutableGrad();
+  paddle::experimental::Tensor* grad_tensor = meta->MutableGrad();
 
   // Define Hook
-  std::function<pt::Tensor(const pt::Tensor&)> hook =
-      [grad_tensor](const pt::Tensor& t) {
+  std::function<paddle::experimental::Tensor(
+      const paddle::experimental::Tensor&)>
+      hook = [grad_tensor](const paddle::experimental::Tensor& t) {
         // Simply Copy impl() to grad_tensor
         grad_tensor->set_impl(t.impl());
         return *grad_tensor;

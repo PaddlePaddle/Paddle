@@ -40,7 +40,7 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
 paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout);
 
 size_t DataTypeSize(DataType dtype);
-DataType String2DataTyep(const std::string& str);
+DataType String2DataType(const std::string& str);
 std::string DataType2String(DataType dtype);
 int TensorDtype2NumpyDtype(pt::DataType dtype);
 

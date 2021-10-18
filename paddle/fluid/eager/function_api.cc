@@ -16,6 +16,7 @@
 
 #include "paddle/tcmpt/api/all.h"
 #include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/hapi/all.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -173,8 +174,8 @@ static void FillConstCUDAFunctor(pt::DenseTensor* tensor_dense, double value) {
   }
 }
 
-void ScaleAPI(const pt::Tensor& x, float scale, float bias,
-              bool bias_after_scale, pt::Tensor* out) {
+void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
+              bool bias_after_scale, paddle::experimental::Tensor* out) {
   // TODO(jiabin): Support multiple tensor here, Create DenseTensor is not a
   // proper way to Demo it
   // Run Forward Function
@@ -222,7 +223,8 @@ void ScaleAPI(const pt::Tensor& x, float scale, float bias,
 
 void FillConstAPI(double value, const pt::DDim& ddim,
                   const pt::Backend& backend, const pt::DataType& dtype,
-                  const pt::DataLayout& layout, pt::Tensor* target) {
+                  const pt::DataLayout& layout,
+                  paddle::experimental::Tensor* target) {
   // Create new tensor->impl and fill it with 1.0
   // Fill 1.0
   std::shared_ptr<pt::DenseTensor> tensor_dense = nullptr;

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/tcmpt/api/all.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 namespace paddle {
 namespace operators {

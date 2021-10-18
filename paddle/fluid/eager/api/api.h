@@ -15,18 +15,20 @@
 #pragma once
 
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/hapi/all.h"
 
 namespace egr {
 
 void RegisterGradientHookForTensor(
-    const pt::Tensor& tensor,
-    std::function<pt::Tensor(const pt::Tensor&)>& hook);
-void RegisterReduceHookForTensor(const pt::Tensor& tensor,
+    const paddle::experimental::Tensor& tensor,
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook);
+void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  const std::function<void(void)>& hook);
-void RetainGradForTensor(const pt::Tensor& tensor);
+void RetainGradForTensor(const paddle::experimental::Tensor& tensor);
 
-pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
-                 bool bias_after_scale, bool trace_backward);
+paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
+                                   float scale, float bias,
+                                   bool bias_after_scale, bool trace_backward);
 
 }  // namespace egr

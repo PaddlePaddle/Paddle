@@ -150,7 +150,8 @@ const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
 
 void GradNodeBase::RegisterGradientHook(
     size_t slot_id, size_t rank,
-    const std::function<pt::Tensor(const pt::Tensor&)>& hook) {
+    const std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   gradient_hooks_.emplace_back(std::make_tuple(slot_id, rank, hook));
 }
 
@@ -158,13 +159,15 @@ void GradNodeBase::RegisterReduceHook(const std::function<void(void)>& hook) {
   reduce_hooks_.emplace_back(hook);
 }
 
-std::vector<std::vector<pt::Tensor>> GradNodeBase::ApplyGradientHooks(
-    const std::vector<std::vector<pt::Tensor>>& tensors) {
-  std::vector<std::vector<pt::Tensor>> outs(tensors.size());
+std::vector<std::vector<paddle::experimental::Tensor>>
+GradNodeBase::ApplyGradientHooks(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& tensors) {
+  std::vector<std::vector<paddle::experimental::Tensor>> outs(tensors.size());
   for (auto& tuple : gradient_hooks_) {
     size_t slot_id = std::get<0>(tuple);
     size_t rank = std::get<1>(tuple);
-    std::function<pt::Tensor(const pt::Tensor&)>& hook = std::get<2>(tuple);
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook = std::get<2>(tuple);
 
     PADDLE_ENFORCE(slot_id < tensors.size(),
                    paddle::platform::errors::Fatal(
@@ -177,9 +180,9 @@ std::vector<std::vector<pt::Tensor>> GradNodeBase::ApplyGradientHooks(
                        "than rank size of grad_tensors",
                        slot_id));
 
-    std::vector<pt::Tensor>& slot_out = outs[slot_id];
+    std::vector<paddle::experimental::Tensor>& slot_out = outs[slot_id];
     slot_out.resize(tensors[slot_id].size());
-    pt::Tensor& out = slot_out[rank];
+    paddle::experimental::Tensor& out = slot_out[rank];
     if (!out.defined() || !out.initialized()) {
       out = hook(tensors[slot_id][rank]);
     } else {
@@ -209,8 +212,8 @@ void GradNodeBase::ApplyReduceHooks() {
   }
 }
 
-void InputBuffer::add(size_t slot_id, size_t rank, const pt::Tensor& t,
-                      bool fill_one) {
+void InputBuffer::add(size_t slot_id, size_t rank,
+                      const paddle::experimental::Tensor& t, bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
   PADDLE_ENFORCE(
@@ -229,7 +232,7 @@ void InputBuffer::add(size_t slot_id, size_t rank, const pt::Tensor& t,
                      "Invalid rank for InputBuffer::add() which exceeds size "
                      "of buffer slot %d, got slot size is: %d rank is: %d",
                      slot_id, buffer_[slot_id].size(), rank));
-  pt::Tensor& buffer_tensor = buffer_[slot_id][rank];
+  paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
   if (!fill_one) {
     if (!buffer_tensor.defined() || !buffer_tensor.initialized()) {
       // Simply copy tensor->impl

@@ -22,7 +22,7 @@
 
 namespace egr {
 
-AutogradMeta* EagerUtils::autograd_meta(pt::Tensor* target) {
+AutogradMeta* EagerUtils::autograd_meta(paddle::experimental::Tensor* target) {
   auto* p_autograd_meta = target->get_autograd_meta();
   if (!p_autograd_meta) {
     auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
@@ -32,7 +32,8 @@ AutogradMeta* EagerUtils::autograd_meta(pt::Tensor* target) {
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
-AutogradMeta* EagerUtils::unsafe_autograd_meta(const pt::Tensor& target) {
+AutogradMeta* EagerUtils::unsafe_autograd_meta(
+    const paddle::experimental::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   PADDLE_ENFORCE(p_autograd_meta,
                  paddle::platform::errors::Fatal(
@@ -41,16 +42,16 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const pt::Tensor& target) {
 }
 
 std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
-    std::vector<pt::Tensor>* targets) {
+    std::vector<paddle::experimental::Tensor>* targets) {
   std::vector<AutogradMeta*> metas;
-  for (const pt::Tensor& t : *targets) {
+  for (const paddle::experimental::Tensor& t : *targets) {
     metas.push_back(unsafe_autograd_meta(t));
   }
   return metas;
 }
 
 std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
-    std::vector<pt::Tensor>* targets) {
+    std::vector<paddle::experimental::Tensor>* targets) {
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
@@ -62,15 +63,17 @@ std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
   return ret;
 }
 
-std::pair<size_t, size_t> EagerUtils::OutRankInfo(const pt::Tensor& target) {
+std::pair<size_t, size_t> EagerUtils::OutRankInfo(
+    const paddle::experimental::Tensor& target) {
   return unsafe_autograd_meta(target)->OutRankInfo();
 }
 
-std::shared_ptr<GradNodeBase> EagerUtils::grad_node(const pt::Tensor& target) {
+std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
+    const paddle::experimental::Tensor& target) {
   return unsafe_autograd_meta(target)->GetMutableGradNode();
 }
 
-bool EagerUtils::IsLeafTensor(const pt::Tensor& target) {
+bool EagerUtils::IsLeafTensor(const paddle::experimental::Tensor& target) {
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
   if (std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
     return true;
@@ -118,12 +121,10 @@ void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
   autograd_meta->SetGradNode(grad_node);
 }
 
-pt::Tensor EagerUtils::CreateTensorWithValue(const pt::DDim& ddim,
-                                             const pt::Backend& backend,
-                                             const pt::DataType& dtype,
-                                             const pt::DataLayout& layout,
-                                             double value, bool is_leaf) {
-  pt::Tensor out = pt::Tensor();
+paddle::experimental::Tensor EagerUtils::CreateTensorWithValue(
+    const pt::DDim& ddim, const pt::Backend& backend, const pt::DataType& dtype,
+    const pt::DataLayout& layout, double value, bool is_leaf) {
+  paddle::experimental::Tensor out = paddle::experimental::Tensor();
   // Init tensor's autograo_meta
   auto meta = autograd_meta(&out);
   FillConstAPI(value, ddim, backend, dtype, layout, &out);

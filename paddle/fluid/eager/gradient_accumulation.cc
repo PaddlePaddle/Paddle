@@ -27,6 +27,7 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/tcmpt/api/all.h"
 #include "paddle/tcmpt/core/convert_utils.h"
+#include "paddle/tcmpt/hapi/all.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
@@ -139,7 +140,8 @@ void TensorAddImpl(const std::shared_ptr<pt::DenseTensor>& src,
   func(dev_ctx, *(src.get()), dst);
 }
 
-void TensorAdd(const pt::Tensor& src, pt::Tensor* dst) {
+void TensorAdd(const paddle::experimental::Tensor& src,
+               paddle::experimental::Tensor* dst) {
   // TODO(jiabin): Support other tensor type later
   std::shared_ptr<pt::DenseTensor> dst_tensor =
       std::dynamic_pointer_cast<pt::DenseTensor>(dst->impl());

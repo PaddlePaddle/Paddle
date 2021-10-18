@@ -44,17 +44,17 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<pt::Tensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  pt::Tensor& target_tensor = target_tensors[0];
+  paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
-  pt::Tensor leaf_tensor = pt::Tensor();
+  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // Create ScaleNode
     auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);

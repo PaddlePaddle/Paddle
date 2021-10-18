@@ -16,14 +16,14 @@
 
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/hapi/all.h"
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
-    const pt::Tensor& tensor);
+    const paddle::experimental::Tensor& tensor);
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
-    const std::vector<pt::Tensor>& tensors);
-std::vector<pt::Tensor> VarBasesToTensors(
+    const std::vector<paddle::experimental::Tensor>& tensors);
+std::vector<paddle::experimental::Tensor> VarBasesToTensors(
     const std::shared_ptr<paddle::imperative::VarBase>& var_base);
-std::vector<pt::Tensor> VarBasesToTensors(
+std::vector<paddle::experimental::Tensor> VarBasesToTensors(
     const std::vector<std::shared_ptr<paddle::imperative::VarBase>>& var_bases);
 
 std::vector<std::shared_ptr<paddle::imperative::VarBase>>

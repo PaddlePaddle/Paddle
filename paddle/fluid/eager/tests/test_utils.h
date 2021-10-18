@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/hapi/all.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/tensor_meta.h"
@@ -28,7 +28,8 @@
 namespace egr {
 
 template <typename T>
-bool CompareGradTensorWithValue(const pt::Tensor& target, T value) {
+bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
+                                T value) {
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
   auto grad_dense =
       std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
@@ -55,7 +56,8 @@ bool CompareGradTensorWithValue(const pt::Tensor& target, T value) {
 }
 
 template <typename T>
-bool CompareTensorWithValue(const pt::Tensor& target, T value) {
+bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
+                            T value) {
   auto dense_t = std::dynamic_pointer_cast<pt::DenseTensor>(target.impl());
   T* ptr = dense_t->mutable_data<T>();
 

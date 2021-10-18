@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/hapi/all.h"
 
 namespace egr {
 // Accumulation API
-void TensorAdd(const pt::Tensor& src, pt::Tensor* dst);
+void TensorAdd(const paddle::experimental::Tensor& src,
+               paddle::experimental::Tensor* dst);
 
 }  // namespace egr

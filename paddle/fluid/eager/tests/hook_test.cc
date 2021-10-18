@@ -33,7 +33,8 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
-pt::Tensor hook_function(const pt::Tensor& t) {
+paddle::experimental::Tensor hook_function(
+    const paddle::experimental::Tensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
 
   auto ret_meta = pt::TensorMeta(t_dense->dims(), t_dense->backend(),
@@ -48,7 +49,7 @@ pt::Tensor hook_function(const pt::Tensor& t) {
   }
 
   auto ret_impl = std::dynamic_pointer_cast<pt::TensorInterface>(ret_dense);
-  pt::Tensor ret = pt::Tensor();
+  paddle::experimental::Tensor ret = paddle::experimental::Tensor();
   ret.set_impl(ret_impl);
 
   return ret;
@@ -71,15 +72,15 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<pt::Tensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  pt::Tensor& target_tensor = target_tensors[0];
+  paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -95,14 +96,17 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   // Apply RetainGrad
   {
     // ScaleNode Hook: +3
-    std::function<pt::Tensor(const pt::Tensor&)> hook = &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     target_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+            auto_grad_meta));
 
     RegisterGradientHookForTensor(target_tensor, hook);
     RetainGradForTensor(target_tensor);  // result: 1.0 + 3.0 = 4.0
@@ -117,17 +121,20 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   }
 
   // Retain Grad for leaf tensor1
-  pt::Tensor leaf_tensor = pt::Tensor();
+  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
-    std::function<pt::Tensor(const pt::Tensor&)> hook = &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     leaf_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+            auto_grad_meta));
 
     RegisterGradientHookForTensor(leaf_tensor, hook);
     RetainGradForTensor(leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
@@ -164,15 +171,15 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<pt::Tensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  pt::Tensor& target_tensor = target_tensors[0];
+  paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -186,14 +193,17 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   // Apply RetainGrad
   {
     // ScaleNode Hook: +3
-    std::function<pt::Tensor(const pt::Tensor&)> hook = &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     target_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+            auto_grad_meta));
 
     RetainGradForTensor(target_tensor);  // result: 1.0
     RegisterGradientHookForTensor(target_tensor, hook);
@@ -208,17 +218,20 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   }
 
   // Retain Grad for leaf tensor1
-  pt::Tensor leaf_tensor = pt::Tensor();
+  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
-    std::function<pt::Tensor(const pt::Tensor&)> hook = &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     leaf_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+            auto_grad_meta));
 
     RetainGradForTensor(leaf_tensor);  // RetainGrad for leaf tensor gets
                                        // postponed, result: 4.0*5.0 + 3.0 =

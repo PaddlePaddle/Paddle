@@ -14,15 +14,15 @@
 
 #pragma once
 
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/hapi/all.h"
 
 namespace egr {
 
 // run_backward():
 // tensors corresponds to those lived in the backward graph
 // each grad_tensors[i] keeps the value for its corresponding tensors[i]
-void RunBackward(const std::vector<pt::Tensor> &tensors,
-                 const std::vector<pt::Tensor> &grad_tensors,
+void RunBackward(const std::vector<paddle::experimental::Tensor> &tensors,
+                 const std::vector<paddle::experimental::Tensor> &grad_tensors,
                  bool retain_graph = false);
 
 // Reserved for gradient()

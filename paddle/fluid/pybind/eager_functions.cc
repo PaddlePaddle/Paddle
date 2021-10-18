@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/api/include/core.h"
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/dtype.h"
@@ -120,7 +120,7 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
 
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
-  pt::Tensor ret =
+  paddle::experimental::Tensor ret =
       egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
                      ->eagertensor,
                  CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
@@ -195,7 +195,7 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
                                      PyObject* kwargs) {
   PyObject* data = PyTuple_GET_ITEM(args, 0);
   auto str_dtype = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
-  pt::DataType dtype = pt::String2DataTyep(str_dtype);
+  pt::DataType dtype = pt::String2DataType(str_dtype);
   int place_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 2), 2);
   int device_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 3), 3);
   bool stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);

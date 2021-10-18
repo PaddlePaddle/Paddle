@@ -42,8 +42,9 @@ namespace egr {
 /* --------------------- */
 /* ---- Eager Scale ---- */
 /* --------------------- */
-void benchmark_eager_scale_accuracy_check(const pt::Tensor& tensor) {
-  pt::Tensor input_tensor = tensor;
+void benchmark_eager_scale_accuracy_check(
+    const paddle::experimental::Tensor& tensor) {
+  paddle::experimental::Tensor input_tensor = tensor;
   float scale = 2.0;
   float bias = 3.0;
 
@@ -54,7 +55,7 @@ void benchmark_eager_scale_accuracy_check(const pt::Tensor& tensor) {
                    true /*trace_backward*/);
   }
 
-  std::vector<pt::Tensor> target_tensors = {input_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor};
   RunBackward(target_tensors, {});
 
   // Examine Forward Grad (w.r.t max_num_runs = 10)
@@ -67,8 +68,8 @@ void benchmark_eager_scale_accuracy_check(const pt::Tensor& tensor) {
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
 }
 
-void benchmark_eager_scale(const pt::Tensor& tensor) {
-  pt::Tensor input_tensor = tensor;
+void benchmark_eager_scale(const paddle::experimental::Tensor& tensor) {
+  paddle::experimental::Tensor input_tensor = tensor;
   float scale = 2.0;
   float bias = 3.0;
 
@@ -78,16 +79,17 @@ void benchmark_eager_scale(const pt::Tensor& tensor) {
                    true /*trace_backward*/);
   }
 
-  std::vector<pt::Tensor> target_tensors = {input_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor};
   RunBackward(target_tensors, {});
 }
 
 /* ----------------------------------- */
 /* ---- Eager Intermediate Matmul ---- */
 /* ----------------------------------- */
-void benchmark_eager_intermediate_matmul_accuracy_check(const pt::Tensor& X,
-                                                        const pt::Tensor& Y) {
-  pt::Tensor input_tensor0 = X;
+void benchmark_eager_intermediate_matmul_accuracy_check(
+    const paddle::experimental::Tensor& X,
+    const paddle::experimental::Tensor& Y) {
+  paddle::experimental::Tensor input_tensor0 = X;
 
   size_t max_num_runs = 2;
   for (size_t i = 0; i < max_num_runs; i++) {
@@ -98,7 +100,7 @@ void benchmark_eager_intermediate_matmul_accuracy_check(const pt::Tensor& X,
         "" /*op_device*/, false /*with_quant_attr*/, true /*trace_backward*/);
   }
 
-  std::vector<pt::Tensor> target_tensors = {input_tensor0};
+  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
   RunBackward(target_tensors, {});
 
   // Examine Forward Grad (w.r.t max_num_runs = 2)
@@ -114,9 +116,10 @@ void benchmark_eager_intermediate_matmul_accuracy_check(const pt::Tensor& X,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
 }
 
-void benchmark_eager_intermediate_matmul(const pt::Tensor& X,
-                                         const pt::Tensor& Y) {
-  pt::Tensor input_tensor0 = X;
+void benchmark_eager_intermediate_matmul(
+    const paddle::experimental::Tensor& X,
+    const paddle::experimental::Tensor& Y) {
+  paddle::experimental::Tensor input_tensor0 = X;
   for (size_t i = 0; i < max_num_benchmark_runs; i++) {
     input_tensor0 = matmul_v2_dygraph_function(
         input_tensor0, Y, false /*trans_x*/, false /*trans_y*/,
@@ -125,7 +128,7 @@ void benchmark_eager_intermediate_matmul(const pt::Tensor& X,
         "" /*op_device*/, false /*with_quant_attr*/, true /*trace_backward*/);
   }
 
-  std::vector<pt::Tensor> target_tensors = {input_tensor0};
+  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
   RunBackward(target_tensors, {});
 }
 

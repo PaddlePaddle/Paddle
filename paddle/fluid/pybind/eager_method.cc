@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/api/include/core.h"
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/dtype.h"

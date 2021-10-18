@@ -41,7 +41,7 @@ TEST(Generated, Sigmoid) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       0.0, true);
   RetainGradForTensor(tensor);
@@ -55,7 +55,7 @@ TEST(Generated, Sigmoid) {
       CompareTensorWithValue<float>(output_tensor, 0.5) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 0.5));
 
-  std::vector<pt::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
   RunBackward(target_tensors, {});
 
   PADDLE_ENFORCE(
@@ -72,13 +72,13 @@ TEST(Generated, Matmul_v2) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
-  pt::Tensor X = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor X = EagerUtils::CreateTensorWithValue(
       ddimX, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       3.0, true);
   RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = paddle::framework::make_ddim({16, 20});
-  pt::Tensor Y = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor Y = EagerUtils::CreateTensorWithValue(
       ddimY, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       2.0, true);
   RetainGradForTensor(Y);
@@ -93,7 +93,7 @@ TEST(Generated, Matmul_v2) {
       CompareTensorWithValue<float>(output_tensor, 96) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 96));
 
-  std::vector<pt::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
 
   RunBackward(target_tensors, {});
 

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/api/include/core.h"
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/dtype.h"
@@ -153,7 +153,7 @@ PyObject* ToPyObject(const std::string& value) {
   return PyUnicode_FromString(value.c_str());
 }
 
-PyObject* ToPyObject(const pt::Tensor& value) {
+PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
   PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
@@ -215,7 +215,7 @@ PyObject* ToPyObject(const std::vector<double>& value) {
   return result;
 }
 
-PyObject* ToPyObject(const std::vector<pt::Tensor>& value) {
+PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {

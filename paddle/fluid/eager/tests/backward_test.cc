@@ -41,11 +41,12 @@ TEST(Backward, SingleNodeEmptyGrad) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  pt::Tensor target_tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor target_tensor =
+      EagerUtils::CreateTensorWithValue(
+          ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32,
+          pt::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
 
-  pt::Tensor leaf_tensor;
+  paddle::experimental::Tensor leaf_tensor;
   {
     // Create Scale Node
     auto node0_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -75,7 +76,7 @@ TEST(Backward, SingleNodeEmptyGrad) {
     meta.SetGradNode(acc_node_ptr);
     node0_ptr->AddEdges({&meta}, 0);
   }
-  std::vector<pt::Tensor> outs = {target_tensor};
+  std::vector<paddle::experimental::Tensor> outs = {target_tensor};
   // Run Backward
   RunBackward(outs, {});
 
@@ -90,23 +91,23 @@ TEST(Backward, SingleNodeCustomGrad) {
   InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<pt::Tensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
 
-  std::vector<pt::Tensor> grad_tensors;
+  std::vector<paddle::experimental::Tensor> grad_tensors;
   // Create Grad Tensor
-  pt::Tensor grad_tensor = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor grad_tensor = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor));
 
-  pt::Tensor leaf_tensor;
+  paddle::experimental::Tensor leaf_tensor;
   {
     // Create Scale Node
     auto node0_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -160,16 +161,16 @@ TEST(Backward, LinearNodes) {
   InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<pt::Tensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
 
-  pt::Tensor leaf_tensor;
+  paddle::experimental::Tensor leaf_tensor;
   {
     // Create Node0
     auto node0_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -239,28 +240,28 @@ TEST(Backward, WithAccumulation) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  std::vector<pt::Tensor> target_tensors;
-  pt::Tensor tensor0 = EagerUtils::CreateTensorWithValue(
+  std::vector<paddle::experimental::Tensor> target_tensors;
+  paddle::experimental::Tensor tensor0 = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
-  pt::Tensor tensor1 = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor1 = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor0));
   target_tensors.emplace_back(std::move(tensor1));
 
   // Create Grad Tensor
-  std::vector<pt::Tensor> grad_tensors;
-  pt::Tensor grad_tensor0 = EagerUtils::CreateTensorWithValue(
+  std::vector<paddle::experimental::Tensor> grad_tensors;
+  paddle::experimental::Tensor grad_tensor0 = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       5.0 /*value*/, false /*is_leaf*/);
-  pt::Tensor grad_tensor1 = EagerUtils::CreateTensorWithValue(
+  paddle::experimental::Tensor grad_tensor1 = EagerUtils::CreateTensorWithValue(
       ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
       10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor0));
   grad_tensors.emplace_back(std::move(grad_tensor1));
 
-  pt::Tensor leaf_tensor;
+  paddle::experimental::Tensor leaf_tensor;
   {
     // Create Node0
     auto node0_ptr = std::make_shared<GradNodeScale>(1, 1);

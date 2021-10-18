@@ -32,7 +32,8 @@ namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
-  explicit TensorWrapper(const pt::Tensor& tensor, bool full_reserved = false) {
+  explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
+                         bool full_reserved = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
@@ -54,11 +55,12 @@ class TensorWrapper {
     out_rank_info_ = EagerUtils::OutRankInfo(tensor);
   }
 
-  pt::Tensor recover(const std::shared_ptr<GradNodeBase>& grad_node) {
+  paddle::experimental::Tensor recover(
+      const std::shared_ptr<GradNodeBase>& grad_node) {
     VLOG(6) << "Recover tensor for wrapper";
     if (!intermidiate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
-      return pt::Tensor();
+      return paddle::experimental::Tensor();
     }
 
     // if it's full_reserved just return the full copy of tensor
@@ -69,7 +71,7 @@ class TensorWrapper {
       auto p_ab_autograd_meta =
           std::make_shared<AutogradMeta>(Edge(new_grad_node, out_rank_info_));
       intermidiate_tensor_.set_autograd_meta(
-          std::static_pointer_cast<pt::AbstractAutogradMeta>(
+          std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
               p_ab_autograd_meta));
       return intermidiate_tensor_;
     }
@@ -78,6 +80,6 @@ class TensorWrapper {
  private:
   bool full_reserved_ = false;
   std::pair<size_t, size_t> out_rank_info_;
-  pt::Tensor intermidiate_tensor_;
+  paddle::experimental::Tensor intermidiate_tensor_;
 };
 }  // namespace egr

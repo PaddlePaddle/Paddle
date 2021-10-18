@@ -20,7 +20,7 @@
 
 /* ---- Tensor -> VarBase ---- */
 static std::shared_ptr<paddle::imperative::VarBase> TensorToVarBase(
-    const pt::Tensor& tensor) {
+    const paddle::experimental::Tensor& tensor) {
   // Create imperative::VarBase with underlying type of framework::Tensor
   auto var_base = std::make_shared<paddle::imperative::VarBase>(
       false /*has_grad*/, "whatever" /*name*/);
@@ -32,30 +32,30 @@ static std::shared_ptr<paddle::imperative::VarBase> TensorToVarBase(
   framework_tensor->set_layout(pt::TransToFluidDataLayout(tensor.layout()));
 
   std::shared_ptr<pt::TensorInterface> tensor_interface = tensor.impl();
-  // Contruct framework::Tensor from pt::Tensor
+  // Contruct framework::Tensor from paddle::experimental::Tensor
   if (auto tensor_dense =
           std::dynamic_pointer_cast<pt::DenseTensor>(tensor_interface)) {
     paddle::framework::ShareTensorImpl<pt::DenseTensor>(tensor_dense.get(),
                                                         framework_tensor);
 
   } else {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("Unrecognized pt::Tensor type, only "
-                                        "DenseTensor is supported for now."));
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Unrecognized paddle::experimental::Tensor type, only "
+        "DenseTensor is supported for now."));
   }
   return var_base;
 }
 
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
-    const pt::Tensor& tensor) {
+    const paddle::experimental::Tensor& tensor) {
   return {TensorToVarBase(tensor)};
 }
 
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
-    const std::vector<pt::Tensor>& tensors) {
+    const std::vector<paddle::experimental::Tensor>& tensors) {
   std::vector<std::shared_ptr<paddle::imperative::VarBase>> var_bases;
 
-  for (const pt::Tensor& tensor : tensors) {
+  for (const paddle::experimental::Tensor& tensor : tensors) {
     var_bases.emplace_back(std::move(TensorToVarBase(tensor)));
   }
 
@@ -63,7 +63,7 @@ std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
 }
 
 /* ---- VarBase -> Tensor ---- */
-pt::Tensor VarBaseToTensor(
+paddle::experimental::Tensor VarBaseToTensor(
     const std::shared_ptr<paddle::imperative::VarBase>& var_base) {
   // Get Underlying Tensor from VarBase
   paddle::framework::Variable* var = var_base->MutableVar();
@@ -100,18 +100,18 @@ pt::Tensor VarBaseToTensor(
                                                         pt::TensorStatus());
   tensor_dense->ShareAllocation(allocation);
 
-  return pt::Tensor(tensor_dense);
+  return paddle::experimental::Tensor(tensor_dense);
 }
 
-std::vector<pt::Tensor> VarBasesToTensors(
+std::vector<paddle::experimental::Tensor> VarBasesToTensors(
     const std::shared_ptr<paddle::imperative::VarBase>& var_base) {
   return {VarBaseToTensor(var_base)};
 }
 
-std::vector<pt::Tensor> VarBasesToTensors(
+std::vector<paddle::experimental::Tensor> VarBasesToTensors(
     const std::vector<std::shared_ptr<paddle::imperative::VarBase>>&
         var_bases) {
-  std::vector<pt::Tensor> tensors;
+  std::vector<paddle::experimental::Tensor> tensors;
 
   for (const std::shared_ptr<paddle::imperative::VarBase>& var_base :
        var_bases) {

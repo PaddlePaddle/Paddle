@@ -18,7 +18,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/math/blas.h"
+// #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/complex.h"
 
 namespace pt {

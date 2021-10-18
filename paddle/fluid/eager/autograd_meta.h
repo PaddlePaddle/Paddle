@@ -18,7 +18,7 @@
 
 namespace egr {
 
-using AbstractAutogradMeta = pt::AbstractAutogradMeta;
+using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
 /**
  *
  * AutogradMeta is what record the backward info for tensor. When we run
@@ -75,9 +75,9 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   ~AutogradMeta() override = default;
 
-  const pt::Tensor& Grad() const { return grad_; }
+  const paddle::experimental::Tensor& Grad() const { return grad_; }
 
-  pt::Tensor* MutableGrad() { return &grad_; }
+  paddle::experimental::Tensor* MutableGrad() { return &grad_; }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
@@ -118,7 +118,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
-  pt::Tensor grad_;
+  paddle::experimental::Tensor grad_;
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy
@@ -226,18 +226,21 @@ class EagerUtils {
  public:
   /**
    * We have to use autograd_meta and multi_autograd_meta to initialize
-   * autograd_meta for tensor, since we can't init it in pt::Tensor's
+   * autograd_meta for tensor, since we can't init it in
+   * paddle::experimental::Tensor's
    * constructor (it's abstract class there)
    *
    * **/
-  static AutogradMeta* autograd_meta(pt::Tensor* target);
+  static AutogradMeta* autograd_meta(paddle::experimental::Tensor* target);
 
   static std::vector<AutogradMeta*> multi_autograd_meta(
-      std::vector<pt::Tensor>* targets);
+      std::vector<paddle::experimental::Tensor>* targets);
 
-  static std::pair<size_t, size_t> OutRankInfo(const pt::Tensor& target);
+  static std::pair<size_t, size_t> OutRankInfo(
+      const paddle::experimental::Tensor& target);
 
-  static std::shared_ptr<GradNodeBase> grad_node(const pt::Tensor& target);
+  static std::shared_ptr<GradNodeBase> grad_node(
+      const paddle::experimental::Tensor& target);
 
   static bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
                                  AutogradMeta** outs, size_t outs_num,
@@ -248,7 +251,7 @@ class EagerUtils {
 
   // If and only if the tensor holds an AccumulationNode
   // Then it's treated as a leaf tensor
-  static bool IsLeafTensor(const pt::Tensor& target);
+  static bool IsLeafTensor(const paddle::experimental::Tensor& target);
 
   // Set history is used to set backward info during forward process, it will
   // set forward var's autograd meta's grad node as current backward node.
@@ -257,11 +260,10 @@ class EagerUtils {
   static void SetHistory(AutogradMeta* autograd_meta,
                          const std::shared_ptr<GradNodeBase>& grad_node);
 
-  static pt::Tensor CreateTensorWithValue(const pt::DDim& ddim,
-                                          const pt::Backend& backend,
-                                          const pt::DataType& dtype,
-                                          const pt::DataLayout& layout,
-                                          double value, bool is_leaf = true);
+  static paddle::experimental::Tensor CreateTensorWithValue(
+      const pt::DDim& ddim, const pt::Backend& backend,
+      const pt::DataType& dtype, const pt::DataLayout& layout, double value,
+      bool is_leaf = true);
   // This is used for Set vector of tensors' rank
   static void SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
                                       size_t slot_id);
@@ -270,9 +272,10 @@ class EagerUtils {
   static void SetOutRankWithSlot(AutogradMeta* target, size_t slot_id);
 
   // This method will return an AutogradMeta pointer unsafely.
-  static AutogradMeta* unsafe_autograd_meta(const pt::Tensor& target);
+  static AutogradMeta* unsafe_autograd_meta(
+      const paddle::experimental::Tensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
-      std::vector<pt::Tensor>* targets);
+      std::vector<paddle::experimental::Tensor>* targets);
 };
 
 }  // namespace egr
