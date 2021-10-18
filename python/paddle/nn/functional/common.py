@@ -1662,7 +1662,8 @@ def fused_multihead_attention_cudnn_impl(x,
             'attn_qo_seqlen', attn_qo_seqlen,
             'attn_kv_seqlen', attn_kv_seqlen)
         #return ln_out, out_linear_out, bias_dropout_residual_out, final_out
-        return ln_out, out_linear_out, final_out
+        #return ln_out, out_linear_out, final_out
+        return final_out
     else:
         helper = LayerHelper('fused_multihead_attention_cudnn_impl', **locals())
         dtype = x.dtype
