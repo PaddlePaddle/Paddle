@@ -417,7 +417,7 @@ TETRAD_PARALLEL_JOB_NEW = [
     'test_fusion_group_op', 'test_imperative_layer_apply',
     'test_executor_return_tensor_not_overwriting',
     'test_optimizer_in_control_flow', 'test_lookup_table_op', 'test_randint_op',
-    'test_randint_like_op', 'test_convert_call',
+    'test_randint_like', 'test_convert_call',
     'test_sigmoid_cross_entropy_with_logits_op', 'copy_cross_scope_test',
     'test_normalization_wrapper', 'test_pretrained_model', 'test_flip',
     'test_cosine_similarity_api', 'test_cumsum_op', 'test_range',
