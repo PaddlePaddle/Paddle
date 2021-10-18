@@ -349,7 +349,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
       argmax(ctx, alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
-      historys.push_back(alpha_argmax_temp);
+      historys.emplace_back(alpha_argmax_temp);
       AddFloat(dev_ctx, alpha_max, logit, &alpha_nxt);
       alpha.Resize({batch_size, n_labels});
       // mask = paddle.cast((left_length > 0), dtype='float32')
