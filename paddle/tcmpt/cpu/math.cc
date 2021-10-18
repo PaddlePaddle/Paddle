@@ -69,11 +69,11 @@ PT_REGISTER_MODULE(MathCPU);
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::paddle::platform::bfloat16;
 
-PT_REGISTER_KERNEL("sign", CPU, NCHW, pt::Sign, float, double) {}
-PT_REGISTER_KERNEL("mean", CPU, NCHW, pt::Mean, float, double) {}
+PT_REGISTER_KERNEL("sign", CPU, Any, pt::Sign, float, double) {}
+PT_REGISTER_KERNEL("mean", CPU, Any, pt::Mean, float, double) {}
 PT_REGISTER_KERNEL("scale",
                    CPU,
-                   NCHW,
+                   Any,
                    pt::Scale,
                    float,
                    double,
@@ -85,7 +85,7 @@ PT_REGISTER_KERNEL("scale",
                    int64_t) {}
 PT_REGISTER_KERNEL("scale.host",
                    CPU,
-                   NCHW,
+                   Any,
                    pt::ScaleHost,
                    float,
                    double,

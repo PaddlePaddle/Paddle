@@ -51,6 +51,11 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
                         "The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_key.layout() != pt::DataLayout::kAny) {
+    pt::KernelKey any_layout_kernel_key(
+        kernel_key.backend(), pt::DataLayout::kAny, kernel_key.dtype());
+    kernel_iter = iter->second.find(any_layout_kernel_key);
+  }
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),

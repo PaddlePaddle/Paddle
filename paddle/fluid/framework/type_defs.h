@@ -17,11 +17,13 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/small_vector.h"
 
 namespace paddle {
 namespace framework {
@@ -81,6 +83,14 @@ using InferShapeFN = std::function<void(InferShapeContext*)>;
 
 using InplacePair = std::unordered_map<std::string, std::string>;
 using InferInplaceOpFN = std::function<InplacePair(bool /*use_cuda*/)>;
+
+// tuple(input_names, attr_names, output_names)
+using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
+                                   paddle::SmallVector<std::string>,
+                                   paddle::SmallVector<std::string>>;
+// TODD(yuanrisheng): impl implicit overload signature, use KernelArgsTuple
+// directly
+using KernelSignature = std::pair<std::string, KernelArgsTuple>;
 
 }  // namespace framework
 }  // namespace paddle

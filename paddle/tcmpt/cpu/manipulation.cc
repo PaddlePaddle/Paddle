@@ -60,7 +60,7 @@ PT_REGISTER_MODULE(ManipulationCPU);
 // architecture, kernel_name should be "flatten".
 PT_REGISTER_KERNEL("flatten_contiguous_range",
                    CPU,
-                   NCHW,
+                   Any,
                    pt::Flatten,
                    float,
                    double,
@@ -71,7 +71,7 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
 
 PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    CPU,
-                   NCHW,
+                   Any,
                    pt::FlattenWithXShape,
                    float,
                    double,

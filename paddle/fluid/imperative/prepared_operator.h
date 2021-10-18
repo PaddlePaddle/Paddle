@@ -21,11 +21,11 @@
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/fluid/imperative/kernel_args_names_maker.h"
 #include "paddle/tcmpt/api/include/core.h"
 
 DECLARE_bool(use_mkldnn);
@@ -152,8 +152,9 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const pt::KernelKey& pt_kernel_key, const pt::Kernel& pt_kernel,
-             platform::DeviceContext* dev_ctx);
+             const framework::OpKernelType& kernel_type,
+             const framework::KernelSignature& kernel_signature,
+             const pt::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -186,10 +187,11 @@ class PreparedOp {
   framework::OpKernelType kernel_type_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
-  // TODo(chenweihang): Similar duplicate members are used for new tcmpt lib,
-  // maybe we have better impl methods
+  // NOTE(chenweihang): Similar op members are used to adapt to
+  // new tcmpt kernel, if there is a better design in the future,
+  // we may polish the implementation here
   bool run_pt_kernel_{false};
-  pt::KernelKey pt_kernel_key_;
+  framework::KernelSignature pt_kernel_signature_;
   pt::Kernel pt_kernel_;
 };
 
