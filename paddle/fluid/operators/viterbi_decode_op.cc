@@ -51,13 +51,11 @@ class ViterbiDecodeOp : public framework::OperatorWithKernel {
           in_dims[0], length_dims[0],
           platform::errors::InvalidArgument(
               "The batch size of Input and Length should be equal."));
-      PADDLE_ENFORCE_EQ(
-          in_dims[2], transition_dims[0],
-          platform::errors::InvalidArgument(
-              "The number of tags of Input and Transition should be equal, the "
-              "number of tags"
-              " of Transition equals to %d, but the tags of Input equals to %d",
-              transition_dims[0], in_dims[2]));
+      PADDLE_ENFORCE_EQ(in_dims[2], transition_dims[0],
+                        platform::errors::InvalidArgument(
+                            "The number of tags of Input (%d) and Transition "
+                            "(%d) should be equal.",
+                            transition_dims[0], in_dims[2]));
     }
     ctx->SetOutputDim("Scores", length_dims);
   }

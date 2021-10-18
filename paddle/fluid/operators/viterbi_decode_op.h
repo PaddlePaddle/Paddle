@@ -249,17 +249,17 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
     std::vector<Tensor> historys;
-    // create int tensor buffer
-    int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
-                      15 * batch_size + 10;
+    // We create tensor buffer in order to avoid allocating memory frequently
+    // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
+    int buffer_size = batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
     LoDTensor int_buffer;
     int_buffer.Resize(framework::make_ddim({buffer_size}));
     int_buffer.mutable_data<int64_t>(ctx.GetPlace());
     TensorBuffer int_tensor_buffer(int_buffer);
     // create float tensor buffer
-    buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
-                  2 * n_labels * n_labels + batch_size * n_labels * n_labels +
-                  3 * batch_size + 1;
+    // 10 means allocate 10*batch_size*n_labels bytes, such as alpha, alpha_max
+    buffer_size = batch_size * (seq_len + 10) * n_labels +
+                  (batch_size + 2) * n_labels * n_labels;
     LoDTensor float_buffer;
     float_buffer.Resize(framework::make_ddim({buffer_size}));
     float_buffer.mutable_data<T>(ctx.GetPlace());
@@ -308,24 +308,20 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor zero_len_mask = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
-    Tensor stop_trans_exp =
-        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
-    Tensor start_trans_exp =
-        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
-    Tensor rest_trans_exp =
+    Tensor stop_trans = float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    Tensor start_trans = float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    Tensor rest_trans =
         float_tensor_buffer.GetBufferBlock({1, n_labels - 2, n_labels});
     Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor last_ids_tmp = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
-    std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
-                                           &start_trans_exp};
-    std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
-                                 &start_trans_exp};
+    std::vector<const Tensor*> shape{&rest_trans, &stop_trans, &start_trans};
+    std::vector<Tensor*> outputs{&rest_trans, &stop_trans, &start_trans};
     math::SplitFunctor<DeviceContext, T> split_functor;
-    split_functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
-    stop_trans_exp.Resize({1, n_labels});
-    start_trans_exp.Resize({1, n_labels});
+    split_functor(dev_ctx, trans_exp, shape, 1, &outputs);
+    stop_trans.Resize({1, n_labels});
+    start_trans.Resize({1, n_labels});
     auto logit0 = input_exp.Slice(0, 1);
     logit0.Resize({batch_size, n_labels});
     BinaryOperation<DeviceContext, AddFunctor, T> AddFloat;
@@ -335,10 +331,10 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     BinaryOperation<DeviceContext, SubFunctor, T> SubFloat;
     BinaryOperation<DeviceContext, SubFunctor, int64_t> SubInt;
     if (include_start_end_tag) {
-      AddFloat(dev_ctx, logit0, start_trans_exp, &alpha);
+      AddFloat(dev_ctx, logit0, start_trans, &alpha);
       GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
                                                 &float_mask);
-      MulFloat(dev_ctx, stop_trans_exp, float_mask, &alpha_nxt);
+      MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
       AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
     } else {
       alpha = logit0;
@@ -368,19 +364,16 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       MulFloat(dev_ctx, alpha, float_mask, &alpha);
       // alpha += alpha_nxt
       AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
-      if (include_start_end_tag) {  // cost 10% time
+      if (include_start_end_tag) {
         GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
                                                   &float_mask);
-        // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
-        MulFloat(dev_ctx, stop_trans_exp, float_mask, &alpha_nxt);
+        MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
         AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
       }
       SubInt(dev_ctx, left_length, one, &left_length);
     }
-    // scores, last_ids = alpha.max(1), alpha.argmax(1)
     argmax(ctx, alpha, &last_ids, scores, 1);
-    // tag_mask = paddle.cast((left_length >= 0), 'int64')
     left_length.Resize({batch_size});
     GetMask<DeviceContext, GreaterEqualFunctor, int64_t>()(ctx, left_length,
                                                            zero, &int_mask);

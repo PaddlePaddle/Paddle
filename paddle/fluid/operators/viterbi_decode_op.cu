@@ -25,12 +25,40 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-#define CUDA_ARGMAX(kBlockDim)                                           \
-  do {                                                                   \
-    ArgmaxCUDAKernel<T, IndType,                                         \
-                     kBlockDim><<<grid_size, kBlockDim, 0, cu_stream>>>( \
-        height, width, post, in_data, out_idx_data, out_data);           \
-  } while (0)
+#define FIXED_BLOCK_DIM_CASE_BASE(log2_block_dim, ...)  \
+  case (1 << (log2_block_dim)): {                       \
+    constexpr auto kBlockDim = (1 << (log2_block_dim)); \
+    __VA_ARGS__;                                        \
+  } break
+
+#define FIXED_BLOCK_DIM_CASE(...)               \
+  FIXED_BLOCK_DIM_CASE_BASE(10, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_CASE_BASE(9, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_CASE_BASE(8, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_CASE_BASE(7, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_CASE_BASE(6, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_CASE_BASE(5, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_CASE_BASE(4, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_CASE_BASE(3, ##__VA_ARGS__);
+
+int64_t ComputeBlockSize(int64_t col) {
+  if (col > 512)
+    return 1024;
+  else if (col > 256)
+    return 512;
+  else if (col > 128)
+    return 256;
+  else if (col > 64)
+    return 128;
+  else if (col > 32)
+    return 64;
+  else if (col > 16)
+    return 32;
+  else if (col > 8)
+    return 16;
+  else
+    return 8;
+}
 
 template <template <typename T> typename BinaryFunctor, typename T>
 struct BinaryOperation<platform::CUDADeviceContext, BinaryFunctor, T> {
@@ -82,9 +110,9 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
   }
 }
 
-__global__ void ARangeKernel(int64_t* data, int end, int64_t scale) {
+__global__ void ARangeKernel(int64_t* data, int num, int64_t scale) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int start = idx; idx < end; idx += gridDim.x) {
+  for (int start = idx; idx < num; idx += gridDim.x) {
     data[idx] = idx * scale;
   }
 }
@@ -92,8 +120,10 @@ __global__ void ARangeKernel(int64_t* data, int end, int64_t scale) {
 template <>
 struct ARange<platform::CUDADeviceContext> {
   void operator()(const platform::CUDADeviceContext& dev_ctx, int64_t* data,
-                  int end, int64_t scale) {
-    ARangeKernel<<<1, 128, 0, dev_ctx.stream()>>>(data, end, scale);
+                  int num, int64_t scale) {
+    int64_t kBlockDim = ComputeBlockSize(num);
+    // kBlockDim > num at most of time, so we can set grid = 1
+    ARangeKernel<<<1, kBlockDim, 0, dev_ctx.stream()>>>(data, num, scale);
   }
 };
 
@@ -119,11 +149,15 @@ struct Argmax<platform::CUDADeviceContext, T, IndType> {
     int64_t height = pre * post;
     int64_t width = n;
     int64_t grid_size = height < max_grid_dimx ? height : max_grid_dimx;
-
     const T* in_data = input.data<T>();
     IndType* out_idx_data = out_idx->data<IndType>();
     T* out_data = out->data<T>();
-    CUDA_ARGMAX(128);
+    switch (ComputeBlockSize(width)) {
+      FIXED_BLOCK_DIM_CASE(
+          ArgmaxCUDAKernel<T, IndType,
+                           kBlockDim><<<grid_size, kBlockDim, 0, cu_stream>>>(
+              height, width, post, in_data, out_idx_data, out_data));
+    }
   }
 };
 
@@ -134,9 +168,13 @@ struct GetMaxValue<platform::CUDADeviceContext, T> {
     Tensor out_data;
     out_data.Resize(framework::make_ddim({1}));
     out_data.mutable_data<T>(platform::CUDAPlace());
-    ArgmaxCUDAKernel<T, T, 32><<<1, 32, 0, dev_ctx.stream()>>>(
-        1, input.numel(), 1, input.data<int64_t>(), nullptr,
-        out_data.data<int64_t>());
+    switch (ComputeBlockSize(input.numel())) {
+      FIXED_BLOCK_DIM_CASE(
+          ArgmaxCUDAKernel<T, T,
+                           kBlockDim><<<1, kBlockDim, 0, dev_ctx.stream()>>>(
+              1, input.numel(), 1, input.data<int64_t>(), nullptr,
+              out_data.data<int64_t>()));
+    }
     Tensor max_value_tensor;
     framework::TensorCopy(out_data, platform::CPUPlace(), &max_value_tensor);
     *max_value = max_value_tensor.data<T>()[0];
