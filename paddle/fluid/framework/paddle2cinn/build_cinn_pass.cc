@@ -201,7 +201,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 
   AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, sub_graph.get());
   AddParamVar(param_vars, cluster, old_op2new_op, sub_graph.get());
-  AddOutputVar(param_vars, cluster, old_op2new_op, sub_graph.get());
+  AddOutputVar(output_vars, cluster, old_op2new_op, sub_graph.get());
 
   for (auto* var : cluster_internals) {
     for (auto* op : var->inputs) {
