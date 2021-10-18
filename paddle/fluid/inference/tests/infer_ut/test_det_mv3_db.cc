@@ -34,45 +34,6 @@ paddle::test::Record PrepareInput(int batch_size, int image_shape = 640) {
 
 void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
   // set dynamic shape range
-  // std::map<std::string, std::vector<int>> min_input_shape = {
-  //     {"x", {1, 3, 50, 50}},
-  //     {"conv2d_92.tmp_0", {1, 120, 20, 20}},
-  //     {"conv2d_91.tmp_0", {1, 24, 10, 10}},
-  //     {"conv2d_59.tmp_0", {1, 96, 20, 20}},
-  //     {"nearest_interp_v2_1.tmp_0", {1, 256, 10, 10}},
-  //     {"nearest_interp_v2_2.tmp_0", {1, 256, 20, 20}},
-  //     {"conv2d_124.tmp_0", {1, 256, 20, 20}},
-  //     {"nearest_interp_v2_3.tmp_0", {1, 64, 20, 20}},
-  //     {"nearest_interp_v2_4.tmp_0", {1, 64, 20, 20}},
-  //     {"nearest_interp_v2_5.tmp_0", {1, 64, 20, 20}},
-  //     {"elementwise_add_7", {1, 56, 2, 2}},
-  //     {"nearest_interp_v2_0.tmp_0", {1, 256, 2, 2}}};
-  // std::map<std::string, std::vector<int>> max_input_shape = {
-  //     {"x", {max_batch_size, 3, 2000, 2000}},
-  //     {"conv2d_92.tmp_0", {max_batch_size, 120, 400, 400}},
-  //     {"conv2d_91.tmp_0", {max_batch_size, 24, 200, 200}},
-  //     {"conv2d_59.tmp_0", {max_batch_size, 96, 400, 400}},
-  //     {"nearest_interp_v2_1.tmp_0", {max_batch_size, 256, 200, 200}},
-  //     {"nearest_interp_v2_2.tmp_0", {max_batch_size, 256, 400, 400}},
-  //     {"conv2d_124.tmp_0", {max_batch_size, 256, 400, 400}},
-  //     {"nearest_interp_v2_3.tmp_0", {max_batch_size, 64, 400, 400}},
-  //     {"nearest_interp_v2_4.tmp_0", {max_batch_size, 64, 400, 400}},
-  //     {"nearest_interp_v2_5.tmp_0", {max_batch_size, 64, 400, 400}},
-  //     {"elementwise_add_7", {max_batch_size, 56, 400, 400}},
-  //     {"nearest_interp_v2_0.tmp_0", {max_batch_size, 256, 400, 400}}};
-  // std::map<std::string, std::vector<int>> opt_input_shape = {
-  //     {"x", {1, 3, 640, 640}},
-  //     {"conv2d_92.tmp_0", {1, 120, 160, 160}},
-  //     {"conv2d_91.tmp_0", {1, 24, 80, 80}},
-  //     {"conv2d_59.tmp_0", {1, 96, 160, 160}},
-  //     {"nearest_interp_v2_1.tmp_0", {1, 256, 80, 80}},
-  //     {"nearest_interp_v2_2.tmp_0", {1, 256, 160, 160}},
-  //     {"conv2d_124.tmp_0", {1, 256, 160, 160}},
-  //     {"nearest_interp_v2_3.tmp_0", {1, 64, 160, 160}},
-  //     {"nearest_interp_v2_4.tmp_0", {1, 64, 160, 160}},
-  //     {"nearest_interp_v2_5.tmp_0", {1, 64, 160, 160}},
-  //     {"elementwise_add_7", {1, 56, 40, 40}},
-  //     {"nearest_interp_v2_0.tmp_0", {1, 256, 40, 40}}};
   std::map<std::string, std::vector<int>> min_input_shape = {
       {"x", {1, 3, 50, 50}}};
   std::map<std::string, std::vector<int>> max_input_shape = {
