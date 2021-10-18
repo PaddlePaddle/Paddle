@@ -294,8 +294,8 @@ class AllocatorFacadePrivate {
 
     if (val > 0) {
       auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
-      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-          cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
+          cuda_allocator, platform::GpuMinChunkSize(), p);
     } else {
       auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(

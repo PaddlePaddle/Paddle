@@ -27,10 +27,12 @@ bool NeedSplit(size_t block_size, size_t alignment, size_t allock_size) {
 }
 
 AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
-    const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment)
+    const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
+    const platform::CUDAPlace &place)
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
-      alignment_(alignment) {}
+      alignment_(alignment),
+      place_(place) {}
 
 Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
   std::lock_guard<SpinLock> guard(spinlock_);
