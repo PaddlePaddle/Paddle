@@ -358,7 +358,7 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
-    half zero_tem = 0;
+    half zero_tem = static_cast<half>(0);
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
@@ -608,7 +608,7 @@ void MatmulPluginDynamic::configurePlugin(
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
-    half zero_tem = 0;
+    half zero_tem = static_cast<half>(0);
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
                     cudaMemcpyHostToDevice);

@@ -22,14 +22,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(cudnn_dir, "",
-              "Specify path for loading libcudnn.so. For instance, libcublasLt "
+              "Specify path for loading libcudnn.so. For instance, "
               "/usr/local/cudnn/lib. If empty [default], dlopen "
               "will search cudnn from LD_LIBRARY_PATH");
 
-DEFINE_string(cuda_dir, "",
-              "Specify path for loading cuda library, such as libcublas, "
-              "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
-              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+DEFINE_string(
+    cuda_dir, "",
+    "Specify path for loading cuda library, such as libcublas, libcublasLt "
+    "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+    "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libnccl.so. "
