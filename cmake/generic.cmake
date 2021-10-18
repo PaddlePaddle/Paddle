@@ -117,13 +117,13 @@ function(find_fluid_modules TARGET_NAME)
 endfunction(find_fluid_modules)
 
 set_property(GLOBAL PROPERTY TCMPT_MODULES "")
-# find all top modules is used for paddle static library
+# find all tcmpt modules is used for paddle static library
 # for building inference libs
 function(find_tcmpt_modules TARGET_NAME)
   get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
   string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
-  string(REGEX MATCH "\/top\/" result "${__target_path}")
-  if(NOT result STREQUAL "")
+  string(FIND "${__target_path}" "tcmpt" pos)
+  if(pos GREATER 1)
     get_property(tcmpt_modules GLOBAL PROPERTY TCMPT_MODULES)
     set(tcmpt_modules ${tcmpt_modules} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY TCMPT_MODULES "${tcmpt_modules}")

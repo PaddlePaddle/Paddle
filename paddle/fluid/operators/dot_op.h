@@ -21,8 +21,8 @@
 #include "paddle/fluid/platform/for_range.h"
 
 // only can include the headers in paddle/tcmpt/api dirs
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/linalg.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/linalg.h"
 
 namespace paddle {
 namespace operators {
@@ -233,6 +233,7 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
   }
 };
 
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class DotKernel : public framework::OpKernel<T> {
  public:
@@ -241,7 +242,7 @@ class DotKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<Tensor>("Y");
     auto* out = ctx.Output<Tensor>("Out");
     auto& dev_ctx = ctx.device_context<DeviceContext>();
-    out->mutable_data<T>(x->place(), x->type());
+    out->mutable_data<T>(x->place());
 
     auto pt_x =
         framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());

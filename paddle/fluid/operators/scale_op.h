@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tcmpt_utils.h"
 
 // only can include the headers in paddle/top/api dirs
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/math.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/math.h"
 
 namespace paddle {
 namespace operators {
@@ -36,6 +36,7 @@ static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
   return tensor_data[0];
 }
 
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class ScaleKernel : public framework::OpKernel<T> {
  public:
@@ -62,7 +63,7 @@ class ScaleKernel : public framework::OpKernel<T> {
 
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
-    out->mutable_data<T>(in->place(), in->type());
+    out->mutable_data<T>(in->place());
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     auto pt_x = framework::MakeTensorImpl<pt::DenseTensor>(*in, in->place(),

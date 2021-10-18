@@ -49,7 +49,7 @@ pt::Tensor hook_function(const pt::Tensor& t) {
 
   auto ret_impl = std::dynamic_pointer_cast<pt::TensorInterface>(ret_dense);
   pt::Tensor ret = pt::Tensor();
-  ret.SetImpl(ret_impl);
+  ret.set_impl(ret_impl);
 
   return ret;
 }

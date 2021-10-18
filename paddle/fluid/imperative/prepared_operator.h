@@ -25,7 +25,8 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/tcmpt/api/include/dev/core.h"
+#include "paddle/fluid/imperative/kernel_args_names_maker.h"
+#include "paddle/tcmpt/api/include/core.h"
 
 DECLARE_bool(use_mkldnn);
 

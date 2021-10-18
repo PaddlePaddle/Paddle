@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(use_pt_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -136,32 +137,6 @@ static framework::VariableValueMap BuildInputMap(
   return inputs;
 }
 
-template <typename VarType>
-static bool ContainSelectedRows(const NameVarMap<VarType>& inputs) {
-  for (auto& var_pair : inputs) {
-    for (auto& var : var_pair.second) {
-      if (var->Var().template IsType<framework::SelectedRows>()) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-// TODO(chenweihang): now only check single var input
-template <typename VarType>
-static bool IsValidVar(const std::string& name,
-                       const NameVarMap<VarType>& inputs) {
-  auto it = inputs.find(name);
-  if (it == inputs.end()) {
-    return false;
-  }
-  if (it->second.empty()) {
-    return false;
-  }
-  return it->second[0] != nullptr;
-}
-
 // TODO(chenweihang): enhance rules, not all dispensable inputs
 // are host tensor, now only for scale kernel verify
 template <typename VarType>
@@ -181,9 +156,7 @@ static pt::KernelName ConstructPtKernelName(
     const std::string& op_type, const framework::proto::OpProto& op_proto,
     const NameVarMap<VarType>& inputs) {
   std::string overload_name;
-  if (ContainSelectedRows<VarType>(inputs)) {
-    overload_name = pt::kContainSelectedRowsSuffix;
-  }
+  // TODO(chenweihang): adapt SelectedRows by xiaowei's design
   if (ContainHostTensor<VarType>(op_proto, inputs)) {
     if (overload_name != "") {
       overload_name += ".";
@@ -219,11 +192,14 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
   // 1. get expected kernel key
-  if (pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
+  if (FLAGS_use_pt_kernel &&
+      pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
     auto kernel_name =
         ConstructPtKernelName<VarType>(op.Type(), (*op.Info().proto_), ins);
     auto inputs = BuildInputMap<VarType>(ins);
-    auto pt_kernel_key = op.ConstructPtKernelKey(inputs, place);
+    // we only need attrs here
+    // auto final_attrs = BuildAttrMap(attrs, default_attrs);
+    auto pt_kernel_key = op.ConstructPtKernelKey(inputs, attrs, place);
     auto pt_kernel =
         pt::KernelFactory::Instance().SelectKernel(kernel_name, pt_kernel_key);
     // for debug
@@ -306,10 +282,9 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                       default_attrs);
 }
 
-// TODO(chenweihang): This function is too complicated and needs to be split
 template <typename VarType>
 static pt::KernelContext BuildDygraphKernelContext(
-    const pt::Kernel& pt_kernel, const framework::proto::OpProto& op_proto,
+    const pt::Kernel& pt_kernel, KernelArgsNameMaker* argsNameMaker,
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
@@ -324,163 +299,105 @@ static pt::KernelContext BuildDygraphKernelContext(
   pt::KernelContext op_kernel_ctx(dev_ctx);
   auto input_defs = pt_kernel.args_def().input_defs();
   auto output_defs = pt_kernel.args_def().output_defs();
+  auto attr_defs = pt_kernel.args_def().attribute_defs();
 
-  // TODO(chenweihang): For scale op, when the input has a `ScaleTensor`,
-  // the following scale attribute should be skipped, and there are many
-  // such ops, which require certain rules to process, now only for verify
-  // scale op
-  std::unordered_map<std::string, bool> contain_host_tensor_flags{
-      {"ScaleTensor", false}};
-  std::unordered_map<std::string, std::string> attr_to_host_tensor{
-      {"scale", "ScaleTensor"}};
+  auto& input_names = argsNameMaker->GetInputArgsNames();
+  auto& output_names = argsNameMaker->GetOutputArgsNames();
+  auto& attr_pairs = argsNameMaker->GetAttrsArgsNamesAndTypes();
 
-  for (int i = 0; i < op_proto.inputs_size(); ++i) {
-    auto in = op_proto.inputs()[i];
-    // TODO(chenweihang): deal with diff param in vector
-    if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(1) << "Dygraph PtKernel input: skip extra & quant input - "
-              << in.name();
-      continue;
-    }
-    auto in_name = in.name();
-    if (in.has_dispensable() && in.dispensable()) {
-      if (contain_host_tensor_flags.count(in_name) > 0 &&
-          IsValidVar<VarType>(in_name, ins)) {
-        VLOG(1) << "Dygraph PtKernel input: contain host input - " << in_name;
-        contain_host_tensor_flags[in_name] = true;
-      } else {
-        VLOG(1) << "Dygraph PtKernel input: skip dispensable input - "
-                << in_name;
-        continue;
-      }
-    }
-    VLOG(1) << "Dygraph PtKernel input: " << in_name;
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of outputs_args names (%d) must be equal to "
+                        "the size of kernel output_defs (%d).",
+                        output_names.size(), output_defs.size()));
+
+  PADDLE_ENFORCE_EQ(attr_pairs.size(), attr_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of attribute_args names (%d) must be equal "
+                        "to the size of kernel attribute_defs (%d).",
+                        attr_pairs.size(), attr_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
     auto in_def = input_defs.at(i);
-    auto expected_place = pt::TransToFluidPlace(in_def.backend);
-    for (auto var : ins.at(in_name)) {
+
+    auto ins_vector = ins.at(input_names[i]);
+    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_inputs;
+    for (auto var : ins_vector) {
       const auto& variable = var->Var();
-      if (variable.template IsType<framework::LoDTensor>()) {
-        const auto& tensor = variable.template Get<framework::LoDTensor>();
-        if (!platform::is_same_place(tensor.place(), expected_place)) {
-          framework::LoDTensor tmp_tensor;
-          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
-          auto pt_in =
-              framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
-                  tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        } else {
-          auto pt_in =
-              framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
-                  tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        }
-      } else if (variable.template IsType<framework::SelectedRows>()) {
-        const auto& tensor = variable.template Get<framework::SelectedRows>();
-        if (!platform::is_same_place(tensor.value().place(), expected_place)) {
-          framework::SelectedRows tmp_tensor;
-          tmp_tensor.set_rows(tensor.rows());
-          tmp_tensor.set_height(tensor.height());
-          TensorCopySync(tensor.value(), expected_place,
-                         tmp_tensor.mutable_value());
-          auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
-                                                 framework::SelectedRows>(
-              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        } else {
-          auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
-                                                 framework::SelectedRows>(
-              tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported shared input `%s` type now when call pt kernel.",
-            framework::ToTypeName(variable.Type())));
-      }
+
+      auto pt_in = framework::InputVariableToPtTensor(variable, in_def);
+      tmp_inputs.emplace_back(pt_in);
     }
+    op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
   }
 
-  for (int i = 0; i < op_proto.outputs_size(); ++i) {
-    auto out_name = op_proto.outputs()[i].name();
-    VLOG(1) << "Dygraph PtKernel output: " << out_name;
-    // TODO(chenweihang): outputs also need skip some cases
+  for (size_t i = 0; i < output_names.size(); ++i) {
     auto out_def = output_defs.at(i);
-    for (auto var : outs.at(out_name)) {
-      // mutable_data before run kernel, to avoid share output form
-      // KernelContext to original tensor
-      auto* variable = var->MutableVar();
-      if (variable->template IsType<framework::LoDTensor>()) {
-        auto* tensor = variable->template GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
-                             pt::TransToProtoVarType(out_def.dtype));
-        auto pt_out =
-            framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
-                *tensor, out_def.backend, out_def.dtype, out_def.layout);
-        op_kernel_ctx.EmplaceBackOutput(pt_out);
-      } else if (variable->template IsType<framework::SelectedRows>()) {
-        auto* tensor = variable->template GetMutable<framework::SelectedRows>();
-        tensor->mutable_value()->mutable_data(
-            pt::TransToFluidPlace(out_def.backend),
-            pt::TransToProtoVarType(out_def.dtype));
-        auto pt_out = framework::MakeTensorImpl<pt::SelectedRowsTensor,
-                                                framework::SelectedRows>(
-            *tensor, out_def.backend, out_def.dtype, out_def.layout);
-        op_kernel_ctx.EmplaceBackOutput(pt_out);
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported shared output `%s` type now when call pt kernel.",
-            framework::ToTypeName(variable->Type())));
-      }
+    auto outs_vector = outs.at(output_names[i]);
+
+    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_outputs;
+    for (auto var : outs_vector) {
+      auto variable = var->MutableVar();
+
+      auto pt_out = framework::OutputVariableToPtTensor(variable, out_def);
+      tmp_outputs.emplace_back(pt_out);
     }
+    op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
   }
 
-  for (int i = 0; i < op_proto.attrs_size(); ++i) {
-    auto attr = op_proto.attrs()[i];
-    if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
-        attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
-        attr.name() == "op_callstack" || attr.name() == "op_device") {
-      VLOG(1) << "Dygraph PtKernel attribute: skip needless attr - "
-              << attr.name();
-      continue;
-    }
-    if ((attr.has_extra() && attr.extra()) ||
-        (attr.has_quant() && attr.quant())) {
-      VLOG(1) << "Dygraph PtKernel attribute: skip extra & quant attr - "
-              << attr.name();
-      continue;
-    }
-    if (attr_to_host_tensor.count(attr.name()) > 0 &&
-        contain_host_tensor_flags.at(attr_to_host_tensor.at(attr.name())) ==
-            true) {
-      VLOG(1) << "Dygraph PtKernel attribute: skip dynaimc attr - "
-              << attr.name() << ", because "
-              << attr_to_host_tensor.at(attr.name()) << " exists.";
-      continue;
-    }
-    VLOG(1) << "Dygraph PtKernel attribute: " << attr.name();
-    // TODO(chenweihang): support other attrs
-    // In principle, the attr required by the dynamic mode should be
-    // passed in from the Python side, and there is no need to look up
-    // from the default_map, but now this nor work
-    switch (attr.type()) {
-      case framework::proto::AttrType::INT:
+  for (size_t i = 0; i < attr_defs.size(); ++i) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pt::Scalar))) {
+      // TODO(chenweihang): support other attrs
+      // In principle, the attr required by the dynamic mode should be
+      // passed in from the Python side, and there is no need to look up
+      // from the default_map, but now this nor work
+      switch (attr_pairs[i].second) {
+        case framework::proto::AttrType::INT:
+          op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+              GetAttr<int>(attrs, default_attrs, attr_pairs[i].first)));
+          break;
+        case framework::proto::AttrType::FLOAT:
+          op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+              GetAttr<float>(attrs, default_attrs, attr_pairs[i].first)));
+          break;
+        case framework::proto::AttrType::BOOLEAN:
+          op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+              GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first)));
+          break;
+        default:
+          // TODO(chenweihang): support other attrs type
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "unsupported cast op attribute `%s` when construct "
+              "KernelContext.",
+              attr_pairs[i].first));
+      }
+    } else {
+      // TODO(chenweihang): support other attrs
+      // In principle, the attr required by the dynamic mode should be
+      // passed in from the Python side, and there is no need to look up
+      // from the default_map, but now this nor work
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         op_kernel_ctx.EmplaceBackAttr(
-            GetAttr<int>(attrs, default_attrs, attr.name()));
-        break;
-      case framework::proto::AttrType::FLOAT:
+            GetAttr<int>(attrs, default_attrs, attr_pairs[i].first));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
-            GetAttr<float>(attrs, default_attrs, attr.name()));
-        break;
-      case framework::proto::AttrType::BOOLEAN:
+            GetAttr<float>(attrs, default_attrs, attr_pairs[i].first));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         op_kernel_ctx.EmplaceBackAttr(
-            GetAttr<bool>(attrs, default_attrs, attr.name()));
-        break;
-      default:
+            GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first));
+      } else {
         // TODO(chenweihang): support other attrs type
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
             "KernelContext.",
-            attr.name()));
+            attr_pairs[i].first));
+      }
     }
   }
 
@@ -542,9 +459,10 @@ static void PreparedOpRunPtImpl(const framework::OperatorBase& op,
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  auto op_kernel_ctx =
-      BuildDygraphKernelContext<VarType>(pt_kernel, *(op.Info().proto_), ins,
-                                         outs, attrs, default_attrs, *dev_ctx);
+  paddle::imperative::KernelArgsNameMakerByOpProto<VarType> argMaker(
+      op.Info().proto_, &ins, &outs);
+  auto op_kernel_ctx = BuildDygraphKernelContext<VarType>(
+      pt_kernel, &argMaker, ins, outs, attrs, default_attrs, *dev_ctx);
   pt_kernel(&op_kernel_ctx);
 
   // TODO(chenweihang): add flags

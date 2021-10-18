@@ -217,7 +217,7 @@ void ScaleAPI(const pt::Tensor& x, float scale, float bias,
         "Only CPU and CUDA Backend are supported for now"));
   }
 
-  out->SetImpl(dense_out);
+  out->set_impl(dense_out);
 }
 
 void FillConstAPI(double value, const pt::DDim& ddim,
@@ -231,7 +231,7 @@ void FillConstAPI(double value, const pt::DDim& ddim,
     auto tensor_meta = pt::TensorMeta(ddim, backend, dtype, layout);
     tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta),
                                                      pt::TensorStatus());
-    target->SetImpl(tensor_dense);
+    target->set_impl(tensor_dense);
 
   } else {
     tensor_dense = std::dynamic_pointer_cast<pt::DenseTensor>(target->impl());

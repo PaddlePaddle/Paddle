@@ -15,10 +15,16 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/tcmpt/api/include/dev/symbols.h"
-#include "paddle/tcmpt/api/include/linalg.h"
+#include "paddle/tcmpt/hapi/include/linalg.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/kernel_registry.h"
+
+PT_DECLARE_MODULE(LinalgCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(LinalgCUDA);
+#endif
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -50,11 +56,11 @@ TEST(API, dot) {
     }
   }
 
-  pt::Tensor x(dense_x);
-  pt::Tensor y(dense_y);
+  paddle::experimental::Tensor x(dense_x);
+  paddle::experimental::Tensor y(dense_y);
 
   // 2. test API
-  auto out = pt::dot(x, y);
+  auto out = paddle::experimental::dot(x, y);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);

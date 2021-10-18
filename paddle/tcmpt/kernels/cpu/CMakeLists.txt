@@ -1,0 +1,12 @@
+if(WIN32)
+    set(CURRENT_BINARY_DIR ${PADDLE_BINARY_DIR}/paddle/tcmpt/kernels/cpu)
+    kernel_instantiate(creation.cc)
+    kernel_instantiate(math.cc)
+    kernel_instantiate(linalg.cc)
+endif()
+
+cc_library(math_cpu SRCS math.cc DEPS dense_tensor kernel_context kernel_factory eigen_function)
+cc_library(linalg_cpu SRCS linalg.cc DEPS dense_tensor kernel_context kernel_factory)
+cc_library(creation_cpu SRCS creation.cc DEPS dense_tensor kernel_context kernel_factory eigen_function)
+cc_library(utils_cpu SRCS utils.cc DEPS dense_tensor kernel_context kernel_factory memory)
+cc_library(manipulation_cpu SRCS manipulation.cc DEPS dense_tensor kernel_context kernel_factory utils_cpu unary)

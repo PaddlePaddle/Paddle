@@ -20,11 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 // only can include the headers in paddle/tcmpt/api dirs
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/math.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/math.h"
 
 namespace paddle {
 namespace operators {
+
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class SignKernel : public framework::OpKernel<T> {
  public:
@@ -32,7 +34,7 @@ class SignKernel : public framework::OpKernel<T> {
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     auto& dev_ctx = context.device_context<DeviceContext>();
-    out->mutable_data<T>(x->place(), x->type());
+    out->mutable_data<T>(x->place());
 
     auto pt_x =
         framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());

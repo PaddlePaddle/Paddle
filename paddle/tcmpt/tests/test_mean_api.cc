@@ -15,10 +15,16 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/tcmpt/api/include/dev/symbols.h"
-#include "paddle/tcmpt/api/include/math.h"
+#include "paddle/tcmpt/hapi/include/math.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/kernel_registry.h"
+
+PT_DECLARE_MODULE(MathCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(MathCUDA);
+#endif
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -39,10 +45,10 @@ TEST(API, mean) {
     sum += i * 1.0;
   }
 
-  pt::Tensor x(dense_x);
+  paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = pt::mean(x);
+  auto out = paddle::experimental::mean(x);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 1);

@@ -15,27 +15,27 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/tcmpt/core/tensor_meta.h"
 
 namespace pt {
 
-using DDim = paddle::framework::DDim;
-
-// Common InferShape Functions, The format like:
+// Common InferShape Functions for unary operators, The format like:
 //
-//   1. DDim [OpName]InferShape(const DDim& x_dim, ...) {}
-//   2. std::pair<DDim, DDim> [OpName]InferShape(const DDim& x_dim, ...) {}
-//   3. std::tuple<DDim, DDim, DDim> [OpName]InferShape(const DDim& x_dim, ...)
-//   {}
+//   1. TensorMeta [OpName]InferShape(const TensorMeta& x_meta, ...) {}
+//   2. std::pair<TensorMeta, TensorMeta> [OpName]InferShape(const TensorMeta&
+//   x_meta, ...) {}
+//   3. std::tuple<TensorMeta, TensorMeta, TensorMeta> [OpName]InferShape(const
+//   TensorMeta& x_meta, ...)
+//  NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+//  Because functions in this file
+//  not only can infer shape, but alse need infer lod or other useful data.
 
-inline DDim UnchangedInferShape(const DDim& x_dim) { return x_dim; }
+TensorMeta UnchangedInferShape(const TensorMeta& x_meta);
 
-inline DDim MeanInferShape(const DDim& x_dim) { return {1}; }
+TensorMeta ReductionInferShape(const TensorMeta& x_meta);
 
-inline DDim DotInferShape(const DDim& x_dim) {
-  auto dims = paddle::framework::vectorize(x_dim);
-  dims[dims.size() - 1] = 1;
-  return paddle::framework::make_ddim(dims);
-}
+TensorMeta FlattenInferShape(const TensorMeta& x_meta,
+                             int start_axis,
+                             int stop_axis);
 
 }  // namespace pt

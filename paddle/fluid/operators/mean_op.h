@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tcmpt_utils.h"
 
 // only can include the headers in paddle/top/api dirs
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/math.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/math.h"
 
 namespace paddle {
 namespace operators {
@@ -32,6 +32,26 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
+/** [ Why still keep the original kernel implementation? ]
+ *
+ * Removal of the original kernel implementation and kernel registration needs
+ * to ensure that the new kernel mechanism adapts to multiple sets of execution
+ * mechanisms, including:
+ *
+ * 1. Executor and ParallelExecutor
+ * 2. Dygraph OpBase (Tracer and Engine)
+ * 3. New Executor
+ * 4. Predictor
+ * 5. NPU and XPU lack kernel and need to reuse CPU Kernel
+ *
+ * Removal of the original Kernel requires a more complete solution to ensure
+ * that it will not affect the current execution system.
+ * Currently, only the first two cases are adapted.
+ *
+ * The principle here is that the implementation in the kernel must reuse the
+ * corresponding functions in the Tensor compute library and cannot maintain
+ * two copies of the code.
+ */
 template <typename DeviceContext, typename T>
 class MeanKernel : public framework::OpKernel<T> {
  public:
@@ -39,7 +59,7 @@ class MeanKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     auto& dev_ctx = context.device_context<DeviceContext>();
-    out->mutable_data<T>(x->place(), x->type());
+    out->mutable_data<T>(x->place());
 
     auto pt_x =
         framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
@@ -47,6 +67,7 @@ class MeanKernel : public framework::OpKernel<T> {
         framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
 
     // call new kernel
+    VLOG(1) << "chenweihang: call original mean kernel compute.";
     pt::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };

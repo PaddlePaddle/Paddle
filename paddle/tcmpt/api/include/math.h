@@ -14,10 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/tcmpt/api/include/tensor.h"
-
-namespace pt {
-
-Tensor mean(const Tensor& x);
-
-}  // namespace pt
+// See Note: [ How do we organize the kernel directory ]
+#include "paddle/tcmpt/kernels/cpu/math.h"
+#include "paddle/tcmpt/kernels/cuda/math.h"

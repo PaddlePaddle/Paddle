@@ -37,4 +37,6 @@ constexpr char kContainHostTensorSuffix[] = "host";
 // For kernels with SelectedRowsTensor input and output
 constexpr char kContainSelectedRowsSuffix[] = "sr";
 
+// For kernels with intermediate output
+constexpr char kContainMidOutputTensorSuffix[] = "mid";
 }  // namespace pt

@@ -339,7 +339,7 @@ def irfft(x, n=None, axis=-1, norm="backward", name=None):
             xp = paddle.to_tensor(x)
             irfft_xp = paddle.fft.irfft(xp).numpy()
             print(irfft_xp)
-            #  [0. 0. 0. 4.]
+            #  [0. 1. 0. 0.]
 
     """
     return fft_c2r(x, n, axis, norm, forward=False, name=name)
@@ -477,7 +477,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             import numpy as np
             import paddle
 
-            x = x = np.mgrid[:4, :4, :4][1]
+            x = np.mgrid[:4, :4, :4][1]
             xp = paddle.to_tensor(x)
             fftn_xp = paddle.fft.fftn(xp, axes=(1, 2)).numpy()
             print(fftn_xp)
@@ -631,9 +631,9 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
         # use axes(2, 0)
         print(paddle.fft.rfftn(x, axes=(2, 0)))
         # Tensor(shape=[2, 3, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
-        #        [[[(24+0j), 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ]],
+        #        [[[(8+0j), 0j     , 0j     ],
+        #          [(8+0j), 0j     , 0j     ],
+        #          [(8+0j), 0j     , 0j     ]],
         #
         #         [[0j     , 0j     , 0j     ],
         #          [0j     , 0j     , 0j     ],
@@ -1267,9 +1267,8 @@ def fftshift(x, axes=None, name=None):
             import paddle
 
             x = np.array([3, 1, 2, 2, 3], dtype=float)
-            scalar_temp = 0.3
             n = x.size
-            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
             res = paddle.fft.fftshift(fftfreq_xp).numpy()
             print(res)
             #  [-1.3333334 -0.6666667  0.         0.6666667  1.3333334]
@@ -1311,9 +1310,8 @@ def ifftshift(x, axes=None, name=None):
             import paddle
 
             x = np.array([3, 1, 2, 2, 3], dtype=float)
-            scalar_temp = 0.3
             n = x.size
-            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
             res = paddle.fft.ifftshift(fftfreq_xp).numpy()
             print(res)
             #  [ 1.3333334 -1.3333334 -0.6666667  0.         0.6666667]
