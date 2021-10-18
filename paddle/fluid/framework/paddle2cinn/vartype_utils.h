@@ -24,11 +24,11 @@ namespace framework {
 namespace paddle2cinn {
 namespace utils {
 
-cpp::VarDescAPI::Type TransformVarTypeToCinn(
+::cinn::frontend::paddle::cpp::VarDescAPI::Type TransformVarTypeToCinn(
     const ::paddle::framework::proto::VarType::Type& type) {
-#define SET_TYPE_CASE_ITEM(type__)                  \
-  case ::paddle::framework::proto::VarType::type__: \
-    return cpp::VarDescAPI::Type::type__;           \
+#define SET_TYPE_CASE_ITEM(type__)                                  \
+  case ::paddle::framework::proto::VarType::type__:                 \
+    return ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__; \
     break;
 
   switch (type) {
@@ -48,10 +48,10 @@ cpp::VarDescAPI::Type TransformVarTypeToCinn(
 }
 
 ::paddle::framework::proto::VarType::Type TransformVarTypeFromCinn(
-    const cpp::VarDescAPI::Type& type) {
-#define SET_TYPE_CASE_ITEM(type__)                      \
-  case cpp::VarDescAPI::Type::type__:                   \
-    return ::paddle::framework::proto::VarType::type__; \
+    const ::cinn::frontend::paddle::cpp::VarDescAPI::Type& type) {
+#define SET_TYPE_CASE_ITEM(type__)                              \
+  case ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__: \
+    return ::paddle::framework::proto::VarType::type__;         \
     break;
 
   switch (type) {
@@ -70,11 +70,11 @@ cpp::VarDescAPI::Type TransformVarTypeToCinn(
 #undef SET_TYPE_CASE_ITEM
 }
 
-cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
+::cinn::frontend::paddle::cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
     const ::paddle::framework::proto::VarType::Type& type) {
-#define SET_DATA_TYPE_CASE_ITEM(type__)             \
-  case ::paddle::framework::proto::VarType::type__: \
-    return cpp::VarDescAPI::Type::type__;           \
+#define SET_DATA_TYPE_CASE_ITEM(type__)                             \
+  case ::paddle::framework::proto::VarType::type__:                 \
+    return ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__; \
     break;
 
   switch (type) {
@@ -95,10 +95,10 @@ cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
 }
 
 ::paddle::framework::proto::VarType::Type TransformVarDataTypeFromCpp(
-    const cpp::VarDescAPI::Type& type) {
-#define SET_DATA_TYPE_CASE_ITEM(type__)                 \
-  case cpp::VarDescAPI::Type::type__:                   \
-    return ::paddle::framework::proto::VarType::type__; \
+    const ::cinn::frontend::paddle::cpp::VarDescAPI::Type& type) {
+#define SET_DATA_TYPE_CASE_ITEM(type__)                         \
+  case ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__: \
+    return ::paddle::framework::proto::VarType::type__;         \
     break;
 
   switch (type) {
