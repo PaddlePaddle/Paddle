@@ -202,9 +202,6 @@ class TestFusedAttentionOp(OpTest):
             [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
         return final_out, x.grad
 
-    # def test_check_grad_normal(self):
-    #     pass
-
     def test_fused_attention_op(self):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()

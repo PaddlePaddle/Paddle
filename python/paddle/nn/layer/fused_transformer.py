@@ -33,18 +33,20 @@ class FusedMultiHeadAttention(Layer):
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
         num_heads (int): The number of heads in multi-head attention.
-        dropout_rate (float, optional): The dropout probability used to drop some 
-            attention targets. 0 for no dropout. Default 0.5
+        dropout_rate (float, optional): The dropout probability used on attention
+            weights to drop some attention targets for the dropout after attention. 
+            0 for no dropout. Default 0.
         attn_dropout_rate (float, optional): The dropout probability used on attention
-            weights to drop some attention targets. 0 for no dropout. Default 0.5
+            weights to drop some attention targets for the dropout in attention. 
+            0 for no dropout. Default 0.
         kdim (int, optional): The feature size in key. If None, assumed equal to
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
             `embed_dim`. Default None.
-        normalize_before (bool, optional): Indicate whether to put layer_norm in 
-            front of or after attention and ffn. Default False.
+        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm 
+            or post_layer_norm architecture. Default False.
         need_weights (bool, optional): Indicate whether to return the attention
-            weights. Default False.
+            weights. Now, only False is supported. Default False.
         weight_attr(ParamAttr, optional):  To specify the weight parameter property.
             Default: None, which means the default weight parameter property is used.
             See usage for details in :code:`ParamAttr` .
@@ -62,9 +64,6 @@ class FusedMultiHeadAttention(Layer):
             multi_head_attn = paddle.nn.FusedMultiHeadAttention(128, 2)
             output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
     """
-
-    #Cache = collections.namedtuple("Cache", ["k", "v"])
-    #StaticCache = collections.namedtuple("StaticCache", ["k", "v"])
 
     def __init__(self,
                  embed_dim,
@@ -160,18 +159,10 @@ class FusedMultiHeadAttention(Layer):
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
-                Default None.
+                Now, only None is supported. Default None.
         Returns:
             Tensor|tuple: It is a tensor that has the same shape and data type \
-                as `query`, representing attention output. Or a tuple if \
-                `need_weights` is True or `cache` is not None. If `need_weights` \
-                is True, except for attention output, the tuple also includes \
-                the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`. \
-                If `cache` is not None, the tuple then includes the new cache \
-                having the same type as `cache`, and if it is `StaticCache`, it \
-                is same as the input `cache`, if it is `Cache`, the new cache \
-                reserves tensors concatanating raw tensors with intermediate \
-                results of current query.
+                as `query`, representing attention output. 
         """
         if attn_mask is not None:
             # Support bool or int mask
