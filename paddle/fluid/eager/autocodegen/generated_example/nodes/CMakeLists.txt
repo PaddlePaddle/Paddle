@@ -1,1 +1,0 @@
-cc_library(dygraph_node SRCS sigmoid_node.cc matmul_v2_node.cc DEPS ${eager_deps} ${fluid_deps})

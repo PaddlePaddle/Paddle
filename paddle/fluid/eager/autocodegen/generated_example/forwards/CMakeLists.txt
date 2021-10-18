@@ -1,1 +1,0 @@
-cc_library(dygraph_function SRCS sigmoid_dygraph.cc matmul_v2_dygraph.cc DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB})
