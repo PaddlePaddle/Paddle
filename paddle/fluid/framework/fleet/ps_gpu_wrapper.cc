@@ -49,10 +49,6 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;
 
-  auto& device_keys = gpu_task->device_keys_;
-  auto& device_vals = gpu_task->device_values_;
-  auto& device_mutex = gpu_task->mutex_;
-
   std::vector<std::thread> threads;
 #ifdef PADDLE_WITH_PSLIB
   auto fleet_ptr = FleetWrapper::GetInstance();
@@ -181,6 +177,47 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
     VLOG(3) << "GpuPs shard: " << i << " key len: " << local_keys[i].size();
     local_ptr[i].resize(local_keys[i].size());
   }
+}
+
+void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
+  platform::Timer timeline;
+  int device_num = heter_devices_.size();
+  auto& local_keys = gpu_task->feature_keys_;
+  auto& local_ptr = gpu_task->value_ptr_;
+
+  auto& device_keys = gpu_task->device_keys_;
+  auto& device_vals = gpu_task->device_values_;
+  auto& device_mutex = gpu_task->mutex_;
+
+  std::vector<std::thread> threads(thread_keys_shard_num_);
+#ifdef PADDLE_WITH_PSLIB
+  auto fleet_ptr = FleetWrapper::GetInstance();
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
+#endif
+<<<<<<< Updated upstream
+=======
+}
+
+void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
+  platform::Timer timeline;
+  int device_num = heter_devices_.size();
+  auto& local_keys = gpu_task->feature_keys_;
+  auto& local_ptr = gpu_task->value_ptr_;
+
+  auto& device_keys = gpu_task->device_keys_;
+  auto& device_vals = gpu_task->device_values_;
+  auto& device_mutex = gpu_task->mutex_;
+
+  std::vector<std::thread> threads(thread_keys_shard_num_);
+#ifdef PADDLE_WITH_PSLIB
+  auto fleet_ptr = FleetWrapper::GetInstance();
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
+#endif
+>>>>>>> Stashed changes
   timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
@@ -502,6 +539,9 @@ void PSGPUWrapper::build_gpu_thread() {
     }
     VLOG(3) << "thread BuildGPUTask start.";
     platform::Timer timer;
+    timer.Start();
+    BuildPull(gpu_task);
+    timer.Pause();
     timer.Start();
     BuildGPUTask(gpu_task);
     timer.Pause();

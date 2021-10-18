@@ -85,6 +85,7 @@ class PSGPUWrapper {
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void BuildTask(std::shared_ptr<HeterContext> gpu_task);
+  void BuildPull(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
   void EndPass();
