@@ -440,8 +440,11 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
         self.reshape_out = []
         self.out = np.matmul(self.x, self.y)
 
+    def set_op_type(self):
+        self.op_type = "matmul"
+
     def setUp(self):
-        os.environ["DNNL_MAX_CPU_ISA"] = "AVX"
+        self.set_op_type()
         self.op_type = "matmul"
         self._cpu_only = True
         self.use_mkldnn = True

@@ -91,10 +91,14 @@ void MainTest(const ProgramDesc &prog, const std::string &op_name) {
   }
 }
 
-TEST(MatmulTransposeReshapeFusePass, matmul_inputs) {
-  std::string op_name = "matmul";
-  auto prog = BuildProgramDesc(op_name);
-  MainTest(prog, op_name);
+TEST(MatmulTransposeReshapeFusePass, matmul_fuse_pass) {
+  auto prog = BuildProgramDesc("matmul");
+  MainTest(prog, "matmul");
+}
+
+TEST(MatmulTransposeReshapeFusePass, matmul_v2_fuse_pass) {
+  auto prog = BuildProgramDesc("matmul_v2");
+  MainTest(prog, "matmul_v2");
 }
 }  // namespace ir
 }  // namespace framework

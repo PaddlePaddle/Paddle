@@ -22,9 +22,9 @@ namespace framework {
 namespace ir {
 
 MatmulV2TransposeReshapeMKLDNNPass::MatmulV2TransposeReshapeMKLDNNPass() {
-  op_name = "matmul_v2";
+  op_name_ = "matmul_v2";
 
-  AddOpCompat(OpCompat("matmul_v2"))
+  AddOpCompat(OpCompat(op_name_))
       .AddInput("X")
       .IsTensor()
       .End()
