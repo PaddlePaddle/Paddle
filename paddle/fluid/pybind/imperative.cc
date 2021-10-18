@@ -2351,27 +2351,27 @@ void BindImperative(py::module *m_ptr) {
   Examples:
       .. code-block:: python
 
-          # required: gpu
+          import numpy as np
           import paddle
           from paddle.fluid import core  
           from paddle.device import cuda
-          import numpy as np 
           
-          src = paddle.rand(shape=[100, 50, 50])
-          dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
-          offset = paddle.to_tensor(
-              np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
-          count = paddle.to_tensor(
-              np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+          if core.is_compiled_with_cuda():
+              src = paddle.rand(shape=[100, 50, 50])
+              dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
+              offset = paddle.to_tensor(
+                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+              count = paddle.to_tensor(
+                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
 
-          stream = cuda.Stream()
-          with cuda.stream_guard(stream):
-              core.async_write(src, dst, offset, count)
+              stream = cuda.Stream()
+              with cuda.stream_guard(stream):
+                  core.async_write(src, dst, offset, count)
 
-          offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
-          offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
-          offset_array = paddle.concat([offset_a, offset_b], axis=0)
-          print(np.allclose(src.numpy(), offset_array.numpy())) # True
+              offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
+              offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
+              offset_array = paddle.concat([offset_a, offset_b], axis=0)
+              print(np.allclose(src.numpy(), offset_array.numpy())) # True
 )DOC");
 
   m.def(
@@ -2557,25 +2557,25 @@ void BindImperative(py::module *m_ptr) {
   Examples:
       .. code-block:: python
 
-          # required: gpu
+          import numpy as np
           import paddle
           from paddle.fluid import core
           from paddle.device import cuda
-          import numpy as np
 
-          src = paddle.rand(shape=[100, 50, 50], dtype="float32").pin_memory()
-          dst = paddle.empty(shape=[100, 50, 50], dtype="float32")
-          offset = paddle.to_tensor(
-              np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
-          count = paddle.to_tensor(
-              np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
-          buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
-          index = paddle.to_tensor(
-              np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
+          if core.is_compiled_with_cuda():
+              src = paddle.rand(shape=[100, 50, 50], dtype="float32").pin_memory()
+              dst = paddle.empty(shape=[100, 50, 50], dtype="float32")
+              offset = paddle.to_tensor(
+                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+              count = paddle.to_tensor(
+                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+              buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
+              index = paddle.to_tensor(
+                  np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
           
-          stream = cuda.Stream()
-          with cuda.stream_guard(stream):
-              core.async_read(src, dst, index, buffer, offset, count)
+              stream = cuda.Stream()
+              with cuda.stream_guard(stream):
+                  core.async_read(src, dst, index, buffer, offset, count)
  
 )DOC");
 #endif
