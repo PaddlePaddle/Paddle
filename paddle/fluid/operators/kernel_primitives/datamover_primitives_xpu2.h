@@ -13,68 +13,18 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#include <cuda_fp16.h>
-#endif
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_fp16.h>
-#endif
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
 
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
 namespace details {
 
-#define INT_BITS 32
-
 template <typename T, int VecSize>
 struct alignas(sizeof(T) * VecSize) VectorType {
   T val[VecSize];
-};
-/**
- * Fast division : Replace division in CUDA with multiplication to improve
- * kernel performance.
- * 1. Complete the division calculation on the CPU, and record the calculation
- * results by using the divider and shift_val.
- * 2. Set the divisor on the GPU through Div() to complete the calculation.
- */
-struct FastDivMod {
-  // 1st value represents the result of input number divides by recorded divisor
-  // 2nd value represents the result of input number modulo by recorded divisor
-  using DivModT = VectorType<uint32_t, 2>;
-
-  FastDivMod() {}
-  HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {
-    static_assert(sizeof(unsigned int) == 4,
-                  "Only Support 32-bit unsigned int.");
-
-    for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
-      auto shift_limit = 1 << shift_val;
-      if (shift_limit >= divisor) break;
-    }
-    uint64_t long_one = 1;
-    uint64_t temp_div =
-        ((long_one << INT_BITS) * ((long_one << shift_val) - divisor)) /
-            divisor +
-        1;
-    multiplier = temp_div;
-  }
-
-  __device__ __forceinline__ uint32_t Div(uint32_t n) const {
-    uint32_t t = __umulhi(n, multiplier);
-    return (t + n) >> shift_val;
-  }
-
-  __device__ __forceinline__ DivModT Divmod(uint32_t n) const {
-    uint32_t q = Div(n);
-    DivModT result = {q, n - q * divisor};
-    return result;
-  }
-
-  int32_t divisor;
-  int32_t shift_val;
-  uint32_t multiplier;
 };
 
 /**
@@ -84,37 +34,41 @@ struct FastDivMod {
  */
 template <int kDims>
 struct BroadcastConfig {
-  FastDivMod divmoders[kDims];
-  uint32_t strides[framework::DDim::kMaxRank];
+  uint32_t stride_in[framework::DDim::kMaxRank];
+  uint32_t stride_out[framework::DDim::kMaxRank];
+  uint32_t shape_in[framework::DDim::kMaxRank];
+
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
                              const std::vector<int64_t>& in_dims,
                              int dim_size) {
     std::vector<uint32_t> strides_in;
-    std::vector<FastDivMod> divmoders_in;
-    // for divmoders
-    divmoders_in.resize(dim_size);
-    for (int i = 0; i < dim_size; ++i) {
-      divmoders_in[i] = FastDivMod(out_dims[i]);
-    }
-    // for strides
+    std::vector<uint32_t> strides_out;
+    std::vector<uint32_t> shapes_in;
+
+    strides_out.resize(dim_size, 1);
     strides_in.resize(dim_size, 1);
+    shapes_in.resize(dim_size, 1);
+
     for (int i = 0; i < dim_size; ++i) {
-      strides_in[i] = in_dims[i] == 1 ? 0 : strides_in[i];
-      strides_in[i] =
-          (i != 0 && strides_in[i] != 0)
-              ? std::accumulate(in_dims.begin(), in_dims.begin() + i, 1,
-                                std::multiplies<int64_t>())
-              : strides_in[i];
+      shape_in[i] = in_dims[dim_size - i - 1];
     }
 
-    memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
-    memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
+    for (int i = 1; i < dim_size - 1; ++i) {
+      strides_out[dim_size - i - 1] = std::accumulate(
+          out_dims.begin(), out_dims.begin() + i, 1, std::multiplies<int64_t>())
+          strides_in[dim_size - i - 1] =
+              std::accumulate(in_dims.begin(), in_dims.begin() + i, 1,
+                              std::multiplies<int64_t>())
+    }
+
+    memcpy(stride_in, strides_in.data(), kDims * sizeof(uint32_t));
+    memcpy(stride_out, strides_out.data(), kDims * sizeof(uint32_t));
+    memcpy(shape_in, shapes_in.data(), kDims * sizeof(uint32_t));
   }
 };
 
-#undef INT_BITS
 }  // namespace details
 
 /**
@@ -126,11 +80,11 @@ struct BroadcastConfig {
  * Ty: The type of data that needs to be stored in registers.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
@@ -148,17 +102,19 @@ template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
 __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
                                          int size_nx, int size_ny,
                                          int stride_nx, int stride_ny) {
-  int thread_offset = threadIdx.x;
+  int thread_offset = core_id();
   int left_size_nx = size_nx - thread_offset;
-
+  Tx in_temp;
   // Each branch is added for better performance
   if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
     if (IsBoundary) {
       if (left_size_nx > 0) {
-        dst[0] = static_cast<Ty>(src[thread_offset]);
+        GM2LM(src + thread_offset, in_temp, sizeof(Tx));
+        dst[0] = static_cast<Ty>(in_temp);
       }
     } else {
-      dst[0] = static_cast<Ty>(src[thread_offset]);
+      GM2LM(src + thread_offset, in_temp, sizeof(Tx));
+      dst[0] = static_cast<Ty>(in_temp);
     }
   } else if (NX == 1) {  // for NX == 1 and NY != 1
 #pragma unroll
@@ -168,7 +124,8 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
           break;
         }
       }
-      dst[idy] = static_cast<Ty>(src[thread_offset + idy * stride_ny]);
+      GM2LM(src + thread_offset + idy * stride_ny, in_temp, sizeof(Tx));
+      dst[idy] = static_cast<Ty>(in_temp);
     }
   } else if (NY == 1) {  // for NY == 1 and NX != 1
 #pragma unroll
@@ -178,25 +135,22 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
           break;
         }
       }
-      dst[idx] = static_cast<Ty>(src[thread_offset + idx * stride_nx]);
+      GM2LM(src + thread_offset + idx * stride_nx, in_temp, sizeof(Tx));
+      dst[idx] = static_cast<Ty>(in_temp);
     }
   } else {  // for NX != 1 and NY != 1
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
-      if (IsBoundary) {
-        if (idx * stride_nx >= left_size_nx) {
-          break;
-        }
-      }
 #pragma unroll
       for (int idy = 0; idy < NY; ++idy) {
         if (IsBoundary) {
-          if (idy * stride_ny >= size_ny) {
+          if (idy * stride_ny >= size_ny || idx * stride_nx >= left_size_nx) {
             break;
           }
         }
-        dst[idy * NX + idx] = static_cast<Ty>(
-            src[thread_offset + idx * stride_nx + idy * stride_ny]);
+        int fix = thread_offset + idx * stride_nx + idy * stride_ny;
+        GM2LM(src + fix, in_temp, sizeof(Tx));
+        dst[idy * NX + idx] = static_cast<Ty>(in_temp);
       }
     }
   }
@@ -230,11 +184,11 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
  * T: The type of data.
  * NX: Each thread load NX data from global memory continuously.
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
- * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
@@ -245,31 +199,16 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
                                          int num) {
-  if (IsBoundary) {  // blockDim.x * NX > num
-    int thread_offset = threadIdx.x * NX;
+  int thread_offset = core_id() * NX;
+  if (IsBoundary) {  // core_num() * NX > num
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
-        dst[idx] = src[thread_offset + idx];
+        GM2LM(src + thread_offset + idx, dst + idx, sizeof(T));
       }
     }
-  } else {  // blockDim,x * NX < num
-    const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-    const int kVectorsPerThread = NX / kVectorSize;
-    int thread_offset = threadIdx.x * kVectorsPerThread;
-
-    using VecType = details::VectorType<T, kVectorSize>;
-    const VecType* vec_input = reinterpret_cast<const VecType*>(src);
-    VecType vec_temp[kVectorsPerThread];
-
-#pragma unroll
-    for (int i = 0; i < kVectorsPerThread; ++i) {
-      vec_temp[i] = vec_input[thread_offset + i];
-#pragma unroll
-      for (int idx = 0; idx < NX; ++idx) {
-        dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
-      }
-    }
+  } else {  // core_num() * NX < num
+    GM2LM(src + thread_offset, dst, NX * sizeof(T));
   }
 }
 
@@ -280,18 +219,18 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
  * T: The type of data stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
- * src: The original input data pointer of this kernel.
- * block_offset: The data offset of this block, blockDim.x * blockIdx.x * NX.
+ * src: Raw input data pointer of kernel.
+ * block_offset: Data offset of this block, core_num() *  cluster_id() * NX;
  * config: Calculation configuration of broadcast. It is used to calculate the
  * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
@@ -304,7 +243,7 @@ __device__ __forceinline__ void ReadDataBc(
     T* dst, const T* __restrict__ src, uint32_t block_offset,
     details::BroadcastConfig<Rank> config, int total_num_output, int stride_nx,
     int stride_ny) {
-  uint32_t thread_offset = block_offset + threadIdx.x;
+  uint32_t thread_offset = block_offset + core_id();
   uint32_t index_src = 0;
 
 #pragma unroll
@@ -320,11 +259,11 @@ __device__ __forceinline__ void ReadDataBc(
       }
 #pragma unroll
       for (int i = 0; i < Rank; ++i) {
-        auto fast_divmoder = config.divmoders[i].Divmod(index_output);
-        index_output = fast_divmoder.val[0];
-        index_src += fast_divmoder.val[1] * config.strides[i];
+        uint32_t tmp = index_output / config.stride_out[i];
+        index_output = index_output - tmp * config.stride_out[i];
+        index_src += (tmp % config.shape_in[i]) * config.stride_in[i];
       }
-      dst[nx + ny * NX] = src[index_src];
+      GM2LM(src + index_src, dst + nx + ny * NX, sizeof(T));
     }
   }
 }
@@ -336,18 +275,18 @@ __device__ __forceinline__ void ReadDataBc(
  * T: The type of data.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
  * src: The input data pointer of this block.
- * block_offset: The data offset of this block, blockDim.x * blockIdx.x * NX.
+ * block_offset: The data offset of this block, blockDim.x * cluster_id() * NX.
  * index_cal: Calculation configuration of Reduce. It is used to calculate the
  * coordinate mapping relationship between output data and input data.
  * size_nx: The current block needs to load size_nx columns of data, this
@@ -367,25 +306,26 @@ __device__ __forceinline__ void ReadDataReduce(
     const IndexCal& index_cal, int size_nx, int size_ny, int stride_nx,
     int stride_ny, bool reduce_last_dim) {
   int thread_offset = 0;
-  int left_idx = 0;
+  int left_size_nx = size_nx;
+  int left_size_ny = size_ny;
   if (reduce_last_dim) {
-    thread_offset = threadIdx.x;
-    left_idx = threadIdx.y;
+    thread_offset = block_offset + core_id();
+    left_size_nx -= thread_offset;
   } else {
-    thread_offset = threadIdx.y;
-    left_idx = threadIdx.x;
+    thread_offset = block_offset + core_id();
+    left_size_ny -= thread_offset;
   }
 
   if (NX == 1) {
 #pragma unroll
     for (int ny = 0; ny < NY; ++ny) {
       if (IsBoundary) {
-        if (thread_offset >= size_ny) {
+        if (ny * stride_ny >= left_size_ny) {
           break;
         }
       }
-      uint32_t index_src = index_cal(thread_offset + block_offset);
-      dst[ny] = src[index_src];
+      uint32_t index_src = index_cal(thread_offset);
+      GM2LM(src + index_src, dst + ny, sizeof(T));
       thread_offset += stride_ny;
     }
   } else {
@@ -394,19 +334,19 @@ __device__ __forceinline__ void ReadDataReduce(
 #pragma unroll
       for (int ny = 0; ny < NY; ++ny) {
         if (IsBoundary) {
-          if ((thread_offset >= size_ny) ||
-              (left_idx + nx * stride_nx >= size_nx)) {
+          if ((ny * stride_ny >= left_size_ny) ||
+              (nx * stride_nx >= left_size_nx)) {
             break;
           }
         }
-        uint32_t index_src = index_cal(thread_offset + block_offset);
-        dst[nx + ny * NX] = src[index_src];
+        uint32_t index_src = index_cal(thread_offset);
+        GM2LM(src + index_src, dst + nx + ny * NX, sizeof(T));
         thread_offset += stride_ny;
       }
+      thread_offset += stride_nx;
     }
   }
 }
-
 /**
  * @brief Write 1D data from registers to global memory. When IsBoundary = true
  * and (NX % 4 == 0 or Nx % 2 == 0), the data will be vectorized to improve the
@@ -416,11 +356,11 @@ __device__ __forceinline__ void ReadDataReduce(
  * T: The type of data.
  * NX: The number of data continuously writed by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
@@ -428,31 +368,19 @@ __device__ __forceinline__ void ReadDataReduce(
  * src: The register pointer, the size is NX * NY.
  * size: The current block needs to load size elements continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
-__device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
-                                          int num) {
-  if (IsBoundary) {
-    int thread_offset = threadIdx.x * NX;
+
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+__device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
+  int thread_offset = core_id() * NX;
+  if (IsBoundary) {  // core_num() * NX > num
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
-      if ((thread_offset + idx) < num) {
-        dst[thread_offset + idx] = src[idx];
+      if (idx + thread_offset < num) {
+        LM2GM(src + idx, dst + idx + thread_offset, sizeof(T));
       }
     }
-  } else {
-    // Vector type
-    const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-    const int kVectorsPerThread = NX / kVectorSize;
-
-    int thread_offset = threadIdx.x * kVectorsPerThread;
-    using VecType = details::VectorType<T, kVectorSize>;
-    VecType* vec_dst = reinterpret_cast<VecType*>(dst);
-    VecType vec_temp[kVectorsPerThread];
-#pragma unroll
-    for (int idx = 0; idx < kVectorsPerThread; ++idx) {
-      vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
-      vec_dst[thread_offset + idx] = vec_temp[idx];
-    }
+  } else {  // core_num() * NX < num
+    LM2GM(src, dst + thread_offset, NX * sizeof(T));
   }
 }
 
@@ -462,23 +390,23 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
  *
  * @template paraments
  * Tx: The type of data that needs to be stored in registers.
- * Ty: The type of data that stored in the global memory.
+ * Ty: The type of data stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
- * dst: The data pointer of the current block.
+ * dst: Data pointer of the current block.
  * src: The register pointer of the thread, the size is NX * NY.
- * size_nx: The maximum offset of the current block is size_nx elements in the
- * lowest dimension. The parameters are only calculated when isboundary = true.
- * size_ny: The maximum offset of the current block is size_ny elements in the
- * first dimension. The parameters are only calculated when isboundary = true.
+ * size_nx: The current block needs to load size_nx columns of data, this
+ * parameter will be used when IsBoundary = true.
+ * size_ny: The current block needs to load size_ny rows of data. This parameter
+ * will be used when IsBoundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
@@ -487,17 +415,20 @@ template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
 __device__ __forceinline__ void WriteData(Ty* dst, const Tx* __restrict__ src,
                                           int size_nx, int size_ny,
                                           int stride_nx, int stride_ny) {
-  int thread_offset = threadIdx.x;
+  Ty in_temp;
+  int thread_offset = core_id();
   int left_size_nx = size_nx - thread_offset;
 
   // Each branch is added for better performance
   if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
     if (IsBoundary) {
       if (left_size_nx > 0) {
-        dst[thread_offset] = static_cast<Ty>(src[0]);
+        in_temp = static_cast<Ty>(src[0]);
+        LM2GM(in_temp, dst + thread_offset, sizeof(T));
       }
     } else {
-      dst[thread_offset] = static_cast<Ty>(src[0]);
+      in_temp = static_cast<Ty>(src[0]);
+      LM2GM(in_temp, dst + thread_offset, sizeof(T));
     }
   } else if (NX == 1) {  // for NX == 1 and NY != 1
 #pragma unroll
@@ -507,7 +438,9 @@ __device__ __forceinline__ void WriteData(Ty* dst, const Tx* __restrict__ src,
           break;
         }
       }
-      dst[thread_offset + idy * stride_ny] = static_cast<Ty>(src[idy]);
+
+      in_temp = static_cast<Ty>(src[idy]);
+      LM2GM(in_temp, dst + thread_offset + idy * stride_ny, sizeof(T));
     }
   } else if (NY == 1) {  // for NY == 1 and NX != 1
 #pragma unroll
@@ -517,7 +450,9 @@ __device__ __forceinline__ void WriteData(Ty* dst, const Tx* __restrict__ src,
           break;
         }
       }
-      dst[thread_offset + idx * stride_nx] = static_cast<Ty>(src[idx]);
+
+      in_temp = static_cast<Ty>(src[idx]);
+      LM2GM(in_temp, dst + thread_offset + idx * stride_nx, sizeof(T));
     }
   } else {  // for NX != 1 and NY != 1
 #pragma unroll
@@ -534,8 +469,9 @@ __device__ __forceinline__ void WriteData(Ty* dst, const Tx* __restrict__ src,
             break;
           }
         }
-        dst[thread_offset + idx * stride_nx + idy * stride_ny] =
-            static_cast<Ty>(src[idy * NX + idx]);
+        in_temp = static_cast<Ty>(src[idx + idy * NX]);
+        LM2GM(in_temp, dst + thread_offset + idx * stride_nx + idy * stride_ny,
+              sizeof(T));
       }
     }
   }
@@ -572,18 +508,18 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * T: The type of data stored in the global memory.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
  * src: The original input data pointer of kernel.
- * block_offset: The data offset of this block, blockDim.x * blockIdx.x * NX;
+ * block_offset: The data offset of this block, core_num() * blockIdx.x * NX;
  * config: Calculation configuration of broadcast. It is used to calculate the
  * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
@@ -593,7 +529,7 @@ template <typename T, int NX, int NY, int BlockSize, int Rank,
 __device__ __forceinline__ void ReadDataBc(
     T* dst, const T* __restrict__ src, uint32_t block_offset,
     details::BroadcastConfig<Rank> config, int total_num_output) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint32_t thread_offset = block_offset + core_id() * NX;
   uint32_t index_src = 0;
 
 #pragma unroll
@@ -607,11 +543,11 @@ __device__ __forceinline__ void ReadDataBc(
     }
 #pragma unroll
     for (int i = 0; i < Rank; ++i) {
-      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
-      index_output = fast_divmoder.val[0];
-      index_src += fast_divmoder.val[1] * config.strides[i];
+      uint32_t tmp = index_output / config.stride_out[i];
+      index_output = index_output - tmp * config.stride_out[i];
+      index_src += (tmp % config.shape_in[i]) * config.stride_in[i];
     }
-    dst[nx] = src[index_src];
+    GM2LM(src + index_src, dst + nx + ny * NX, sizeof(T));
   }
 }
 
