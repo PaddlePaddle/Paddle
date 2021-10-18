@@ -89,8 +89,6 @@ class TestCommunicator(unittest.TestCase):
             pass
         except Exception as e:
             self.assertTrue(False)
-        # for save and load
-        fleet.set_date("20211111")
         time.sleep(10)
         fleet.stop_worker()
         os.remove("./test_communicator_ps_gpu.txt")
