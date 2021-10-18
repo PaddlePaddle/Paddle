@@ -24,10 +24,14 @@ namespace operators {
 
 template <typename T, typename AttrT>
 struct Pow2DecayWithLinearWarmupFunctor {
+  template <typename U>
+  using RestrictPtr = U *PADDLE_RESTRICT;
+
  public:
   HOSTDEVICE Pow2DecayWithLinearWarmupFunctor(
-      T *PADDLE_RESTRICT lr, int64_t *PADDLE_RESTRICT step, size_t warmup_steps,
-      size_t total_steps, AttrT start_lr, AttrT base_lr, AttrT end_lr)
+      RestrictPtr<T> lr, RestrictPtr<int64_t> PADDLE_RESTRICT step,
+      size_t warmup_steps, size_t total_steps, AttrT start_lr, AttrT base_lr,
+      AttrT end_lr)
       : lr_(lr),
         step_(step),
         warmup_steps_(warmup_steps),
@@ -57,8 +61,8 @@ struct Pow2DecayWithLinearWarmupFunctor {
   }
 
  private:
-  T *PADDLE_RESTRICT lr_;
-  int64_t *PADDLE_RESTRICT step_;
+  RestrictPtr<T> lr_;
+  RestrictPtr<int64_t> step_;
   size_t warmup_steps_;
   size_t total_steps_;
   AttrT start_lr_;
@@ -78,9 +82,14 @@ class Pow2DecayWithLinearWarmupOpKernel : public framework::OpKernel<T> {
         lr, lr_out, platform::errors::InvalidArgument("Input(LearningRate) and "
                                                       "Output(LearningRateOut) "
                                                       "must be the same."));
+    PADDLE_ENFORCE_NOT_NULL(lr,
+                            platform::errors::InvalidArgument(
+                                "Input(LearingRate) should not be nullptr."));
     PADDLE_ENFORCE_EQ(step, step_out,
                       platform::errors::InvalidArgument(
                           "Input(Step) and Output(StepOut) must be the same."));
+    PADDLE_ENFORCE_NOT_NULL(step, platform::errors::InvalidArgument(
+                                      "Input(Step) should not be nullptr."));
     PADDLE_ENFORCE_EQ(
         step->IsInitialized(), true,
         platform::errors::InvalidArgument("Input(Step) must be initialized."));
