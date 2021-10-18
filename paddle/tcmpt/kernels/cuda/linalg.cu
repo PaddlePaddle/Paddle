@@ -12,47 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cpu/linalg.h"
+#include "paddle/tcmpt/kernels/cuda/linalg.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
+#include "paddle/tcmpt/kernels/common/eigen/dot.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/complex.h"
 
 namespace pt {
 
 template <typename T>
-void Dot(const CPUContext& dev_ctx,
+void Dot(const CUDAContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          DenseTensor* out) {
-  auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
-  auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
-  auto* z = out->mutable_data<T>();
-
-  // Loop over the total N elements of both operands while sum-reducing every
-  // B pairs along the way where B is the dimension of the least ordered axis
-  auto&& d = x.dims();
-  auto const N = x.numel();
-  auto const B = d[d.size() - 1];
-
-  for (int j = 0; j < N / B; j++) {
-    T ss = 0;
-    for (int i = 0; i < B; i++) ss += (*x_ptr_++) * (*y_ptr_++);
-    z[j] = ss;
-  }
+  eigen::Dot<CUDAContext, T>(dev_ctx, x, y, out);
 }
 
 }  // namespace pt
 
-PT_REGISTER_MODULE(LinalgCPU);
+PT_REGISTER_MODULE(LinalgCUDA);
 
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL("dot",
-                   CPU,
+                   CUDA,
                    Any,
                    pt::Dot,
                    float,

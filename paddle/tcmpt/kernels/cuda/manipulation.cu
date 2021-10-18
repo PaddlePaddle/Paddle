@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cuda/manipulation.h"
-#include "paddle/tcmpt/cuda/utils.h"
 #include "paddle/tcmpt/infershape/unary.h"
+#include "paddle/tcmpt/kernels/cuda/manipulation.h"
+#include "paddle/tcmpt/kernels/cuda/utils.h"
 
 namespace pt {
 

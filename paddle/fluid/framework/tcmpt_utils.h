@@ -49,12 +49,6 @@ std::shared_ptr<PtTensorImplT> MakeTensorImpl(const Tensor& tensor,
                                               const platform::Place& place,
                                               proto::VarType::Type type);
 
-template <typename PtTensorImplT>
-void ShareTensorImpl(PtTensorImplT* tensor_impl, LoDTensor* out);
-
-template <typename PtTensorImplT>
-void ShareTensorImpl(PtTensorImplT* tensor_impl, Tensor* out);
-
 std::shared_ptr<pt::TensorInterface> InputVariableToPtTensor(
     const framework::Variable& variable, const pt::TensorArgDef& arg_def);
 std::shared_ptr<pt::TensorInterface> OutputVariableToPtTensor(

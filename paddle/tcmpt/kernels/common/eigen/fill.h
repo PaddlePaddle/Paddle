@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/eigen/common.h"
+#include "paddle/tcmpt/kernels/common/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"

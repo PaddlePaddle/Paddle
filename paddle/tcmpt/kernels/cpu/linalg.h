@@ -12,38 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cuda/linalg.h"
+#pragma once
 
-#include "paddle/tcmpt/core/kernel_registry.h"
-#include "paddle/tcmpt/eigen/dot.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace pt {
 
+using CPUContext = paddle::platform::CPUDeviceContext;
+
 template <typename T>
-void Dot(const CUDAContext& dev_ctx,
+void Dot(const CPUContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
-         DenseTensor* out) {
-  eigen::Dot<CUDAContext, T>(dev_ctx, x, y, out);
-}
+         DenseTensor* out);
+
+template <typename T>
+void matmul(const CPUContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            bool transpose_x,
+            bool transpose_y,
+            DenseTensor* out);
 
 }  // namespace pt
-
-PT_REGISTER_MODULE(LinalgCUDA);
-
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
-
-PT_REGISTER_KERNEL("dot",
-                   CUDA,
-                   Any,
-                   pt::Dot,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
