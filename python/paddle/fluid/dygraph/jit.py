@@ -802,7 +802,7 @@ def save(layer, path, input_spec=None, **configs):
                 if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
                     scr_tensor = param_or_buffer.value().get_map_tensor()
                     tgt_var = scope.var(param_or_buffer.name)
-                    tgt_var.set_string_map(scr_tensor)
+                    tgt_var.set_vocab(scr_tensor)
                 else:
                     param_or_buffer_tensor = scope.var(
                         param_or_buffer.name).get_tensor()

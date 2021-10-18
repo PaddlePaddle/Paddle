@@ -1243,8 +1243,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self, Strings str_list) {
              *self.GetMutable<Strings>() = str_list;
            })
-      .def("set_string_map",
-           [](Variable &self, Vocab map) { *self.GetMutable<Vocab>() = map; })
+      .def("set_vocab", [](Variable &self,
+                           Vocab vocab) { *self.GetMutable<Vocab>() = vocab; })
       .def("get_string_tensor",
            [](Variable &self) { return self.GetMutable<Strings>(); },
            py::return_value_policy::reference)

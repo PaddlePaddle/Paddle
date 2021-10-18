@@ -126,6 +126,7 @@ class BertTokenizerKernel : public framework::OpKernel<T> {
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
 
+    auto do_lower_case = static_cast<bool>(ctx.Attr<bool>("do_lower_case"));
     auto is_split_into_words =
         static_cast<bool>(ctx.Attr<bool>("is_split_into_words"));
     auto max_seq_len = static_cast<size_t>(ctx.Attr<int>("max_seq_len"));
@@ -140,7 +141,7 @@ class BertTokenizerKernel : public framework::OpKernel<T> {
     }
 
     BertTokenizer* tokenizer_ptr =
-        new BertTokenizer(const_cast<framework::Vocab*>(vocab));
+        new BertTokenizer(const_cast<framework::Vocab*>(vocab), do_lower_case);
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 

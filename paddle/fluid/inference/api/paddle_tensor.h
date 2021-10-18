@@ -15,7 +15,6 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
 
 #include "paddle_infer_declare.h"  // NOLINT
 

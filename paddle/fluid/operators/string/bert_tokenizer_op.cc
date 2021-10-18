@@ -486,6 +486,10 @@ class BertTokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("InputIds", "(Tensor), The token ids of the input text.");
     AddOutput("SegmentIds", "(Tensor), The segments ids of the input text.");
     AddAttr<bool>(
+        "do_lower_case",
+        "(bool), Whether or not to lowercase the input when tokenizing.")
+        .SetDefault(false);
+    AddAttr<bool>(
         "is_split_into_words",
         "(bool), Whether or not the input is already pre-tokenized "
         "(e.g., split into words). If set to True, the tokenizer "

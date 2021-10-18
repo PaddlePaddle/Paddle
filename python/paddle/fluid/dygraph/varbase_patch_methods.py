@@ -155,7 +155,7 @@ def monkey_patch_varbase():
             ), "Variable length not match, Variable [ {} ] need tensor with length {} but load set tensor with length {}".format(
                 self.name, len(self), len(value))
             if isinstance(value, dict):
-                self.value().set_string_map(value)
+                self.value().set_vocab(value)
             else:
                 self.value().set_string_list(value)
         else:
