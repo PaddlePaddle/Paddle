@@ -29,8 +29,8 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
                                         "swish", "hardswish", "sqrt",
                                         "abs",   "clip",      "gelu"};
   std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
-                                        "elementwise_mul", "elementwise_div",
-                                        "elementwise_pow"};
+                                        "elementwise_mul"/*, "elementwise_div",
+                                        "elementwise_pow"*/};
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types)
@@ -70,22 +70,49 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation,
                               elementwise_add_act_pattern);
 
-    auto *elementwise_add_op = elementwise->Op();
+    auto *elementwise_op = elementwise->Op();
 
-    if (elementwise_add_op->HasAttr("use_mkldnn")) {
+    if (elementwise_op->HasAttr("use_mkldnn")) {
       PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, elementwise_add_op->GetAttr("use_mkldnn")),
+          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")),
           platform::errors::PreconditionNotMet(
               "The " + elt_type +
               "+Act fusion may happen only when oneDNN library "
               "is used."));
     }
 
-    elementwise_add_op->SetAttr("activation_type", act_type);
+    auto *activation_op = activation->Op();
+    if(act_type == "swish")
+    {
+      if (activation_op->HasAttr("beta")) {
+        elementwise_op->SetAttr("activation_alpha", activation_op->GetAttr("beta"));
+      }
+    }
+    else
+    {
+    if (activation_op->HasAttr("alpha")) {
+      elementwise_op->SetAttr("activation_alpha", activation_op->GetAttr("alpha"));
+    }
+    else if(activation_op->HasAttr("min")) {
+      // workaround for Clip which use min instead of alpha
+      elementwise_op->SetAttr("activation_alpha", activation_op->GetAttr("min"));
+    }
+    if (activation_op->HasAttr("beta")) {
+      elementwise_op->SetAttr(act_type == "swish" ? "activation_alpha" : "activation_beta", activation_op->GetAttr("beta"));
+    }
+    else if(activation_op->HasAttr("max")) {
+      // workaround for Clip which use max instead of beta
+      elementwise_op->SetAttr("activation_beta", activation_op->GetAttr("max"));
+    }
+    if (activation_op->HasAttr("scale")) {
+      elementwise_op->SetAttr("activation_scale", activation_op->GetAttr("scale"));
+    }
+    }
+    elementwise_op->SetAttr("activation_type", act_type);
 
-    elementwise_add_op->SetAttr("use_mkldnn", true);
+    elementwise_op->SetAttr("use_mkldnn", true);
 
-    elementwise_add_op->SetOutput("Out", {activation_out->Name()});
+    elementwise_op->SetOutput("Out", {activation_out->Name()});
 
     IR_OP_VAR_LINK(elementwise, activation_out);
     GraphSafeRemoveNodes(g, {activation, elementwise_out});

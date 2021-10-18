@@ -185,9 +185,22 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("float32")
         .InEnum({"float32", "int8", "bfloat16"})
         .AsExtra();
+    /* activation parameters */
     AddAttr<std::string>("activation_type",
                          "Activation type used in elementwise operator.")
         .SetDefault("")
+        .AsExtra();
+    AddAttr<float>("activation_alpha",
+                   "Activation alpha parameter type used in elementwise operator.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>("activation_beta",
+                   "Activation beta parameter type used in elementwise operator.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>("activation_scale",
+                   "Activation scale parameter type used in elementwise operator.")
+        .SetDefault(1.0f)
         .AsExtra();
     /* int8 parameters */
     AddAttr<float>("Scale_x",
