@@ -1745,7 +1745,7 @@ void BindImperative(py::module *m_ptr) {
         Examples:
             .. code-block:: python
 
-              '''required: gpu'''
+              # required: gpu
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
               print(x.place)        # CPUPlace
