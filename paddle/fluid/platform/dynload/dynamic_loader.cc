@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(cudnn_dir, "",
-              "Specify path for loading libcudnn.so. For instance, "
+              "Specify path for loading libcudnn.so. For instance, libcublasLt "
               "/usr/local/cudnn/lib. If empty [default], dlopen "
               "will search cudnn from LD_LIBRARY_PATH");
 
@@ -301,6 +301,15 @@ void* GetCublasDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
+#endif
+}
+
+void* GetCublasLtDsoHandle() {
+// APIs available after CUDA 10.1
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10100
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
+#else
+  return nullptr;
 #endif
 }
 
