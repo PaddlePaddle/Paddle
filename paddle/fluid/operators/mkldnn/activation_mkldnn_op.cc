@@ -257,7 +257,6 @@ namespace ops = paddle::operators;
           ops::grad_functor<paddle::platform::bfloat16>>);
 
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                           \
-  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);                \
   __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);             \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
   __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);             \
@@ -267,6 +266,8 @@ namespace ops = paddle::operators;
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(relu, ReluMKLDNNFunctor,
+                                       ReluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
                                        GeluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,

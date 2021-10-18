@@ -468,10 +468,17 @@ class HDFSClient(FS):
         self._bd_err_re = re.compile(
             r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
 
-    def _run_cmd(self, cmd, redirect_stderr=False):
+    def _run_cmd(self, cmd, redirect_stderr=False, retry_times=5):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
-        ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
-        ret = int(ret)
+        ret = 0
+        output = None
+        retry_sleep_second = 3
+        for x in range(retry_times + 1):
+            ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
+            ret = int(ret)
+            if ret == 0:
+                break
+            time.sleep(retry_sleep_second)
         if ret == 134:
             raise FSShellCmdAborted(cmd)
         return ret, output.splitlines()
@@ -1106,3 +1113,35 @@ class HDFSClient(FS):
             begin += blocks[i]
 
         return trainer_files[trainer_id]
+
+    def list_files_info(self, path_list):
+        """
+        list_files return file path and size
+        Args:
+            path_list(list): file list
+        Returns:
+            fileist(list): file list with file path and size
+        """
+        if len(path_list) <= 0:
+            return []
+
+        file_list = []
+
+        #concat filelist can speed up 'hadoop ls'
+        str_concat = ""
+        for path in path_list:
+            str_concat += path + " "
+        cmd = "ls " + str_concat + " | awk '{if ($8 != \"\") {print $5\" \"$8 }}'"
+        ret, lines = self._run_cmd(cmd)
+        if (len(lines) == 0):
+            logger.warning("list_files empty, path[%s]" % path_list)
+            return []
+        for line in lines:
+            arr = line.split(' ')
+            if len(arr) < 2:
+                continue
+            file_path = arr[1]
+            file_size = int(arr[0])
+            file_list.append({'path': file_path, 'size': file_size})
+
+        return file_list

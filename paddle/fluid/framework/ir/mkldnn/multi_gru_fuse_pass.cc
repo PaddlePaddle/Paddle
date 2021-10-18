@@ -111,9 +111,9 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(fused_count);
-
-  PrettyLogDetail("---    fused %d pairs of concatenated multi_gru ops",
-                  fused_count);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d pairs of concatenated multi_gru ops",
+                    fused_count);
 }
 
 }  // namespace ir

@@ -39,14 +39,15 @@ namespace allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-    size_t chunk_size)
-    : underlying_allocator_(
-          std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
+    size_t chunk_size, bool allow_free_idle_chunk)
+    : underlying_allocator_(underlying_allocator),
       alignment_(alignment),
-      chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)) {}
+      chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
+      allow_free_idle_chunk_(allow_free_idle_chunk) {}
 
-Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
-  size = AlignedSize(size, alignment_);
+Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
+  size_t size = AlignedSize(unaligned_size, alignment_);
+  VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
 
   std::lock_guard<SpinLock> guard(spinlock_);
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
@@ -56,6 +57,8 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
     free_blocks_.erase(iter);
     auto *chunk = block_it->chunk_;
     size_t remaining_size = block_it->size_ - size;
+    VLOG(10) << "Allocate " << size << " bytes from chunk size "
+             << block_it->size_ << ", remaining " << remaining_size;
     if (remaining_size == 0) {
       block_it->is_free_ = false;
     } else {
@@ -94,13 +97,14 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
     }
     blocks.emplace_back(p + remaining_size, size, false, chunk);
     block_it = --(blocks.end());
-    VLOG(2) << "Not found and reallocate " << realloc_size << ", and remaining "
-            << remaining_size;
+    VLOG(2) << "Not found and reallocate " << realloc_size << "("
+            << static_cast<void *>(p) << "), and remaining " << remaining_size;
   }
   return new BlockAllocation(block_it);
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
+  VLOG(10) << "Free " << allocation->size() << " bytes";
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
@@ -139,6 +143,9 @@ void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
 }
 
 uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
+  if (!allow_free_idle_chunk_) {
+    return 0;
+  }
   uint64_t bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;

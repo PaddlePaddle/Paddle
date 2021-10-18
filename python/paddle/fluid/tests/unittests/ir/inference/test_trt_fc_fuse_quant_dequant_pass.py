@@ -86,15 +86,14 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
             self.data = fluid.data(
                 name='data', shape=[1, 28, 28], dtype='float32')
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
             fc_out = fluid.layers.fc(input=self.data,
                                      size=28,
                                      num_flatten_dims=2,
                                      bias_attr=False,
                                      act=None)
-            c_out = fluid.layers.reshape(fc_out, shape=[1, 1, 784])
+            c_out = fluid.layers.reshape(fc_out, shape=[0, 784])
             result = fluid.layers.relu(c_out)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            loss = fluid.layers.cross_entropy(input=result, label=self.label)
             avg_loss = fluid.layers.mean(loss)
             return avg_loss, result
 
@@ -119,11 +118,11 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
         self.dynamic_shape_params = FCQuantDequantFusePassTRTDims3Cols2Test.DynamicShapeParam(
             {
                 'data': [1, 28, 28],
-                'reshape2_1.tmp_0': [1, 1, 784]
+                'reshape2_0.tmp_0': [1, 784]
             }, {'data': [4, 28, 28],
-                'reshape2_1.tmp_0': [4, 1, 784]},
-            {'data': [1, 28, 28],
-             'reshape2_1.tmp_0': [1, 1, 784]}, False)
+                'reshape2_0.tmp_0':
+                [4, 784]}, {'data': [1, 28, 28],
+                            'reshape2_0.tmp_0': [1, 784]}, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 

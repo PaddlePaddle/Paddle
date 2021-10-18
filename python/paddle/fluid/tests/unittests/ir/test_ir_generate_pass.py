@@ -15,7 +15,7 @@
 import unittest
 import paddle
 from paddle.static import InputSpec
-from paddle.fluid import ir
+from paddle.fluid import core, ir
 import numpy as np
 
 
@@ -45,23 +45,37 @@ def generate_fc_fuse():
     return list(map(create_pass_pair, [True, False]))
 
 
-# add(X=add(x, y), Y=z)z => add_n(X=[x, y, z])
+# add(X=add(X=x, Y=y), Y=z) => sum(X=[x, y, z])
 @ir.RegisterPass
-def generate_add_n():
+def multi_add_to_sum_v1():
+    pattern = lambda x, y, z: paddle.add(paddle.add(x, y), z)
+    replace = lambda x, y, z: paddle.add_n([x, y, z])
+    return pattern, replace
+
+
+@ir.RegisterPass
+def multi_add_to_sum_v2():
     def pattern(x, y, z):
-        return paddle.add(paddle.add(x, y), z)
+        ewadd1 = ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+        ewadd2 = ir.PassDesc.OP.elementwise_add(X=ewadd1, Y=z)
+        return ewadd2
 
-    def replace(x, y, z):
-        return paddle.add_n([x, y, z])
+    replace = lambda x, y, z: ir.PassDesc.OP.sum(X=[x, y, z])
+    return pattern, replace
 
+
+@ir.RegisterPass
+def multi_add_to_sum_v3():
+    pattern = lambda x, y, z: paddle.add(paddle.add(x, y), z)
+    replace = lambda x, y, z: ir.PassDesc.OP.sum(X=[x, y, z])
     return pattern, replace
 
 
 # mul(x, y1), mul(x, y2) => slice(mul(x, concat(y1, y2)))
 @ir.RegisterPass(input_specs={
-    'x': InputSpec([1, 1]),
-    'y1': InputSpec([1, 1]),
-    'y2': InputSpec([1, 1])
+    'x': InputSpec([16, 32]),
+    'y1': InputSpec([32, 12]),
+    'y2': InputSpec([32, 48])
 })
 def generate_combine_mul_v1():
     def pattern(x, y1, y2):
@@ -72,8 +86,8 @@ def generate_combine_mul_v1():
     def replace(x, y1, y2):
         concat_out = paddle.concat([y1, y2], axis=-1)
         mul_out = paddle.matmul(x, concat_out)
-        out1 = paddle.slice(mul_out, axes=[1], starts=[0], ends=[1])
-        out2 = paddle.slice(mul_out, axes=[1], starts=[1], ends=[2])
+        out1 = paddle.slice(mul_out, axes=[1], starts=[0], ends=[12])
+        out2 = paddle.slice(mul_out, axes=[1], starts=[12], ends=[60])
         return out1, out2
 
     return pattern, replace
@@ -97,11 +111,22 @@ def generate_combine_mul_v2():
 
 
 # reshape(reshape(x)) => x
-@ir.RegisterPass(input_specs={'x': InputSpec([-1, 16, 16, 16])})
-def generate_simplify_inference():
+@ir.RegisterPass(input_specs={'x': InputSpec([10, 16, 16])})
+def generate_simplify_inference_v1():
     def pattern(x):
-        transpose = paddle.transpose(x, [0, 3, 1, 2])
-        return paddle.transpose(transpose, [0, 3, 1, 2])
+        transpose = paddle.transpose(x, [0, 2, 1])
+        return paddle.transpose(transpose, [0, 2, 1])
+
+    return pattern, lambda x: x
+
+
+@ir.RegisterPass
+def generate_simplify_inference_v2():
+    def pattern(x):
+        op1 = ir.PassDesc.OP.transpose2
+        op2 = ir.PassDesc.OP.transpose2
+        # op2.Attr("axis").EQ(op1.Attr("axis"))
+        return op2(X=op1(X=x))
 
     return pattern, lambda x: x
 
@@ -122,6 +147,9 @@ class TestGeneratePass(unittest.TestCase):
             else:
                 op_dicts[op.type] = [op]
         return op_dicts
+
+    def test_has_attr(self):
+        self.assertFalse(hasattr(ir.PassDesc.OP, '__name__'))
 
     def test_generate_fc_fuse(self):
         def _check_fc_fuse_pass(pass_desc, with_relu):
@@ -150,46 +178,73 @@ class TestGeneratePass(unittest.TestCase):
         _check_fc_fuse_pass(multi_pass_desc.pass_descs[0], True)
         _check_fc_fuse_pass(multi_pass_desc.pass_descs[1], False)
 
-    def test_generate_add_n(self):
-        helper = ir.RegisterPassHelper([generate_add_n()])
-        s = helper.SerializeMultiPassDesc()
-        multi_pass_desc = get_multi_pass_desc_from_str(s)
-        self.assertEqual(len(multi_pass_desc.pass_descs), 1)
-        pass_desc = multi_pass_desc.pass_descs[0]
-        self.assertEqual(len(pass_desc.var_maps), 4)
-        self.assertEqual(len(pass_desc.attr_maps), 0)
-        self.assertEqual(len(pass_desc.pattern.blocks[0].ops), 2)
-        self.assertEqual(len(pass_desc.replace.blocks[0].ops), 1)
-        pattern_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.pattern.blocks[0].ops)
-        replace_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.replace.blocks[0].ops)
-        self.assertEqual(len(pattern_op_dicts.get("elementwise_add", [])), 2)
-        self.assertEqual(len(replace_op_dicts.get("sum", [])), 1)
+    def check_multi_add_to_sum(self, pass_type):
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [10, 10, 10], "float32")
+            y = paddle.static.data("y", [10, 10, 10], "float32")
+            z = paddle.static.data("z", [10, 10, 10], "float32")
+            add_1 = paddle.add(paddle.add(x, y), z)
+            matmul_1 = paddle.matmul(add_1, z)
+            add_tmp = paddle.add(x, y)
+            add_2 = paddle.add(add_tmp, z)
+            matmul_2 = paddle.matmul(add_2, add_tmp)
+            out = paddle.add(matmul_1, matmul_2)
+        graph = core.Graph(program.desc)
+        before_node_nums = len(graph.nodes())
+        core.get_pass(pass_type).apply(graph)
+        after_node_nums = len(graph.nodes())
+        self.assertEqual(after_node_nums, before_node_nums - 2)
+        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        executor = paddle.static.Executor(paddle.CPUPlace())
+        executor.run(startup_program)
+        feed = {
+            "x": np.random.random([10, 10, 10]).astype("float32"),
+            "y": np.random.random([10, 10, 10]).astype("float32"),
+            "z": np.random.random([10, 10, 10]).astype("float32")
+        }
+        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
+        after_out = executor.run(after_program,
+                                 feed=feed,
+                                 fetch_list=[out.name])
+        self.assertTrue(np.allclose(before_out, after_out))
+
+    def test_multi_add_to_sum(self):
+        paddle.enable_static()
+        self.check_multi_add_to_sum("multi_add_to_sum_v1")
+        self.check_multi_add_to_sum("multi_add_to_sum_v2")
+        self.check_multi_add_to_sum("multi_add_to_sum_v3")
 
     def test_generate_combine_mul_v1(self):
-        input_specs = {
-            'x': InputSpec([1, 1]),
-            'y1': InputSpec([1, 1]),
-            'y2': InputSpec([1, 1])
+        paddle.enable_static()
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [16, 32])
+            y = paddle.static.data("y", [32, 12])
+            z = paddle.static.data("z", [32, 48])
+            out1 = paddle.matmul(x, y)
+            out2 = paddle.matmul(x, z)
+        graph = core.Graph(program.desc)
+        before_node_nums = len(graph.nodes())
+        core.get_pass("generate_combine_mul_v1").apply(graph)
+        after_node_nums = len(graph.nodes())
+        self.assertEqual(after_node_nums, before_node_nums + 4)
+        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        executor = paddle.static.Executor(paddle.CPUPlace())
+        executor.run(startup_program)
+        feed = {
+            "x": np.random.random([16, 32]).astype("float32"),
+            "y": np.random.random([32, 12]).astype("float32"),
+            "z": np.random.random([32, 48]).astype("float32")
         }
-        helper = ir.RegisterPassHelper(
-            [generate_combine_mul_v1()], input_specs=input_specs)
-        s = helper.SerializeMultiPassDesc()
-        multi_pass_desc = get_multi_pass_desc_from_str(s)
-        self.assertEqual(len(multi_pass_desc.pass_descs), 1)
-        pass_desc = multi_pass_desc.pass_descs[0]
-        self.assertEqual(len(pass_desc.var_maps), 5)
-        self.assertEqual(len(pass_desc.pattern.blocks[0].ops), 2)
-        self.assertEqual(len(pass_desc.replace.blocks[0].ops), 4)
-        pattern_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.pattern.blocks[0].ops)
-        replace_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.replace.blocks[0].ops)
-        self.assertEqual(len(pattern_op_dicts.get("matmul_v2", [])), 2)
-        self.assertEqual(len(replace_op_dicts.get("concat", [])), 1)
-        self.assertEqual(len(replace_op_dicts.get("matmul_v2", [])), 1)
-        self.assertEqual(len(replace_op_dicts.get("slice", [])), 2)
+        before_out1, before_out2 = executor.run(
+            program, feed=feed, fetch_list=[out1.name, out2.name])
+        after_out1, after_out2 = executor.run(
+            after_program, feed=feed, fetch_list=[out1.name, out2.name])
+        self.assertTrue(np.allclose(before_out1, after_out1))
+        self.assertTrue(np.allclose(before_out2, after_out2))
 
     def test_generate_combine_mul_v2(self):
         helper = ir.RegisterPassHelper([generate_combine_mul_v2()])
@@ -209,17 +264,31 @@ class TestGeneratePass(unittest.TestCase):
         self.assertEqual(len(replace_op_dicts.get("matmul_v2", [])), 1)
         self.assertEqual(len(replace_op_dicts.get("slice", [])), 2)
 
+    def check_generate_simplify_inference(self, pass_type):
+        paddle.enable_static()
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [10, 16, 16], "float32")
+            x1 = paddle.transpose(paddle.transpose(x, [0, 2, 1]), [0, 2, 1])
+            tmp = paddle.transpose(x, [0, 2, 1])
+            x2 = paddle.transpose(tmp, [0, 2, 1])
+            out = paddle.add(x1, paddle.matmul(x2, tmp))
+        graph = core.Graph(program.desc)
+        before_node_nums = len(graph.nodes())
+        core.get_pass(pass_type).apply(graph)
+        after_node_nums = len(graph.nodes())
+        self.assertEqual(after_node_nums, before_node_nums - 6)
+        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        executor = paddle.static.Executor(paddle.CPUPlace())
+        executor.run(startup_program)
+        feed = {"x": np.random.random([10, 16, 16]).astype("float32")}
+        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
+        after_out = executor.run(after_program,
+                                 feed=feed,
+                                 fetch_list=[out.name])
+        self.assertTrue(np.allclose(before_out, after_out))
+
     def test_generate_simplify_inference(self):
-        input_specs = {'x': InputSpec([-1, 16, 16, 16])}
-        helper = ir.RegisterPassHelper(
-            [generate_simplify_inference()], input_specs=input_specs)
-        s = helper.SerializeMultiPassDesc()
-        multi_pass_desc = get_multi_pass_desc_from_str(s)
-        self.assertEqual(len(multi_pass_desc.pass_descs), 1)
-        pass_desc = multi_pass_desc.pass_descs[0]
-        self.assertEqual(len(pass_desc.var_maps), 2)
-        self.assertEqual(len(pass_desc.pattern.blocks[0].ops), 2)
-        self.assertEqual(len(pass_desc.replace.blocks[0].ops), 0)
-        pattern_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.pattern.blocks[0].ops)
-        self.assertEqual(len(pattern_op_dicts.get("transpose2", [])), 2)
+        self.check_generate_simplify_inference("generate_simplify_inference_v1")
+        self.check_generate_simplify_inference("generate_simplify_inference_v2")
