@@ -830,7 +830,10 @@ PYBIND11_MODULE(core_noavx, m) {
            [](framework::Tensor &self) {
              return DataLayoutToString(self.layout());
            })
+      // ShareDataWith
       .def("_share_data_with", &framework::Tensor::ShareDataWith)
+      .def("_slice", &framework::Tensor::Slice)
+      .def("use_count", &framework::Tensor::use_count)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__", [](const framework::Tensor &self) {
         std::stringstream ostr;
