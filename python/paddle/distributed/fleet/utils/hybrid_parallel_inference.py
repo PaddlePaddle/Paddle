@@ -403,25 +403,6 @@ class HybridParallelInferenceHelper(object):
 
         return used_var_names
 
-#     def _find_post_op(self, index, var_name):
-#         """
-#         Find the post op that has variable named var_name as input.
-#         """
-#         # bugfix for uniform hybrid parallelism
-#         if '.cast_fp32' in var_name:
-#             var_name = var_name.replace('.cast_fp32', '')
-#         if '.cast_fp16' in var_name:
-#             var_name = var_name.replace('.cast_fp16', '')
-
-#         post_ops = self._input_var_to_op[var_name]
-#         if post_ops == None: return None
-#         result_op = None
-#         for post_op, post_idx in reversed(post_ops):
-#             if post_idx > index:
-#                 result_op = post_op
-#                 break
-#         return result_op
-
     def _find_prev_op(self, index, var_name):
         """
         Find the previous op of op with index that outputs
@@ -697,6 +678,77 @@ class HybridParallelInferenceHelper(object):
                 index += 1
         block._sync_with_cpp()
 
+    def _insert_sendrecv_ops_for_results_pipeline_parallel(
+            self, block, fetch_var_names_for_pp, stage):
+
+        dev_ids = []
+        for pair in self._pipeline_pair_in_while:
+            prev_id, cur_id = pair
+            if prev_id not in dev_ids:
+                dev_ids.append(prev_id)
+            if cur_id not in dev_ids:
+                dev_ids.append(cur_id)
+
+        if len(dev_ids) < 2:
+            return
+
+        first_id = min(dev_ids)
+        last_id = max(dev_ids)
+
+        index = len(block.ops)
+
+        for prev_id in dev_ids:
+            if prev_id == cur_id: continue
+            assert cur_id > prev_id
+
+            pair = (prev_id, cur_id)
+            # 1000 is just a magic number
+            pair_key = prev_id * 1000 + cur_id
+            if pair not in self._pipeline_pair:
+                self._pipeline_pair.append(pair)
+                self._pp_ring_map[pair_key] = self.ring_id
+                ring_id = self.ring_id
+                self.ring_id += 1
+            else:
+                ring_id = self._pp_ring_map[pair_key]
+
+            if cur_id == last_id and prev_id == first_id:
+                for var_name in fetch_var_names_for_pp:
+                    var = block._var_recursive(var_name)
+                    if stage == cur_id:
+                        block._insert_op_without_sync(
+                            index=index,
+                            type='send_v2',
+                            inputs={'X': var},
+                            attrs={
+                                self._op_device_key:
+                                self._device + ':' + str(cur_id),
+                                self._op_role_key: int(self._op_role.Forward),
+                                'use_calc_stream': True,
+                                'peer': 0,
+                                'ring_id': ring_id
+                            })
+                    else:
+                        var_shape = list(var.shape)
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
+                        block._insert_op_without_sync(
+                            index=index,
+                            type='recv_v2',
+                            outputs={'Out': [var]},
+                            attrs={
+                                'out_shape': var_shape,
+                                'dtype': var.dtype,
+                                self._op_device_key:
+                                self._device + ':' + str(prev_id),
+                                self._op_role_key: int(self._op_role.Forward),
+                                'use_calc_stream': True,
+                                'peer': 1,
+                                'ring_id': ring_id
+                            })
+                    index += 1
+        block._sync_with_cpp()
+
     def _get_while_block(self):
         """
         Get the while sub-block.
@@ -712,9 +764,20 @@ class HybridParallelInferenceHelper(object):
         if sub_block_id: return op, self._main_program.block(sub_block_id)
         return None, None
 
+    def convert_op_device(self, block, target_ops, target_device):
+        assert 'while' not in target_ops
+        for op in block.ops:
+            if op.type == 'while':
+                sub_block_id = op.attr('sub_block').id
+                sub_block = block.program.block(sub_block_id)
+                self.convert_op_device(sub_block, target_device)
+            if op.type in target_ops:
+                op._set_attr(self._op_device_key, target_device)
+
     def gen_infer_program(self,
                           sync_in_while_lastpp2firstpp_var_names=None,
                           sync_in_while_var_names=None,
+                          fetch_var_names_for_pp=None,
                           debug=False):
         """
         Generate inference program.
@@ -723,6 +786,8 @@ class HybridParallelInferenceHelper(object):
                 that need to send var to first pipeline and exclude bool dtype var
             sync_in_while_var_names (list(str)): the vars sync among all pipeline in while block
                 e.g cond. Note that cond cannot be bool dtype.
+            fetch_var_names_for_pp (list(str)): the fetch var names need to send back from the 
+                last pipeline to the first pipeline
             debug (bool): the flag indicate debug
         """
         main_block = self._main_program.global_block()
@@ -762,9 +827,17 @@ class HybridParallelInferenceHelper(object):
                 while_block, sync_in_while_lastpp2firstpp_var_names,
                 sync_in_while_var_names, self._stage)
 
-        # step3: split programs
+        # step3: add send/recv for the result of pipeline parallel
+        self._insert_sendrecv_ops_for_results_pipeline_parallel(
+            main_block, fetch_var_names, self._stage)
+
+        # step4: split programs
         self._split_program(self._startup_program, self._stage, 0)
         self._split_program(self._main_program, self._stage, 0)
+
+        if self.micro_batch_size > 4:
+            self.convert_op_device(startup_block, ['beam_search'], 'cpu')
+            self.convert_op_device(main_block, ['beam_search'], 'cpu')
 
         if debug:
             with open(f'main_program.txt.{self.rank}', 'w') as f:
