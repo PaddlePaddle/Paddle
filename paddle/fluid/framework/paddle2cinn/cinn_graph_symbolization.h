@@ -98,7 +98,7 @@ class CinnGraphSymbolization {
 
   using OpMapperContext = ::cinn::frontend::OpMapperContext;
   // transform all paddle var desc in feed list into cinn_var_descs_
-  void AddFeedVarIntoContext(OpMapperContext* ctx) const;
+  void AddFeedInfoIntoContext(OpMapperContext* ctx) const;
 
   // transform all paddle op desc in graph into cinn op desc
   using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;

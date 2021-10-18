@@ -19,6 +19,7 @@ limitations under the License. */
 #include <queue>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -58,6 +59,16 @@ void TransformPaddleVariableToCinn(
   cinn_tensor.Resize(::cinn::hlir::framework::Shape(feed_info.shape));
 }
 }  // namespace utils
+
+void CinnGraphSymbolization::AddFeedInfoIntoContext(
+    OpMapperContext* ctx) const {
+  for (auto& feed_pair : feed_targets_) {
+    const auto& feed_name = feed_pair.first;
+    const auto* tensor = feed_pair.second;
+
+    ctx.AddFeedInfo(feed_name, utils::GetCinnFeedInfoFromTensor(*tensor));
+  }
+}
 
 // get the graph's op input Parameter var name set
 std::unordered_set<std::string>
@@ -105,16 +116,8 @@ CinnGraphSymbolization::TransformPaddleScopeToCinn() const {
   return cinn_scope;
 }
 
-void CinnGraphSymbolization::AddFeedVarIntoContext(OpMapperContext* ctx) const {
-  for (auto& feed_pair : feed_targets_) {
-    const auto& feed_name = feed_pair.first;
-    const auto* tensor = feed_pair.second;
-
-    ctx.AddFeedInfo(feed_name, utils::GetCinnFeedInfoFromTensor(*tensor));
-  }
-}
-
-auto CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
+std::vector<std::unique_ptr<CinnOpDesc>>
+CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
   std::vector<std::unique_ptr<CinnOpDesc>> cinn_op_descs_;
 
   const auto& sorted_ops = ir::TopologySortOperations(graph_);
@@ -124,7 +127,7 @@ auto CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
 
     TransformOpDescToCinn(node->Op(), cinn_desc.get());
   }
-  return std::move(cinn_op_descs_);
+  return cinn_op_descs_;
 }
 
 void CinnGraphSymbolization::RunOp(const CinnOpDesc& op_desc,
@@ -158,7 +161,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   OpMapperContext ctx(*cinn_scope, target_, &builder, &var_map_,
                       &var_model_to_program_map_);
 
-  AddFeedVarIntoContext(&ctx);
+  AddFeedInfoIntoContext(&ctx);
   RunGraph(ctx);
 
   return builder.Build();
