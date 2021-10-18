@@ -30,6 +30,13 @@ from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
 from .alexnet import AlexNet  # noqa: F401
 from .alexnet import alexnet  # noqa: F401
+from .resnext import ResNeXt  # noqa: F401
+from .resnext import resnext50_32x4d  # noqa: F401
+from .resnext import resnext50_64x4d  # noqa: F401
+from .resnext import resnext101_32x4d  # noqa: F401
+from .resnext import resnext101_64x4d  # noqa: F401
+from .resnext import resnext152_32x4d  # noqa: F401
+from .resnext import resnext152_64x4d  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -49,5 +56,12 @@ __all__ = [ #noqa
     'mobilenet_v2',
     'LeNet',
     'AlexNet',
-    'alexnet'
+    'alexnet',
+    'ResNeXt',
+    'resnext50_32x4d',
+    'resnext50_64x4d',
+    'resnext101_32x4d',
+    'resnext101_64x4d',
+    'resnext152_32x4d',
+    'resnext152_64x4d'
 ]

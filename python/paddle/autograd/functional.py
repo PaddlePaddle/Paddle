@@ -24,9 +24,10 @@ from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_ze
 @contextlib.contextmanager
 def gradient_scope(*var_lists, create_graph=False, allow_unused=False):
     def grad_fn(ys, xs, v=None, create_graph=create_graph):
-        assert v is None or len(ys) == len(v), (
-            f'`v` is expected to be of the same size as the output. '
-            f'Here the output is {ys}, and `v` is {v}.')
+        if v is not None:
+            assert len(ys) == len(v), (
+                f'The argument {v} is expected to be of the same size as the output. '
+                f'Here the output is {ys}, and `v` is {v}.')
         if allow_unused:
             ys = [
                 to_tensor(
@@ -153,7 +154,9 @@ def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
         #        [[2., 1.],
         #         [1., 0.]]), None]
     """
-    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
+    xs = _tensors(inputs, "inputs")
+    if v is not None:
+        v = _tensors(v, "v")
 
     with gradient_scope(
             xs, v, create_graph=create_graph,
@@ -223,7 +226,9 @@ def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
         #         [0., 0.]])]
 
     """
-    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
+    xs = _tensors(inputs, "inputs")
+    if v is not None:
+        v = _tensors(v, "v")
 
     with gradient_scope(
             xs, v, create_graph=create_graph,

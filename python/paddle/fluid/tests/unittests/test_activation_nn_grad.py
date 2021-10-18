@@ -71,6 +71,28 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestTanhTripleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = layers.tanh(x)
+        x_arr = np.random.random(shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.triple_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestTanhDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
