@@ -247,9 +247,9 @@ def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
 def jacobian(func, inputs, create_graph=False, allow_unused=False):
     ''' 
     .. note::
-        **This API is ONLY available in imperative mode.**
+        **This API is ONLY available in the imperative mode.**
 
-    This API computes the Jacobian matrix of `func` with respect to `inputs`.
+    This function computes the Jacobian matrix of `func` with respect to `inputs`.
 
     Parameters:
         func (function): a Python function that takes a Tensor or a Tensor
@@ -389,9 +389,9 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 def hessian(func, inputs, create_graph=False, allow_unused=False):
     ''' 
     .. note::
-        **This API is ONLY available in imperative mode.**
+        **This API is ONLY available in the imperative mode.**
 
-    This API computes the Hessian matrix of `func` with respect to `inputs`.
+    This function computes the Hessian matrix of `func` with respect to `inputs`.
 
     Parameters:
         func (function): a Python function that takes a Tensor or a Tensor
@@ -509,3 +509,107 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
 
     return jacobian(
         jac_func, inputs, create_graph=create_graph, allow_unused=allow_unused)
+
+
+@framework.dygraph_only
+def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
+    ''' 
+    .. note::
+        **This API is ONLY available in the imperative mode.**
+
+    This function computes the product between a vector ``v`` and the
+    Hessian matrix of `func` with respect to `inputs`.
+
+    Parameters:
+        func (function): a Python function that takes a Tensor or a Tensor
+            list/tuple as inputs and returns a Tensor with a single element.
+        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
+            Tensor list/tuple of the function ``func``.
+        v (Tensor|list(Tensor)|tuple(Tensor)|None, optional): the vector used
+            to compute vector hessian product. ``v`` should have same shape
+            and dtype with ``inputs``. If ``v`` is None, it will be set as
+            Tensor|list(Tensor) with all elements 1. Defaults to "None".
+        create_graph (bool, optional): whether to create the gradient graphs
+            of the computing process. When it is True, higher order derivatives
+            are supported to compute; when it is False, the gradient graphs of
+            the computing process would be discarded. Defaults to ``False``.
+        allow_unused (bool, optional): whether to raise error or return None if
+            some Tensors of `inputs` are unreachable in the graph. Error would
+            be raised if allow_unused=False, and None would be returned as
+            their gradients if allow_unused=True. Default False.
+    Returns:
+        output (tuple): tuple with:
+            func_output (Tensor): output of ``func(inputs)``
+            vhp (list(Tensor)): result of the vector hessian product
+            with the same shape and dtype as the inputs.
+    Examples 1:
+        .. code-block:: python
+            import paddle
+            def func(x):
+                return paddle.sum(paddle.matmul(x, x))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            vx = paddle.ones(shape=[2, 2], dtype='float32') * 2
+            vhp_rslt = paddle.autograd.vhp(func, x, v=vx)
+            print(vhp_rslt)
+            # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [8.]),
+            #  Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[8., 8.],
+            #         [8., 8.]]))
+
+    Examples 2:
+        .. code-block:: python
+            import paddle
+            def func(x):
+                return paddle.sum(paddle.matmul(x, x))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            vhp_rslt = paddle.autograd.vhp(func, x)
+            print(vhp_rslt)
+            # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [8.]),
+            #  Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[4., 4.],
+            #         [4., 4.]]))
+
+    Examples 3:
+        .. code-block:: python
+            import paddle
+            def func(x, y):
+                return paddle.sum(paddle.matmul(x, x))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            y = paddle.ones(shape=[2, 2], dtype='float32')
+            y.stop_gradient = False
+            vx = paddle.ones(shape=[2, 2], dtype='float32') * 2
+            vy = paddle.ones(shape=[2, 2], dtype='float32') * 3
+            vhp_rslt = paddle.autograd.vhp(func, [x, y], v=[vx, vy], allow_unused=True)
+            print(vhp_rslt)
+            # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [8.]),
+            # [Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[8., 8.],
+            #         [8., 8.]]), None])
+    '''
+    xs = _tensors(inputs, "inputs")
+    if v is not None:
+        v = _tensors(v, "v")
+
+    with gradient_scope(
+            xs, v, create_graph=create_graph,
+            allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
+        outputs = func(*xs)
+        ys = _tensors(outputs, "outputs")
+        assert len(ys) == 1 and isinstance(
+            ys[0], paddle.Tensor
+        ) and ys[0].shape == [
+            1
+        ], "The function to compute vhp should return a Tensor with a single element"
+        jac = grad_fn(ys, xs, create_graph=True)
+        vhp = grad_fn(jac, xs, v)
+        outputs, vhp = return_fn(outputs), return_fn(vhp)
+    return outputs, vhp
