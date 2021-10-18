@@ -33,6 +33,9 @@ namespace memory {
 namespace allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
 void CUDAAllocator::FreeImpl(Allocation* allocation) {
+  // VLOG(0) << "=====CUDA FREE ptr=====" << allocation->ptr();
+  // VLOG(0) << "=====CUDA FREE size=====" << allocation->size();
+
   PADDLE_ENFORCE_EQ(
       BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
       platform::errors::PermissionDenied(
@@ -44,8 +47,9 @@ void CUDAAllocator::FreeImpl(Allocation* allocation) {
 
 Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
-
   void* ptr;
+  // VLOG(0) << "=====CUDA ALLOC ptr=====" << ptr;
+  // VLOG(0) << "=====CUDA ALLOC size=====" << size;
   auto result = platform::RecordedCudaMalloc(&ptr, size, place_.device);
   if (LIKELY(result == gpuSuccess)) {
     return new Allocation(ptr, size, platform::Place(place_));

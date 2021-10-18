@@ -1463,6 +1463,12 @@ void BindImperative(py::module *m_ptr) {
                 linear.weight.clear_gradient()
                 print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
       )DOC")
+      .def("_clear_gradient", &imperative::VarBase::_ClearGradient,
+           R"DOC(...)DOC")
+      .def("_copy_from_gradient", &imperative::VarBase::_CopyFromGradient,
+           R"DOC(...)DOC")
+      .def("use_count", &imperative::VarBase::use_count, R"DOC(...)DOC")
+      // .def("_slice", &imperative::VarBase::_Slice, R"DOC(...)DOC")
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
              const auto &tensor = self->Var().Get<framework::LoDTensor>();

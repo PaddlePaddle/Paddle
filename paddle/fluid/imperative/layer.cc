@@ -218,6 +218,69 @@ void VarBase::ClearGradient() {
     grad_var_->SharedVar()->SetIsEmpty(true);
   }
 }
+// byf clear gradient
+void VarBase::_ClearGradient() {
+  VLOG(4) << "ClearGradient " << Name();
+  if (grad_var_) {
+    if (grad_var_->Var().IsType<framework::SelectedRows>()) {
+      auto* grad_t =
+          grad_var_->MutableVar()->GetMutable<framework::SelectedRows>();
+      if (grad_t->mutable_value()->IsInitialized()) {
+#ifdef PADDLE_WITH_MKLDNN
+        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+#endif
+        grad_t->mutable_rows()->clear();
+        grad_t->mutable_value()->clear();
+      }
+    } else {
+      platform::RecordEvent record_event("ClearGradient");
+      auto* grad_t =
+          grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+      grad_t->clear();
+    }
+  }
+}
+
+// byf copy from gradient
+void VarBase::_CopyFromGradient(VarBase* src) {
+  VLOG(4) << "CopyFromGradient" << Name();
+  if (grad_var_) {
+    auto* src_tensor = src->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
+    grad_t->ShareDataWith(*src_tensor);
+    grad_t->Resize(var_->dims());
+  }
+}
+
+// byf varbase use count
+void VarBase::use_count() {
+  if (grad_var_) {
+    VLOG(0) << "VARBASE USE COUNT: "
+            << std::to_string(grad_var_->MutableVar()
+                                  ->GetMutable<framework::LoDTensor>()
+                                  ->Holder()
+                                  .use_count());
+  }
+}
+
+// byf slice
+// std::shared_ptr<VarBase> VarBase::_Slice(int64_t begin_idx, int64_t end_idx)
+// {
+//   auto* src_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+//   auto& dst_tensor = src_tensor->Slice(begin_idx, end_idx);
+//   auto new_var = std::make_shared<VarBase>(true, Name() +
+//   std::to_string(copied_counter_++));
+//   auto* fin_tensor =
+//   new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+//   // fin_tensor->set_lod(dst_tensor.lod());
+//   new_var->SetPersistable(Persistable());
+//   new_var->SetDataType(DataType());
+//   new_var->SetType(Type());
+//   // must be gpu
+//   fin_tensor->ShareDataWith(dst_tensor);
+//   return new_var;
+// }
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {

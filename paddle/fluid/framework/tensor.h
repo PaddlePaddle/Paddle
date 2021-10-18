@@ -251,6 +251,10 @@ class Tensor {
     offset_ = 0;
   }
 
+  void use_count() {
+    VLOG(0) << "TENSOR USE COUNT: " << std::to_string(holder_.use_count());
+  }
+
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
