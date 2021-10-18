@@ -35,6 +35,8 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
+void NaiveExecutor::ResetTrtOps() { VLOG(3) << ""; }
+
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
