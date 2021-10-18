@@ -31,6 +31,50 @@ from paddle import _C_ops
 __all__ = []
 
 
+def celu(x, alpha=1.0, name=None):
+    r"""
+    celu activation.
+
+    .. math::
+
+        celu(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
+            out = F.celu(x, alpha=0.2)
+            # [[-0.19865242,  6.        ],
+            #  [ 1.        , 15.60000038]]
+    """
+    if alpha == 0:
+        raise ZeroDivisionError("alpha cannot be 0 for celu")
+
+    if in_dygraph_mode():
+        return _C_ops.celu(x, 'alpha', alpha)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'celu')
+    helper = LayerHelper("celu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='celu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
 def elu(x, alpha=1.0, name=None):
     r"""
     elu activation.
