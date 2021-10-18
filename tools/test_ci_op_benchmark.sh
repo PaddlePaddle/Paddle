@@ -298,7 +298,7 @@ function cpu_op_benchmark {
   prepare_benchmark_environment
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
-  check_CHANGE_OP_MAP
+  # check_CHANGE_OP_MAP
   build_whl
   LOG "[INFO] Op benchmark run success and no error!"
   exit 0

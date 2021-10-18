@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>

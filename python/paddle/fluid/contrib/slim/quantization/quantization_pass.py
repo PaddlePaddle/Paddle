@@ -51,6 +51,7 @@ _out_scale_op_list = [
     "depthwise_conv2d",
     "mul",
     "matmul",
+    "matmul_v2",
     "relu",
     "leaky_relu",
     "relu6",
@@ -91,6 +92,7 @@ _op_real_in_out_name = {
     "conv2d_transpose": [["Input", "Filter"], ["Output"]],
     "mul": [["X", "Y"], ["Out"]],
     "matmul": [["X", "Y"], ["Out"]],
+    "matmul_v2": [["X", "Y"], ["Out"]],
     "pool2d": [["X"], ["Out"]],
     "elementwise_add": [["X", "Y"], ["Out"]],
     "concat": [["X"], ["Out"]],
@@ -139,7 +141,9 @@ _op_real_in_out_name = {
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
 
-_channelwise_quant_axis1_ops = ['conv2d_transpose', 'mul']
+_channelwise_quant_axis1_ops = [
+    'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
+]
 
 
 def _get_op_input_var_names(op):
@@ -1785,7 +1789,8 @@ class AddQuantDequantPass(object):
         "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
         "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
         "leaky_relu", "tanh", "swish", "scale", "transpose", "transpose2",
-        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm", "layer_norm"
+        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm", "layer_norm",
+        "matmul_v2"
     ]
 
     # To be compatible with PaddleSlim, not remove _activation_type for now
