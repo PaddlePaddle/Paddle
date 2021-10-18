@@ -20,6 +20,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+float zero = 0;
 void Ltgemm_int8_linear(
     cublasLtHandle_t ltHandle, const int8_t* A, cublasLtMatrixLayout_t Adesc,
     int8_t* Atransform, cublasLtMatrixLayout_t AtransformDesc, bool transA_,
@@ -291,7 +292,7 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, n_ * sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, alpha_tem, n_ * sizeof(float),
                     cudaMemcpyHostToDevice);
-    float zero_tem = 0;
+    float zero_tem = zero;
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
@@ -358,13 +359,9 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
-    half zero_tem = static_cast<half>(0);
+    half zero_tem = static_cast<half>(zero);
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
-                    cudaMemcpyHostToDevice);
-    float one_tem = 1;
-    CUDA_RT_CALL(cudaMalloc((void**)&alpha_one_, sizeof(float)));
-    cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   } else {
     cudaDataType_t cudadataTypeIO = CUDA_R_32F;
@@ -425,13 +422,9 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
-    float zero_tem = 0;
+    float zero_tem = zero;
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
-                    cudaMemcpyHostToDevice);
-    float one_tem = 1;
-    CUDA_RT_CALL(cudaMalloc((void**)&alpha_one_, sizeof(float)));
-    cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   }
 }
@@ -595,7 +588,7 @@ void MatmulPluginDynamic::configurePlugin(
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, n_max * sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, alpha_tem, n_max * sizeof(float),
                     cudaMemcpyHostToDevice);
-    float zero_tem = 0;
+    float zero_tem = zero;
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
@@ -608,26 +601,18 @@ void MatmulPluginDynamic::configurePlugin(
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
-    half zero_tem = static_cast<half>(0);
+    half zero_tem = static_cast<half>(zero);
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
-                    cudaMemcpyHostToDevice);
-    float one_tem = 1;
-    CUDA_RT_CALL(cudaMalloc((void**)&alpha_one_, sizeof(float)));
-    cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   } else {
     float alpha_tem = alpha_;
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_scale_, sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
-    float zero_tem = 0;
+    float zero_tem = zero;
     CUDA_RT_CALL(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
-                    cudaMemcpyHostToDevice);
-    float one_tem = 1;
-    CUDA_RT_CALL(cudaMalloc((void**)&alpha_one_, sizeof(float)));
-    cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   }
 }
