@@ -129,7 +129,7 @@ TEST(tensorrt_tester_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
                   FLAGS_modeldir + "/inference.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, true, false);
+      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
   PrepareDynamicShape(&config, 4);
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
