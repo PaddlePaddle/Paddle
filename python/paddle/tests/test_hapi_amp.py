@@ -50,7 +50,6 @@ class TestHapiWithAmp(unittest.TestCase):
         return model
 
     def run_model(self, model):
-
         transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
         train_dataset = MNIST(mode='train', transform=transform)
         model.fit(train_dataset,
@@ -61,9 +60,12 @@ class TestHapiWithAmp(unittest.TestCase):
 
     def run_amp(self, amp_level):
         for dynamic in [True, False]:
+            if not dynamic and amp_level['level'] == 'O2':
+                amp_level['use_fp16_guard'] = False
             print('dynamic' if dynamic else 'static', amp_level)
+
             paddle.seed(2021)
-            paddle.enable_static() if not dynamic else None
+            paddle.enable_static() if not dynamic else paddle.disable_static()
             paddle.set_device('gpu')
             model = self.get_model(amp_level)
             self.run_model(model)
