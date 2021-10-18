@@ -106,12 +106,10 @@ class SqueezeNet(nn.Layer):
             self._conv1 = MakeFire(96, 16, 64, 64)
             self._conv2 = MakeFire(128, 16, 64, 64)
             self._conv3 = MakeFire(128, 32, 128, 128)
-
             self._conv4 = MakeFire(256, 32, 128, 128)
             self._conv5 = MakeFire(256, 48, 192, 192)
             self._conv6 = MakeFire(384, 48, 192, 192)
             self._conv7 = MakeFire(384, 64, 256, 256)
-
             self._conv8 = MakeFire(512, 64, 256, 256)
         else:
             self._conv = Conv2D(
@@ -125,10 +123,8 @@ class SqueezeNet(nn.Layer):
             self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
             self._conv1 = MakeFire(64, 16, 64, 64)
             self._conv2 = MakeFire(128, 16, 64, 64)
-
             self._conv3 = MakeFire(128, 32, 128, 128)
             self._conv4 = MakeFire(256, 32, 128, 128)
-
             self._conv5 = MakeFire(256, 48, 192, 192)
             self._conv6 = MakeFire(384, 48, 192, 192)
             self._conv7 = MakeFire(384, 64, 256, 256)
