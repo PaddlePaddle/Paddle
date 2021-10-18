@@ -1961,7 +1961,6 @@ class LarsMomentumOptimizer(Optimizer):
                  exclude_from_weight_decay=None,
                  epsilon=0,
                  multi_precision=False,
-                 merge_option=False,
                  rescale_grad=1.0):
         assert learning_rate is not None
         assert momentum is not None
