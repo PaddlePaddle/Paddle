@@ -90,7 +90,7 @@ class FasterTokenizer(nn.Layer):
         seg_ids = helper.create_variable_for_type_inference(dtype="int64")
         if text_pair is None:
             helper.append_op(
-                type='bert_tokenizer',
+                type='faster_tokenizer',
                 inputs={'Vocab': self.vocab,
                         'Text': text},
                 outputs={'InputIds': input_ids,
@@ -98,7 +98,7 @@ class FasterTokenizer(nn.Layer):
                 attrs=attrs)
         else:
             helper.append_op(
-                type='tokenizer',
+                type='faster_tokenizer',
                 inputs={
                     'Vocab': self.vocab,
                     'Text': text,
