@@ -65,9 +65,6 @@ void SerializeToMultiVarMsgAndIOBuf(
 
   // 3. VarMessage
   for (auto& send_var_name : send_var_name_val) {
-    
-    std::cout << "***DEBUG send_var_name: " << send_var_name << std::endl;
- 
     auto* send_var_msg = request->add_var_messages();
     butil::IOBuf temp_iobuf;
     send_var_msg->set_varname(send_var_name);

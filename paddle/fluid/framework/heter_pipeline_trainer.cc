@@ -143,7 +143,7 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 void HeterPipelineTrainer::Run() {
-  VLOG(3) << "Going to run PipelineTrainer::Run()";
+  VLOG(3) << "Going to run HeterPipelineTrainer::Run()";
   if (listen_ptr_ == nullptr) {
     auto worker_0 =
       std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[0]);
