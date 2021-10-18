@@ -729,11 +729,8 @@ class InMemoryDataset(DatasetBase):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                paddle.enable_static()
 
                 dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
                 dataset.set_date("20211111")
         """
         year = int(date[:4])
