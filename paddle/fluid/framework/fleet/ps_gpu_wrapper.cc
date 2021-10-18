@@ -196,8 +196,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
   auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
 #endif
-<<<<<<< Updated upstream
-=======
 }
 
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
@@ -217,7 +215,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
   auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
 #endif
->>>>>>> Stashed changes
   timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
