@@ -724,13 +724,44 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             # low=0, high=10, dtype is float32
             x = paddle.zeros((1,2))
             out4 = paddle.randint_like(x, high=10, dtype="float32")
-            # TypeError: The data type of '%s' in %s must be %s, but received %s. %s"
+            # TypeError: dtype must be chosen from ["int32","int64"]
             
- 
-
-
     """
-    return randint(low=low, high=high, shape=x.shape, dtype=dtype, name=name)
+    if high is None:
+        if low <= 0:
+            raise ValueError(
+                "If high is None, low must be greater than 0, but received low = {0}.".
+                format(low))
+        high = low
+        low = 0
+    if dtype is None:
+        dtype = 'int64'
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    shape = x.shape
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
+                              0, 'dtype', dtype)
+
+    check_shape(shape, 'randint_like')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint_like')
+    if low >= high:
+        raise ValueError(
+            "randint_like's low must less then high, but received low = {0}, "
+            "high = {1}".format(low, high))
+
+    inputs = dict()
+    attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
+    utils.get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='randint_like')
+
+    helper = LayerHelper("randint", **locals())
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    helper.append_op(
+        type='randint_like', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    out.stop_gradient = True
+    return out
 
 
 def randperm(n, dtype="int64", name=None):
