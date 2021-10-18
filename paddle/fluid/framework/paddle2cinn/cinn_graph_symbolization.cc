@@ -35,7 +35,7 @@ using CinnTensor = ::cinn::hlir::framework::Tensor;
 
 namespace utils {
 
-auto GetCinnFeedInfoFromTensor(const Tensor& tensor) {
+OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(const Tensor& tensor) {
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
@@ -60,7 +60,8 @@ void TransformPaddleVariableToCinn(
 }  // namespace utils
 
 // get the graph's op input Parameter var name set
-auto CinnGraphSymbolization::GetGraphInputParameterNames() const {
+std::unordered_set<std::string>
+CinnGraphSymbolization::GetGraphInputParameterNames() const {
   std::unordered_set<std::string> names;
 
   for (auto* node : graph_.Nodes()) {
@@ -80,7 +81,8 @@ auto CinnGraphSymbolization::GetGraphInputParameterNames() const {
 
 // Transform paddle scope to cinn, note that we only preserve the graph’s
 // input parameter variable and ignore others.
-auto CinnGraphSymbolization::TransformPaddleScopeToCinn() const {
+std::shared_ptr<::cinn::hlir::framework::Scope>
+CinnGraphSymbolization::TransformPaddleScopeToCinn() const {
   auto cinn_scope = ::cinn::hlir::framework::Scope::Create();
 
   // get the graph's input parameter variable name list
@@ -112,67 +114,10 @@ void CinnGraphSymbolization::AddFeedVarIntoContext(OpMapperContext* ctx) const {
   }
 }
 
-std::vector<Node*> CinnGraphSymbolization::TopoSortGraph() const {
-  std::vector<Node*> cluster_sorted;
-
-  std::unordered_set<Node*> cluster_set;
-  const auto& nodes = graph_.Nodes();
-  std::copy_if(nodes.begin(), nodes.end(),
-               std::inserter(cluster_set, cluster_set.begin()),
-               [](Node* node) { return node->IsOp(); });
-
-  absl::flat_hash_map<Node*, size_t> indegree;
-  absl::flat_hash_map<Node*, absl::flat_hash_map<Node*, size_t>> adj_list;
-  std::queue<Node*> topo_queue;
-
-  // record all op's input op and output op
-  for (auto* n : cluster_set) {
-    // the op's input is var
-    for (auto* in_var : n->inputs) {
-      // the var's input is op
-      for (auto* in_op : in_var->inputs) {
-        if (cluster_set.find(in_op) != cluster_set.end()) {
-          ++indegree[n];
-          ++adj_list[in_op][n];
-        }
-      }
-    }
-  }
-
-  // find topology entrance
-  for (auto* n : cluster_set) {
-    if (indegree[n] == 0) {
-      topo_queue.push(n);
-    }
-  }
-
-  // topological sorting
-  while (!topo_queue.empty()) {
-    auto* cur_op = topo_queue.front();
-    topo_queue.pop();
-
-    cluster_sorted.emplace_back(cur_op);
-    for (const auto& adj_pair : adj_list[cur_op]) {
-      // decrease output op's in-degree
-      indegree.at(adj_pair.first) -= adj_pair.second;
-
-      // if empty, push into queue
-      if (indegree.at(adj_pair.first) == 0) {
-        topo_queue.push(adj_pair.first);
-      }
-    }
-  }
-
-  PADDLE_ENFORCE_EQ(cluster_sorted.size(), cluster_set.size(),
-                    platform::errors::PreconditionNotMet(
-                        "Cluster Sub-Graph shouldn't contain cycle."));
-  return cluster_sorted;
-}
-
 auto CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
   std::vector<std::unique_ptr<CinnOpDesc>> cinn_op_descs_;
 
-  const auto& sorted_ops = TopoSortGraph();
+  const auto& sorted_ops = ir::TopologySortOperations(graph_);
   for (auto* node : sorted_ops) {
     cinn_op_descs_.emplace_back(std::make_unique<CinnOpDesc>());
     auto& cinn_desc = cinn_op_descs_.back();
@@ -203,19 +148,14 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
 }
 
 ::cinn::frontend::Program CinnGraphSymbolization::operator()() const {
-  std::string builder_name = "graph_";
-  builder_name.append(std::to_string(graph_id_));
-  builder_name.append("_of_");
-  static uint64_t unique_invoke_number = 0;
-  builder_name.append(std::to_string(unique_invoke_number++));
+  std::string builder_name = "NetBuilder_of_graph_" + std::to_string(graph_id_);
   VLOG(4) << "NetBuilder Name " << builder_name;
 
   ::cinn::frontend::NetBuilder builder(builder_name);
 
-  auto target = ::cinn::common::DefaultHostTarget();
   auto cinn_scope = TransformPaddleScopeToCinn();
 
-  OpMapperContext ctx(*cinn_scope, target, &builder, &var_map_,
+  OpMapperContext ctx(*cinn_scope, target_, &builder, &var_map_,
                       &var_model_to_program_map_);
 
   AddFeedVarIntoContext(&ctx);
