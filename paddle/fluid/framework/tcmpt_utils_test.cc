@@ -49,12 +49,17 @@ TEST(TcmptUtils, VarToPtTensor) {
   auto* data =
       value->mutable_data<int>(make_ddim({1, 1}), paddle::platform::CPUPlace());
   data[0] = 123;
-  auto tensor_def = pt::TensorArgDef(pt::Backend::kCUDA, pt::DataLayout::kNCHW,
+  pt::Backend expect_backend = pt::Backend::kCPU;
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  expect_backend = pt::Backend::kCUDA;
+#endif
+  auto tensor_def = pt::TensorArgDef(expect_backend, pt::DataLayout::kNCHW,
                                      pt::DataType::kINT32);
   // 2. test API
   auto tensor_x = InputVariableToPtTensor(v, tensor_def);
   // 3. check result
-  ASSERT_EQ(tensor_x->backend(), pt::Backend::kCUDA);
+  ASSERT_EQ(tensor_x->backend(), expect_backend);
   ASSERT_EQ(tensor_x->type(), pt::DataType::kINT32);
 }
 
