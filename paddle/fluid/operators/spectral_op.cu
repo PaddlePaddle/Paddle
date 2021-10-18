@@ -83,9 +83,7 @@ static inline std::string get_cufft_error_info(cufftResult error) {
 }
 
 static inline void CUFFT_CHECK(cufftResult error) {
-  if (error != CUFFT_SUCCESS) {
-    PADDLE_THROW(platform::errors::External(get_cufft_error_info(error)));
-  }
+  PADDLE_ENFORCE_CUDA_SUCCESS(error);
 }
 
 // This struct is used to easily compute hashes of the
@@ -413,6 +411,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
                               ? framework::ToRealType(input.type())
                               : input.type();
   auto fft_type = GetFFTTransformType(input.type(), output.type());
+
   PlanKey Key(framework::vectorize(input.dims()),
               framework::vectorize(output.dims()), signal_size, fft_type,
               value_type);
