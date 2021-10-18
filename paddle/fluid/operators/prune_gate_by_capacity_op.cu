@@ -65,7 +65,9 @@ class PruneGateByCapacityFunctor {
 
     auto& dev_ctx = context_.template device_context<DeviceContext>();
     auto* expert_count_out_data = expert_count_out_->data<T2>();
-
+    framework::Tensor cpu_expert_count;
+    framework::TensorCopySync(*expert_count_out_, platform::CPUPlace(),
+                              &cpu_expert_count);
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
 

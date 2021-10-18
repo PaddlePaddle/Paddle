@@ -31,7 +31,7 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
                    "prun_gate_by_capacity");
     OP_INOUT_CHECK(ctx->HasOutput("ExpertCountOut"), "Output", "ExpertCountOut",
                    "prun_gate_by_capacity");
-    auto gate_idx_dims = ctx->GetInputDim("GateIdx");
+    // auto gate_idx_dims = ctx->GetInputDim("GateIdx");
     auto expert_count_dims = ctx->GetInputDim("ExpertCount");
 
     int64_t n_expert = ctx->Attrs().Get<int64_t>("n_expert");
@@ -42,7 +42,7 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
       gate_idx_num_ele *= gate_idx_dims[i];
     }
     int64_t expert_count_num_ele = 1;
-    for (int64_t i = 0; i < gate_idx_dims.size(); i++) {
+    for (int64_t i = 0; i < expert_count_dims.size(); i++) {
       expert_count_num_ele *= expert_count_dims[i];
     }
 
