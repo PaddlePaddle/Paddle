@@ -196,6 +196,8 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
+#if IS_TRT_VERSION_LT(7000)
+      // trt6 will check all_of input > 0
       if (!(std::all_of(input.second.begin(), input.second.end(),
                         [](int x) { return x > 0; }) &&
             std::all_of(max_input_shape_[input.first].begin(),
@@ -206,6 +208,7 @@ void TensorRTEngine::FreezeNetwork() {
                         [](int x) { return x > 0; }))) {
         continue;
       }
+#endif
       VLOG(4) << "TRT dynamic_shape set " << input.first
               << " min: " << Vec2Str(input.second)
               << ", max: " << Vec2Str(max_input_shape_[input.first])
