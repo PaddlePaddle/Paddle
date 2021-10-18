@@ -390,7 +390,7 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(tcmpt_utils SRCS tcmpt_utils.cc DEPS lod_tensor selected_rows place tcmpt)
+cc_library(tcmpt_utils SRCS tcmpt_utils.cc DEPS lod_tensor selected_rows place tcmpt var_type_traits)
 
 # Get the current working branch
 execute_process(
@@ -454,3 +454,4 @@ if(WITH_TESTING AND TEST selected_rows_test)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
+cc_test(tcmpt_utils_test SRCS tcmpt_utils_test.cc DEPS tcmpt_utils)
