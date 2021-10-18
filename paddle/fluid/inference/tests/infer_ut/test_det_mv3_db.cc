@@ -76,7 +76,7 @@ void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
   std::map<std::string, std::vector<int>> min_input_shape = {
       {"x", {1, 3, 50, 50}}};
   std::map<std::string, std::vector<int>> max_input_shape = {
-      {"x", {max_batch_size, 3, 2000, 2000}}};
+      {"x", {max_batch_size, 3, 1600, 1600}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"x", {1, 3, 640, 640}}};
   config->SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
