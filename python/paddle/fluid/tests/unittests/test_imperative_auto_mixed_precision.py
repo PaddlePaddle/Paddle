@@ -222,6 +222,47 @@ class TestAmpScaler(unittest.TestCase):
                 np.allclose(outs_with_scaler[1][i][0].numpy(),
                             outs_no_scaler[1][i][0].numpy()), True)
 
+    def test_step(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+
+        def run_simple_conv(inp_np, use_scaler=True):
+            paddle.seed(10)
+            paddle.framework.random._manual_program_seed(10)
+            with fluid.dygraph.guard():
+                model = SimpleConv(
+                    num_channels=3,
+                    num_filters=64,
+                    filter_size=7,
+                    stride=2,
+                    act='relu')
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                 parameters=model.parameters())
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                data = fluid.dygraph.to_variable(inp_np)
+
+                out = model(data)
+                loss = fluid.layers.mean(out)
+                if use_scaler:
+                    print('use scaler')
+                    scaled_loss = scaler.scale(loss)
+                    scaled_loss.backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    print('use no scaler')
+                    loss.backward()
+                    optimizer.step()
+            return optimizer._parameter_list
+
+        outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
+        outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
+
+        for i in range(len(outs_with_scaler)):
+            # check each parameter
+            self.assertEqual(
+                np.allclose(outs_with_scaler[i].numpy(),
+                            outs_no_scaler[i].numpy()), True)
+
     def test_nan_inf(self):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
         inp_np[0][1][2][3] = np.nan
@@ -251,6 +292,52 @@ class TestAmpScaler(unittest.TestCase):
                 # param not update when tensor contains nan or inf
                 self.assertTrue(
                     np.array_equal(param.numpy(), params_init[param.name]))
+
+    def test_step_update_exception(self):
+        def func1():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.unscale_(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func1)
+
+        def func2():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func2)
+
+        def func3():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.step(optimizer)
+
+        self.assertRaises(RuntimeError, func3)
 
     def test_get_and_set(self):
         with fluid.dygraph.guard():
@@ -838,8 +925,9 @@ class TestResnet2(unittest.TestCase):
 
             scaled_loss = scaler.scale(avg_loss)
             scaled_loss.backward()
-
+            scaler.unscale_(optimizer)
             scaler.step(optimizer)
+            scaler.update()
 
             dy_grad_value = {}
             for param in resnet.parameters():

@@ -32,7 +32,11 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist.py", delta=1e-5)
+            self.check_with_place(
+                "dist_mnist.py",
+                delta=1e-5,
+                check_error_log=True,
+                need_envs={'FLAGS_allreduce_record_one_event': '1'})
 
 
 class FleetCollectiveTest(unittest.TestCase):

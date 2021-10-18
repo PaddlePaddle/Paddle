@@ -58,6 +58,12 @@ class NpuOpRunner {
 
   NpuOpRunner &AddAttr(const std::string &name, const NPUAttribute &attr);
 
+  // NOTE(qili93): need to add indivisual api for aclopSetAttrDataType
+  // as typeid(aclDataType) and typeid(framework::proto::VarType::Type)
+  // always go to attr.type() == typeid(int) to call aclopSetAttrInt
+  NpuOpRunner &AddAttrDataType(const std::string &name,
+                               const NPUAttribute &attr);
+
   NpuOpRunner &AddAttrs(const NPUAttributeMap &attrs);
 
   NpuOpRunner &AddInput(const Tensor &tensor);

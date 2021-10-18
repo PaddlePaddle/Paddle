@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
@@ -58,6 +59,10 @@ class CounterGuard {
  private:
   Holder* counter_holder_{nullptr};
 };
+
+void* AlignedMalloc(size_t size, size_t alignment);
+
+void AlignedFree(void* memory_ptr);
 
 }  // namespace framework
 }  // namespace paddle
