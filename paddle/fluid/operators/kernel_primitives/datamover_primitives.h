@@ -118,8 +118,8 @@ struct BroadcastConfig {
 }  // namespace details
 
 /**
- * @brief Read 2D data from global memory to registers according to Tx type, and
- * store it as Ty type.
+ * @brief Read 2D data from global memory to register according to Tx type, and
+ * store it as Ty type into register.
  *
  * @template paraments
  * Tx: The type of data stored in the global memory.
@@ -135,11 +135,11 @@ struct BroadcastConfig {
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
- * src: Data pointer of the current block.
+ * src: The data pointer of the current block.
  * size_nx: The current block needs to load size_nx columns of data, this
- * parameter will be used when IsBoundary = true.
- * size_ny: The current block needs to load size_ny rows of data. This parameter
- * will be used when IsBoundary = true.
+ * parameter will participate in the calculation when isboundary = true.
+ * size_ny: The current block needs to load size_ny rows of data, this parameter
+ * will participate in the calculation when isboundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
@@ -222,24 +222,24 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
 }
 
 /**
- * @brief Read 2D data from global memory to registers. When IsBoundary = true
+ * @brief Read 2D data from global memory to register. When IsBoundary = true
  * and (NX % 4 == 0 or Nx % 2 == 0), vectorized load data will be used to
  * improve memory access efficiency.
  *
  * @template paraments
- * T: Data type of src and dst.
- * NX: The number of data continuously loaded by each thread.
- * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
+ * T: The type of data.
+ * NX: Each thread load NX data from global memory continuously.
+ * NY: Each thread need to load NY rows, only NY = 1 was supported.
  * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
- * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
- * src: Data pointer of the current block.
+ * src: The data pointer of the current block.
  * size: The current block needs to load size data continuously.
  */
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
@@ -274,7 +274,7 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
 }
 
 /**
- * @brief Read 2D data from global memory to registers for broadcast.
+ * @brief Read 2D data from global memory to registers with broadcast form.
  *
  * @template paraments
  * T: The type of data stored in the global memory.
@@ -285,16 +285,15 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
- * src: Raw input data pointer of kernel.
- * block_offset: Data offset of this block, blockDim.x * blockIdx.x * NX;
+ * src: The original input data pointer of this kernel.
+ * block_offset: The data offset of this block, blockDim.x * blockIdx.x * NX.
  * config: Calculation configuration of broadcast. It is used to calculate the
- * coordinate mapping relationship between output data and input data. Please
- * refer to the sample code for specific usage.
+ * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
@@ -331,10 +330,10 @@ __device__ __forceinline__ void ReadDataBc(
 }
 
 /**
- * @brief Read 2D data from global memory to registers for reduce.
+ * @brief Read 2D data from global memory to register with reduce form.
  *
  * @template paraments
- * T: The type of data stored in the global memory.
+ * T: The type of data.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
  * BlockSize: Identifies the current device thread index method. For GPU,
@@ -342,18 +341,19 @@ __device__ __forceinline__ void ReadDataBc(
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
- * src: Raw input data pointer of kernel.
- * block_offset: Data offset of this block, blockDim.x * blockIdx.x * NX;
+ * src: The input data pointer of this block.
+ * block_offset: The data offset of this block, blockDim.x * blockIdx.x * NX.
  * index_cal: Calculation configuration of Reduce. It is used to calculate the
  * coordinate mapping relationship between output data and input data.
  * size_nx: The current block needs to load size_nx columns of data, this
- * parameter will be used when IsBoundary = true.
- * size_ny: The current block needs to load size_ny rows of data. This parameter
+ * parameter will participate in the calculation when isboundary = true.
+ * size_ny: The current block needs to load size_ny rows of data, this parameter
+ * will participate in the calculation when isboundary = true.
  * will be used when IsBoundary = true.
  * stride_nx: Each read one element stride stride_nx columns.
  * stride_ny: Each read one element stride stride_ny raws.
@@ -414,20 +414,19 @@ __device__ __forceinline__ void ReadDataReduce(
  *
  * @template paraments
  * T: The type of data.
- * NX: The number of data continuously loaded by each thread.
+ * NX: The number of data continuously writed by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
- * the index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
- * dst: Data pointer of the current block.
- * src: The register pointer of the thread, the size is NX * NY.
- * size: The current block needs to load size data continuously.
+ * dst: The data pointer of the current block.
+ * src: The register pointer, the size is NX * NY.
+ * size: The current block needs to load size elements continuously.
  */
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
@@ -463,23 +462,23 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
  *
  * @template paraments
  * Tx: The type of data that needs to be stored in registers.
- * Ty: The type of data stored in the global memory.
+ * Ty: The type of data that stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
  * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
- * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
  * crossing the boundary.
  *
  * @param：
- * dst: Data pointer of the current block.
+ * dst: The data pointer of the current block.
  * src: The register pointer of the thread, the size is NX * NY.
- * size_nx: The current block needs to load size_nx columns of data, this
- * parameter will be used when IsBoundary = true.
- * size_ny: The current block needs to load size_ny rows of data. This parameter
- * will be used when IsBoundary = true.
+ * size_nx: The current block needs to write size_nx columns of data, this
+ * parameter will participate in the calculation when isboundary = true.
+ * size_ny: The current block needs to write size_ny rows of data, this
+ * parameter will participate in the calculation when isboundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
@@ -567,7 +566,7 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
 }
 
 /**
- * @brief Read 1D data from global memory to registers for broadcast.
+ * @brief Read 1D data from global memory to register with broadcast form.
  *
  * @template paraments
  * T: The type of data stored in the global memory.
@@ -583,11 +582,10 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX * NY.
- * src: Raw input data pointer of kernel.
- * block_offset: Data offset of this block, blockDim.x * blockIdx.x * NX;
+ * src: The original input data pointer of kernel.
+ * block_offset: The data offset of this block, blockDim.x * blockIdx.x * NX;
  * config: Calculation configuration of broadcast. It is used to calculate the
- * coordinate mapping relationship between output data and input data. Please
- * refer to the sample code for specific usage.
+ * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
  */
 template <typename T, int NX, int NY, int BlockSize, int Rank,
