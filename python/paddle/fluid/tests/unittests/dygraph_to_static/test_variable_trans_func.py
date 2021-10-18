@@ -50,15 +50,15 @@ class TestDataLayerNotCheck(unittest.TestCase):
 class TestVariableTransFunc(unittest.TestCase):
     def test_create_fill_constant_node(self):
         node = create_fill_constant_node("a", 1.0)
-        source = "a = paddle.fluid.layers.fill_constant(shape=[1], dtype='float64', value=1.0)"
+        source = "a = paddle.fluid.layers.fill_constant(shape=[1], dtype='float64', value=1.0, name='a')"
         self.assertEqual(ast_to_source_code(node).strip(), source)
 
         node = create_fill_constant_node("b", True)
-        source = "b = paddle.fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)"
+        source = "b = paddle.fluid.layers.fill_constant(shape=[1], dtype='bool', value=True, name='b')"
         self.assertEqual(ast_to_source_code(node).strip(), source)
 
         node = create_fill_constant_node("c", 4293)
-        source = "c = paddle.fluid.layers.fill_constant(shape=[1], dtype='int64', value=4293)"
+        source = "c = paddle.fluid.layers.fill_constant(shape=[1], dtype='int64', value=4293, name='c')"
         self.assertEqual(ast_to_source_code(node).strip(), source)
 
         self.assertIsNone(create_fill_constant_node("e", None))
