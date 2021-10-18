@@ -26,6 +26,8 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/small_vector.h"
 
 namespace pt {
 
@@ -209,25 +211,30 @@ class KernelArgsDef {
     attribute_defs_.emplace_back(AttributeArgDef(type_index));
   }
 
-  const std::vector<TensorArgDef>& input_defs() const { return input_defs_; }
+  const paddle::SmallVector<TensorArgDef>& input_defs() const {
+    return input_defs_;
+  }
 
-  const std::vector<TensorArgDef>& output_defs() const { return output_defs_; }
+  const paddle::SmallVector<TensorArgDef>& output_defs() const {
+    return output_defs_;
+  }
 
-  const std::vector<AttributeArgDef>& attribute_defs() const {
+  const paddle::SmallVector<AttributeArgDef>& attribute_defs() const {
     return attribute_defs_;
   }
 
-  std::vector<TensorArgDef>& input_defs() { return input_defs_; }
+  paddle::SmallVector<TensorArgDef>& input_defs() { return input_defs_; }
 
-  std::vector<TensorArgDef>& output_defs() { return output_defs_; }
+  paddle::SmallVector<TensorArgDef>& output_defs() { return output_defs_; }
 
-  std::vector<AttributeArgDef>& attribute_defs() { return attribute_defs_; }
+  paddle::SmallVector<AttributeArgDef>& attribute_defs() {
+    return attribute_defs_;
+  }
 
  private:
-  // TODO(chenweihang): replaced by paddle::small_vector
-  std::vector<TensorArgDef> input_defs_{{}};
-  std::vector<TensorArgDef> output_defs_{{}};
-  std::vector<AttributeArgDef> attribute_defs_{{}};
+  paddle::SmallVector<TensorArgDef> input_defs_{{}};
+  paddle::SmallVector<TensorArgDef> output_defs_{{}};
+  paddle::SmallVector<AttributeArgDef> attribute_defs_{{}};
 };
 
 class Kernel {
@@ -263,10 +270,10 @@ class Kernel {
 class KernelFactory {
  public:
   // replaced by paddle::flat_hash_map later
-  using KernelMap =
-      std::unordered_map<KernelName,
-                         std::unordered_map<KernelKey, Kernel, KernelKey::Hash>,
-                         KernelName::Hash>;
+  using KernelMap = paddle::flat_hash_map<
+      KernelName,
+      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>,
+      KernelName::Hash>;
 
   static KernelFactory& Instance();
 
