@@ -77,7 +77,7 @@ TEST(net_build, basic) {
     LOG(INFO) << "instruction: " << program[i];
   }
 }
-/*
+
 TEST(net_build, program_execute_multi_elementwise_add) {
   auto program = CreateAddProgram();
 #ifdef PADDLE_WITH_CUDA
@@ -135,17 +135,17 @@ TEST(net_build, program_execute_fc) {
   scope->Var<hlir::framework::Tensor>(std::string(b.id()));
   scope->Var<hlir::framework::Tensor>(std::string(mul_out->id));
 
-  auto a_ten        = scope->GetTensor(std::string(a.id()));
-  auto w_ten        = scope->GetTensor(std::string(w.id()));
-  auto b_ten        = scope->GetTensor(std::string(b.id()));
+  auto a_ten = scope->GetTensor(std::string(a.id()));
+  auto w_ten = scope->GetTensor(std::string(w.id()));
+  auto b_ten = scope->GetTensor(std::string(b.id()));
   auto fake_out_ten = scope->GetTensor(std::string(mul_out->id));
-  auto add_out_ten  = scope->GetTensor(std::string(add_out->id));
+  auto add_out_ten = scope->GetTensor(std::string(add_out->id));
   SetRandData(a_ten, target);
   SetRandData(w_ten, target);
   SetRandData(b_ten, target);
 
   runtime_program->Execute();
-}*/
+}
 
 }  // namespace frontend
 }  // namespace cinn

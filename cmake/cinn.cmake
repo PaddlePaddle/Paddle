@@ -16,12 +16,17 @@ if (NOT WITH_CINN)
   return()
 endif()
 
+# TODO(zhhsplendid): CINN has lots of warnings during early development.
+# They will be treated as errors under paddle. We set no-error now and we will
+# clean the code in the future.
+add_definitions(-w)
+
 ######################################
 # Build CINN from Git External Project
 ######################################
 include(ExternalProject)
 set(CINN_SOURCE_DIR ${THIRD_PARTY_PATH}/CINN)
-#TODO(zhhsplendid): Modify git tag after we have release tag
+# TODO(zhhsplendid): Modify git tag after we have release tag
 set(CINN_GIT_TAG 3f004bfa3ed273ecf1de8e7b946433038c79b84f)
 set(CINN_OPTIONAL_ARGS -DWITH_CUDA=${WITH_GPU} -DWITH_CUDNN=${WITH_GPU} -DPUBLISH_LIBS=ON)
 set(CINN_BUILD_COMMAND $(MAKE) cinncore -j && $(MAKE) cinnapi -j)
@@ -35,6 +40,8 @@ ExternalProject_Add(
   BUILD_COMMAND    ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND  ""
   CMAKE_ARGS       ${CINN_OPTIONAL_ARGS})
+
+
 
 ExternalProject_Get_property(external_cinn BINARY_DIR)
 ExternalProject_Get_property(external_cinn SOURCE_DIR)
@@ -95,8 +102,8 @@ include_directories(${LLVM_INCLUDE_DIR})
 ######################################################
 
 set(CINN_LIB_NAME "libcinnapi.so")
-set(CINN_LIB_LOCATION "${CINN_BINARY_DIR}/dist/cinn/lib" CACHE FILEPATH "CINN_LIB_LOCATION" FORCE)
-set(CINN_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/cinn/include" CACHE FILEPATH "CINN_INCLUDE_DIR" FORCE)
+set(CINN_LIB_LOCATION "${CINN_BINARY_DIR}/dist/cinn/lib")
+set(CINN_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/cinn/include")
 
 add_library(cinn SHARED IMPORTED GLOBAL)
 set_target_properties(cinn PROPERTIES IMPORTED_LOCATION "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
