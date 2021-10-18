@@ -14,6 +14,9 @@
 
 import paddle
 from ...fluid.framework import in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
+from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ...fluid import core, dygraph_utils
 from paddle import _C_ops
 
 __all__ = []
@@ -123,4 +126,96 @@ def fused_multi_head_attention(x,
             pre_layer_norm, 'epsilon', pre_ln_epsilon, 'dropout_rate',
             dropout_rate, 'attn_dropout_rate', attn_dropout_rate, 'ln_epsilon',
             ln_epsilon)
+        return final_out
+    else:
+        helper = LayerHelper('fused_multi_head_attention', **locals())
+        dtype = x.dtype
+        # check dtypes
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'fused_multihead_attention')
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                    'fused_multi_head_attention')
+
+        # set inputs
+        inputs = dict()
+        inputs['X'] = [x]
+        if pre_ln_scale:
+            inputs['LnScale'] = [pre_ln_scale]
+        if pre_ln_bias:
+            inputs['LnBias'] = [pre_ln_bias]
+        inputs['QKVW'] = [qkv_weight]
+        inputs['QKVBias'] = [qkv_bias]
+        inputs['SrcMask'] = attn_mask
+        inputs['OutLinearW'] = [linear_weight]
+        inputs['OutLinearBias'] = [linear_bias]
+        if ln_scale:
+            inputs['Ln2Scale'] = [ln_scale]
+        if ln_bias:
+            inputs['Ln2Bias'] = [ln_bias]
+
+        # set attrs
+        attrs = {
+            'pre_layer_norm': pre_layer_norm,
+            'epsilon': pre_ln_epsilon,
+            'ln_epsilon': ln_epsilon,
+            'dropout_rate': dropout_rate,
+            'attn_dropout_rate': attn_dropout_rate
+        }
+
+        # set outputs
+        pre_ln_mean_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        pre_ln_variance_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        pre_ln_out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        qkv_out = helper.create_variable_for_type_inference(dtype=dtype)
+        qkv_bias_out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        transpose_out = helper.create_variable_for_type_inference(dtype=dtype)
+        qk_out = helper.create_variable_for_type_inference(dtype=dtype)
+        qktv_out = helper.create_variable_for_type_inference(dtype=dtype)
+        softmax_out = helper.create_variable_for_type_inference(dtype=dtype)
+        attn_dropout_mask_out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        attn_dropout_out = helper.create_variable_for_type_inference(
+            dtype=dtype)
+        attn_mask_out = helper.create_variable_for_type_inference(dtype=dtype)
+        fmha_out = helper.create_variable_for_type_inference(dtype=dtype)
+        out_linear_out = helper.create_variable_for_type_inference(dtype=dtype)
+        dropout_mask_out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        ln_mean_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        ln_variance_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        bias_dropout_residual_out = helper.create_variable_for_type_inference(
+            dtype=dtype)
+        final_out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        helper.append_op(
+            type='fused_attention',
+            inputs=inputs,
+            outputs={
+                "LnMean": pre_ln_mean_out,
+                "LnVariance": pre_ln_variance_out,
+                "LnOut": pre_ln_out,
+                "QKVOut": qkv_out,
+                "QKVBiasOut": qkv_bias_out,
+                "TransposeOut2": transpose_out,
+                "QKOut": qk_out,
+                "QKTVOut": qktv_out,
+                "SoftmaxOut": softmax_out,
+                "AttnDropoutMaskOut": attn_dropout_mask_out,
+                "AttnDropoutOut": attn_dropout_out,
+                "SrcMaskOut": attn_mask_out,
+                "FMHAOut": fmha_out,
+                "OutLinearOut": out_linear_out,
+                "DropoutMaskOut": dropout_mask_out,
+                "Ln2Mean": ln_mean_out,
+                "Ln2Variance": ln_variance_out,
+                "BiasDropoutResidualOut": bias_dropout_residual_out,
+                'Y': final_out
+            },
+            attrs=attrs)
         return final_out
