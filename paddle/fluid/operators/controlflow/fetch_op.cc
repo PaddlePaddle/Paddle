@@ -130,7 +130,7 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor The resulted LoDTensor which is expected to return "
+             "(LoDTensor) The resulted LoDTensor which is expected to return "
              "to users.");
     AddOutput(
         "Out",
