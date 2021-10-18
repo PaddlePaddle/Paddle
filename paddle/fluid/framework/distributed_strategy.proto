@@ -115,6 +115,7 @@ message BuildStrategy {
   optional bool enable_auto_fusion = 11 [ default = false ];
   optional bool enable_addto = 12 [ default = false ];
   optional bool fix_op_run_order = 13 [ default = false ];
+  optional bool allow_cuda_graph_capture = 14 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -132,6 +133,10 @@ message GradientScaleConfig {
   // Else if sum, the gradient will accumulated among multiple
   // devices.
   optional string scale_strategy = 1 [ default = 'avg' ];
+  // The avg_loss flag is used to determine the position of average
+  // If scale_gradient is False, it will avg the loss@Grad before grad merge.
+  // Otherwise, it will do grad merge firstly, then avg the grad after merging.
+  optional bool scale_gradient = 2 [ default = false ];
 }
 
 message AsyncConfig {

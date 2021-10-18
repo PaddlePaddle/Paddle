@@ -354,9 +354,15 @@ def sync_params_buffers(model,
         if not isinstance(param, core.VarBase):
             raise TypeError("The data type of '%s' must be Varbase" %
                             param.name)
+
         # is_distributed param not need to sync when in mp mode
-        if is_model_parallel and isinstance(param, ParamBase):
-            if param.is_distributed:
+        if isinstance(param, ParamBase):
+            if is_model_parallel and param.is_distributed:
+                continue
+
+            # NOTE(shenliang03): Support situations that do not require synchronization parameters, 
+            # such as moe's expert parameters
+            if getattr(param, "no_sync", False):
                 continue
 
         model_vars.append(param.detach())
