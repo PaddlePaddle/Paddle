@@ -531,8 +531,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
             quant_axis == 0, true,
             platform::errors::InvalidArgument(
                 "'quant_axis' of conv2d/depthwise_conv2d op weight dequantized "
-                "by "
-                "[fake_channel_wise_dequantize_max_abs]should be 0, but "
+                "by [fake_channel_wise_dequantize_max_abs]should be 0, but "
                 "the received is %d",
                 quant_axis));
       }
