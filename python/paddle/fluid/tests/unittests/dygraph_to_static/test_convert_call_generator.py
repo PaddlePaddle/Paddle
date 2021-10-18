@@ -32,9 +32,17 @@ def dyfunc_generator():
         yield paddle.to_tensor([i] * 10)
 
 
+def main_func():
+    """ Error will raise, but we only report a warning not intercept
+     """
+    for i in dyfunc_generator():
+        print(i)
+
+
 class TestConvertGenerator(unittest.TestCase):
     def test_raise_error(self):
-        to_static(dyfunc_generator)
+        with self.assertRaises(Exception):
+            to_static(main_func)()
 
 
 if __name__ == '__main__':
