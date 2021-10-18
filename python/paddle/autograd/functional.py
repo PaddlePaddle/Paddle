@@ -595,7 +595,9 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             #        [[8., 8.],
             #         [8., 8.]]), None])
     '''
-    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
+    xs = _tensors(inputs, "inputs")
+    if v is not None:
+        v = _tensors(v, "v")
 
     with gradient_scope(
             xs, v, create_graph=create_graph,
