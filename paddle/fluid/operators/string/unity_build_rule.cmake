@@ -5,4 +5,4 @@
 # If there are some redefined error in compiling with the source file which
 # in combination rule, you can remove the source file from the following rules.
 register_unity_group(cc
-    bert_tokenizer_op.cc)
+    faster_tokenizer_op.cc)

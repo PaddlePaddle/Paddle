@@ -25,7 +25,7 @@ limitations under the License. */
 #include <boost/algorithm/string.hpp>
 
 #include "paddle/fluid/framework/string_array.h"
-#include "paddle/fluid/operators/string/bert_tokenizer_op.h"
+#include "paddle/fluid/operators/string/faster_tokenizer_op.h"
 
 namespace paddle {
 namespace operators {
@@ -435,7 +435,7 @@ void BertTokenizer::BatchEncode(
   }
 }
 
-class BertTokenizerOp : public framework::OperatorWithKernel {
+class FasterTokenizerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -467,7 +467,7 @@ class BertTokenizerOp : public framework::OperatorWithKernel {
   }
 };
 
-class BertTokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
+class FasterTokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Vocab",
@@ -519,7 +519,7 @@ class BertTokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bert_tokenizer, ops::BertTokenizerOp,
-                  ops::BertTokenizerOpMaker);
+REGISTER_OPERATOR(faster_tokenizer, ops::FasterTokenizerOp,
+                  ops::FasterTokenizerOpMaker);
 
-REGISTER_OP_CPU_KERNEL(bert_tokenizer, ops::BertTokenizerKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(faster_tokenizer, ops::FasterTokenizerKernel<int64_t>);

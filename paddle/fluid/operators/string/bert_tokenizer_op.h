@@ -117,7 +117,7 @@ class BertTokenizer {
 };
 
 template <typename T>
-class BertTokenizerKernel : public framework::OpKernel<T> {
+class FasterTokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* text = ctx.Input<framework::Strings>("Text");
