@@ -85,6 +85,47 @@ class TestHapiWithAmp(unittest.TestCase):
         amp_config = {"level": "O0", }
         self.run_amp(amp_config)
 
+    def test_save_load(self):
+        paddle.disable_static()
+        paddle.set_device('gpu')
+        amp_level = {"level": "O1", "init_loss_scaling": 128}
+        paddle.seed(2021)
+        model = self.get_model(amp_level)
+        transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+        train_dataset = MNIST(mode='train', transform=transform)
+        model.fit(train_dataset,
+                  epochs=1,
+                  batch_size=64,
+                  num_iters=2,
+                  log_freq=1)
+        model.save('./lenet_amp')
+
+        with paddle.fluid.unique_name.guard():
+            paddle.seed(2021)
+            new_model = self.get_model(amp_level)
+            train_dataset = MNIST(mode='train', transform=transform)
+            new_model.fit(train_dataset,
+                          epochs=1,
+                          batch_size=64,
+                          num_iters=1,
+                          log_freq=1)
+        # not equal before load
+        self.assertNotEqual(new_model._scaler.state_dict()['incr_count'],
+                            model._scaler.state_dict()['incr_count'])
+        print((new_model._scaler.state_dict()['incr_count'],
+               model._scaler.state_dict()['incr_count']))
+
+        # equal after load
+        new_model.load('./lenet_amp')
+        self.assertEqual(new_model._scaler.state_dict()['incr_count'],
+                         model._scaler.state_dict()['incr_count'])
+        self.assertEqual(new_model._scaler.state_dict()['decr_count'],
+                         model._scaler.state_dict()['decr_count'])
+        self.assertTrue(
+            np.array_equal(new_model._optimizer.state_dict(
+            )['conv2d_1.w_0_moment1_0'].numpy(
+            ), model._optimizer.state_dict()['conv2d_1.w_0_moment1_0'].numpy()))
+
     def test_dynamic_check_input(self):
         paddle.disable_static()
         amp_configs_list = [

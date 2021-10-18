@@ -823,7 +823,7 @@ class DynamicGraphAdapter(object):
         if hasattr(self.model, '_scaler') and self.model._scaler is not None:
             if self.model._scaler.state_dict():
                 scaler = self.model._scaler.state_dict()
-                fluid.save_dygraph(scaler, path)
+                paddle.save(scaler, path + '.pdscaler')
 
     def load(self, param_state_pairs, optim_state, scaler_state=None):
         # restore parameter states
@@ -832,7 +832,7 @@ class DynamicGraphAdapter(object):
 
         if hasattr(self.model, '_scaler') and self.model._scaler is not None:
             if scaler_state:
-                self.model._scaler.set_state_dict(scaler_state)
+                self.model._scaler.load_state_dict(scaler_state)
 
         # resotre optimizer states
         if not self.model._optimizer or not optim_state:
@@ -1360,7 +1360,14 @@ class Model(object):
 
         optim_state = None if reset_optimizer else _load_state_from_path(
             path + ".pdopt")
-        return self._adapter.load(matched_param_state, optim_state)
+
+        scaler_state = None
+        if hasattr(self, '_scaler') and self._scaler is not None:
+            if os.path.exists(path + '.pdscaler'):
+                scaler_state = paddle.load(path + '.pdscaler')
+
+        return self._adapter.load(matched_param_state, optim_state,
+                                  scaler_state)
 
     def parameters(self, *args, **kwargs):
         """
