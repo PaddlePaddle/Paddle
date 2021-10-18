@@ -355,8 +355,8 @@ __device__ __forceinline__ void ReadDataBc(
  * parameter will be used when IsBoundary = true.
  * size_ny: The current block needs to load size_ny rows of data. This parameter
  * will be used when IsBoundary = true.
- * stride_nx: Each read one element stride stride_nx elements in the last dim.
- * stride_ny: Each read one element stride stride_ny elements in the first dim.
+ * stride_nx: Each read one element stride stride_nx columns.
+ * stride_ny: Each read one element stride stride_ny raws.
  * reduce_last_dim: Used to indicate whether the dimension of reduce contains
  * the lowest dimension.
  */
@@ -367,25 +367,24 @@ __device__ __forceinline__ void ReadDataReduce(
     const IndexCal& index_cal, int size_nx, int size_ny, int stride_nx,
     int stride_ny, bool reduce_last_dim) {
   int thread_offset = 0;
-  int left_size_nx = size_nx;
-  int left_size_ny = size_ny;
+  int left_idx = 0;
   if (reduce_last_dim) {
-    thread_offset = block_offset + threadIdx.x;
-    left_size_nx -= thread_offset;
+    thread_offset = threadIdx.x;
+    left_idx = threadIdx.y;
   } else {
-    thread_offset = block_offset + threadIdx.y;
-    left_size_ny -= thread_offset;
+    thread_offset = threadIdx.y;
+    left_idx = threadIdx.x;
   }
 
   if (NX == 1) {
 #pragma unroll
     for (int ny = 0; ny < NY; ++ny) {
       if (IsBoundary) {
-        if (ny * stride_ny >= left_size_ny) {
+        if (thread_offset >= size_ny) {
           break;
         }
       }
-      uint32_t index_src = index_cal(thread_offset);
+      uint32_t index_src = index_cal(thread_offset + block_offset);
       dst[ny] = src[index_src];
       thread_offset += stride_ny;
     }
@@ -395,22 +394,21 @@ __device__ __forceinline__ void ReadDataReduce(
 #pragma unroll
       for (int ny = 0; ny < NY; ++ny) {
         if (IsBoundary) {
-          if ((ny * stride_ny >= left_size_ny) ||
-              (nx * stride_nx >= left_size_nx)) {
+          if ((thread_offset >= size_ny) ||
+              (left_idx + nx * stride_nx >= size_nx)) {
             break;
           }
         }
-        uint32_t index_src = index_cal(thread_offset);
+        uint32_t index_src = index_cal(thread_offset + block_offset);
         dst[nx + ny * NX] = src[index_src];
         thread_offset += stride_ny;
       }
-      thread_offset += stride_nx;
     }
   }
 }
 
 /**
- * @brief Write 1D data from registers to global memory. When IsBoundary = true
+ * @brief Write 2D data from registers to global memory. When IsBoundary = true
  * and (NX % 4 == 0 or Nx % 2 == 0), the data will be vectorized to improve the
  * data loading efficiency
  *
@@ -419,7 +417,8 @@ __device__ __forceinline__ void ReadDataReduce(
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
  * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
+ * the index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
  * NX x NY x blockDim, boundary judgment is required to avoid memory access

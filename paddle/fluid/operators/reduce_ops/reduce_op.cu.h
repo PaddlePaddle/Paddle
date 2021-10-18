@@ -604,8 +604,8 @@ __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
     }
     int num = (reduce_num - input_idx - tid + stride - 1) / stride;
     ReduceAnyKernelImpl<Tx, MPType, ReduceOp, TransformOp, Calculator, true>(
-        input, &reduce_var, reducer, transformer, init, reduce_num, input_idx,
-        reduce_last_dim, reduce_index_calculator, stride, num);
+        input, &reduce_var, reducer, transformer, init, reduce_num - input_idx,
+        input_idx, reduce_last_dim, reduce_index_calculator, stride, num);
   }
 
   kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::details::kGlobalMode>(
