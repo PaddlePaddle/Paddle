@@ -1970,7 +1970,7 @@ function gen_dockerfile() {
         DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
         DOCKERFILE_CUDNN_DSO="RUN ln -sf /usr/lib/x86_64-linux-gnu/libcudnn.so.${CUDNN_MAJOR} /usr/lib/x86_64-linux-gnu/libcudnn.so"
         DOCKERFILE_CUBLAS_DSO="RUN ln -sf /usr/local/cuda/targets/x86_64-linux/lib/libcublas.so.${CUDA_MAJOR} /usr/lib/x86_64-linux-gnu/libcublas.so"
-        DOCKERFILE_CUBLASLT_DSO="RUN ln -sf /usr/local/cuda/targets/x86_64-linux/lib/libcublasLt.so.${CUDA_MAJOR} /usr/lib/x86_64-linux-gnu/libcublasLt.so"
+        DOCKERFILE_CUBLASLT_DSO="RUN ln -sf /usr/local/cuda/targets/x86_64-linux/lib/libcublasLt.so /usr/lib/x86_64-linux-gnu/libcublasLt.so"
     fi
 
     cat <<EOF

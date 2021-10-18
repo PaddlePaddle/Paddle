@@ -209,7 +209,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 #if defined(__APPLE__) || defined(__OSX__)
   if (nullptr == dso_handle) {
     dso_handle =
-        dlopen(join("/usr/local/cuda/lib/", dso_path).c_str(), dynload_flags);
+        dlopen(join("/usr/local/cuda/lib64/", dso_path).c_str(), dynload_flags);
   }
 #endif
 
