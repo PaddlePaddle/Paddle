@@ -379,6 +379,7 @@ __all__ = [  # noqa
            'ParamAttr',
            'stanh',
            'randint',
+           'randint_like',
            'assign',
            'gather',
            'scale',

@@ -82,15 +82,19 @@ class TestRandintLikeAPI(unittest.TestCase):
         with program_guard(Program(), Program()):
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32')
+            # dtype should be chosen from ['int32', 'int64']
             self.assertRaises(
                 TypeError,
                 paddle.randint_like,
                 x_int32,
                 high=5,
                 dtype='float32')
+            # low is 5 and high is 5, low must less then high
             self.assertRaises(
                 ValueError, paddle.randint_like, x_int32, low=5, high=5)
+            # low(default value) is 0 and high is -5, low must less then high
             self.assertRaises(ValueError, paddle.randint_like, x_int32, high=-5)
+            # if high is None, low must be greater than 0
             self.assertRaises(ValueError, paddle.randint_like, x_int32, low=-5)
 
 

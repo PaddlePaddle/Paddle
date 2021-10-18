@@ -697,19 +697,37 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             # dtype is None and the dtype of x is float32
             x = paddle.zeros((1,2))
             out1 = paddle.randint_like(x, low=-5, high=5)
+            print(out1)
+            print(out1.dtype)
             # [[0, -3]]  # random
+            # paddle.int64
 
             # example 2:
             # dtype is int32 and the dtype of x is float32
             x = paddle.zeros((1,2))
-            out2 = paddle.randint(x, low=-5, high=5, dtype="int32")
+            out2 = paddle.randint_like(x, low=-5, high=5, dtype="int32")
+            print(out2)
+            print(out2.dtype)
             # [[0, -1]]  # random
+            # paddle.int32
 
             # example 3:
-            # low=0, high=10, x.shape=[1], dtype='int64'
-            x = paddle.zeros((1,))
-            out3 = paddle.randint(x, high=10)
-            # [7]  # random
+            # low=0, high=10, dtype is int64
+            x = paddle.zeros((1,2))
+            out3 = paddle.randint_like(x, high=10)
+            print(out3)
+            print(out3.dtype)
+            # [[1, 7]]  # random
+            # paddle.int64
+
+            # example 4:
+            # low=0, high=10, dtype is float32
+            x = paddle.zeros((1,2))
+            out4 = paddle.randint_like(x, high=10, dtype="float32")
+            # TypeError: The data type of '%s' in %s must be %s, but received %s. %s"
+            
+ 
+
 
     """
     return randint(low=low, high=high, shape=x.shape, dtype=dtype, name=name)
