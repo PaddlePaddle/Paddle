@@ -30,16 +30,6 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 
-template <typename DeviceContext, template <typename T> typename CompareFunctor,
-          typename T>
-struct GetMask {
-  void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
-                  const Tensor& rhs, Tensor* mask) {
-    ElementwiseComputeEx<CompareFunctor<int64_t>, DeviceContext, int64_t, T>(
-        ctx, &lhs, &rhs, -1, CompareFunctor<int64_t>(), mask);
-  }
-};
-
 template <typename DeviceContext, typename T, typename IndType>
 struct Argmax {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
@@ -108,11 +98,11 @@ struct Gather {
   }
 };
 
-template <typename T, typename Functor>
+template <typename T, typename Functor, typename OutT = T>
 void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
-  T* out_ptr = out->data<T>();
+  OutT* out_ptr = out->data<OutT>();
   Functor functor;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -121,6 +111,15 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
     out_ptr[i] = functor(lhs_ptr[i], rhs_ptr[i]);
   }
 }
+
+template <typename DeviceContext, template <typename T> typename CompareFunctor,
+          typename T>
+struct GetMask {
+  void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
+                  const Tensor& rhs, Tensor* mask) {
+    SameDimsBinaryOP<int64_t, CompareFunctor<int64_t>, T>(lhs, rhs, mask);
+  }
+};
 
 template <bool is_multi_threads>
 struct GetInputIndex {
@@ -252,7 +251,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     std::vector<Tensor> historys;
     // create int tensor buffer
     int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
-                      9 * batch_size + 10;
+                      15 * batch_size + 10;
     LoDTensor int_buffer;
     int_buffer.Resize(framework::make_ddim({buffer_size}));
     int_buffer.mutable_data<int64_t>(ctx.GetPlace());
@@ -291,9 +290,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
     trans_exp.Resize({1, n_labels, n_labels});
     Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor zero = int_tensor_buffer.GetBufferBlock({1});
+    Tensor zero = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     int_functor(dev_ctx, &zero, 0);
-    Tensor one = int_tensor_buffer.GetBufferBlock({1});
+    Tensor one = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     int_functor(dev_ctx, &one, 1);
     Tensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
     float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
@@ -390,6 +389,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     int actual_len = (std::min)(seq_len, static_cast<int>(max_seq_len));
     MulInt(dev_ctx, last_ids, int_mask,
            &batch_path[actual_len - last_ids_index]);
+    // The algorithm below can refer to
+    // https://github.com/PaddlePaddle/PaddleNLP/blob/develop/paddlenlp/layers/crf.py#L438
     ARange<DeviceContext> arange;
     arange(dev_ctx, batch_offset.data<int64_t>(), batch_size, n_labels);
     Gather<DeviceContext, int64_t, int64_t> gather;

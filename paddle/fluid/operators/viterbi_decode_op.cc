@@ -54,7 +54,10 @@ class ViterbiDecodeOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           in_dims[2], transition_dims[0],
           platform::errors::InvalidArgument(
-              "The number of tags of Input and Transition should be equal."));
+              "The number of tags of Input and Transition should be equal, the "
+              "number of tags"
+              " of Transition equals to %d, but the tags of Input equals to %d",
+              transition_dims[0], in_dims[2]));
     }
     ctx->SetOutputDim("Scores", length_dims);
   }
@@ -73,10 +76,10 @@ class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Input",
-        "The unary emission tensor. The shape of Input MUST be ( batch_size,"
+        "The unary emission tensor. The shape of Input must be (batch_size,"
         "sequence_length, num_tags). ");
     AddInput("Transition",
-             "The transition matrix. The shape of Transition MUST be ( "
+             "The transition matrix. The shape of Transition must be ( "
              "num_tags, num_tags). ");
     AddInput("Length",
              "The input length tensor storing real length of each sequence for "

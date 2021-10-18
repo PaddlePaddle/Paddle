@@ -33,13 +33,13 @@ def crf_decode(potentials,
             tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
         transition_params (Tensor): The input tensor of transition matrix. This is a 2-D
             tensor with shape of [num_tags, num_tags]. The data type is float32 or float64. 
-        sequence_length (Tensor):  The input tensor of real length of each sequence. This is a 1-D
+        sequence_length (Tensor):  The input tensor of length of each sequence. This is a 1-D
             tensor with shape of [batch_size]. The data type is int64. 
         include_start_end_tag (bool, optional): Whether include start and end tag in transition_params. If set to True, 
             the last row and the last column of transitions will be considered as start tag, the the penultimate row and 
             the penultimate column of transitions will be considered as stop tag. Else, all the rows and columns will be
             considered as the real tag. Defaults to ``True``.
-        name (str|None) – A name for this layer(optional). If set None, the layer will be named automatically.
+        name(str, optional): Default value is None.
 
     Returns:
         scores(Tensor): The output tensor containing the score for the Viterbi sequence. The shape is [batch_size]
@@ -103,11 +103,12 @@ class ViterbiDecoder(Layer):
             If set to True, the last row and the last column of transitions will be considered as start tag,
             the the penultimate row and the penultimate column of transitions will be considered as stop tag.
             Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
+        name(str, optional): Default value is None.
 
     Shape:
         potentials (Tensor): The input tensor of unary emission. This is a 3-D
             tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
-        length (Tensor):  The input tensor of real length of each sequence. This is a 1-D
+        length (Tensor):  The input tensor of length of each sequence. This is a 1-D
             tensor with shape of [batch_size]. The data type is int64. 
 
     Returns:
