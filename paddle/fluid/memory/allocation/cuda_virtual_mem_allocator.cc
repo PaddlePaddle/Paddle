@@ -90,48 +90,49 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
 
 void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
-  PADDLE_ENFORCE_EQ(
-      BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
-      platform::errors::PermissionDenied(
-          "GPU memory is freed in incorrect device. This may be a bug"));
+  // PADDLE_ENFORCE_EQ(
+  //     BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
+  //     platform::errors::PermissionDenied(
+  //         "GPU memory is freed in incorrect device. This may be a bug"));
 
-  auto iter = virtual_2_physical_map_.find(
-      reinterpret_cast<CUdeviceptr>(allocation->ptr()));
-  if (iter == virtual_2_physical_map_.end()) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Can not find virtual memory address at %s", allocation->ptr()));
-  }
+  // auto iter = virtual_2_physical_map_.find(
+  //     reinterpret_cast<CUdeviceptr>(allocation->ptr()));
+  // if (iter == virtual_2_physical_map_.end()) {
+  //   PADDLE_THROW(platform::errors::InvalidArgument(
+  //       "Can not find virtual memory address at %s", allocation->ptr()));
+  // }
 
-  int prev_id;
-  cudaGetDevice(&prev_id);
-  if (prev_id != place_.device) {
-    cudaSetDevice(place_.device);
-  }
+  // int prev_id;
+  // cudaGetDevice(&prev_id);
+  // if (prev_id != place_.device) {
+  //   cudaSetDevice(place_.device);
+  // }
 
-  auto result =
-      paddle::platform::dynload::cuMemUnmap(iter->first, iter->second.second);
-  if (result != CUDA_ERROR_DEINITIALIZED) {
-    PADDLE_ENFORCE_EQ(
-        result, CUDA_SUCCESS,
-        platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
-                                result));
-  }
+  // auto result =
+  //     paddle::platform::dynload::cuMemUnmap(iter->first,
+  //     iter->second.second);
+  // if (result != CUDA_ERROR_DEINITIALIZED) {
+  //   PADDLE_ENFORCE_EQ(
+  //       result, CUDA_SUCCESS,
+  //       platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
+  //                               result));
+  // }
 
-  if (result != CUDA_ERROR_DEINITIALIZED) {
-    result = paddle::platform::dynload::cuMemRelease(iter->second.first);
-    PADDLE_ENFORCE_EQ(
-        result, CUDA_SUCCESS,
-        platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
-                                result));
-  }
+  // if (result != CUDA_ERROR_DEINITIALIZED) {
+  //   result = paddle::platform::dynload::cuMemRelease(iter->second.first);
+  //   PADDLE_ENFORCE_EQ(
+  //       result, CUDA_SUCCESS,
+  //       platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
+  //                               result));
+  // }
 
-  if (prev_id != place_.device) {
-    cudaSetDevice(prev_id);
-  }
+  // if (prev_id != place_.device) {
+  //   cudaSetDevice(prev_id);
+  // }
 
-  virtual_2_physical_map_.erase(iter);
+  // virtual_2_physical_map_.erase(iter);
 
-  delete allocation;
+  // delete allocation;
 }
 
 Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
