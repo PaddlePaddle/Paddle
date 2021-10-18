@@ -29,9 +29,8 @@ struct Pow2DecayWithLinearWarmupFunctor {
 
  public:
   HOSTDEVICE Pow2DecayWithLinearWarmupFunctor(
-      RestrictPtr<T> lr, RestrictPtr<int64_t> PADDLE_RESTRICT step,
-      size_t warmup_steps, size_t total_steps, AttrT start_lr, AttrT base_lr,
-      AttrT end_lr)
+      RestrictPtr<T> lr, RestrictPtr<int64_t> step, size_t warmup_steps,
+      size_t total_steps, AttrT start_lr, AttrT base_lr, AttrT end_lr)
       : lr_(lr),
         step_(step),
         warmup_steps_(warmup_steps),

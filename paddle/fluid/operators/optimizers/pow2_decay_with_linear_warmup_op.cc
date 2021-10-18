@@ -87,6 +87,4 @@ REGISTER_OP_WITHOUT_GRADIENT(pow2_decay_with_linear_warmup,
 REGISTER_OP_CPU_KERNEL(
     pow2_decay_with_linear_warmup,
     ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, float>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext,
-                                           plat::float16>);
+    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, float>);
