@@ -53,7 +53,7 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
     auto out = context.Output<Tensor>("Out");
 
     auto n_expert = expert_count->numel() / n_worker;
-    std::cout << "n_expert" << n_expert << std::endl;
+    // std::cout << "n_expert" << n_expert << std::endl;
     const auto place = context.GetPlace();
     const auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
