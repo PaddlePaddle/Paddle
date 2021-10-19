@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/tcmpt_utils.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
@@ -109,7 +109,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,
                        const framework::KernelSignature& kernel_signature,
-                       const pt::Kernel& pt_kernel,
+                       const pten::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
@@ -152,15 +152,15 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   if (FLAGS_run_pt_kernel &&
-      pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
+      pten::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
     auto pt_kernel_signature = op.GetExpectedPtKernelArgs(dygraph_exe_ctx);
 
     VLOG(1) << framework::KernelSignatureToString(pt_kernel_signature);
 
-    auto pt_kernel_name = pt::KernelName(pt_kernel_signature.first);
+    auto pt_kernel_name = pten::KernelName(pt_kernel_signature.first);
     auto pt_kernel_key = TransOpKernelTypeToPtKernelKey(expected_kernel_key);
-    auto pt_kernel = pt::KernelFactory::Instance().SelectKernel(pt_kernel_name,
-                                                                pt_kernel_key);
+    auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
+        pt_kernel_name, pt_kernel_key);
 
     if (pt_kernel.IsValid()) {
       VLOG(1) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
@@ -243,9 +243,9 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
-static pt::KernelContext BuildDygraphPtKernelContext(
+static pten::KernelContext BuildDygraphPtKernelContext(
     const framework::KernelSignature& pt_kernel_signature,
-    const pt::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
+    const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
     const platform::DeviceContext& dev_ctx) {
@@ -256,7 +256,7 @@ static pt::KernelContext BuildDygraphPtKernelContext(
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  pt::KernelContext op_kernel_ctx(dev_ctx);
+  pten::KernelContext op_kernel_ctx(dev_ctx);
 
   auto& input_names = std::get<0>(pt_kernel_signature.second);
   auto& attr_names = std::get<1>(pt_kernel_signature.second);
@@ -288,7 +288,7 @@ static pt::KernelContext BuildDygraphPtKernelContext(
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
 
-    std::vector<std::shared_ptr<tcmpt::TensorBase>> tmp_inputs;
+    std::vector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
       const auto& variable = var->Var();
 
@@ -302,7 +302,7 @@ static pt::KernelContext BuildDygraphPtKernelContext(
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<tcmpt::TensorBase>> tmp_outputs;
+    std::vector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto* variable = var->MutableVar();
 
@@ -314,12 +314,13 @@ static pt::KernelContext BuildDygraphPtKernelContext(
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-    if (attr_defs[i].type_index == std::type_index(typeid(pt::Scalar))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(BOOST_GET_CONST(float, attr)));
+        op_kernel_ctx.EmplaceBackAttr(
+            pten::Scalar(BOOST_GET_CONST(float, attr)));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "
@@ -391,7 +392,7 @@ template <typename VarType>
 static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
     const framework::KernelSignature& pt_kernel_signature,
-    const pt::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
+    const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {

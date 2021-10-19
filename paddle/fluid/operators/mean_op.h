@@ -62,13 +62,13 @@ class MeanKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(x->place());
 
     auto pt_x =
-        framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
-    auto pt_out =
-        framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
+        framework::MakeTensorImpl<pten::DenseTensor>(*x, x->place(), x->type());
+    auto pt_out = framework::MakeTensorImpl<pten::DenseTensor>(*out, x->place(),
+                                                               x->type());
 
     // call new kernel
     VLOG(1) << "chenweihang: call original mean kernel compute.";
-    pt::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    pten::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };
 

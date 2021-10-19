@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/pten/api/include/core.h"
 
 namespace paddle {
 namespace framework {
@@ -531,7 +531,7 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
-  /* member functions for adapting to tcmpt lib */
+  /* member functions for adapting to pten lib */
   /** In the Tensor calculation library, the new Kernel adopts a clearer and
     * more streamlined design. The arguments of the Kernel and the input and
     * output arguments registered in the original OpMaker do not match in some
@@ -582,10 +582,10 @@ class OperatorWithKernel : public OperatorBase {
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
 
-  /* member functions for adapting to tcmpt lib */
+  /* member functions for adapting to pten lib */
   void ChoosePtKernel(const ExecutionContext& ctx) const;
 
-  pt::KernelContext BuildPtKernelContext(
+  pten::KernelContext BuildPtKernelContext(
       const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
 
  protected:
@@ -599,11 +599,11 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
   // NOTE(chenweihang): Similar op members are used to adapt to
-  // new tcmpt kernel, if there is a better design in the future,
+  // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   mutable bool run_pt_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
-  mutable std::unique_ptr<pt::Kernel> pt_kernel_;
+  mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
