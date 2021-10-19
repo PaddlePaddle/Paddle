@@ -47,7 +47,7 @@ class TestBincountOpAPI(unittest.TestCase):
                                 'weights': w},
                           fetch_list=[output])
             actual = np.array(res[0])
-            expected = np.array([0., 3., 2., 2., 0., 0., 0., 0.])
+            expected = np.bincount(inputs, weights=weights)
             self.assertTrue(
                 (actual == expected).all(),
                 msg='bincount output is wrong, out =' + str(actual))
@@ -57,7 +57,7 @@ class TestBincountOpAPI(unittest.TestCase):
             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
             inputs = fluid.dygraph.to_variable(inputs_np)
             actual = paddle.bincount(inputs)
-            expected = np.array([1, 3, 1, 1, 0, 0, 0, 1]).astype(np.int64)
+            expected = np.bincount(inputs)
             self.assertTrue(
                 (actual.numpy() == expected).all(),
                 msg='bincount output is wrong, out =' + str(actual.numpy()))
