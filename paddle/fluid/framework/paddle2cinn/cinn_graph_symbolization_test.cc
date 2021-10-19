@@ -25,148 +25,235 @@ using ir::Node;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 using OpMapperContext = ::cinn::frontend::OpMapperContext;
 using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;
+using ::cinn::frontend::NetBuilder;
 
 // only used for test CinnGraphSymbolization class
 class CinnGraphSymbolizationForTest {
  public:
-  void AddFeedInfoIntoContext(CinnGraphSymbolization* cinn_symbol_,
-                              OpMapperContext* ctx) const {
-    cinn_symbol_->AddFeedInfoIntoContext(ctx);
+  explicit CinnGraphSymbolizationForTest(CinnGraphSymbolization* cinn_symbol)
+      : cinn_symbol_(cinn_symbol) {}
+
+  std::unordered_set<std::string> GetGraphInputParameterNames() {
+    return cinn_symbol_->GetGraphInputParameterNames();
   }
 
-  std::vector<std::unique_ptr<CinnOpDesc>> TransformAllGraphOpToCinn(
-      CinnGraphSymbolization* cinn_symbol_) const {
-    return cinn_symbol_->TransformAllGraphOpToCinn();
-  }
-
-  void RunOp(CinnGraphSymbolization* cinn_symbol_, const CinnOpDesc& op_desc,
-             const OpMapperContext& ctx) const {
-    cinn_symbol_->RunOp(op_desc, ctx);
-  }
-
-  std::shared_ptr<::cinn::hlir::framework::Scope> TransformPaddleScopeToCinn(
-      CinnGraphSymbolization* cinn_symbol_) const {
+  std::shared_ptr<::cinn::hlir::framework::Scope> TransformPaddleScopeToCinn() {
     return cinn_symbol_->TransformPaddleScopeToCinn();
   }
 
-  void RunGraph(CinnGraphSymbolization* cinn_symbol_,
-                const OpMapperContext& ctx) const {
-    cinn_symbol_->RunGraph(ctx);
+  OpMapperContext CreateNewContext(NetBuilder* builder) {
+    return OpMapperContext(*cinn_symbol_->TransformPaddleScopeToCinn(),
+                           cinn_symbol_->target_, builder,
+                           &cinn_symbol_->var_map_,
+                           &cinn_symbol_->var_model_to_program_map_);
+  }
+
+  void AddFeedInfoIntoContext(OpMapperContext* ctx) {
+    cinn_symbol_->AddFeedInfoIntoContext(ctx);
+  }
+
+  std::vector<std::unique_ptr<CinnOpDesc>> TransformAllGraphOpToCinn() {
+    return cinn_symbol_->TransformAllGraphOpToCinn();
+  }
+
+  void RunOp(const CinnOpDesc& op_desc, const OpMapperContext& ctx) {
+    cinn_symbol_->RunOp(op_desc, ctx);
+  }
+
+ private:
+  CinnGraphSymbolization* cinn_symbol_;
+};
+
+class CinnGraphSymbolizationTest : public ::testing::Test {
+ public:
+  std::unique_ptr<CinnGraphSymbolization> symbol_;
+  std::unique_ptr<CinnGraphSymbolizationForTest> test_;
+
+  OpMapperContext CreateNewContext() {
+    return test_->CreateNewContext(builder_.get());
+  }
+
+ protected:
+  void SetUp() override {
+    int64_t graph_id = 100;
+    graph_ = BuildAllOpSupportCinnGraph();
+    scope_ = CreateScope();
+    target_ = CreateDefaultTarget();
+    feed_tensors_ = CreateFeedTensors();
+    feed_targets_ = ConvertFeedType(feed_tensors_);
+    symbol_ = std::make_unique<CinnGraphSymbolization>(
+        graph_id, *graph_, *scope_, target_, feed_targets_);
+    builder_ = std::make_unique<NetBuilder>("NetBuilder_of_graph_" +
+                                            std::to_string(graph_id));
+    test_ = std::make_unique<CinnGraphSymbolizationForTest>(symbol_.get());
+  }
+
+ private:
+  std::unique_ptr<Graph> graph_;
+  std::unique_ptr<Scope> scope_;
+  ::cinn::common::Target target_;
+  std::map<std::string, LoDTensor> feed_tensors_;
+  std::map<std::string, const LoDTensor*> feed_targets_;
+  std::unique_ptr<NetBuilder> builder_;
+
+  std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
+    ProgramDesc prog;
+    auto g = std::make_unique<Graph>(prog);
+
+    // v1 --
+    //      | --> mul --> v3 --
+    // v2 --                   | --> add --> v5 --> relu --> v6
+    //                    v4 --
+
+    OpDesc add_op;
+    add_op.SetType("add");
+    OpDesc mul_op;
+    mul_op.SetType("mul");
+    OpDesc relu_op;
+    relu_op.SetType("relu");
+
+    VarDesc var1("var1");
+    VarDesc var2("var2");
+    var2.SetPersistable(true);
+    var2.SetIsParameter(true);
+    VarDesc var3("var3");
+    VarDesc var4("var4");
+    VarDesc var5("var5");
+    VarDesc var6("var6");
+
+    ir::Node* add = g->CreateOpNode(&add_op);
+    ir::Node* mul = g->CreateOpNode(&mul_op);
+    ir::Node* relu = g->CreateOpNode(&relu_op);
+
+    ir::Node* v1 = g->CreateVarNode(&var1);
+    ir::Node* v2 = g->CreateVarNode(&var2);
+    ir::Node* v3 = g->CreateVarNode(&var3);
+    ir::Node* v4 = g->CreateVarNode(&var4);
+    ir::Node* v5 = g->CreateVarNode(&var5);
+    ir::Node* v6 = g->CreateVarNode(&var6);
+
+    // fill op node
+    mul->inputs = {v1, v2};
+    mul->outputs = {v3};
+    add->inputs = {v3, v4};
+    add->outputs = {v5};
+    relu->inputs = {v5};
+    relu->outputs = {v6};
+
+    // fill variable node
+    v1->outputs = {mul};
+    v2->outputs = {mul};
+
+    v3->inputs = {mul};
+    v3->outputs = {add};
+
+    v4->outputs = {add};
+
+    v5->inputs = {add};
+    v5->outputs = {relu};
+
+    v6->inputs = {relu};
+
+    return g;
+  }
+
+  ::cinn::common::Target CreateDefaultTarget(bool use_gpu = false) {
+#ifdef PADDLE_WITH_CUDA
+    if (use_gpu) {
+      return ::cinn::common::DefaultNVGPUTarget();
+    }
+#endif
+    return ::cinn::common::DefaultHostTarget();
+  }
+
+  std::unique_ptr<Scope> CreateScope() {
+    std::unique_ptr<Scope> scope;
+    auto var2 = scope->Var("var2");
+    auto* tensor = var2->GetMutable<Tensor>();
+    DDim dims = {256, 1024, 1024};
+    tensor->Resize(dims);
+    // tensor has no set_type api, default FP32
+    return scope;
+  }
+
+  std::map<std::string, LoDTensor> CreateFeedTensors() {
+    std::map<std::string, LoDTensor> feed_targets;
+
+    auto create_tensor = []() {
+      LoDTensor tensor;
+      DDim dims = {256, 1024, 1024};
+      tensor.Resize(dims);
+      return tensor;
+    };
+#define FillFeedList(Name) feed_targets[#Name] = create_tensor();
+
+    FillFeedList(var1) FillFeedList(var3) FillFeedList(var4) FillFeedList(var5)
+        FillFeedList(var6)
+#undef FillFeedList
+  }
+
+  std::map<std::string, const LoDTensor*> ConvertFeedType(
+      const std::map<std::string, LoDTensor>& feed_targets) {
+    std::map<std::string, const LoDTensor*> res;
+    for (auto& feed_pair : feed_targets) {
+      res[feed_pair.first] = &feed_pair.second;
+    }
+    return res;
   }
 };
 
-std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
-  ProgramDesc prog;
-  auto g = std::make_unique<Graph>(prog);
-
-  // v1 --
-  //      | --> mul --> v3 --
-  // v2 --                   | --> add --> v5 --> relu --> v6
-  //                    v4 --
-
-  OpDesc add_op;
-  add_op.SetType("add");
-  OpDesc mul_op;
-  mul_op.SetType("mul");
-  OpDesc relu_op;
-  relu_op.SetType("relu");
-
-  VarDesc var1("var1");
-  VarDesc var2("var2");
-  var2.SetPersistable(true);
-  var2.SetIsParameter(true);
-  VarDesc var3("var3");
-  VarDesc var4("var4");
-  VarDesc var5("var5");
-  VarDesc var6("var6");
-
-  ir::Node* add = g->CreateOpNode(&add_op);
-  ir::Node* mul = g->CreateOpNode(&mul_op);
-  ir::Node* relu = g->CreateOpNode(&relu_op);
-
-  ir::Node* v1 = g->CreateVarNode(&var1);
-  ir::Node* v2 = g->CreateVarNode(&var2);
-  ir::Node* v3 = g->CreateVarNode(&var3);
-  ir::Node* v4 = g->CreateVarNode(&var4);
-  ir::Node* v5 = g->CreateVarNode(&var5);
-  ir::Node* v6 = g->CreateVarNode(&var6);
-
-  // fill op node
-  mul->inputs = {v1, v2};
-  mul->outputs = {v3};
-  add->inputs = {v3, v4};
-  add->outputs = {v5};
-  relu->inputs = {v5};
-  relu->outputs = {v6};
-
-  // fill variable node
-  v1->outputs = {mul};
-  v2->outputs = {mul};
-
-  v3->inputs = {mul};
-  v3->outputs = {add};
-
-  v4->outputs = {add};
-
-  v5->inputs = {add};
-  v5->outputs = {relu};
-
-  v6->inputs = {relu};
-
-  return g;
+TEST_F(CinnGraphSymbolizationTest, basic) {
+  ASSERT_NO_THROW((*symbol_)());
+  ASSERT_FALSE(symbol_->var_map().empty());
+  ASSERT_FALSE(symbol_->var_model_to_program_map().empty());
 }
 
-::cinn::common::Target CreateDefaultTarget(bool use_gpu = false) {
-#ifdef PADDLE_WITH_CUDA
-  if (use_gpu) {
-    return ::cinn::common::DefaultNVGPUTarget();
+TEST_F(CinnGraphSymbolizationTest, scope) {
+  auto prame_names = test_->GetGraphInputParameterNames();
+  ASSERT_EQ(prame_names, std::unordered_set<std::string>({"var2"}));
+
+  auto cinn_scope = test_->TransformPaddleScopeToCinn();
+
+  auto* var1 = cinn_scope->FindVar("var1");
+  ASSERT_EQ(var1, nullptr);
+  auto* var2 = cinn_scope->FindVar("var2");
+  ASSERT_NE(var2, nullptr);
+
+  auto& cinn_tensor = absl::get<CinnTensor>(*var2);
+  ASSERT_EQ(cinn_tensor->shape().data(), std::vector<int>({256, 1024, 1024}));
+  ASSERT_EQ(cinn_tensor->type(), ::cinn::common::F32());
+}
+
+TEST_F(CinnGraphSymbolizationTest, context) {
+  auto ctx = CreateNewContext();
+  test_->AddFeedInfoIntoContext(&ctx);
+
+  ASSERT_NO_THROW(ctx.GetFeedInfo("var1"));
+  ASSERT_ANY_THROW(ctx.GetFeedInfo("var2"));
+
+  auto feed_info = ctx.GetFeedInfo("var1");
+  ASSERT_EQ(feed_info.shape, std::vector<int>({256, 1024, 1024}));
+  ASSERT_EQ(feed_info.type, ::cinn::common::F32());
+}
+
+TEST_F(CinnGraphSymbolizationTest, sortgraph) {
+  auto cinn_op_descs = test_->TransformAllGraphOpToCinn();
+  ASSERT_FALSE(cinn_op_descs.empty());
+  std::vector<std::string> sort_names;
+  for (auto& desc : cinn_op_descs) {
+    sort_names.emplace_back(desc->Type());
   }
-#endif
-  return ::cinn::common::DefaultHostTarget();
+  ASSERT_EQ(sort_names, std::vector<std::string>({"mul", "add", "relu"}));
 }
 
-std::unique_ptr<Scope> CreateScope() {
-  std::unique_ptr<Scope> scope;
-  scope->Var("var2");
-  return scope;
-}
+TEST_F(CinnGraphSymbolizationTest, runop) {
+  auto cinn_op_descs = test_->TransformAllGraphOpToCinn();
+  auto ctx = CreateNewContext();
+  ASSERT_NO_THROW(test_->RunOp(*cinn_op_descs[0], ctx));
 
-std::map<std::string, LoDTensor> CreateFeedTarget() {
-  std::map<std::string, LoDTensor> feed_targets;
-
-  auto create_tensor = []() {
-    LoDTensor tensor;
-    DDim dims = {256, 1024, 1024};
-    tensor.Resize(dims);
-    return tensor;
-  };
-#define FillFeedList(Name) feed_targets[#Name] = create_tensor();
-
-  FillFeedList(var1) FillFeedList(var3) FillFeedList(var4) FillFeedList(var5)
-      FillFeedList(var6)
-#undef FillFeedList
-}
-
-std::map<std::string, const LoDTensor*> ConvertFeedType(
-    const std::map<std::string, LoDTensor>& feed_targets) {
-  std::map<std::string, const LoDTensor*> res;
-  for (auto& feed_pair : feed_targets) {
-    res[feed_pair.first] = &feed_pair.second;
-  }
-  return res;
-}
-
-TEST(CinnGraphSymbolizationTest, basic) {
-  auto graph = BuildAllOpSupportCinnGraph();
-  auto scope = CreateScope();
-  auto target = CreateDefaultTarget();
-  auto feed_object = CreateFeedTarget();
-  auto feed_targets = ConvertFeedType(feed_object);
-
-  CinnGraphSymbolization symbol(100, *graph, *scope, target, feed_targets);
-  ASSERT_NO_THROW(symbol());
-  ASSERT_FALSE(symbol.var_map().empty());
-  ASSERT_FALSE(symbol.var_model_to_program_map().empty());
+  CinnOpDesc desc;
+  desc.SetType("fake");
+  ASSERT_ANY_THROW(test_->RunOp(desc, ctx));
 }
 
 }  // namespace paddle2cinn
