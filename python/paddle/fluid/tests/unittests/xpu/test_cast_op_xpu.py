@@ -48,7 +48,7 @@ def create_test_class(in_typename, out_typename):
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, atol=1e-3)
 
     cls_name = "cast_{0}_{1}".format(in_typename, out_typename)
     Cls.__name__ = cls_name
