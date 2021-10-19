@@ -95,7 +95,7 @@ struct TensorMeta {
         offset(offset),
         lod(lod) {
     int64_t init_numel = paddle::framework::product(dims);
-    if (init_numel > 0) {
+    if (init_numel >= 0) {
       numel = init_numel;
     }
   }
