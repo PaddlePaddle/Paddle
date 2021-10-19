@@ -19,6 +19,7 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/tcmpt/core/tensor_interface.h"
+#include "paddle/tcmpt/core/tensor_signature.h"
 
 /**
  * [ Why still include the fluid headers? ]
@@ -138,15 +139,15 @@ class Tensor final {
   /**
    * Backend judgment APIs, shield the concept of Backend.
    */
-  bool is_cpu() const { return impl_->backend() == pt::Backend::kCPU; }
-  bool is_cuda() const { return impl_->backend() == pt::Backend::kCUDA; }
+  BackendSet backend_set() const { return signature_->backend_set; }
+
+  bool is_cpu() const;
+  bool is_cuda() const;
   bool is_hip() const;
   bool is_xpu() const;
   bool is_npu() const;
   bool is_mkldnn() const;
   bool is_cudnn() const;
-
-  bool is_selected_rows() const;
 
   /**
    * Backend convert APIs.
@@ -258,7 +259,17 @@ class Tensor final {
    *    information, not Tensor data description-related information.
    * 2. Kernel calculation does not require AutogradMeta.
    */
-  std::shared_ptr<AutogradMetaInterface> autograd_meta_ = nullptr;
+  std::shared_ptr<AutogradMetaInterface> autograd_meta_{nullptr};
+
+  /**
+   * TensorSignature is used to store auxiliary description information
+   * needed by Tensor.
+   *
+   * The currently stored information includes:
+   * 1. name: used for Debug analysis in the development of new dygraph.
+   * 2. backend_set: used by the API to determine the kernel backend.
+   */
+  std::shared_ptr<TensorSignature> signature_{nullptr};
 };
 
 }  // namespace experimental

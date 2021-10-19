@@ -4,7 +4,6 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
-cc_library(backend SRCS backend.cc)
 cc_library(dtype SRCS dtype.cc)
 cc_library(layout SRCS layout.cc)
 

@@ -69,8 +69,6 @@ class TensorInterface {
 
   virtual Place place() const = 0;
 
-  virtual Backend backend() const = 0;
-
   virtual bool initialized() const = 0;
 };
 

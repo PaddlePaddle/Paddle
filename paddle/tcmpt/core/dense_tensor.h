@@ -83,8 +83,6 @@ class DenseTensor : public TensorInterface {
 
   Place place() const override;
 
-  Backend backend() const override { return meta_.backend; }
-
   bool initialized() const override { return allocation_ != nullptr; }
 
   /* member methods */

@@ -71,15 +71,12 @@ struct TensorMeta {
 
   TensorMeta(TensorMeta&& meta)
       : dims(meta.dims),
-        backend(meta.backend),
+        backend_set(meta.backend_set),
         type(meta.type),
         layout(meta.layout),
         numel(meta.numel),
         offset(meta.offset),
         lod(meta.lod) {}
-
-  // Bad constructor, may introduce bug
-  // explicit TensorMeta(DDim dims) : dims(dims) {}
 
   // Compatible Contructor
   TensorMeta(const DDim& dims,
@@ -89,7 +86,7 @@ struct TensorMeta {
              size_t offset = 0UL,
              const LoD& lod = {})
       : dims(dims),
-        backend(backend),
+        backend_set(backend),
         type(type),
         layout(layout),
         offset(offset),
@@ -104,7 +101,8 @@ struct TensorMeta {
 
   DDim dims;
 
-  Backend backend{Backend::kCPU};
+  BackendSet backend_set{Backend::CPU};
+
   DataType type{DataType::kFLOAT32};
   DataLayout layout{DataLayout::kNCHW};
 
