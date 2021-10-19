@@ -1826,7 +1826,7 @@ pt::KernelContext OperatorWithKernel::BuildPtKernelContext(
             << in_def.layout;
 
     auto ins_vector = ctx.inputs.at(input_names[i]);
-    std::vector<std::shared_ptr<tcmpt::TensorBase>> tmp_inputs;
+    paddle::SmallVector<std::shared_ptr<tcmpt::TensorBase>> tmp_inputs;
 
     for (auto var : ins_vector) {
       auto pt_in = framework::InputVariableToPtTensor(*var, in_def);
@@ -1839,7 +1839,7 @@ pt::KernelContext OperatorWithKernel::BuildPtKernelContext(
     auto out_def = output_defs.at(i);
     auto outs_vector = ctx.outputs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<tcmpt::TensorBase>> tmp_outputs;
+    paddle::SmallVector<std::shared_ptr<tcmpt::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto pt_out = framework::OutputVariableToPtTensor(var, out_def);
       tmp_outputs.emplace_back(pt_out);

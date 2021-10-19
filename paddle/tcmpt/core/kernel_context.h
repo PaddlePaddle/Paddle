@@ -18,6 +18,7 @@
 
 #include "paddle/tcmpt/core/tensor_base.h"
 #include "paddle/utils/any.h"
+#include "paddle/utils/small_vector.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -41,9 +42,9 @@ class KernelContext {
  public:
   explicit KernelContext(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
   KernelContext(const DeviceContext& dev_ctx,
-                const std::vector<std::shared_ptr<TensorBase>>& inputs,
-                const std::vector<std::shared_ptr<TensorBase>>& outputs,
-                const std::vector<paddle::any>& attrs)
+                const paddle::SmallVector<std::shared_ptr<TensorBase>>& inputs,
+                const paddle::SmallVector<std::shared_ptr<TensorBase>>& outputs,
+                const paddle::SmallVector<paddle::any>& attrs)
       : dev_ctx_(dev_ctx), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
 
   template <typename CtxType>
@@ -58,7 +59,8 @@ class KernelContext {
     input_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
-  void EmplaceBackInputs(std::vector<std::shared_ptr<TensorBase>> inputs) {
+  void EmplaceBackInputs(
+      const paddle::SmallVector<std::shared_ptr<TensorBase>>& inputs) {
     for (auto in : inputs) {
       inputs_.emplace_back(in);
     }
@@ -75,7 +77,8 @@ class KernelContext {
     output_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
-  void EmplaceBackOutputs(std::vector<std::shared_ptr<TensorBase>> outputs) {
+  void EmplaceBackOutputs(
+      const paddle::SmallVector<std::shared_ptr<TensorBase>>& outputs) {
     for (auto out : outputs) {
       outputs_.emplace_back(out);
     }
@@ -114,22 +117,20 @@ class KernelContext {
   // DeviceContext base class
   const DeviceContext& dev_ctx_;
 
-  // TODO(chenweihang): replaced by small_vector
   // TODO(chenweihang): Tensor -> Tensor*, Tensor should by managed `scope`
   // Note: can't use API Tensor here, the inference don't use this API Tensor
-  std::vector<std::shared_ptr<TensorBase>> inputs_{};
-  std::vector<std::shared_ptr<TensorBase>> outputs_{};
-  std::vector<paddle::any> attrs_{};
+  paddle::SmallVector<std::shared_ptr<TensorBase>> inputs_{};
+  paddle::SmallVector<std::shared_ptr<TensorBase>> outputs_{};
+  paddle::SmallVector<paddle::any> attrs_{};
 
   // Only contains input like list[Tensor] need `range`
-  // TODO(chenweihang): replaced by small_vector
-  std::vector<std::pair<int, int>> input_range_{{}};
-  std::vector<std::pair<int, int>> output_range_{{}};
+  paddle::SmallVector<std::pair<int, int>> input_range_{{}};
+  paddle::SmallVector<std::pair<int, int>> output_range_{{}};
 
   // Only static graph need `name`
   // TODO(chenweihang): replaced by paddle::string_view
-  std::vector<std::string> input_names_{{}};
-  std::vector<std::string> output_names_{{}};
+  paddle::SmallVector<std::string> input_names_{{}};
+  paddle::SmallVector<std::string> output_names_{{}};
 };
 
 }  // namespace pt
