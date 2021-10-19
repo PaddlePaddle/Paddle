@@ -17,14 +17,14 @@ from ..fluid.framework import core, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 
-__all__ = ['crf_decode', 'ViterbiDecoder']
+__all__ = ['viterbi_decode', 'ViterbiDecoder']
 
 
-def crf_decode(potentials,
-               transition_params,
-               lengths,
-               include_start_end_tag=True,
-               name=None):
+def viterbi_decode(potentials,
+                   transition_params,
+                   lengths,
+                   include_bos_eos_tag=True,
+                   name=None):
     """
     Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path.
  
@@ -34,7 +34,7 @@ def crf_decode(potentials,
         transition_params (Tensor): The input tensor of transition matrix. This is a 2-D
             tensor with shape of [num_tags, num_tags]. The data type is float32 or float64. 
         lengths (Tensor):  The input tensor of length of each sequence. This is a 1-D tensor with shape of [batch_size]. The data type is int64. 
-        include_start_end_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
+        include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
             as start tag, the penultimate row and the penultimate column of transitions will be considered as stop tag. Defaults to ``True``.
         name(str, optional): Default value is None.
 
@@ -59,16 +59,16 @@ def crf_decode(potentials,
     """
     if in_dygraph_mode():
         return core.ops.viterbi_decode(potentials, transition_params, lengths,
-                                       'include_start_end_tag',
-                                       include_start_end_tag)
+                                       'include_bos_eos_tag',
+                                       include_bos_eos_tag)
     check_variable_and_dtype(potentials, 'input', ['float32', 'float64'],
                              'viterbi_decode')
     check_variable_and_dtype(transition_params, 'transitions',
                              ['float32', 'float64'], 'viterbi_decode')
     check_variable_and_dtype(lengths, 'length', 'int64', 'viterbi_decode')
-    check_type(include_start_end_tag, 'include_tag', bool, 'viterbi_decode')
+    check_type(include_bos_eos_tag, 'include_tag', bool, 'viterbi_decode')
     helper = LayerHelper('viterbi_decode', **locals())
-    attrs = {'include_start_end_tag': include_start_end_tag}
+    attrs = {'include_bos_eos_tag': include_bos_eos_tag}
     scores = helper.create_variable_for_type_inference(potentials.dtype)
     path = helper.create_variable_for_type_inference('int64')
     helper.append_op(
@@ -90,7 +90,7 @@ class ViterbiDecoder(Layer):
 
     Args:
         transitions (`Tensor`): The transition matrix.  Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
-        include_start_end_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
+        include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
             as start tag, the penultimate row and the penultimate column of transitions will be considered as stop tag. Defaults to ``True``.
         name(str, optional): Default value is None.
 
@@ -117,16 +117,16 @@ class ViterbiDecoder(Layer):
             length = paddle.randint(1, seq_len + 1, [batch_size])
             tags = paddle.randint(0, num_tags, [batch_size, seq_len])
             transition = paddle.rand((num_tags, num_tags), dtype='float32')
-            decoder = paddle.text.ops.ViterbiDecoder(transition, include_start_end_tag=False)
+            decoder = paddle.text.ops.ViterbiDecoder(transition, include_bos_eos_tag=False)
             scores, path = decoder(emission, length) # scores: [3.37089300, 1.56825531], path: [[1, 0, 0], [1, 1, 0]]
     """
 
-    def __init__(self, transitions, include_start_end_tag=True, name=None):
+    def __init__(self, transitions, include_bos_eos_tag=True, name=None):
         super(ViterbiDecoder, self).__init__()
         self.transitions = transitions
-        self.include_start_end_tag = include_start_end_tag
+        self.include_bos_eos_tag = include_bos_eos_tag
         self.name = name
 
     def forward(self, potentials, lengths):
-        return crf_decode(potentials, self.transitions, lengths,
-                          self.include_start_end_tag, self.name)
+        return viterbi_decode(potentials, self.transitions, lengths,
+                              self.include_bos_eos_tag, self.name)

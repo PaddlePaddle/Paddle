@@ -86,7 +86,7 @@ class TestViterbiOp(OpTest):
             'Transition': self.trans,
             'Length': self.length
         }
-        self.attrs = {'include_start_end_tag': self.use_tag, }
+        self.attrs = {'include_bos_eos_tag': self.use_tag, }
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):

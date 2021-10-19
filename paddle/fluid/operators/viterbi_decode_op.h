@@ -239,7 +239,7 @@ template <typename DeviceContext, typename T>
 class ViterbiDecodeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    bool include_start_end_tag = ctx.Attr<bool>("include_start_end_tag");
+    bool include_bos_eos_tag = ctx.Attr<bool>("include_bos_eos_tag");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto curr_place = ctx.GetPlace();
     auto* input = ctx.Input<Tensor>("Input");
@@ -330,7 +330,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     BinaryOperation<DeviceContext, MulFunctor, int64_t> MulInt;
     BinaryOperation<DeviceContext, SubFunctor, T> SubFloat;
     BinaryOperation<DeviceContext, SubFunctor, int64_t> SubInt;
-    if (include_start_end_tag) {
+    if (include_bos_eos_tag) {
       AddFloat(dev_ctx, logit0, start_trans, &alpha);
       GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
                                                 &float_mask);
@@ -364,7 +364,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       MulFloat(dev_ctx, alpha, float_mask, &alpha);
       // alpha += alpha_nxt
       AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
-      if (include_start_end_tag) {
+      if (include_bos_eos_tag) {
         GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
                                                   &float_mask);
         // alpha += mask * trans_exp[:, self.stop_idx]
