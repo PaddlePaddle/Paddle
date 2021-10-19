@@ -27,6 +27,7 @@ from . import unique_name
 from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
+import warnings
 __all__ = [
     'append_backward',
     'gradients',
@@ -174,9 +175,13 @@ class ProgramStats(object):
             return
 
         op_idx = 0
-        while (op_idx < len(self.ops)):
+        while op_idx < len(self.ops):
             op = self.ops[op_idx]
             if op.desc.type() != "dropout":
+                op_idx += 1
+                continue
+            # already insert seed op before dropout
+            if op.input('Seed') is not None and len(op.input('Seed')) == 1:
                 op_idx += 1
                 continue
             # add a seed op so that the two dropout op can generate same output
@@ -371,6 +376,10 @@ def _infer_var_data_type_shape_(grad_var_name, block):
         grad_var.set_dtype(fwd_var.dtype())
         grad_var.set_shape(fwd_var.shape())
     else:
+        # TODO(jiabin): Maybe we should not to this to cause some unexpected error on dtype
+        warnings.warn(
+            "Set grad var: {} dtype to default FP32, since we can't find its related forward var".
+            format(grad_var_name))
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
 
@@ -408,7 +417,9 @@ def _strip_grad_suffix_(name):
     """
     name = cpt.to_text(name)
     pos = name.find(core.grad_var_suffix())
-    return name[:pos] if pos != -1 else name
+    new_name = name[:pos] if pos != -1 else name
+    new_pos = name.rfind('grad/')
+    return new_name[new_pos + 5:] if new_pos != -1 else new_name
 
 
 def _append_grad_suffix_(name):

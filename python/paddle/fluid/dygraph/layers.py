@@ -1466,6 +1466,8 @@ class Layer(core.Layer):
                     param_applied = func(param, device, dtype, blocking)
                     assert param.is_leaf
                     param_applied.stop_gradient = param.stop_gradient
+                    if hasattr(param_applied, 'is_distributed'):
+                        param_applied.is_distributed = param.is_distributed
                     self._parameters[key] = param_applied
 
                 if param.grad is not None:
@@ -1475,6 +1477,9 @@ class Layer(core.Layer):
 
                         grad_applied.stop_gradient = param._grad_ivar(
                         ).stop_gradient
+                        if hasattr(param._grad_ivar(), 'is_distributed'):
+                            grad_applied.is_distributed = param._grad_ivar(
+                            ).is_distributed
                         self._parameters[key]._set_grad_ivar(grad_applied)
 
             self._parameters_transform_map[id(param)] = [param_applied, key]

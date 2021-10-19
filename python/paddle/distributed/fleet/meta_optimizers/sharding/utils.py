@@ -906,7 +906,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
             "_velocity_0"
         ]
         for check in checks:
-            if var.name.endswith(check):
+            if var.name.endswith(check) and var.persistable:
                 return True
         return False
 

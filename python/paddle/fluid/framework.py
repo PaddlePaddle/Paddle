@@ -313,6 +313,18 @@ def _current_expected_place():
                     "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_xpu():
+            try:
+                device_count = core.get_xpu_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.XPUPlace(0)
+            else:
+                warnings.warn(
+                    "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -6085,7 +6097,7 @@ class ParamBase(core.VarBase):
 
         self.need_clip = kwargs.get('need_clip', True)
 
-        self.is_distributed = False
+        self.is_distributed = kwargs.get('is_distributed', False)
         # self.block = default_main_program().global_block()
 
     @property
@@ -6153,7 +6165,6 @@ class ParamBase(core.VarBase):
         return new_param
 
     def _copy_to(self, device, blocking):
-        print("in ParamBase copy_to func")
         state = copy.deepcopy(self.__dict__)
         new_param = ParamBase(self.shape, self.dtype, **state)
         core.varbase_copy(self, new_param, device, blocking)
