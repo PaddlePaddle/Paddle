@@ -304,6 +304,7 @@ class StaticAnalysisVisitor(object):
 
     def _get_node_var_type(self, cur_wrapper):
         node = cur_wrapper.node
+        # need to support AnnAssign???
         if isinstance(node, gast.Constant):
             return self._get_constant_node_type(node)
 
@@ -392,6 +393,9 @@ class StaticAnalysisVisitor(object):
             
             2. parse by Py3 type annotation.
                 foo(x: Tensor, y: int, z: str) -> x: Tensor, y: INT, z: STR
+
+            3. parse by type annotation and default values.
+                foo(x: Tensor, y: int, z: str = 'abc') -> x: Tensor, y: INT, z: STR
 
         NOTE: Currently, we only support Tensor, int, bool, float, str et.al.
               Other complicate types will be supported later.
