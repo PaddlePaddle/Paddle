@@ -1362,18 +1362,18 @@ class Model(object):
 
         optim_state = None if reset_optimizer else _load_state_from_path(
             path + ".pdopt")
-        
+
         # TODO: support save/load scaler state in static graph
         if in_dygraph_mode():
             scaler_state = None
             if hasattr(self, '_scaler') and self._scaler is not None:
                 if os.path.exists(path + '.pdscaler'):
                     scaler_state = paddle.load(path + '.pdscaler')
-        
+
             return self._adapter.load(matched_param_state, optim_state,
-                                    scaler_state)
+                                      scaler_state)
         else:
-            return self._adapter.load(matched_param_state, optim_state)            
+            return self._adapter.load(matched_param_state, optim_state)
 
     def parameters(self, *args, **kwargs):
         """
