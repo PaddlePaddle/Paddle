@@ -15,6 +15,7 @@
 # TODO: define all functions about input & output in this directory 
 
 from ..fluid.io import DataLoader  # noqa: F401
+from ..fluid.dataloader import Pipeline  # noqa: F401
 from ..fluid.dataloader import Dataset  # noqa: F401
 from ..fluid.dataloader import IterableDataset  # noqa: F401
 from ..fluid.dataloader import BatchSampler  # noqa: F401
@@ -40,6 +41,7 @@ __all__ = [ #noqa
            'DistributedBatchSampler',
            'DataLoader',
            'get_worker_info',
+           'Pipeline',
            'Sampler',
            'SequenceSampler',
            'RandomSampler',
