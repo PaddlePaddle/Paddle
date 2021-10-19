@@ -72,7 +72,7 @@ pt::DataType TransToPtDataType(
   }
 }
 
-DataLayout TransToPtLayout(const paddle::framework::DataLayout& layout) {
+DataLayout TransToPtDataLayout(const paddle::framework::DataLayout& layout) {
   switch (layout) {
     case paddle::framework::DataLayout::kNHWC:
       return DataLayout::kNHWC;
