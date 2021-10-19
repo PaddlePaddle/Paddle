@@ -214,9 +214,7 @@ struct DeviceIndependenceTensorOperations {
     std::vector<int> x_vec = framework::vectorize<int>(a_dim);
     x_vec[x_vec.size() - 2] = a_dim[a_dim.size() - (trans_a ? 1 : 2)];
     x_vec[x_vec.size() - 1] = b_dim[b_dim.size() - (trans_b ? 2 : 1)];
-    std::cout << ">>>>>Matmul resize start\n";
     ret.Resize(framework::make_ddim(x_vec));
-    std::cout << ">>>>>Matmul resize end\n";
     ret.mutable_data<T>(context.GetPlace());
     auto blas = GetBlas();
     auto mat_a_discrib = math::CreateMatrixDescriptor(a_dim, 0, trans_a);
@@ -240,9 +238,7 @@ struct DeviceIndependenceTensorOperations {
     }
     std::swap(axis[rank - 1], axis[rank - 2]);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::cout << ">>>>>Transpose start\n";
     ret.Resize(framework::make_ddim(x_vec));
-    std::cout << ">>>>>Transpose end\n";
     ret.mutable_data<T>(context.GetPlace());
     switch (rank) {
       DITO_TRANSPOSE_RANK_CASE(2);
@@ -383,9 +379,7 @@ struct DeviceIndependenceTensorOperations {
       auto index = (out_shape.end() + axis + 1);
       out_shape.insert(index, 1);
     }
-    std::cout << ">>>>>Unsqueeze start\n";
     out.Resize(framework::make_ddim(out_shape));
-    std::cout << ">>>>>Unsqueeze end\n";
     return out;
   }
   framework::Tensor Fill(std::vector<int> shape, float fill_value) {
@@ -475,21 +469,6 @@ struct DeviceIndependenceTensorOperations {
         m, n, num_lower_diags, num_upper_diags, scale.data<ValueType>(),
         input.data<T>(), out.mutable_data<T>(input.dims(), input.place()));
     for_range(diag_and_copy_functor);
-    return out;
-  }
-
-  // Support x and y are different data types
-  Tensor Mul_(const Tensor& x, const Tensor& y) {
-    Tensor out;
-    out.mutable_data<T>(x.dims(), context.GetPlace());
-    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    auto x_vector = EigenVector<T>::Flatten(x);
-    auto y_vector = EigenVector<ValueType>::Flatten(y);
-    auto out_vector = EigenVector<T>::Flatten(out);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    out_vector.device(place) =
-        x_vector.broadcast(out_shape) * y_vector.broadcast(out_shape);
     return out;
   }
 

@@ -28,10 +28,10 @@ class TestEigvalshOp(OpTest):
         self.init_input()
         self.init_config()
         np.random.seed(123)
-        out_w = np.linalg.eigvalsh(self.x_np, self.UPLO)
+        out_w, out_v = np.linalg.eigh(self.x_np, self.UPLO)
         self.inputs = {"X": self.x_np}
         self.attrs = {"UPLO": self.UPLO, "is_test": False}
-        self.outputs = {'Eigenvalues': out_w}
+        self.outputs = {'Eigenvalues': out_w, 'Eigenvectors': out_v}
 
     def init_config(self):
         self.UPLO = 'L'
@@ -42,10 +42,10 @@ class TestEigvalshOp(OpTest):
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
     def test_check_output(self):
-        self.check_output()
+        # Vectors in posetive or negative is equivalent
+        self.check_output(no_check_set=['Eigenvectors'])
 
     def test_grad(self):
-        #        self.outputs['Eigenvectors'] = np.ones(self.x_shape).astype(self.x_type)
         self.check_grad(["X"], ["Eigenvalues"])
 
 
