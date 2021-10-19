@@ -43,6 +43,11 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 
   feed_names_ = feed_names;
 
+  auto event_id = main_thread_blocker_.RegisterEvent(
+      [this]() { return exception_holder_.IsCaught(); });
+  auto notifier = main_thread_blocker_.GetEventNotifier(event_id);
+  exception_notifier_ = &notifier.get();
+
   // Step1: add feedop and fetchop to main_program
   AddFetch(fetch_names);
 
@@ -371,6 +376,11 @@ void InterpreterCore::ExecuteInstructionList(
   auto event_id = main_thread_blocker_.WaitEvent();
   VLOG(3) << "event_id " << event_id;
 
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(4) << "Exception caught " << exception_holder_.Type();
+    exception_holder_.ReThrow();
+  }
+
   PADDLE_ENFORCE_EQ(
       op_run_number_.load(), vec_instr.size(),
       platform::errors::Fatal(
@@ -454,8 +464,12 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     exception_holder_.Catch(std::current_exception());
   }
 
-  if (UNLIKELY(!exception_holder_.IsCaught())) {
-    Notify();
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(4) << "Exception caught";
+    if (exception_notifier_ != nullptr) {
+      exception_notifier_->NotifyEvent();
+    }
+    return;
   }
 
   event_manager_.RecordEvent(instr_node, place_);

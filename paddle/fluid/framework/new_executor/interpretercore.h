@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
@@ -26,6 +27,7 @@
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -34,9 +36,6 @@
 
 namespace paddle {
 namespace framework {
-namespace details {
-class ExceptionHolder;
-}  // namespace details
 
 using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
@@ -106,6 +105,7 @@ class InterpreterCore {
   std::atomic<size_t> op_run_number_{0};
 
   details::ExceptionHolder exception_holder_;
+  EventsWaiter::Notifier* exception_notifier_{nullptr};
 };
 }  // namespace framework
 }  // namespace paddle
