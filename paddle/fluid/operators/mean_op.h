@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tcmpt_utils.h"
+#include "paddle/fluid/framework/pten_utils.h"
 
 // only can include the headers in paddle/top/api dirs
-#include "paddle/tcmpt/api/include/core.h"
-#include "paddle/tcmpt/api/include/math.h"
+#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/api/include/math.h"
 
 namespace paddle {
 namespace operators {

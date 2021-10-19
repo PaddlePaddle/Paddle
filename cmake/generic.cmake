@@ -116,7 +116,7 @@ function(find_fluid_modules TARGET_NAME)
   endif()
 endfunction(find_fluid_modules)
 
-set_property(GLOBAL PROPERTY TCMPT_MODULES "")
+set_property(GLOBAL PROPERTY PTEN_MODULES "")
 # find all pten modules is used for paddle static library
 # for building inference libs
 function(find_pten_modules TARGET_NAME)
@@ -124,9 +124,9 @@ function(find_pten_modules TARGET_NAME)
   string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
   string(FIND "${__target_path}" "pten" pos)
   if(pos GREATER 1)
-    get_property(pten_modules GLOBAL PROPERTY TCMPT_MODULES)
+    get_property(pten_modules GLOBAL PROPERTY PTEN_MODULES)
     set(pten_modules ${pten_modules} ${TARGET_NAME})
-    set_property(GLOBAL PROPERTY TCMPT_MODULES "${pten_modules}")
+    set_property(GLOBAL PROPERTY PTEN_MODULES "${pten_modules}")
   endif()
 endfunction(find_pten_modules)
 

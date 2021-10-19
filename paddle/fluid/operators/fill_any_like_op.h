@@ -17,10 +17,10 @@ limitations under the License. */
 #include <limits>
 #include <type_traits>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tcmpt_utils.h"
+#include "paddle/fluid/framework/pten_utils.h"
 
-#include "paddle/tcmpt/api/include/core.h"
-#include "paddle/tcmpt/api/include/creation.h"
+#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/api/include/creation.h"
 
 namespace paddle {
 namespace operators {
