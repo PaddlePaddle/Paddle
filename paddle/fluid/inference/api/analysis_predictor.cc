@@ -36,6 +36,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -56,6 +57,7 @@
 
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 
@@ -1470,6 +1472,22 @@ int GetNumBytesOfDataType(DataType dtype) {
 }
 
 std::string GetVersion() { return paddle::get_version(); }
+
+std::tuple<int, int, int> GetTrtCompileVersion() {
+#ifdef PADDLE_WITH_TENSORRT
+  return paddle::inference::tensorrt::GetTrtCompileVersion();
+#else
+  return std::tuple<int, int, int>{0, 0, 0};
+#endif
+}
+
+std::tuple<int, int, int> GetTrtRuntimeVersion() {
+#ifdef PADDLE_WITH_TENSORRT
+  return paddle::inference::tensorrt::GetTrtRuntimeVersion();
+#else
+  return std::tuple<int, int, int>{0, 0, 0};
+#endif
+}
 
 std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);
