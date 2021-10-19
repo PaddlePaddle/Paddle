@@ -338,6 +338,7 @@ class StaticGraphAdapter(object):
 
         _save(optim, optim_path)
 
+    # TODO: support save/load scaler state in static graph
     def load(self, param_state_pairs, optim_state):
         if self._executor is None:
             executor = fluid.Executor(fluid.CPUPlace())._default_executor
@@ -975,7 +976,8 @@ class Model(object):
         2. An example using mixed precision training.
 
         .. code-block:: python
-
+        
+          # required: gpu
           import paddle
           import paddle.nn as nn
           import paddle.vision.transforms as T
@@ -1360,14 +1362,18 @@ class Model(object):
 
         optim_state = None if reset_optimizer else _load_state_from_path(
             path + ".pdopt")
-
-        scaler_state = None
-        if hasattr(self, '_scaler') and self._scaler is not None:
-            if os.path.exists(path + '.pdscaler'):
-                scaler_state = paddle.load(path + '.pdscaler')
-
-        return self._adapter.load(matched_param_state, optim_state,
-                                  scaler_state)
+        
+        # TODO: support save/load scaler state in static graph
+        if in_dygraph_mode():
+            scaler_state = None
+            if hasattr(self, '_scaler') and self._scaler is not None:
+                if os.path.exists(path + '.pdscaler'):
+                    scaler_state = paddle.load(path + '.pdscaler')
+        
+            return self._adapter.load(matched_param_state, optim_state,
+                                    scaler_state)
+        else:
+            return self._adapter.load(matched_param_state, optim_state)            
 
     def parameters(self, *args, **kwargs):
         """
