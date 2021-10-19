@@ -59,6 +59,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
+    int8_teller_set.insert("reshape");
+    int8_teller_set.insert("reshape2");
 #endif
   }
 
@@ -91,7 +93,9 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "scale",
                                                   "elementwise_mul",
                                                   "conv2d_transpose",
-                                                  "hard_swish"};
+                                                  "hard_swish",
+                                                  "transpose",
+                                                  "transpose2"};
   std::unordered_set<std::string> teller_set{"mul",
                                              "matmul",
                                              "conv2d",
