@@ -239,7 +239,7 @@ struct MasterParamHelper<MT, OpNum, paddle::platform::float16> {
 
 template <typename T, typename MT,
           int OpNum =
-              std::is_same<T, paddle::platform::float16>::value ? 80 : 100>
+              std::is_same<T, paddle::platform::float16>::value ? 80 : 90>
 struct LarsParamWarpper : public MasterParamHelper<MT, OpNum, T> {
   static constexpr int kNum = OpNum;
 
@@ -248,7 +248,7 @@ struct LarsParamWarpper : public MasterParamHelper<MT, OpNum, T> {
   const T* __restrict__ g_arr[OpNum];
   T* p_arr[OpNum];
   MT* v_arr[OpNum];
-  MT weight_decay;
+  MT weight_decay[OpNum];
 };
 
 template <typename T, typename MT>
@@ -269,13 +269,13 @@ __global__ void MergedMomentumLarsKernel(LarsParamWarpper<T, MT> lars_warpper,
     L2NormKernel<T, MT>(&cg, lars_warpper.p_arr[i], lars_warpper.g_arr[i],
                         buffer_for_param_norm, buffer_for_grad_norm, numel,
                         rescale_grad, &param_norm, &grad_norm);
-    MomentumUpdate<T, MT>(lars_warpper.p_arr[i], lars_warpper.g_arr[i],
-                          lars_warpper.v_arr[i], lars_warpper.p_arr[i],
-                          lars_warpper.v_arr[i], lars_warpper.GetMasterParam(i),
-                          lars_warpper.GetMasterParam(i),
-                          lars_warpper.lr_arr[i], mu, lars_warpper.weight_decay,
-                          lars_coeff, epsilon, rescale_grad, param_norm,
-                          grad_norm, tid, grid_stride, numel, is_amp);
+    MomentumUpdate<T, MT>(
+        lars_warpper.p_arr[i], lars_warpper.g_arr[i], lars_warpper.v_arr[i],
+        lars_warpper.p_arr[i], lars_warpper.v_arr[i],
+        lars_warpper.GetMasterParam(i), lars_warpper.GetMasterParam(i),
+        lars_warpper.lr_arr[i], mu, lars_warpper.weight_decay[i], lars_coeff,
+        epsilon, rescale_grad, param_norm, grad_norm, tid, grid_stride, numel,
+        is_amp);
   }
 }
 #endif
@@ -363,7 +363,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
-    MT lars_weight_decay = weight_decay_arr[0];
 
     auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
     auto param = ctx.MultiInput<framework::LoDTensor>("Param");
@@ -391,7 +390,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           &num_blocks_per_sm, MergedMomentumLarsKernel<T, MT>, LARS_BLOCK_SIZE,
           sizeof(MT) << 1);
 
-      lars_warpper.weight_decay = lars_weight_decay;
       int loop = (op_num + lars_warpper.kNum - 1) / lars_warpper.kNum;
       for (int j = 0; j < loop; ++j) {
         size_t total_numel = 0;
@@ -402,6 +400,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           size_t temp_numel = param[start_idx + i]->numel();
           total_numel += temp_numel;
           lars_warpper.numel_arr[i] = temp_numel;
+          lars_warpper.weight_decay[i] = static_cast<MT>(weight_decay_arr[i]);
           lars_warpper.g_arr[i] = grad[start_idx + i]->data<T>();
           lars_warpper.p_arr[i] =
               param_out[start_idx + i]->mutable_data<T>(ctx.GetPlace());
@@ -465,6 +464,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
               ? master_param_out[0]->mutable_data<MT>(ctx.GetPlace())
               : nullptr;
       int64_t numel = param[0]->numel();
+      MT lars_weight_decay = static_cast<MT>(weight_decay_arr[0]);
 
       // Figure out how many blocks can be active in each sm.
       cudaOccupancyMaxActiveBlocksPerMultiprocessor(
@@ -512,9 +512,10 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           velocity[i]->data<MT>(),
           velocity_out[i]->mutable_data<MT>(ctx.GetPlace()), grad[i]->data<T>(),
           learning_rate[i]->data<MT>(), buffer_for_param_norm,
-          buffer_for_grad_norm, mu, lars_coeff, lars_weight_decay, epsilon,
-          rescale_grad, param[i]->numel(), master_param_data,
-          master_param_out_data, multi_precision);
+          buffer_for_grad_norm, mu, lars_coeff,
+          static_cast<MT>(weight_decay_arr[i]), epsilon, rescale_grad,
+          param[i]->numel(), master_param_data, master_param_out_data,
+          multi_precision);
     }
 #endif
   }
