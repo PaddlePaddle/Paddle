@@ -12,38 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 
-#include <map>
+#include <memory>
 
-#include "paddle/fluid/framework/feed_fetch_type.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-// Class to store and call CINN complied object
-class CinnCompiledObject {
- public:
-  CinnCompiledObject();
-  ~CinnCompiledObject();
+using ir::Graph;
 
-  // Compiles use CINN. CINN compilation needs model graph, input names, and
-  // input_shapes
-  void Compile(const ir::Graph& graph,
-               std::map<std::string, const LoDTensor*>* feed_targets);
+TEST(CinnCompilerTest, TodoTest) {
+  ProgramDesc empty_program;
+  Graph empty_graph(empty_program);
+  Scope empty_scope;
+  std::map<std::string, const LoDTensor*> empty_feed;
 
-  // Feed LoDTensors to tun CINN compiled object and return fetched result
-  std::map<std::string, FetchType*> Run(
-      Scope* scope, std::map<std::string, const LoDTensor*>* feed_targets);
-
-  // Converts compiled object to Paddle Graph
-  // To be discussed
-  // ir::Graph ToGraph();
-};
+  auto* cinn_runner = CinnCompiler::GetInstance();
+  cinn_runner->ReplaceWithCinn(&empty_graph);
+  cinn_runner->Run(empty_graph, &empty_scope, &empty_feed);
+}
 
 }  // namespace paddle2cinn
 }  // namespace framework

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 
+#include <algorithm>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -23,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 // #include "cinn/frontend/op_mapper_registry.h"
 // #include "cinn/frontend/op_mappers/use_op_mappers.h"
 
@@ -256,11 +259,24 @@ void AnalyseClusterVariables(const GraphNodeSet& cluster,
   }
 }
 
-Node* AddSpecialOpToGraph(Graph* graph, const GraphNodeSet& cluster_inputs,
-                          const GraphNodeSet& cluster_outputs) {
+Node* AddSpecialOpToGraph(const GraphNodeSet& cluster_inputs,
+                          const GraphNodeSet& cluster_outputs,
+                          const std::string& compilation_key, Graph* graph) {
   // add special cinn op
   framework::OpDesc special_op_desc;
   special_op_desc.SetType(kCinnLaunchOp);
+  std::vector<std::string> input_names;
+  std::transform(cluster_inputs.begin(), cluster_inputs.end(),
+                 std::back_inserter(input_names),
+                 [](Node* n) { return n->Name(); });
+  special_op_desc.SetInput("X", input_names);
+  std::vector<std::string> output_names;
+  std::transform(cluster_outputs.begin(), cluster_outputs.end(),
+                 std::back_inserter(output_names),
+                 [](Node* n) { return n->Name(); });
+  special_op_desc.SetOutput("Out", output_names);
+  special_op_desc.SetAttr("compilation_key", compilation_key);
+  special_op_desc.Flush();
   auto* special_op_node = graph->CreateOpNode(&special_op_desc);
   special_op_node->inputs.assign(cluster_inputs.begin(), cluster_inputs.end());
   special_op_node->outputs.assign(cluster_outputs.begin(),
@@ -268,9 +284,9 @@ Node* AddSpecialOpToGraph(Graph* graph, const GraphNodeSet& cluster_inputs,
   return special_op_node;
 }
 
-void AddLinkToSpecialOp(Node* special_op_node,
-                        const GraphNodeSet& cluster_inputs,
-                        const GraphNodeSet& cluster_outputs) {
+void AddLinkToSpecialOp(const GraphNodeSet& cluster_inputs,
+                        const GraphNodeSet& cluster_outputs,
+                        Node* special_op_node) {
   // add new link from cluster_inputs to special_op_node
   for (auto* var_node : cluster_inputs) {
     var_node->outputs.push_back(special_op_node);
@@ -338,14 +354,15 @@ void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
                                       const GraphNodeSet& cluster_inputs,
                                       const GraphNodeSet& cluster_outputs,
                                       const GraphNodeSet& cluster_internals,
+                                      const std::string& compilation_key,
                                       Graph* graph) {
   // First, add the special op node whose name is "kCinnLaunchOp" into graph
-  auto special_op_node =
-      AddSpecialOpToGraph(graph, cluster_inputs, cluster_outputs);
+  auto special_op_node = AddSpecialOpToGraph(cluster_inputs, cluster_outputs,
+                                             compilation_key, graph);
   // Second, remove all graph's links which are from or to cluster nodes
   RemoveLinkFromCluster(cluster, cluster_inputs, cluster_outputs);
   // Third, add new links from or to the the special op node
-  AddLinkToSpecialOp(special_op_node, cluster_inputs, cluster_outputs);
+  AddLinkToSpecialOp(cluster_inputs, cluster_outputs, special_op_node);
   // Finally, remove the cinn sub graph from graph
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
@@ -354,8 +371,7 @@ void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
-void SearchAllSubgraphs(Graph* graph,
-                        std::vector<std::unique_ptr<Graph>>* cinn_subgraphs) {
+void SearchAllSubgraphs(Graph* graph) {
   auto teller = [](const Node* node) {
     return ::cinn::frontend::OpMapperRegistry::Global()->Find(node->Name()) !=
            nullptr;
@@ -363,7 +379,7 @@ void SearchAllSubgraphs(Graph* graph,
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
 
-  cinn_subgraphs->clear();
+  auto* cinn_runner = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
     // classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
@@ -371,21 +387,16 @@ void SearchAllSubgraphs(Graph* graph,
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
     AnalyseClusterVariables(cluster_set, &cluster_inputs, &cluster_outputs,
                             &cluster_internals);
-
-    cinn_subgraphs->emplace_back(
+    std::string compilation_key = cinn_runner->AddGraph(
         CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs));
-
     // replacing subgraph to a new special op node
     ReplaceSubGraphWithSpecialOpNode(cluster_set, cluster_inputs,
-                                     cluster_outputs, cluster_internals, graph);
+                                     cluster_outputs, cluster_internals,
+                                     compilation_key, graph);
   }
 }
 
-void BuildCinnPass::ApplyImpl(Graph* graph) const {
-  auto& cinn_subgraphs =
-      Get<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs");
-  SearchAllSubgraphs(graph, &cinn_subgraphs);
-}
+void BuildCinnPass::ApplyImpl(Graph* graph) const { SearchAllSubgraphs(graph); }
 
 }  // namespace paddle2cinn
 }  // namespace framework

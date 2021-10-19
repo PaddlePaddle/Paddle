@@ -26,7 +26,7 @@ namespace paddle2cinn {
 
 // Class to store the keys for compiling CINN.
 //
-// CINN cannot handle changable shape now, so CinnRunner keeps a cache mapping
+// CINN cannot handle changable shape now, so CinnCompiler keeps a cache mapping
 // from CinnCacheKey to CinnCompiledObject.
 //
 // The CinnCacheKey contains a graph serialized string and the feeded tensor
@@ -34,14 +34,14 @@ namespace paddle2cinn {
 class CinnCacheKey {
  public:
   CinnCacheKey(const ir::Graph& graph,
-               const std::map<std::string, const LoDTensor*>& feed_tensors);
+               const std::map<std::string, const LoDTensor*>& input_tensors);
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, DDim>& feed_shapes);
 
   ~CinnCacheKey() {}
 
   void SetKey(const ir::Graph& graph,
-              const std::map<std::string, const LoDTensor*>& feed_tensors);
+              const std::map<std::string, const LoDTensor*>& input_tensors);
   void SetKey(const ir::Graph& graph,
               const std::map<std::string, DDim>& feed_shapes);
 
