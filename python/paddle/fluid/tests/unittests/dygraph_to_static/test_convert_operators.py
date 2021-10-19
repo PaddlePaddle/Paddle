@@ -266,7 +266,7 @@ class TestIfElseNoValue(unittest.TestCase):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
         @paddle.jit.to_static
-        def func(x, use_cache=False):
+        def with_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
                 z = x + 2
@@ -276,14 +276,26 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return None
 
-        out = func(input_x, False)
+        @paddle.jit.to_static
+        def without_common_value(x, use_cache=False):
+            if use_cache:
+                y = x + 1
+                z = x + 2
+                return y, z
+            else:
+                c = x + 1
+                return None
+
+        out = with_common_value(input_x, False)
+        self.assertIsNone(out)
+        out = without_common_value(input_x, False)
         self.assertIsNone(out)
 
     def test_else_ret_c(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
         @paddle.jit.to_static
-        def func(x, use_cache=False):
+        def with_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
                 z = x + 2
@@ -293,26 +305,55 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return c
 
-        out = func(input_x, False)
-        self.assertListEqual(paddle.tolist(out), paddle.tolist(input_x + 1))
-
-    def test_else_ret_cz(self):
-        input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
-
         @paddle.jit.to_static
-        def func(x, use_cache=False):
+        def without_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
                 z = x + 2
                 return y, z
             else:
                 c = x + 1
+                return c
+
+        out = with_common_value(input_x, False)
+        self.assertListEqual(paddle.tolist(out), paddle.tolist(input_x + 1))
+        out = without_common_value(input_x, False)
+        self.assertListEqual(paddle.tolist(out), paddle.tolist(input_x + 1))
+        y, z = with_common_value(input_x, True)
+        self.assertListEqual(paddle.tolist(y), paddle.tolist(input_x + 1))
+        self.assertListEqual(paddle.tolist(z), paddle.tolist(input_x + 2))
+
+    def test_else_ret_cz(self):
+        input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+
+        @paddle.jit.to_static
+        def with_common_value(x, use_cache=False):
+            if use_cache:
+                y = x + 1
+                z = x + 2
+                return y, z, 1
+            else:
+                c = x + 1
                 z = x - 1
                 return c, z
 
-        c, z = func(input_x, False)
+        @paddle.jit.to_static
+        def without_common_value(x, use_cache=False):
+            if use_cache:
+                y = x + 1
+                z = x + 2
+                return y, z, 1
+            else:
+                c = x + 1
+                d = x - 1
+                return c, d
+
+        c, z = with_common_value(input_x, False)
         self.assertListEqual(paddle.tolist(c), paddle.tolist(input_x + 1))
         self.assertListEqual(paddle.tolist(z), paddle.tolist(input_x - 1))
+        c, d = without_common_value(input_x, False)
+        self.assertListEqual(paddle.tolist(c), paddle.tolist(input_x + 1))
+        self.assertListEqual(paddle.tolist(d), paddle.tolist(input_x - 1))
 
 
 if __name__ == '__main__':

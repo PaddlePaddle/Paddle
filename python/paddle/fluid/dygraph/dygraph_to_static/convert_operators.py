@@ -210,8 +210,7 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
     else:
         out = _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
 
-    out = _remove_no_value_return_var(out)
-    return out
+    return _remove_no_value_return_var(out)
 
 
 def _remove_no_value_return_var(out):
