@@ -52,33 +52,33 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     const std::unordered_map<std::string, std::string> &attr_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("elementwise_add_act", graph);
+  FusePassBase::Init("elementwise_act", graph);
 
   GraphPatternDetector gpd;
-  auto *elementwise_add_input =
+  auto *elementwise_input =
       gpd.mutable_pattern()
-          ->NewNode(elt_type + "_act/elementwise_add_input")
+          ->NewNode(elt_type + "_act/elementwise_input")
           ->AsInput()
           ->assert_is_op_input(elt_type, "X");
-  patterns::ElementwiseActivation elementwise_add_act_pattern(
+  patterns::ElementwiseActivation elementwise_act_pattern(
       gpd.mutable_pattern(), elt_type + "_act");
-  elementwise_add_act_pattern(elementwise_add_input, elt_type, act_type);
+  elementwise_act_pattern(elementwise_input, elt_type, act_type);
 
-  int found_elementwise_add_activation_count = 0;
+  int found_elementwise_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse " << elt_type << " with activation op.";
     // Elementwise Add output
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_add_act_pattern);
+                              elementwise_act_pattern);
     // ACT output
     GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out,
-                              elementwise_add_act_pattern);
+                              elementwise_act_pattern);
     // ops
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise,
-                              elementwise_add_act_pattern);
+                              elementwise_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation,
-                              elementwise_add_act_pattern);
+                              elementwise_act_pattern);
 
     auto *elementwise_op = elementwise->Op();
 
@@ -107,13 +107,13 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
     IR_OP_VAR_LINK(elementwise, activation_out);
     GraphSafeRemoveNodes(g, {activation, elementwise_out});
-    found_elementwise_add_activation_count++;
+    found_elementwise_activation_count++;
   };
 
   gpd(graph, handler);
-  AddStatis(found_elementwise_add_activation_count);
+  AddStatis(found_elementwise_activation_count);
   PrettyLogDetail("---    fused %d %s with %s activation",
-                  found_elementwise_add_activation_count, elt_type, act_type);
+                  found_elementwise_activation_count, elt_type, act_type);
 }
 
 }  // namespace ir
