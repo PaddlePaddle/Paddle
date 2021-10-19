@@ -28,24 +28,28 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {"relu",  "tanh",      "leaky_relu",
                                         "swish", "hardswish", "sqrt",
                                         "abs",   "clip",      "gelu"};
-  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub", "elementwise_mul"};
+  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
+                                        "elementwise_mul"};
 
   for (const auto &elt_type : elt_types)
-    for (const auto &act_type : act_types)
-    {
-      if(act_type == "swish") FuseElementwiseAct(graph, elt_type, act_type, {{"beta", "activation_alpha"}});
-      else if(act_type == "clip") FuseElementwiseAct(graph, elt_type, act_type, {{"min", "activation_alpha"},
-                                                                                 {"max", "activation_beta"}});
-      else FuseElementwiseAct(graph, elt_type, act_type, {{"alpha", "activation_alpha"},
-                                                          {"beta", "activation_beta"}});
-
+    for (const auto &act_type : act_types) {
+      if (act_type == "swish")
+        FuseElementwiseAct(graph, elt_type, act_type,
+                           {{"beta", "activation_alpha"}});
+      else if (act_type == "clip")
+        FuseElementwiseAct(
+            graph, elt_type, act_type,
+            {{"min", "activation_alpha"}, {"max", "activation_beta"}});
+      else
+        FuseElementwiseAct(
+            graph, elt_type, act_type,
+            {{"alpha", "activation_alpha"}, {"beta", "activation_beta"}});
     }
 }
 
 void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
-    Graph *graph, const std::string &elt_type,
-    const std::string &act_type,
-    const std::unordered_map<std::string, std::string>& attr_map) const {
+    Graph *graph, const std::string &elt_type, const std::string &act_type,
+    const std::unordered_map<std::string, std::string> &attr_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("elementwise_add_act", graph);
@@ -88,10 +92,10 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     }
 
     auto *activation_op = activation->Op();
-    for(const auto& attr: attr_map)
-    {
+    for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
-        elementwise_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
+        elementwise_op->SetAttr(attr.second,
+                                activation_op->GetAttr(attr.first));
       }
     }
 

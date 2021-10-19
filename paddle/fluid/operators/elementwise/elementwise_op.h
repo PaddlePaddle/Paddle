@@ -190,16 +190,19 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                          "Activation type used in elementwise operator.")
         .SetDefault("")
         .AsExtra();
-    AddAttr<float>("activation_alpha",
-                   "Activation alpha parameter type used in elementwise operator.")
+    AddAttr<float>(
+        "activation_alpha",
+        "Activation alpha parameter type used in elementwise operator.")
         .SetDefault(0.0f)
         .AsExtra();
-    AddAttr<float>("activation_beta",
-                   "Activation beta parameter type used in elementwise operator.")
+    AddAttr<float>(
+        "activation_beta",
+        "Activation beta parameter type used in elementwise operator.")
         .SetDefault(0.0f)
         .AsExtra();
-    AddAttr<float>("activation_scale",
-                   "Activation scale parameter type used in elementwise operator.")
+    AddAttr<float>(
+        "activation_scale",
+        "Activation scale parameter type used in elementwise operator.")
         .SetDefault(1.0f)
         .AsExtra();
     /* int8 parameters */
