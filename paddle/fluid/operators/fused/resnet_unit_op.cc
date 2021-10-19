@@ -111,32 +111,30 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     const auto w_dims = ctx->GetInputDim("FilterX");
     const auto bn_param_dims = ctx->GetInputDim("ScaleX");
     PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
-                                            "The dimensions of input "
-                                            "must equal to 4."
-                                            "But received: the shape of input "
-                                            "= [%s], the dimension of input = "
-                                            "[%d]",
+                                            "The dimensions of input is "
+                                            "expected to be equal to 4. But "
+                                            "received: the shape of input is "
+                                            "[%s], the dimension of input is "
+                                            "%d.",
                                             x_dims, x_dims.size()));
     PADDLE_ENFORCE_EQ(w_dims.size(), 4,
                       platform::errors::InvalidArgument(
-                          "The dimensions of filter "
-                          "must equal to 4."
-                          "But received: the shape of filter "
-                          "= [%s], the dimension of filter = [%d] ",
+                          "The dimensions of filter is expected to be equal to"
+                          "4. But received: the shape of filter is [%s], "
+                          "the dimension of filter is %d.",
                           w_dims, w_dims.size()));
-    PADDLE_ENFORCE_EQ(bn_param_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The dimensions of bn param "
-                          "must equal to 4."
-                          "But received: the shape of bn param "
-                          "= [%s], the dimension of bn param = [%d] ",
-                          bn_param_dims, bn_param_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        bn_param_dims.size(), 4,
+        platform::errors::InvalidArgument(
+            "The dimensions of bn param is expected to be equal to"
+            " 4. But received: the shape of bn param is [%s], "
+            "the dimension of bn param is %d.",
+            bn_param_dims, bn_param_dims.size()));
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
     PADDLE_ENFORCE_EQ(
         data_format, "NHWC",
-        platform::errors::InvalidArgument("The data format must equal to NHWC. "
-                                          "But received: the data format "
-                                          "= [%s]",
+        platform::errors::InvalidArgument("The data format is expected to be "
+                                          "NHWC. But received %s.",
                                           data_format));
     // Calculate the dims of outputs
     int batch = x_dims[0];
