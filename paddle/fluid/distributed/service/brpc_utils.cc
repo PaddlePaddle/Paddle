@@ -138,9 +138,6 @@ void SerializeSelectedRows(framework::Variable* var,
   var_data->clear();
   var_data->resize(rows->size() * sizeof(int64_t));
   char* data_ptr = const_cast<char*>(var_data->data());
-  // the type of rows is framework::Vector, get data by []
-  // will trigger data copy operation, if the data is in GPU
-  // it will be copied to CPU
   memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));
   var_msg->set_data_type(static_cast<VarMsg::Type>(tensor->type()));
   for (auto& dim : framework::vectorize(tensor->dims())) {
@@ -264,10 +261,6 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
   auto* slr = var->GetMutable<framework::SelectedRows>();
   framework::Tensor* tensor = slr->mutable_value();
   slr->set_height(msg.slr_height());
-  // now, the rows of SelectedRows is in CPU
-  // if current device is CPU, it's ok
-  // if current device is GPU, the row data is in CPU and the tensor data is GPU
-  // but it doesn't matter because sum op for selected rows will copy rows to GPU
   std::vector<int64_t> tmp_rows(msg.dims()[0]);
   memcpy(tmp_rows.data(), msg.data().data(), msg.dims()[0] * sizeof(int64_t));
   slr->set_rows(tmp_rows);
