@@ -813,6 +813,145 @@ def watch_local_trainers(procs, nranks):
     return alive
 
 
+def expert_count(gate_idx, n_expert):
+    """
+    calculate the expert count according to the gate index.
+    Args:
+        gate_idx (Tensor): Tensor. The input gate index whose data type should be int32 or int64.
+        n_expert (int): The number of the experts.
+    Returns:
+        out (Tensor): The output expert count.
+    Examples:
+        .. code-block:: python
+            # required: distributed
+            import paddle
+
+            gate_idx = [
+                [0, 2],
+                [0, 2]
+            ]
+            n_expert = 6
+            gate_idx = paddle.to_tensor(gate_idx, dtype="int32")
+            expert_count = paddle.distributed.utils.expert_count(gate_idx, n_expert)
+            print(expert_count) # the result: [2, 0, 2, 0, 0, 0]
+    """
+    if in_dygraph_mode():
+        return core.ops.expert_count(gate_idx, 'n_expert', n_expert)
+    else:
+        op_type = 'expert_count'
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=gate_idx.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={'gate_idx': gate_idx},
+            outputs={'Out': out},
+            attrs={'n_expert': n_expert})
+        return out
+
+
+def limit_by_capacity(expert_count, capacity, n_worker):
+    """
+    limit the expert count by capacity.
+    Args:
+        expert_count (Tensor): Tensor. The input expert count whose data type should be int32 or int64.
+        capacity (Tensor): Tensor. The input capacity whose data type should be int32 or int64 and the elements of capacity should be the same with expert_count.numel()/n_work.
+        n_work (int): The number of the works.
+    Returns:
+        out (Tensor): The output expert count limit by capacity.
+    Examples:
+        .. code-block:: python
+            # required: distributed
+            import paddle
+            expert_count = [1, 2, 2, 8, 3, 6]
+            capacity = [5, 5, 5]
+            n_work = 2
+            expert_count = paddle.to_tensor(expert_count, dtype="int32")
+            capacity = paddle.to_tensor(capacity, dtype="int32")
+            out = paddle.distributed.utils.limit_by_capacity(expert_count, capacity, n_work)
+            print(out) # the result: [1, 2, 2, 4, 3, 3]
+    """
+    if in_dygraph_mode():
+        return core.ops.limit_by_capacity(expert_count, capacity, 'n_worker',
+                                          n_worker)
+    else:
+        op_type = 'limit_by_capacity'
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=expert_count.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={'expert_count': expert_count,
+                    'capacity': capacity},
+            outputs={'Out': out},
+            attrs={'n_worker': n_worker})
+        return out
+
+
+def parallel_linear(x, w, bias, expert_count):
+    """
+    parallel_linear matrix multiplication according to expert_count
+    
+    Args:
+        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64. Its shape is [batch_size, in_feat].
+        w (Tensor): Parameter matrix. Its shape is [expert_num, in_feat, out_feat].
+        bias (Tensor): Parameter matrix. Its shape is [expert_num, out_feat]
+        expert_count (numpy)): Its shape is [expert_num,].
+    
+    Returns:
+        out (Tensor): The linear calculation result. 
+    
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            in_dim = 10
+            out_dim = 20
+
+            np_expert_count = np.array([2, 0, 1, 2, 3, 0, 0, 0, 2]).astype(np.int64) 
+            batch_size = np.sum(np_expert_count)
+            expert_num = len(np_expert_count)
+
+            np_w = np.random.random((expert_num, in_dim, out_dim)).astype("float32")
+            np_b = np.random.random((batch_size, out_dim)).astype("float32")
+            np_x = np.random.random((batch_size, in_dim)).astype("float32")
+
+
+
+            w = paddle.to_tensor(np_w)
+            b = paddle.to_tensor(np_b)
+            x = paddle.to_tensor(np_x)
+            expert_count = paddle.to_tensor(np_expert_count)
+
+            out =  paddle.distributed.utils.parallel_linear(x, w, b, expert_count)
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.parallel_linear(x, w, bias, 'expert_count', expert_count)
+    else:
+        op_type = 'parallel_linear'
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'X': x,
+                'W': w,
+                'Bias': bias,
+                'Expert_Count': expert_count
+            },
+            outputs={'Out': out})
+        return out
+
+
 def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     """
     prune gate by capacity(only support CUDA)
