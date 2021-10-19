@@ -558,13 +558,21 @@ def start_local_trainers(cluster,
 
 def pull_worker_log(tp):
     if tp.log_fn:
-        piece_size=4096
+        piece_size = 4096
         with open(tp.log_fn.name, "rb") as fin:
+            fin.seek(tp.log_offset, 0)
             while True:
                 piece = fin.read(piece_size)
-                if piece == "":
-                    break # end of file
-                sys.stdout.write(piece)
+                if piece == b'':
+                    break
+                try:
+                    utf8_piece = str(piece, 'utf-8')
+                except UnicodeEncodeError:
+                    sys.stdout.write(
+                        'UnicodeEncodeError occurs at this line. '
+                        'Please refer to the original log file "%s"\n' %
+                        tp.log_fn.name)
+                sys.stdout.write(utf8_piece)
 
             tp.log_offset = fin.tell()
 
