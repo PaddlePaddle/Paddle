@@ -410,13 +410,14 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
-
-    for (size_t i = 0; i < next_instr.direct_run_.size(); ++i) {
-      auto next_id = next_instr.direct_run_[i];
+    auto direct_run_ops = interpretercore::merge_vector(
+        next_instr.synchronize_run_, next_instr.direct_run_);
+    size_t first_op = 0;
+    for (auto next_id : direct_run_ops) {
       if (IsReady(next_id)) {
         // only keep one op running in current thread
-        if (i == 0) {
-          RunInstructionAsync(next_id);
+        if (first_op == 0) {
+          first_op = next_id;
           continue;
         }
         // move rest ops into other threads
@@ -425,6 +426,7 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
+    if (first_op != 0) RunInstructionAsync(first_op);
   }
 }
 
