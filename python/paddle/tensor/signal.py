@@ -23,12 +23,7 @@ from ..fluid.framework import in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from .. import _C_ops
 
-__all__ = [
-    'frame',
-    'overlap_add',
-    'stft',
-    'istft',
-]
+__all__ = []
 
 
 def frame(x, frame_length, hop_length, axis=-1, name=None):
@@ -295,7 +290,7 @@ def stft(x,
         .. code-block:: python
     
             import paddle
-            from paddle.tensor.signal import stft
+            from paddle.signal import stft
     
             # real-valued input
             x = paddle.randn([8, 48000], dtype=paddle.float64)
@@ -459,7 +454,7 @@ def istft(x,
 
             import numpy as np
             import paddle
-            from paddle.tensor.signal import stft, istft
+            from paddle.signal import stft, istft
 
             paddle.seed(0)
 
