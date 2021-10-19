@@ -316,7 +316,6 @@ def grad_check(x,
                   'with respect to input %s on %s,\n' \
                   'numerical:%s\nanalytical:%s\n' \
                   % (y[y_idx].name, x[x_idx].name, str(place), n, a)
-            print("msg:", msg)
             return fail_test(msg)
     return True
 
