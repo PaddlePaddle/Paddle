@@ -40,7 +40,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         .AddInput(*table_t)
         .AddInput(*ids_t)
         .AddInput(std::vector<int32_t>{0})
-#ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
+#if (CANN_VERSION_CODE >= 503003)
         .AddAttrs({{"batch_dims", 0}})
 #endif
         .AddOutput(*output_t);

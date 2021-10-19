@@ -68,7 +68,7 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   ignore_tensor.Resize(ids_t.dims());
 
   NpuOpRunner sub_runner;
-#ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
+#if (CANN_VERSION_CODE >= 503003)
   Tensor factor_tensor(ids_t.type());
   factor_tensor.mutable_data<T>({1}, context.GetPlace());
   TensorFromVector(std::vector<T>{static_cast<T>(start_idx)},

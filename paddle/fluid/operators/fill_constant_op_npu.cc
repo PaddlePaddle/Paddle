@@ -66,7 +66,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     out_var->mutable_data<T>(shape, ctx.GetPlace());
 
     NpuOpRunner runner;
-#ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
+#if (CANN_VERSION_CODE >= 503003)
     runner.SetType("FillD")
         .AddInput(tensor_value)
         .AddOutput(*out_var)
