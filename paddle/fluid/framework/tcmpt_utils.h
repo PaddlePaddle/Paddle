@@ -71,11 +71,9 @@ class KernelSignatureMap {
   }
 
   void Insert(const std::string& op_type, const KernelSignature& signature) {
-    PADDLE_ENFORCE_NE(
-        Has(op_type), true,
-        platform::errors::AlreadyExists(
-            "Operator (%s)'s Kernel Signature has been registered.", op_type));
-    map_.insert({op_type, signature});
+    if (!Has(op_type)) {
+      map_.insert({op_type, signature});
+    }
   }
 
   const KernelSignature* GetNullable(const std::string& op_type) const {
