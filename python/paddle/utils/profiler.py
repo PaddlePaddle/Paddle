@@ -18,7 +18,6 @@ import sys
 import warnings
 
 from ..fluid import core
-from ..fluid.profiler import cuda_profiler  # noqa: F401
 from ..fluid.profiler import start_profiler
 from ..fluid.profiler import profiler  # noqa: F401
 from ..fluid.profiler import stop_profiler
@@ -28,7 +27,6 @@ __all__ = [     #noqa
            'Profiler',
            'get_profiler',
            'ProfilerOptions',
-           'cuda_profiler',
            'start_profiler',
            'profiler',
            'stop_profiler',

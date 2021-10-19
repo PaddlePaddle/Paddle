@@ -19,10 +19,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 import os
 import six
 
-__all__ = [
-    'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
-    'stop_profiler'
-]
+__all__ = ['reset_profiler', 'profiler', 'start_profiler', 'stop_profiler']
 
 NVPROF_CONFIG = [
     "gpustarttimestamp",
@@ -96,8 +93,7 @@ def npu_profiler(output_file, config=None):
 
 def reset_profiler():
     """
-    Clear the previous time record. This interface does not work for
-    `fluid.profiler.cuda_profiler`, it only works for
+    Clear the previous time record. It works for
     `fluid.profiler.start_profiler`, `fluid.profiler.stop_profiler`,
     and `fluid.profiler.profiler`.
 
@@ -245,8 +241,7 @@ def profiler(state,
              profile_path='/tmp/profile',
              tracer_option='Default'):
     """
-    The profiler interface. Different from `fluid.profiler.cuda_profiler`, 
-    this profiler can be used to profile both CPU and GPU program.
+    The profiler interface. This profiler can be used to profile both CPU and GPU program.
 
     Args:
         state (str) : The profiling state, which should be one of 'CPU', 'GPU'
