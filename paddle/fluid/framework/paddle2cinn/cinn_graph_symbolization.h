@@ -39,7 +39,7 @@ namespace paddle2cinn {
 // 2. graph:
 //       the CINN subgraph whose op are all supported by CINN, and the
 //       graph is independently of other graph.
-// 3. feed_targets:
+// 3. input_tensors:
 //       all input var nodes of CINN subgraph, they are necessary for
 //       we need pass the shape and data type into CINN, otherwise the
 //       NetBuilder may error for the shape not meet the precondition.
@@ -61,14 +61,13 @@ namespace paddle2cinn {
 class CinnGraphSymbolization {
  public:
   CinnGraphSymbolization(
-      int64_t graph_id, const ir::Graph& graph, const Scope& scope,
+      int64_t graph_id, const ir::Graph& graph,
       const ::cinn::common::Target& target,
-      const std::map<std::string, const LoDTensor*>& feed_targets)
+      const std::map<std::string, const LoDTensor*>& input_tensors)
       : graph_id_(graph_id),
         graph_(graph),
-        scope_(scope),
         target_(target),
-        feed_targets_(feed_targets) {}
+        input_tensors_(input_tensors) {}
 
   // run all CINN op in graph by topo sorting then return its NetBuilder
   ::cinn::frontend::Program operator()();
@@ -88,17 +87,18 @@ class CinnGraphSymbolization {
  private:
   const int64_t graph_id_;
   const ir::Graph& graph_;
-  const Scope& scope_;
   const ::cinn::common::Target& target_;
-  const std::map<std::string, const LoDTensor*>& feed_targets_;
+  const std::map<std::string, const LoDTensor*>& input_tensors_;
 
   // preserve local variable map
   absl::flat_hash_map<std::string, ::cinn::frontend::Variable> var_map_;
   absl::flat_hash_map<std::string, std::string> var_model_to_program_map_;
 
   using OpMapperContext = ::cinn::frontend::OpMapperContext;
+  using FeedInfoMap =
+      absl::flat_hash_map<std::string, OpMapperContext::FeedInfo>;
   // transform all paddle var desc in feed list into cinn_var_descs_
-  void AddFeedInfoIntoContext(OpMapperContext* ctx) const;
+  FeedInfoMap GetFeedInfoMapFromInput() const;
 
   // transform all paddle op desc in graph into cinn op desc
   using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;
@@ -112,9 +112,9 @@ class CinnGraphSymbolization {
   // preserve var desc, run the op one by one.
   void RunGraph(const OpMapperContext& ctx) const;
 
-  // Transform paddle scope to cinn scope
-  std::shared_ptr<::cinn::hlir::framework::Scope> TransformPaddleScopeToCinn()
-      const;
+  // create cinn scope and add parameter's feed info into scope
+  std::shared_ptr<::cinn::hlir::framework::Scope> CreateCinnScope(
+      const FeedInfoMap& feed_map) const;
 
   // get the graph op's input persistable var name set
   std::unordered_set<std::string> GetGraphInputParameterNames() const;

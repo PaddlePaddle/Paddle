@@ -22,10 +22,11 @@ namespace paddle2cinn {
 
 using ir::Graph;
 using ir::Node;
+using ::cinn::frontend::NetBuilder;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 using OpMapperContext = ::cinn::frontend::OpMapperContext;
 using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;
-using ::cinn::frontend::NetBuilder;
+using FeedInfoMap = absl::flat_hash_map<std::string, OpMapperContext::FeedInfo>;
 
 // only used for test CinnGraphSymbolization class
 class CinnGraphSymbolizationForTest {
@@ -37,19 +38,21 @@ class CinnGraphSymbolizationForTest {
     return cinn_symbol_->GetGraphInputParameterNames();
   }
 
-  std::shared_ptr<::cinn::hlir::framework::Scope> TransformPaddleScopeToCinn() {
-    return cinn_symbol_->TransformPaddleScopeToCinn();
+  std::shared_ptr<::cinn::hlir::framework::Scope> CreateCinnScope(
+      const FeedInfoMap& feed_map) {
+    return cinn_symbol_->CreateCinnScope(feed_map);
   }
 
-  OpMapperContext CreateNewContext(NetBuilder* builder) {
-    return OpMapperContext(*cinn_symbol_->TransformPaddleScopeToCinn(),
+  OpMapperContext CreateNewContext(NetBuilder* builder,
+                                   const FeedInfoMap& feed_map) {
+    return OpMapperContext(*cinn_symbol_->CreateCinnScope(feed_map),
                            cinn_symbol_->target_, builder,
                            &cinn_symbol_->var_map_,
                            &cinn_symbol_->var_model_to_program_map_);
   }
 
-  void AddFeedInfoIntoContext(OpMapperContext* ctx) {
-    cinn_symbol_->AddFeedInfoIntoContext(ctx);
+  FeedInfoMap GetFeedInfoMapFromInput() {
+    return cinn_symbol_->GetFeedInfoMapFromInput();
   }
 
   std::vector<std::unique_ptr<CinnOpDesc>> TransformAllGraphOpToCinn() {
@@ -70,31 +73,35 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
   std::unique_ptr<CinnGraphSymbolizationForTest> test_;
 
   OpMapperContext CreateNewContext() {
-    return test_->CreateNewContext(builder_.get());
+    return test_->CreateNewContext(builder_.get(), feed_map_);
+  }
+
+  std::shared_ptr<::cinn::hlir::framework::Scope> CreateCinnScope() {
+    return test_->CreateCinnScope(feed_map_);
   }
 
  protected:
   void SetUp() override {
     int64_t graph_id = 100;
     graph_ = BuildAllOpSupportCinnGraph();
-    scope_ = CreateScope();
     target_ = CreateDefaultTarget();
     feed_tensors_ = CreateFeedTensors();
     feed_targets_ = ConvertFeedType(feed_tensors_);
-    symbol_ = std::make_unique<CinnGraphSymbolization>(
-        graph_id, *graph_, *scope_, target_, feed_targets_);
+    symbol_ = std::make_unique<CinnGraphSymbolization>(graph_id, *graph_,
+                                                       target_, feed_targets_);
     builder_ = std::make_unique<NetBuilder>("NetBuilder_of_graph_" +
                                             std::to_string(graph_id));
     test_ = std::make_unique<CinnGraphSymbolizationForTest>(symbol_.get());
+    feed_map_ = test_->GetFeedInfoMapFromInput();
   }
 
  private:
   std::unique_ptr<Graph> graph_;
-  std::unique_ptr<Scope> scope_;
   ::cinn::common::Target target_;
   std::map<std::string, LoDTensor> feed_tensors_;
   std::map<std::string, const LoDTensor*> feed_targets_;
   std::unique_ptr<NetBuilder> builder_;
+  FeedInfoMap feed_map_;
 
   std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
     ProgramDesc prog;
@@ -166,16 +173,6 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     return ::cinn::common::DefaultHostTarget();
   }
 
-  std::unique_ptr<Scope> CreateScope() {
-    std::unique_ptr<Scope> scope;
-    auto var2 = scope->Var("var2");
-    auto* tensor = var2->GetMutable<Tensor>();
-    DDim dims = {256, 1024, 1024};
-    tensor->Resize(dims);
-    // tensor has no set_type api, default FP32
-    return scope;
-  }
-
   std::map<std::string, LoDTensor> CreateFeedTensors() {
     std::map<std::string, LoDTensor> feed_targets;
 
@@ -186,9 +183,12 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
       return tensor;
     };
 #define FillFeedList(Name) feed_targets[#Name] = create_tensor();
-
-    FillFeedList(var1) FillFeedList(var3) FillFeedList(var4) FillFeedList(var5)
-        FillFeedList(var6)
+    FillFeedList(var1);
+    FillFeedList(var2);
+    FillFeedList(var3);
+    FillFeedList(var4);
+    FillFeedList(var5);
+    FillFeedList(var6)
 #undef FillFeedList
   }
 
@@ -208,11 +208,23 @@ TEST_F(CinnGraphSymbolizationTest, basic) {
   ASSERT_FALSE(symbol_->var_model_to_program_map().empty());
 }
 
+TEST_F(CinnGraphSymbolizationTest, feed_map) {
+  auto feed_map = test_->GetFeedInfoMapFromInput();
+  auto ctx = CreateNewContext();
+
+  ASSERT_TRUE(feed_map.count("var1"));
+  ASSERT_TRUE(feed_map.count("var2"));
+
+  auto feed_info = feed_map.at("var1");
+  ASSERT_EQ(feed_info.shape, std::vector<int>({256, 1024, 1024}));
+  ASSERT_EQ(feed_info.type, ::cinn::common::F32());
+}
+
 TEST_F(CinnGraphSymbolizationTest, scope) {
   auto prame_names = test_->GetGraphInputParameterNames();
   ASSERT_EQ(prame_names, std::unordered_set<std::string>({"var2"}));
 
-  auto cinn_scope = test_->TransformPaddleScopeToCinn();
+  auto cinn_scope = CreateCinnScope();
 
   auto* var1 = cinn_scope->FindVar("var1");
   ASSERT_EQ(var1, nullptr);
@@ -222,18 +234,6 @@ TEST_F(CinnGraphSymbolizationTest, scope) {
   auto& cinn_tensor = absl::get<CinnTensor>(*var2);
   ASSERT_EQ(cinn_tensor->shape().data(), std::vector<int>({256, 1024, 1024}));
   ASSERT_EQ(cinn_tensor->type(), ::cinn::common::F32());
-}
-
-TEST_F(CinnGraphSymbolizationTest, context) {
-  auto ctx = CreateNewContext();
-  test_->AddFeedInfoIntoContext(&ctx);
-
-  ASSERT_NO_THROW(ctx.GetFeedInfo("var1"));
-  ASSERT_ANY_THROW(ctx.GetFeedInfo("var2"));
-
-  auto feed_info = ctx.GetFeedInfo("var1");
-  ASSERT_EQ(feed_info.shape, std::vector<int>({256, 1024, 1024}));
-  ASSERT_EQ(feed_info.type, ::cinn::common::F32());
 }
 
 TEST_F(CinnGraphSymbolizationTest, sortgraph) {
