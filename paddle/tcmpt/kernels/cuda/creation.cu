@@ -24,7 +24,7 @@ void FillAnyLike(const CUDAContext& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& val,
                  DenseTensor* out) {
-  eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
+  eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<float>());
 }
 
 }  // namespace pt
@@ -33,7 +33,7 @@ PT_REGISTER_MODULE(CreationCUDA);
 
 PT_REGISTER_KERNEL("fill_any_like",
                    CUDA,
-                   NCHW,
+                   Any,
                    pt::FillAnyLike,
                    float,
                    double,

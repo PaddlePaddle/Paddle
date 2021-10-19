@@ -42,6 +42,13 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   using Arg = typename std::tuple_element<Index, Args>::type;
 
   static void Parse(const KernelKey& default_key, KernelArgsDef* args_def) {
+    // TODO(chenweihang): The fluid Tensor's default layout is NCHW,
+    // it is not same as kernel's layout, we should fix this error on
+    // fluid Tensor
+    auto default_tensor_layout = pt::DataLayout::kNCHW;
+    if (default_key.layout() != pt::DataLayout::kAny) {
+      default_tensor_layout = default_key.layout();
+    }
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
       if (arg_type == std::type_index(typeid(const CPUContext&))
@@ -54,10 +61,10 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const DenseTensor&))) {
         args_def->AppendInput(
-            default_key.backend(), default_key.layout(), default_key.dtype());
+            default_key.backend(), default_tensor_layout, default_key.dtype());
       } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
         args_def->AppendOutput(
-            default_key.backend(), default_key.layout(), default_key.dtype());
+            default_key.backend(), default_tensor_layout, default_key.dtype());
       } else {
         // Attribute deal with
         // TODO(chenweihang): now here allow any types of attribute, maybe

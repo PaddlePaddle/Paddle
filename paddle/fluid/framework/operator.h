@@ -116,8 +116,6 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
-OpKernelType TransPtKernelKeyToOpKernelType(const pt::KernelKey& kernel_key);
-
 class ExecutionContext;
 class OperatorBase;
 
@@ -534,13 +532,15 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   /* member functions for adapting to tcmpt lib */
-  // TODO(chenweihang): Temporarily as a class method
-  virtual pt::KernelKey ConstructPtKernelKey(
-      const VariableValueMap& inputs, const AttributeMap& attrs,
-      const platform::Place& ctx_place) const;
-
-  virtual pt::KernelContext ConstructPtKernelContext(
-      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
+  /** In the Tensor calculation library, the new Kernel adopts a clearer and
+    * more streamlined design. The arguments of the Kernel and the input and
+    * output arguments registered in the original OpMaker do not match in some
+    * cases, so we use map to record the arguments required by the kernel.
+    * When selecting Kernel during Op execution, select the arguments of the
+    * original Op according to the GetExpectedPtKernelArgs returned arguments.
+    */
+  virtual KernelSignature GetExpectedPtKernelArgs(
+      const ExecutionContext& ctx) const;
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
@@ -563,8 +563,9 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
-                    const platform::Place& place) const;
+  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
+
+  void ChooseKernel(const ExecutionContext& ctx) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;
@@ -582,8 +583,10 @@ class OperatorWithKernel : public OperatorBase {
                                    const std::string& name) const;
 
   /* member functions for adapting to tcmpt lib */
-  void ChoosePtKernel(const RuntimeContext& ctx,
-                      const platform::DeviceContext& dev_ctx) const;
+  void ChoosePtKernel(const ExecutionContext& ctx) const;
+
+  pt::KernelContext BuildPtKernelContext(
+      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -595,10 +598,11 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
-  // TODO(chenweihang): Similar duplicate members are used for new tcmpt lib,
-  // maybe we have better impl methods
+  // NOTE(chenweihang): Similar op members are used to adapt to
+  // new tcmpt kernel, if there is a better design in the future,
+  // we may polish the implementation here
   mutable bool run_pt_kernel_ = false;
-  mutable std::unique_ptr<pt::KernelKey> pt_kernel_key_;
+  mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pt::Kernel> pt_kernel_;
 };
 

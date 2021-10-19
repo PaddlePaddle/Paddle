@@ -61,7 +61,7 @@ using float16 = paddle::platform::float16;
 // architecture, kernel_name should be "flatten".
 PT_REGISTER_KERNEL("flatten_contiguous_range",
                    CUDA,
-                   NCHW,
+                   Any,
                    pt::Flatten,
                    float,
                    float16,
@@ -73,7 +73,7 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
 
 PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    CUDA,
-                   NCHW,
+                   Any,
                    pt::FlattenWithXShape,
                    float,
                    double,
