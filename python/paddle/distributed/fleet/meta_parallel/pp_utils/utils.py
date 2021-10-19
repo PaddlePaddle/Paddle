@@ -24,6 +24,13 @@ from ..parallel_layers.random import get_rng_state_tracker
 
 __all__ = []
 
+#to support checkpoint continuous
+continuous_data_buffers = []
+continuous_data_offsets = []
+continuous_size_buffers = []
+continuous_size_offsets = []
+_num_checkpoints = None
+
 FLOAT_TYPE_DICT = {
     paddle.float16: "float16",
     paddle.float32: "float32",
@@ -92,17 +99,25 @@ _recompute_offload = False
 _recompute_partition = False
 
 
-def _initialize_recompute_setting(is_offload, is_partition):
-    global _recompute_offload, _recompute_partition
+def _initialize_recompute_setting(is_offload, is_partition, num_checkpoints):
+    global _recompute_offload, _recompute_partition, num_checkpoints
 
     _recompute_offload = is_offload
     _recompute_partition = is_partition
+    _num_checkpoints = num_checkpoints
 
 
 def _initialize_recompute_hcg(hcg):
     global _hcg
     _hcg = hcg
 
+def _extract_tensors(all_objects):
+    tensor_object = [t for t in all_objects if paddle.is_tensor(t)]
+    non_tensor_object = [t for t in all_objects if not paddle.is_tensor(t)]
+    tensor_flags = [paddle.is_tensor(t) for t in all_objects]
+    if type(all_objects) is tuple:
+        return tuple(tensor_object), tuple(non_tensor_object), tuple(tensor_flags)
+    return tensor_object, non_tensor_object, tensor_flags
 
 def _all_gather(tensor, group=None, use_calc_stream=True):
     """
@@ -118,36 +133,185 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
                               'ring_id', ring_id, 'nranks', nranks)
 
 
-def _split_activation(tensor):
-    global _hcg
-
+def _split_activation(tensors):
+    global _hcg, continuous_data_buffers, continuous_data_offsets
+    
+    need_partition = _recompute_partition
     mp_degree = _hcg.get_model_parallel_world_size()
     mp_rank = _hcg.get_model_parallel_rank()
     if mp_degree < 2:
-        return tensor
+        need_partition = False
 
-    tensor_numel = paddle.numel(tensor)
-    assert tensor_numel != 0, "can't recompute zero element"
-    assert tensor_numel % mp_degree == 0, "The capacity of the activation () cannot be divisible by mp_degree()".format(
-        tensor_numel, mp_degree)
+    tensor_inputs = []
+    num_non_tensor = 0
 
-    # use inplace operation to save memory
-    data = tensor.flatten_()
+    def get_part_size(tensor):
+        tensor_numel = paddle.numel(tensor)
+        assert tensor_numel != 0, "can't recompute zero element"
+        assert tensor_numel % mp_degree == 0, "The capacity of the activation () cannot be divisible by mp_degree()".format(
+            tensor_numel, mp_degree)
+        part_size = tensor_numel // mp_degree
+        return part_size
 
-    part_size = tensor_numel // mp_degree
-    start = part_size * mp_rank
-    end = start + part_size
-    return data[start:end]
+    for arg_index, tensor in enumerate(tensors):
+        if paddle.is_tensor(tensor):
+            state = tensor.stop_gradient
+            if not need_partition:
+                arg_tensor = tensor.cpu() if _recompute_offload else tensor
+            else:
+                i = arg_index - num_non_tensor
+                # use inplace operation to save memory
+                data = tensor.flatten_()
+                part_size = get_part_size(tensor)
+                start = part_size * mp_rank
+                end = start + part_size
+                part_data = data[start:end].clone()
+        
+                # to support continuous checkpoints
+                empty_tensor = paddle.empty(shape=[part_size],dtype=part_data.dtype)
+                if i >= len(continuous_data_buffers):
+                    tensor_list = [empty_tensor.cpu() if _recompute_offload else empty_tensor for _ in range(_num_checkpoints)]
+                    continuous_data_buffers.append(tensor_list)
+                    continuous_data_offsets.append(0)
+                elif continuous_data_buffers[i] is None:
+                    tensor_list = [empty_tensor.cpu() if _recompute_offload else empty_tensor for _ in range(_num_checkpoints)]
+                    continuous_data_buffers[i] = tensor_list
+                    continuous_data_offsets[i] = 0
 
+                arg_tensor = paddle.assign(part_data,output=continuous_data_buffers[i][continuous_data_offsets[i]])
+                continuous_data_offsets[i] += 1
 
-def _merge_activation(tensor):
-    global _hcg
+            arg_tensor.stop_gradient = state 
+            tensor_inputs.append(arg_tensor)
+        else:
+            tensor_inputs.append(tensor)
+            num_non_tensor += 1
+            continue
+ 
+    return tensor_inputs
+
+def _get_part_for_backward(args, inputs):
+    global continuous_size_buffers, continuous_size_offsets
+    new_args = []
+    num_non_tensor = 0
+ 
+    for arg_idx, (arg, inp) in enumerate(args, inputs):
+        size = paddle.to_tensor(arg.shape) if paddle.is_tensor(arg) else None
+        if not paddle.is_tensor(arg):
+            num_non_tensor += 1
+            num_args.append(arg)
+            num_args.append(size)
+            continue
+        arg = inp
+        new_args.append(arg)
+        
+        i = arg_index - num_non_tensor
+        numel = size.size
+        if i >= len(continuous_size_buffers):
+            empty_tensor = paddle.empty(shape=[numel * _num_checkpoints],dtype=size.dtype)
+            continuous_size_buffers.append(empty_tensor)
+            continuous_size_offsets.append(0)
+        elif continuous_size_buffers[i] is None:
+            empty_tensor = paddle.empty(shape=[numel * _num_checkpoints],dtype=size.dtype)
+            continuous_size_buffers[i] = empty_tensor
+            continuous_size_offsets[i] = 0
+
+        contiguous_size = paddle.assign(size, output=paddle.slice(continuous_size_buffers,[0],[continuous_size_offsets[i]],[continuous_size_offsets[i] + numel]))
+        paddle.reshape_(contiguous_size,shape=size.shape)
+        continuous_size_offsets[i] += numel
+        new_args.append(contiguous_size)
+    return new_args     
+
+def _get_cpu_part_for_backward(args, inputs):
+    new_args = []
+    for arg_idx, (arg, inp) in enumerate(args, inputs):
+        if not paddle.is_tensor(arg):
+            new_args.append(arg)
+            continue        
+
+        arg = inp
+        new_args.append(arg)
+    return new_args
+
+def _merge_tensors(ctx, tensor_object):
+    non_tensor_objects, tensor_flags = ctx.non_tensor_object, ctx.tensor_flags
+    merge_object = []
+    tensor_idx = 0
+    non_tensor_idx = 0
+     
+    real_flags = None
+    if _recompute_partition:
+        real_flags = []
+        pre_flag = False
+        for flag in tensor_flags:
+            if pre_flag:
+                pre_flag = False
+                continue
+            pre_flag = flag
+            real_flags.append(flag)
+    else:
+        real_flags = tensor_flags
+
+    for is_tensor in real_flags:
+        if is_tensor:
+            merge_object.append(tensor_object[tensor_idx])
+            tensor_idx += 1
+        else:
+            merge_object.append(non_tensor_objects[non_tensor_idx])
+            non_tensor_idx += 1
+    return merge_object
+  
+def _merge_activation(ctx, tensors):
+    global _hcg, continuous_data_buffers, continuous_data_offsets, continuous_size_buffers, continuous_size_offsets
     mp_degree = _hcg.get_model_parallel_world_size()
     mp_rank = _hcg.get_model_parallel_rank()
     mp_group = _hcg.get_model_parallel_group()
+    device_id = paddle.distributed.ParallelEnv().device_id
+    need_partition = _recompute_partition
+
+    assert len(tensors) % 2 == 0,"Error,expected even count of tensors"
     if mp_degree < 2:
-        return tensor
-    return _all_gather(tensor, group=mp_group)
+        need_partition = False
+    
+    if not need_partition:
+        if _recompute_offload:
+            inputs = [t.cuda(device_id) for t in tensors]
+        else:
+            inputs = tensors
+        all_object = _merge_tensors(ctx, inputs)
+        return all_object
+
+    inputs = []
+    num_args = int(len(tensors) / 2)
+    for i in range(num_args):
+        item = tensors[2 * i]
+        size = tensors[2 * i + 1]
+      
+        #tensors should be all tensors.this judge is for whether differential in the future. 
+        if not paddle.is_tensor(item):
+            inputs.append(item)
+            continue
+ 
+        part_size = item.size
+        tensor_size = part_size * mp_degree
+        flat_tensor = paddle.zeros(shape=[tensor_size],dtype=item.dtype)
+        flat_tensor = flat_tensor.cuda(device_id) if _recompute_offload else flat_tensor
+        parts = []
+        for idx in range(mp_degree):
+            part_i = paddle.slice(flat_tensor,[0],[part_size * i],[part_size * i + part_size]) 
+            if idx == mp_rank:
+                paddle.assign(item,output=part_i)
+            parts.append(part_i)
+        
+        if mp_group is not None:
+            paddle.distributed.all_gather(parts, parts[mp_rank], mp_group)
+        input_tensor = flat_tensor.reshape(list(size.numpy()))
+        item = input_tensor
+        inputs.append(item)
+
+    all_object = _merge_tensors(ctx, inputs)    
+
+    return all_object
 
 
 @contextlib.contextmanager
@@ -185,12 +349,6 @@ class _HPRecomputeFunction(PyLayer):
         ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
         ).get_states_tracker()
 
-        # save input for backward
-        ctx.inputs = []
-        ctx.tensor_indices = []
-        ctx.tensor_shapes = []
-        tensor_inputs = []
-
         cur_device = paddle.get_device()
         assert 'gpu:' in paddle.get_device(
         ), "Recompute with RNG is not support current device: {}.".format(
@@ -208,24 +366,21 @@ class _HPRecomputeFunction(PyLayer):
         with paddle.no_grad():
             outputs = run_function(*args)
 
-        for i, arg in enumerate(args):
-            if paddle.is_tensor(arg):
-                state = arg.stop_gradient
-                if _recompute_partition:
-                    ctx.tensor_shapes.append(arg.shape)
-                    partition = _split_activation(arg.detach()).clone()
-                    # TODO(shenliang03) not use calculate stream to D2H to speed
-                    arg = partition.cpu() if _recompute_offload else partition
-                else:
-                    arg = arg.cpu() if _recompute_offload else arg
-                arg.stop_gradient = state
-                tensor_inputs.append(arg)
-                ctx.tensor_indices.append(i)
-                ctx.inputs.append(None)
-            else:
-                ctx.inputs.append(arg)
-
-        ctx.save_for_backward(*tensor_inputs)
+        if _recompute_partition:
+            tensor_inputs = _split_activation(args)
+            new_args = _get_part_for_backward(args, tensor_inputs)
+            tensor_object, non_tensor_object, tensor_flags = _extract_tensors(new_args)
+            ctx.non_tensor_object = non_tensor_object
+            ctx.tensor_flags = tensor_flags
+            ctx.save_for_backward(*tensor_object)
+        elif _recompute_offload:
+            new_args = [arg.cpu() if paddle.is_tensor(arg) else arg for arg in args]
+            tensor_object, non_tensor_object, tensor_flags = _extract_tensors(new_args)
+            ctx.non_tensor_object = non_tensor_object
+            ctx.tensor_flags = tensor_flags
+            ctx.save_for_backward(*tensor_object)
+        else:
+            ctx.save_for_backward(*args)
 
         if paddle.is_tensor(outputs):
             all_outputs += [outputs]
@@ -237,21 +392,20 @@ class _HPRecomputeFunction(PyLayer):
     @staticmethod
     def backward(ctx, *args):
         with paddle.fluid.dygraph.guard():
+            #remove pointers to the continuous buffer.for garbaging the used checkpoints
+            global continuous_data_buffers, continuous_data_offsets, continuous_size_buffers, continuous_size_offsets
+            for buffers in continuous_data_buffers:
+                buffers = []
+                         
+            #free all pointers except the store one for backward.
+            continuous_data_buffers = []
+            continuous_data_offsets = []
+            continuous_size_buffers = []
+            continuous_size_offsets = [] 
+           
             # Restore inputs
-            inputs = list(ctx.inputs)
-            tensor_indices = ctx.tensor_indices
-            tensor_shapes = ctx.tensor_shapes
             tensors = list(ctx.saved_tensor())
-
-            device_id = paddle.distributed.ParallelEnv().device_id
-            for i, idx in enumerate(tensor_indices):
-                if _recompute_partition:
-                    state = tensors[i].stop_gradient
-                    tensors[i] = _merge_activation(tensors[i]).detach(
-                    ).reshape_(tensor_shapes[i])
-                    tensors[i].stop_gradient = state
-                inputs[idx] = tensors[i].cuda(
-                    device_id) if _recompute_offload else tensors[i]
+            inputs = _merge_activation(ctx, tensors)
 
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True

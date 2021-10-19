@@ -159,7 +159,6 @@ class PipelineLayer(Layer):
             logger.info(
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}".
                 format(recompute_offload, recompute_partition))
-        _initialize_recompute_setting(recompute_offload, recompute_partition)
 
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
@@ -194,6 +193,9 @@ class PipelineLayer(Layer):
         # construct layer
         self.run_function = []
         self._build_layer()
+        num_checkpoints = len(range(0, len(self.run_function), self._recompute_interval))
+        _initialize_recompute_setting(recompute_offload, recompute_partition, num_checkpoints)
+        print("stage_id={} ============LOG==============>num_checkpoints={}".format(self._stage_id,num_checkpoints))
 
         self.shared_comm = self._construct_shared_comm()
         self._synchronize_shared_weights()
