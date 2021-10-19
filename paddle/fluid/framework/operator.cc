@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/fluid/framework/tcmpt_utils.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -1140,7 +1140,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
   if (FLAGS_run_pt_kernel &&
-      pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
+      pten::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtKernel(exe_ctx);
     }
@@ -1286,10 +1286,11 @@ void OperatorWithKernel::ChoosePtKernel(const ExecutionContext& ctx) const {
 
   kernel_type_.reset(new OpKernelType(InnerGetExpectedKernelType(ctx)));
 
-  auto pt_kernel_name = pt::KernelName(pt_kernel_signature_->first);
+  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
   auto pt_kernel_key = TransOpKernelTypeToPtKernelKey(*kernel_type_.get());
-  pt_kernel_.reset(new pt::Kernel(pt::KernelFactory::Instance().SelectKernel(
-      pt_kernel_name, pt_kernel_key)));
+  pt_kernel_.reset(
+      new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+          pt_kernel_name, pt_kernel_key)));
 
   if (pt_kernel_->IsValid()) {
     VLOG(1) << "Static mode ChoosePtKernel - kernel name: " << pt_kernel_name
@@ -1781,7 +1782,7 @@ KernelSignature OperatorWithKernel::GetExpectedPtKernelArgs(
   }
 }
 
-pt::KernelContext OperatorWithKernel::BuildPtKernelContext(
+pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   VLOG(1) << RuntimeContextDebugString(ctx);
 
@@ -1792,7 +1793,7 @@ pt::KernelContext OperatorWithKernel::BuildPtKernelContext(
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  pt::KernelContext op_kernel_ctx(dev_ctx);
+  pten::KernelContext op_kernel_ctx(dev_ctx);
 
   auto& input_names = std::get<0>(pt_kernel_signature_->second);
   auto& attr_names = std::get<1>(pt_kernel_signature_->second);
@@ -1826,7 +1827,7 @@ pt::KernelContext OperatorWithKernel::BuildPtKernelContext(
             << in_def.layout;
 
     auto ins_vector = ctx.inputs.at(input_names[i]);
-    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_inputs;
+    std::vector<std::shared_ptr<pten::TensorInterface>> tmp_inputs;
 
     for (auto var : ins_vector) {
       auto pt_in = framework::InputVariableToPtTensor(*var, in_def);
@@ -1839,7 +1840,7 @@ pt::KernelContext OperatorWithKernel::BuildPtKernelContext(
     auto out_def = output_defs.at(i);
     auto outs_vector = ctx.outputs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_outputs;
+    std::vector<std::shared_ptr<pten::TensorInterface>> tmp_outputs;
     for (auto var : outs_vector) {
       auto pt_out = framework::OutputVariableToPtTensor(var, out_def);
       tmp_outputs.emplace_back(pt_out);
@@ -1849,12 +1850,13 @@ pt::KernelContext OperatorWithKernel::BuildPtKernelContext(
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto& attr = Attrs().at(attr_names[i]);
-    if (attr_defs[i].type_index == std::type_index(typeid(pt::Scalar))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(BOOST_GET_CONST(float, attr)));
+        op_kernel_ctx.EmplaceBackAttr(
+            pten::Scalar(BOOST_GET_CONST(float, attr)));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "
