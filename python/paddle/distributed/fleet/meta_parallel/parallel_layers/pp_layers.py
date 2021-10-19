@@ -193,9 +193,13 @@ class PipelineLayer(Layer):
         # construct layer
         self.run_function = []
         self._build_layer()
-        num_checkpoints = len(range(0, len(self.run_function), self._recompute_interval))
-        _initialize_recompute_setting(recompute_offload, recompute_partition, num_checkpoints)
-        print("stage_id={} ============LOG==============>num_checkpoints={}".format(self._stage_id,num_checkpoints))
+        num_checkpoints = len(
+            range(0, len(self.run_function), self._recompute_interval))
+        _initialize_recompute_setting(recompute_offload, recompute_partition,
+                                      num_checkpoints)
+        print(
+            "stage_id={} ============LOG===AAAAA===========>num_checkpoints={}".
+            format(self._stage_id, num_checkpoints))
 
         self.shared_comm = self._construct_shared_comm()
         self._synchronize_shared_weights()
