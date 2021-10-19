@@ -208,7 +208,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
   auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
 #endif
-
   timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
@@ -539,7 +538,6 @@ void PSGPUWrapper::build_gpu_thread() {
     VLOG(1) << "thread BuildGPUTask end, cost time: " << timer.ElapsedSec()
             << "s";
 
-    gpu_task_pool_.Push(gpu_task);
     train_ready_channel_->Put(gpu_task);
   }
   VLOG(3) << "build gpu thread end";
@@ -575,6 +573,8 @@ void PSGPUWrapper::EndPass() {
   if (keysize_max != 0) {
     HeterPs_->end_pass();
   }
+
+  gpu_task_pool_.Push(current_task_);
   current_task_ = nullptr;
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
