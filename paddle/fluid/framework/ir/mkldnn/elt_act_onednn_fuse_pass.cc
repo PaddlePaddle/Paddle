@@ -80,13 +80,14 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
     auto *elementwise_op = elementwise->Op();
 
+    const std::string error_message =
+        "The " + elt_type +
+        "+Act fusion may happen only when oneDNN library "
+        "is used.";
     if (elementwise_op->HasAttr("use_mkldnn")) {
       PADDLE_ENFORCE_EQ(
           BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")), true,
-          platform::errors::PreconditionNotMet(
-              "The " + elt_type +
-              "+Act fusion may happen only when oneDNN library "
-              "is used."));
+          platform::errors::PreconditionNotMet(error_message));
     }
 
     auto *activation_op = activation->Op();
