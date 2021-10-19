@@ -40,7 +40,7 @@ namespace framework {
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 
-void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
+void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
   timeline.Start();
@@ -496,29 +496,32 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
 void PSGPUWrapper::start_build_thread() {
   running_ = true;
   VLOG(3) << "start build CPU&GPU ps thread.";
-  build_cpu_threads_ = std::thread([this] { build_cpu_thread(); });
-  build_gpu_threads_ = std::thread([this] { build_gpu_thread(); });
+  pre_build_threads_ = std::thread([this] { pre_build_thread(); });
+  build_threads_ = std::thread([this] { build_thread(); });
 }
 
-void PSGPUWrapper::build_cpu_thread() {
+void PSGPUWrapper::pre_build_thread() {
+  // prebuild: process load_data
   while (running_) {
     std::shared_ptr<HeterContext> gpu_task = nullptr;
     if (!data_ready_channel_->Get(gpu_task)) {
       continue;
     }
-    VLOG(3) << "thread BuildTask start.";
+    VLOG(3) << "thread PreBuildTask start.";
     platform::Timer timer;
     timer.Start();
     // build cpu ps data process
-    BuildTask(gpu_task);
+    PreBuildTask(gpu_task);
     timer.Pause();
-    VLOG(1) << "thread BuildTask end, cost time: " << timer.ElapsedSec() << "s";
+    VLOG(1) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
+            << "s";
     buildcpu_ready_channel_->Put(gpu_task);
   }
   VLOG(3) << "build cpu thread end";
 }
 
-void PSGPUWrapper::build_gpu_thread() {
+void PSGPUWrapper::build_thread() {
+  // build: build_pull + build_gputask
   while (running_) {
     std::shared_ptr<HeterContext> gpu_task = nullptr;
     if (!gpu_free_channel_->Get(gpu_task)) {
