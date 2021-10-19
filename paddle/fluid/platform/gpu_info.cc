@@ -26,7 +26,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 #include "paddle/fluid/memory/malloc.h"
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
+#endif
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
