@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/matmul_op_int8_plugin.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
 
 namespace plf = paddle::platform;
 namespace dyl = paddle::platform::dynload;
@@ -170,7 +169,7 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     cudaDataType_t cudadataTypeIO = CUDA_R_8I;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
 #if CUBLAS_VER_MAJOR < 11
-    cudaDataType_t cudaComputeType = CUBLAS_R_32I;
+    cudaDataType_t cudaComputeType = CUDA_R_32I;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
 #endif
@@ -315,7 +314,7 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     cudaDataType_t cudadataTypeIO = CUDA_R_16F;
     cudaDataType_t cudaDataTypeS = CUDA_R_16F;
 #if CUBLAS_VER_MAJOR < 11
-    cudaDataType_t cudaComputeType = CUBLAS_R_16F;
+    cudaDataType_t cudaComputeType = CUDA_R_16F;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_16F;
 #endif
@@ -387,7 +386,7 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     cudaDataType_t cudadataTypeIO = CUDA_R_32F;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
 #if CUBLAS_VER_MAJOR < 11
-    cudaDataType_t cudaComputeType = CUBLAS_R_32F;
+    cudaDataType_t cudaComputeType = CUDA_R_32F;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F_FAST_16F;
 #endif
@@ -739,7 +738,7 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     cudaDataType_t cudadataTypeIO = CUDA_R_8I;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
 #if CUBLAS_VER_MAJOR < 11
-    cudaDataType_t cudaComputeType = CUBLAS_R_32I;
+    cudaDataType_t cudaComputeType = CUDA_R_32I;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
 #endif
@@ -864,7 +863,7 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     cudaDataType_t cudadataTypeIO = CUDA_R_16F;
     cudaDataType_t cudaDataTypeS = CUDA_R_16F;
 #if CUBLAS_VER_MAJOR < 11
-    cudaDataType_t cudaComputeType = CUBLAS_R_16F;
+    cudaDataType_t cudaComputeType = CUDA_R_16F;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_16F;
 #endif
@@ -933,7 +932,7 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     cudaDataType_t cudadataTypeIO = CUDA_R_32F;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
 #if CUBLAS_VER_MAJOR < 11
-    cudaDataType_t cudaComputeType = CUBLAS_R_32F;
+    cudaDataType_t cudaComputeType = CUDA_R_32F;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F_FAST_16F;
 #endif
