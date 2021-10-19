@@ -365,6 +365,25 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
 
     return out_shape;
   }
+
+  framework::KernelSignature GetExpectedPtKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (ctx.HasOutput("XShape")) {
+      return std::make_pair(
+          "flatten_contiguous_range.mid",
+          std::make_tuple(
+              paddle::SmallVector<std::string>({"X"}),
+              paddle::SmallVector<std::string>({"start_axis", "stop_axis"}),
+              paddle::SmallVector<std::string>({"Out", "XShape"})));
+    } else {
+      return std::make_pair(
+          "flatten_contiguous_range",
+          std::make_tuple(
+              paddle::SmallVector<std::string>({"X"}),
+              paddle::SmallVector<std::string>({"start_axis", "stop_axis"}),
+              paddle::SmallVector<std::string>({"Out"})));
+    }
+  }
 };
 
 class FlattenContiguousRangeOpMaker : public FlattenOpMaker {
