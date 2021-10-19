@@ -287,6 +287,7 @@ def grad_check(x,
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
         for xi in x
     ]
+    
     # [y_idx, x_idx]
     analytical = []
     for yi in y:
@@ -388,6 +389,7 @@ def double_grad_check(x,
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init
+
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
 
 
