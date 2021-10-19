@@ -336,213 +336,213 @@ struct KernelRegistrar {
 
 // clang-format on
 
-#define _PT_KERNEL_REGISTRAR_INIT_1(kernel_name,      \
-                                    func_id,          \
-                                    registrar_id,     \
-                                    backend,          \
-                                    layout,           \
-                                    args_def_fn,      \
-                                    meta_kernel_fn,   \
-                                    cpp_dtype,        \
-                                    ...)              \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(  \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)( \
-      kernel_name,                                    \
-      BACKEND(backend),                               \
-      DATALAYOUT(layout),                             \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),     \
-      ::pt::KernelArgsParseFunctor<decltype(          \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,        \
-      args_def_fn,                                    \
+#define _PT_KERNEL_REGISTRAR_INIT_1(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
       PT_KERNEL(meta_kernel_fn<cpp_dtype>));
-#define _PT_KERNEL_REGISTRAR_INIT_2(kernel_name,        \
-                                    func_id,            \
-                                    registrar_id,       \
-                                    backend,            \
-                                    layout,             \
-                                    args_def_fn,        \
-                                    meta_kernel_fn,     \
-                                    cpp_dtype,          \
-                                    ...)                \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(    \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)(   \
-      kernel_name,                                      \
-      BACKEND(backend),                                 \
-      DATALAYOUT(layout),                               \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),       \
-      ::pt::KernelArgsParseFunctor<decltype(            \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,          \
-      args_def_fn,                                      \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));            \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_1(kernel_name,    \
-                                        func_id,        \
-                                        PT_ID,          \
-                                        backend,        \
-                                        layout,         \
-                                        args_def_fn,    \
-                                        meta_kernel_fn, \
+#define _PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_1(kernel_name,                \
+                                        func_id,                    \
+                                        PT_ID,                      \
+                                        backend,                    \
+                                        layout,                     \
+                                        args_def_fn,                \
+                                        meta_kernel_fn,             \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_3(kernel_name,        \
-                                    func_id,            \
-                                    registrar_id,       \
-                                    backend,            \
-                                    layout,             \
-                                    args_def_fn,        \
-                                    meta_kernel_fn,     \
-                                    cpp_dtype,          \
-                                    ...)                \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(    \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)(   \
-      kernel_name,                                      \
-      BACKEND(backend),                                 \
-      DATALAYOUT(layout),                               \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),       \
-      ::pt::KernelArgsParseFunctor<decltype(            \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,          \
-      args_def_fn,                                      \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));            \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_2(kernel_name,    \
-                                        func_id,        \
-                                        PT_ID,          \
-                                        backend,        \
-                                        layout,         \
-                                        args_def_fn,    \
-                                        meta_kernel_fn, \
+#define _PT_KERNEL_REGISTRAR_INIT_3(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                \
+                                        func_id,                    \
+                                        PT_ID,                      \
+                                        backend,                    \
+                                        layout,                     \
+                                        args_def_fn,                \
+                                        meta_kernel_fn,             \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_4(kernel_name,        \
-                                    func_id,            \
-                                    registrar_id,       \
-                                    backend,            \
-                                    layout,             \
-                                    args_def_fn,        \
-                                    meta_kernel_fn,     \
-                                    cpp_dtype,          \
-                                    ...)                \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(    \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)(   \
-      kernel_name,                                      \
-      BACKEND(backend),                                 \
-      DATALAYOUT(layout),                               \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),       \
-      ::pt::KernelArgsParseFunctor<decltype(            \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,          \
-      args_def_fn,                                      \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));            \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_3(kernel_name,    \
-                                        func_id,        \
-                                        PT_ID,          \
-                                        backend,        \
-                                        layout,         \
-                                        args_def_fn,    \
-                                        meta_kernel_fn, \
+#define _PT_KERNEL_REGISTRAR_INIT_4(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_3(kernel_name,                \
+                                        func_id,                    \
+                                        PT_ID,                      \
+                                        backend,                    \
+                                        layout,                     \
+                                        args_def_fn,                \
+                                        meta_kernel_fn,             \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_5(kernel_name,        \
-                                    func_id,            \
-                                    registrar_id,       \
-                                    backend,            \
-                                    layout,             \
-                                    args_def_fn,        \
-                                    meta_kernel_fn,     \
-                                    cpp_dtype,          \
-                                    ...)                \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(    \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)(   \
-      kernel_name,                                      \
-      BACKEND(backend),                                 \
-      DATALAYOUT(layout),                               \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),       \
-      ::pt::KernelArgsParseFunctor<decltype(            \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,          \
-      args_def_fn,                                      \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));            \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_4(kernel_name,    \
-                                        func_id,        \
-                                        PT_ID,          \
-                                        backend,        \
-                                        layout,         \
-                                        args_def_fn,    \
-                                        meta_kernel_fn, \
+#define _PT_KERNEL_REGISTRAR_INIT_5(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_4(kernel_name,                \
+                                        func_id,                    \
+                                        PT_ID,                      \
+                                        backend,                    \
+                                        layout,                     \
+                                        args_def_fn,                \
+                                        meta_kernel_fn,             \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_6(kernel_name,        \
-                                    func_id,            \
-                                    registrar_id,       \
-                                    backend,            \
-                                    layout,             \
-                                    args_def_fn,        \
-                                    meta_kernel_fn,     \
-                                    cpp_dtype,          \
-                                    ...)                \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(    \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)(   \
-      kernel_name,                                      \
-      BACKEND(backend),                                 \
-      DATALAYOUT(layout),                               \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),       \
-      ::pt::KernelArgsParseFunctor<decltype(            \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,          \
-      args_def_fn,                                      \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));            \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_5(kernel_name,    \
-                                        func_id,        \
-                                        PT_ID,          \
-                                        backend,        \
-                                        layout,         \
-                                        args_def_fn,    \
-                                        meta_kernel_fn, \
+#define _PT_KERNEL_REGISTRAR_INIT_6(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_5(kernel_name,                \
+                                        func_id,                    \
+                                        PT_ID,                      \
+                                        backend,                    \
+                                        layout,                     \
+                                        args_def_fn,                \
+                                        meta_kernel_fn,             \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_7(kernel_name,        \
-                                    func_id,            \
-                                    registrar_id,       \
-                                    backend,            \
-                                    layout,             \
-                                    args_def_fn,        \
-                                    meta_kernel_fn,     \
-                                    cpp_dtype,          \
-                                    ...)                \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(    \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)(   \
-      kernel_name,                                      \
-      BACKEND(backend),                                 \
-      DATALAYOUT(layout),                               \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),       \
-      ::pt::KernelArgsParseFunctor<decltype(            \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,          \
-      args_def_fn,                                      \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));            \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_6(kernel_name,    \
-                                        func_id,        \
-                                        PT_ID,          \
-                                        backend,        \
-                                        layout,         \
-                                        args_def_fn,    \
-                                        meta_kernel_fn, \
+#define _PT_KERNEL_REGISTRAR_INIT_7(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_6(kernel_name,                \
+                                        func_id,                    \
+                                        PT_ID,                      \
+                                        backend,                    \
+                                        layout,                     \
+                                        args_def_fn,                \
+                                        meta_kernel_fn,             \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_8(kernel_name,        \
-                                    func_id,            \
-                                    registrar_id,       \
-                                    backend,            \
-                                    layout,             \
-                                    args_def_fn,        \
-                                    meta_kernel_fn,     \
-                                    cpp_dtype,          \
-                                    ...)                \
-  static const ::pt::KernelRegistrar PT_CONCATENATE(    \
-      __reg_pt_op_kernel_##func_id##_, registrar_id)(   \
-      kernel_name,                                      \
-      BACKEND(backend),                                 \
-      DATALAYOUT(layout),                               \
-      ::pt::CppTypeToDataType<cpp_dtype>::Type(),       \
-      ::pt::KernelArgsParseFunctor<decltype(            \
-          &meta_kernel_fn<cpp_dtype>)>::Parse,          \
-      args_def_fn,                                      \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));            \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_7(kernel_name,    \
-                                        func_id,        \
-                                        PT_ID,          \
-                                        backend,        \
-                                        layout,         \
-                                        args_def_fn,    \
-                                        meta_kernel_fn, \
+#define _PT_KERNEL_REGISTRAR_INIT_8(kernel_name,                    \
+                                    func_id,                        \
+                                    registrar_id,                   \
+                                    backend,                        \
+                                    layout,                         \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    cpp_dtype,                      \
+                                    ...)                            \
+  static const ::pt::KernelRegistrar PT_CONCATENATE(                \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(               \
+      kernel_name,                                                  \
+      BACKEND(backend),                                             \
+      DATALAYOUT(layout),                                           \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
+      ::pt::KernelArgsParseFunctor<decltype(                        \
+          &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
+      args_def_fn,                                                  \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_7(kernel_name,                \
+                                        func_id,                    \
+                                        PT_ID,                      \
+                                        backend,                    \
+                                        layout,                     \
+                                        args_def_fn,                \
+                                        meta_kernel_fn,             \
                                         __VA_ARGS__))
 
 #define PT_REGISTER_KERNEL_STANDARD(                \

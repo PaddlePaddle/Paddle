@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/tcmpt/kernels/cpu/utils.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/tcmpt/common/data_type.h"
 #include "paddle/tcmpt/core/convert_utils.h"
-#include "paddle/tcmpt/core/dtype.h"
 
 namespace pt {
 
@@ -37,8 +37,8 @@ void Copy(const CPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst) {
           << dst_place;
   dst->Resize(src.dims());
   dst->mutable_meta()->layout = src.meta().layout;
-  auto size = src.numel() *
-              paddle::framework::SizeOfType(TransToProtoVarType(src.type()));
+  auto size = src.numel() * paddle::framework::SizeOfType(
+                                TransToProtoVarType(src.data_type()));
 
   if (paddle::platform::is_cpu_place(src_place) &&
       paddle::platform::is_cpu_place(dst_place)) {

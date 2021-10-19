@@ -288,7 +288,7 @@ static pt::KernelContext BuildDygraphPtKernelContext(
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
 
-    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_inputs;
+    std::vector<std::shared_ptr<tcmpt::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
       const auto& variable = var->Var();
 
@@ -302,7 +302,7 @@ static pt::KernelContext BuildDygraphPtKernelContext(
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_outputs;
+    std::vector<std::shared_ptr<tcmpt::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto* variable = var->MutableVar();
 

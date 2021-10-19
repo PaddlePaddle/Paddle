@@ -31,7 +31,7 @@ using XPUPlace = paddle::platform::XPUPlace;
 using NPUPlace = paddle::platform::NPUPlace;
 using NPUPinnedPlace = paddle::platform::NPUPinnedPlace;
 
-Place DenseTensor::place() const {
+const paddle::platform::Place& DenseTensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       allocation_,
       paddle::platform::errors::PreconditionNotMet(
@@ -52,7 +52,7 @@ void DenseTensor::ShareAllocation(
 }
 
 // TODO(chenweihang): Add other place branchs
-Place DenseTensor::GetPlaceByBackend() const {
+paddle::platform::Place DenseTensor::GetPlaceByBackend() const {
   switch (meta_.backend) {
     case Backend::kCPU:
       return CPUPlace();

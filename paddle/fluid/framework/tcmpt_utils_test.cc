@@ -38,7 +38,7 @@ TEST(TcmptUtils, MakeTensor) {
   ASSERT_EQ(dense_x->data<float>()[0], expect_value[0]);
   ASSERT_EQ(dense_x->data<float>()[1], expect_value[1]);
   ASSERT_EQ(dense_x->backend(), pt::Backend::kCPU);
-  ASSERT_EQ(dense_x->type(), pt::DataType::kFLOAT32);
+  ASSERT_EQ(dense_x->data_type(), pt::DataType::kFLOAT32);
 }
 
 TEST(TcmptUtils, VarToPtTensor) {
@@ -60,7 +60,7 @@ TEST(TcmptUtils, VarToPtTensor) {
   auto tensor_x = InputVariableToPtTensor(v, tensor_def);
   // 3. check result
   ASSERT_EQ(tensor_x->backend(), expect_backend);
-  ASSERT_EQ(tensor_x->type(), pt::DataType::kINT32);
+  ASSERT_EQ(tensor_x->data_type(), pt::DataType::kINT32);
 }
 
 }  // namespace framework

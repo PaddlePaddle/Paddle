@@ -77,7 +77,7 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
       pt::TransToPtDataLayout(tensor.layout()));
 }
 
-std::shared_ptr<pt::TensorInterface> InputVariableToPtTensor(
+std::shared_ptr<tcmpt::TensorBase> InputVariableToPtTensor(
     const framework::Variable& variable, const pt::TensorArgDef& arg_def) {
   auto expected_place = pt::TransToFluidPlace(arg_def.backend);
 
@@ -122,7 +122,7 @@ std::shared_ptr<pt::TensorInterface> InputVariableToPtTensor(
   return nullptr;
 }
 
-std::shared_ptr<pt::TensorInterface> OutputVariableToPtTensor(
+std::shared_ptr<tcmpt::TensorBase> OutputVariableToPtTensor(
     framework::Variable* variable, const pt::TensorArgDef& arg_def) {
   // mutable_data before run kernel, to avoid share output form
   // KernelContext to original tensor

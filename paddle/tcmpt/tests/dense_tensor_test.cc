@@ -28,7 +28,7 @@ TEST(DenseTensor, Constructor) {
                          pt::TensorStatus());
   ASSERT_EQ(tensor.dims().size(), 2);
   ASSERT_EQ(tensor.backend(), pt::Backend::kCPU);
-  ASSERT_EQ(tensor.type(), pt::DataType::kFLOAT32);
+  ASSERT_EQ(tensor.data_type(), pt::DataType::kFLOAT32);
   ASSERT_EQ(tensor.layout(), pt::DataLayout::kNCHW);
 }
 

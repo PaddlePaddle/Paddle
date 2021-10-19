@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/tcmpt/common/data_type.h"
 #include "paddle/tcmpt/core/convert_utils.h"
-#include "paddle/tcmpt/core/dtype.h"
 #include "paddle/tcmpt/core/kernel_registry.h"
 #include "paddle/tcmpt/kernels/cuda/utils.h"
 
@@ -40,8 +40,8 @@ void Copy(const CUDAContext& dev_ctx,
           << dst_place;
   dst->Resize(src.dims());
   dst->mutable_meta()->layout = src.meta().layout;
-  auto size = src.numel() *
-              paddle::framework::SizeOfType(TransToProtoVarType(src.type()));
+  auto size = src.numel() * paddle::framework::SizeOfType(
+                                TransToProtoVarType(src.data_type()));
 
   if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
       paddle::platform::is_cuda_pinned_place(dst_place)) {

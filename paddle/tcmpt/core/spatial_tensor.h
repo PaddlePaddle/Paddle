@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/tcmpt/core/tensor_interface.h"
+#include "paddle/tcmpt/core/tensor_base.h"
 
 namespace pt {
 
@@ -27,7 +27,7 @@ namespace pt {
  */
 
 template <typename AllocationType>
-class SpatialTensor : public TensorInterface {
+class SpatialTensor : public TensorBase {
  public:
   SpatialTensor(std::shared_ptr<AllocationType> allocation,
                 std::unique_ptr<TensorMeta> meta,

@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/tcmpt/common/data_type.h"
+#include "paddle/tcmpt/common/layout.h"
 #include "paddle/tcmpt/core/backend.h"
-#include "paddle/tcmpt/core/dtype.h"
-#include "paddle/tcmpt/core/layout.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/ddim.h"
@@ -27,6 +27,9 @@ limitations under the License. */
 // #include "paddle/fluid/framework/mixed_vector.h"
 
 namespace pt {
+
+using DataType = paddle::experimental::DataType;
+using DataLayout = paddle::experimental::DataLayout;
 
 // template <typename T>
 // using Vector = paddle::framework::Vector<T>;

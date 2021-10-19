@@ -19,10 +19,10 @@
 #include <unordered_map>
 #include <utility>
 
+#include "paddle/tcmpt/common/data_type.h"
+#include "paddle/tcmpt/common/layout.h"
 #include "paddle/tcmpt/core/backend.h"
-#include "paddle/tcmpt/core/dtype.h"
 #include "paddle/tcmpt/core/kernel_def.h"
-#include "paddle/tcmpt/core/layout.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/enforce.h"
@@ -30,6 +30,9 @@
 #include "paddle/utils/small_vector.h"
 
 namespace pt {
+
+using DataType = paddle::experimental::DataType;
+using DataLayout = paddle::experimental::DataLayout;
 
 /**
  * [ Naming considerations ]

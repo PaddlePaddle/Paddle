@@ -12,11 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/tcmpt/core/layout.h"
+#pragma once
 
-namespace pt {
+namespace paddle {
+namespace experimental {
 
-std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
+enum class DataLayout {
+  kUndef = 0,
+  kAny,
+  kNHWC,
+  kNCHW,
+  kMKLDNN,
+  kNumLayouts,
+};
+
+inline std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
   switch (dtype) {
     case DataLayout::kUndef:
       os << "Undefined";
@@ -40,9 +50,15 @@ std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
   return os;
 }
 
-DataLayout& operator++(DataLayout& layout, int) {
+inline DataLayout& operator++(DataLayout& layout, int) {
   layout = DataLayout(
       static_cast<std::underlying_type<DataLayout>::type>(layout) + 1);
   return layout;
 }
-}  // namespace pt
+
+}  // namespace experimental
+}  // namespace paddle
+
+namespace pt {
+using DataLayout = paddle::experimental::DataLayout;
+}
