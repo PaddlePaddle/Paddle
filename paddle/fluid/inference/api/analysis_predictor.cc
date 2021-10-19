@@ -1301,6 +1301,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
+  x->executor_->ResetTrtOps(++x->clone_num);
   return std::unique_ptr<PaddlePredictor>(x);
 }
 

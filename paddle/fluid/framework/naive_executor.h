@@ -63,7 +63,7 @@ class NaiveExecutor {
 
   void CleanFeedFetchOps();
 
-  void ResetTrtOps();
+  void ResetTrtOps(int num);
 
  protected:
   void CreateOps(const ProgramDesc& desc, int block_id,

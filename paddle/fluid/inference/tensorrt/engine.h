@@ -538,6 +538,8 @@ class TensorRTEngine {
     }
   }
 
+  void SetProfileNum(int num) { profile_num_ = num; }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -557,6 +559,7 @@ class TensorRTEngine {
   int batch_size_{-1};
 
   int device_id_;
+  int profile_num_{1};
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;

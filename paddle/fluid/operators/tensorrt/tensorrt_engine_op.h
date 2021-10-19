@@ -250,6 +250,23 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
   }
 
+  void PrepareTRTEngine(const framework::Scope &scope,
+                        TensorRTEngine *engine) const {
+    LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
+                 "kernel etc). This process may cost a lot of time.";
+    framework::proto::BlockDesc block_proto;
+    block_proto.ParseFromString(Attr<std::string>("subgraph"));
+    framework::BlockDesc block_desc(nullptr, &block_proto);
+
+    std::vector<std::string> inputs = Inputs("Xs");
+    std::vector<std::string> outputs =
+        Attr<std::vector<std::string>>("output_name_mapping");
+
+    inference::Singleton<inference::tensorrt::OpConverter>::Global()
+        .ConvertBlockToTRTEngine(&block_desc, scope, inputs, param_names_,
+                                 outputs, engine);
+  }
+
  protected:
   void RunNativeImpl(const framework::Scope &scope,
                      const platform::Place &dev_place) const {
@@ -582,23 +599,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PrepareTRTEngine(scope, trt_engine_);
     }
     return trt_engine_;
-  }
-
-  void PrepareTRTEngine(const framework::Scope &scope,
-                        TensorRTEngine *engine) const {
-    LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
-                 "kernel etc). This process may cost a lot of time.";
-    framework::proto::BlockDesc block_proto;
-    block_proto.ParseFromString(Attr<std::string>("subgraph"));
-    framework::BlockDesc block_desc(nullptr, &block_proto);
-
-    std::vector<std::string> inputs = Inputs("Xs");
-    std::vector<std::string> outputs =
-        Attr<std::vector<std::string>>("output_name_mapping");
-
-    inference::Singleton<inference::tensorrt::OpConverter>::Global()
-        .ConvertBlockToTRTEngine(&block_desc, scope, inputs, param_names_,
-                                 outputs, engine);
   }
 };
 
