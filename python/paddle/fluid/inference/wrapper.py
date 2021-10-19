@@ -15,9 +15,24 @@
 from ..core import AnalysisConfig, PaddleDType, PaddlePlace
 from ..core import PaddleInferPredictor, PaddleInferTensor
 
+import numpy as np
+
 DataType = PaddleDType
 PlaceType = PaddlePlace
 PrecisionType = AnalysisConfig.Precision
 Config = AnalysisConfig
 Tensor = PaddleInferTensor
 Predictor = PaddleInferPredictor
+
+
+def tensor_copy_from_cpu(self, data):
+    '''
+    Support input type check based on tensor.copy_from_cpu.
+    '''
+    if not isinstance(data, np.ndarray):
+        raise TypeError(
+            "In copy_from_cpu, we only support numpy ndarray data type.")
+    self.copy_from_cpu_bind(data)
+
+
+Tensor.copy_from_cpu = tensor_copy_from_cpu

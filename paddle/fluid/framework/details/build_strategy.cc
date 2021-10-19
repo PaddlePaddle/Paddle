@@ -74,7 +74,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Note: This pass is used to enable cinn.
     if (FLAGS_use_cinn) {
-      AppendPass("paddle_to_cinn_pass");
+      AppendPass("build_cinn_pass");
     }
     SetCollectiveContext();
   }
@@ -486,6 +486,7 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
+USE_PASS(build_cinn_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

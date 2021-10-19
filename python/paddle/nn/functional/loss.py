@@ -1675,11 +1675,16 @@ def cross_entropy(input,
                 raise ValueError(
                     "Target({}) is out of class_dimension's upper bound({})".
                     format(invalid_label[0], input.shape[axis] - 1))
-
-        _, out = _C_ops.softmax_with_cross_entropy(
-            input, label, 'soft_label', soft_label, 'ignore_index',
-            ignore_index, 'numeric_stable_mode', True, 'axis', axis,
-            'use_softmax', use_softmax)
+        if core.is_compiled_with_npu():
+            _, _, out = _C_ops.softmax_with_cross_entropy(
+                input, label, 'soft_label', soft_label, 'ignore_index',
+                ignore_index, 'numeric_stable_mode', True, 'axis', axis,
+                'use_softmax', use_softmax)
+        else:
+            _, out = _C_ops.softmax_with_cross_entropy(
+                input, label, 'soft_label', soft_label, 'ignore_index',
+                ignore_index, 'numeric_stable_mode', True, 'axis', axis,
+                'use_softmax', use_softmax)
 
         if weight is not None:
 
