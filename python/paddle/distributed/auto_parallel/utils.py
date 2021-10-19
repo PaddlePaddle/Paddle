@@ -162,7 +162,6 @@ def _get_comm_group(processes, shape, axis, rank):
     """
     Given a rank and the processes mesh the rank belongs to,  
     compute the communication peers of the rank based on the give axis in the mesh.
-
     Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
     the rank communication peers of rank 0 (included) are following:
     in axis 0: [0, 1]
@@ -196,7 +195,6 @@ def _get_idx_in_axis(processes, shape, axis, rank):
     """
     Given a rank and the processes mesh the rank belongs to,  
     compute the index of the rank in given axis.
-
     Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
     the index of rank 22 are:
     in axis 0: 1
@@ -214,23 +212,18 @@ def _get_idx_in_axis(processes, shape, axis, rank):
 def _coordinate2linear_idx(mesh_shape, coordinate):
     """
     convert a coordinate in multidimensional mesh space into a scala idx in linear space.
-
     it use Row-major order for dimension conversion. 
     so it has:  [most_significant_dim, ..., least_significant_dim]
     assume: 
-
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
-
     linear_idx of a n dimensional coordinate is: 
-
         I[n-1] * (S[n-2] * S[n-3] * S[n-4] *     ....    S[0]) +
         I[n-2] * (         S[n-3] * S[n-4] *     ....    S[0]) +       
         I[n-3] * (                  S[n-4] *     ....    S[0]) +  
         ...
         I[1]   * (                                       S[0]) + 
         I[0]
-
     """
     # NOTE the following function work based on a strong an assumption
     # that the processes in mesh are
@@ -266,20 +259,15 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
 def _linear_idx2coordinate(mesh_shape, linear_idx):
     """
     mapping a linear scala into multidimensional mesh space, return it coordinate in that space.
-
     it is the inverse function of _coordinate2linear_idx.
     assume: 
-
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
-
     the coordinate given linear_idx is:
-
         I[0] = linear_idx                                  % S[0]
         I[0] = (linear_idx / S[0])                         % S[1]
         I[0] = (linear_idx / (S[0] * S[1]))                % S[2]
         ....
-
     """
 
     assert linear_idx >= 0, "linear index [{}] is least than zero".format(
@@ -352,3 +340,95 @@ def make_data_unshard(dist_main_prog, dist_startup_prog):
             dim_mapping = [-1] * len(dim_mapping)
             tensor_dist_attr.dims_mapping = dim_mapping
             dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
+
+
+def check_append_sd(append_sd):
+    """
+    check validity of additional state_dict
+    """
+    if append_sd is None:
+        return append_sd
+    if not isinstance(append_sd, dict):
+        raise TypeError("The type of append_sd should be dict, but got {}".
+                        format(str(type(append_sd))))
+
+    return append_sd
+
+
+def check_ckpt_dir(ckpt_dir):
+    """
+    check validity of ckpt_dir
+    """
+    if isinstance(ckpt_dir, list):
+        if len(ckpt_dir) != paddle.distributed.get_world_size():
+            raise ValueError(
+                "The number of ckpt_dir must equal to the number of ranks.")
+        if not all(isinstance(file, str) for file in ckpt_dir):
+            raise ValueError("The type of each ckpr_dir should be str.")
+        if not all(os.path.exists(file) for file in ckpt_dir):
+            raise ValueError("The ckpt_dir's file does not exist.")
+        return ckpt_dir
+    else:
+        raise TypeError("The type of ckpt_dir should be list, but got {}.".
+                        format(str(type(ckpt_dir))))
+
+
+def save_static_checkpoint(program,
+                           output_dir,
+                           is_integrated=False,
+                           append_sd=None):
+    """ 
+    Save model param, opt and addition information of each rank.
+
+    Args:
+        program(Program): The program to be saved.
+        output_dir(str): The path of the object to be saved. 
+        is_integrated(bool, optional): Whether to integrate param before save. Default: False.
+        append_sd(dict, optional): Addition information. Default: False.
+    """
+    if not is_integrated:
+        rank = paddle.distributed.get_rank()
+        model_file_name = os.path.join(
+            output_dir, "model_state_rank{}.pdmodel".format(rank))
+
+        # state_dict of param and opt
+        state_dict = {
+            "param": program.state_dict("param"),
+            "opt": program.state_dict("opt")
+        }
+
+        if check_append_sd(append_sd):
+            state_dict["append_sd"] = append_sd
+
+        paddle.save(state_dict, model_file_name)
+        print("Successfully saving models to {}".format(output_dir))
+    else:
+        # TODO: integrate param before save
+        raise NotImplementedError("Integrating param is not implemented")
+
+
+def load_static_checkpoint(ckpt_dir, program=None, dist_attr_file=None):
+    """ 
+    load model param and opt and others
+
+    Args:
+        ckpt_dir(List[str]): The list of the checkpoint files in order of rank id.
+        program(Program, optional): The program to be update with ckpt_dir. Default: None.
+        dist_attr_file(str, optional): Distribution attribution file of all parameters. Default: None.
+    """
+    ckpt_dir = check_ckpt_dir(ckpt_dir)
+
+    # load state_dict of current rank
+    rank = paddle.distributed.get_rank()
+    state_dict = paddle.load(ckpt_dir[rank])
+
+    # TODO: merge and split param before load into program with dist_attr_file
+    # load param and opt value into program's var
+    if program:
+        program.set_state_dict(state_dict["param"])
+        program.set_state_dict(state_dict["opt"])
+
+    if "append_sd" not in state_dict.keys():
+        return
+
+    return state_dict["append_sd"]
