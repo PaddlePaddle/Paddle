@@ -759,7 +759,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     helper = LayerHelper("randint", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
-        type='randint_like', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+        type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     out.stop_gradient = True
     return out
 
