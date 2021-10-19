@@ -753,7 +753,7 @@ void BindZeroCopyTensor(py::module *m) {
   py::class_<ZeroCopyTensor>(*m, "ZeroCopyTensor")
       .def("reshape", py::overload_cast<const std::vector<int> &>(
                           &ZeroCopyTensor::Reshape))
-      .def("reshape", py::overload_cast<const std::size_t>(
+      .def("reshape", py::overload_cast<const std::size_t &>(
                           &paddle_infer::Tensor::ReshapeStrings))
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
@@ -771,7 +771,7 @@ void BindPaddleInferTensor(py::module *m) {
   py::class_<paddle_infer::Tensor>(*m, "PaddleInferTensor")
       .def("reshape", py::overload_cast<const std::vector<int> &>(
                           &paddle_infer::Tensor::Reshape))
-      .def("reshape", py::overload_cast<const std::size_t>(
+      .def("reshape", py::overload_cast<const std::size_t &>(
                           &paddle_infer::Tensor::ReshapeStrings))
       .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
       .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
