@@ -36,6 +36,14 @@ extra {
     type: STRING
   }
   attrs {
+    name: "activation_alpha"
+    type: FLOAT
+  }
+  attrs {
+    name: "activation_beta"
+    type: FLOAT
+  }
+  attrs {
     name: "Scale_x"
     type: FLOAT
   }
