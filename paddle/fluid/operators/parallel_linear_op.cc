@@ -30,17 +30,19 @@ class ParallelLinearOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "ParallelLinear");
 
     // fwd_expert_count
-    OP_INOUT_CHECK(ctx->HasInput("Expert_Count"), "Input", "Expert_Count",
-                   "ParallelLinear");
+    // OP_INOUT_CHECK(ctx->HasInput("Expert_Count"), "Input", "Expert_Count",
+    //  "ParallelLinear");
 
     // global_output_buf
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "expert_count",
-                   "Expert_Count");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ParallelLinear");
 
     auto x_dims = ctx->GetInputDim("X");
     auto w_dims = ctx->GetInputDim("W");
     auto b_dims = ctx->GetInputDim("Bias");
-    auto expert_count_dims = ctx->GetInputDim("Expert_Count");
+
+    // auto expert_count_dims = ctx->GetInputDim("Expert_Count");
+    auto expert_count = ctx->Attrs().Get<std::vector<int>>("expert_count");
+    auto expert_count_dims = expert_count.size();
 
     PADDLE_ENFORCE_EQ(x_dims.size(), 2,
                       platform::errors::InvalidArgument(
@@ -67,11 +69,11 @@ class ParallelLinearOp : public framework::OperatorWithKernel {
                           x_dims[1], w_dims[1]));
 
     PADDLE_ENFORCE_EQ(
-        expert_count_dims[0], w_dims[0],
+        expert_count_dims, w_dims[0],
         platform::errors::InvalidArgument(
             "Expert_Count's shape[0] should be equal to W's shape[0], "
             "but received Expert_Count's shape[0] = %d, W's shape[0] = %d.",
-            expert_count_dims[0], w_dims[0]));
+            expert_count_dims, w_dims[0]));
 
     PADDLE_ENFORCE_EQ(
         w_dims[2], b_dims[1],
@@ -98,9 +100,14 @@ class ParallelLinearOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor of batch_fc_op operator.");
     AddInput("W", "(Tensor) Input tensor of batch_fc_op operator.");
     AddInput("Bias", "(Tensor) Input tensor of batch_fc_op operator.");
-    AddInput("Expert_Count", "(Tensor) Input tensor of batch_fc_op operator.");
+    // AddInput("Expert_Count", "(Tensor) Input tensor of batch_fc_op
+    // operator.");
 
     AddOutput("Out", "Output tensor of batch_fc_op operator.");
+
+    AddAttr<std::vector<int>>("expert_count", "The expert count.")
+        .SetDefault(std::vector<int>());
+
     AddComment(R"DOC(
 ParallelLinearOp Operator.
 Notice: It currently supports GPU device.
@@ -147,7 +154,7 @@ class ParallelLinearGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput("W", this->Input("W"));
     op->SetInput("Bias", this->Input("Bias"));
-    op->SetInput("Expert_Count", this->Input("Expert_Count"));
+    // op->SetInput("Expert_Count", this->Input("Expert_Count"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
