@@ -311,7 +311,6 @@ __global__ void MomentumLarsKernel(
   __syncthreads();
   MT param_norm = Sqrt(s_buffer[0]);
   MT grad_norm = rescale_grad * Sqrt(s_buffer[1]);
-
 #endif
   MomentumUpdate<T, MT>(param, grad, velocity, param_out, velocity_out,
                         master_param, master_param_out, learning_rate, mu,
@@ -341,6 +340,7 @@ inline void SeparatedLarsMomentumOpCUDAKernel(
       buffer_for_grad_norm, mu, lars_coeff, weight_decay, epsilon, rescale_grad,
       lars_thread_config.grid_for_norm, numel, is_amp);
 }
+
 template <typename DeviceContext, typename T>
 class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
   using MT = MultiPrecisionType<T>;
