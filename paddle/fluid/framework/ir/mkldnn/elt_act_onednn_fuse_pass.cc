@@ -55,13 +55,12 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
   FusePassBase::Init("elementwise_act", graph);
 
   GraphPatternDetector gpd;
-  auto *elementwise_input =
-      gpd.mutable_pattern()
-          ->NewNode(elt_type + "_act/elementwise_input")
-          ->AsInput()
-          ->assert_is_op_input(elt_type, "X");
-  patterns::ElementwiseActivation elementwise_act_pattern(
-      gpd.mutable_pattern(), elt_type + "_act");
+  auto *elementwise_input = gpd.mutable_pattern()
+                                ->NewNode(elt_type + "_act/elementwise_input")
+                                ->AsInput()
+                                ->assert_is_op_input(elt_type, "X");
+  patterns::ElementwiseActivation elementwise_act_pattern(gpd.mutable_pattern(),
+                                                          elt_type + "_act");
   elementwise_act_pattern(elementwise_input, elt_type, act_type);
 
   int found_elementwise_activation_count = 0;
@@ -77,8 +76,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     // ops
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise,
                               elementwise_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation, activation,
-                              elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation, activation, elementwise_act_pattern);
 
     auto *elementwise_op = elementwise->Op();
 
