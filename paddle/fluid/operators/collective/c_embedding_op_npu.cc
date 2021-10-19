@@ -148,7 +148,7 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       .AddInput(table_t_pad)
       .AddInput(ids_t_local)
       .AddInput(std::vector<int32_t>{0})
-#ifdef PADDLE_WITH_ASCEND_VERSION_503_alpha3
+#if (CANN_VERSION_CODE >= 503003)
       .AddAttrs({{"batch_dims", 0}})
 #endif
       .AddOutput(*output_t);
