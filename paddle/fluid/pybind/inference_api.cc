@@ -355,6 +355,8 @@ void BindInferenceApi(py::module *m) {
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("get_version", &paddle_infer::GetVersion);
+  m->def("get_trt_compile_version", &paddle_infer::GetTrtCompileVersion);
+  m->def("get_trt_runtime_version", &paddle_infer::GetTrtRuntimeVersion);
   m->def("get_num_bytes_of_data_type", &paddle_infer::GetNumBytesOfDataType);
 }
 
@@ -771,11 +773,11 @@ void BindPaddleInferTensor(py::module *m) {
                           &paddle_infer::Tensor::Reshape))
       .def("reshape", py::overload_cast<const std::size_t>(
                           &paddle_infer::Tensor::ReshapeStrings))
-      .def("copy_from_cpu", &PaddleInferTensorCreate<int32_t>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<int64_t>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
-      .def("copy_from_cpu", &PaddleInferStringTensorCreate)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
+      .def("copy_from_cpu_bind",
+           &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)

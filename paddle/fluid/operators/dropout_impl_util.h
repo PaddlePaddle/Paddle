@@ -29,7 +29,7 @@ inline void GetSeedDataAndIncrement(const platform::CUDADeviceContext& dev_ctx,
       BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()).GetDeviceId();
   auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
-  if ((seed) && platform::is_gpu_place(seed->place())) {
+  if (seed) {
     framework::Tensor seed_cpu_tensor;
     TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
     *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
@@ -39,12 +39,8 @@ inline void GetSeedDataAndIncrement(const platform::CUDADeviceContext& dev_ctx,
     *seed_data = seed_offset.first;
     *increment = seed_offset.second;
   } else {
-    if (seed) {
-      *seed_data = *(seed->data<int>());
-    } else {
-      std::random_device rnd;
-      *seed_data = is_fix_seed ? seed_val : rnd();
-    }
+    std::random_device rnd;
+    *seed_data = is_fix_seed ? seed_val : rnd();
     *increment = offset;
   }
 }
