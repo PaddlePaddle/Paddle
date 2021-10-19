@@ -322,8 +322,10 @@ cublasStatus_t gemm_impl<half>(cublasHandle_t handle, cublasOperation_t transa,
                                const half* alpha, const half* A, int lda,
                                const half* B, int ldb, const half* beta,
                                half* C, int ldc) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   return platform::dynload::cublasHgemm(handle, transa, transb, m, n, k, alpha,
                                         A, lda, B, ldb, beta, C, ldc);
+#endif
 }
 
 template <typename T>
