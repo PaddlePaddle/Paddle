@@ -18,7 +18,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/paddle2cinn/vartype_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -28,14 +27,107 @@ namespace paddle2cinn {
 using PbVarType = framework::proto::VarType;
 namespace cpp = ::cinn::frontend::paddle::cpp;
 
+::cinn::frontend::paddle::cpp::VarDescAPI::Type TransformVarTypeToCinn(
+    const ::paddle::framework::proto::VarType::Type &type) {
+#define SET_TYPE_CASE_ITEM(type__)                                  \
+  case ::paddle::framework::proto::VarType::type__:                 \
+    return ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__; \
+    break;
+
+  switch (type) {
+    SET_TYPE_CASE_ITEM(LOD_TENSOR);
+    SET_TYPE_CASE_ITEM(LOD_TENSOR_ARRAY);
+    SET_TYPE_CASE_ITEM(LOD_RANK_TABLE);
+    SET_TYPE_CASE_ITEM(SELECTED_ROWS);
+    SET_TYPE_CASE_ITEM(FEED_MINIBATCH);
+    SET_TYPE_CASE_ITEM(FETCH_LIST);
+    SET_TYPE_CASE_ITEM(STEP_SCOPES);
+    SET_TYPE_CASE_ITEM(PLACE_LIST);
+    SET_TYPE_CASE_ITEM(READER);
+    default:
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var type"));
+  }
+#undef SET_TYPE_CASE_ITEM
+}
+
+::paddle::framework::proto::VarType::Type TransformVarTypeFromCinn(
+    const ::cinn::frontend::paddle::cpp::VarDescAPI::Type &type) {
+#define SET_TYPE_CASE_ITEM(type__)                              \
+  case ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__: \
+    return ::paddle::framework::proto::VarType::type__;         \
+    break;
+
+  switch (type) {
+    SET_TYPE_CASE_ITEM(LOD_TENSOR);
+    SET_TYPE_CASE_ITEM(LOD_TENSOR_ARRAY);
+    SET_TYPE_CASE_ITEM(LOD_RANK_TABLE);
+    SET_TYPE_CASE_ITEM(SELECTED_ROWS);
+    SET_TYPE_CASE_ITEM(FEED_MINIBATCH);
+    SET_TYPE_CASE_ITEM(FETCH_LIST);
+    SET_TYPE_CASE_ITEM(STEP_SCOPES);
+    SET_TYPE_CASE_ITEM(PLACE_LIST);
+    SET_TYPE_CASE_ITEM(READER);
+    default:
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var type"));
+  }
+#undef SET_TYPE_CASE_ITEM
+}
+
+::cinn::frontend::paddle::cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
+    const ::paddle::framework::proto::VarType::Type &type) {
+#define SET_DATA_TYPE_CASE_ITEM(type__)                             \
+  case ::paddle::framework::proto::VarType::type__:                 \
+    return ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__; \
+    break;
+
+  switch (type) {
+    SET_DATA_TYPE_CASE_ITEM(BOOL);
+    SET_DATA_TYPE_CASE_ITEM(SIZE_T);
+    SET_DATA_TYPE_CASE_ITEM(UINT8);
+    SET_DATA_TYPE_CASE_ITEM(INT8);
+    SET_DATA_TYPE_CASE_ITEM(INT16);
+    SET_DATA_TYPE_CASE_ITEM(INT32);
+    SET_DATA_TYPE_CASE_ITEM(INT64);
+    SET_DATA_TYPE_CASE_ITEM(FP16);
+    SET_DATA_TYPE_CASE_ITEM(FP32);
+    SET_DATA_TYPE_CASE_ITEM(FP64);
+    default:
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var data type"));
+  }
+#undef SET_DATA_TYPE_CASE_ITEM
+}
+
+::paddle::framework::proto::VarType::Type TransformVarDataTypeFromCpp(
+    const ::cinn::frontend::paddle::cpp::VarDescAPI::Type &type) {
+#define SET_DATA_TYPE_CASE_ITEM(type__)                         \
+  case ::cinn::frontend::paddle::cpp::VarDescAPI::Type::type__: \
+    return ::paddle::framework::proto::VarType::type__;         \
+    break;
+
+  switch (type) {
+    SET_DATA_TYPE_CASE_ITEM(BOOL);
+    SET_DATA_TYPE_CASE_ITEM(SIZE_T);
+    SET_DATA_TYPE_CASE_ITEM(UINT8);
+    SET_DATA_TYPE_CASE_ITEM(INT8);
+    SET_DATA_TYPE_CASE_ITEM(INT16);
+    SET_DATA_TYPE_CASE_ITEM(INT32);
+    SET_DATA_TYPE_CASE_ITEM(INT64);
+    SET_DATA_TYPE_CASE_ITEM(FP16);
+    SET_DATA_TYPE_CASE_ITEM(FP32);
+    SET_DATA_TYPE_CASE_ITEM(FP64);
+    default:
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var data type"));
+  }
+#undef SET_DATA_TYPE_CASE_ITEM
+}
+
 void TransformVarDescToCinn(framework::VarDesc *pb_desc,
                             cpp::VarDesc *cpp_desc) {
   cpp_desc->SetName(pb_desc->Name());
-  cpp_desc->SetType(utils::TransformVarTypeToCinn(pb_desc->GetType()));
+  cpp_desc->SetType(TransformVarTypeToCinn(pb_desc->GetType()));
   cpp_desc->SetPersistable(pb_desc->Persistable());
   if (pb_desc->Name() != "feed" && pb_desc->Name() != "fetch") {
-    cpp_desc->SetDataType(
-        utils::TransformVarDataTypeToCinn(pb_desc->GetDataType()));
+    cpp_desc->SetDataType(TransformVarDataTypeToCinn(pb_desc->GetDataType()));
     cpp_desc->SetShape(pb_desc->GetShape());
   }
 }
@@ -44,12 +136,11 @@ void TransformVarDescFromCinn(const cpp::VarDesc &cpp_desc,
                               framework::VarDesc *pb_desc) {
   pb_desc->Proto()->Clear();
   pb_desc->SetName(cpp_desc.Name());
-  pb_desc->SetType(utils::TransformVarTypeFromCinn(cpp_desc.GetType()));
+  pb_desc->SetType(TransformVarTypeFromCinn(cpp_desc.GetType()));
   pb_desc->SetPersistable(cpp_desc.Persistable());
   if (cpp_desc.Name() != "feed" && cpp_desc.Name() != "fetch") {
     pb_desc->SetShape(cpp_desc.GetShape());
-    pb_desc->SetDataType(
-        utils::TransformVarDataTypeFromCpp(cpp_desc.GetDataType()));
+    pb_desc->SetDataType(TransformVarDataTypeFromCpp(cpp_desc.GetDataType()));
   }
 }
 

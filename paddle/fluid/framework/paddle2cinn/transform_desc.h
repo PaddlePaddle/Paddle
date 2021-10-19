@@ -29,6 +29,18 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
+::cinn::frontend::paddle::cpp::VarDescAPI::Type TransformVarTypeToCinn(
+    const ::paddle::framework::proto::VarType::Type& type);
+
+::paddle::framework::proto::VarType::Type TransformVarTypeFromCinn(
+    const ::cinn::frontend::paddle::cpp::VarDescAPI::Type& type);
+
+::cinn::frontend::paddle::cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
+    const ::paddle::framework::proto::VarType::Type& type);
+
+::paddle::framework::proto::VarType::Type TransformVarDataTypeFromCpp(
+    const ::cinn::frontend::paddle::cpp::VarDescAPI::Type& type);
+
 // Why use framework::VarDesc* rather than const framework::VarDesc& here?
 // framework::VarDesc lack of many API like clear(), etc. On the other hand,
 // the paddle node return framework::Desc* even if the node is const
