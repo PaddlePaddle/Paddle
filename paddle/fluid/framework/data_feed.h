@@ -92,6 +92,12 @@ struct Record {
   uint64_t search_id;
   uint32_t rank;
   uint32_t cmatch;
+
+#ifdef NEG_INS_SAMPLING
+  uint64_t uid_;
+  uint64_t label_;
+// std::vector<std::string> auc_tags_;
+#endif
 };
 
 struct PvInstanceObject {
@@ -147,6 +153,7 @@ class DataFeed {
 
   // This function will do nothing at default
   virtual void SetInputChannel(void* channel) {}
+
   // This function will do nothing at default
   virtual void SetOutputChannel(void* channel) {}
   // This function will do nothing at default
@@ -179,6 +186,10 @@ class DataFeed {
     place_ = place;
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
+#ifdef NEG_INS_SAMPLING
+  std::string uid_slot_;
+  std::string label_slot_;
+#endif
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -471,7 +482,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   for (size_t& x : offset) {
     uint64_t t;
     ar >> t;
-    x = (size_t)t;
+    x = static_cast<size_t>(t);
   }
 #endif
   ar >> ins.MutableFloatData();
@@ -552,6 +563,10 @@ paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
   ar << r.uint64_feasigns_;
   ar << r.float_feasigns_;
   ar << r.ins_id_;
+#ifdef NEG_INS_SAMPLING
+  ar << r.uid_;
+  ar << r.label_;
+#endif
   return ar;
 }
 
@@ -561,6 +576,10 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   ar >> r.uint64_feasigns_;
   ar >> r.float_feasigns_;
   ar >> r.ins_id_;
+#ifdef NEG_INS_SAMPLING
+  ar >> r.uid_;
+  ar >> r.label_;
+#endif
   return ar;
 }
 

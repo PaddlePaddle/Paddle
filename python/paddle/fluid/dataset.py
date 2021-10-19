@@ -221,6 +221,30 @@ class DatasetBase(object):
         self.dataset.set_filelist(filelist)
         self.filelist = filelist
 
+    # NEG_INS_SAMPLING
+    def set_uid_slot(self, uid_slot):
+        """
+        Set user slot name.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                dataset = fluid.DatasetFactory().create_dataset()
+                dataset.set_uid_slot('6048')
+
+        Args:
+            set_uid_slot(string): user slot name
+        """
+        multi_slot = self.proto_desc.multi_slot_desc
+        multi_slot.uid_slot = uid_slot
+
+    def set_label_slot(self, label_slot):
+        multi_slot = self.proto_desc.multi_slot_desc
+        multi_slot.label_slot = label_slot
+
+    #
+
     def set_use_var(self, var_list):
         """
         Set Variables which you will use.
@@ -441,6 +465,8 @@ class InMemoryDataset(DatasetBase):
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
             self.dataset.dynamic_adjust_channel_num(thread_num, False)
+        #NEG_INS_SAMPLING
+        print("_dynamic_adjust_before_train: thread num: ", thread_num)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):
@@ -787,6 +813,27 @@ class InMemoryDataset(DatasetBase):
             self.dataset.merge_by_lineid()
         if fleet is not None:
             fleet._role_maker.barrier_worker()
+
+# NEG_INS_SAMPLING
+
+    def config_sample_pool(self, neg_sample_pool_sz, rate):
+        self.dataset.config_sample_pool(neg_sample_pool_sz, rate)
+
+    def sampling(self, thread_num):
+        self.dataset.sampling(
+            self.
+            queue_num)  # sampling thread num : multi_output_channel_ = 1 : 1
+
+    def update_sample_pool(self, thread_num=4):
+        self.dataset.update_sample_pool(thread_num)
+
+    def static_sampling_info(self):
+        self.dataset.static_sampling_info()
+
+    def release_sampling_memory(self):
+        self.dataset.release_sampling_memory()
+
+#
 
     def release_memory(self):
         """

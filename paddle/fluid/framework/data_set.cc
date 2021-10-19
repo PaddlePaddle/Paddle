@@ -13,10 +13,12 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
+
 #include <algorithm>
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -357,16 +359,31 @@ void DatasetImpl<T>::LocalShuffle() {
           << timeline.ElapsedSec() << " seconds";
 }
 
+#ifdef NEG_INS_SAMPLING
 template <typename T>
 void DatasetImpl<T>::GlobalShuffle(int thread_num) {
-#ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
+  std::function<size_t(const T&)> call = nullptr;
+  if (this->merge_by_insid_) {
+    call = [](const T& data) -> size_t {
+      return XXH64(data.ins_id_.data(), data.ins_id_.length(), 0);
+    };
+  }
+  GlobalShuffleByRule(thread_num, call);
+  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end";
+}
+#endif
+
+template <typename T>
+void DatasetImpl<T>::GlobalShuffleByRule(
+    int thread_num, decltype(std::function<size_t(const T&)>()) func) {
+#ifdef PADDLE_WITH_PSLIB
   platform::Timer timeline;
   timeline.Start();
   auto fleet_ptr = FleetWrapper::GetInstance();
 
   if (!input_channel_ || input_channel_->Size() == 0) {
-    VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, no data to shuffle";
+    VLOG(3) << "DatasetImpl<T>::GlobalShuffleByRule() end, no data to shuffle";
     return;
   }
 
@@ -382,17 +399,18 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
 
   input_channel_->Close();
   input_channel_->SetBlockSize(fleet_send_batch_size_);
-  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() input_channel_ size "
+  VLOG(3) << "DatasetImpl<T>::GlobalShuffleByRule() input_channel_ size "
           << input_channel_->Size();
+  VLOG(3) << "trainer num is: " << this->trainer_num_;
 
-  auto get_client_id = [this, fleet_ptr](const T& data) -> size_t {
-    if (!this->merge_by_insid_) {
+#ifdef NEG_INS_SAMPLING  // refactor
+  auto get_client_id = [this, fleet_ptr, func](const T& data) -> size_t {
+    if (func == nullptr) {
       return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
-    } else {
-      return XXH64(data.ins_id_.data(), data.ins_id_.length(), 0) %
-             this->trainer_num_;
     }
+    return func(data) % this->trainer_num_;
   };
+#endif
 
   auto global_shuffle_func = [this, get_client_id]() {
     auto fleet_ptr = FleetWrapper::GetInstance();
@@ -400,7 +418,12 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
       for (auto& t : data) {
+#ifdef NEG_INS_SAMPLING
+        VLOG(3) << t.uid_;
+        VLOG(3) << t.label_;
+#endif
         auto client_id = get_client_id(t);
+        VLOG(3) << t.uid_;
         ars[client_id] << t;
       }
       std::vector<std::future<int32_t>> total_status;
@@ -416,6 +439,8 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
           continue;
         }
         std::string msg(ars[i].Buffer(), ars[i].Length());
+        VLOG(3) << "trainer index: " << i
+                << ", reduce data len is: " << ars[i].Length();
         auto ret = fleet_ptr->SendClientToClientMsg(0, i, msg);
         total_status.push_back(std::move(ret));
       }
@@ -450,7 +475,7 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
   global_shuffle_threads.shrink_to_fit();
   input_channel_->Clear();
   timeline.Pause();
-  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
+  VLOG(3) << "DatasetImpl<T>::GlobalShuffleByRule() end, cost time="
           << timeline.ElapsedSec() << " seconds";
 #endif
 }
@@ -550,6 +575,9 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
   origin_channels->clear();
   other_channels->clear();
   *origin_channels = new_channels;
+#ifdef NEG_INS_SAMPLING
+  VLOG(3) << multi_output_channel_[0]->Size();
+#endif
   *other_channels = new_other_channels;
 
   origin_pv_channels->clear();
@@ -570,6 +598,9 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
 
   local_vec.clear();
   std::vector<T>().swap(local_vec);
+#ifdef NEG_INS_SAMPLING
+  VLOG(3) << multi_output_channel_[0]->Size();
+#endif
   VLOG(3) << "adjust channel num done";
 }
 
@@ -631,9 +662,15 @@ void DatasetImpl<T>::CreateReaders() {
     if (input_pv_channel_ != nullptr) {
       readers_[i]->SetInputPvChannel(input_pv_channel_.get());
     }
+    VLOG(3) << "DatasetImpl<T>::CreateReaders(): curr_channel_ "
+            << cur_channel_;
     if (cur_channel_ == 0 &&
         static_cast<size_t>(channel_idx) < multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_output_channel_[channel_idx].get());
+#ifdef NEG_INS_SAMPLING
+      VLOG(3) << "readers_[i] output_channel_ size: "
+              << multi_output_channel_[channel_idx]->Size();
+#endif
       readers_[i]->SetConsumeChannel(multi_consume_channel_[channel_idx].get());
       readers_[i]->SetOutputPvChannel(multi_pv_output_[channel_idx].get());
       readers_[i]->SetConsumePvChannel(multi_pv_consume_[channel_idx].get());
@@ -655,7 +692,7 @@ void DatasetImpl<T>::CreateReaders() {
 template <typename T>
 void DatasetImpl<T>::DestroyReaders() {
   VLOG(3) << "Calling DestroyReaders()";
-  VLOG(3) << "readers size1: " << readers_.size();
+  VLOG(3) << "readers size: " << readers_.size();
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   VLOG(3) << "readers size: " << readers_.size();
   file_idx_ = 0;
@@ -1299,6 +1336,170 @@ void MultiSlotDataset::SlotsShuffle(
           << ", memory data size for slots shuffle=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
 }
+
+#ifdef NEG_INS_SAMPLING
+void MultiSlotDataset::GlobalShuffle(int thread_num) {
+  VLOG(3) << "---> into MultiSlotDataset::GlobalShuffle()";
+  auto call = [](const Record& data) -> size_t { return data.uid_; };
+  GlobalShuffleByRule(thread_num, call);
+  VLOG(3) << "<--- into MultiSlotDataset::GlobalShuffle()";
+}
+
+void MultiSlotDataset::ConfigSamplingPool(uint64_t neg_sample_pool_capacity,
+                                          int sampling_rate) {
+  this->neg_pool_capacity = neg_sample_pool_capacity;
+  this->n2p_rate = sampling_rate;
+}
+
+void MultiSlotDataset::InsertToNegPool(uint64_t uid, const Record& ins) {
+  VLOG(3) << "entering to MultiSlotDataset::InsertToNegPool";
+  if ((this->neg_ins_pool.IsKeyExist(uid)) &&
+      (this->neg_ins_pool[uid].size() >= this->neg_pool_capacity)) {
+    this->neg_ins_pool[uid].pop_front();
+  }
+  if (this->neg_ins_pool.IsKeyExist(uid) == true) {
+    this->neg_ins_pool[uid].push_back(ins);
+  } else {
+    std::deque<Record> dq{ins};
+    this->neg_ins_pool.Insert(uid, dq);
+  }
+  VLOG(3) << "exit from MultiSlotDataset::InsertToNegPool";
+}
+
+void MultiSlotDataset::UpdateSamplePool(uint64_t update_threads_num) {
+  VLOG(3) << "entering to MultiSlotDataset::UpdateSamplePool";
+  VLOG(3) << "multi_output_channel_.size: " << multi_output_channel_.size();
+  auto call = [this]() -> void {
+    for (size_t i = 0; i < multi_output_channel_.size(); i++) {
+      if (input_channel_->Size() != 0) {
+        VLOG(3) << "input_channel_ is not empty";
+        return;
+      }
+      VLOG(3) << "current output channel size: "
+              << multi_output_channel_[i]->Size();
+      multi_output_channel_[i]->Close();
+      std::vector<Record> data;
+      multi_output_channel_[i]->ReadAll(data);
+      VLOG(3) << "data size: " << data.size();
+      for (auto d : data) {
+        if (d.label_ == 1) {  // positive sample
+          if (!usrPosSampleCnt.IsKeyExist(i)) {
+            std::unordered_map<uint64_t, uint64_t> tmp;
+            tmp[d.uid_]++;
+            usrPosSampleCnt.Insert(i, tmp);
+          } else {
+            usrPosSampleCnt[i][d.uid_]++;
+          }
+          this->pos_ins_pool[i].emplace_back(d);
+          continue;
+        }
+        VLOG(3) << "d_uid_: " << d.uid_;
+        if (!usrNegSampleCnt.IsKeyExist(i)) {
+          std::unordered_map<uint64_t, uint64_t> tmp;
+          tmp[d.uid_]++;
+          usrNegSampleCnt.Insert(i, tmp);
+        } else {
+          usrNegSampleCnt[i][d.uid_]++;
+        }
+        InsertToNegPool(d.uid_, d);
+      }
+    }
+  };
+  std::vector<std::thread> update_threads_pool;
+  for (uint64_t i = 0; i < update_threads_num; i++) {
+    update_threads_pool.push_back(std::thread(call));
+  }
+  for (std::thread& t : update_threads_pool) {
+    t.join();
+  }
+  VLOG(3) << "exit from MultiSlotDataset::UpdateSamplePool";
+}
+
+void MultiSlotDataset::Sampling(uint64_t sampling_threads_num) {
+  VLOG(3) << "entering to MultiSlotDataset::Sampling";
+  VLOG(3) << "sampling_threads_num: " << sampling_threads_num;
+  VLOG(3) << "channel id: " << 0
+          << ", pos pool size: " << pos_ins_pool[0].size();
+  VLOG(3) << "user id: " << 0
+          << ", negtive sampling pool size: " << neg_ins_pool[0].size();
+  VLOG(3) << "channel id: " << 0 << ", user num which has negtive sample: "
+          << usrNegSampleCnt[0].size();
+  VLOG(3) << "channel id: " << 0 << ", user num which has positive sample: "
+          << usrPosSampleCnt[0].size();
+  std::vector<paddle::framework::Channel<Record>>* origin_channels = nullptr;
+  origin_channels = &multi_output_channel_;
+  origin_channels->clear();
+  std::vector<paddle::framework::Channel<Record>> new_channels;
+  std::vector<Record> output_channel_data;
+  auto call = [this, &origin_channels, &new_channels](int channel_idx) -> void {
+    new_channels.push_back(paddle::framework::MakeChannel<Record>());
+    for (auto it = usrPosSampleCnt[channel_idx].begin();
+         it != usrPosSampleCnt[channel_idx].end();
+         it++) {  // if user has no pos sample, ingore
+      uint64_t target_num = it->second * n2p_rate;
+      // uint64_t target_num = 50; // for test
+      uint64_t j = 0;
+      VLOG(3) << "current sampling uid: " << it->first;
+      VLOG(3) << "channel 0 - uid 0 has neg sample cnt: "
+              << usrNegSampleCnt[channel_idx][it->first];
+      for (uint64_t i = neg_ins_pool[it->first].size();
+           (i >= 1) && (j < target_num); --i) {  // neg_ins_pool size changing
+        uint64_t idx = rand_r() % i;
+        Record instance = neg_ins_pool[it->first][idx];
+        neg_ins_pool[it->first][idx] = neg_ins_pool[it->first][i - 1];
+        neg_ins_pool[it->first][i - 1] = instance;
+        pos_ins_pool[channel_idx].emplace_back(instance);
+        neg_ins_pool[it->first].pop_back();
+        j++;
+      }
+    }
+    auto fleet_ptr = FleetWrapper::GetInstance();
+    std::shuffle(pos_ins_pool[channel_idx].begin(),
+                 pos_ins_pool[channel_idx].end(),
+                 fleet_ptr->LocalRandomEngine());
+    if (!pos_ins_pool[channel_idx].empty()) {
+      new_channels[channel_idx]->Write(std::move(pos_ins_pool[channel_idx]));
+    }
+    *origin_channels = new_channels;
+  };
+  std::vector<std::thread> sampling_threads_pool;
+  for (uint64_t i = 0; i < sampling_threads_num; i++) {
+    sampling_threads_pool.push_back(std::thread(call, i));
+  }
+  for (std::thread& t : sampling_threads_pool) {
+    t.join();
+  }
+  VLOG(3) << "exit MultiSlotDataset::Sampling";
+}
+
+void MultiSlotDataset::StaticSamplingInfo() {
+  uint64_t uid = 0;
+  int channel_id = 0;
+  VLOG(3) << "multi_output_channel_[0]->Size(): "
+          << multi_output_channel_[0]->Size();
+  VLOG(3) << "user: " << uid
+          << ", sampling pool size: " << neg_ins_pool[uid].size();
+
+  VLOG(3) << "user: " << uid
+          << ", total pos sample cnt: " << usrPosSampleCnt[channel_id][uid]
+          << ", total neg sample cnt: " << usrNegSampleCnt[channel_id][uid];
+}
+
+void MultiSlotDataset::ReleaseSamplingMemory() {
+  VLOG(3) << "enter MultiSlotDataset::ReleaseSamplingMemory";
+  usrNegSampleCnt.Clear();
+  usrPosSampleCnt.Clear();
+  pos_ins_pool.Clear();
+  VLOG(3) << "exit MultiSlotDataset::ReleaseSamplingMemory";
+}
+
+void MultiSlotDataset::ReleaseMemory() {
+  VLOG(3) << "enter MultiSlotDataset::ReleaseMemory";
+  DatasetImpl<Record>::ReleaseMemory();
+  neg_ins_pool.Clear();
+  VLOG(3) << "exit MultiSlotDataset::ReleaseMemory";
+}
+#endif
 
 }  // end namespace framework
 }  // end namespace paddle

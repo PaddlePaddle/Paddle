@@ -58,6 +58,10 @@ if(WITH_PSLIB)
     add_definitions(-DPADDLE_WITH_PSLIB)
 endif()
 
+if(WITH_SAMPLING)
+    add_definitions(-DNEG_INS_SAMPLING)
+endif()
+
 if(WITH_GLOO)
     add_definitions(-DPADDLE_WITH_GLOO)
 endif()

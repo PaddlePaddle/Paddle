@@ -243,27 +243,37 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
+  VLOG(3) << "entering InMemoryDataFeed<T>::Start()";
 #ifdef _LINUX
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
+#ifdef NEG_INS_SAMPLING
+    VLOG(3) << "transfer data from input_channel_ to output_channel_";
+#endif
     std::vector<T> data;
     input_channel_->Read(data);
     output_channel_->Write(std::move(data));
   }
 #endif
   this->finish_start_ = true;
+  VLOG(3) << "exit InMemoryDataFeed<T>::Start()";
   return true;
 }
 
 template <typename T>
 int InMemoryDataFeed<T>::Next() {
+#ifdef NEG_INS_SAMPLING
+  VLOG(3) << "entering InMemoryDataFeed<T>::Next()";
+#endif
 #ifdef _LINUX
   this->CheckStart();
   CHECK(output_channel_ != nullptr);
   CHECK(consume_channel_ != nullptr);
+#ifdef NEG_INS_SAMPLING
   VLOG(3) << "output_channel_ size=" << output_channel_->Size()
           << ", consume_channel_ size=" << consume_channel_->Size()
           << ", thread_id=" << thread_id_;
+#endif
   int index = 0;
   T instance;
   std::vector<T> ins_vec;
@@ -397,6 +407,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
             << ", cost time=" << timeline.ElapsedSec()
             << " seconds, thread_id=" << thread_id_;
   }
+  VLOG(3) << "datafeed input_channel_ size: " << input_channel_->Size();
   VLOG(3) << "LoadIntoMemory() end, thread_id=" << thread_id_;
 #endif
 }
@@ -629,7 +640,6 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
 
     const char* str = reader.get();
     std::string line = std::string(str);
-    // VLOG(3) << line;
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
@@ -838,6 +848,12 @@ void MultiSlotInMemoryDataFeed::Init(
       use_slots_shape_.push_back(local_shape);
     }
   }
+#ifdef NEG_INS_SAMPLING
+  uid_slot_ = multi_slot_desc.uid_slot();
+  label_slot_ = multi_slot_desc.label_slot();
+  VLOG(3) << "uid_slot name is: " << uid_slot_;
+  VLOG(3) << "label_slot name is: " << label_slot_;
+#endif
   feed_vec_.resize(use_slots_.size());
   pipe_command_ = data_feed_desc.pipe_command();
   finish_init_ = true;
@@ -859,6 +875,9 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
 #ifdef _LINUX
+#ifdef NEG_INS_SAMPLING
+  VLOG(3) << "entering MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe";
+#endif
   thread_local string::LineFileReader reader;
 
   if (!reader.getline(&*(fp_.get()))) {
@@ -866,7 +885,9 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
   } else {
     const char* str = reader.get();
     std::string line = std::string(str);
-    // VLOG(3) << line;
+#ifdef NEG_INS_SAMPLING
+    VLOG(3) << "MultiSlotInMemoryDataFeed - instance from pip: " << line;
+#endif
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     if (parse_ins_id_) {
@@ -913,6 +934,9 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->rank = rank;
       pos += len + 1;
     }
+#ifdef NEG_INS_SAMPLING
+    VLOG(3) << "use_slots_index_.size() is: " << use_slots_index_.size();
+#endif
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
@@ -929,6 +953,37 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
+
+#ifdef NEG_INS_SAMPLING
+      VLOG(3) << "num: " << num;
+      VLOG(3) << "curr slot name is: " << all_slots_[i];
+      if (all_slots_[i] == uid_slot_) {  // std::string
+                                         /*
+                                             PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
+                                                             "The uid has to be uint64 and single.\n"
+                                                             "please check this error line: %s",
+                                                             str);
+                                         */
+        //    char* uidptr = endptr;
+        //    uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
+        //    instance->uid_ = feasign;
+      }
+      // instance->uid_ = 0; // for test
+      VLOG(3) << "uid_slot_: " << uid_slot_;
+      VLOG(3) << "instance->uid_: " << instance->uid_;
+      if (all_slots_[i] == label_slot_) {
+        PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
+                       "The label has to be uint64 and single.\n"
+                       "please check this error line: %s",
+                       str);
+        char* labelptr = endptr;
+        uint64_t feasign = (uint64_t)strtoull(labelptr, &labelptr, 10);
+        instance->label_ = feasign;
+        VLOG(3) << "label_slot_: " << label_slot_;
+      }
+      VLOG(3) << "instance->label_: " << instance->label_;
+#endif
+
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {

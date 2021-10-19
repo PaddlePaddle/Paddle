@@ -15,12 +15,14 @@
 #pragma once
 
 #include <ThreadPool.h>
+#include <deque>
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -148,6 +150,15 @@ class Dataset {
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
+#ifdef NEG_INS_SAMPLING
+  virtual void InsertToNegPool(uint64_t uid, const Record& ins) = 0;
+  virtual void ConfigSamplingPool(uint64_t sz, double rate) = 0;
+  virtual void UpdateSamplePool(uint64_t update_threads_) = 0;
+  virtual void Sampling(uint64_t sampling_threads_) = 0;
+  virtual void StaticSamplingInfo() = 0;
+  virtual void ReleaseSamplingMemory() = 0;
+#endif
+
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg) = 0;
@@ -200,6 +211,18 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
+
+#ifdef NEG_INS_SAMPLING
+  virtual void GlobalShuffleByRule(
+      int thread_num, decltype(std::function<size_t(const T&)>()) func);
+  virtual void ConfigSamplingPool(uint64_t sz, double rate) {}
+  virtual void InsertToNegPool(uint64_t uid, const Record& ins) {}
+  virtual void UpdateSamplePool(uint64_t update_threads_) {}
+  virtual void Sampling(uint64_t sampling_threads_) {}
+  virtual void StaticSamplingInfo() {}
+  virtual void ReleaseSamplingMemory() {}
+#endif
+
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
@@ -274,6 +297,56 @@ class DatasetImpl : public Dataset {
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
 };
 
+#ifdef NEG_INS_SAMPLING
+template <typename TKey, typename TValue>
+class SafeMap {
+ public:
+  SafeMap() {}
+  virtual ~SafeMap() {
+    std::lock_guard<std::mutex> locker(_mtx);
+    m_map.clear();
+  }
+
+  void Insert(const TKey& key, const TValue& value) {
+    std::lock_guard<std::mutex> locker(_mtx);
+    m_map.insert(std::pair<TKey, TValue>(key, value));
+  }
+
+  TValue& Get(const TKey& key, const TValue& value) {
+    std::lock_guard<std::mutex> locker(_mtx);
+    return m_map[key];
+  }
+
+  bool IsKeyExist(const TKey& key) {
+    std::lock_guard<std::mutex> locker(_mtx);
+    if (m_map.find(key) != m_map.end()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  TValue& operator[](const TKey& key) {
+    std::lock_guard<std::mutex> locker(_mtx);
+    return m_map[key];
+  }
+
+  int Size() {
+    std::lock_guard<std::mutex> locker(_mtx);
+    return m_map.size();
+  }
+
+  void Clear() {
+    std::lock_guard<std::mutex> locker(_mtx);
+    m_map.clear();
+  }
+
+ public:
+  std::mutex _mtx;
+  std::unordered_map<TKey, TValue> m_map;
+};
+#endif
+
 // use std::vector<MultiSlotType> or Record as data type
 class MultiSlotDataset : public DatasetImpl<Record> {
  public:
@@ -296,6 +369,28 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result);
   virtual ~MultiSlotDataset() {}
+
+#ifdef NEG_INS_SAMPLING
+
+ public:
+  virtual void GlobalShuffle(int thread_num = -1);
+  virtual void ConfigSamplingPool(uint64_t sz, int rate);
+  virtual void InsertToNegPool(uint64_t uid, const Record& ins);
+  virtual void UpdateSamplePool(uint64_t update_threads_);
+  virtual void Sampling(uint64_t sampling_threads_);
+  virtual void StaticSamplingInfo();
+  virtual void ReleaseSamplingMemory();
+  virtual void ReleaseMemory();
+
+ public:
+  uint64_t neg_pool_capacity;
+  int n2p_rate;
+  SafeMap<uint64_t, std::vector<Record>> pos_ins_pool;  // key - channel id
+  SafeMap<uint64_t, std::deque<Record>> neg_ins_pool;   // key - user id
+  // key1: channdel id; key2: uid
+  SafeMap<int, std::unordered_map<uint64_t, uint64_t>> usrNegSampleCnt;
+  SafeMap<int, std::unordered_map<uint64_t, uint64_t>> usrPosSampleCnt;
+#endif
 
  protected:
   std::vector<Record> input_records_;  // the real data

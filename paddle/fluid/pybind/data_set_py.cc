@@ -186,6 +186,21 @@ void BindDataset(py::module *m) {
       .def(py::init([](const std::string &name = "MultiSlotDataset") {
         return framework::DatasetFactory::CreateDataset(name);
       }))
+
+#ifdef NEG_INS_SAMPLING
+      .def("config_sample_pool", &framework::Dataset::ConfigSamplingPool,
+           py::call_guard<py::gil_scoped_release>())
+      .def("update_sample_pool", &framework::Dataset::UpdateSamplePool,
+           py::call_guard<py::gil_scoped_release>())
+      .def("sampling", &framework::Dataset::Sampling,
+           py::call_guard<py::gil_scoped_release>())
+      .def("static_sampling_info", &framework::Dataset::StaticSamplingInfo,
+           py::call_guard<py::gil_scoped_release>())
+      .def("release_sampling_memory",
+           &framework::Dataset::ReleaseSamplingMemory,
+           py::call_guard<py::gil_scoped_release>())
+#endif
+
       .def("set_filelist", &framework::Dataset::SetFileList,
            py::call_guard<py::gil_scoped_release>())
       .def("set_thread_num", &framework::Dataset::SetThreadNum,

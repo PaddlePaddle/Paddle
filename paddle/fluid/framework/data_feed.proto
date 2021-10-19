@@ -22,7 +22,13 @@ message Slot {
   repeated int32 shape = 5; // we can define N-D Tensor
 }
 
-message MultiSlotDesc { repeated Slot slots = 1; }
+message MultiSlotDesc {
+  repeated Slot slots = 1;
+  // NEG_INS_SAMPLING
+  optional string uid_slot = 2;
+  optional string label_slot = 3;
+  // NEG_INS_SAMPLING
+}
 
 message DataFeedDesc {
   optional string name = 1;

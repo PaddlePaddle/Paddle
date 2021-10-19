@@ -106,6 +106,9 @@ std::shared_ptr<FILE> localfs_open_read(std::string path,
   }
 
   fs_add_read_converter_internal(path, is_pipe, converter);
+#if NEG_INS_SAMPLING
+  VLOG(3) << "pipe command: " << path;
+#endif
   return fs_open_internal(path, is_pipe, "r", localfs_buffer_size());
 }
 
