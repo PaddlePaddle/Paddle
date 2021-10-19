@@ -354,7 +354,8 @@ function(version version_file)
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
             "WITH_GPU: ${WITH_GPU}\n"
             "WITH_ROCM: ${WITH_ROCM}\n"
-            "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n")
+            "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
