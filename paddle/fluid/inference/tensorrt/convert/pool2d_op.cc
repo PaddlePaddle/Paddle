@@ -235,9 +235,8 @@ class Pool2dOpConverter : public OpConverter {
         // If ceil mode is true, we will pad the appropriate size to the input.
         DealCeilMode(input_shape, ksize, strides, paddings, &pre_pad, &post_pad,
                      input_dims);
-        auto *pad_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1), pre_pad,
-            post_pad);
+        auto *pad_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1, pre_pad, post_pad);
 
         PADDLE_ENFORCE_NOT_NULL(
             pad_layer, platform::errors::Fatal(
