@@ -85,7 +85,6 @@ void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
     var->inputs = {op};
 
     // link feed var to cluster op
-    var->outputs.clear();
     for (auto* old_op : old_var->outputs) {
       if (cluster.count(old_op)) {
         var->outputs.emplace_back(old_op2new_op.at(old_op));
@@ -108,8 +107,6 @@ void AddParamVar(const std::unordered_set<Node*>& param_vars,
   for (auto* old_var : param_vars) {
     auto var = graph->CreateVarNode(old_var->Var());
 
-    var->inputs.clear();
-    var->outputs.clear();
     for (auto* old_op : old_var->outputs) {
       if (cluster.count(old_op)) {
         var->outputs.emplace_back(old_op2new_op.at(old_op));
@@ -128,8 +125,6 @@ void AddOutputVar(const std::unordered_set<Node*>& output_vars,
   for (auto* old_var : output_vars) {
     auto var = graph->CreateVarNode(old_var->Var());
 
-    var->inputs.clear();
-    var->outputs.clear();
     for (auto* old_op : old_var->inputs) {
       if (cluster.count(old_op)) {
         var->inputs.emplace_back(old_op2new_op.at(old_op));
@@ -151,16 +146,12 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   std::unordered_map<Node*, Node*> old_op2new_op;
   for (auto* op : cluster) {
     auto sub_node = sub_graph->CreateOpNode(op->Op());
-    sub_node->inputs.clear();
-    sub_node->outputs.clear();
     old_op2new_op[op] = sub_node;
   }
 
   std::unordered_map<Node*, Node*> old_var2new_var;
   for (auto* var : cluster_internals) {
     auto sub_node = sub_graph->CreateVarNode(var->Var());
-    sub_node->inputs.clear();
-    sub_node->outputs.clear();
     old_var2new_var[var] = sub_node;
   }
 
@@ -309,8 +300,10 @@ void RemoveLinkFromCluster(const GraphNodeSet& cluster,
   for (auto* var_node : cluster_inputs) {
     auto preserved_ops = get_preserved_ops(var_node->outputs);
     var_node->outputs.assign(preserved_ops.begin(), preserved_ops.end());
-    // The cluster_inputs var nodes are not any subgraph op's output,
-    // so it's input op must be out-graph op.
+    // According to SSA form, a var node must not be any two op's output,
+    // and the cluster_inputs var nodes is defined as an out-graph op's
+    // output, so the cluster_inputs var nodes are not any subgraph op's
+    // output. Do not reassign input list here.
   }
 
   // removing useless link from cluster to cluster_outputs
