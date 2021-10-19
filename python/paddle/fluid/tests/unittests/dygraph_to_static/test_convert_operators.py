@@ -261,5 +261,59 @@ class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
         self.assertTrue(np.array_equal(out.numpy(), x.numpy()))
 
 
+class TestIfElseNoValue(unittest.TestCase):
+    def test_else_ret_none(self):
+        input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+
+        @paddle.jit.to_static
+        def func(x, use_cache=False):
+            if use_cache:
+                y = x + 1
+                z = x + 2
+                return y, z
+            else:
+                c = x + 1
+                z = x - 1
+                return None
+
+        out = func(input_x, True)
+        self.assertIsNone(out)
+
+    def test_else_ret_c(self):
+        input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+
+        @paddle.jit.to_static
+        def func(x, use_cache=False):
+            if use_cache:
+                y = x + 1
+                z = x + 2
+                return y, z
+            else:
+                c = x + 1
+                z = x - 1
+                return c
+
+        out = func(input_x, True)
+        self.assertEqual(out, input_x + 1)
+
+    def test_else_ret_cz(self):
+        input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+
+        @paddle.jit.to_static
+        def func(x, use_cache=False):
+            if use_cache:
+                y = x + 1
+                z = x + 2
+                return y, z
+            else:
+                c = x + 1
+                z = x - 1
+                return c, z
+
+        c, z = func(input_x, True)
+        self.assertEqual(c, input_x + 1)
+        self.assertEqual(z, input_x - 1)
+
+
 if __name__ == '__main__':
     unittest.main()
