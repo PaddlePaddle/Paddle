@@ -127,11 +127,13 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
 
 
 class RegisterPassHelper(object):
+    _register_helpers = list()
+
     def __init__(self, pass_pairs, pass_type=str(), input_specs=dict()):
         self._pass_type = pass_type
         self._pass_pairs = pass_pairs
-        if isinstance(input_specs, dict):
-            self._input_specs = input_specs
+        self._input_specs = input_specs
+        RegisterPassHelper._register_helpers.append(self)
 
     def _get_args_from_func(self, func):
         args = list()
@@ -147,6 +149,35 @@ class RegisterPassHelper(object):
             else:
                 args.append(paddle.static.data(arg_name, [-1]))
         return args
+
+    def _prune_program_desc(self, program_desc):
+        block_desc = program_desc.blocks[0]
+        # block_desc.ClearField("vars")
+        for var in [
+                var for var in block_desc.vars
+                if var.name not in self._input_specs
+        ]:
+            block_desc.vars.remove(var)
+        for op_desc in block_desc.ops:
+            default_attrs = core.get_op_attrs_default_value(
+                paddle.compat.to_bytes(op_desc.type))
+            remove_attrs = list()
+            for attr in op_desc.attrs:
+                # attr must not in 
+                if attr.name not in [
+                        "op_namescope", "op_callstack", "op_device"
+                ]:
+                    attr_list_fields = attr.ListFields()
+                    # attr format must be: name, type, value
+                    if len(attr_list_fields) == 3:
+                        attr_value = attr.ListFields()[-1][-1]
+                        default_attr_value = default_attrs.get(attr.name)
+                        # value must not default
+                        if default_attr_value != attr_value:
+                            continue
+                remove_attrs.append(attr)
+            for attr in remove_attrs:
+                op_desc.attrs.remove(attr)
 
     def _func_to_program_desc(self, func, program_desc, is_replace=False):
         vars = list()
@@ -166,6 +197,7 @@ class RegisterPassHelper(object):
                 elif isinstance(out, paddle.fluid.framework.Variable):
                     vars.append(out.name)
         program_desc.ParseFromString(program.desc.serialize_to_string())
+        self._prune_program_desc(program_desc)
         if is_replace:
             attrs = list()
             for op in program.current_block().ops:
@@ -230,9 +262,6 @@ class PassDesc(object):
             self._type = type
 
         def __getattr__(self, name):
-            if self._type is not None:
-                raise AttributeError(
-                    "type object 'OpHelper' has no attribute '{}'".format(name))
             op = PassDesc.OpHelper(name)
             op.Init()
             return op
@@ -261,7 +290,12 @@ class PassDesc(object):
             self._op_idx = len(block.ops)
             self._op_desc = block.desc.append_op()
             self._op_desc.set_type(self._type)
-            self._op_proto = OpProtoHolder.instance().get_op_proto(self._type)
+            self._op_proto = OpProtoHolder.instance().op_proto_map.get(
+                self._type)
+            if self._op_proto is None:
+                raise AttributeError(
+                    "type object 'OpHelper' has no attribute '{}'".format(
+                        self._type))
             block.ops.append(self)
 
         def Attr(self, name):
@@ -294,7 +328,7 @@ class PassDesc(object):
     OP = OpHelper()
 
 
-def RegisterPass(function=None, input_specs=None):
+def RegisterPass(function=None, input_specs=dict()):
     """
     The function decorator of Register Pass. Decorator @RegisterPass handles
     the function and register it into a core.Pass instance. Use name of function
@@ -303,11 +337,11 @@ def RegisterPass(function=None, input_specs=None):
     Args:
         function (callable): The function with return of callable pair(s) that
             represents the pattern subgraph and the replace subgraph.
-        input_specs (dict[str, InputSpec]|None): Dict of InputSpec to specific the shape/dtype
+        input_specs (dict[str, InputSpec]): Dict of InputSpec to specific the shape/dtype
             information of Tensor. Some operators limit the shape and dtype of datas when
             create subgraph with Paddle APIs. So user need specify InputSpec of data to
             ensure create a correctly subgraph. Of course, this argument is not limited to
-            matching subgraph. The default is None.
+            matching subgraph. The default is dict().
 
     Returns:
         callables: Callable pair(s).
@@ -349,6 +383,7 @@ def RegisterPass(function=None, input_specs=None):
                     "Return value of Pass function must be (callable, callable)."
                 )
             helper = RegisterPassHelper(pass_pairs, pass_type, input_specs)
+            core.register_pass(pass_type, helper.SerializeMultiPassDesc)
         return python_func
 
     if inspect.isfunction(function):

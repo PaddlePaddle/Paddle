@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <string>
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -46,6 +47,42 @@ MapMatmul2MulPass::MapMatmul2MulPass() {
       .IsBoolEQ(false)
       .End()
       .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
+
+MapMatmulv2ToMulPass::MapMatmulv2ToMulPass() {
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("trans_y")
       .IsBoolEQ(false)
       .End();
 
@@ -241,6 +278,75 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
 
       if (!IsCompat(desc)) {
         LOG(WARNING) << "MapMatmul2MulPass in out mul op compat failed.";
+        return;
+      }
+    }
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_count);
+}
+
+void MapMatmulv2ToMulPass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  std::string name_scope = "map_matmul_v2_to_mul_pass";
+  FusePassBase::Init(name_scope, graph);
+
+  GraphPatternDetector gpd;
+  patterns::MatmulV2 matmul_pattern(gpd.mutable_pattern(), name_scope);
+  matmul_pattern();
+
+  int found_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "map matmul_v2 to mul";
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
+    bool flag = true;
+
+    bool trans_x = BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("trans_x"));
+    bool trans_y = BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("trans_y"));
+    flag = flag && !trans_x && !trans_y;
+
+    std::vector<int64_t> x_shape = matmul_in_x->Var()->GetShape();
+    std::vector<int64_t> y_shape = matmul_in_y->Var()->GetShape();
+    size_t x_rank = x_shape.size();
+    size_t y_rank = y_shape.size();
+    flag = flag && (x_rank == 2 || x_rank == 3) && y_rank == 2;
+
+    std::vector<Node*>& next_ops = matmul_out->outputs;
+    flag = flag && next_ops.size() == 1 &&
+           next_ops[0]->Name() == "elementwise_add";
+
+    if (flag) {
+      if (!IsCompat(subgraph, g)) {
+        LOG(WARNING) << "Pass in op compat failed.";
+        return;
+      }
+      OpDesc desc(matmul_op->Op()->Block());
+      desc.SetType("mul");
+      desc.SetInput("X", {matmul_in_x->Name()});
+      desc.SetInput("Y", {matmul_in_y->Name()});
+      desc.SetOutput("Out", {matmul_out->Name()});
+      desc.SetAttr("x_num_col_dims", static_cast<int>(x_rank - 1));
+      desc.SetAttr("y_num_col_dims", 1);
+      if (matmul_op->Op()->HasAttr("enable_int8")) {
+        desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
+        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
+        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+      }
+      auto mul_node = g->CreateOpNode(&desc);
+      IR_NODE_LINK_TO(matmul_in_x, mul_node);
+      IR_NODE_LINK_TO(matmul_in_y, mul_node);
+      IR_NODE_LINK_TO(mul_node, matmul_out);
+      GraphSafeRemoveNodes(graph, {matmul_op});
+      ++found_count;
+
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "MapMatmulv2ToMulPass in out mul op compat failed.";
         return;
       }
     }
@@ -565,6 +671,14 @@ REGISTER_PASS_CAPABILITY(map_matmul_to_mul_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("matmul", 1)
+            .EQ("mul", 0));
+
+REGISTER_PASS(map_matmul_v2_to_mul_pass,
+              paddle::framework::ir::MapMatmulv2ToMulPass);
+REGISTER_PASS_CAPABILITY(map_matmul_v2_to_mul_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("matmul_v2", 0)
             .EQ("mul", 0));
 
 REGISTER_PASS(squeeze2_matmul_fuse_pass,

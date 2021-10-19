@@ -26,6 +26,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 
+DECLARE_string(npu_precision_mode);
+
 namespace paddle {
 namespace operators {
 
@@ -183,6 +185,21 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
     PADDLE_THROW(platform::errors::Unimplemented(
         "Can not convert attribubte '%s' to convert to aclopAttr", name));
   }
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddAttrDataType(const std::string &name,
+                                          const NPUAttribute &attr) {
+  PADDLE_ENFORCE_EQ(
+      (attr.type() == typeid(int)), true,
+      platform::errors::InvalidArgument(
+          "Attr type is NOT equal to framework::proto::VarType::Type."));
+  if (!attr_) {
+    attr_ = aclopCreateAttr();
+  }
+  auto dtype = ConvertToNpuDtype(
+      static_cast<framework::proto::VarType::Type>(BOOST_GET_CONST(int, attr)));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclopSetAttrDataType(attr_, name.c_str(), dtype));
   return *this;
 }
 
@@ -403,6 +420,12 @@ void NpuOpRunner::Run(aclrtStream stream) const {
   VLOG(4) << "output_desc.size: " << output_descs_.size();
   VLOG(4) << "attr: " << attr_;
   VLOG(4) << "stream: " << stream;
+
+  if (!FLAGS_npu_precision_mode.empty()) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclSetCompileopt(ACL_PRECISION_MODE, FLAGS_npu_precision_mode.c_str()));
+    VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mode;
+  }
 
   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),

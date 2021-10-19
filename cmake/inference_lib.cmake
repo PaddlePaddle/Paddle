@@ -353,7 +353,9 @@ function(version version_file)
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
             "WITH_GPU: ${WITH_GPU}\n"
-            "WITH_ROCM: ${WITH_ROCM}\n")
+            "WITH_ROCM: ${WITH_ROCM}\n"
+            "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
@@ -363,6 +365,11 @@ function(version version_file)
         file(APPEND ${version_file}
                 "HIP version: ${HIP_VERSION}\n"
                 "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
+    endif()
+    if(WITH_ASCEND_CL)
+        file(APPEND ${version_file}
+                "Ascend Toolkit version: ${ASCEND_TOOLKIT_VERSION}\n"
+                "Ascend Driver version: ${ASCEND_DRIVER_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)
