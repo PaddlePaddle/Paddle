@@ -169,7 +169,11 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
   if (type_ == nvinfer1::DataType::kINT8) {
     cudaDataType_t cudadataTypeIO = CUDA_R_8I;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUBLAS_R_32I;
+#else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
+#endif
     cublasLtOrder_t COL32 = CUBLASLT_ORDER_COL32;
     cublasLtOrder_t COL4_4R2_8C = CUBLASLT_ORDER_COL4_4R2_8C;
 
@@ -274,8 +278,14 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     cublasOperation_t ATranspose = CUBLAS_OP_N, BTranspose = CUBLAS_OP_T;
     cublasLtPointerMode_t matmul_model =
         CUBLASLT_POINTER_MODE_ALPHA_DEVICE_VECTOR_BETA_ZERO;
+
+#if CUBLAS_VER_MAJOR < 11
+    CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType));
+#else
     CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType,
                                                cudaDataTypeS));
+#endif
+
     CUDA_RT_CALL(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSA, &ATranspose,
         sizeof(ATranspose)));
@@ -304,8 +314,11 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
   } else if (type_ == nvinfer1::DataType::kHALF) {
     cudaDataType_t cudadataTypeIO = CUDA_R_16F;
     cudaDataType_t cudaDataTypeS = CUDA_R_16F;
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUBLAS_R_16F;
+#else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_16F;
-
+#endif
     CUDA_RT_CALL(dyl::cublasLtMatrixLayoutCreate(
         &Adesc_, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n_ : k_,
         AopTranspose == CUBLAS_OP_N ? k_ : n_,
@@ -344,8 +357,14 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
+
+#if CUBLAS_VER_MAJOR < 11
+    CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType));
+#else
     CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType,
                                                cudaDataTypeS));
+#endif
+
     CUDA_RT_CALL(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));
@@ -367,8 +386,11 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
   } else {
     cudaDataType_t cudadataTypeIO = CUDA_R_32F;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUBLAS_R_32F;
+#else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F_FAST_16F;
-
+#endif
     CUDA_RT_CALL(dyl::cublasLtMatrixLayoutCreate(
         &Adesc_, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n_ : k_,
         AopTranspose == CUBLAS_OP_N ? k_ : n_,
@@ -407,8 +429,14 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
+
+#if CUBLAS_VER_MAJOR < 11
+    CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType));
+#else
     CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType,
                                                cudaDataTypeS));
+#endif
+
     CUDA_RT_CALL(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));
@@ -710,7 +738,11 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   if (type_ == nvinfer1::DataType::kINT8) {
     cudaDataType_t cudadataTypeIO = CUDA_R_8I;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUBLAS_R_32I;
+#else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
+#endif
     cublasLtOrder_t COL32 = CUBLASLT_ORDER_COL32;
     cublasLtOrder_t COL4_4R2_8C = CUBLASLT_ORDER_COL4_4R2_8C;
 
@@ -802,8 +834,14 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     cublasOperation_t ATranspose = CUBLAS_OP_N, BTranspose = CUBLAS_OP_T;
     cublasLtPointerMode_t matmul_model =
         CUBLASLT_POINTER_MODE_ALPHA_DEVICE_VECTOR_BETA_ZERO;
+
+#if CUBLAS_VER_MAJOR < 11
+    CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType));
+#else
     CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType,
                                                cudaDataTypeS));
+#endif
+
     CUDA_RT_CALL(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSA, &ATranspose,
         sizeof(ATranspose)));
@@ -825,8 +863,11 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   } else if (type_ == nvinfer1::DataType::kHALF) {
     cudaDataType_t cudadataTypeIO = CUDA_R_16F;
     cudaDataType_t cudaDataTypeS = CUDA_R_16F;
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUBLAS_R_16F;
+#else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_16F;
-
+#endif
     CUDA_RT_CALL(dyl::cublasLtMatrixLayoutCreate(
         &Adesc, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n : k,
         AopTranspose == CUBLAS_OP_N ? k : n,
@@ -865,8 +906,14 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
+
+#if CUBLAS_VER_MAJOR < 11
+    CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType));
+#else
     CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType,
                                                cudaDataTypeS));
+#endif
+
     CUDA_RT_CALL(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));
@@ -885,8 +932,11 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   } else {
     cudaDataType_t cudadataTypeIO = CUDA_R_32F;
     cudaDataType_t cudaDataTypeS = CUDA_R_32F;
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUBLAS_R_32F;
+#else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F_FAST_16F;
-
+#endif
     CUDA_RT_CALL(dyl::cublasLtMatrixLayoutCreate(
         &Adesc, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n : k,
         AopTranspose == CUBLAS_OP_N ? k : n,
@@ -925,8 +975,14 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
+
+#if CUBLAS_VER_MAJOR < 11
+    CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType));
+#else
     CUDA_RT_CALL(dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType,
                                                cudaDataTypeS));
+#endif
+
     CUDA_RT_CALL(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));

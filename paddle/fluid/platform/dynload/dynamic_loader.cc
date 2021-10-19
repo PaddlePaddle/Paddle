@@ -211,16 +211,8 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
     dso_handle =
         dlopen(join("/usr/local/cuda/lib/", dso_path).c_str(), dynload_flags);
   }
-#elif defined(PADDLE_WITH_CUDA)
-  if (nullptr == dso_handle) {
-    dso_handle =
-        dlopen(join("/usr/local/cuda/lib64/", dso_path).c_str(), dynload_flags);
-  }
-  if (nullptr == dso_handle) {
-    dso_handle = dlopen(join("/usr/lib/x86_64-linux-gnu/", dso_path).c_str(),
-                        dynload_flags);
-  }
 #endif
+
   return dso_handle;
 }
 
