@@ -2290,7 +2290,6 @@ def eigvalsh(x, UPLO='L', name=None):
             #[0.17157288, 5.82842712]
     """
     if in_dygraph_mode():
-        #is_test = not _dygraph_tracer()._train_mode
         is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
