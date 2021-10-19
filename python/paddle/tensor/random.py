@@ -719,13 +719,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             print(out3.dtype)
             # [[1, 7]]  # random
             # paddle.int64
-
-            # example 4:
-            # low=0, high=10, dtype is float32
-            x = paddle.zeros((1,2))
-            out4 = paddle.randint_like(x, high=10, dtype="float32")
-            # TypeError: dtype must be chosen from ["int32","int64"]
-            
+    
     """
     if high is None:
         if low <= 0:
