@@ -102,8 +102,7 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
-
-if (WITH_GPU AND (NOT WITH_ROCM))
+if (WITH_GPU OR WITH_ROCM)
     if (MKL_FOUND AND WITH_ONEMKL)
         op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS dynload_cuda dynload_mklrt ${OP_HEADER_DEPS})
         target_include_directories(spectral_op PRIVATE ${MKL_INCLUDE})
