@@ -55,9 +55,7 @@ class MatMulOpConverter : public OpConverter {
     float alpha = 1;
     if (op_desc.HasAttr("alpha")) {
       float alpha_tem = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
-      if (fabs(alpha_tem - 1.0) > std::numeric_limits<float>::epsilon()) {
-        alpha = alpha_tem;
-      }
+      alpha = alpha_tem;
     }
     nvinfer1::MatrixOperation matrix_operation_X =
         transpose_X ? nvinfer1::MatrixOperation::kTRANSPOSE
@@ -95,6 +93,9 @@ class MatMulOpConverter : public OpConverter {
         RreplenishLayerAndOutput(layer, "matmul_op_float_no_alpha",
                                  {output_name}, test_mode);
       } else {
+        RreplenishLayerAndOutput(layer,
+                                 "matmul_op_float_has_alpha: MatrixMultiply",
+                                 {output_name}, test_mode);
         auto create_weights = [&](float data,
                                   const std::string& type) -> float* {
           std::unique_ptr<framework::Tensor> tmp_tensor(
@@ -119,7 +120,8 @@ class MatMulOpConverter : public OpConverter {
         auto* scale_layer = TRT_ENGINE_ADD_LAYER(
             engine_, Scale, *layer->getOutput(0), nvinfer1::ScaleMode::kUNIFORM,
             nv_shift.get(), nv_alpha.get(), nv_power.get());
-        RreplenishLayerAndOutput(scale_layer, "matmul_op_float_has_alpha",
+        RreplenishLayerAndOutput(scale_layer,
+                                 "matmul_op_float_has_alpha: Scale",
                                  {output_name}, test_mode);
       }
     }
