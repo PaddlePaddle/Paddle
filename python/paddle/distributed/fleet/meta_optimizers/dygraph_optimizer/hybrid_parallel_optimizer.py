@@ -148,6 +148,7 @@ class HybridParallelClipGrad:
             x=max_global_norm,
             y=layers.elementwise_max(
                 x=global_norm_var_fp32, y=max_global_norm))
+        clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
         for p, g in params_grads:
             if g is None:
                 continue
@@ -155,8 +156,7 @@ class HybridParallelClipGrad:
                 params_and_grads.append((p, g))
                 continue
             if p.dtype == paddle.float16:
-                new_grad = layers.elementwise_mul(
-                    x=g, y=paddle.cast(clip_var, paddle.float16))
+                new_grad = layers.elementwise_mul(x=g, y=clip_var_fp16)
             else:
                 new_grad = layers.elementwise_mul(x=g, y=clip_var)
             params_and_grads.append((p, new_grad))
