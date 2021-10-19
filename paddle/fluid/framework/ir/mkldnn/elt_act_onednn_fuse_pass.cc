@@ -81,8 +81,8 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     auto *elementwise_op = elementwise->Op();
 
     if (elementwise_op->HasAttr("use_mkldnn")) {
-      PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")),
+      PADDLE_ENFORCE_EQ(
+          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")), true,
           platform::errors::PreconditionNotMet(
               "The " + elt_type +
               "+Act fusion may happen only when oneDNN library "
