@@ -778,6 +778,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
       .def("copy_from_cpu_bind",
            &PaddleInferTensorCreate<paddle_infer::float16>)
+      .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)

@@ -69,7 +69,7 @@ class PD_INFER_DECL Tensor {
   /// Reshape must be called before calling
   /// ZeroCopyStringTensorCreate() or PaddleInferTensorCreate()
   /// \param shape The shape to set.
-  void ReshapeStrings(const std::size_t shape);
+  void ReshapeStrings(const std::size_t& shape);
 
   /// \brief Get the memory pointer in CPU or GPU with specific data type.
   /// Please Reshape the tensor first before call this.

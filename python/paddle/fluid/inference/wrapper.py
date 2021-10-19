@@ -37,7 +37,6 @@ def tensor_copy_from_cpu(self, data):
         raise TypeError(
             "In copy_from_cpu, we only support numpy ndarray and list[str] data type."
         )
-    self.copy_from_cpu_bind(data)
 
 
 Tensor.copy_from_cpu = tensor_copy_from_cpu

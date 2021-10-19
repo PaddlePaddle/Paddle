@@ -330,9 +330,9 @@ int BertTokenizer::Encode(
       wstring token = unicode_text.substr(i, 1);
       auto it = vocab_->find(token);
       if (it != vocab_->end()) {
-        ids.emplace_back(it->second);
+        ids.emplace_back(std::move(it->second));
       } else {
-        ids.emplace_back(unk_token_id_);
+        ids.emplace_back(std::move(unk_token_id_));
       }
     }
   }

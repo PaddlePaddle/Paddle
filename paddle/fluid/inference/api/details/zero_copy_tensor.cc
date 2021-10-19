@@ -43,7 +43,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
   tensor->Resize(paddle::framework::make_ddim(shape));
 }
 
-void Tensor::ReshapeStrings(const size_t shape) {
+void Tensor::ReshapeStrings(const size_t &shape) {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
       paddle::platform::errors::PreconditionNotMet(
