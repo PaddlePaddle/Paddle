@@ -71,7 +71,7 @@ class CinnGraphSymbolization {
         feed_targets_(feed_targets) {}
 
   // run all CINN op in graph by topo sorting then return its NetBuilder
-  ::cinn::frontend::Program operator()() const;
+  ::cinn::frontend::Program operator()();
 
   // return the internal variable map
   const absl::flat_hash_map<std::string, ::cinn::frontend::Variable>& var_map()
@@ -119,7 +119,7 @@ class CinnGraphSymbolization {
   // get the graph op's input persistable var name set
   std::unordered_set<std::string> GetGraphInputParameterNames() const;
 
-  friend class CinnGraphSymbolizationTest;
+  friend class CinnGraphSymbolizationForTest;
 };
 
 }  // namespace paddle2cinn

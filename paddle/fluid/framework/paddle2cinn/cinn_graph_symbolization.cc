@@ -33,6 +33,8 @@ namespace paddle2cinn {
 using ir::Graph;
 using ir::Node;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
+using OpMapperContext = ::cinn::frontend::OpMapperContext;
+using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;
 
 namespace utils {
 
@@ -40,7 +42,7 @@ OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(const Tensor& tensor) {
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
-    info.shape.emplace_back(sttic_cast<int>(dim[i]));
+    info.shape.emplace_back(static_cast<int>(dim[i]));
   }
 
   auto cinn_var_type = TransformVarTypeToCinn(tensor.type());
@@ -55,8 +57,8 @@ void TransformPaddleVariableToCinn(
 
   auto feed_info = GetCinnFeedInfoFromTensor(pd_tensor);
   // here we only need preserve dtype and shape, do not need preserve data
-  cinn_tensor.set_type(feed_info.type);
-  cinn_tensor.Resize(::cinn::hlir::framework::Shape(feed_info.shape));
+  cinn_tensor->set_type(feed_info.type);
+  cinn_tensor->Resize(::cinn::hlir::framework::Shape(feed_info.shape));
 }
 }  // namespace utils
 
@@ -66,7 +68,7 @@ void CinnGraphSymbolization::AddFeedInfoIntoContext(
     const auto& feed_name = feed_pair.first;
     const auto* tensor = feed_pair.second;
 
-    ctx.AddFeedInfo(feed_name, utils::GetCinnFeedInfoFromTensor(*tensor));
+    ctx->AddFeedInfo(feed_name, utils::GetCinnFeedInfoFromTensor(*tensor));
   }
 }
 
@@ -107,8 +109,8 @@ CinnGraphSymbolization::TransformPaddleScopeToCinn() const {
 
     // scope accepte the CINN format name, so here we need transform
     // paddle format name to CINN format.
-    auto* cinn_var = cinn_scope->Var<CinnTensor>(
-        ::cinn::utils::TransValidVarName(var.name()));
+    auto* cinn_var =
+        cinn_scope->Var<CinnTensor>(::cinn::utils::TransValidVarName(var_name));
 
     utils::TransformPaddleVariableToCinn(*pd_var, cinn_var);
   }
@@ -118,16 +120,16 @@ CinnGraphSymbolization::TransformPaddleScopeToCinn() const {
 
 std::vector<std::unique_ptr<CinnOpDesc>>
 CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
-  std::vector<std::unique_ptr<CinnOpDesc>> cinn_op_descs_;
+  std::vector<std::unique_ptr<CinnOpDesc>> cinn_op_descs;
 
   const auto& sorted_ops = ir::TopologySortOperations(graph_);
   for (auto* node : sorted_ops) {
-    cinn_op_descs_.emplace_back(std::make_unique<CinnOpDesc>());
-    auto& cinn_desc = cinn_op_descs_.back();
+    cinn_op_descs.emplace_back(std::make_unique<CinnOpDesc>());
+    auto& cinn_desc = cinn_op_descs.back();
 
     TransformOpDescToCinn(node->Op(), cinn_desc.get());
   }
-  return cinn_op_descs_;
+  return cinn_op_descs;
 }
 
 void CinnGraphSymbolization::RunOp(const CinnOpDesc& op_desc,
@@ -142,15 +144,15 @@ void CinnGraphSymbolization::RunOp(const CinnOpDesc& op_desc,
 }
 
 void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
-  auto cinn_op_descs_ = TransformAllGraphOpToCinn();
+  auto cinn_op_descs = TransformAllGraphOpToCinn();
   // run the CINN op one by one, note that all ops
   // have been sorted at constructor.
-  for (auto* op_desc : cinn_op_descs_) {
+  for (auto& op_desc : cinn_op_descs) {
     RunOp(*op_desc, ctx);
   }
 }
 
-::cinn::frontend::Program CinnGraphSymbolization::operator()() const {
+::cinn::frontend::Program CinnGraphSymbolization::operator()() {
   std::string builder_name = "NetBuilder_of_graph_" + std::to_string(graph_id_);
   VLOG(4) << "NetBuilder Name " << builder_name;
 
