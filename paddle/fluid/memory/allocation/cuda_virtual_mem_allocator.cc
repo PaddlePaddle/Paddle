@@ -118,7 +118,8 @@ void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
   }
 
   if (result != CUDA_ERROR_DEINITIALIZED) {
-    result = paddle::platform::dynload::cuMemRelease(iter->second.first);
+    result = platform::RecordedCuMemRelease(iter->second.first,
+                                            iter->second.second, place_.device);
     PADDLE_ENFORCE_EQ(
         result, CUDA_SUCCESS,
         platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
@@ -158,7 +159,7 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   paddle::platform::CUDADeviceGuard guard(place_.device);
   auto result =
-      paddle::platform::dynload::cuMemCreate(&handle, size, &prop_, 0);
+      platform::RecordedCuMemCreate(&handle, size, &prop_, 0, place_.device);
 
   if (result != CUDA_SUCCESS) {
     if (result == CUDA_ERROR_OUT_OF_MEMORY) {
@@ -187,7 +188,7 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   result = paddle::platform::dynload::cuMemMap(ptr, size, 0, handle, 0);
 
   if (result != CUDA_SUCCESS) {
-    paddle::platform::dynload::cuMemRelease(handle);
+    platform::RecordedCuMemRelease(handle, size, place_.device);
     PADDLE_THROW(platform::errors::Fatal(
         "Call CUDA API cuMemMap faild, return %d.", result));
     return nullptr;
@@ -198,7 +199,7 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   if (result != CUDA_SUCCESS) {
     paddle::platform::dynload::cuMemUnmap(ptr, size);
-    paddle::platform::dynload::cuMemRelease(handle);
+    platform::RecordedCuMemRelease(handle, size, place_.device);
     PADDLE_THROW(platform::errors::Fatal(
         "Call CUDA API cuMemSetAccess faild, return %d.", result));
     return nullptr;
