@@ -236,6 +236,7 @@ tensor_method_func  = [ #noqa
            'cholesky',
            'bmm',
            'histogram',
+           'bincount',
            'mv',
            'matrix_power',
            'eigvals',

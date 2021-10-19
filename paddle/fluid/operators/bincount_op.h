@@ -43,12 +43,6 @@ void BincountInner(const framework::ExecutionContext& context) {
     return;
   }
 
-  PADDLE_ENFORCE_GE(
-      *std::min_element(input_data, input_data + input_numel),
-      static_cast<InputT>(0),
-      platform::errors::InvalidArgument(
-          "The elements in input tensor must be non-negative ints"));
-
   int64_t output_size = static_cast<int64_t>(*std::max_element(
                             input_data, input_data + input_numel)) +
                         1L;
@@ -96,17 +90,6 @@ class BincountKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<framework::Tensor>("X");
     const auto& input_type = input->type();
-    bool input_type_match = input_type == framework::proto::VarType::INT32 ||
-                            input_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(input_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) holds the wrong type, it holds %s, but "
-                          "desires to be %s or %s",
-                          paddle::framework::DataTypeToString(input_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
 
     if (input_type == framework::proto::VarType::INT32) {
       BincountInner<DeviceContext, T, int>(context);

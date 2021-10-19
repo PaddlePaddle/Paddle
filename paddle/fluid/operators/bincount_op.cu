@@ -63,30 +63,19 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
   }
   auto input_x = framework::EigenVector<InputT>::Flatten(*input);
 
-  framework::Tensor input_min_t, input_max_t;
-  auto* input_min_data =
-      input_min_t.mutable_data<InputT>({1}, context.GetPlace());
+  framework::Tensor input_max_t;
   auto* input_max_data =
       input_max_t.mutable_data<InputT>({1}, context.GetPlace());
-  auto input_min_scala = framework::EigenScalar<InputT>::From(input_min_t);
   auto input_max_scala = framework::EigenScalar<InputT>::From(input_max_t);
 
   auto* place = context.template device_context<DeviceContext>().eigen_device();
-  input_min_scala.device(*place) = input_x.minimum();
   input_max_scala.device(*place) = input_x.maximum();
 
-  Tensor input_min_cpu, input_max_cpu;
-  TensorCopySync(input_min_t, platform::CPUPlace(), &input_min_cpu);
+  Tensor input_max_cpu;
   TensorCopySync(input_max_t, platform::CPUPlace(), &input_max_cpu);
 
-  InputT input_min = input_min_cpu.data<InputT>()[0];
   int64_t output_size =
       static_cast<int64_t>(input_max_cpu.data<InputT>()[0]) + 1L;
-
-  PADDLE_ENFORCE_GE(
-      input_min, static_cast<InputT>(0),
-      platform::errors::InvalidArgument(
-          "The elements in input tensor must be non-negative ints"));
 
   output_size = std::max(output_size, static_cast<int64_t>(minlength));
   framework::DDim out_dim{output_size};
@@ -136,23 +125,8 @@ template <typename DeviceContext, typename T>
 class BincountCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
-
     const Tensor* input = context.Input<framework::Tensor>("X");
     const auto& input_type = input->type();
-    bool input_type_match = input_type == framework::proto::VarType::INT32 ||
-                            input_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(input_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) holds the wrong type, it holds %s, but "
-                          "desires to be %s or %s",
-                          paddle::framework::DataTypeToString(input_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
 
     if (input_type == framework::proto::VarType::INT32) {
       BincountCUDAInner<DeviceContext, T, int>(context);
