@@ -1553,8 +1553,7 @@ class Executor(object):
                          debug=False,
                          fetch_list=None,
                          fetch_info=None,
-                         print_period=100,
-                         use_program_cache=False):
+                         print_period=100):
         is_heter = 0
         use_ps_gpu = 0
         if not program._fleet_opt is None:
@@ -1571,11 +1570,6 @@ class Executor(object):
         if fetch_info is None:
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
-
-        cache_key = _get_strong_program_cache_key(program, None, fetch_list)
-        ctx = self._get_ctx_cache(cache_key)
-        if use_program_cache == True and ctx is not None:
-            return ctx
 
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
@@ -1617,9 +1611,6 @@ class Executor(object):
 
         trainer._set_debug(debug)
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
-        if use_program_cache == True:
-            ctx = [scope, trainer]
-            self._add_ctx_cache(cache_key, ctx)
         return scope, trainer
 
     def _run_from_dataset(self,
@@ -1657,8 +1648,7 @@ class Executor(object):
             debug=debug,
             fetch_list=fetch_list,
             fetch_info=fetch_info,
-            print_period=print_period,
-            use_program_cache=use_program_cache)
+            print_period=print_period)
 
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
@@ -1978,8 +1968,7 @@ class Executor(object):
                            fetch_list=None,
                            fetch_info=None,
                            print_period=100,
-                           fetch_handler=None,
-                           use_program_cache=False):
+                           fetch_handler=None):
         """
         Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
         Given a program, either a program or compiled program, train_from_dataset will
@@ -2036,4 +2025,4 @@ class Executor(object):
         """
         return self._run_from_dataset(
             program, dataset, scope, thread, False, debug, fetch_list,
-            fetch_info, print_period, fetch_handler, use_program_cache)
+            fetch_info, print_period, fetch_handler)

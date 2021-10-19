@@ -297,7 +297,7 @@ void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
   framework::Tensor* tensor = slr->mutable_value();
   slr->set_height(msg.slr_height());
   std::vector<int64_t> tmp_rows(msg.dims()[0]);
-  memcpy(&tmp_rows[0], msg.data().data(), msg.dims()[0] * sizeof(int64_t));
+  memcpy(tmp_rows.data(), msg.data().data(), msg.dims()[0] * sizeof(int64_t));
   slr->set_rows(tmp_rows);
   std::vector<int> vec_dim;
   for (auto& x : msg.dims()) {
