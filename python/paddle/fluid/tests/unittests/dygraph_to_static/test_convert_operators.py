@@ -276,7 +276,7 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return None
 
-        out = func(input_x, True)
+        out = func(input_x, False)
         self.assertIsNone(out)
 
     def test_else_ret_c(self):
@@ -293,8 +293,8 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return c
 
-        out = func(input_x, True)
-        self.assertEqual(out, input_x + 1)
+        out = func(input_x, False)
+        self.assertListEqual(paddle.tolist(out), paddle.tolist(input_x + 1))
 
     def test_else_ret_cz(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
@@ -310,9 +310,9 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return c, z
 
-        c, z = func(input_x, True)
-        self.assertEqual(c, input_x + 1)
-        self.assertEqual(z, input_x - 1)
+        c, z = func(input_x, False)
+        self.assertListEqual(paddle.tolist(c), paddle.tolist(input_x + 1))
+        self.assertListEqual(paddle.tolist(z), paddle.tolist(input_x - 1))
 
 
 if __name__ == '__main__':
