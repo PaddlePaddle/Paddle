@@ -16,27 +16,15 @@
 
 set -e
 
-# use paddlecloud
-echo "begin test use paddlecloud"
-cluster_node_ips="127.0.0.1,127.0.0.2"
-# export PADDLE_TRAINERS_NUM=2
-# export POD_IP=127.0.0.1
-# export PADDLE_TRAINERS=${cluster_node_ips}
-# export PADDLE_TRAINER_ID=0
+# use single node
+echo "begin test"
 
-# export PADDLE_PORT=35789
-# export TRAINER_PORTS_NUM=1
-
-# debug paddlecloud env
-echo "PADDLE_TRAINERS: ${PADDLE_TRAINERS}"
-echo "POD_IP: ${POD_IP}"
-echo "PADDLE_TRAINER_ID: ${PADDLE_TRAINER_ID}"
-
-distributed_args="--ips=${PADDLE_TRAINERS} --ranks_mapped=0;1 --enable_rank_mapping true --log_dir=testlog"
+export FLAGS_START_PORT=35789
+distributed_args="--ips=127.0.0.1 --ranks_mapped=0,1 --enable_rank_mapping true --log_dir=testlog"
 python -m paddle.distributed.fleet.launch ${distributed_args} multi_process.py fleetlaunchcloud_mapped_ranks
 
-str1="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.2:35789 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
-str2="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.2:35789 trainers_num:2 current_endpoint:127.0.0.2:35789 trainer_id:1"
+str1="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
+str2="selected_gpus:1 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35790 trainer_id:1"
 file_0="multi_process_fleetlaunchcloud_mapped_ranks.check_0.log"
 file_1="multi_process_fleetlaunchcloud_mapped_ranks.check_1.log"
 
