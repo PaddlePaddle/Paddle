@@ -63,7 +63,7 @@ __global__ void ExpertCount(const T* gate_idx, T* expert_count,
       x = x + __shfl_down_sync(-1u, x, j);
     }
     if (threadIdx.x % WARP_SIZE == 0) {
-      atomicAdd(expert_count + i, x);
+      platform::CudaAtomicAdd(expert_count + i, x);
     }
   }
 }
@@ -88,6 +88,7 @@ class ExpertCountOpCUDAKernel : public framework::OpKernel<T> {
     initialize_zero_kernel<
         T><<<GET_BLOCKS(n_expert), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
         out_data, n_expert);
+
     ExpertCount<
         T><<<CEIL(n_expert, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
         gate_data, out_data, batch_size, n_expert);
@@ -100,4 +101,5 @@ class ExpertCountOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(expert_count, ops::ExpertCountOpCUDAKernel<int>)
+REGISTER_OP_CUDA_KERNEL(expert_count, ops::ExpertCountOpCUDAKernel<int>,
+                        ops::ExpertCountOpCUDAKernel<int64_t>);

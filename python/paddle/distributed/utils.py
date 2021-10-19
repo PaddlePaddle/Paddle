@@ -900,7 +900,7 @@ def parallel_linear(x, w, bias, expert_count):
             should be float16, float32, float64. Its shape is [batch_size, in_feat].
         w (Tensor): Parameter matrix. Its shape is [expert_num, in_feat, out_feat].
         bias (Tensor): Parameter matrix. Its shape is [expert_num, out_feat]
-        expert_count (Tensor): Its shape is [expert_num,].
+        expert_count (numpy)): Its shape is [expert_num,].
     
     Returns:
         out (Tensor): The linear calculation result. 
@@ -933,7 +933,7 @@ def parallel_linear(x, w, bias, expert_count):
 
     """
     if in_dygraph_mode():
-        return _C_ops.parallel_linear(x, w, bias, expert_count)
+        return _C_ops.parallel_linear(x, w, bias, 'expert_count', expert_count)
     else:
         op_type = 'parallel_linear'
 
