@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/tcmpt/core/tensor_interface.h"
+#include "paddle/tcmpt/core/tensor_base.h"
 #include "paddle/tcmpt/core/tensor_meta.h"
 #include "paddle/tcmpt/core/tensor_status.h"
 
@@ -29,6 +29,9 @@ class Allocation;
 }
 
 namespace pt {
+
+using TensorBase = paddle::tcmpt::TensorBase;
+using DataType = paddle::experimental::DataType;
 
 // TODO(chenweihang): Allocation still link to framework, Redesign and
 // decoupled Allocation and Allocator?
@@ -47,9 +50,9 @@ using Allocation = paddle::memory::allocation::Allocation;
  *
  * If the memory layout is different, it cannot be described based on the
  * general Allocation, and it needs to be directly inherited from
- * TensorInterface.
+ * TensorBase.
  */
-class DenseTensor : public TensorInterface {
+class DenseTensor : public TensorBase {
  public:
   // Not allowed to initialize a tensor without descriptive metadata
   DenseTensor() = delete;
@@ -71,17 +74,19 @@ class DenseTensor : public TensorInterface {
   DenseTensor(TensorMeta&& meta, TensorStatus&& status)
       : meta_(std::move(meta)), status_(std::move(status)) {}
 
-  ~DenseTensor() override {}
-
   int64_t numel() const override { return meta_.numel; }
 
-  DDim dims() const override { return meta_.dims; }
+  const paddle::framework::DDim& dims() const override { return meta_.dims; }
 
-  DataType type() const override { return meta_.type; }
+  DataType data_type() const override { return meta_.type; }
 
   DataLayout layout() const override { return meta_.layout; }
 
-  Place place() const override;
+  const paddle::platform::Place& place() const override;
+
+  Backend backend() const override { return meta_.backend; }
+
+  bool valid() const override { return allocation_ != nullptr; }
 
   bool initialized() const override { return allocation_ != nullptr; }
 
@@ -128,7 +133,7 @@ class DenseTensor : public TensorInterface {
 
   void ShareAllocation(const std::shared_ptr<Allocation>& allocation);
 
-  Place GetPlaceByBackend() const;
+  paddle::platform::Place GetPlaceByBackend() const;
 
   size_t MemorySize() const;
 

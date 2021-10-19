@@ -18,7 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <utility>
 
-#include "paddle/tcmpt/core/tensor_interface.h"
+#include "paddle/tcmpt/core/tensor_base.h"
 #include "paddle/tcmpt/core/tensor_signature.h"
 
 /**
@@ -74,7 +74,7 @@ class AutogradMetaInterface {
  * letters and underscores.
  *
  * Note: Tensor cannot be inherited. The heterogeneous Tensor implementation
- * can be achieved by inheriting the underlying TensorInterface.
+ * can be achieved by inheriting the underlying TensorBase.
  *
  * Note: This Tensor API is suitable for training and custom operators,
  * another simple Tensor design may be required for inference.
@@ -89,10 +89,10 @@ class Tensor final {
 
   /**
    * @description: Use a TensorImpl pointer to construct a Tensor
-   * @param {shared_ptr<TensorInterface>} tensor_impl
+   * @param {shared_ptr<TensorBase>} tensor_impl
    * @return {Tensor}
    */
-  explicit Tensor(std::shared_ptr<pt::TensorInterface> tensor_impl)
+  explicit Tensor(std::shared_ptr<tcmpt::TensorBase> tensor_impl)
       : impl_(std::move(tensor_impl)) {
     if (impl_.get() == nullptr) {
       throw std::runtime_error("TensorImpl with nullptr is not supported");
@@ -112,14 +112,14 @@ class Tensor final {
    * @param None
    * @return {DDim}
    */
-  pt::DDim shape() const { return impl_->dims(); }
+  paddle::framework::DDim shape() const { return impl_->dims(); }
 
   /**
    * @description: Return the data type of current Tensor.
    * @param None
    * @return {DataType}
    */
-  pt::DataType type() const { return impl_->type(); }
+  pt::DataType type() const { return impl_->data_type(); }
 
   /**
    * @description: Return the layout of current Tensor.
@@ -134,7 +134,7 @@ class Tensor final {
    * @param None
    * @return {Place}
    */
-  pt::Place place() const { return impl_->place(); }
+  paddle::platform::Place place() const { return impl_->place(); }
 
   /**
    * Backend judgment APIs, shield the concept of Backend.
@@ -164,16 +164,16 @@ class Tensor final {
   /**
    * @description: Return the implemention of current Tensor.
    * @param None
-   * @return {std::shared_ptr<TensorInterface>}
+   * @return {std::shared_ptr<TensorBase>}
    */
-  std::shared_ptr<pt::TensorInterface> impl() const { return impl_; }
+  std::shared_ptr<tcmpt::TensorBase> impl() const { return impl_; }
 
   /**
    * @description: Set the implemention of current Tensor.
-   * @param {std::shared_ptr<TensorInterface>}
+   * @param {std::shared_ptr<TensorBase>}
    * @return None
    */
-  void set_impl(const std::shared_ptr<pt::TensorInterface>& impl) {
+  void set_impl(const std::shared_ptr<tcmpt::TensorBase>& impl) {
     impl_ = impl;
   }
 
@@ -246,7 +246,7 @@ class Tensor final {
    * heterogeneous Tensor implementation, so that the API level can be unified
    * to one `Tensor`.
    */
-  std::shared_ptr<pt::TensorInterface> impl_;
+  std::shared_ptr<tcmpt::TensorBase> impl_;
 
   /**
    * [ Why need abstract AutogradMetaInterface here? ]

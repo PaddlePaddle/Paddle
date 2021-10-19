@@ -78,7 +78,7 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
       TensorMeta(paddle::framework::make_ddim(
                      {static_cast<int64_t>(temp_storage_bytes)}),
                  pt::TransToPtBackend(dev_ctx.GetPlace()),
-                 x.type(),
+                 x.data_type(),
                  x.layout()),
       TensorStatus());
   auto* temp_storage = tmp.mutable_data<uint8_t>();
