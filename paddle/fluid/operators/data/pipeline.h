@@ -14,41 +14,42 @@
 #include <vector>
 #include "ThreadPool.h"
 
-#include "paddle/fluid/operators/data/pipeline.h"
+#include "paddle/fluid/framework/parallel_executor.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
 
 using BlockDesc = framework::BlockDesc;
 using Scope = framework::Scope;
+using ParallelExecutor = framework::ParallelExecutor;
 
+using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
-using LoDTensorBlockingQueue = paddle::operators::reader::LoDTensorBlockingQueue
+using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 
 namespace data {
 
 class Pipeline {
   public:
-    Pipeline(const BlockDesc &global_block, int64_t start_op_index,
-             int64_t end_op_index, int64_t program_id,
+    Pipeline(const BlockDesc &global_block, const platform::Place &place,
+             int64_t start_op_index, int64_t end_op_index, int64_t program_id,
              const std::vector<std::string> &output_var_names,
              size_t prefetch_queue_size = 2);
 
-  private:
     inline size_t PrefetchCap() { return prefetch_queue_.Cap(); }
 
     inline size_t PrefetchSize() { return prefetch_queue_.Size(); }
 
-    inline void Pipeline::Close() {
-      VLOD(1) << "Pipeline close";
-      prefetch_queue_.Close();
-      closed_ = true;
-    }
-
     inline bool IsClosed() { return closed_; }
 
-    bool Reset();
+    inline void Close();
 
+    inline void Reset();
+
+    void ReadNext(std::vector<Variable *> &out_vars);
+
+  private:
 		void copy_tensor(const framework::LoDTensor &lod_tensor,
 										 framework::LoDTensor *out) const {
       if (lod_tensor.numel() == 0) return;
@@ -57,9 +58,9 @@ class Pipeline {
       out_tensor.set_lod(lod_tensor.lod());
     }
 
-    void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
+    void StartPrefetchThread(const ParallelExecutor &executor,const std::vector<std::string> &skip_vars);
 
-    void ReadNext(std::vector<Variable *> &out_vars);
+    void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
     std::shared_ptr<BlockDesc> global_block_;
     Scope scope_;
@@ -73,8 +74,8 @@ class Pipeline {
 
     ThreadPool thread_pool_;
     const size_t prefetch_queue_size_;
-    const std::shared_ptr<LoDTensorBlockingQueue> prefetch_queue_;
-    bool closed_{false};
+    LoDTensorBlockingQueue prefetch_queue_;
+    std::atomic<bool> closed_;
 
 };
 
@@ -84,13 +85,13 @@ class PipelineManager {
   private:
     DISABLE_COPY_AND_ASSIGN(PipelineManager);
 
-    static PipelineManager* pm_instance_ptr_{nullptr};
-    std::map<int64_t, Pipeline> prog_id_to_pipeline_;
+    static std::shared_ptr<PipelineManager> pm_instance_ptr_;
+    std::map<int64_t, std::shared_ptr<Pipeline>> prog_id_to_pipeline_;
 
   public:
     static PipelineManager& Instance() {
       if (pm_instance_ptr_ == nullptr) {
-        pm_instance_ptr_ = new PipelineManager();
+        pm_instance_ptr_ = std::shared_ptr<PipelineManager>(new PipelineManager);
       }
       return *pm_instance_ptr_;
     }
@@ -103,18 +104,25 @@ class PipelineManager {
         size_t prefetch_queue_size = 2) {
       auto iter = prog_id_to_pipeline_.find(program_id);
       if (iter != prog_id_to_pipeline_.end()) {
-        auto* pipeline = new Pipeline(global_block, place, 
-                                      start_op_index,
-                                      end_op_index,
-                                      program_id,
-                                      output_var_names,
-                                      prefetch_queue_size);
-        prog_id_to_pipeline_.insert(std::pair<int64_t, Pipeline>(program_id, *pipeline));
-        return std::make_shared<Pipeline>(pipeline);
+        prog_id_to_pipeline_[program_id] = \
+            std::shared_ptr<Pipeline>(new Pipeline(
+                                        global_block, place, 
+                                        start_op_index,
+                                        end_op_index,
+                                        program_id,
+                                        output_var_names,
+                                        prefetch_queue_size));
+        return prog_id_to_pipeline_[program_id];
       } else {
-        reutrn std::make_shared<Pipeline>(&iter.second);
+        return iter->second;
       }
+    }
 
+    PipelineManager() { VLOG(1) << "PipelineManager init"; }
+
+    ~PipelineManager() {
+      VLOG(1) << "~PipelineManager";
+      prog_id_to_pipeline_.clear();
     }
 };
 

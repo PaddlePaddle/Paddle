@@ -21,8 +21,9 @@ using framework::Tensor;
 class DataLoaderOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DataLoaderOp")
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DataLoaderOp");
   }
 
  protected:
@@ -66,4 +67,4 @@ class DataLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(dataloader, ops::DataLoaderOp, ops::DataLoaderOpMaker);
-REGISTER_OP_CPU_KERNEL(dataloader, ops::DataLoaderKernel<float>);
+REGISTER_OP_CPU_KERNEL(dataloader, ops::DataLoaderOpKernel<paddle::platform::CPUDeviceContext, float>);

@@ -42,7 +42,6 @@ class Pipeline:
     def _init_programs(self):
         self._main_program = fluid.Program()
         self._startup_program = fluid.Program()
-        self._run_program = fluid.Program()
         self._out_vars = []
         self._out_names = []
         self._is_built = False

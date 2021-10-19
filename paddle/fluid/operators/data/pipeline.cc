@@ -24,6 +24,7 @@ Pipeline::Pipeline(
     const std::vector<std::string> &output_var_names,
     size_t prefetch_queue_size = 2)
     : thread_pool_(1),
+      closed_(false),
       global_block_(global_block),
       place_(place),
       start_op_index_(start_op_index),
@@ -69,7 +70,7 @@ Pipeline::~Pipeline() {
 
 }
 
-Pipeline::StartPrefetchThreads(const ParallelExecutor &executor,
+void Pipeline::StartPrefetchThread(const ParallelExecutor &executor,
     const std::vector<std::string> &skip_vars) {
   thread_pool_.enqueue([this, executor, skip_vars] -> void {
     while (!closed_) {
@@ -88,6 +89,11 @@ Pipeline::StartPrefetchThreads(const ParallelExecutor &executor,
         CheckOutputVarStatus(*out_var, output_var_names[i]);
         copy_tensor(*out_var, &t_arr[i]);
       }
+
+      // TODO: dataset drain check
+      // if dataset drained:
+      //     closed_.store(true)
+      //     break
 
       // Step3: put LoDTensorArray to prefetch blocking_queue
       prefetch_queue_.Push(t_arr);
@@ -129,12 +135,19 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
  }
 }
 
-bool Pipeline::Reset() {
+inline void Pipeline::Close() {
+  VLOD(1) << "Pipeline close";
+  prefetch_queue_.Close();
+  closed_ = true;
+}
+
+inline void Pipeline::Reset() {
   // (TODO)Step1: reset dataset
   //
   // Step2: reopen pipeline
   prefetch_queue_->Reopen();
-  closed_ = false;
+  closed_.store(false);
+  StartPrefetchThread();
 }
 
 

@@ -11,12 +11,16 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/reader/pipeline.h"
+#include "paddle/fluid/operators/data/pipeline.h"
 
 namespace paddle {
 namespace operators {
 
-class DataLoaderKernel : public framework::OpKernel<T> {
+using Pipeline= data::Pipeline;
+using PipelineManager = data::PipelineManager;
+
+template <typename DeviceContext, typename T>
+class DataLoaderOpKernel : public framework::OpKernel<T> {
   public:
     void Compute(const framework::ExecutionContext& ctx) const override {
       // Step1: get output vars and attrs
@@ -28,7 +32,7 @@ class DataLoaderKernel : public framework::OpKernel<T> {
       auto end_op_index = ctx.Attr<int64_t>("end_op_index");
       auto program_id = ctx.Attr<int64_t>("program_id");
 
-      auto* pipeline = PipelineManager::Instance().GetPipeline(
+      auto pipeline = PipelineManager::Instance().GetPipeline(
                          program_id, *global_block, ctx.GetPlace(),
                          start_op_index, end_op_index, output_var_names);
 
