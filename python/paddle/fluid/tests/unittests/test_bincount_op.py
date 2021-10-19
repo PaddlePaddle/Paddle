@@ -193,5 +193,13 @@ class TestCase4(TestBincountOp):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
+class TestCase5(TestBincountOp):
+    # with minlength greater than max(X)
+    def init_test_case(self):
+        self.minlength = 20
+        self.np_input = np.random.randint(low=0, high=10, size=10)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
+
+
 if __name__ == "__main__":
     unittest.main()

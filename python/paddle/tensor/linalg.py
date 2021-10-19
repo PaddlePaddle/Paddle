@@ -1293,7 +1293,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
     return out
 
 
-def bincount(x, weights=None, minlength=0):
+def bincount(x, weights=None, minlength=0, name=None):
     """
     Computes frequency of each value in the input tensor. 
 
