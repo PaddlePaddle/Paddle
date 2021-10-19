@@ -75,6 +75,8 @@ major           = '%(major)d'
 minor           = '%(minor)d'
 patch           = '%(patch)s'
 rc              = '%(rc)d'
+cuda            = '%(cuda)s'
+cudnn           = '%(cudnn)d'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
 with_mkl        = '%(with_mkl)s'
@@ -100,6 +102,8 @@ def mkl():
             'patch': get_patch(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
+            'cuda': '${ref_CUDA_MAJOR}',
+            'cudnn': '${CUDNN_MAJOR}',
             'commit': commit,
             'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
