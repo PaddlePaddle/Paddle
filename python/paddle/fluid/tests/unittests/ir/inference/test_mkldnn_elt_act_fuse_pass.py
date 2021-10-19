@@ -167,13 +167,6 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_HardSwish(ElementwiseActivatio
         self.pass_name = 'elt_act_onednn_fuse_pass'
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_SQRT(ElementwiseActivationMkldnnFusePassTest):
-    def set_params(self):
-        self.operand = fluid.layers.elementwise_sub
-        self.act = fluid.layers.sqrt
-        self.pass_name = 'elt_act_onednn_fuse_pass'
-
-
 class ElementwiseActivationMkldnnFusePassTest_Sub_ABS(ElementwiseActivationMkldnnFusePassTest):
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub

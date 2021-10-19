@@ -28,18 +28,24 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {"relu",  "tanh",      "leaky_relu",
                                         "swish", "hardswish", "sqrt",
                                         "abs",   "clip",      "gelu"};
-  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
-                                        "elementwise_mul"/*, "elementwise_div",
-                                        "elementwise_pow"*/};
+  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub", "elementwise_mul"};
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types)
-      FuseElementwiseAct(graph, elt_type, act_type);
+    {
+      if(act_type == "swish") FuseElementwiseAct(graph, elt_type, act_type, {{"beta", "activation_alpha"}});
+      else if(act_type == "clip") FuseElementwiseAct(graph, elt_type, act_type, {{"min", "activation_alpha"},
+                                                                                 {"max", "activation_beta"}});
+      else FuseElementwiseAct(graph, elt_type, act_type, {{"alpha", "activation_alpha"},
+                                                          {"beta", "activation_beta"}});
+
+    }
 }
 
 void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     Graph *graph, const std::string &elt_type,
-    const std::string &act_type) const {
+    const std::string &act_type,
+    const std::unordered_map<std::string, std::string>& attr_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("elementwise_add_act", graph);
@@ -82,32 +88,13 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     }
 
     auto *activation_op = activation->Op();
-    if(act_type == "swish")
+    for(const auto& attr: attr_map)
     {
-      if (activation_op->HasAttr("beta")) {
-        elementwise_op->SetAttr("activation_alpha", activation_op->GetAttr("beta"));
+      if (activation_op->HasAttr(attr.first)) {
+        elementwise_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
       }
     }
-    else
-    {
-    if (activation_op->HasAttr("alpha")) {
-      elementwise_op->SetAttr("activation_alpha", activation_op->GetAttr("alpha"));
-    }
-    else if(activation_op->HasAttr("min")) {
-      // workaround for Clip which use min instead of alpha
-      elementwise_op->SetAttr("activation_alpha", activation_op->GetAttr("min"));
-    }
-    if (activation_op->HasAttr("beta")) {
-      elementwise_op->SetAttr(act_type == "swish" ? "activation_alpha" : "activation_beta", activation_op->GetAttr("beta"));
-    }
-    else if(activation_op->HasAttr("max")) {
-      // workaround for Clip which use max instead of beta
-      elementwise_op->SetAttr("activation_beta", activation_op->GetAttr("max"));
-    }
-    if (activation_op->HasAttr("scale")) {
-      elementwise_op->SetAttr("activation_scale", activation_op->GetAttr("scale"));
-    }
-    }
+
     elementwise_op->SetAttr("activation_type", act_type);
 
     elementwise_op->SetAttr("use_mkldnn", true);
