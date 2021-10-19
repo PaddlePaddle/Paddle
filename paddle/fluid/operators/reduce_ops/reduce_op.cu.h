@@ -535,7 +535,7 @@ __device__ void ReduceAnyKernelImpl(const Tx* input, MPType* reduce_var,
                                     ReduceOp reducer, TransformOp transformer,
                                     MPType init, int reduce_num, int input_idx,
                                     bool reduce_last_dim,
-                                    const Calculator reduce_index_calculator,
+                                    const Calculator& reduce_index_calculator,
                                     int stride, int num) {
   Tx input_reg[REDUCE_VEC_SIZE];
   MPType input_compute[REDUCE_VEC_SIZE];
