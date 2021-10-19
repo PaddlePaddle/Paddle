@@ -101,6 +101,7 @@ def reset_profiler():
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
             with profiler.profiler('CPU', 'total', '/tmp/profile'):
@@ -273,9 +274,12 @@ def profiler(state,
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             epoc = 8
             dshape = [4, 3, 28, 28]
