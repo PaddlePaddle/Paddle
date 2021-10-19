@@ -238,7 +238,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 program.global_block().vars[op.output("Out")[0]] for op in ops
             ]
 
-            dag_check_up_and_reorder(program, inputs, outputs)
+            #dag_check_up_and_reorder(program, inputs, outputs)
 
             op_idxs = [all_ops.index(op) for op in ops]
 

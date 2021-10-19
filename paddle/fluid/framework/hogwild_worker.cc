@@ -214,12 +214,6 @@ void HogwildWorker::TrainFiles() {
   platform::Timer timeline;
   timeline.Start();
 
-
-
-  
-
-  auto start = std::chrono::system_clock::now(); 
-
   int total_ins_num = 0;
   // how to accumulate fetched values here
   device_reader_->Start();

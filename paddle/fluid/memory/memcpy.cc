@@ -487,6 +487,8 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
 #ifdef PADDLE_WITH_HIP
       platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToDevice, stream);
 #else
+
+      std::cout << "GPU to GPU for debug";
       platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
 #endif
     } else {
