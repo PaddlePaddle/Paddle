@@ -181,6 +181,19 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
     VLOG(3) << "GpuPs shard: " << i << " key len: " << local_keys[i].size();
     local_ptr[i].resize(local_keys[i].size());
   }
+
+#ifdef PADDLE_WITH_PSLIB
+  // get day_id: day nums from 1970
+  struct std::tm b;
+  b.tm_year = year_ - 1900;
+  b.tm_mon = month_ - 1;
+  b.tm_mday = day_;
+  b.tm_min = b.tm_hour = b.tm_sec = 0;
+  std::time_t seconds_from_1970 = std::mktime(&b);
+  int day_id = seconds_from_1970 / 86400;
+  fleet_ptr->pslib_ptr_->_worker_ptr->set_day_id(table_id_, day_id);
+#endif
+
   timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
