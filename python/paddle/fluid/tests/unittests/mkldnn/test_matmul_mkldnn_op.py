@@ -445,7 +445,6 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
 
     def setUp(self):
         self.set_op_type()
-        self.op_type = "matmul"
         self._cpu_only = True
         self.use_mkldnn = True
         self.init_data_type()
