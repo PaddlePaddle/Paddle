@@ -30,9 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/api/include/core.h"
+#include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/dtype.h"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wconversion-null"
 
@@ -75,7 +75,7 @@ int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
 
 PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
                                             void* closure) {
-  return ToPyObject(DataType2String(self->eagertensor.type()));
+  return ToPyObject(pten::DataType2String(self->eagertensor.type()));
 }
 
 PyObject* eager_tensor_properties_get_place_str(EagerTensorObject* self,

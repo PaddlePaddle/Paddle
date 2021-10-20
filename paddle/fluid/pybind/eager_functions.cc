@@ -30,9 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/api/include/core.h"
+#include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/dtype.h"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wconversion-null"
 
@@ -81,40 +81,40 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
   int place_id = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0);
   int device_id = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1);
 
-  switch (static_cast<ptenBackend>(place_id)) {
-    case ptenBackend::kCPU:
+  switch (static_cast<pten::Backend>(place_id)) {
+    case pten::Backend::kCPU:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::CPUPlace());
       break;
-    case ptenBackend::kCUDA:
+    case pten::Backend::kCUDA:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::CUDAPlace(device_id));
       break;
-    case ptenBackend::kCUDAPinned:
+    case pten::Backend::kCUDAPinned:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::CUDAPinnedPlace());
       break;
-    case ptenBackend::kHIP:
+    case pten::Backend::kHIP:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::CUDAPlace(device_id));
       break;
-    case ptenBackend::kXPU:
+    case pten::Backend::kXPU:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::XPUPlace(device_id));
       break;
-    case ptenBackend::kNPU:
+    case pten::Backend::kNPU:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::NPUPlace(device_id));
       break;
-    case ptenBackend::kNPUPinned:
+    case pten::Backend::kNPUPinned:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::NPUPinnedPlace());
       break;
     // TODO(wanghuancoder)
-    // case ptenBackend::kMKLDNN:
+    // case pten::Backend::kMKLDNN:
     //   egr::Controller::Instance().SetExpectedPlace(paddle::platform::CPUPlace());
     //   break;
-    // case ptenBackend::kCUDNN:
+    // case pten::Backend::kCUDNN:
     //   egr::Controller::Instance().SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
     //   break;
     default:
@@ -139,11 +139,11 @@ static PyObject* eager_api_scale(PyObject* self, PyObject* args,
 
 class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
  public:
-  explicit EagerNumpyAllocation(PyObject* numpy_data, ptenDataType dtype)
+  explicit EagerNumpyAllocation(PyObject* numpy_data, pten::DataType dtype)
       : Allocation(
             static_cast<void*>(
                 (reinterpret_cast<PyArrayObject_fields*>(numpy_data))->data),
-            ptenDataTypeSize(dtype) * PyArray_Size(numpy_data),
+            pten::DataTypeSize(dtype) * PyArray_Size(numpy_data),
             paddle::platform::CPUPlace()),
         arr_(numpy_data) {
     PADDLE_ENFORCE_NOT_NULL(arr_, platform::errors::InvalidArgument(
@@ -165,7 +165,7 @@ class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
 };
 
 static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
-                                                  ptenDataType dtype,
+                                                  pten::DataType dtype,
                                                   int place_id, int device_id,
                                                   bool stop_gradient) {
   std::vector<int64_t> vec_dims;
@@ -176,10 +176,11 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   }
   paddle::framework::DDim dims = paddle::framework::make_ddim(vec_dims);
 
-  auto meta = ptenTensorMeta(dims, static_cast<ptenBackend>(place_id), dtype);
+  auto meta =
+      pten::TensorMeta(dims, static_cast<pten::Backend>(place_id), dtype);
 
-  std::shared_ptr<ptenDenseTensor> densetensor(
-      new ptenDenseTensor(std::move(meta), ptenTensorStatus()));
+  std::shared_ptr<pten::DenseTensor> densetensor(
+      new pten::DenseTensor(std::move(meta), pten::TensorStatus()));
 
   auto holder = std::make_shared<EagerNumpyAllocation>(numpy_data, dtype);
   densetensor->ShareAllocation(holder);
@@ -202,7 +203,7 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
                                      PyObject* kwargs) {
   PyObject* data = PyTuple_GET_ITEM(args, 0);
   auto str_dtype = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
-  ptenDataType dtype = ptenString2DataType(str_dtype);
+  pten::DataType dtype = pten::String2DataType(str_dtype);
   int place_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 2), 2);
   int device_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 3), 3);
   bool stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);

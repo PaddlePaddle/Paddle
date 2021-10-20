@@ -41,7 +41,7 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
   // TODO(jiabin): Support More Tensor type here
   auto tensor_instance =
-      std::dynamic_pointer_cast<ptenDenseTensor>(tensor.impl());
+      std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
 
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
   paddle::experimental::Tensor* grad_tensor = meta->MutableGrad();

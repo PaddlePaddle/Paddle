@@ -45,6 +45,6 @@ paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout);
 size_t DataTypeSize(DataType dtype);
 DataType String2DataType(const std::string& str);
 std::string DataType2String(DataType dtype);
-int TensorDtype2NumpyDtype(ptenDataType dtype);
+int TensorDtype2NumpyDtype(pten::DataType dtype);
 
 }  // namespace pten

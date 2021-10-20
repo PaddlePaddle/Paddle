@@ -30,9 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/api/include/core.h"
+#include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/dtype.h"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wconversion-null"
 
@@ -55,8 +55,8 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
   }
 
   auto tensor_dims = self->eagertensor.shape();
-  auto numpy_dtype = ptenTensorDtype2NumpyDtype(self->eagertensor.type());
-  auto sizeof_dtype = ptenDataTypeSize(self->eagertensor.type());
+  auto numpy_dtype = pten::TensorDtype2NumpyDtype(self->eagertensor.type());
+  auto sizeof_dtype = pten::DataTypeSize(self->eagertensor.type());
   npy_intp py_dims[paddle::framework::DDim::kMaxRank];
   npy_intp py_strides[paddle::framework::DDim::kMaxRank];
 
@@ -74,7 +74,7 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
 
   if (self->eagertensor.is_cpu()) {
     auto dense_tensor =
-        std::dynamic_pointer_cast<ptenDenseTensor>(self->eagertensor.impl());
+        std::dynamic_pointer_cast<pten::DenseTensor>(self->eagertensor.impl());
     platform::CPUPlace place;
     // deep copy
     paddle::memory::Copy(

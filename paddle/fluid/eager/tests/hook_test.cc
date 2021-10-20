@@ -35,12 +35,12 @@ using namespace egr;  // NOLINT
 
 paddle::experimental::Tensor hook_function(
     const paddle::experimental::Tensor& t) {
-  auto t_dense = std::dynamic_pointer_cast<ptenDenseTensor>(t.impl());
+  auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
 
-  auto ret_meta = ptenTensorMeta(t_dense->dims(), t_dense->backend(),
-                                 t_dense->type(), t_dense->layout());
-  auto ret_dense = std::make_shared<ptenDenseTensor>(std::move(ret_meta),
-                                                     ptenTensorStatus());
+  auto ret_meta = pten::TensorMeta(t_dense->dims(), t_dense->backend(),
+                                   t_dense->data_type(), t_dense->layout());
+  auto ret_dense = std::make_shared<pten::DenseTensor>(std::move(ret_meta),
+                                                       pten::TensorStatus());
 
   float* t_ptr = t_dense->mutable_data<float>();
   float* ret_ptr = ret_dense->mutable_data<float>();
@@ -48,7 +48,7 @@ paddle::experimental::Tensor hook_function(
     ret_ptr[i] = t_ptr[i] + 3.0;
   }
 
-  auto ret_impl = std::dynamic_pointer_cast<ptenTensorInterface>(ret_dense);
+  auto ret_impl = std::dynamic_pointer_cast<pten::TensorBase>(ret_dense);
   paddle::experimental::Tensor ret = paddle::experimental::Tensor();
   ret.set_impl(ret_impl);
 
@@ -77,8 +77,8 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
@@ -176,8 +176,8 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::experimental::Tensor& target_tensor = target_tensors[0];
 

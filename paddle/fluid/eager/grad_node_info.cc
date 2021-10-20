@@ -16,8 +16,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/eager/gradient_accumulation.h"
+#include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/dtype.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -247,7 +247,7 @@ void InputBuffer::add(size_t slot_id, size_t rank,
     auto t_impl = t.impl();
 
     // Fill 1.0
-    FillConstAPI(1.0, t_impl->dims(), t_impl->backend(), t_impl->type(),
+    FillConstAPI(1.0, t_impl->dims(), t_impl->backend(), t_impl->data_type(),
                  t_impl->layout(), &buffer_tensor);
   }
 }

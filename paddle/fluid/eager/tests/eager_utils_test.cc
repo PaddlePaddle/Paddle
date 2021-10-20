@@ -28,8 +28,8 @@ TEST(Utils, TensorsToVarBasesSingle) {
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   paddle::experimental::Tensor tensor = egr::EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      5.0, true);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 5.0, true);
 
   std::vector<std::shared_ptr<paddle::imperative::VarBase>> var_bases =
       TensorsToVarBases(tensor);
@@ -54,12 +54,12 @@ TEST(Utils, TensorsToVarBasesMultiple) {
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   std::vector<paddle::experimental::Tensor> tensors = {
-      egr::EagerUtils::CreateTensorWithValue(ddim, ptenBackend::kCPU,
-                                             ptenDataType::kFLOAT32,
-                                             ptenDataLayout::kNCHW, 1.0, true),
-      egr::EagerUtils::CreateTensorWithValue(ddim, ptenBackend::kCPU,
-                                             ptenDataType::kFLOAT32,
-                                             ptenDataLayout::kNCHW, 2.0, true)};
+      egr::EagerUtils::CreateTensorWithValue(
+          ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+          pten::DataLayout::kNCHW, 1.0, true),
+      egr::EagerUtils::CreateTensorWithValue(
+          ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+          pten::DataLayout::kNCHW, 2.0, true)};
 
   std::vector<std::shared_ptr<paddle::imperative::VarBase>> var_bases =
       TensorsToVarBases(tensors);

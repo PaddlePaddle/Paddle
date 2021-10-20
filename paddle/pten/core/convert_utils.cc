@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "paddle/pten/core/convert_utils.h"
+#include <numpy/ndarraytypes.h>
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/gpu_info.h"
@@ -178,7 +180,6 @@ paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
   }
 }
 
-
 size_t DataTypeSize(DataType dtype) {
   switch (dtype) {
     case DataType::kUndef:
@@ -264,40 +265,41 @@ std::string DataType2String(DataType dtype) {
       return "complex128";
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Unknow ptenDataType, the int value = %d.", static_cast<int>(dtype)));
+          "Unknow pten::DataType, the int value = %d.",
+          static_cast<int>(dtype)));
       return "";
   }
 }
 
-int TensorDtype2NumpyDtype(ptenDataType dtype) {
+int TensorDtype2NumpyDtype(pten::DataType dtype) {
   switch (dtype) {
-    case ptenDataType::kBOOL:
+    case pten::DataType::kBOOL:
       return NPY_TYPES::NPY_BOOL;
-    case ptenDataType::kINT8:
+    case pten::DataType::kINT8:
       return NPY_TYPES::NPY_INT8;
-    case ptenDataType::kUINT8:
+    case pten::DataType::kUINT8:
       return NPY_TYPES::NPY_UINT8;
-    case ptenDataType::kINT16:
+    case pten::DataType::kINT16:
       return NPY_TYPES::NPY_INT16;
-    case ptenDataType::kINT32:
+    case pten::DataType::kINT32:
       return NPY_TYPES::NPY_INT32;
-    case ptenDataType::kINT64:
+    case pten::DataType::kINT64:
       return NPY_TYPES::NPY_INT64;
-    case ptenDataType::kFLOAT16:
+    case pten::DataType::kFLOAT16:
       return NPY_TYPES::NPY_FLOAT;  // numpy not have float16
-    case ptenDataType::kFLOAT32:
+    case pten::DataType::kFLOAT32:
       return NPY_TYPES::NPY_FLOAT;
-    case ptenDataType::kFLOAT64:
+    case pten::DataType::kFLOAT64:
       return NPY_TYPES::NPY_DOUBLE;
-    case ptenDataType::kCOMPLEX64:
+    case pten::DataType::kCOMPLEX64:
       return NPY_TYPES::NPY_COMPLEX64;
-    case ptenDataType::kCOMPLEX128:
+    case pten::DataType::kCOMPLEX128:
       return NPY_TYPES::NPY_COMPLEX128;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Unknow ptenDataType, the int value = %d.", static_cast<int>(dtype)));
+          "Unknow pten::DataType, the int value = %d.",
+          static_cast<int>(dtype)));
       return 0;
   }
 }
 }  // namespace pten
-

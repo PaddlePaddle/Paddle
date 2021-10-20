@@ -20,3 +20,4 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/core/scalar.h"
+#include "paddle/pten/core/tensor_meta.h"

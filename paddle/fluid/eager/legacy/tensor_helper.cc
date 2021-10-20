@@ -24,31 +24,31 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace egr {
-ptenTensorMeta* MutableMeta(paddle::experimental::Tensor* tensor) {
+pten::TensorMeta* MutableMeta(paddle::experimental::Tensor* tensor) {
   if (!tensor->defined()) {
-    ptenTensorMeta meta;
-    ptenTensorStatus status;
-    auto dense_tensor = std::make_shared<ptenDenseTensor>(meta, status);
+    pten::TensorMeta meta;
+    pten::TensorStatus status;
+    auto dense_tensor = std::make_shared<pten::DenseTensor>(meta, status);
     tensor->set_impl(dense_tensor);
   }
-  return std::static_pointer_cast<ptenDenseTensor>(tensor->impl())
+  return std::static_pointer_cast<pten::DenseTensor>(tensor->impl())
       ->mutable_meta();
 }
 void InitializeTensor(paddle::experimental::Tensor* tensor,
-                      const ptenTensorMeta& meta,
-                      const ptenTensorStatus& status) {
-  // TODO(jiabin) Support init Tensor with other kinds of TensorInterface.
+                      const pten::TensorMeta& meta,
+                      const pten::TensorStatus& status) {
+  // TODO(jiabin) Support init Tensor with other kinds of TensorBase.
   if (!tensor->defined()) {
-    auto dense_tensor = std::make_shared<ptenDenseTensor>(meta, status);
+    auto dense_tensor = std::make_shared<pten::DenseTensor>(meta, status);
     tensor->set_impl(dense_tensor);
   }
 }
 void InitializeTensor(paddle::experimental::Tensor* tensor) {
-  // TODO(jiabin) Support init Tensor with other kinds of TensorInterface.
+  // TODO(jiabin) Support init Tensor with other kinds of TensorBase.
   if (!tensor->defined()) {
-    ptenTensorMeta meta;
-    ptenTensorStatus status;
-    auto dense_tensor = std::make_shared<ptenDenseTensor>(meta, status);
+    pten::TensorMeta meta;
+    pten::TensorStatus status;
+    auto dense_tensor = std::make_shared<pten::DenseTensor>(meta, status);
     tensor->set_impl(dense_tensor);
   }
 }

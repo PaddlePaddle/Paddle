@@ -269,10 +269,10 @@ struct ElementwiseAddTo<platform::CPUDeviceContext, T> {
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }
-  void operator()(platform::CPUDeviceContext* ctx, const ptenDenseTensor& src,
-                  ptenDenseTensor* dst) {
-    auto in = ptenEigenVector<T>::Flatten(src);
-    auto out = ptenEigenVector<T>::Flatten(*dst);
+  void operator()(platform::CPUDeviceContext* ctx, const pten::DenseTensor& src,
+                  pten::DenseTensor* dst) {
+    auto in = pten::EigenVector<T>::Flatten(src);
+    auto out = pten::EigenVector<T>::Flatten(*dst);
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }

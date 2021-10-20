@@ -261,8 +261,8 @@ class EagerUtils {
                          const std::shared_ptr<GradNodeBase>& grad_node);
 
   static paddle::experimental::Tensor CreateTensorWithValue(
-      const ptenDDim& ddim, const ptenBackend& backend,
-      const ptenDataType& dtype, const ptenDataLayout& layout, double value,
+      const pten::DDim& ddim, const pten::Backend& backend,
+      const pten::DataType& dtype, const pten::DataLayout& layout, double value,
       bool is_leaf = true);
   // This is used for Set vector of tensors' rank
   static void SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,

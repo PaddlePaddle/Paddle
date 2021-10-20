@@ -19,9 +19,9 @@
 #include "paddle/pten/hapi/all.h"
 
 namespace egr {
-ptenTensorMeta* MutableMeta(paddle::experimental::Tensor* tensor);
+pten::TensorMeta* MutableMeta(paddle::experimental::Tensor* tensor);
 void InitializeTensor(paddle::experimental::Tensor* tensor,
-                      const ptenTensorMeta& meta,
-                      const ptenTensorStatus& status);
+                      const pten::TensorMeta& meta,
+                      const pten::TensorStatus& status);
 void InitializeTensor(paddle::experimental::Tensor* tensor);
 }

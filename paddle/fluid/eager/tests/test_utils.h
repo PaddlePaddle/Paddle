@@ -32,11 +32,11 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
                                 T value) {
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
   auto grad_dense =
-      std::dynamic_pointer_cast<ptenDenseTensor>(meta->Grad().impl());
+      std::dynamic_pointer_cast<pten::DenseTensor>(meta->Grad().impl());
   T* ptr = grad_dense->mutable_data<T>();
 
   std::vector<T> host_data(grad_dense->numel());
-  if (grad_dense->backend() == ptenBackend::kCUDA) {
+  if (grad_dense->backend() == pten::Backend::kCUDA) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -58,11 +58,11 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
 template <typename T>
 bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
                             T value) {
-  auto dense_t = std::dynamic_pointer_cast<ptenDenseTensor>(target.impl());
+  auto dense_t = std::dynamic_pointer_cast<pten::DenseTensor>(target.impl());
   T* ptr = dense_t->mutable_data<T>();
 
   std::vector<T> host_data(dense_t->numel());
-  if (dense_t->backend() == ptenBackend::kCUDA) {
+  if (dense_t->backend() == pten::Backend::kCUDA) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(

@@ -41,8 +41,8 @@ TEST(Forward, SingleNode) {
 
   // Create Target Tensor
   paddle::experimental::Tensor t = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      5.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -94,8 +94,8 @@ TEST(Forward, LinearNodes) {
 
   // Create Target Tensor
   paddle::experimental::Tensor t = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      5.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -189,8 +189,8 @@ TEST(Forward, BranchedNodes) {
 
   // Create Target Tensor
   paddle::experimental::Tensor t = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      5.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);

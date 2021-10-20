@@ -24,6 +24,19 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <>
+void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
+                                        LoDTensor* out) {
+  out->ResetHolderWithType(tensor_impl->allocation(),
+                           pten::TransToProtoVarType(tensor_impl->data_type()));
+}
+
+template <>
+void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
+                                        Tensor* out) {
+  out->ResetHolderWithType(tensor_impl->allocation(),
+                           pten::TransToProtoVarType(tensor_impl->data_type()));
+}
 // TODO(chenweihang, shixiaowei): adapt SelectedRows
 template <>
 std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, LoDTensor>(

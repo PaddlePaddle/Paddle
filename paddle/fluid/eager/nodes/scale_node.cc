@@ -48,7 +48,7 @@ operator()(
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {
     // TODO(jiabin): Shall we apply hook slot by slot here or accept
-    // vector<vector<ptentensor>> to apply all hooks?
+    // vector<vector<pten::tensor>> to apply all hooks?
     std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
         ApplyGradientHooks(grads);
     ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,

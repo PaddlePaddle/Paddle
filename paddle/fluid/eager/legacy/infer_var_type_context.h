@@ -135,7 +135,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     // TODO(jiabin): Supoort SelectedRows later. We do nothing here for now
     // since we only support DenseTensor
     PADDLE_ENFORCE_EQ(type, framework::proto::VarType::LOD_TENSOR,
-                      "We can only support LOD_TENSOR with ptenTensor");
+                      "We can only support LOD_TENSOR with pten::Tensor");
     InitializeTensor(out.get());
   }
 
@@ -144,7 +144,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     // TODO(jiabin): We do nothing here for now, since we only support
     // DenseTensor
     auto* meta = MutableMeta(out.get());
-    auto pt_dtype = ptenTransToPtDataType(type);
+    auto pt_dtype = pten::TransToPtDataType(type);
     meta->type = pt_dtype;
   }
 
@@ -166,7 +166,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   framework::proto::VarType::Type GetInputDataType(
       const std::string& name, const int& index = 0) const override {
-    return ptenTransToProtoVarType(inputs_.at(name)[index]->type());
+    return pten::TransToProtoVarType(inputs_.at(name)[index]->type());
   }
 
   void SetOutputDataType(const std::string& name,

@@ -14,9 +14,10 @@
 
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/tcmpt_utils.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/pten/core/layout.h"
+#include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 /* ---- Tensor -> VarBase ---- */
 static std::shared_ptr<paddle::imperative::VarBase> TensorToVarBase(
@@ -29,14 +30,14 @@ static std::shared_ptr<paddle::imperative::VarBase> TensorToVarBase(
       var->GetMutable<paddle::framework::LoDTensor>();
 
   framework_tensor->Resize(tensor.shape());
-  framework_tensor->set_layout(ptenTransToFluidDataLayout(tensor.layout()));
+  framework_tensor->set_layout(pten::TransToFluidDataLayout(tensor.layout()));
 
-  std::shared_ptr<ptenTensorInterface> tensor_interface = tensor.impl();
+  std::shared_ptr<pten::TensorBase> tensor_interface = tensor.impl();
   // Contruct framework::Tensor from paddle::experimental::Tensor
   if (auto tensor_dense =
-          std::dynamic_pointer_cast<ptenDenseTensor>(tensor_interface)) {
-    paddle::framework::ShareTensorImpl<ptenDenseTensor>(tensor_dense.get(),
-                                                        framework_tensor);
+          std::dynamic_pointer_cast<pten::DenseTensor>(tensor_interface)) {
+    paddle::framework::ShareTensorImpl<pten::DenseTensor>(tensor_dense.get(),
+                                                          framework_tensor);
 
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -69,25 +70,25 @@ paddle::experimental::Tensor VarBaseToTensor(
   paddle::framework::Variable* var = var_base->MutableVar();
 
   paddle::framework::DDim ddim;
-  ptenBackend backend;
-  ptenDataType dtype;
-  ptenDataLayout layout;
+  pten::Backend backend;
+  pten::DataType dtype;
+  pten::DataLayout layout;
   std::shared_ptr<paddle::memory::allocation::Allocation> allocation;
 
   if (var->IsType<paddle::framework::LoDTensor>()) {
     const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
     ddim = framework_tensor.dims();
-    backend = ptenTransToPtBackend(framework_tensor.place());
-    dtype = ptenTransToPtDataType(framework_tensor.type());
-    layout = ptenTransToPtLayout(framework_tensor.layout());
+    backend = pten::TransToPtBackend(framework_tensor.place());
+    dtype = pten::TransToPtDataType(framework_tensor.type());
+    layout = pten::TransToPtDataLayout(framework_tensor.layout());
     allocation = framework_tensor.Holder();
 
   } else if (var->IsType<paddle::framework::Tensor>()) {
     const auto& framework_tensor = var->Get<paddle::framework::Tensor>();
     ddim = framework_tensor.dims();
-    backend = ptenTransToPtBackend(framework_tensor.place());
-    dtype = ptenTransToPtDataType(framework_tensor.type());
-    layout = ptenTransToPtLayout(framework_tensor.layout());
+    backend = pten::TransToPtBackend(framework_tensor.place());
+    dtype = pten::TransToPtDataType(framework_tensor.type());
+    layout = pten::TransToPtDataLayout(framework_tensor.layout());
     allocation = framework_tensor.Holder();
 
   } else {
@@ -95,9 +96,9 @@ paddle::experimental::Tensor VarBaseToTensor(
         "Unable to fetch underlying tensor from VarBase, only LoDTensor and "
         "Tensor are supported for now"));
   }
-  auto tensor_meta = ptenTensorMeta(ddim, backend, dtype, layout);
-  auto tensor_dense = std::make_shared<ptenDenseTensor>(std::move(tensor_meta),
-                                                        ptenTensorStatus());
+  auto tensor_meta = pten::TensorMeta(ddim, backend, dtype, layout);
+  auto tensor_dense = std::make_shared<pten::DenseTensor>(
+      std::move(tensor_meta), pten::TensorStatus());
   tensor_dense->ShareAllocation(allocation);
 
   return paddle::experimental::Tensor(tensor_dense);

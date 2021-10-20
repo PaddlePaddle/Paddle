@@ -129,24 +129,25 @@ class TensorAddFunctor : public boost::static_visitor<> {
 };
 
 template <typename DeviceContext, typename T>
-void TensorAddImpl(const std::shared_ptr<ptenDenseTensor>& src,
-                   ptenDenseTensor* dst, const paddle::platform::Place& place) {
+void TensorAddImpl(const std::shared_ptr<pten::DenseTensor>& src,
+                   pten::DenseTensor* dst,
+                   const paddle::platform::Place& place) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   paddle::platform::DeviceContext* ctx = pool.Get(place);
   auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
   paddle::operators::math::ElementwiseAddTo<DeviceContext, T> func;
-  // ptenDenseTensor* p_src = src.get();
+  // pten::DenseTensor* p_src = src.get();
   func(dev_ctx, *(src.get()), dst);
 }
 
 void TensorAdd(const paddle::experimental::Tensor& src,
                paddle::experimental::Tensor* dst) {
   // TODO(jiabin): Support other tensor type later
-  std::shared_ptr<ptenDenseTensor> dst_tensor =
-      std::dynamic_pointer_cast<ptenDenseTensor>(dst->impl());
-  std::shared_ptr<ptenDenseTensor> src_tensor =
-      std::dynamic_pointer_cast<ptenDenseTensor>(src.impl());
+  std::shared_ptr<pten::DenseTensor> dst_tensor =
+      std::dynamic_pointer_cast<pten::DenseTensor>(dst->impl());
+  std::shared_ptr<pten::DenseTensor> src_tensor =
+      std::dynamic_pointer_cast<pten::DenseTensor>(src.impl());
 
   auto numel = src_tensor->numel();
 
@@ -162,11 +163,12 @@ void TensorAdd(const paddle::experimental::Tensor& src,
           "%zu and the number of elements of destination tensor is %zu.",
           numel, dst_tensor->numel()));
 
-  auto data_type = ptenTransToProtoVarType(src_tensor->type());
-  auto place = ptenTransToFluidPlace(src_tensor->backend());
+  auto data_type = pten::TransToProtoVarType(src_tensor->data_type());
+  auto place = pten::TransToFluidPlace(src_tensor->backend());
   auto pt_place = src_tensor->place();
 
-  PADDLE_ENFORCE_EQ(ptenTransToProtoVarType(dst_tensor->type()), data_type,
+  PADDLE_ENFORCE_EQ(pten::TransToProtoVarType(dst_tensor->data_type()),
+                    data_type,
                     paddle::platform::errors::PreconditionNotMet(
                         "The data type of source tensor and destination tensor "
                         "should be equal, Otherwise, the calculation results "

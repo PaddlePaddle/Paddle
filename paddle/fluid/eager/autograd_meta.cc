@@ -122,8 +122,9 @@ void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
 }
 
 paddle::experimental::Tensor EagerUtils::CreateTensorWithValue(
-    const ptenDDim& ddim, const ptenBackend& backend, const ptenDataType& dtype,
-    const ptenDataLayout& layout, double value, bool is_leaf) {
+    const pten::DDim& ddim, const pten::Backend& backend,
+    const pten::DataType& dtype, const pten::DataLayout& layout, double value,
+    bool is_leaf) {
   paddle::experimental::Tensor out = paddle::experimental::Tensor();
   // Init tensor's autograo_meta
   auto meta = autograd_meta(&out);

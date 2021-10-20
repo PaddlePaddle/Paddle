@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 
 namespace egr {

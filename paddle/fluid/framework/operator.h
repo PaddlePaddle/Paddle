@@ -94,11 +94,10 @@ constexpr char kAllKernelsMustComputeRuntimeShape[] =
 
 /// This name is used for paddle::experimental::Tensor temporally, once we have
 /// name, remove it.
-constexpr char kPtenTensorTempName[] = "@PtenTensor@"
-    // define some kernel priority
-    /* Define multiple kernel type fallback order*/
-    extern std::vector<std::tuple<platform::Place, LibraryType>>
-        kKernelPriority;
+constexpr char kPtenTensorTempName[] = "@PtenTensor@";
+// define some kernel priority
+/* Define multiple kernel type fallback order*/
+extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
   std::string result;

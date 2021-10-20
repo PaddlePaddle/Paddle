@@ -43,8 +43,8 @@ TEST(Backward, SingleNodeEmptyGrad) {
   // Create Target Tensor
   paddle::experimental::Tensor target_tensor =
       EagerUtils::CreateTensorWithValue(
-          ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32,
-          ptenDataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
+          ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+          pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
 
   paddle::experimental::Tensor leaf_tensor;
   {
@@ -96,15 +96,15 @@ TEST(Backward, SingleNodeCustomGrad) {
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
 
   std::vector<paddle::experimental::Tensor> grad_tensors;
   // Create Grad Tensor
   paddle::experimental::Tensor grad_tensor = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      10.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor));
 
   paddle::experimental::Tensor leaf_tensor;
@@ -166,8 +166,8 @@ TEST(Backward, LinearNodes) {
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
 
   paddle::experimental::Tensor leaf_tensor;
@@ -242,22 +242,22 @@ TEST(Backward, WithAccumulation) {
   // Create Target Tensor
   std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::experimental::Tensor tensor0 = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
   paddle::experimental::Tensor tensor1 = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor0));
   target_tensors.emplace_back(std::move(tensor1));
 
   // Create Grad Tensor
   std::vector<paddle::experimental::Tensor> grad_tensors;
   paddle::experimental::Tensor grad_tensor0 = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      5.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 5.0 /*value*/, false /*is_leaf*/);
   paddle::experimental::Tensor grad_tensor1 = EagerUtils::CreateTensorWithValue(
-      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
-      10.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
+      pten::DataLayout::kNCHW, 10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor0));
   grad_tensors.emplace_back(std::move(grad_tensor1));
 

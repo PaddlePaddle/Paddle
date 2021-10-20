@@ -151,8 +151,8 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const ptenKernelKey& pt_kernel_key, const ptenKernel& pt_kernel,
-             platform::DeviceContext* dev_ctx);
+             const pten::KernelKey& pt_kernel_key,
+             const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -185,11 +185,11 @@ class PreparedOp {
   framework::OpKernelType kernel_type_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
-  // TODo(chenweihang): Similar duplicate members are used for new tcmpt lib,
+  // TODo(chenweihang): Similar duplicate members are used for new pten:: lib,
   // maybe we have better impl methods
   bool run_pt_kernel_{false};
-  ptenKernelKey pt_kernel_key_;
-  ptenKernel pt_kernel_;
+  pten::KernelKey pt_kernel_key_;
+  pten::Kernel pt_kernel_;
 };
 
 }  // namespace imperative

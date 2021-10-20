@@ -108,8 +108,8 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
-                       const ptenKernelKey& pt_kernel_key,
-                       const ptenKernel& pt_kernel,
+                       const pten::KernelKey& pt_kernel_key,
+                       const pten::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
@@ -152,7 +152,7 @@ static bool ContainHostTensor(const framework::proto::OpProto& op_proto,
 }
 
 template <typename VarType>
-static ptenKernelName ConstructPtKernelName(
+static pten::KernelName ConstructPtKernelName(
     const std::string& op_type, const framework::proto::OpProto& op_proto,
     const NameVarMap<VarType>& inputs) {
   std::string overload_name;
@@ -161,9 +161,9 @@ static ptenKernelName ConstructPtKernelName(
     if (overload_name != "") {
       overload_name += ".";
     }
-    overload_name += ptenkContainHostTensorSuffix;
+    overload_name += pten::kContainHostTensorSuffix;
   }
-  return ptenKernelName(op_type, overload_name);
+  return pten::KernelName(op_type, overload_name);
 }
 
 template <typename VarType>
@@ -193,15 +193,15 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
   // 1. get expected kernel key
   if (FLAGS_use_pt_kernel &&
-      ptenKernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
+      pten::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
     auto kernel_name =
         ConstructPtKernelName<VarType>(op.Type(), (*op.Info().proto_), ins);
     auto inputs = BuildInputMap<VarType>(ins);
     // we only need attrs here
     // auto final_attrs = BuildAttrMap(attrs, default_attrs);
     auto pt_kernel_key = op.ConstructPtKernelKey(inputs, attrs, place);
-    auto pt_kernel =
-        ptenKernelFactory::Instance().SelectKernel(kernel_name, pt_kernel_key);
+    auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
+        kernel_name, pt_kernel_key);
     // for debug
     VLOG(1) << "PrepareImpl - kernel name: " << kernel_name
             << " | kernel key: " << pt_kernel_key << " | kernel: " << pt_kernel;
@@ -283,8 +283,8 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
-static ptenKernelContext BuildDygraphKernelContext(
-    const ptenKernel& pt_kernel, KernelArgsNameMaker* argsNameMaker,
+static pten::KernelContext BuildDygraphKernelContext(
+    const pten::Kernel& pt_kernel, KernelArgsNameMaker* argsNameMaker,
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
@@ -296,7 +296,7 @@ static ptenKernelContext BuildDygraphKernelContext(
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  ptenKernelContext op_kernel_ctx(dev_ctx);
+  pten::KernelContext op_kernel_ctx(dev_ctx);
   auto input_defs = pt_kernel.args_def().input_defs();
   auto output_defs = pt_kernel.args_def().output_defs();
   auto attr_defs = pt_kernel.args_def().attribute_defs();
@@ -327,7 +327,7 @@ static ptenKernelContext BuildDygraphKernelContext(
     auto in_def = input_defs.at(i);
 
     auto ins_vector = ins.at(input_names[i]);
-    std::vector<std::shared_ptr<ptenTensorInterface>> tmp_inputs;
+    std::vector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
       const auto& variable = var->Var();
 
@@ -341,7 +341,7 @@ static ptenKernelContext BuildDygraphKernelContext(
     auto out_def = output_defs.at(i);
     auto outs_vector = outs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<ptenTensorInterface>> tmp_outputs;
+    std::vector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto variable = var->MutableVar();
 
@@ -352,22 +352,22 @@ static ptenKernelContext BuildDygraphKernelContext(
   }
 
   for (size_t i = 0; i < attr_defs.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(ptenScalar))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
       // TODO(chenweihang): support other attrs
       // In principle, the attr required by the dynamic mode should be
       // passed in from the Python side, and there is no need to look up
       // from the default_map, but now this nor work
       switch (attr_pairs[i].second) {
         case framework::proto::AttrType::INT:
-          op_kernel_ctx.EmplaceBackAttr(ptenScalar(
+          op_kernel_ctx.EmplaceBackAttr(pten::Scalar(
               GetAttr<int>(attrs, default_attrs, attr_pairs[i].first)));
           break;
         case framework::proto::AttrType::FLOAT:
-          op_kernel_ctx.EmplaceBackAttr(ptenScalar(
+          op_kernel_ctx.EmplaceBackAttr(pten::Scalar(
               GetAttr<float>(attrs, default_attrs, attr_pairs[i].first)));
           break;
         case framework::proto::AttrType::BOOLEAN:
-          op_kernel_ctx.EmplaceBackAttr(ptenScalar(
+          op_kernel_ctx.EmplaceBackAttr(pten::Scalar(
               GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first)));
           break;
         default:
@@ -447,8 +447,8 @@ static void PreparedOpRunImpl(
 
 template <typename VarType>
 static void PreparedOpRunPtImpl(const framework::OperatorBase& op,
-                                const ptenKernelKey& pt_kernel_key,
-                                const ptenKernel& pt_kernel,
+                                const pten::KernelKey& pt_kernel_key,
+                                const pten::Kernel& pt_kernel,
                                 platform::DeviceContext* dev_ctx,
                                 const NameVarMap<VarType>& ins,
                                 const NameVarMap<VarType>& outs,
