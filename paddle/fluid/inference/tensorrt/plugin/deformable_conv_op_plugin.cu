@@ -213,9 +213,10 @@ __device__ T DmcnIm2colBilinear(const T* bottom_data, const int data_width,
   int h_high = h_low + 1;
   int w_high = w_low + 1;
 
-  T lh = h - static_cast<T>(h_low);
-  T lw = w - static_cast<T>(w_low);
-  T hh = static_cast<T>(1) - lh, hw = static_cast<T>(1) - lw;
+  T h_low_t = h_low, w_low_t = w_low, one = 1.0f;
+  T lh = h - h_low_t;
+  T lw = w - w_low_t;
+  T hh = one - lh, hw = one - lw;
 
   T v1 = 0;
   if (h_low >= 0 && w_low >= 0) v1 = bottom_data[h_low * data_width + w_low];
@@ -246,6 +247,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
     const int width_col, T* data_col) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
+
+  T minus_one = -1.0f, height_t = height, width_t = width;
   for (size_t i = index; i < nthreads; i += offset) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
@@ -285,11 +288,12 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
         const T offset_h = data_offset_ptr[data_offset_h_ptr];
         const T offset_w = data_offset_ptr[data_offset_w_ptr];
         const T mask = data_mask_ptr[data_mask_hw_ptr];
-        T val = static_cast<T>(0);
-        const T h_im = static_cast<T>(h_in + i * dilation_h) + offset_h;
-        const T w_im = static_cast<T>(w_in + j * dilation_w) + offset_w;
-        if (h_im > static_cast<T>(-1) && w_im > static_cast<T>(-1) &&
-            h_im < static_cast<T>(height) && w_im < static_cast<T>(width)) {
+        T val = 0;
+        T h_im_t = h_in + i * dilation_h, w_im_t = w_in + j * dilation_w;
+        const T h_im = h_im_t + offset_h;
+        const T w_im = w_im_t + offset_w;
+        if (h_im > minus_one && w_im > minus_one && h_im < height_t &&
+            w_im < width_t) {
           val = DmcnIm2colBilinear<T>(data_im_ptr, width, height, width, h_im,
                                       w_im);
         }
@@ -322,10 +326,8 @@ cublasStatus_t gemm_impl<half>(cublasHandle_t handle, cublasOperation_t transa,
                                const half* alpha, const half* A, int lda,
                                const half* B, int ldb, const half* beta,
                                half* C, int ldc) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   return platform::dynload::cublasHgemm(handle, transa, transb, m, n, k, alpha,
                                         A, lda, B, ldb, beta, C, ldc);
-#endif
 }
 
 template <typename T>
