@@ -33,17 +33,19 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types) {
+      std::unordered_map<std::string, std::string> attr_map;
+
       if (act_type == "swish")
-        FuseElementwiseAct(graph, elt_type, act_type,
-                           {{"beta", "activation_alpha"}});
-      else if (act_type == "clip")
-        FuseElementwiseAct(
-            graph, elt_type, act_type,
-            {{"min", "activation_alpha"}, {"max", "activation_beta"}});
-      else
-        FuseElementwiseAct(
-            graph, elt_type, act_type,
-            {{"alpha", "activation_alpha"}, {"beta", "activation_beta"}});
+        attr_map.emplace("beta", "activation_alpha");
+      else if (act_type == "clip") {
+        attr_map.emplace("min", "activation_alpha");
+        attr_map.emplace("max", "activation_beta");
+      }
+      else {
+        attr_map.emplace("alpha", "activation_alpha");
+        attr_map.emplace("beta", "activation_beta");
+      }
+      FuseElementwiseAct(graph, elt_type, act_type, attr_map);
     }
 }
 
@@ -80,9 +82,9 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
     auto *elementwise_op = elementwise->Op();
 
-    const std::string wo_elt_type =
-        "The " + elt_type;  // Workaround for PP error message checking.
     if (elementwise_op->HasAttr("use_mkldnn")) {
+      const std::string wo_elt_type =
+          "The " + elt_type;  // Workaround for PP error message checking.
       PADDLE_ENFORCE_EQ(
           BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")), true,
           platform::errors::PreconditionNotMet(
@@ -98,7 +100,12 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
       }
     }
 
-    elementwise_op->SetAttr("activation_type", act_type);
+    if (act_type == "gelu"
+        && activation_op->HasAttr("approximate")
+        && BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
+      elementwise_op->SetAttr("activation_type", std::string("gelu_tanh"));
+    else
+      elementwise_op->SetAttr("activation_type", act_type);
 
     elementwise_op->SetAttr("use_mkldnn", true);
 
@@ -127,8 +134,6 @@ REGISTER_PASS_CAPABILITY(elt_act_onednn_fuse_pass)
             .LE("elementwise_add", 1)
             .LE("elementwise_sub", 1)
             .LE("elementwise_mul", 1)
-            .LE("elementwise_div", 1)
-            .LE("elementwise_pow", 1)
             .LE("relu", 0)
             .LE("tanh", 0)
             .LE("leaky_relu", 1)

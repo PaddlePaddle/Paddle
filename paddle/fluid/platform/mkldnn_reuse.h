@@ -615,7 +615,7 @@ class BinaryMKLDNNHandler
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
                       float scale_x, float scale_y, float scale_z,
-                      dnnl::post_ops post_ops = dnnl::post_ops{})
+                      const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         x->layout(), DataLayout::kMKLDNN,
