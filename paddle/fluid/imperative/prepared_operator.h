@@ -26,7 +26,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/pten/api/include/core.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -154,7 +154,7 @@ class PreparedOp {
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
              const framework::KernelSignature& kernel_signature,
-             const pt::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
+             const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -188,11 +188,11 @@ class PreparedOp {
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to
-  // new tcmpt kernel, if there is a better design in the future,
+  // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   bool run_pt_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
-  pt::Kernel pt_kernel_;
+  pten::Kernel pt_kernel_;
 };
 
 }  // namespace imperative

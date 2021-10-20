@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tcmpt_utils.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
-// only can include the headers in paddle/tcmpt/api dirs
-#include "paddle/tcmpt/api/include/core.h"
-#include "paddle/tcmpt/api/include/math.h"
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/api/include/math.h"
 
 namespace paddle {
 namespace operators {
@@ -37,12 +37,12 @@ class SignKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(x->place());
 
     auto pt_x =
-        framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
-    auto pt_out =
-        framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
+        framework::MakeTensorImpl<pten::DenseTensor>(*x, x->place(), x->type());
+    auto pt_out = framework::MakeTensorImpl<pten::DenseTensor>(*out, x->place(),
+                                                               x->type());
 
     // call new kernel
-    pt::Sign<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    pten::Sign<T>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };
 
