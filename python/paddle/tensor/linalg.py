@@ -1320,7 +1320,7 @@ def bincount(x, weights=None, minlength=0, name=None):
     """
     check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
 
-    if paddle.max(x) < 0:
+    if paddle.min(x) < 0:
         raise ValueError("Elements in Input(x) should all be non-negative")
     if in_dygraph_mode():
         return _C_ops.bincount(x, weights, "minlength", minlength)
