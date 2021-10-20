@@ -42,9 +42,9 @@ struct BlockAllocation : public Allocation {
   std::list<Block>::iterator block_it_;
 };
 
-class AutoGrowthBestFitAllocatorV2 : public Allocator {
+class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
  public:
-  AutoGrowthBestFitAllocatorV2(
+  VirtualMemoryAutoGrowthBestFitAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
       const platform::CUDAPlace &place);
 

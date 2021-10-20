@@ -34,8 +34,8 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 #if CUDA_VERSION >= 10020
-#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
+#include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
@@ -55,6 +55,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     use_system_allocator, false,
     "Whether to use system allocator to allocate CPU and GPU memory. "
     "Only used for unittests.");
+
+PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
+                            "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
 DECLARE_string(allocator_strategy);
 
@@ -292,10 +295,11 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
       auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
-      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
-          cuda_allocator, platform::GpuMinChunkSize(), p);
+      allocators_[p] =
+          std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+              cuda_allocator, platform::GpuMinChunkSize(), p);
     } else {
       auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(

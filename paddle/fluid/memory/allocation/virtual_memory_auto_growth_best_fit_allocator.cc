@@ -15,7 +15,7 @@
 #include <mutex>
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
-#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
+#include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 
 namespace paddle {
 namespace memory {
@@ -26,15 +26,16 @@ bool NeedSplit(size_t block_size, size_t alignment, size_t allock_size) {
          (block_size - allock_size) > alignment;
 }
 
-AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
-    const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-    const platform::CUDAPlace &place)
+VirtualMemoryAutoGrowthBestFitAllocator::
+    VirtualMemoryAutoGrowthBestFitAllocator(
+        const std::shared_ptr<Allocator> &underlying_allocator,
+        size_t alignment, const platform::CUDAPlace &place)
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
       place_(place) {}
 
-Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
+Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
   std::lock_guard<SpinLock> guard(spinlock_);
   size = AlignedSize(size, alignment_);
   auto result = AllocFromFreeBlocks(size);
@@ -47,14 +48,14 @@ Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
   return result;
 }
 
-void AutoGrowthBestFitAllocatorV2::FreeImpl(Allocation *allocation) {
+void VirtualMemoryAutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   TryMergeBlock2Blocks(block_it);
   delete allocation;
 }
 
-void AutoGrowthBestFitAllocatorV2::TryMergeBlock2Blocks(
+void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
     std::list<Block>::iterator block) {
   if (block->ptr_ == all_blocks_.front().ptr_ &&
       block->ptr_ == all_blocks_.back().ptr_) {
@@ -140,7 +141,7 @@ void AutoGrowthBestFitAllocatorV2::TryMergeBlock2Blocks(
   }
 }
 
-void AutoGrowthBestFitAllocatorV2::ExtendAndMerge(size_t size) {
+void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
   void *ptr = nullptr;
 
   auto allocateptr = underlying_allocator_->Allocate(size);
@@ -233,7 +234,8 @@ void AutoGrowthBestFitAllocatorV2::ExtendAndMerge(size_t size) {
   }
 }
 
-Allocation *AutoGrowthBestFitAllocatorV2::AllocFromFreeBlocks(size_t size) {
+Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
+    size_t size) {
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   if (iter != free_blocks_.end()) {
     std::list<Block>::iterator block_it = iter->second;

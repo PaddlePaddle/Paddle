@@ -78,7 +78,7 @@ else()
                 cpu_allocator)
 endif()
 
-list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator auto_growth_best_fit_allocator_v2 best_fit_allocator)
+list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator virtual_memory_auto_growth_best_fit_allocator best_fit_allocator)
 
 if (WITH_ASCEND_CL)
     list(APPEND AllocatorFacadeDeps npu_pinned_allocator)
@@ -113,7 +113,7 @@ cc_library(auto_growth_best_fit_allocator SRCS auto_growth_best_fit_allocator.cc
 cc_test(auto_growth_best_fit_allocator_facade_test SRCS auto_growth_best_fit_allocator_facade_test.cc DEPS cpu_allocator auto_growth_best_fit_allocator)
 cc_test(auto_growth_best_fit_allocator_test SRCS auto_growth_best_fit_allocator_test.cc DEPS auto_growth_best_fit_allocator)
 
-cc_library(auto_growth_best_fit_allocator_v2 SRCS auto_growth_best_fit_allocator_v2.cc DEPS allocator aligned_allocator)
+cc_library(virtual_memory_auto_growth_best_fit_allocator SRCS virtual_memory_auto_growth_best_fit_allocator.cc DEPS allocator aligned_allocator)
 
 if(NOT WIN32)
   cc_library(mmap_allocator SRCS mmap_allocator.cc DEPS allocator)
