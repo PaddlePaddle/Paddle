@@ -96,6 +96,11 @@ class NodeVarType(object):
     def type_from_annotation(annotation):
         annotation_str = ast_to_source_code(annotation)
 
+        # annotation.id?
+        # if annotation.id in NodeVarType.Annotation_map:
+        #     return NodeVarType.Annotation_map[annotation.id]
+
+        # 这样会不会有问题，比如指定的类型为 :int_shape
         for pattern, var_type in NodeVarType.Annotation_map.items():
             if pattern in annotation_str:
                 return var_type
@@ -304,7 +309,6 @@ class StaticAnalysisVisitor(object):
 
     def _get_node_var_type(self, cur_wrapper):
         node = cur_wrapper.node
-        # need to support AnnAssign???
         if isinstance(node, gast.Constant):
             return self._get_constant_node_type(node)
 
@@ -330,12 +334,22 @@ class StaticAnalysisVisitor(object):
                     result_type.add(NodeVarType.binary_op_output_type(l, r))
             return result_type
 
+        # a, b = 1, 2 not support
         if isinstance(node, gast.Assign):
             ret_type = self.node_to_wrapper_map[node.value].node_var_type
             for target in node.targets:
                 if isinstance(target, gast.Name):
                     self.node_to_wrapper_map[target].node_var_type = ret_type
                     self.var_env.set_var_type(target.id, ret_type)
+            return ret_type
+
+        # support AnnAssign
+        # if annotation and value(Constant) are diffent type???
+        if isinstance(node, gast.AnnAssign):
+            ret_type = {NodeVarType.type_from_annotation(node.annotation)}
+            if isinstance(node.target, gast.Name):
+                self.node_to_wrapper_map[node.target].node_var_type = ret_type
+                self.var_env.set_var_type(node.target.id, ret_type)
             return ret_type
 
         if isinstance(node, gast.Name):
