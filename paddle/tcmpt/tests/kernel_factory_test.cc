@@ -18,6 +18,6 @@ limitations under the License. */
 
 TEST(KernelFactory, KernelKey) {
   pt::KernelKey key(
-      pt::Backend::kCPU, pt::DataLayout::kNCHW, pt::DataType::kFLOAT32);
+      pt::Backend::CPU, pt::DataLayout::NCHW, pt::DataType::FLOAT32);
   std::cout << key;
 }

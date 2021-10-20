@@ -26,9 +26,9 @@
 
 namespace pt {
 
-#define BACKEND(arg__) pt::Backend::k##arg__
-#define DATALAYOUT(arg__) pt::DataLayout::k##arg__
-#define DATATYPE(arg__) pt::DataType::k##arg__
+#define BACKEND(arg__) pt::Backend::arg__
+#define DATALAYOUT(arg__) pt::DataLayout::arg__
+#define DATATYPE(arg__) pt::DataType::arg__
 
 template <typename Func>
 struct KernelArgsParseFunctor;
@@ -45,8 +45,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     // TODO(chenweihang): The fluid Tensor's default layout is NCHW,
     // it is not same as kernel's layout, we should fix this error on
     // fluid Tensor
-    auto default_tensor_layout = pt::DataLayout::kNCHW;
-    if (default_key.layout() != pt::DataLayout::kAny) {
+    auto default_tensor_layout = pt::DataLayout::NCHW;
+    if (default_key.layout() != pt::DataLayout::ANY) {
       default_tensor_layout = default_key.layout();
     }
     auto args_type = ParseArgType(Indices{});
@@ -106,11 +106,11 @@ struct KernelRegistrar {
                   KernelArgsParseFn args_parse_fn,
                   KernelArgsDefFn args_def_fn,
                   KernelFn kernel_fn) {
-    if (layout == DataLayout::kAny) {
-      for (DataLayout layout_iter = DataLayout::kNHWC;
-           layout_iter != DataLayout::kNumLayouts;
+    if (layout == DataLayout::ANY) {
+      for (DataLayout layout_iter = DataLayout::NHWC;
+           layout_iter != DataLayout::NUM_DATA_LAYOUTS;
            layout_iter++) {
-        for (DataType dtype = DataType::kBOOL; dtype != DataType::kNumDataTypes;
+        for (DataType dtype = DataType::BOOL; dtype != DataType::NUM_DATA_TYPES;
              dtype++) {
           ConstructKernel(kernel_name_cstr,
                           backend,
@@ -122,7 +122,7 @@ struct KernelRegistrar {
         }
       }
     } else {
-      for (DataType dtype = DataType::kBOOL; dtype != DataType::kNumDataTypes;
+      for (DataType dtype = DataType::BOOL; dtype != DataType::NUM_DATA_TYPES;
            dtype++) {
         ConstructKernel(kernel_name_cstr,
                         backend,

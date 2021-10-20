@@ -16,43 +16,11 @@ limitations under the License. */
 
 #include <ostream>
 
+// TODO(chenweihang): move this file into hapi/include when compile
+#include "paddle/tcmpt/common/backend.h"
+
 namespace paddle {
 namespace experimental {
-
-/**
- * [ Why need Backend? ]
- *
- * Backend not only means place. Backend is a superset of place.
- *
- * Place cannot indicate the difference in calculation methods on the device,
- * but in order to make the boundary of the kernel clearer and the function
- * more specific, we need to distinguish the calculation method.
- *
- * Such as the kernel for CUDA device, it can be a native CUDA kernel,
- * or a kernel implemented by CUDNN library.
- *
- * Note(chenweihang): HIP is not needed now, we can added it if needed
- * in the future
- */
-enum class Backend : uint8_t {
-  // kernel backend cannot be undefined
-  UNDEFINED = 0,
-
-  // basic kernel backend
-  CPU,
-
-  // various acceleration devices' backends
-  CUDA,
-  XPU,  // XPU currently does not exist at the same time as CUDA
-  NPU,  // NPU currently does not exist at the same time as CUDA
-
-  // the third library backend
-  MKLDNN,
-  CUDNN,
-
-  // end of backend types
-  kNumBackends,
-};
 
 /**
  * We use the backend to form a bit set to assist the runtime kernel selection,
@@ -75,7 +43,7 @@ class BackendSet final {
     if (b == Backend::UNDEFINED) {
       throw std::runtime_error("Backend argument can't be UNDEFINED.");
     }
-    return static_cast<bool>(bitset_ & BackendSet(b).bitset())
+    return static_cast<bool>(bitset_ & BackendSet(b).bitset());
   }
   bool IsEmpty() const { return bitset_ == 0; }
 
@@ -100,36 +68,6 @@ class BackendSet final {
   constexpr BackendSet(uint64_t bitset) : bitset_(bitset) {}
   uint64_t bitset_;
 };
-
-std::ostream& operator<<(std::ostream& os, Backend backend) {
-  switch (backend) {
-    case Backend::UNDEFINED:
-      os << "Undefined";
-      break;
-    case Backend::CPU:
-      os << "CPU";
-      break;
-    case Backend::CUDA:
-      os << "CUDA";
-      break;
-    case Backend::XPU:
-      os << "XPU";
-      break;
-    case Backend::NPU:
-      os << "NPU";
-      break;
-    case Backend::MKLDNN:
-      os << "MKLDNN";
-      break;
-    case Backend::CUDNN:
-      os << "CUDNN";
-      break;
-    default:
-      // TODO(chenweihang): replace by internal enforce method later
-      throw std::runtime_error("Invalid Backend type.");
-  }
-  return os;
-}
 
 }  // namespace experimental
 }  // namespace paddle

@@ -54,25 +54,11 @@ void DenseTensor::ShareAllocation(
 // TODO(chenweihang): Add other place branchs
 paddle::platform::Place DenseTensor::GetPlaceByBackend() const {
   switch (meta_.backend) {
-    case Backend::kCPU:
+    case Backend::CPU:
       return CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case Backend::kCUDA:
+    case Backend::CUDA:
       return CUDAPlace(paddle::platform::GetCurrentDeviceId());
-    case Backend::kCUDAPinned:
-      return CUDAPinnedPlace();
-#endif
-#ifdef PADDLE_WITH_XPU
-    case Backend::kXPU:
-      // TODO(chenweihang): add device id
-      return XPUPlace();
-#endif
-#ifdef PADDLE_WITH_NPU
-    case Backend::kNPU:
-      // TODO(chenweihang): add device id
-      return NPUPlace();
-    case Backend::kNPUPinned:
-      return NPUPinnedPlace();
 #endif
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(

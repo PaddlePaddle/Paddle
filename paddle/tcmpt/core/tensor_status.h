@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/tcmpt/common/backend.h"
 #include "paddle/tcmpt/common/data_type.h"
 #include "paddle/tcmpt/common/layout.h"
-#include "paddle/tcmpt/core/backend.h"
 
 namespace pt {
 

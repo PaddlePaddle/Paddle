@@ -33,9 +33,9 @@ TEST(API, flatten) {
   // 1. create tensor
   auto dense_x = std::make_shared<pt::DenseTensor>(
       pt::TensorMeta(framework::make_ddim({3, 2, 2, 3}),
-                     pt::Backend::kCPU,
-                     pt::DataType::kFLOAT32,
-                     pt::DataLayout::kNCHW),
+                     pt::Backend::CPU,
+                     pt::DataType::FLOAT32,
+                     pt::DataLayout::NCHW),
       pt::TensorStatus());
   auto* dense_x_data = dense_x->mutable_data<float>();
 
@@ -55,8 +55,8 @@ TEST(API, flatten) {
   ASSERT_EQ(out.shape()[2], expect_shape[2]);
   ASSERT_EQ(out.numel(), 36);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pt::DataType::kFLOAT32);
-  ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(out.type(), pt::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pt::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
   bool value_equal = true;
   auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());

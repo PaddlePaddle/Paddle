@@ -20,30 +20,25 @@ limitations under the License. */
 
 #include "paddle/tcmpt/api/include/core.h"
 #include "paddle/tcmpt/api/include/infershape.h"
-#include "paddle/tcmpt/hapi/lib/kernel_generate.h"
+#include "paddle/tcmpt/hapi/lib/kernel_dispatch.h"
 
 namespace paddle {
 namespace experimental {
 
 Tensor full_like(const Tensor& x, const pt::Scalar& value, pt::DataType dtype) {
   // 1. Get kernel signature and kernel
-  auto kernel_signature = ParseKernelNameAndKeyByArgs("fill_any_like", x);
-  VLOG(1) << kernel_signature.first;
-  VLOG(1) << kernel_signature.second;
-  VLOG(1) << pt::KernelFactory::Instance();
-
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pt::KernelFactory::Instance().SelectKernelOrThrowError(
-      kernel_signature.first, kernel_signature.second);
-  VLOG(1) << kernel;
+      "fill_any_like", kernel_key);
 
   // 2. Get Device Context
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_signature.second.backend());
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
   auto kernel_context = pt::KernelContext(*dev_ctx);
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pt::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
-
   kernel_context.EmplaceBackAttr(value);
 
   // 4. InferShape
@@ -52,13 +47,14 @@ Tensor full_like(const Tensor& x, const pt::Scalar& value, pt::DataType dtype) {
   // 5. Prepare outputs
   Tensor out;
   // InferDataType
-  if (dtype != pt::DataType::kUndef) {
+  if (dtype != pt::DataType::UNDEFINED) {
     out_meta.type = dtype;
   }
   auto dense_out =
       std::make_shared<pt::DenseTensor>(out_meta, pt::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
+  out.set_backend_set(x.backend_set());
 
   // 6. Call kernel
   kernel(&kernel_context);

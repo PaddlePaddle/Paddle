@@ -19,9 +19,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "paddle/tcmpt/common/backend.h"
 #include "paddle/tcmpt/common/data_type.h"
 #include "paddle/tcmpt/common/layout.h"
-#include "paddle/tcmpt/core/backend.h"
 #include "paddle/tcmpt/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -155,9 +155,9 @@ class KernelKey {
   constexpr static int kDataLayoutBitLength = 4;
   constexpr static int kDataTypeBitLength = 8;
 
-  Backend backend_{Backend::kUndef};
-  DataLayout layout_{DataLayout::kUndef};
-  DataType dtype_{DataType::kUndef};
+  Backend backend_{Backend::UNDEFINED};
+  DataLayout layout_{DataLayout::UNDEFINED};
+  DataType dtype_{DataType::UNDEFINED};
 
   // Avoid calculating Hash value at runtime.
   // Note: Now the number of bits we need does not exceed 32 bits, so there is

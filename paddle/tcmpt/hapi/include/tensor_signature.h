@@ -16,28 +16,29 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/tcmpt/hapi/include/backend.h"
+#include "paddle/tcmpt/hapi/include/backend_set.h"
 
 namespace paddle {
 namespace experimental {
 
 struct TensorSignature final {
- public:
+  std::string name{""};
+  BackendSet backend_set{Backend::CPU};
+
   TensorSignature() = default;
+
+  // open default methods if needed
   TensorSignature& operator=(const TensorSignature&) = delete;
   TensorSignature& operator=(TensorSignature&&) = delete;
   TensorSignature(const TensorSignature&) = delete;
   TensorSignature(TensorSignature&&) = delete;
 
-  TensorSignature(const std::string& t_name) : name(t_name) {}
-  TensorSignature(const BackendSet& t_backend_set)
+  explicit TensorSignature(const std::string& t_name) : name(t_name) {}
+  explicit TensorSignature(const Backend& t_backend) : backend_set(t_backend) {}
+  explicit TensorSignature(const BackendSet& t_backend_set)
       : backend_set(t_backend_set) {}
   TensorSignature(const std::string& t_name, const BackendSet& t_backend_set)
       : name(t_name), backend_set(t_backend_set) {}
-
- private:
-  std::string name{""};
-  BackendSet backend_set{Backend::CPU};
 };
 
 }  // namespace experimental

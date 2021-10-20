@@ -220,4 +220,4 @@ void Copy(const CUDAContext& dev_ctx,
 // TODO(chenweihang): replace by better impl
 PT_REGISTER_MODULE(UtilsCUDA);
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", CUDA, Any, pt::Copy) {}
+PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", CUDA, ANY, pt::Copy) {}

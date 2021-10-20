@@ -19,22 +19,14 @@ limitations under the License. */
 
 namespace pt {
 
-// TODO(chenweihang): Add other place branchs
+// TODO(chenweihang): Add other place trans cases later
 Backend TransToPtBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
-    return Backend::kCPU;
+    return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
-    return Backend::kCUDA;
-  } else if (paddle::platform::is_cuda_pinned_place(place)) {
-    return Backend::kCUDAPinned;
-  } else if (paddle::platform::is_xpu_place(place)) {
-    return Backend::kXPU;
-  } else if (paddle::platform::is_npu_place(place)) {
-    return Backend::kNPU;
-  } else if (paddle::platform::is_npu_pinned_place(place)) {
-    return Backend::kNPUPinned;
+    return Backend::CUDA;
   } else {
-    return Backend::kUndef;
+    return Backend::UNDEFINED;
   }
 }
 
@@ -44,75 +36,65 @@ pt::DataType TransToPtDataType(
   // the data type is used
   switch (dtype) {
     case paddle::framework::proto::VarType::FP32:
-      return DataType::kFLOAT32;
+      return DataType::FLOAT32;
     case paddle::framework::proto::VarType::FP64:
-      return DataType::kFLOAT64;
+      return DataType::FLOAT64;
     case paddle::framework::proto::VarType::INT64:
-      return DataType::kINT64;
+      return DataType::INT64;
     case paddle::framework::proto::VarType::INT32:
-      return DataType::kINT32;
+      return DataType::INT32;
     case paddle::framework::proto::VarType::INT8:
-      return DataType::kINT8;
+      return DataType::INT8;
     case paddle::framework::proto::VarType::UINT8:
-      return DataType::kUINT8;
+      return DataType::UINT8;
     case paddle::framework::proto::VarType::INT16:
-      return DataType::kINT16;
+      return DataType::INT16;
     case paddle::framework::proto::VarType::COMPLEX64:
-      return DataType::kCOMPLEX64;
+      return DataType::COMPLEX64;
     case paddle::framework::proto::VarType::COMPLEX128:
-      return DataType::kCOMPLEX128;
+      return DataType::COMPLEX128;
     case paddle::framework::proto::VarType::FP16:
-      return DataType::kFLOAT16;
+      return DataType::FLOAT16;
     case paddle::framework::proto::VarType::BF16:
-      return DataType::kBFLOAT16;
+      return DataType::BFLOAT16;
     case paddle::framework::proto::VarType::BOOL:
-      return DataType::kBOOL;
+      return DataType::BOOL;
     default:
-      return DataType::kUndef;
+      return DataType::UNDEFINED;
   }
 }
 
 DataLayout TransToPtDataLayout(const paddle::framework::DataLayout& layout) {
   switch (layout) {
     case paddle::framework::DataLayout::kNHWC:
-      return DataLayout::kNHWC;
+      return DataLayout::NHWC;
     case paddle::framework::DataLayout::kNCHW:
-      return DataLayout::kNCHW;
+      return DataLayout::NCHW;
     case paddle::framework::DataLayout::kAnyLayout:
-      return DataLayout::kAny;
+      return DataLayout::ANY;
     case paddle::framework::DataLayout::kMKLDNN:
-      return DataLayout::kMKLDNN;
+      return DataLayout::MKLDNN;
     default:
-      return DataLayout::kUndef;
+      return DataLayout::UNDEFINED;
   }
 }
 
 paddle::platform::Place TransToFluidPlace(const Backend& backend) {
-  // TODO(chenweihang): add other trans cases
+  // TODO(chenweihang): add other trans cases later
   switch (backend) {
-    case pt::Backend::kCPU:
+    case pt::Backend::CPU:
       return paddle::platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pt::Backend::kCUDA:
+    case pt::Backend::CUDA:
       return paddle::platform::CUDAPlace(
           paddle::platform::GetCurrentDeviceId());
 #endif
-#ifdef PADDLE_WITH_XPU
-    case pt::Backend::kXPU:
-      // TODO(chenweihang): add device id
-      return paddle::platform::XPUPlace();
-#endif
-#ifdef PADDLE_WITH_NPU
-    case pt::Backend::kNPU:
-      // TODO(chenweihang): add device id
-      return paddle::platform::NPUPlace();
-#endif
 #ifdef PADDLE_WITH_MKLDNN
-    case pt::Backend::kMKLDNN:
+    case pt::Backend::MKLDNN:
       return paddle::platform::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pt::Backend::kCUDNN:
+    case pt::Backend::CUDNN:
       return paddle::platform::CUDAPlace(
           paddle::platform::GetCurrentDeviceId());
 #endif
@@ -128,29 +110,29 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
   // Set the order of case branches according to the frequency with
   // the data type is used
   switch (dtype) {
-    case DataType::kFLOAT32:
+    case DataType::FLOAT32:
       return paddle::framework::proto::VarType::FP32;
-    case DataType::kFLOAT64:
+    case DataType::FLOAT64:
       return paddle::framework::proto::VarType::FP64;
-    case DataType::kINT64:
+    case DataType::INT64:
       return paddle::framework::proto::VarType::INT64;
-    case DataType::kINT32:
+    case DataType::INT32:
       return paddle::framework::proto::VarType::INT32;
-    case DataType::kINT8:
+    case DataType::INT8:
       return paddle::framework::proto::VarType::INT8;
-    case DataType::kUINT8:
+    case DataType::UINT8:
       return paddle::framework::proto::VarType::UINT8;
-    case DataType::kINT16:
+    case DataType::INT16:
       return paddle::framework::proto::VarType::INT16;
-    case DataType::kCOMPLEX64:
+    case DataType::COMPLEX64:
       return paddle::framework::proto::VarType::COMPLEX64;
-    case DataType::kCOMPLEX128:
+    case DataType::COMPLEX128:
       return paddle::framework::proto::VarType::COMPLEX128;
-    case DataType::kFLOAT16:
+    case DataType::FLOAT16:
       return paddle::framework::proto::VarType::FP16;
-    case DataType::kBFLOAT16:
+    case DataType::BFLOAT16:
       return paddle::framework::proto::VarType::BF16;
-    case DataType::kBOOL:
+    case DataType::BOOL:
       return paddle::framework::proto::VarType::BOOL;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -162,13 +144,13 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
 
 paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
   switch (layout) {
-    case DataLayout::kNHWC:
+    case DataLayout::NHWC:
       return paddle::framework::DataLayout::kNHWC;
-    case DataLayout::kNCHW:
+    case DataLayout::NCHW:
       return paddle::framework::DataLayout::kNCHW;
-    case DataLayout::kAny:
+    case DataLayout::ANY:
       return paddle::framework::DataLayout::kAnyLayout;
-    case DataLayout::kMKLDNN:
+    case DataLayout::MKLDNN:
       return paddle::framework::DataLayout::kMKLDNN;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(

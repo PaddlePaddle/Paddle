@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/kernel_context.h"
-#include "paddle/tcmpt/hapi/lib/kernel_generate.h"
+#include "paddle/tcmpt/hapi/lib/kernel_dispatch.h"
 #include "paddle/tcmpt/infershape/binary.h"
 
 namespace paddle {
@@ -31,17 +31,13 @@ namespace experimental {
 
 Tensor dot(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
-  auto kernel_signature = ParseKernelNameAndKeyByArgs("dot", x);
-  VLOG(1) << kernel_signature.first;
-  VLOG(1) << kernel_signature.second;
-  VLOG(1) << pt::KernelFactory::Instance();
-
-  auto kernel = pt::KernelFactory::Instance().SelectKernelOrThrowError(
-      kernel_signature.first, kernel_signature.second);
-  VLOG(1) << kernel;
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel =
+      pt::KernelFactory::Instance().SelectKernelOrThrowError("dot", kernel_key);
 
   // 2. Get Device Context
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_signature.second.backend());
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
   auto kernel_context = pt::KernelContext(*dev_ctx);
 
   // 3. Auto data transform
@@ -52,16 +48,15 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   // TODO(chenweihang): add transform impl
 
   // 4. InferShape
-  // TODO(chenweihang): how to auto selected infershape?
   auto out_meta = DotInferShape(dense_x->meta(), dense_y->meta());
 
   // 5. Prepare outputs
   Tensor out;
-  // TODO(chenweihang): deal with multiple outputs
   auto dense_out =
       std::make_shared<pt::DenseTensor>(out_meta, pt::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
+  out.set_backend_set(x.backend_set());
 
   // 6. Call kernel
   kernel(&kernel_context);

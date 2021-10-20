@@ -19,7 +19,7 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/tcmpt/core/tensor_base.h"
-#include "paddle/tcmpt/core/tensor_signature.h"
+#include "paddle/tcmpt/hapi/include/tensor_signature.h"
 
 /**
  * [ Why still include the fluid headers? ]
@@ -97,6 +97,7 @@ class Tensor final {
     if (impl_.get() == nullptr) {
       throw std::runtime_error("TensorImpl with nullptr is not supported");
     }
+    signature_.reset(new TensorSignature(impl_->backend()));
   }
 
   /* Part 2: Dimension, DataType and DataLayout methods */
@@ -140,25 +141,21 @@ class Tensor final {
    * Backend judgment APIs, shield the concept of Backend.
    */
   BackendSet backend_set() const { return signature_->backend_set; }
+  void set_backend_set(const BackendSet& backend_set) {
+    if (signature_ == nullptr) {
+      signature_.reset(new TensorSignature());
+    }
+    signature_->backend_set = backend_set;
+  }
 
-  bool is_cpu() const;
-  bool is_cuda() const;
-  bool is_hip() const;
-  bool is_xpu() const;
-  bool is_npu() const;
-  bool is_mkldnn() const;
-  bool is_cudnn() const;
+  bool is_cpu() const { return signature_->backend_set.Has(Backend::CPU); }
+  bool is_cuda() const { return signature_->backend_set.Has(Backend::CUDA); }
 
   /**
    * Backend convert APIs.
    */
   Tensor cpu() const;
   Tensor cuda() const;
-  Tensor hip() const;
-  Tensor xpu() const;
-  Tensor npu() const;
-  Tensor mkldnn() const;
-  Tensor cudnn() const;
 
   /* Part 4: Data Access methods */
   /**

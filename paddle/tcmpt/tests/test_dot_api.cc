@@ -33,17 +33,17 @@ TEST(API, dot) {
   // 1. create tensor
   auto dense_x = std::make_shared<pt::DenseTensor>(
       pt::TensorMeta(framework::make_ddim({3, 10}),
-                     pt::Backend::kCPU,
-                     pt::DataType::kFLOAT32,
-                     pt::DataLayout::kNCHW),
+                     pt::Backend::CPU,
+                     pt::DataType::FLOAT32,
+                     pt::DataLayout::NCHW),
       pt::TensorStatus());
   auto* dense_x_data = dense_x->mutable_data<float>();
 
   auto dense_y = std::make_shared<pt::DenseTensor>(
       pt::TensorMeta(framework::make_ddim({3, 10}),
-                     pt::Backend::kCPU,
-                     pt::DataType::kFLOAT32,
-                     pt::DataLayout::kNCHW),
+                     pt::Backend::CPU,
+                     pt::DataType::FLOAT32,
+                     pt::DataLayout::NCHW),
       pt::TensorStatus());
   auto* dense_y_data = dense_y->mutable_data<float>();
 
@@ -67,8 +67,8 @@ TEST(API, dot) {
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 3);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pt::DataType::kFLOAT32);
-  ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(out.type(), pt::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pt::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto expect_result = sum;

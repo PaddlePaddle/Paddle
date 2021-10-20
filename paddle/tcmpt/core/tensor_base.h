@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/tcmpt/core/storage.h"
 #include "paddle/tcmpt/core/utils/type_registry.h"
 
-#include "paddle/tcmpt/core/backend.h"
+#include "paddle/tcmpt/common/backend.h"
 
 namespace paddle {
 namespace tcmpt {

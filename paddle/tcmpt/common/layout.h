@@ -18,29 +18,29 @@ namespace paddle {
 namespace experimental {
 
 enum class DataLayout {
-  kUndef = 0,
-  kAny,
-  kNHWC,
-  kNCHW,
-  kMKLDNN,
-  kNumLayouts,
+  UNDEFINED = 0,
+  ANY,
+  NHWC,
+  NCHW,
+  MKLDNN,
+  NUM_DATA_LAYOUTS,
 };
 
 inline std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
   switch (dtype) {
-    case DataLayout::kUndef:
+    case DataLayout::UNDEFINED:
       os << "Undefined";
       break;
-    case DataLayout::kAny:
+    case DataLayout::ANY:
       os << "Any";
       break;
-    case DataLayout::kNHWC:
+    case DataLayout::NHWC:
       os << "NHWC";
       break;
-    case DataLayout::kNCHW:
+    case DataLayout::NCHW:
       os << "NCHW";
       break;
-    case DataLayout::kMKLDNN:
+    case DataLayout::MKLDNN:
       os << "MKLDNN";
       break;
     default:

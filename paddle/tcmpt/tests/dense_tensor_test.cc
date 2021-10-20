@@ -21,15 +21,15 @@ using DDim = paddle::framework::DDim;
 
 TEST(DenseTensor, Constructor) {
   pt::DenseTensor tensor(pt::TensorMeta(framework::make_ddim({5, 10}),
-                                        pt::Backend::kCPU,
-                                        pt::DataType::kFLOAT32,
-                                        pt::DataLayout::kNCHW,
+                                        pt::Backend::CPU,
+                                        pt::DataType::FLOAT32,
+                                        pt::DataLayout::NCHW,
                                         0UL),
                          pt::TensorStatus());
   ASSERT_EQ(tensor.dims().size(), 2);
-  ASSERT_EQ(tensor.backend(), pt::Backend::kCPU);
-  ASSERT_EQ(tensor.data_type(), pt::DataType::kFLOAT32);
-  ASSERT_EQ(tensor.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(tensor.backend(), pt::Backend::CPU);
+  ASSERT_EQ(tensor.data_type(), pt::DataType::FLOAT32);
+  ASSERT_EQ(tensor.layout(), pt::DataLayout::NCHW);
 }
 
 TEST(DenseTensor, Dims) {

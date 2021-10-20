@@ -33,9 +33,9 @@ TEST(API, full_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pt::DenseTensor>(
       pt::TensorMeta(framework::make_ddim({3, 2}),
-                     pt::Backend::kCPU,
-                     pt::DataType::kFLOAT32,
-                     pt::DataLayout::kNCHW),
+                     pt::Backend::CPU,
+                     pt::DataType::FLOAT32,
+                     pt::DataLayout::NCHW),
       pt::TensorStatus());
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
@@ -45,15 +45,15 @@ TEST(API, full_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = paddle::experimental::full_like(x, val, pt::DataType::kFLOAT32);
+  auto out = paddle::experimental::full_like(x, val, pt::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pt::DataType::kFLOAT32);
-  ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(out.type(), pt::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pt::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());
@@ -67,9 +67,9 @@ TEST(API, zeros_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pt::DenseTensor>(
       pt::TensorMeta(framework::make_ddim({3, 2}),
-                     pt::Backend::kCPU,
-                     pt::DataType::kFLOAT32,
-                     pt::DataLayout::kNCHW),
+                     pt::Backend::CPU,
+                     pt::DataType::FLOAT32,
+                     pt::DataLayout::NCHW),
       pt::TensorStatus());
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 1;
@@ -77,15 +77,15 @@ TEST(API, zeros_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = paddle::experimental::zeros_like(x, pt::DataType::kFLOAT32);
+  auto out = paddle::experimental::zeros_like(x, pt::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pt::DataType::kFLOAT32);
-  ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(out.type(), pt::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pt::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());
@@ -99,9 +99,9 @@ TEST(API, ones_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pt::DenseTensor>(
       pt::TensorMeta(framework::make_ddim({3, 2}),
-                     pt::Backend::kCPU,
-                     pt::DataType::kFLOAT32,
-                     pt::DataLayout::kNCHW),
+                     pt::Backend::CPU,
+                     pt::DataType::FLOAT32,
+                     pt::DataLayout::NCHW),
       pt::TensorStatus());
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
@@ -109,15 +109,15 @@ TEST(API, ones_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = paddle::experimental::ones_like(x, pt::DataType::kINT32);
+  auto out = paddle::experimental::ones_like(x, pt::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pt::DataType::kINT32);
-  ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(out.type(), pt::DataType::INT32);
+  ASSERT_EQ(out.layout(), pt::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());

@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/tcmpt/common/backend.h"
 #include "paddle/tcmpt/common/data_type.h"
 #include "paddle/tcmpt/common/layout.h"
-#include "paddle/tcmpt/core/backend.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/ddim.h"
@@ -27,9 +27,6 @@ limitations under the License. */
 // #include "paddle/fluid/framework/mixed_vector.h"
 
 namespace pt {
-
-using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
 
 // template <typename T>
 // using Vector = paddle::framework::Vector<T>;
@@ -74,7 +71,7 @@ struct TensorMeta {
 
   TensorMeta(TensorMeta&& meta)
       : dims(meta.dims),
-        backend_set(meta.backend_set),
+        backend(meta.backend),
         type(meta.type),
         layout(meta.layout),
         numel(meta.numel),
@@ -89,7 +86,7 @@ struct TensorMeta {
              size_t offset = 0UL,
              const LoD& lod = {})
       : dims(dims),
-        backend_set(backend),
+        backend(backend),
         type(type),
         layout(layout),
         offset(offset),
@@ -104,10 +101,9 @@ struct TensorMeta {
 
   DDim dims;
 
-  BackendSet backend_set{Backend::CPU};
-
-  DataType type{DataType::kFLOAT32};
-  DataLayout layout{DataLayout::kNCHW};
+  Backend backend{Backend::CPU};
+  DataType type{DataType::FLOAT32};
+  DataLayout layout{DataLayout::NCHW};
 
   /**
    * [ Why not calculate numel based on dims? ]

@@ -37,8 +37,8 @@ TEST(TcmptUtils, MakeTensor) {
   std::vector<float> expect_value = {0.2, 0.5};
   ASSERT_EQ(dense_x->data<float>()[0], expect_value[0]);
   ASSERT_EQ(dense_x->data<float>()[1], expect_value[1]);
-  ASSERT_EQ(dense_x->backend(), pt::Backend::kCPU);
-  ASSERT_EQ(dense_x->data_type(), pt::DataType::kFLOAT32);
+  ASSERT_EQ(dense_x->backend(), pt::Backend::CPU);
+  ASSERT_EQ(dense_x->data_type(), pt::DataType::FLOAT32);
 }
 
 TEST(TcmptUtils, VarToPtTensor) {
@@ -49,18 +49,18 @@ TEST(TcmptUtils, VarToPtTensor) {
   auto* data =
       value->mutable_data<int>(make_ddim({1, 1}), paddle::platform::CPUPlace());
   data[0] = 123;
-  pt::Backend expect_backend = pt::Backend::kCPU;
+  pt::Backend expect_backend = pt::Backend::CPU;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  expect_backend = pt::Backend::kCUDA;
+  expect_backend = pt::Backend::CUDA;
 #endif
-  auto tensor_def = pt::TensorArgDef(expect_backend, pt::DataLayout::kNCHW,
-                                     pt::DataType::kINT32);
+  auto tensor_def = pt::TensorArgDef(expect_backend, pt::DataLayout::NCHW,
+                                     pt::DataType::INT32);
   // 2. test API
   auto tensor_x = InputVariableToPtTensor(v, tensor_def);
   // 3. check result
   ASSERT_EQ(tensor_x->backend(), expect_backend);
-  ASSERT_EQ(tensor_x->data_type(), pt::DataType::kINT32);
+  ASSERT_EQ(tensor_x->data_type(), pt::DataType::INT32);
 }
 
 }  // namespace framework
