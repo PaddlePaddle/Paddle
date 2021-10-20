@@ -485,7 +485,6 @@ def triple_grad_check(x,
             var_to_np_array_in_scope(scope, place, v.name)
             for v in x_grads_grads
         ]
-    
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init
