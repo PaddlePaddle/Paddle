@@ -33,9 +33,9 @@ namespace paddle2cinn {
 using ir::Graph;
 using ir::Node;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
-using OpMapperContext = ::cinn::frontend::OpMapperContext;
-using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;
-using FeedInfoMap = absl::flat_hash_map<std::string, OpMapperContext::FeedInfo>;
+using OpMapperContext = CinnGraphSymbolization::OpMapperContext;
+using CinnOpDesc = CinnGraphSymbolization::CinnOpDesc;
+using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;
 
 namespace utils {
 

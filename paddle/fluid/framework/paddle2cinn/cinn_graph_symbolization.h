@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <map>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -73,16 +73,21 @@ class CinnGraphSymbolization {
   ::cinn::frontend::Program operator()();
 
   // return the internal variable map
-  const absl::flat_hash_map<std::string, ::cinn::frontend::Variable>& var_map()
+  const std::unordered_map<std::string, ::cinn::frontend::Variable>& var_map()
       const {
     return var_map_;
   }
 
   // return the map from the variable name in paddle model to cinn program.
-  const absl::flat_hash_map<std::string, std::string>&
-  var_model_to_program_map() const {
+  const std::unordered_map<std::string, std::string>& var_model_to_program_map()
+      const {
     return var_model_to_program_map_;
   }
+
+  using OpMapperContext = ::cinn::frontend::OpMapperContext;
+  using FeedInfoMap =
+      std::unordered_map<std::string, OpMapperContext::FeedInfo>;
+  using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;
 
  private:
   const int64_t graph_id_;
@@ -91,17 +96,13 @@ class CinnGraphSymbolization {
   const std::map<std::string, const LoDTensor*>& input_tensors_;
 
   // preserve local variable map
-  absl::flat_hash_map<std::string, ::cinn::frontend::Variable> var_map_;
-  absl::flat_hash_map<std::string, std::string> var_model_to_program_map_;
+  std::unordered_map<std::string, ::cinn::frontend::Variable> var_map_;
+  std::unordered_map<std::string, std::string> var_model_to_program_map_;
 
-  using OpMapperContext = ::cinn::frontend::OpMapperContext;
-  using FeedInfoMap =
-      absl::flat_hash_map<std::string, OpMapperContext::FeedInfo>;
   // transform all paddle var desc in feed list into cinn_var_descs_
   FeedInfoMap GetFeedInfoMapFromInput() const;
 
   // transform all paddle op desc in graph into cinn op desc
-  using CinnOpDesc = ::cinn::frontend::paddle::cpp::OpDesc;
   std::vector<std::unique_ptr<CinnOpDesc>> TransformAllGraphOpToCinn() const;
 
   // RunOp accept OpDesc and global run context then run
