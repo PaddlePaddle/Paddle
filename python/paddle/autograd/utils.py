@@ -15,22 +15,18 @@
 import paddle
 
 
-def _check_tensors(in_out_list, name):
-    assert in_out_list is not None, "{} should not be None".format(name)
-
-    if isinstance(in_out_list, (list, tuple)):
-        assert len(in_out_list) > 0, "{} connot be empyt".format(name)
-        for each_var in in_out_list:
+def _tensors(ts, name):
+    if isinstance(ts, (list, tuple)):
+        assert len(ts) > 0, "{} connot be empty".format(name)
+        for each_t in ts:
             assert isinstance(
-                each_var,
-                paddle.Tensor), "Elements of {} must be paddle.Tensor".format(
-                    name)
-        return list(in_out_list)
+                each_t, paddle.Tensor
+            ) or each_t is None, "Elements of {} must be paddle.Tensor or None".format(
+                name)
+        return list(ts)
     else:
-        assert isinstance(
-            in_out_list,
-            paddle.Tensor), "{} must be Tensor or list of Tensor".format(name)
-        return [in_out_list]
+        assert isinstance(ts, paddle.Tensor), "{} must be Tensor".format(name)
+        return [ts]
 
 
 def _stack_tensor_or_return_none(origin_list):

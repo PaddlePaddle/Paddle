@@ -55,6 +55,7 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
+    'is_compiled_with_npu',
     'Variable',
     'require_version',
     'device_guard',
@@ -312,6 +313,18 @@ def _current_expected_place():
                     "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_xpu():
+            try:
+                device_count = core.get_xpu_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.XPUPlace(0)
+            else:
+                warnings.warn(
+                    "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -380,6 +393,15 @@ def _xpu_ids():
     return device_ids
 
 
+def _npu_ids():
+    npus_env = os.getenv("FLAGS_selected_npus")
+    if npus_env:
+        device_ids = [int(s) for s in npus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_npu_device_count())
+    return device_ids
+
+
 def is_compiled_with_xpu():
     """
     Whether this whl package can be used to run the model on XPU.
@@ -393,6 +415,21 @@ def is_compiled_with_xpu():
             support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
+
+
+def is_compiled_with_npu():
+    """
+    Whether this whl package can be used to run the model on NPU.
+
+    Returns (bool): support npu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_npu = fluid.is_compiled_with_npu()
+    """
+    return core.is_compiled_with_npu()
 
 
 def disable_signal_handler():
@@ -536,6 +573,47 @@ def xpu_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
+
+
+def npu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
+    
+    This function creates a list of :code:`paddle.NPUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_npus` would be checked first. For example, if
+    :code:`FLAGS_selected_npus=0,1,2`, the returned list would
+    be [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
+    If :code:`FLAGS_selected_npus` is not set, all visible
+    npu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of NPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of NPU device ids.
+    Returns:
+        list of paddle.NPUPlace: Created NPU place list.
+    Examples:
+        .. code-block:: python
+
+            # required: npu
+
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            npu_places = static.npu_places()
+    """
+    assert core.is_compiled_with_npu(), \
+        "Not compiled with NPU"
+    if device_ids is None:
+        device_ids = _npu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.NPUPlace(dev_id) for dev_id in device_ids]
 
 
 def cpu_places(device_count=None):
@@ -1927,6 +2005,10 @@ class Variable(object):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_npu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.NPUPlace(p.npu_device_id())
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -6015,7 +6097,7 @@ class ParamBase(core.VarBase):
 
         self.need_clip = kwargs.get('need_clip', True)
 
-        self.is_distributed = False
+        self.is_distributed = kwargs.get('is_distributed', False)
         # self.block = default_main_program().global_block()
 
     @property
@@ -6083,7 +6165,6 @@ class ParamBase(core.VarBase):
         return new_param
 
     def _copy_to(self, device, blocking):
-        print("in ParamBase copy_to func")
         state = copy.deepcopy(self.__dict__)
         new_param = ParamBase(self.shape, self.dtype, **state)
         core.varbase_copy(self, new_param, device, blocking)
