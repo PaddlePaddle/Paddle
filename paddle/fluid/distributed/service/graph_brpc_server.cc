@@ -517,7 +517,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
     auto *closure = (DownpourBrpcClosure *)done;
     std::vector<std::unique_ptr<butil::IOBufBytesIterator>> res(
         remote_call_num);
-    size_t fail_num;
+    size_t fail_num = 0;
     for (size_t request_idx = 0; request_idx < remote_call_num; ++request_idx) {
       if (closure->check_response(request_idx, PS_GRAPH_SAMPLE_NEIGHBOORS) !=
           0) {
