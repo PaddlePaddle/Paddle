@@ -283,4 +283,4 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 self.success_log('RUN ' + str(prog_config) + ' vs ' +
                                  self.inference_config_str(pred_config))
 
-        # self.assertTrue(status)
+        self.assertTrue(status)
