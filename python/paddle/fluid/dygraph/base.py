@@ -414,7 +414,7 @@ def grad(outputs,
          no_grad_vars=None):
     ''' 
     .. note::
-        **This API is ONLY available in Dygraph mode.**
+        **This API is ONLY available in imperative mode.**
 
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 

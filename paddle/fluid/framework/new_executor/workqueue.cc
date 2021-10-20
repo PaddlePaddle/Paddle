@@ -18,14 +18,18 @@ class WorkQueueImpl : public WorkQueue {
   explicit WorkQueueImpl(const WorkQueueOptions& options)
       : WorkQueue(options), queue_(nullptr), tracker_(nullptr) {
     if (options_.track_task) {
-      tracker_ = new TaskTracker;
+      void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
+      tracker_ = new (storage) TaskTracker;
     }
     queue_ = new NonblockingThreadPool(options_.num_threads,
                                        options_.allow_spinning);
   }
 
   virtual ~WorkQueueImpl() {
-    delete tracker_;
+    if (tracker_ != nullptr) {
+      tracker_->~TaskTracker();
+      AlignedFree(tracker_);
+    }
     delete queue_;
   }
 
@@ -89,7 +93,8 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
   for (size_t idx = 0; idx < num_queues; ++idx) {
     const auto& options = queues_options_[idx];
     if (options.track_task && tracker_ == nullptr) {
-      tracker_ = new TaskTracker;
+      void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
+      tracker_ = new (storage) TaskTracker;
     }
     queues_[idx] = new (&queues_storage_[idx])
         NonblockingThreadPool(options.num_threads, options.allow_spinning);
@@ -100,7 +105,10 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
   for (auto queue : queues_) {
     queue->~NonblockingThreadPool();
   }
-  delete tracker_;
+  if (tracker_ != nullptr) {
+    tracker_->~TaskTracker();
+    AlignedFree(tracker_);
+  }
   free(queues_storage_);
 }
 
@@ -147,7 +155,7 @@ std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
                         "For a SingleThreadedWorkQueue, "
                         "WorkQueueOptions.num_threads must equals to 1."));
   std::unique_ptr<WorkQueue> ptr(new WorkQueueImpl(options));
-  return std::move(ptr);
+  return ptr;
 }
 
 std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(

@@ -43,9 +43,10 @@ limitations under the License. */
 #endif
 
 DECLARE_int32(paddle_num_threads);
-DEFINE_int32(multiple_of_cupti_buffer_size, 1,
-             "Multiple of the CUPTI device buffer size. If the timestamps have "
-             "been dropped when you are profiling, try increasing this value.");
+PADDLE_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size, 1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
 namespace platform {
