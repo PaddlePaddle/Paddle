@@ -16,12 +16,12 @@ from typing import Optional
 
 import paddle
 
-from .attribute import is_complex, is_floating_point
+from .tensor.attribute import is_complex, is_floating_point
 from .fft import fft_r2c, fft_c2r, fft_c2c
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
-from .. import _C_ops
+from .fluid.data_feeder import check_variable_and_dtype
+from .fluid.framework import in_dygraph_mode
+from .fluid.layer_helper import LayerHelper
+from . import _C_ops
 
 __all__ = [
     'stft',
