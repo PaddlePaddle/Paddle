@@ -1,4 +1,4 @@
-# copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
+# copyright (c) 2021 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ class SqueezeNet(nn.Layer):
     <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
-        version (str): version of squeezenet.
+        version (str): version of squeezenet. Choices: "1.0" or "1.1".
         num_classes (int): output dim of last fc layer. Default: 1000.
         with_pool (bool): use pool before the last fc layer or not. Default: True.
 
@@ -94,6 +94,12 @@ class SqueezeNet(nn.Layer):
         self.version = version
         self.num_classes = num_classes
         self.with_pool = with_pool
+
+        supported_versions = ['1.0', '1.1']
+        assert version in supported_versions, \
+            "supported versions are {} but input version is {}".format(
+                supported_versions, version)
+
         if self.version == "1.0":
             self._conv = Conv2D(
                 3,
