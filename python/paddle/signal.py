@@ -289,7 +289,7 @@ def stft(x,
             real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`(
             `onesided` is `False`)
     
-    Exampels:
+    Examples:
         .. code-block:: python
     
             import paddle
@@ -452,7 +452,7 @@ def istft(x,
         A tensor of least squares estimation of the reconstructed signal(s) with shape
             `[..., seq_length]`
 
-    Exampels:
+    Examples:
         .. code-block:: python
 
             import numpy as np
