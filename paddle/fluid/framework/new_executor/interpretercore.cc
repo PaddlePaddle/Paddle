@@ -375,7 +375,7 @@ void InterpreterCore::ExecuteInstructionList(
 }
 
 void InterpreterCore::RunNextInstructions(
-    const Instruction& instr, std::queue<size_t>* reserve_for_local_thread) {
+    const Instruction& instr, std::queue<size_t>* reserved_next_ops) {
   auto& next_instr = instr.next_instruction_;
   auto& atomic_deps = async_work_queue_.AtomicDeps();
   auto IsReady = [&](size_t next_id) {
@@ -394,12 +394,12 @@ void InterpreterCore::RunNextInstructions(
     // keep all async_ops running in current thread
     for (auto next_id : next_instr.direct_run_) {
       if (IsReady(next_id)) {
-        reserve_for_local_thread->push(next_id);
+        reserved_next_ops->push(next_id);
       }
     }
     for (auto next_id : next_instr.event_wait_run_) {
       if (IsReady(next_id)) {
-        reserve_for_local_thread->push(next_id);
+        reserved_next_ops->push(next_id);
       }
     }
   } else {
@@ -427,16 +427,16 @@ void InterpreterCore::RunNextInstructions(
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
-    if (first_op != 0) reserve_for_local_thread->push(first_op);
+    if (first_op != 0) reserved_next_ops->push(first_op);
   }
 }
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
-  std::queue<size_t> q;
-  q.push(instr_id);
-  while (!q.empty()) {
-    instr_id = q.front();
-    q.pop();
+  std::queue<size_t> ready_ops;
+  ready_ops.push(instr_id);
+  while (!ready_ops.empty()) {
+    instr_id = ready_ops.front();
+    ready_ops.pop();
     auto& instr_node = vec_instruction_[instr_id];
     platform::RecordEvent instruction_event(
         instr_node.kernel_func_.operator_base_->Type());
@@ -450,7 +450,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     // GC infomation
     CheckGC(instr_id, instr_node.gc_check_var_list);
 
-    RunNextInstructions(instr_node, &q);
+    RunNextInstructions(instr_node, &ready_ops);
   }
 }
 

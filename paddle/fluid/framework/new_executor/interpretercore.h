@@ -69,7 +69,7 @@ class InterpreterCore {
 
   void RunInstructionAsync(size_t instr_id);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserve_for_local_thread);
+                           std::queue<size_t>* reserved_next_ops);
   void AddFetch(const std::vector<std::string>& fetch_names);
 
   void BuildSkipShareLoDInfo();
