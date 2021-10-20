@@ -1104,6 +1104,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
+
+#if IS_TRT_VERSION_LT(7000)
+      if (!with_dynamic_shape) {
+        // TODO(inference): fix trt6 static plugin error.
+        VLOG(3) << "prelu static plugin in trt6 has bug.";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "mish") {
