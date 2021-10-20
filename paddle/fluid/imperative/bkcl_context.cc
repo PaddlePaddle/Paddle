@@ -92,7 +92,7 @@ void BKCLParallelContext::Init() {
             << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
             << " ring id: " << ring_id;
     // it will assign bkcl_comm in XPUDeviceContext within ring_id
-    platform::BKCLCommContext::Instance().CreateBKCLComm(
+    platform::BKCLCommContext::Instance().CreateComm(
         &bkcl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, xpu_id,
         ring_id);
   }
@@ -116,7 +116,7 @@ void BKCLParallelContext::InitWithRingID(int ring_id) {
           << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
           << " ring id: " << ring_id;
   // it will assign bkcl_comm in XPUDeviceContext within ring_id
-  platform::BKCLCommContext::Instance().CreateBKCLComm(
+  platform::BKCLCommContext::Instance().CreateComm(
       &bkcl_ids[0], strategy_.nranks_, strategy_.local_rank_, xpu_id, ring_id);
 }
 

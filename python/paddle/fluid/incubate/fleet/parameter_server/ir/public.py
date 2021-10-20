@@ -458,6 +458,7 @@ class CompileTimeStrategy(object):
         send_ctx = {}
         distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
                                                     True)
+        idx = 0
 
         if not self.is_geo_mode():
             for merged in self.merged_dense_pairs:
@@ -477,9 +478,10 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
+                idx += 1
 
             if self.is_async_mode():
-                name, ctx = self._step_ctx()
+                name, ctx = self._step_ctx(idx)
                 send_ctx[name] = ctx
         else:
             for pairs in self.origin_sparse_pairs:
@@ -503,7 +505,8 @@ class CompileTimeStrategy(object):
                                   param_ctx.is_distributed())
 
                 send_ctx[ctx.var_name()] = ctx
-            name, ctx = self._step_ctx()
+                idx += 1
+            name, ctx = self._step_ctx(idx)
             send_ctx[name] = ctx
         return send_ctx
 
@@ -511,6 +514,7 @@ class CompileTimeStrategy(object):
         send_ctx = {}
         distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
                                                     True)
+        idx = 0
 
         if self.is_geo_mode():
             for pairs in self.merged_dense_pairs:
@@ -527,7 +531,8 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(param, self.param_var_mapping, False, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
-            name, ctx = self._step_ctx()
+                idx += 1
+            name, ctx = self._step_ctx(idx)
             send_ctx[name] = ctx
         else:
             for merged in self.merged_dense_pairs:
@@ -545,8 +550,9 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
+                idx += 1
 
-            name, ctx = self._step_ctx()
+            name, ctx = self._step_ctx(idx)
             send_ctx[name] = ctx
         return send_ctx
 

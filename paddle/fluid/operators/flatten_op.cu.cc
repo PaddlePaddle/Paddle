@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/flatten_op.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     flatten, ops::FlattenKernel<paddle::platform::CUDADeviceContext, float>,
@@ -51,6 +52,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
                                       float>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
+                                      plat::float16>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
                                       double>,
     ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
                                       uint8_t>,
@@ -63,6 +66,8 @@ REGISTER_OP_CUDA_KERNEL(
     flatten_contiguous_range_grad,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
                                           float>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          plat::float16>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
                                           double>,
     ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,

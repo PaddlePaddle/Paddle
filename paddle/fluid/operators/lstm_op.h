@@ -40,6 +40,8 @@ template <typename DeviceContext, typename T>
 class LSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    bool is_test = ctx.Attr<bool>("is_test");
+
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
     auto* bias = ctx.Input<Tensor>("Bias");
@@ -47,7 +49,14 @@ class LSTMKernel : public framework::OpKernel<T> {
     auto* hidden_t0 = ctx.Input<Tensor>("H0");
     auto* cell_t0 = ctx.Input<Tensor>("C0");
 
-    auto* batch_gate = ctx.Output<LoDTensor>("BatchGate");
+    LoDTensor* batch_gate = nullptr;
+    LoDTensor batch_gate_temp;
+    if (is_test) {
+      batch_gate = &batch_gate_temp;
+      batch_gate->Resize(input->dims());
+    } else {
+      batch_gate = ctx.Output<LoDTensor>("BatchGate");
+    }
     batch_gate->mutable_data<T>(ctx.GetPlace());
     auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
     hidden_out->mutable_data<T>(ctx.GetPlace());
@@ -99,8 +108,13 @@ class LSTMKernel : public framework::OpKernel<T> {
     }
 
     // Use the local variable as here.
-    LoDTensor batch_hidden, batch_cell;
-    auto* batch_cell_pre_act = ctx.Output<LoDTensor>("BatchCellPreAct");
+    LoDTensor batch_hidden, batch_cell, batch_cell_pre_act_temp;
+    LoDTensor* batch_cell_pre_act;
+    if (is_test) {
+      batch_cell_pre_act = &batch_cell_pre_act_temp;
+    } else {
+      batch_cell_pre_act = ctx.Output<LoDTensor>("BatchCellPreAct");
+    }
     batch_hidden.mutable_data<T>(dims, ctx.GetPlace());
     batch_cell.mutable_data<T>(dims, ctx.GetPlace());
     batch_cell_pre_act->mutable_data<T>(dims, ctx.GetPlace());

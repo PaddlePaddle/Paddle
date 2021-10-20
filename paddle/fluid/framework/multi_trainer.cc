@@ -154,12 +154,14 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
-  //pull dense param first
 
+#ifdef PADDLE_WTIH_PSCORE
+  // pull dense param first
   auto communicator = paddle::distributed::Communicator::GetInstance();
   auto& recv_ctx = communicator->GetRecvCtxMap();
   communicator->PullDense(recv_ctx);
   VLOG(3) << "init other env done.";
+#endif
 }
 
 Scope* MultiTrainer::GetWorkerScope(int thread_id) {
@@ -220,6 +222,7 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
+
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -255,14 +258,15 @@ void MultiTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
-
 #ifdef PADDLE_WITH_HETERPS
   MergeDenseParam();
 #endif
 
+#if defined PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
   communicator->_worker_ptr->flush();
   VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+#endif
   root_scope_->DropKids();
 }
 

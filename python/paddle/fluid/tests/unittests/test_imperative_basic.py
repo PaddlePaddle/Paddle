@@ -41,7 +41,6 @@ class MyLayer(fluid.Layer):
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super(MLP, self).__init__()
-        self._linear1 = None
         self._linear1 = Linear(
             input_size,
             3,
@@ -607,11 +606,20 @@ class TestImperative(unittest.TestCase):
 
                 mlp2.clear_gradients()
                 self.assertTrue(np.array_equal(clear_loss.grad.numpy(), [1]))
-                if ((batch_id + 1) % 10) == 0:
+                if ((batch_id + 1) % 10) % 2 == 0:
                     mlp1.clear_gradients()
                     expected_weight1_grad = 0.
                     expected_bias1_grad = 0.
                     expected_weight2_grad = 0.
+                    expected_bias2_grad = 0.
+                elif ((batch_id + 1) % 10) % 2 == 1:
+                    mlp1.clear_gradients()
+                    mlp1._linear1.weight._set_grad_ivar(
+                        paddle.ones([input_size, 3]))
+                    mlp1._linear2.weight._set_grad_ivar(paddle.ones([3, 4]))
+                    expected_weight1_grad = 1.
+                    expected_bias1_grad = 0.
+                    expected_weight2_grad = 1.
                     expected_bias2_grad = 0.
 
         with fluid.dygraph.guard():
@@ -831,6 +839,14 @@ class TestDygraphGuardWithError(unittest.TestCase):
         with self.assertRaisesRegexp(TypeError,
                                      "Please use `with fluid.dygraph.guard()"):
             y = fluid.layers.matmul(x, x)
+
+
+class TestMetaclass(unittest.TestCase):
+    def test_metaclass(self):
+        self.assertEqual(type(MyLayer).__name__, 'type')
+        self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
+        self.assertEqual(
+            type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')
 
 
 if __name__ == '__main__':

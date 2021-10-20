@@ -50,7 +50,7 @@ def parse_table_class(varname, o_main_program):
             if op.has_attr('table_class') and op.attr("table_class") != "none":
                 return op.attr('table_class')
             else:
-                return "CtrSparseTable"
+                return "MemorySparseTable"
 
 
 class Accessor:
@@ -96,10 +96,11 @@ class CommonAccessor:
         opt_input_map["adam"] = [("Param", None), ("Moment1", None),
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
-        opt_input_map["adam_d2sum"] = [("Param", None), ("D2Sum", None),
-                                 ("G2Sum", None), ("Moment", None),
-                                 ("MomentDecayRate", 1), ("AdaDecayRate", 1),
-                                 ("AdaEpsilon", 1), ("LearningRate", 1)]
+        opt_input_map["adam_d2sum"] = [
+            ("Param", None), ("D2Sum", None), ("G2Sum", None), ("Moment", None),
+            ("MomentDecayRate", 1), ("AdaDecayRate", 1), ("AdaEpsilon", 1),
+            ("LearningRate", 1)
+        ]
         opt_input_map["sum"] = [("Param", None)]
         opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
                                           ("LearningRate", 1)]
@@ -111,7 +112,7 @@ class CommonAccessor:
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
         opt_attr_map["adam_d2sum"] = [("beta1", "f"), ("beta2", "f"),
-                                ("epsilon", "f")]
+                                      ("epsilon", "f")]
 
         opt_init_map = {}
         opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
@@ -223,18 +224,19 @@ class CommonAccessor:
                         shape = self.get_shard(total_dims, pserver_num,
                                                pserver_id)
                 dims.append(shape)
-                
+
                 #for initializers
                 if formal_name == "Param" or formal_name == "LearningRate":
-                    param = main_program.global_block().vars[oop.input(formal_name)[
-                            0]]
+                    param = main_program.global_block().vars[oop.input(
+                        formal_name)[0]]
                     #TODO: for dense learning_rate, can be different from sparse lr
                     if formal_name == "LearningRate" and param.name != "learning_rate_0":
                         warnings.warn("will support decay soon")
-                        param = main_program.global_block().vars["learning_rate_0"]
+                        param = main_program.global_block().vars[
+                            "learning_rate_0"]
 
                     initializer = self.get_initializer_attr(param.name,
-                                                    startup_program)
+                                                            startup_program)
                 elif formal_name == "MomentDecayRate":
                     initializer = "fill_constant&0.99"
                 elif formal_name == "AdaDecayRate":
@@ -250,11 +252,12 @@ class CommonAccessor:
                     initializer = "fill_constant&0"
                     initializers.append(initializer)
                 else:
-                    param = main_program.global_block().vars[oop.input(formal_name)[
-                        0]]
+                    param = main_program.global_block().vars[oop.input(
+                        formal_name)[0]]
                     if formal_name == "LearningRate" and param.name != "learning_rate_0":
                         warnings.warn("will support decay soon")
-                        param = main_program.global_block().vars["learning_rate_0"]
+                        param = main_program.global_block().vars[
+                            "learning_rate_0"]
 
                     if shape is None:
                         if is_sparse:
@@ -355,10 +358,12 @@ class Table:
 
         if self.accessor_proto is not None:
             accessor_str = "{}accessor {{{}\n{}}}"
-            accessor_str = accessor_str.format(conv_indent(indent), self.accessor_proto, conv_indent(indent))
+            accessor_str = accessor_str.format(
+                conv_indent(indent), self.accessor_proto, conv_indent(indent))
             attrs += accessor_str + "\n"
-            return table_str.format(conv_indent(indent), attrs, conv_indent(indent))
-        
+            return table_str.format(
+                conv_indent(indent), attrs, conv_indent(indent))
+
         if self.accessor is not None:
             attrs += self.accessor.to_string(indent)
             attrs += "\n"
@@ -842,10 +847,12 @@ class TheOnePSRuntime(RuntimeBase):
                     else:
                         table.table_class = parse_table_class(
                             common.table_name, self.origin_main_program)
-                    table_proto = self.context["user_defined_strategy"].sparse_table_configs
+                    table_proto = self.context[
+                        "user_defined_strategy"].sparse_table_configs
                     table.shard_num = table_proto.shard_num
                     from google.protobuf import text_format
-                    table.accessor_proto = text_format.MessageToString(table_proto.accessor)
+                    table.accessor_proto = text_format.MessageToString(
+                        table_proto.accessor)
                     print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
@@ -858,8 +865,7 @@ class TheOnePSRuntime(RuntimeBase):
                                           ctx.is_sparse(),
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
-                                          self.compiled_strategy,
-                                          adam_d2sum)
+                                          self.compiled_strategy, adam_d2sum)
 
                 if ctx.is_sparse():
                     common.parse_entry(common.table_name,
@@ -926,7 +932,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
-        fs_client = fsClient(self.context["user_defined_strategy"].fs_client_param)
+        fs_client = fsClient(self.context["user_defined_strategy"]
+                             .fs_client_param)
         proto_txt = proto_txt + "\n" + fs_client.to_string()
         #with open('./sparse_table.prototxt') as f:
         #    proto_txt = f.read()
@@ -1181,7 +1188,8 @@ class TheOnePSRuntime(RuntimeBase):
             use_origin_program=True)
         self._communicator.pull_dense(denses)
 
-        generate_vars = self.context["user_defined_strategy"].trainer_desc_configs["stat_var_names"]
+        generate_vars = self.context[
+            "user_defined_strategy"].trainer_desc_configs["stat_var_names"]
         remaining_vars = list(
             filter(
                 TheOnePSRuntime.__exclude_vars(generate_vars),
@@ -1189,7 +1197,9 @@ class TheOnePSRuntime(RuntimeBase):
         for var in remaining_vars:
             tensor = var.get_value()
             paddle.save(
-                tensor, os.path.join(model_path, var.name), use_binary_format=True)
+                tensor,
+                os.path.join(model_path, var.name),
+                use_binary_format=True)
 
         self._ps_inference_save_persistables(executor, dirname, infer_program,
                                              mode)
@@ -1214,8 +1224,10 @@ class TheOnePSRuntime(RuntimeBase):
             values.extend(names)
         return values
 
-    def _ps_inference_load_inference_model(self, dirname,
-                                       mode=0, main_program=None):
+    def _ps_inference_load_inference_model(self,
+                                           dirname,
+                                           mode=0,
+                                           main_program=None):
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 

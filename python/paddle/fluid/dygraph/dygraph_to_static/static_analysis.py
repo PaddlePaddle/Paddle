@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import gast
+from paddle.utils import gast
 from .utils import is_paddle_api, is_dygraph_api, is_numpy_api, index_in_list
 
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']

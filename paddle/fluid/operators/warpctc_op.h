@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
@@ -150,7 +152,7 @@ class WarpCTCFunctor {
     PADDLE_ENFORCE_EQ(
         CTC_STATUS_SUCCESS, status,
         platform::errors::PreconditionNotMet(
-            "warp-ctc [version %d] Error in get_workspace_size: %s",
+            "warp-ctc [version %d] Error in ComputeCtcLossFunctor: %s",
             warpctc_version_, platform::dynload::ctcGetStatusString(status)));
   }
 
@@ -199,6 +201,27 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       sequence_width = logits->dims()[2];
       max_sequence_length = logits->dims()[0];
 
+      PADDLE_ENFORCE_GT(max_sequence_length, 0,
+                        platform::errors::InvalidArgument(
+                            "The first dimension of Input(Logits) should be "
+                            "greater than zero "
+                            "but received %d. ",
+                            max_sequence_length));
+
+      PADDLE_ENFORCE_GT(num_sequences, 0,
+                        platform::errors::InvalidArgument(
+                            "The second dimension of Input(Logits) should be "
+                            "greater than zero "
+                            "but received %d. ",
+                            num_sequences));
+
+      PADDLE_ENFORCE_GT(sequence_width, 0,
+                        platform::errors::InvalidArgument(
+                            "The third dimension of Input(Logits) should be "
+                            "greater than zero "
+                            "but received %d. ",
+                            sequence_width));
+
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
       auto* labels_length = ctx.Input<framework::Tensor>("LabelLength");
       framework::Tensor logits_length_cpu;
@@ -228,6 +251,13 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       logits_lod = framework::ToAbsOffset(logits->lod())[0];
       auto logits_dims = logits->dims();
+
+      PADDLE_ENFORCE_GT(logits_dims[0], 0,
+                        platform::errors::InvalidArgument(
+                            "The first dimension of Input(Logits) should be "
+                            "greater than zero "
+                            "but received %d. ",
+                            logits_dims[0]));
 
       PADDLE_ENFORCE_EQ(
           logits_dims[0], static_cast<int64_t>(logits_lod.back()),
@@ -285,8 +315,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       math::PaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *logits,
-          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */,
-          math::kLengthBatchWidth);
+          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */, false,
+          false, math::kLengthBatchWidth);
     }
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
@@ -321,7 +351,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
             ctx.template device_context<DeviceContext>(), *label,
             &warpctc_label, label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
-            false /*norm_by_times*/, math::kBatchLengthWidth);
+            false /*norm_by_times*/, false, false, math::kBatchLengthWidth);
       } else {
         LoDTensor gpu_label;
         gpu_label.mutable_data<int>(
@@ -331,7 +361,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
             ctx.template device_context<DeviceContext>(), *label, &gpu_label,
             label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
-            false /*norm_by_times*/, math::kBatchLengthWidth);
+            false /*norm_by_times*/, false, false, math::kBatchLengthWidth);
         TensorCopySync(gpu_label, platform::CPUPlace(), &warpctc_label);
       }
     } else {
@@ -360,62 +390,74 @@ template <typename DeviceContext, typename T>
 class WarpCTCGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
     auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
-    const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
+    bool norm_by_batchsize = ctx.Attr<bool>("norm_by_batchsize");
+    bool norm_by_total_logits_len = ctx.Attr<bool>("norm_by_total_logits_len");
+
+    if ((norm_by_times && norm_by_batchsize) ||
+        (norm_by_times && norm_by_total_logits_len) ||
+        (norm_by_batchsize && norm_by_total_logits_len)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "[warpctc grad] norm_by_times, norm_by_batchsize and "
+          "norm_by_total_logits_len "
+          "should one be true."));
+    }
 
     if (ctx.HasInput("LogitsLength")) {
-      size_t max_seq_length = warpctc_grad->dims()[0];
-      size_t num_sequences = warpctc_grad->dims()[1];
-      size_t seq_width = warpctc_grad->dims()[2];
+      int max_seq_length = warpctc_grad->dims()[0];  // Tmax
+      int num_sequences = warpctc_grad->dims()[1];   // B
+      int seq_width = warpctc_grad->dims()[2];       // D
 
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
-      framework::Tensor logits_length_cpu;
-      framework::TensorCopy(*logits_length, platform::CPUPlace(),
-                            &logits_length_cpu);
+      // B
+      auto logits_len_e =
+          framework::EigenTensor<int64_t, 1>::From(*logits_length);
+      // (B, 1)
+      auto loss_grad_e = framework::EigenTensor<T, 2>::From(*loss_grad);
+      // (T, B, D)
+      auto warpctc_grad_e = framework::EigenTensor<T, 3>::From(*warpctc_grad);
 
-      LoDTensor logits_grad_with_lod;
-      auto logits_grad_dims =
-          framework::make_ddim({static_cast<int64_t>(max_seq_length),
-                                static_cast<int64_t>(num_sequences),
-                                static_cast<int64_t>(seq_width)});
-      T* logits_grad_cpu_data = logits_grad_with_lod.mutable_data<T>(
-          logits_grad_dims, platform::CPUPlace());
+      auto logits_grad_e = framework::EigenTensor<T, 3>::From(*logits_grad);
 
-      TensorCopySync(*warpctc_grad, platform::CPUPlace(),
-                     &logits_grad_with_lod);
+      Eigen::DSizes<int, 3> grad_shape(1, num_sequences, 1);
+      Eigen::DSizes<int, 3> bcast(max_seq_length, 1, seq_width);
+      auto logits_g = warpctc_grad_e *
+                      loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
 
-      Tensor loss_grad_cpu;
-      loss_grad_cpu.mutable_data<T>(loss_grad->dims(), platform::CPUPlace());
-      TensorCopySync(*loss_grad, platform::CPUPlace(), &loss_grad_cpu);
-
-      LoDTensor scaled_logits;
-      T* scaled_logits_data =
-          scaled_logits.mutable_data<T>(logits_grad_dims, platform::CPUPlace());
-
-      const T* loss_grad_data = loss_grad_cpu.data<T>();
-      for (size_t i = 0; i < max_seq_length; ++i) {
-        for (size_t j = 0; j < num_sequences; ++j) {
-          T scale = 1.0;
-          if (norm_by_times) {
-            scale = 1.0 / static_cast<T>(logits_length_cpu.data<int64_t>()[j]);
-          }
-          for (size_t k = 0; k < seq_width; ++k) {
-            size_t idx = i * (num_sequences * seq_width) + j * seq_width + k;
-            scaled_logits_data[idx] =
-                logits_grad_cpu_data[idx] * loss_grad_data[j] * scale;
-          }
-        }
+      auto* place = ctx.template device_context<DeviceContext>().eigen_device();
+      if (norm_by_total_logits_len) {
+        // Compute the avg. log-probability per batch sample and frame.
+        // Rank is 0
+        auto inv_len = logits_len_e.sum().cast<T>().inverse().eval();
+        logits_grad_e.device(*place) =
+            logits_g *
+            inv_len.reshape(Eigen::DSizes<int, 3>{1, 1, 1})
+                .broadcast(Eigen::DSizes<int, 3>{max_seq_length, num_sequences,
+                                                 seq_width});
+      } else if (norm_by_batchsize) {
+        // Compute the avg. log-probability per batch sample.
+        T scale = 1.0 / static_cast<T>(num_sequences);
+        logits_grad_e.device(*place) = logits_g * scale;
+      } else if (norm_by_times) {
+        auto scales = logits_len_e.cast<T>()
+                          .inverse()
+                          .reshape(grad_shape)
+                          .broadcast(bcast)
+                          .eval();
+        logits_grad_e.device(*place) = logits_g * scales;
+      } else {
+        logits_grad_e.device(*place) = logits_g;
       }
-
-      TensorCopySync(scaled_logits, ctx.GetPlace(), logits_grad);
     } else {
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *warpctc_grad,
-          logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
+          logits_grad, -1, 0, norm_by_times, norm_by_batchsize,
+          norm_by_total_logits_len, math::kLengthBatchWidth);
 
       const T* loss_grad_data = loss_grad->data<T>();
       math::ScaleLoDTensorFunctor<DeviceContext, T>()(

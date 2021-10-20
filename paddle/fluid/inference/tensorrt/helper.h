@@ -154,6 +154,16 @@ inline void PrintITensorShape(nvinfer1::ITensor* X) {
   std::cout << "]\n";
 }
 
+template <typename T>
+inline std::string Vec2Str(const std::vector<T>& vec) {
+  std::ostringstream os;
+  os << "(";
+  for (size_t i = 0; i < vec.size() - 1; ++i) {
+    os << vec[i] << ",";
+  }
+  os << vec[vec.size() - 1] << ")";
+  return os.str();
+}
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

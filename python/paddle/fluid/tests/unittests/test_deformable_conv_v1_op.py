@@ -108,7 +108,7 @@ def dconv_im2col_gemm(input, offset, filter, group, conv_param):
 class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
         self.op_type = "deformable_conv_v1"
-        self.dtype = np.float32
+        self.init_type()
         self.init_group()
         self.init_dilation()
         self.init_test_case()
@@ -176,6 +176,9 @@ class TestModulatedDeformableConvOp(OpTest):
 
     def init_group(self):
         self.groups = 1
+
+    def init_type(self):
+        self.dtype = np.float32
 
 
 class TestWithStride(TestModulatedDeformableConvOp):
@@ -251,6 +254,11 @@ class TestWithGroup(TestModulatedDeformableConvOp):
 
     def init_group(self):
         self.groups = 2
+
+
+class TestWithDouble(TestModulatedDeformableConvOp):
+    def init_type(self):
+        self.dtype = np.float64
 
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):

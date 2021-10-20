@@ -24,6 +24,10 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#ifdef PADDLE_WITH_GLOO
+#include <gloo/broadcast.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 
 #include "paddle/fluid/framework/data_feed.h"
 
@@ -202,7 +206,7 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
-  virtual void GlobalShuffle(int thread_num = -1);
+  virtual void GlobalShuffle(int thread_num = -1) {}
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
   virtual const std::vector<T>& GetSlotsOriginalData() {
     return slots_shuffle_original_data_;
@@ -228,6 +232,11 @@ class DatasetImpl : public Dataset {
                                        bool discard_remaining_ins = false);
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
+  /* for enable_heterps_
+  virtual void EnableHeterps(bool enable_heterps) {
+    enable_heterps_ = enable_heterps;
+  }
+  */
 
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
@@ -245,7 +254,10 @@ class DatasetImpl : public Dataset {
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
-                                const std::string& msg);
+                                const std::string& msg) {
+    // TODO(yaoxuefeng) for SlotRecordDataset
+    return -1;
+  }
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> preload_readers_;
   paddle::framework::Channel<T> input_channel_;
@@ -292,6 +304,7 @@ class DatasetImpl : public Dataset {
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
   std::vector<T> input_records_;  // only for paddleboxdatafeed
+  bool enable_heterps_ = false;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
@@ -320,6 +333,32 @@ class MultiSlotDataset : public DatasetImpl<Record> {
       const std::unordered_set<uint16_t>& slots_to_replace,
       std::vector<Record>* result);
   virtual ~MultiSlotDataset() {}
+  virtual void GlobalShuffle(int thread_num = -1);
+  virtual void DynamicAdjustReadersNum(int thread_num);
+  virtual void PrepareTrain();
+
+ protected:
+  virtual int ReceiveFromClient(int msg_type, int client_id,
+                                const std::string& msg);
+};
+class SlotRecordDataset : public DatasetImpl<SlotRecord> {
+ public:
+  SlotRecordDataset() { SlotRecordPool(); }
+  virtual ~SlotRecordDataset() {}
+  // create input channel
+  virtual void CreateChannel();
+  // create readers
+  virtual void CreateReaders();
+  // release memory
+  virtual void ReleaseMemory();
+  virtual void GlobalShuffle(int thread_num = -1);
+  virtual void DynamicAdjustChannelNum(int channel_num,
+                                       bool discard_remaining_ins);
+  virtual void PrepareTrain();
+  virtual void DynamicAdjustReadersNum(int thread_num);
+
+ protected:
+  bool enable_heterps_ = true;
 };
 
 }  // end namespace framework

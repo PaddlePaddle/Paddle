@@ -143,7 +143,8 @@ class PartialSumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<int>("start_index", "The start index of tensor wanted to be added.")
         .SetDefault(0);
     AddAttr<int>("length", "The length of tensor wanted to be added.")

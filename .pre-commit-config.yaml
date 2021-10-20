@@ -49,4 +49,7 @@ repos:
         entry: python ./tools/codestyle/copyright.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py|sh)$
-        exclude: (?!.*third_party)^.*$ | (?!.*book)^.*$
+        exclude: |
+            (?x)^(
+                paddle/utils/.*
+            )$

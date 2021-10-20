@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 
 namespace paddle {
@@ -54,7 +53,9 @@ void format_string_append(std::string& str, const char* fmt,  // NOLINT
   CHECK_GE(len, 0);
   size_t oldlen = str.length();
   str.resize(oldlen + len + 1);
-  CHECK(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) == len);
+
+  CHECK(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) ==  // NOLINT
+        len);
   str.resize(oldlen + len);
 }
 
@@ -68,7 +69,7 @@ template <class... ARGS>
 std::string format_string(const char* fmt, ARGS&&... args) {
   std::string str;
   format_string_append(str, fmt, args...);
-  return std::move(str);
+  return str;
 }
 
 template <class... ARGS>
@@ -95,6 +96,9 @@ inline int str_to_float(const char* str, float* v) {
   }
   return index;
 }
+
+// checks whether the test string is a suffix of the input string.
+bool ends_with(std::string const& input, std::string const& test);
 
 // split string by delim
 template <class T = std::string>
@@ -155,13 +159,34 @@ template <class Container>
 std::string join_strings(const Container& strs, char delim) {
   std::string str;
 
-  int i = 0;
+  size_t i = 0;
   for (auto& elem : strs) {
     if (i > 0) {
       str += delim;
     }
 
-    str += boost::lexical_cast<std::string>(elem);
+    std::stringstream ss;
+    ss << elem;
+    str += ss.str();
+    ++i;
+  }
+
+  return str;
+}
+
+template <class Container>
+std::string join_strings(const Container& strs, const std::string& delim) {
+  std::string str;
+
+  size_t i = 0;
+  for (auto& elem : strs) {
+    if (i > 0) {
+      str += delim;
+    }
+
+    std::stringstream ss;
+    ss << elem;
+    str += ss.str();
     ++i;
   }
 

@@ -240,13 +240,18 @@ void HogwildWorker::TrainFiles() {
     }
 
     total_ins_num += cur_batch;
-    ++ batch_cnt;
+    ++batch_cnt;
     PrintFetchVars();
     thread_scope_->DropKids();
   }
   timeline.Pause();
   VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num;
+
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
+  }
+
 #if defined PADDLE_WITH_PSCORE
   if (thread_barrier_) {
     paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();

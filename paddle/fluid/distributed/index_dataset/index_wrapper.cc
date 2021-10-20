@@ -17,8 +17,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/io/fs.h"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 
 namespace paddle {
@@ -65,7 +63,7 @@ int TreeIndex::Load(const std::string filename) {
     if (item.key() == ".tree_meta") {
       meta_.ParseFromString(item.value());
     } else {
-      auto code = boost::lexical_cast<uint64_t>(item.key());
+      auto code = std::stoull(item.key());
       IndexNode node;
       node.ParseFromString(item.value());
       PADDLE_ENFORCE_NE(node.id(), 0,
