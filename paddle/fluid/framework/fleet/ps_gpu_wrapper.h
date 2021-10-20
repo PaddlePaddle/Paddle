@@ -240,6 +240,12 @@ class PSGPUWrapper {
                          mf_max_bound);
     }
   }
+  void SetDate(int year, int month, int day) {
+    year_ = year;
+    month_ = month;
+    day_ = day;
+  }
+
   void SetDataset(Dataset* dataset) { dataset_ = dataset; }
 
   // PSGPUWrapper singleton
@@ -283,6 +289,9 @@ class PSGPUWrapper {
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;
+  int year_;
+  int month_;
+  int day_;
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
