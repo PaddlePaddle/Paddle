@@ -79,6 +79,20 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor>(
       pten::TransToPtDataLayout(tensor.layout()));
 }
 
+template <>
+void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
+                                        LoDTensor* out) {
+  out->ResetHolderWithType(tensor_impl->allocation(),
+                           pten::TransToProtoVarType(tensor_impl->data_type()));
+}
+
+template <>
+void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
+                                        Tensor* out) {
+  out->ResetHolderWithType(tensor_impl->allocation(),
+                           pten::TransToProtoVarType(tensor_impl->data_type()));
+}
+
 std::shared_ptr<pten::TensorBase> InputVariableToPtTensor(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def) {
   auto expected_place = pten::TransToFluidPlace(arg_def.backend);
