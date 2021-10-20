@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/cuda/math.h"
 
-#include "paddle/pten/kernels/common/eigen/mean.h"
-#include "paddle/pten/kernels/common/eigen/scale.h"
-#include "paddle/pten/kernels/common/eigen/sign.h"
+#include "paddle/pten/kernels/functions/eigen/mean.h"
+#include "paddle/pten/kernels/functions/eigen/scale.h"
+#include "paddle/pten/kernels/functions/eigen/sign.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"

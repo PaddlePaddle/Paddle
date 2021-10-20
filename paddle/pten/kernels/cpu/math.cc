@@ -14,9 +14,9 @@
 
 #include "paddle/pten/kernels/cpu/math.h"
 
-#include "paddle/pten/kernels/common/eigen/mean.h"
-#include "paddle/pten/kernels/common/eigen/scale.h"
-#include "paddle/pten/kernels/common/eigen/sign.h"
+#include "paddle/pten/kernels/functions/eigen/mean.h"
+#include "paddle/pten/kernels/functions/eigen/scale.h"
+#include "paddle/pten/kernels/functions/eigen/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"

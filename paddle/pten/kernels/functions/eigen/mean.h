@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/common/eigen/common.h"
+#include "paddle/pten/kernels/functions/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
