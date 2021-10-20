@@ -132,7 +132,7 @@ class Pool3dOpConverter : public OpConverter {
         layer = pool_layer;
       } else if (global_pooling) {
         auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,
-                                                  reduce_operation, 12, true);
+                                                  reduce_operation, 28, true);
         layer = reduce_layer;
       } else {
 #if IS_TRT_VERSION_GE(6000)
