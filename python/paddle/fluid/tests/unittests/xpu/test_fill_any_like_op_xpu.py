@@ -27,11 +27,13 @@ import numpy as np
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
 
+paddle.enable_static()
 
-class TestFillAnyLikeOp(XPUOpTest):
+
+class TestFillAnyLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
-        self.dtype = np.int32
+        self.dtype = np.float32
         self.use_xpu = True
         self.use_mkldnn = False
         self.value = 0.0
@@ -62,39 +64,14 @@ class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
 
 class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
     def init(self):
-        self.value = 1e-10
-
-
-class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
-    def init(self):
-        self.value = 1e-100
-
-
-class TestFillAnyLikeOpType(TestFillAnyLikeOp):
-    def setUp(self):
-        self.op_type = "fill_any_like"
-        self.dtype = np.int32
-        self.use_xpu = True
-        self.use_mkldnn = False
-        self.value = 0.0
-        self.init()
-        self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
-        self.attrs = {
-            'value': self.value,
-            'dtype': int(core.VarDesc.VarType.FP32),
-            'use_xpu': True,
-        }
-        self.outputs = {
-            'Out':
-            self.value * np.ones_like(self.inputs["X"]).astype(np.float32)
-        }
+        self.value = 1e-9
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float16
+        self.value = 0.05
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
