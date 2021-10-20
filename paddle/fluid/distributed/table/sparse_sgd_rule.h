@@ -24,10 +24,10 @@
 namespace paddle {
 namespace distributed {
 
-class CtrSparseValueSGDRule {
+class SparseValueSGDRule {
  public:
-  CtrSparseValueSGDRule() {}
-  virtual ~CtrSparseValueSGDRule() {}
+  SparseValueSGDRule() {}
+  virtual ~SparseValueSGDRule() {}
   virtual void load_config(const SparseCommonSGDRuleParameter& param,
                            size_t emb_dim) {
     _embedding_dim = emb_dim;
@@ -66,9 +66,9 @@ class CtrSparseValueSGDRule {
   std::string _name;
 };
 
-REGISTER_PSCORE_REGISTERER(CtrSparseValueSGDRule);
+REGISTER_PSCORE_REGISTERER(SparseValueSGDRule);
 
-class CtrSparseNaiveSGDRule : public CtrSparseValueSGDRule {
+class SparseNaiveSGDRule : public SparseValueSGDRule {
  public:
   virtual void load_config(const SparseCommonSGDRuleParameter& param,
                            size_t emb_dim);
@@ -81,7 +81,7 @@ class CtrSparseNaiveSGDRule : public CtrSparseValueSGDRule {
   float learning_rate_;
 };
 
-class CtrSparseAdaGradSGDRule : public CtrSparseValueSGDRule {
+class SparseAdaGradSGDRule : public SparseValueSGDRule {
  public:
   virtual void load_config(const SparseCommonSGDRuleParameter& param,
                            size_t emb_dim);
@@ -96,7 +96,7 @@ class CtrSparseAdaGradSGDRule : public CtrSparseValueSGDRule {
   float _initial_g2sum;
 };
 
-class CtrStdAdaGradSGDRule : public CtrSparseValueSGDRule {
+class StdAdaGradSGDRule : public SparseValueSGDRule {
  public:
   virtual void load_config(const SparseCommonSGDRuleParameter& param,
                            size_t emb_dim);
@@ -111,7 +111,7 @@ class CtrStdAdaGradSGDRule : public CtrSparseValueSGDRule {
   float _initial_g2sum;
 };
 
-class CtrSparseAdamSGDRule : public CtrSparseValueSGDRule {
+class SparseAdamSGDRule : public SparseValueSGDRule {
  public:
   virtual void load_config(const SparseCommonSGDRuleParameter& param,
                            size_t emb_dim);

@@ -119,18 +119,16 @@ message TableParameter {
 
 message TableAccessorParameter {
   optional string accessor_class = 1;
-  optional SparseSGDRuleParameter sparse_sgd_param = 2;
   optional uint32 fea_dim = 4 [ default = 11 ];
   optional uint32 embedx_dim = 5 [ default = 8 ];
   optional uint32 embedx_threshold = 6 [ default = 10 ];
-  optional DownpourTableAccessorParameter downpour_accessor_param = 7;
+  optional CtrAccessorParameter downpour_accessor_param = 7;
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
-  optional SparseCommonSGDRuleParameter sparse_commonsgd_param = 9;
   optional SparseCommonSGDRuleParameter embed_sgd_param = 10;
   optional SparseCommonSGDRuleParameter embedx_sgd_param = 11;
 }
 
-message DownpourTableAccessorParameter {
+message CtrAccessorParameter {
   optional float nonclk_coeff = 1
       [ default = 0.1 ]; // to calculate show_click_score
   optional float click_coeff = 2
@@ -182,13 +180,6 @@ message TableAccessorSaveParameter {
   optional string deconverter = 3;
 }
 
-message SparseSGDRuleParameter {
-  optional double learning_rate = 1 [ default = 0.05 ];
-  optional double initial_g2sum = 2 [ default = 3.0 ];
-  optional double initial_range = 3 [ default = 0.0001 ];
-  repeated float weight_bounds = 4;
-}
-
 message SparseCommonSGDRuleParameter {
   optional string name = 1;
   optional SparseNaiveSGDRuleParameter naive = 2;
@@ -196,20 +187,21 @@ message SparseCommonSGDRuleParameter {
   optional SparseAdamSGDParameter adam = 4;
 }
 
-message SparseNaiveSGDRuleParameter {
+message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
   optional double learning_rate = 1 [ default = 0.05 ];
   optional double initial_range = 2 [ default = 0.0001 ];
   repeated float weight_bounds = 3;
 }
 
-message SparseAdagradSGDRuleParameter {
+message
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule
   optional double learning_rate = 1 [ default = 0.05 ];
   optional double initial_g2sum = 2 [ default = 3.0 ];
   optional double initial_range = 3 [ default = 0.0001 ];
   repeated float weight_bounds = 4;
 }
 
-message SparseAdamSGDParameter {
+message SparseAdamSGDParameter { // SparseAdamSGDRule
   optional double learning_rate = 1 [ default = 0.001 ];
   optional double initial_range = 2 [ default = 0.0001 ];
   optional double beta1_decay_rate = 3 [ default = 0.9 ];

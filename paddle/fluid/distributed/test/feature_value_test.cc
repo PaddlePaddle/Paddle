@@ -27,7 +27,8 @@ namespace paddle {
 namespace distributed {
 
 TEST(BENCHMARK, LargeScaleKV) {
-  std::shared_ptr<CtrValueBlock> shard = std::make_shared<CtrValueBlock>();
+  std::shared_ptr<SparseTableShard> shard =
+      std::make_shared<SparseTableShard>();
   uint64_t key = 1;
   auto itr = shard->Find(key);
   ASSERT_TRUE(itr == shard->end());

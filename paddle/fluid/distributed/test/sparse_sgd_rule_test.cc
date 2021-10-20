@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/table/ctr_sparse_sgd.h"
+#include "paddle/fluid/distributed/table/sparse_sgd_rule.h"
 #include <cmath>
 #include <iostream>
 #include "gtest/gtest.h"
@@ -22,7 +22,7 @@ namespace paddle {
 namespace distributed {
 
 TEST(sparse_value_naive_sgd_test, init_and_update) {
-  CtrSparseNaiveSGDRule rule;
+  SparseNaiveSGDRule rule;
   SparseCommonSGDRuleParameter param;
   param.set_name("naive");
   auto* naive_param = param.mutable_naive();
@@ -34,26 +34,26 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
   rule.load_config(param, 10);
 
   // check init_value for zero
-  int item_size = 10;
-  float w[item_size];     // NOLINT
-  float grad[item_size];  // NOLINT
+  const int kItemSize = 10;
+  float w[kItemSize];
+  float grad[kItemSize];
   rule.init_value(w, w + 9, true);
 
-  for (auto i = 0u; i < item_size; ++i) {
+  for (auto i = 0u; i < kItemSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], 0);
   }
 
   // check init_value for random
   rule.init_value(w, w + 9, false);
-  for (auto i = 0u; i < item_size; ++i) {
+  for (auto i = 0u; i < kItemSize; ++i) {
     ASSERT_TRUE(w[i] >= rule.min_bound() && w[i] <= rule.max_bound());
   }
 
   // check update_value for one field
-  for (auto i = 0u; i < item_size; ++i) {
+  for (auto i = 0u; i < kItemSize; ++i) {
     w[i] = 0;
   }
-  for (auto i = 0u; i < item_size; ++i) {
+  for (auto i = 0u; i < kItemSize; ++i) {
     grad[i] = (i + 1) * 1.0;
   }
   float label[] = {-0.100000, -0.200000, -0.300000, -0.400000, -0.500000,
@@ -61,14 +61,14 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
   const float* ptr_grad = grad;
   rule.update_value(w, w + 9, ptr_grad);
 
-  for (auto i = 0u; i < item_size; ++i) {
+  for (auto i = 0u; i < kItemSize; ++i) {
     VLOG(3) << w[i] << "\n";
     ASSERT_FLOAT_EQ(w[i], label[i]);
   }
 }
 
 TEST(downpour_sparse_adagrad_test, test_init_and_update) {
-  CtrSparseAdaGradSGDRule rule;
+  SparseAdaGradSGDRule rule;
   SparseCommonSGDRuleParameter param;
   param.set_name("adagrad");
   auto* adagrad_param = param.mutable_adagrad();
@@ -81,31 +81,31 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
   rule.load_config(param, 10);
 
   // check init_value for zero
-  int value_size = 11;
-  int emb_size = 10;
-  float w[value_size];  // NOLINT
+  const int kValueSize = 11;
+  int kEmbSize = 10;
+  float w[kValueSize];
 
   rule.init_value(w, w + 10, true);
 
-  for (auto i = 0u; i < emb_size; ++i) {
+  for (auto i = 0u; i < kEmbSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], 0);
   }
-  ASSERT_FLOAT_EQ(w[emb_size], 0);
+  ASSERT_FLOAT_EQ(w[kEmbSize], 0);
 
   // check init_value for random
   rule.init_value(w, w + 10, false);
-  for (auto i = 0u; i < emb_size; ++i) {
+  for (auto i = 0u; i < kEmbSize; ++i) {
     ASSERT_TRUE(w[i] >= rule.min_bound() && w[i] <= rule.max_bound());
   }
-  ASSERT_FLOAT_EQ(w[emb_size], 0);
+  ASSERT_FLOAT_EQ(w[kEmbSize], 0);
 
   // check update_value for one field
-  for (auto i = 0u; i < emb_size; ++i) {
+  for (auto i = 0u; i < kEmbSize; ++i) {
     w[i] = 0;
   }
-  w[emb_size] = 0;
-  float grad[emb_size];  // NOLINT
-  for (auto i = 0u; i < emb_size; ++i) {
+  w[kEmbSize] = 0;
+  float grad[kEmbSize];
+  for (auto i = 0u; i < kEmbSize; ++i) {
     grad[i] = (i + 1) * 1.0;
   }
 
@@ -114,7 +114,7 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
   float label[] = {-0.100000, -0.200000, -0.300000, -0.400000,
                    -0.500000, -0.600000, -0.700000, -0.800000,
                    -0.900000, -1.000000, 38.500000};
-  for (auto i = 0u; i < value_size; ++i) {
+  for (auto i = 0u; i < kValueSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], label[i]);
   }
 }
@@ -138,7 +138,7 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
   ASSERT_FLOAT_EQ(param.adam().beta2_decay_rate(), 0.999);
   ASSERT_FLOAT_EQ(param.adam().ada_epsilon(), 1e-08);
 
-  CtrSparseAdamSGDRule rule;
+  SparseAdamSGDRule rule;
 
   rule.load_config(param, embed_dim);
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/table/ctr_sparse_sgd.h"
+#include "paddle/fluid/distributed/table/sparse_sgd_rule.h"
 #include <gflags/gflags.h>
 #include "glog/logging.h"
 
@@ -21,8 +21,8 @@ DEFINE_bool(enable_show_scale_gradient, true, "enable show scale gradient");
 namespace paddle {
 namespace distributed {
 
-void CtrSparseNaiveSGDRule::load_config(
-    const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
+void SparseNaiveSGDRule::load_config(const SparseCommonSGDRuleParameter& param,
+                                     size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto naive_param = param.naive();
   learning_rate_ = naive_param.learning_rate();
@@ -39,17 +39,17 @@ void CtrSparseNaiveSGDRule::load_config(
   }
 }
 
-void CtrSparseNaiveSGDRule::update_value_work(float* w, float* sgd,
-                                              const float* push_value,
-                                              float scale) {
+void SparseNaiveSGDRule::update_value_work(float* w, float* sgd,
+                                           const float* push_value,
+                                           float scale) {
   for (size_t i = 0; i < _embedding_dim; ++i) {
     w[i] -= learning_rate_ * push_value[i];
     bound_value(w[i]);
   }
 }
 
-void CtrSparseNaiveSGDRule::init_value_work(float* value, float* sgd,
-                                            bool zero_init) {
+void SparseNaiveSGDRule::init_value_work(float* value, float* sgd,
+                                         bool zero_init) {
   if (zero_init) {
     for (size_t i = 0; i < _embedding_dim; ++i) {
       value[i] = 0;
@@ -64,7 +64,7 @@ void CtrSparseNaiveSGDRule::init_value_work(float* value, float* sgd,
     }
   }
 }
-void CtrSparseAdaGradSGDRule::load_config(
+void SparseAdaGradSGDRule::load_config(
     const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adagrad_param = param.adagrad();
@@ -84,9 +84,8 @@ void CtrSparseAdaGradSGDRule::load_config(
   }
 }
 
-void CtrSparseAdaGradSGDRule::update_value_work(float* w, float* sgd,
-                                                const float* grad,
-                                                float scale) {
+void SparseAdaGradSGDRule::update_value_work(float* w, float* sgd,
+                                             const float* grad, float scale) {
   float& g2sum = sgd[g2sum_index()];
   double add_g2sum = 0;
 
@@ -101,8 +100,8 @@ void CtrSparseAdaGradSGDRule::update_value_work(float* w, float* sgd,
   g2sum += add_g2sum / _embedding_dim;
 }
 
-void CtrSparseAdaGradSGDRule::init_value_work(float* value, float* sgd,
-                                              bool zero_init) {
+void SparseAdaGradSGDRule::init_value_work(float* value, float* sgd,
+                                           bool zero_init) {
   for (int i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {
       value[i] = 0.0;
@@ -119,8 +118,8 @@ void CtrSparseAdaGradSGDRule::init_value_work(float* value, float* sgd,
   sgd[g2sum_index()] = 0;
 }
 
-void CtrStdAdaGradSGDRule::load_config(
-    const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
+void StdAdaGradSGDRule::load_config(const SparseCommonSGDRuleParameter& param,
+                                    size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adagrad_param = param.adagrad();
   learning_rate_ = adagrad_param.learning_rate();
@@ -139,8 +138,8 @@ void CtrStdAdaGradSGDRule::load_config(
   }
 }
 
-void CtrStdAdaGradSGDRule::update_value_work(float* w, float* sgd,
-                                             const float* grad, float scale) {
+void StdAdaGradSGDRule::update_value_work(float* w, float* sgd,
+                                          const float* grad, float scale) {
   for (int i = 0; i < _embedding_dim; i++) {
     float& g2sum = sgd[g2sum_index() + i];
     double scaled_grad = grad[i] / scale;
@@ -151,8 +150,8 @@ void CtrStdAdaGradSGDRule::update_value_work(float* w, float* sgd,
   }
 }
 
-void CtrStdAdaGradSGDRule::init_value_work(float* value, float* sgd,
-                                           bool zero_init) {
+void StdAdaGradSGDRule::init_value_work(float* value, float* sgd,
+                                        bool zero_init) {
   for (int i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {
       value[i] = 0.0;
@@ -169,8 +168,8 @@ void CtrStdAdaGradSGDRule::init_value_work(float* value, float* sgd,
   }
 }
 
-void CtrSparseAdamSGDRule::load_config(
-    const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
+void SparseAdamSGDRule::load_config(const SparseCommonSGDRuleParameter& param,
+                                    size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adam_param = param.adam();
   learning_rate_ = adam_param.learning_rate();
@@ -190,8 +189,8 @@ void CtrSparseAdamSGDRule::load_config(
   }
 }
 
-void CtrSparseAdamSGDRule::update_value_work(float* w, float* sgd,
-                                             const float* grad, float scale) {
+void SparseAdamSGDRule::update_value_work(float* w, float* sgd,
+                                          const float* grad, float scale) {
   float* gsum = sgd + gsum_index();
   float* g2sum = sgd + g2sum_index();
   float* beta1_pow = sgd + beta1_pow_index();
@@ -217,8 +216,8 @@ void CtrSparseAdamSGDRule::update_value_work(float* w, float* sgd,
   (*beta2_pow) *= _beta2_decay_rate;
 }
 
-void CtrSparseAdamSGDRule::init_value_work(float* value, float* sgd,
-                                           bool zero_init) {
+void SparseAdamSGDRule::init_value_work(float* value, float* sgd,
+                                        bool zero_init) {
   for (int i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {
       value[i] = 0.0;

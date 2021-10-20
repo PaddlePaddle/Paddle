@@ -64,12 +64,12 @@ class FixedFeatureValue {
   std::vector<float> data_;
 };
 
-class CtrValueBlock {
+class SparseTableShard {
  public:
   typedef typename robin_hood::unordered_map<uint64_t, FixedFeatureValue *>
       map_type;
-  CtrValueBlock() {}
-  ~CtrValueBlock() {}
+  SparseTableShard() {}
+  ~SparseTableShard() {}
 
   FixedFeatureValue *Init(const uint64_t &id) {
     size_t hash = hasher_(id);
