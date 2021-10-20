@@ -25,7 +25,6 @@ import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.completion import complete_backward_annotation
 from paddle.distributed.auto_parallel.reshard import reshard
 from paddle.distributed.auto_parallel.process import PROCESS_GROUP_MAP
 
@@ -211,7 +210,8 @@ def check_initialization_for_dp(dist_startup_prog):
         if op.type == "c_broadcast":
             broadcast_varnames.append(op.output_arg_names[0])
 
-    return params == need_check_params == broadcast_varnames
+    return sorted(params) == sorted(need_check_params) == sorted(
+        broadcast_varnames)
 
 
 class TestMLPReshard(unittest.TestCase):
@@ -225,7 +225,6 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 0
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, 0)
-        complete_backward_annotation(dist_main_prog, dist_context)
 
         op_need_check = None
         for op in dist_main_prog.global_block().ops:
@@ -254,7 +253,6 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 1
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        complete_backward_annotation(dist_main_prog, dist_context)
         for key in list(PROCESS_GROUP_MAP.keys()):
             del PROCESS_GROUP_MAP[key]
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
@@ -277,7 +275,6 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 0
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        complete_backward_annotation(dist_main_prog, dist_context)
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
         # send and recv should not exist in dp scene.
         self.assertFalse(check_send_recv_result(dist_main_prog, rank_id))
