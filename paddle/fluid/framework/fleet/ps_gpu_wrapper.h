@@ -72,13 +72,13 @@ class PSGPUWrapper {
                 int total_len);
   void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
                    const std::vector<float*>& values,
-                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
+                   const char* total_values_gpu, const int64_t* gpu_len,
                    const int slot_num, const int hidden_size,
                    const int64_t total_length);
 
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
-                   FeaturePushValue* total_grad_values_gpu,
+                   char* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
@@ -109,6 +109,23 @@ class PSGPUWrapper {
     build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
+  }
+
+  void SetDynamicMFLength(const std::unordered_map<int, int> slot_dim_map) {
+    slot_dim_map_ = slot_dim_map;
+    std::unordered_set<int> dims_set;
+    for (auto& it : slot_dim_map_) {
+      dims_set.insert(it->second);
+    }
+    index_dim_vec_.resize(dims_set.size());
+    index_dim_vec_.assign(dims_set.begin(), dims_set.end());
+    std::sort(index_dim_vec_.begin(), index_dim_vec_.end());
+    size_t dims_num = index_dim_vec_.size();
+    for (size_t i = 0; i < index_dim_vec_.size() : i++) {
+      dim_index_map_[dim] = i;
+    }
+    multi_mf_dim_ = (dim_index_map_.size() > 1) ? 1 : 0;
+
   }
 
   void InitializeGPU(const std::vector<int>& dev_ids) {
@@ -264,6 +281,12 @@ class PSGPUWrapper {
     slot_vector_ = slot_vector;
   }
 
+  void SetSlotVector(const std::vector<int>& slot_vector, const std::vector<int>& mf_dim_vector) {
+    slot_vector_ = slot_vector;
+    slot_vector_.insert(slot_vector_.end(), mf_dim_vector.begin(), mf_dim_vector.end());
+    
+  }
+
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
  private:
@@ -293,6 +316,11 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
+  std::unordered_map<int, int> slot_dim_map_;
+  std::unordered_map<int, int> dim_index_map_;
+  std::vector<int> index_dim_vec_;
+  int multi_mf_dim_{0};
+  std::vector<HBMMemoryPool*> batch_grad_pool_;
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>

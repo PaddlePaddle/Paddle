@@ -18,63 +18,18 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
-__constant__   int global_device_num = 1;
-// set global device num
-inline void set_global_device_num(int device_num) {
-  cudaMemcpyToSymbol(global_device_num, &device_num, sizeof(int));
-}
-// gpu hash function
-template <typename Key>
-struct HashFunc {
-  using argument_type = Key;
-  using result_type = uint32_t;
-  __forceinline__ __host__ __device__ 
-  result_type operator()(const Key& key) const {
-    return static_cast<uint32_t>(key / global_device_num);
-  }
-};
 
-template <typename KeyType, typename Hasher = HashFunc<KeyType>>
-class BlockMemoryPool : public managed {
+class MemoryPool {
  public:
-  BlockMemoryPool(size_t capacity, size_t block_size) : _capacity(capacity), _block_size(block_size) {
-    cudaMalloc(&_mem, (block_size * capacity / 8 + 1) * 8);
-    cudaMalloc(&_key_mem, sizeof(int8_t) * (capacity / 8 + 1) * 8);
-    cudaMemset(_key_mem, 0, sizeof(int8_t) * capacity);
-    cudaMemset(_mem, 0, block_size * capacity);
+  MemoryPool(size_t capacity, size_t block_size) : _capacity(capacity), _block_size(block_size) {
+    _mem = (char*)malloc(block_size * _capacity);
   }
-    
-  ~BlockMemoryPool() {
-    cudaFree(_mem);
-    cudaFree(_key_mem);
+  MemoryPool() {
+    free(_mem);
   }
- 
-  __forceinline__
-  __device__ void allocate(void** ptr, const KeyType &key) {
-    size_t index = hf(key) % _capacity;
-    size_t count = 0;
-    while (true) {
-        if (atomicCAS(_key_mem + index, (int8_t)0, (int8_t)1) == (int8_t)1) {
-            if (count++ >= _capacity) {
-                assert(false && "allocate fail.");
-            }
-        } else {
-            break;
-        }
-        index = (index + 1) % _capacity;
-    }
-    *ptr = _mem + index * _block_size;
-  }
- 
   size_t block_size() {
     return _block_size;
   }
-
-  void clear(void) {
-    cudaMemset(_key_mem, 0, sizeof(int8_t) * _capacity);
-    cudaMemset(_mem, 0, _block_size * _capacity);
-  }
-  
   char *mem() {
     return _mem;
   }
@@ -82,34 +37,74 @@ class BlockMemoryPool : public managed {
   size_t capacity() {
     return _capacity;
   }
-    
-  __forceinline__
-  __device__ uint32_t acquire(const KeyType &key) {
-    uint32_t index = (uint32_t)(hf(key) % _capacity);
-    size_t count = 0;
-    while (true) {
-      if (atomicCAS(_key_mem + index, (int8_t)0, (int8_t)1) == (int8_t)1) {
-        if (count++ >= _capacity) {
-          assert(false && "allocate fail.");
-        }
-      } else {
-        break;
-      }
-      index = (index + 1) % _capacity;
+  void* mem_address(const uint32_t &idx) {
+    return (void*)&_mem[(idx - 1) * _block_size];
+  }
+ private:
+  char* _mem = NULL;
+  size_t _capacity;
+  size_t _block_size;
+}
+
+class HBMMemoryPool : public managed {
+ public:
+  HBMMemoryPool(size_t capacity, size_t block_size) : _capacity(capacity), _block_size(block_size) {
+    cudaMalloc(&_mem, (block_size * capacity / 8 + 1) * 8);
+    cudaMemset(_mem, 0, block_size * capacity);
+  }
+  HBMMemoryPool(size_t capacity, size_t block_size, *MemoryPool mem_pool, int stream_num) {
+    cudaMalloc(&_mem, (block_size * capacity / 8 + 1) * 8);
+    gpuStream_t streams[stream_num];
+    int cur_len = 0;
+    int cur_stream = 0;
+    void* start_mem_pool = (void*)mem_pool.mem();
+
+    while (cur_len < len) {
+      cur_stream = cur_stream % stream_num;
+      int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaMemcpyAsync(_mem + cur_len * _block_size, mem_pool->mem_address(cur_len),
+                          _block_size * tmp_len, cudaMemcpyHostToDevice,
+                          streams[cur_stream]));
+      cur_stream += 1;
+      cur_len += tmp_len;
     }
-    return (index + 1);
+
+  }
+    
+  ~HBMMemoryPool() {
+    cudaFree(_mem);
+  }
+ 
+  size_t block_size() {
+    return _block_size;
   }
 
+  void clear(void) {
+    cudaMemset(_mem, 0, _block_size * _capacity);
+  }
+  
+  void reset(size_t capacity) {
+    cudaFree(_mem);
+    cudaMalloc(&_mem, (block_size * capacity / 8 + 1) * 8);
+    cudaMemset(_mem, 0, block_size * capacity);
+  }
+
+  char *mem() {
+    return _mem;
+  }
+  
+  size_t capacity() {
+    return _capacity;
+  }
   __forceinline__
   __device__ void* mem_address(const uint32_t &idx) {
     return (void*)&_mem[(idx - 1) * _block_size];
   }
  private:
   char* _mem = NULL;
-  int8_t* _key_mem = NULL;
   size_t _capacity;
   size_t _block_size;
-  const Hasher hf = Hasher();
 };
 
 
