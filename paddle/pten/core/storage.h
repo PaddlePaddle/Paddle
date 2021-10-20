@@ -19,6 +19,7 @@ limitations under the License. */
 #include "boost/intrusive_ptr.hpp"
 #include "paddle/pten/core/utils/intrusive_ptr.h"
 #include "paddle/pten/core/utils/intrusive_ref_counter.h"
+#include "paddle/pten/core/utils/type_info.h"
 
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/core/allocator.h"
@@ -30,6 +31,7 @@ namespace pten {
 /// all default copy operations to ensure the integrity of the package.
 class Storage : public intrusive_ref_counter<Storage> {
  public:
+  using Place = paddle::platform::Place;
   Storage() = default;
   Storage(const Storage&) = delete;
 
@@ -43,7 +45,7 @@ class Storage : public intrusive_ref_counter<Storage> {
   void* data() const noexcept { return data_.operator->(); }
 
   virtual size_t size() const = 0;
-  virtual const paddle::platform::Place& place() const = 0;
+  virtual const Place& place() const = 0;
   virtual bool OwnsMemory() const = 0;
   virtual void Realloc(size_t n) = 0;
 
@@ -53,18 +55,20 @@ class Storage : public intrusive_ref_counter<Storage> {
 
 class TensorStorage : public Storage {
  public:
+  using Place = paddle::platform::Place;
+
   explicit TensorStorage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
   TensorStorage(const std::shared_ptr<Allocator>& a, size_t size)
       : Storage(Allocate(a, size)), alloc_(a), size_(size) {}
 
   ~TensorStorage() = default;
 
+  static const char* name() { return "TensorStorage"; }
+
   void Realloc(size_t size) override;
 
   size_t size() const noexcept override { return size_; }
-  const paddle::platform::Place& place() const override {
-    return data_.place();
-  }
+  const Place& place() const override { return data_.place(); }
   bool OwnsMemory() const noexcept override { return true; }
   const std::shared_ptr<Allocator>& allocator() const noexcept {
     return alloc_;

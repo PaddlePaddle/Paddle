@@ -28,6 +28,8 @@ class TensorBase {
  public:
   using DataType = paddle::experimental::DataType;
   using DataLayout = paddle::experimental::DataLayout;
+  using DDim = paddle::framework::DDim;
+  using Place = paddle::platform::Place;
 
   virtual ~TensorBase() = default;
 
@@ -37,7 +39,7 @@ class TensorBase {
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  virtual const paddle::framework::DDim& dims() const = 0;
+  virtual const DDim& dims() const = 0;
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
@@ -49,7 +51,7 @@ class TensorBase {
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
-  virtual const paddle::platform::Place& place() const = 0;
+  virtual const Place& place() const = 0;
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
@@ -59,7 +61,7 @@ class TensorBase {
   /// return Whether the storage is allocated.
   virtual bool initialized() const = 0;
 
-  virtual pten::Backend backend() const = 0;
+  virtual paddle::experimental::Backend backend() const { return {}; }
 
   /// \brief Return the type information of the derived class to support
   /// safely downcast in non-rtti environment.

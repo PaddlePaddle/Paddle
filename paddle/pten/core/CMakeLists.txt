@@ -1,3 +1,5 @@
+add_subdirectory(candidate)
+
 IF(WITH_MKLDNN)
     set(MKLDNN_CTX_DEPS mkldnn)
 ELSE()
@@ -15,3 +17,5 @@ cc_library(dense_tensor SRCS dense_tensor.cc DEPS enforce data_type ddim allocat
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce)
 cc_library(kernel_context SRCS kernel_context.cc DEPS enforce device_context)
+
+cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS enforce)

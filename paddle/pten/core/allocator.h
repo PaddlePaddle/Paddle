@@ -23,6 +23,8 @@ namespace pten {
 /// deallocation and construction/destruction of objects.
 class RawAllocator {
  public:
+  using Place = paddle::platform::Place;
+
   /// \brief Default destructor.
   virtual ~RawAllocator() = default;
 
@@ -43,7 +45,7 @@ class RawAllocator {
 
   /// \brief Get the place value of the allocator and the allocation.
   /// \return The place value of the allocator and the allocation.
-  virtual const paddle::platform::Place& place() const = 0;
+  virtual const Place& place() const = 0;
 };
 
 /// \brief Fancy pointer with context. The use of this data type
@@ -52,24 +54,24 @@ class RawAllocator {
 /// support being inherited.
 class Allocation final {
  public:
+  using Place = paddle::platform::Place;
   using DeleterFnPtr = void (*)(void*);
 
   Allocation() = default;
   Allocation(Allocation&&) = default;
   Allocation& operator=(Allocation&&) = default;
 
-  Allocation(void* data, const paddle::platform::Place& place)
-      : data_(data), place_(place) {}
+  Allocation(void* data, const Place& place) : data_(data), place_(place) {}
 
   Allocation(void* data,
              void* ctx,
              DeleterFnPtr ctx_deleter,
-             const paddle::platform::Place& place)
+             const Place& place)
       : data_(data), ctx_(ctx, ctx_deleter), place_(place) {}
 
   void* operator->() const noexcept { return data_; }
   operator bool() const noexcept { return data_ || ctx_.Get(); }
-  const paddle::platform::Place& place() const noexcept { return place_; }
+  const Place& place() const noexcept { return place_; }
 
   void Clear() noexcept {
     data_ = nullptr;
@@ -132,7 +134,7 @@ class Allocation final {
   Context ctx_;
   // TODO(Shixiaowei02): Enum needs to be used instead to reduce
   // the construction overhead by more than 50%.
-  paddle::platform::Place place_;
+  Place place_;
 };
 
 inline void swap(Allocation::Context& a, Allocation::Context& b) noexcept {
