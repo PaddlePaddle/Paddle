@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,18 +16,19 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <string>
-#include <vector>
 #include <thread>  // NOLINT
+#include <vector>
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/table/depends/ctr_large_scale_kv.h"
+#include "paddle/fluid/distributed/table/depends/feature_value.h"
 
 namespace paddle {
 namespace distributed {
 
 TEST(BENCHMARK, LargeScaleKV) {
-  std::shared_ptr<CtrValueBlock> shard = std::make_shared<CtrValueBlock>();
+  std::shared_ptr<SparseTableShard> shard =
+      std::make_shared<SparseTableShard>();
   uint64_t key = 1;
   auto itr = shard->Find(key);
   ASSERT_TRUE(itr == shard->end());
@@ -36,19 +37,18 @@ TEST(BENCHMARK, LargeScaleKV) {
 
   auto* feature_value = shard->Init(key);
   feature_value->resize(vec.size());
-  memcpy(const_cast<float*>(feature_value->data()), vec.data(), vec.size() * sizeof(float));
+  memcpy(feature_value->data(), vec.data(), vec.size() * sizeof(float));
 
   itr = shard->Find(key);
   ASSERT_TRUE(itr != shard->end());
-  
+
   feature_value = itr->second;
-  float* value_data = const_cast<float*>(feature_value->data());
+  float* value_data = feature_value->data();
 
   ASSERT_FLOAT_EQ(value_data[0], 0.0);
   ASSERT_FLOAT_EQ(value_data[1], 0.1);
   ASSERT_FLOAT_EQ(value_data[2], 0.2);
   ASSERT_FLOAT_EQ(value_data[3], 0.3);
-
 }
 
 }  // namespace distributed

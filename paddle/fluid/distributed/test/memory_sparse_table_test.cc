@@ -21,7 +21,7 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/table/ctr_sparse_table.h"
+#include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include "paddle/fluid/distributed/table/table.h"
 
 namespace paddle {
@@ -33,9 +33,9 @@ TEST(CommonSparseTable, SGD) {
   int trainers = 2;
 
   TableParameter table_config;
-  table_config.set_table_class("CtrSparseTable");
+  table_config.set_table_class("MemorySparseTable");
   FsClientParameter fs_config;
-  Table *table = new CtrSparseTable();
+  Table *table = new MemorySparseTable();
   // Table* table = CREATE_PSCORE_CLASS(Table, table_config.table_class());
 
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
@@ -51,7 +51,7 @@ TEST(CommonSparseTable, SGD) {
   accessor_config->mutable_downpour_accessor_param()->set_show_click_decay_rate(
       0.99);
 
-  accessor_config->mutable_embed_sgd_param()->set_name("CtrSparseNaiveSGDRule");
+  accessor_config->mutable_embed_sgd_param()->set_name("SparseNaiveSGDRule");
   auto *naive_param =
       accessor_config->mutable_embed_sgd_param()->mutable_naive();
   naive_param->set_learning_rate(0.1);
@@ -59,8 +59,7 @@ TEST(CommonSparseTable, SGD) {
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
 
-  accessor_config->mutable_embedx_sgd_param()->set_name(
-      "CtrSparseNaiveSGDRule");
+  accessor_config->mutable_embedx_sgd_param()->set_name("SparseNaiveSGDRule");
   naive_param = accessor_config->mutable_embedx_sgd_param()->mutable_naive();
   naive_param->set_learning_rate(0.1);
   naive_param->set_initial_range(0.3);
@@ -134,8 +133,7 @@ TEST(CommonSparseTable, SGD) {
     }
   }
 
-  // TODO: save/load/shrink
-  CtrSparseTable *ctr_table = dynamic_cast<CtrSparseTable *>(table);
+  MemorySparseTable *ctr_table = dynamic_cast<MemorySparseTable *>(table);
   ctr_table->save_local_fs("/work/table.save", "0", "test");
 }
 

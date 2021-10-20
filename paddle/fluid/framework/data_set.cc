@@ -18,7 +18,10 @@
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
+
+#ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/fleet.h"
+#endif
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -209,10 +212,10 @@ void DatasetImpl<T>::CreateChannel() {
 // if sent message between workers, should first call this function
 template <typename T>
 void DatasetImpl<T>::RegisterClientToClientMsgHandler() {
-#ifdef PADDLE_WITH_PSLIB
-  auto fleet_ptr = framework::FleetWrapper::GetInstance();
-#else
+#ifdef PADDLE_WITH_PSCORE
   auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
 #endif
   VLOG(1) << "RegisterClientToClientMsgHandler";
   fleet_ptr->RegisterClientToClientMsgHandler(
@@ -548,10 +551,10 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   VLOG(3) << "MultiSlotDataset::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
-#ifdef PADDLE_WITH_PSLIB
-  auto fleet_ptr = framework::FleetWrapper::GetInstance();
-#else
+#ifdef PADDLE_WITH_PSCORE
   auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
 #endif
 
   if (!input_channel_ || input_channel_->Size() == 0) {
@@ -584,12 +587,12 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   };
 
   auto global_shuffle_func = [this, get_client_id]() {
-#ifdef PADDLE_WITH_PSLIB
-    auto fleet_ptr = framework::FleetWrapper::GetInstance();
-#else
+#ifdef PADDLE_WITH_PSCORE
     auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
 #endif
-    //auto fleet_ptr = framework::FleetWrapper::GetInstance();
+    // auto fleet_ptr = framework::FleetWrapper::GetInstance();
     std::vector<Record> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
@@ -925,9 +928,10 @@ int64_t DatasetImpl<T>::GetShuffleDataSize() {
   int64_t sum = 0;
   for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
     sum += multi_output_channel_[i]->Size() + multi_consume_channel_[i]->Size();
-    VLOG(1) << "GetShuffleDataSize output_channel " << i << 
-               "multi_output_channel_.size " << multi_output_channel_[i]->Size() <<
-               "multi_consume_channel_.size " << multi_consume_channel_[i]->Size();
+    VLOG(1) << "GetShuffleDataSize output_channel " << i
+            << "multi_output_channel_.size " << multi_output_channel_[i]->Size()
+            << "multi_consume_channel_.size "
+            << multi_consume_channel_[i]->Size();
   }
   return sum;
 }

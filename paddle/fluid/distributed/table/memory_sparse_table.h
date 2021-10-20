@@ -26,20 +26,18 @@
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
-#include "paddle/fluid/distributed/table/depends/ctr_large_scale_kv.h"
+#include "paddle/fluid/distributed/table/depends/feature_value.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #define PSERVER_SAVE_SUFFIX ".shard"
-//using boost::lexical_cast;
 
 namespace paddle {
 namespace distributed {
 
-
-class CtrSparseTable : public SparseTable {
+class MemorySparseTable : public SparseTable {
  public:
-  CtrSparseTable() {}
-  virtual ~CtrSparseTable() {}
+  MemorySparseTable() {}
+  virtual ~MemorySparseTable() {}
 
   // unused method begin
   virtual int32_t pull_dense(float* pull_values, size_t num) { return 0; }
@@ -56,11 +54,11 @@ class CtrSparseTable : public SparseTable {
   virtual int32_t load(const std::string& path, const std::string& param);
 
   virtual int32_t save(const std::string& path, const std::string& param);
-  
-  int32_t load_local_fs(const std::string& path, const std::string& param);
-  int32_t save_local_fs(const std::string& path, const std::string& param, const std::string& prefix);
 
-  //TODO: need this?
+  int32_t load_local_fs(const std::string& path, const std::string& param);
+  int32_t save_local_fs(const std::string& path, const std::string& param,
+                        const std::string& prefix);
+
   virtual std::pair<int64_t, int64_t> print_table_stat();
   virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
 
@@ -83,11 +81,11 @@ class CtrSparseTable : public SparseTable {
 
  protected:
   const int task_pool_size_ = 24;
-  size_t _avg_local_shard_num;
-  size_t _real_local_shard_num;
-  size_t _sparse_table_shard_num;
-  std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
-  std::vector<std::shared_ptr<CtrValueBlock>> shard_values_;
+  size_t avg_local_shard_num_;
+  size_t real_local_shard_num_;
+  size_t sparse_table_shard_num_;
+  std::vector<std::shared_ptr<::ThreadPool>> shards_task_pool_;
+  std::vector<std::shared_ptr<SparseTableShard>> shard_values_;
 };
 
 }  // namespace distributed

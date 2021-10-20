@@ -968,7 +968,7 @@ def sparse_embedding(input,
                      padding_idx=None,
                      is_test=False,
                      entry=None,
-                     table_class="CtrSparseTable",
+                     table_class="MemorySparseTable",
                      param_attr=None,
                      dtype='float32'):
     helper = LayerHelper('sparse_embedding', **locals())
@@ -992,10 +992,10 @@ def sparse_embedding(input,
         size[0] + padding_idx)
 
     if table_class not in [
-            "CommonSparseTable", "SSDSparseTable", "CtrSparseTable"
+            "CommonSparseTable", "SSDSparseTable", "MemorySparseTable"
     ]:
         raise ValueError(
-            "table_class must be in [CommonSparseTable, SSDSparseTable, CtrSparseTable]"
+            "table_class must be in [CommonSparseTable, SSDSparseTable, MemorySparseTable]"
         )
 
     entry_str = "none"

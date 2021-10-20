@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,66 +47,57 @@
 namespace paddle {
 namespace distributed {
 
-
 static const int CTR_SPARSE_SHARD_BUCKET_NUM_BITS = 6;
-static const size_t CTR_SPARSE_SHARD_BUCKET_NUM = (size_t)1
-                                              << CTR_SPARSE_SHARD_BUCKET_NUM_BITS;
+static const size_t CTR_SPARSE_SHARD_BUCKET_NUM =
+    static_cast<size_t>(1) << CTR_SPARSE_SHARD_BUCKET_NUM_BITS;
 
-class CtrFixedFeatureValue {
-  public:
-    CtrFixedFeatureValue() {}
-    ~CtrFixedFeatureValue() {}
-    float* data() {
-      return data_.data();
-    }
-    size_t size() {
-      return data_.size();
-    }
-    void resize(size_t size) {
-      data_.resize(size);
-    }
-    void shrink_to_fit() {
-      data_.shrink_to_fit();
-    }
-  private:
-    std::vector<float> data_;
+class FixedFeatureValue {
+ public:
+  FixedFeatureValue() {}
+  ~FixedFeatureValue() {}
+  float *data() { return data_.data(); }
+  size_t size() { return data_.size(); }
+  void resize(size_t size) { data_.resize(size); }
+  void shrink_to_fit() { data_.shrink_to_fit(); }
+
+ private:
+  std::vector<float> data_;
 };
 
-
-class CtrValueBlock {
+class SparseTableShard {
  public:
-  typedef typename robin_hood::unordered_map<uint64_t, CtrFixedFeatureValue *> map_type;
-  CtrValueBlock() {}
-  ~CtrValueBlock() {}
+  typedef typename robin_hood::unordered_map<uint64_t, FixedFeatureValue *>
+      map_type;
+  SparseTableShard() {}
+  ~SparseTableShard() {}
 
-  CtrFixedFeatureValue *Init(const uint64_t &id) {
-    size_t hash = _hasher(id);
+  FixedFeatureValue *Init(const uint64_t &id) {
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
-    
-    CtrFixedFeatureValue *value = nullptr;
-    value = butil::get_object<CtrFixedFeatureValue>();
+
+    FixedFeatureValue *value = nullptr;
+    value = butil::get_object<FixedFeatureValue>();
     table[id] = value;
     return value;
   }
 
   // dont judge if (has(id))
   float *Get(const uint64_t &id) {
-    size_t hash = _hasher(id);
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
     // auto &value = table.at(id);
     // return value->data_.data();
     auto res = table.find(id);
-    CtrFixedFeatureValue *value = res->second;
+    FixedFeatureValue *value = res->second;
     return value->data();
   }
 
-  // TODO: whether need this?
   // for load, to reset count, unseen_days
-  CtrFixedFeatureValue *GetValue(const uint64_t &id) {
-    size_t hash = _hasher(id);
+  FixedFeatureValue *GetValue(const uint64_t &id) {
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
 
     auto &table = values_[bucket];
@@ -115,7 +106,7 @@ class CtrValueBlock {
   }
 
   void erase(uint64_t feasign) {
-    size_t hash = _hasher(feasign);
+    size_t hash = hasher_(feasign);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
@@ -126,9 +117,7 @@ class CtrValueBlock {
     }
   }
 
-  // TODO: whether need this?
-  void clear() {
-  }
+  void clear() {}
 
   size_t compute_bucket(size_t hash) {
     if (CTR_SPARSE_SHARD_BUCKET_NUM == 1) {
@@ -137,13 +126,13 @@ class CtrValueBlock {
       return hash >> (sizeof(size_t) * 8 - CTR_SPARSE_SHARD_BUCKET_NUM_BITS);
     }
   }
-  
+
   map_type::iterator end() {
     return values_[CTR_SPARSE_SHARD_BUCKET_NUM - 1].end();
   }
 
   map_type::iterator Find(uint64_t id) {
-    size_t hash = _hasher(id);
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
@@ -157,7 +146,7 @@ class CtrValueBlock {
 
  private:
   bool Has(const uint64_t id) {
-    size_t hash = _hasher(id);
+    size_t hash = hasher_(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
 
@@ -171,8 +160,7 @@ class CtrValueBlock {
 
  public:
   map_type values_[CTR_SPARSE_SHARD_BUCKET_NUM];
-  std::hash<uint64_t> _hasher;
-
+  std::hash<uint64_t> hasher_;
 };
 
 }  // namespace distributed

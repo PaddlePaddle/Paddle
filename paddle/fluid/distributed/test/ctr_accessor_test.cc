@@ -1,16 +1,24 @@
-/***************************************************************************
- *
- * Copyright (c) 2018 Baidu.com, Inc. All Rights Reserved
- * $Id$
- *
- **************************************************************************/
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #include "paddle/fluid/distributed/table/ctr_accessor.h"
 #include <cmath>
 #include <iostream>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/table/ctr_sparse_sgd.h"
+#include "paddle/fluid/distributed/table/sparse_sgd_rule.h"
 
 namespace paddle {
 namespace distributed {
@@ -34,7 +42,7 @@ TableAccessorParameter gen_param() {
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
   */
-  param.mutable_embed_sgd_param()->set_name("CtrStdAdaGradSGDRule");
+  param.mutable_embed_sgd_param()->set_name("StdAdaGradSGDRule");
   auto* adagrad_param = param.mutable_embed_sgd_param()->mutable_adagrad();
   adagrad_param->set_learning_rate(0.1);
   adagrad_param->set_initial_range(0.3);
@@ -42,7 +50,7 @@ TableAccessorParameter gen_param() {
   adagrad_param->add_weight_bounds(-10.0);
   adagrad_param->add_weight_bounds(10.0);
 
-  param.mutable_embedx_sgd_param()->set_name("CtrSparseNaiveSGDRule");
+  param.mutable_embedx_sgd_param()->set_name("SparseNaiveSGDRule");
   auto* naive_param = param.mutable_embedx_sgd_param()->mutable_naive();
   naive_param->set_learning_rate(0.1);
   naive_param->set_initial_range(0.3);
@@ -284,12 +292,12 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
   VLOG(3) << str << std::endl;
 
   str = "0 1 2 3 4 5 6";
-  ASSERT_FALSE(acc->parse_from_string(str, value) == 0);
+  ASSERT_NE(acc->parse_from_string(str, value), 0);
   // make sure init_zero=true
   /*
   for (auto i = 7; i < 15; ++i) {
       ASSERT_FLOAT_EQ(value[i], 0);
   }*/
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle
