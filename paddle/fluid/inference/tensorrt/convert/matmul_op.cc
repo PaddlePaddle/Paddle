@@ -93,9 +93,10 @@ class MatMulOpConverter : public OpConverter {
         RreplenishLayerAndOutput(layer, "matmul_op_float_no_alpha",
                                  {output_name}, test_mode);
       } else {
-        layer->setName(("matmul_op_float_has_alpha: MatrixMultiplyLayer" +
-                        " (Output: " + output_name + ")")
-                           .c_str());
+        layer->setName(
+            ("matmul_op_float_has_alpha: MatrixMultiplyLayer (Output: " +
+             output_name + ")")
+                .c_str());
         auto create_weights = [&](float data,
                                   const std::string& type) -> float* {
           std::unique_ptr<framework::Tensor> tmp_tensor(
