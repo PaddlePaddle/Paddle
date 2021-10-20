@@ -224,7 +224,8 @@ class PoolingMKLDNNHandler
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(
-      const platform::MKLDNNDeviceContext& dev_ctx, std::string& unique_name) {
+      const platform::MKLDNNDeviceContext& dev_ctx,
+      const std::string& unique_name) {
     mkldnn::memory::desc workspace_md = this->fwd_pd_->workspace_desc();
     // Pooling Workspace has to be passed to Grad op that
     // may be executed by diffrent thread, hence
