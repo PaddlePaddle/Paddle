@@ -33,7 +33,7 @@ namespace framework {
 
 class CostData {
  public:
-  CostData() {}
+  CostData() { VLOG(1) << "CostData created, obejct pointer is :" << this; }
 
   ~CostData();
 
@@ -41,6 +41,8 @@ class CostData {
   // TODO(zhhsplendid): add support for sub-block
   double GetOpTimeMs(int op_id) const;
   double GetOpMemoryBytes(int op_id) const;
+  std::map<int, double> GetOpTimeMsMap() const;
+  std::map<int, double> GetOpMemoryBytesMap() const;
   double GetWholeTimeMs() const;
   double GetWholeMemoryBytes() const;
 
@@ -54,7 +56,7 @@ class CostData {
       const std::vector<std::vector<platform::Event>>& time_events);
 
   bool SetGraphCostData(
-      const ir::Graph& graph,
+      ir::Graph* graph,
       const std::vector<std::vector<platform::Event>>& time_events);
   static const double NOT_MEASURED;
 
@@ -75,7 +77,7 @@ class CostData {
 
 class CostModel {
  public:
-  CostModel() {}
+  CostModel() { VLOG(1) << "CostModel object created, pointer is : " << this; }
   ~CostModel() {}
 
   CostData ProfileMeasure(
@@ -84,7 +86,8 @@ class CostModel {
       const std::vector<std::string>& fetch_cost_list) const;
 
   CostData ProfileMeasureGraph(
-      ir::Graph* graph, const std::string& device,
+      ir::Graph* graph, const ProgramDesc& startup_program,
+      const std::string& device,
       const std::vector<std::string>& fetch_cost_list) const;
 };
 

@@ -59,6 +59,7 @@ double Event::CudaElapsedMs(const Event &e) const {
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role,
                          const std::string attr) {
+  VLOG(3) << "RecordEvent object created, name : " << name << "attr:" << attr;
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -194,6 +195,8 @@ void Mark(const std::string &name) {
 
 Event *PushEvent(const std::string &name, const EventRole role,
                  std::string attr) {
+  VLOG(3) << "invoke PushEvent: name :" << name << "    attr:" << attr;
+
   return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role,
                                attr);
 }
@@ -240,6 +243,10 @@ void ResetProfiler() {
     (*it)->Clear();
   }
 }
+// // for Debug function, to trace how the event list genearting.
+// void PrintEventList() {
+//   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex)
+// }
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string &profile_path) {

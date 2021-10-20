@@ -35,9 +35,16 @@ CostData::~CostData() {
   // here.
 }
 
-double CostData::GetOpTimeMs(int op_id) const { return op_time_ms_.at(op_id); }
+double CostData::GetOpTimeMs(int op_id) const {
+  VLOG(1) << "op_time_ms_ addr:" << &op_time_ms_;
+  return op_time_ms_.at(op_id);
+}
 double CostData::GetOpMemoryBytes(int op_id) const {
   return op_memory_bytes_.at(op_id);
+}
+std::map<int, double> CostData::GetOpTimeMsMap() const { return op_time_ms_; }
+std::map<int, double> CostData::GetOpMemoryBytesMap() const {
+  return op_memory_bytes_;
 }
 double CostData::GetWholeTimeMs() const { return whole_time_ms_; }
 double CostData::GetWholeMemoryBytes() const { return whole_memory_bytes_; }
@@ -153,9 +160,145 @@ bool CostData::SetCostData(const ProgramDesc& program,
 }
 
 bool CostData::SetGraphCostData(
-    const ir::Graph& graph,
-    const std::vector<std::vector<Event>>& time_events) {
-  bool event_to_cost_success = false;
+    ir::Graph* graph, const std::vector<std::vector<Event>>& time_events) {
+  VLOG(3) << "costdata, whole_time_ms_: <<<<<" << whole_time_ms_;
+  size_t node_size = graph->Nodes().size();
+  if (node_size == 0) {
+    whole_time_ms_ = 0;
+    whole_memory_bytes_ = 0;
+    return true;
+  }
+
+  if (time_events.empty()) {
+    LOG(WARNING) << "Input time_events for CostModel is empty";
+    return false;
+  }
+
+  bool event_to_cost_success = true;
+
+  std::vector<Event> main_thread_events = time_events[0];
+  std::vector<Event> sub_thread_events;
+  // a flag to determine if start_profiler and stop_profiler event are found in
+  // main thread event.
+  bool find_profiler_mark_in_main_thread_events = true;
+  if (time_events.size() > 1) {
+    // for graph cost model, we first consider number of threads in thread pool
+    // is 1.
+    sub_thread_events = time_events[1];
+  }
+  size_t event_index = 0;
+  VLOG(3) << "GetGraph op time";
+  for (size_t i = 0; i < node_size; ++i) {
+    auto node = graph->RetrieveNode(i);
+    if (node == nullptr) continue;
+    if (!node->IsOp()) continue;  // filter var nodes.
+    const OpDesc* op_desc = node->Op();
+    std::string op_type = op_desc->Type();
+    while (event_index < main_thread_events.size()) {
+      if (main_thread_events[event_index].name() == op_type &&
+          main_thread_events[event_index].type() ==
+              platform::EventType::kPushRange) {
+        break;
+      }
+      ++event_index;
+    }
+    if (event_index >= main_thread_events.size()) {
+      LOG(WARNING) << "Input time_events for Op " << i << ", type '" << op_type
+                   << "' have wrong format, skip this Op.";
+      event_to_cost_success = false;
+      continue;
+    }
+    size_t op_push_index = event_index;
+    while (event_index < main_thread_events.size()) {
+      if (main_thread_events[event_index].name() == op_type &&
+          main_thread_events[event_index].type() ==
+              platform::EventType::kPopRange) {
+        break;
+      }
+      ++event_index;
+    }
+    if (event_index >= main_thread_events.size()) {
+      LOG(WARNING) << "Input time_events for Op " << i << ", type '" << op_type
+                   << "' have wrong format, skip this Op.";
+      event_to_cost_success = false;
+      continue;
+    }
+    size_t op_pop_index = event_index;
+    double cpu_time_ms = main_thread_events[op_push_index].CpuElapsedMs(
+        main_thread_events[op_pop_index]);
+    double gpu_time_ms = 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    gpu_time_ms = main_thread_events[op_push_index].CudaElapsedMs(
+        main_thread_events[op_pop_index]);
+#endif
+    double time_ms = gpu_time_ms + cpu_time_ms;
+    op_time_ms_[i] = time_ms;
+    VLOG(1) << "inserted into map : op_time_ms_ " << i << ":" << time_ms;
+    VLOG(1) << "inserted into map : map addr: " << &op_time_ms_;
+  }
+  event_index = 0;
+  int start_profiler_idx = -1;
+  int stop_profiler_idx = -1;
+
+  VLOG(3) << "main_thread_events.size():" << main_thread_events.size();
+  while (event_index < main_thread_events.size()) {
+    if (main_thread_events[event_index].name() == "_start_profiler_") {
+      VLOG(3) << "find start profiler";
+      start_profiler_idx = event_index;
+    } else if (main_thread_events[event_index].name() == "_stop_profiler_") {
+      stop_profiler_idx = event_index;
+      break;
+    }
+    ++event_index;
+  }
+  // if not find profiler start and stop event in main thread events, find them
+  // in subthread events instead.
+  if (start_profiler_idx == -1 && stop_profiler_idx == -1) {
+    find_profiler_mark_in_main_thread_events = false;
+    event_index = 0;
+    while (event_index < sub_thread_events.size()) {
+      VLOG(3) << "sub_thread_events size" << sub_thread_events.size();
+      if (sub_thread_events[event_index].name() == "_start_profiler_") {
+        VLOG(3) << "find start profiler";
+        start_profiler_idx = event_index;
+      } else if (sub_thread_events[event_index].name() == "_stop_profiler_") {
+        stop_profiler_idx = event_index;
+        break;
+      }
+      ++event_index;
+    }
+    // if not found, throw error.
+    if (start_profiler_idx == -1 || stop_profiler_idx == -1) {
+      PADDLE_THROW(
+          platform::errors::Fatal("start_profiler_idx and stop_profiler_idx "
+                                  "are expected to be greater than -1."));
+      return event_to_cost_success;
+    }
+  }
+  VLOG(3) << "start_profiler_idx:" << start_profiler_idx;
+  VLOG(3) << "stop_profiler_idx:" << stop_profiler_idx;
+  std::vector<Event> thread_events;
+  thread_events = (find_profiler_mark_in_main_thread_events)
+                      ? main_thread_events
+                      : sub_thread_events;
+
+  if (start_profiler_idx != -1 && stop_profiler_idx != -1) {
+    double cpu_time_ms = thread_events[start_profiler_idx].CpuElapsedMs(
+        thread_events[stop_profiler_idx]);
+    double gpu_time_ms = 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    gpu_time_ms = thread_events[start_profiler_idx].CudaElapsedMs(
+        thread_events[stop_profiler_idx]);
+#endif
+    VLOG(3) << "gpu time:" << gpu_time_ms;
+    VLOG(3) << "cpu time:" << cpu_time_ms;
+    whole_time_ms_ = gpu_time_ms + cpu_time_ms;
+    VLOG(3) << "whole_time_ms_: " << whole_time_ms_;
+  } else {
+    LOG(WARNING) << "Input time_events for whole time have wrong format";
+    event_to_cost_success = false;
+  }
+
   return event_to_cost_success;
 }
 
@@ -254,13 +397,28 @@ CostData CostModel::ProfileMeasure(
   PrintEvents(time_events.get(), mem_events.get());
 
   // Convert events to cost data
-  CostData cost_data;
-  cost_data.SetCostData(main_program, *time_events);
+  CostData* cost_data = new CostData();
+  VLOG(3) << "cost_data addr program:" << &cost_data;
+  cost_data->SetCostData(main_program, *time_events);
 
-  return cost_data;
+  return *cost_data;
+}
+int PrintGraph(const ir::Graph& graph);
+
+int PrintGraph(const ir::Graph& graph) {
+  auto nodes = graph.Nodes();
+
+  for (auto const& node : nodes) {
+    if (node->IsOp()) {
+      VLOG(3) << "Node id :" << node->id();
+      VLOG(3) << "Node name :" << node->Name();
+    }
+  }
+  return 0;
 }
 CostData CostModel::ProfileMeasureGraph(
-    ir::Graph* graph, const std::string& device,
+    ir::Graph* graph, const ProgramDesc& startup_program,
+    const std::string& device,
     const std::vector<std::string>& fetch_cost_list) const {
   platform::ProfilerState profiler_state;
   platform::Place place;
@@ -276,6 +434,12 @@ CostData CostModel::ProfileMeasureGraph(
     PADDLE_THROW(platform::errors::Unimplemented(
         "Not support %s in CostModel now", device));
   }
+
+  Executor executor(place);
+  Scope scope;
+  executor.Run(startup_program, &scope, /*block_id = */ 0);
+
+  SetTracerOption(platform::TracerOption::kAllOpDetail);
   EnableProfiler(profiler_state);
   std::unique_ptr<std::vector<std::vector<Event>>> time_events(
       new std::vector<std::vector<Event>>());
@@ -283,21 +447,30 @@ CostData CostModel::ProfileMeasureGraph(
       new std::vector<std::vector<MemEvent>>());
 
   details::ExecutionStrategy exec_strategy;
+  exec_strategy.num_threads_ = 1;
   details::BuildStrategy build_strategy;
   build_strategy.enable_inplace_ = false;
   build_strategy.memory_optimize_ = false;
-  Scope scope;
 
-  ParallelExecutor* Pe = new ParallelExecutor(
-      platform::CUDAPlace(0), &scope, exec_strategy, build_strategy, graph);
-  Pe->Run({"Out"}, false);
+  std::vector<Scope*> local_scopes;
+  std::vector<std::string> bcast_vars =
+      {};  // persistable varibles, which need be boardcast when initialized.
+  std::string loss_var_name = "";
+
+  std::vector<platform::Place> places = {platform::CUDAPlace(0)};
+  ParallelExecutor* Pe =
+      new ParallelExecutor(places, bcast_vars, loss_var_name, &scope,
+                           local_scopes, exec_strategy, build_strategy, graph);
+  Pe->Run({}, false);
+  VLOG(3) << "PE Run Done.";
   CompleteProfilerEvents(/*tracer_profile= */ nullptr, time_events.get(),
                          mem_events.get());
-
+  VLOG(3) << "Get Events Done.";
   PrintEvents(time_events.get(), mem_events.get());
-  CostData cost_data;
-  cost_data.SetGraphCostData(*graph, *time_events);
-  return cost_data;
+  CostData* cost_data = new CostData();
+  VLOG(3) << "cost_data addr graph:" << &cost_data;
+  cost_data->SetGraphCostData(graph, *time_events);
+  return *cost_data;
 }
 
 }  // namespace framework

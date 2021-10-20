@@ -70,9 +70,11 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
+  VLOG(3) << "befor preparation op_deps->size() :" << op_deps->size();
   PrepareAtomicOpDeps();
   size_t num_ops = op_deps->size();
 
+  VLOG(3) << "num_ops :" << num_ops;
   FetchResultType fetches;
   if (return_merged) {
     fetches = FetchList(fetch_tensors.size());
@@ -104,23 +106,28 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     VLOG(3) << "number of bootstrap_ops_: " << bootstrap_ops_.size();
     VLOG(3) << "number of ready_fetch_ops: " << ready_fetch_ops.size();
     for (auto op : bootstrap_ops_) {
+      VLOG(3) << ":bootstrap_ops_ ";
       RunOpAsync(op_deps.get(), op, complete_q);
     }
     for (auto op : ready_fetch_ops) {
       RunOpAsync(op_deps.get(), op, complete_q);
     }
-
+    VLOG(3) << "op_deps->size(): " << op_deps->size();
     size_t num_complete = 0;
     while (num_complete != op_deps->size()) {
+      VLOG(3) << "In Loop 1";
       size_t num_comp = complete_q->Pop();
+      VLOG(3) << "Done Pop";
       if (num_comp == -1UL) {
         int remaining = 0;
         while (true) {
+          VLOG(3) << "In Loop 2";
           remaining = remaining_;
           if (remaining == 0) {
             break;
           }
           for (int i = 0; i < remaining; ++i) {
+            VLOG(3) << "In for Loop";
             complete_q->Pop();
           }
         }
@@ -133,9 +140,10 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   }
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
-
+  VLOG(3) << "ClearFetchOp";
   for (auto &place : places_) {
     fetch_ctxs_.Get(place)->Wait();
+    VLOG(3) << "In Loop 3";
   }
 
   return fetches;
@@ -233,9 +241,10 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
   this->pool_->enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
-
+    VLOG(3) << "<<<< RunOpAsync: <<<<";
     size_t complete = 0;
     while (!op_queue.empty()) {
+      VLOG(3) << "op_queue.size: " << op_queue.size();
       OpHandleBase *op_to_run = op_queue.back();
       op_queue.pop_back();
 

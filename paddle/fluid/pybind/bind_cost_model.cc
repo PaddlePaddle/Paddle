@@ -22,6 +22,7 @@ namespace py = pybind11;
 using paddle::framework::CostData;
 using paddle::framework::CostModel;
 using paddle::framework::ProgramDesc;
+using paddle::framework::ir::Graph;
 
 namespace paddle {
 namespace pybind {
@@ -30,7 +31,8 @@ void BindCostModel(py::module* m) {
   py::class_<CostData>(*m, "CostData")
       .def(py::init<>())
       .def("get_whole_time_ms", &CostData::GetWholeTimeMs)
-      .def("get_op_time_ms", &CostData::GetOpTimeMs);
+      .def("get_op_time_ms", &CostData::GetOpTimeMs)
+      .def("get_op_time_ms_map", &CostData::GetOpTimeMsMap);
 
   py::class_<CostModel>(*m, "CostModel")
       .def(py::init<>())
@@ -49,6 +51,19 @@ void BindCostModel(py::module* m) {
              return self.ProfileMeasure(*main_program_desc,
                                         *startup_program_desc, device,
                                         fetch_cost_list);
+           })
+      .def("profile_measure_graph",
+           [](CostModel& self, py::object py_graph,
+              py::object py_startup_program, const std::string& device,
+              const std::vector<std::string>& fetch_cost_list) {
+             py::object py_startup_program_desc =
+                 py_startup_program.attr("desc");
+             ProgramDesc* startup_program_desc =
+                 py_startup_program_desc.cast<ProgramDesc*>();
+
+             Graph* graph = py_graph.cast<Graph*>();
+             return self.ProfileMeasureGraph(graph, *startup_program_desc,
+                                             device, fetch_cost_list);
            });
 }
 

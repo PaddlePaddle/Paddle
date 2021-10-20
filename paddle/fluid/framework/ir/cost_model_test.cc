@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/cost_model.h"
+#include <iostream>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/event.h"
-
 namespace paddle {
 namespace framework {
 
@@ -144,10 +144,17 @@ TEST(CostModelTest, TestProfileMeasure_UnsupportedDevice) {
 TEST(CostModelTest, TestProfileMeasure_Graph) {
   CostModel cost_model;
   ProgramDesc program = CreateTestProgram();
-  // ProgramDesc empty_program;
+  ProgramDesc empty_program;
   ir::Graph graph(program);
-  // VLOG(3) << "graph info" << graph;
-  CostData cost_data = cost_model.ProfileMeasureGraph(graph, "cpu", {"time"});
+  CostData cost_data =
+      cost_model.ProfileMeasureGraph(&graph, empty_program, "cpu", {"time"});
+  double op0_time_ms = cost_data.GetOpTimeMs(7);   // Node id is 7
+  double op1_time_ms = cost_data.GetOpTimeMs(11);  // Node id is 11
+  VLOG(3) << "op0_time_ms:" << op0_time_ms;
+  VLOG(3) << "op1_time_ms:" << op1_time_ms;
+  EXPECT_GT(op0_time_ms, 0);
+  EXPECT_GT(op1_time_ms, 0);
+  EXPECT_GT(cost_data.GetWholeTimeMs(), op0_time_ms + op1_time_ms);
 }
 
 TEST(CostDataTest, TestGetGraphProgram) {

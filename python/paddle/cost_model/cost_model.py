@@ -17,6 +17,8 @@ import paddle.static as static
 import numpy as np
 from paddle.fluid import core
 
+import paddle.fluid.profiler as profiler
+
 
 class CostModel():
     def __init__(self):

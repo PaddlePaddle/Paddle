@@ -702,23 +702,31 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
   // Initialize necessary info of member_ with strategy.
   InitExecutorPrivateMemberInfo(exec_strategy, build_strategy,
                                 /*device_count=*/1, *graph);
+  VLOG(3) << "InitMemberInfo Done.";
 
   CreateLocalScopes(scope, /*local_scope=*/{scope}, /*create_new=*/false);
+
+  VLOG(3) << "CreateLocalScopes Done.";
 
   // Apply BuildStrategy to compile graph.
   std::vector<ir::Graph *> graphs = {graph};
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, /*loss_var_name=*/"");
 
+  VLOG(3) << "Apply BuildStrategy Done.";
   graph = member_->ApplyMemoryOptimizePass(graph);
+  VLOG(3) << "ApplyMemoryOptimizePass Done.";
 
   // Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   CreateVariableInfos(&var_infos_, graph);
 
+  VLOG(3) << "CreateVariableInfos Done.";
   // Create local execution scopes
   std::unordered_map<Scope *, Scope *> scope_map =
       CreateLocalExecScopes(member_->local_scopes_, /*create_new=*/false);
+
+  VLOG(3) << "CreateLocalExecScopes Done.";
 
   std::vector<ir::Graph *> final_graphs =
       CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
