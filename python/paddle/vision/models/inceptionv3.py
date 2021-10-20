@@ -445,6 +445,11 @@ class InceptionV3(nn.Layer):
             from paddle.vision.models import InceptionV3
 
             inception_v3 = InceptionV3()
+
+            x = paddle.rand([1, 3, 299, 299])
+            out = inception_v3(x)
+
+            print(out.shape)
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
@@ -528,6 +533,7 @@ def inception_v3(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import inception_v3
 
             # build model
@@ -535,6 +541,11 @@ def inception_v3(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = inception_v3(pretrained=True)
+
+            x = paddle.rand([1, 3, 299, 299])
+            out = model(x)
+
+            print(out.shape)
     """
     model = InceptionV3(**kwargs)
     arch = "inception_v3"
