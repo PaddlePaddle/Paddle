@@ -59,13 +59,14 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The number of sequence length should be equal"
                           " to batch size."));
-
-    OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
-                   "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
-                   "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
-                   "FusedAttentionOp");
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
+                     "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
+                     "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
+                     "FusedAttentionOp");
+    }
 
     OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
                    "FusedAttentionOp");
@@ -80,9 +81,12 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
                    "FusedAttentionOp");
 
     auto x_dim = ctx->GetInputDim("X");
-    ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("LnOut", ctx->GetInputDim("X"));
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
+      ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
+      ctx->SetOutputDim("LnOut", ctx->GetInputDim("X"));
+    }
+
     ctx->SetOutputDim("OutLinearOut", ctx->GetInputDim("X"));
 
     ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
@@ -335,9 +339,11 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("Ln2Bias"),
                         ctx->GetInputDim("Ln2Bias"));
     }
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      ctx->SetOutputDim(framework::GradVarName("LnOut"),
+                        ctx->GetInputDim("LnOut"));
+    }
 
-    ctx->SetOutputDim(framework::GradVarName("LnOut"),
-                      ctx->GetInputDim("LnOut"));
     ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                       ctx->GetInputDim("OutLinearBias"));
     ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
@@ -401,10 +407,15 @@ class FusedAttentionCuDNNFMHAGradOpMaker
       op->SetOutput(framework::GradVarName("Ln2Bias"),
                     this->InputGrad("Ln2Bias"));
     }
-
-    op->SetInput("LnOut", this->Output("LnOut"));
-    op->SetInput("LnMean", this->Output("LnMean"));
-    op->SetInput("LnVariance", this->Output("LnVariance"));
+    if (this->HasOutput("LnOut")) {
+      op->SetInput("LnOut", this->Output("LnOut"));
+    }
+    if (this->HasOutput("LnMean")) {
+      op->SetInput("LnMean", this->Output("LnMean"));
+    }
+    if (this->HasOutput("LnVariance")) {
+      op->SetInput("LnVariance", this->Output("LnVariance"));
+    }
 
     op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
 
@@ -419,7 +430,9 @@ class FusedAttentionCuDNNFMHAGradOpMaker
     // op->SetOutput(framework::GradVarName("V"), this->InputGrad("V"));
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
 
-    op->SetOutput(framework::GradVarName("LnOut"), this->OutputGrad("LnOut"));
+    if (this->HasOutput("LnOut")) {
+      op->SetOutput(framework::GradVarName("LnOut"), this->OutputGrad("LnOut"));
+    }
 
     op->SetOutput(framework::GradVarName("OutLinearBias"),
                   this->InputGrad("OutLinearBias"));
