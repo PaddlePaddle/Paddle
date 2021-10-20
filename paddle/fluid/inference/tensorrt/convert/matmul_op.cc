@@ -93,9 +93,9 @@ class MatMulOpConverter : public OpConverter {
         RreplenishLayerAndOutput(layer, "matmul_op_float_no_alpha",
                                  {output_name}, test_mode);
       } else {
-        RreplenishLayerAndOutput(layer,
-                                 "matmul_op_float_has_alpha: MatrixMultiply",
-                                 {output_name}, test_mode);
+        layer->setName(("matmul_op_float_has_alpha: MatrixMultiplyLayer" +
+                        " (Output: " + {output_name}[0] + ")")
+                           .c_str());
         auto create_weights = [&](float data,
                                   const std::string& type) -> float* {
           std::unique_ptr<framework::Tensor> tmp_tensor(
@@ -121,7 +121,7 @@ class MatMulOpConverter : public OpConverter {
             engine_, Scale, *layer->getOutput(0), nvinfer1::ScaleMode::kUNIFORM,
             nv_shift.get(), nv_alpha.get(), nv_power.get());
         RreplenishLayerAndOutput(scale_layer,
-                                 "matmul_op_float_has_alpha: Scale",
+                                 "matmul_op_float_has_alpha: ScaleLayer",
                                  {output_name}, test_mode);
       }
     }
