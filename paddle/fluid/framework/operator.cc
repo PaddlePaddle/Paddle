@@ -1280,11 +1280,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 void OperatorWithKernel::ChoosePtKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(this->GetExpectedPtKernelArgs(ctx)));
+      new KernelSignature(std::move(this->GetExpectedPtKernelArgs(ctx))));
 
   VLOG(1) << KernelSignatureToString(*pt_kernel_signature_.get());
 
-  kernel_type_.reset(new OpKernelType(InnerGetExpectedKernelType(ctx)));
+  kernel_type_.reset(
+      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
   auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
   auto pt_kernel_key = TransOpKernelTypeToPtKernelKey(*kernel_type_.get());
@@ -1776,7 +1777,7 @@ KernelSignature OperatorWithKernel::GetExpectedPtKernelArgs(
     return *(KernelSignatureMap::Instance().GetNullable(Type()));
   } else {
     KernelArgsNameMakerByOpProto maker(Info().proto_);
-    auto signature = maker.GetKernelSignature();
+    auto signature = std::move(maker.GetKernelSignature());
     KernelSignatureMap::Instance().Insert(Type(), signature);
     return signature;
   }
@@ -1827,7 +1828,7 @@ pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
             << in_def.layout;
 
     auto ins_vector = ctx.inputs.at(input_names[i]);
-    
+
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
       auto pt_in = framework::InputVariableToPtTensor(*var, in_def);
