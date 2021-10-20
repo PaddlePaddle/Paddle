@@ -348,11 +348,11 @@ def check_append_sd(append_sd):
     """
     if append_sd is None:
         return append_sd
-    if not isinstance(append_sd, dict):
+    elif not isinstance(append_sd, dict):
         raise TypeError("The type of append_sd should be dict, but got {}".
                         format(str(type(append_sd))))
-
-    return append_sd
+    else:
+        return append_sd
 
 
 def check_ckpt_dir(ckpt_dir):
@@ -382,14 +382,14 @@ def save_static_checkpoint(program,
 
     Args:
         program(Program): The program to be saved.
-        output_dir(str): The path of the object to be saved. 
+        output_dir(str): The path of the checkpoint file to be saved.
         is_integrated(bool, optional): Whether to integrate param before save. Default: False.
-        append_sd(dict, optional): Addition information. Default: False.
+        append_sd(dict, optional): Additional information. Default: None.
     """
     if not is_integrated:
         rank = paddle.distributed.get_rank()
-        model_file_name = os.path.join(
-            output_dir, "model_state_rank{}.pdmodel".format(rank))
+        ckpt_file_name = os.path.join(output_dir,
+                                      "model_state_rank{}.pdmodel".format(rank))
 
         # state_dict of param and opt
         state_dict = {
@@ -400,8 +400,8 @@ def save_static_checkpoint(program,
         if check_append_sd(append_sd):
             state_dict["append_sd"] = append_sd
 
-        paddle.save(state_dict, model_file_name)
-        print("Successfully saving models to {}".format(output_dir))
+        paddle.save(state_dict, ckpt_file_name)
+        print("Successfully saving model to {}".format(output_dir))
     else:
         # TODO: integrate param before save
         raise NotImplementedError("Integrating param is not implemented")
@@ -414,7 +414,7 @@ def load_static_checkpoint(ckpt_dir, program=None, dist_attr_file=None):
     Args:
         ckpt_dir(List[str]): The list of the checkpoint files in order of rank id.
         program(Program, optional): The program to be update with ckpt_dir. Default: None.
-        dist_attr_file(str, optional): Distribution attribution file of all parameters. Default: None.
+        dist_attr_file(str, optional): Distributed attribution file of all parameters. Default: None.
     """
     ckpt_dir = check_ckpt_dir(ckpt_dir)
 
