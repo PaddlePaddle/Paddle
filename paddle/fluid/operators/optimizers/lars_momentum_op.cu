@@ -375,6 +375,10 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
         ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
 
     int op_num = grad.size();
+    PADDLE_ENFORCE_EQ(weight_decay_arr.size(), op_num,
+                      platform::errors::InvalidArgument(
+                          "Since Input(lars_weight_decay) and Iutput(grad) of "
+                          "lars optimizer must be the same size."));
 #if CUDA_VERSION >= 11000
     if (op_num > 1) {
       LarsParamWarpper<T, MT> lars_warpper;
