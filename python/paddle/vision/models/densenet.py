@@ -35,7 +35,7 @@ model_urls = {
     ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet169_pretrained.pdparams',
      '82cc7c635c3f19098c748850efb2d796'),
     'densenet201':
-    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet161_pretrained.pdparams',
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet201_pretrained.pdparams',
      '16ca29565a7712329cf9e36e02caaf58')
 }
 
@@ -225,7 +225,6 @@ class DenseNet(nn.Layer):
                 num_features = num_features // 2
 
         self.batch_norm = nn.BatchNorm(num_features, act="relu")
-        # self.features.add_sublayer('norm5', nn.BatchNorm2D(num_features))
         self.with_pool = with_pool
         if with_pool:
             self.pool2d_avg = nn.AdaptiveAvgPool2D((1, 1))
@@ -304,7 +303,12 @@ def densenet161(pretrained=False, **kwargs):
         model = densenet161()
     """
     model_name = 'densenet161'
-    return _densenet(model_name, [6, 12, 36, 24], pretrained, **kwargs)
+    return _densenet(
+        model_name, [6, 12, 36, 24],
+        pretrained,
+        num_init_features=96,
+        growth_rate=48,
+        **kwargs)
 
 
 def densenet169(pretrained=False, **kwargs):

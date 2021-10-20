@@ -115,17 +115,17 @@ class Pool2dOpConverter : public OpConverter {
     nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
 
     nvinfer1::ILayer *layer = nullptr;
-    nvinfer1::DimsHW pre_pad(0, 0);
-    nvinfer1::DimsHW post_pad(0, 0);
+    nvinfer1::DimsHW g_pre_pad(0, 0);
+    nvinfer1::DimsHW g_post_pad(0, 0);
     // paddle Non ceil_mode : Output size = (input size - filter size + 2 *
     // padding) / stride (stride size) + 1
     // tensorrt EXPLICIT_ROUND_DOWN: O = floor((M - DK) / S) + 1
     // so if M - DK < 0 we need extra padding
     if (input_shape.d[input_dims - 2] - ksize[0] + 2 * paddings[0] < 0) {
-      post_pad.h() = strides[0] - 1;
+      g_post_pad.h() = strides[0] - 1;
     }
     if (input_shape.d[input_dims - 1] - ksize[1] + 2 * paddings[1] < 0) {
-      post_pad.w() = strides[1] - 1;
+      g_post_pad.w() = strides[1] - 1;
     }
 
     if (op_desc.HasAttr("enable_int8")) {
@@ -138,10 +138,10 @@ class Pool2dOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (!adaptive && !global_pooling && !ceil_mode) {
-        if ((post_pad.w() > 0 || post_pad.h() > 0) &&
+        if ((g_post_pad.w() > 0 || g_post_pad.h() > 0) &&
             (padding_algorithm != "SAME")) {
           auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
-                                                 pre_pad, post_pad);
+                                                 g_pre_pad, g_post_pad);
           PADDLE_ENFORCE_NOT_NULL(
               pad_layer, platform::errors::Fatal(
                              "Pad layer in poolOp converter could not be "
@@ -230,22 +230,35 @@ class Pool2dOpConverter : public OpConverter {
 
     if (!adaptive) {
       if (ceil_mode) {
+        nvinfer1::DimsHW pre_pad(0, 0);
+        nvinfer1::DimsHW post_pad(0, 0);
         // If ceil mode is true, we will pad the appropriate size to the input.
         DealCeilMode(input_shape, ksize, strides, paddings, &pre_pad, &post_pad,
                      input_dims);
-      }
-
-      if ((post_pad.w() > 0 || post_pad.h() > 0) &&
-          (padding_algorithm != "SAME")) {
         auto *pad_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1, pre_pad, post_pad);
+
         PADDLE_ENFORCE_NOT_NULL(
             pad_layer, platform::errors::Fatal(
                            "Pad layer in poolOp converter could not be "
                            "created. The pointer to pad layer is `NULL`."));
         input1 = pad_layer->getOutput(0);
       }
-
+#if IS_TRT_VERSION_GE(8000)
+      // Exclude padding pixels from the average mean is not supported well by
+      // TRT
+      // so enable padding for trt8.0 above.
+      if ((g_post_pad.w() > 0 || g_post_pad.h() > 0) &&
+          (padding_algorithm != "SAME") && !ceil_mode) {
+        auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
+                                               g_pre_pad, g_post_pad);
+        PADDLE_ENFORCE_NOT_NULL(
+            pad_layer, platform::errors::Fatal(
+                           "Pad layer in poolOp converter could not be "
+                           "created. The pointer to pad layer is `NULL`."));
+        input1 = pad_layer->getOutput(0);
+      }
+#endif
       auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
                                               nv_pool_type, nv_ksize);
       PADDLE_ENFORCE_NOT_NULL(
