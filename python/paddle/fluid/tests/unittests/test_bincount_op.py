@@ -70,16 +70,6 @@ class TestBincountOpError(unittest.TestCase):
         with fluid.dygraph.guard():
             net_func()
 
-    def test_input_value_error(self):
-        """Test input tensor should only contain non-negative ints."""
-
-        def net_func():
-            input_value = paddle.to_tensor([1, 2, 3, 4, -5])
-            paddle.bincount(input_value)
-
-        with self.assertRaises(ValueError):
-            self.run_network(net_func)
-
     def test_input_shape_error(self):
         """Test input tensor should be 1-D tansor."""
 
