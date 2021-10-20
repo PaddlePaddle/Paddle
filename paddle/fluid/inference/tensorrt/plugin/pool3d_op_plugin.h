@@ -36,12 +36,13 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
     output_shape[1] = ksize[1];
     output_shape[2] = ksize[2];
   } else {
-    int output_d, output_h, output_w;
-    if (!ceil_mode) {
-      output_d = (input_shape[0] - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
-      output_h = (input_shape[1] - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
-      output_w = (input_shape[2] - ksize[2] + 2 * paddings[2]) / strides[2] + 1;
-    } else {
+    int output_d =
+        (input_shape[0] - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
+    int output_h =
+        (input_shape[1] - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
+    int output_w =
+        (input_shape[2] - ksize[2] + 2 * paddings[2]) / strides[2] + 1;
+    if (ceil_mode) {
       output_d =
           (input_shape[0] - ksize[0] + 2 * paddings[0] + strides[0] - 1) /
               strides[0] +
@@ -64,27 +65,10 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
 
 class Pool3DPlugin : public PluginTensorRT {
  public:
-  size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
-           SerializedSize(pool3d_type_) + SerializedSize(adaptive_) +
-           SerializedSize(ksize_) + SerializedSize(strides_) +
-           SerializedSize(paddings_) + SerializedSize(input_shape_) +
-           SerializedSize(output_shape_);
-  }
-
+  size_t getSerializationSize() const TRT_NOEXCEPT override;
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
-  void serialize(void* buffer) const TRT_NOEXCEPT override {
-    serializeBase(buffer);
-    SerializeValue(&buffer, ceil_mode_);
-    SerializeValue(&buffer, pool3d_type_);
-    SerializeValue(&buffer, adaptive_);
-    SerializeValue(&buffer, ksize_);
-    SerializeValue(&buffer, strides_);
-    SerializeValue(&buffer, paddings_);
-    SerializeValue(&buffer, input_shape_);
-    SerializeValue(&buffer, output_shape_);
-  }
+  void serialize(void* buffer) const TRT_NOEXCEPT override;
 
   enum class Pool3DType {
     max = 0,

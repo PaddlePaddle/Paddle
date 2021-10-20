@@ -20,6 +20,30 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+size_t Pool3DPlugin::getSerializationSize() const TRT_NOEXCEPT {
+  printf("#######wocao1");
+  return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
+         SerializedSize(pool3d_type_) + SerializedSize(adaptive_) +
+         SerializedSize(ksize_) + SerializedSize(strides_) +
+         SerializedSize(paddings_) + SerializedSize(input_shape_) +
+         SerializedSize(output_shape_);
+}
+
+// TRT will call this func when we need to serialize the configuration of
+// tensorrt.
+void Pool3DPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
+  printf("#######wocao2");
+  serializeBase(buffer);
+  SerializeValue(&buffer, ceil_mode_);
+  SerializeValue(&buffer, pool3d_type_);
+  SerializeValue(&buffer, adaptive_);
+  SerializeValue(&buffer, ksize_);
+  SerializeValue(&buffer, strides_);
+  SerializeValue(&buffer, paddings_);
+  SerializeValue(&buffer, input_shape_);
+  SerializeValue(&buffer, output_shape_);
+}
+
 nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
   assert(nbInputs == 1);
