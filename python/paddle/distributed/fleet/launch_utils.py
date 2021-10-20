@@ -565,17 +565,8 @@ def pull_worker_log(tp):
                 piece = fin.read(piece_size)
                 if piece == b'':
                     break
-                utf8_piece = ""
-                try:
-                    utf8_piece = str(piece, 'utf-8')
-                except UnicodeEncodeError:
-                    sys.stdout.write(
-                        'UnicodeEncodeError occurs at this line. '
-                        'Please refer to the original log file "%s"\n' %
-                        tp.log_fn.name)
-                    utf8_piece = ""
-                sys.stdout.write(utf8_piece)
-
+                sys.stdout.buffer.write(piece)
+                sys.stdout.flush()
             tp.log_offset = fin.tell()
 
 
