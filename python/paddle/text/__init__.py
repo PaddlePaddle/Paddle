@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import ops
+from .viterbi_decode import ViterbiDecoder, viterbi_decode
 from .datasets import Conll05st  # noqa: F401
 from .datasets import Imdb  # noqa: F401
 from .datasets import Imikolov  # noqa: F401
@@ -29,4 +29,6 @@ __all__ = [ #noqa
            'UCIHousing',
            'WMT14',
            'WMT16',
+           'ViterbiDecoder',
+           'viterbi_decode'
 ]

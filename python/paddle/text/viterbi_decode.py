@@ -55,7 +55,7 @@ def viterbi_decode(potentials,
             length = paddle.randint(1, seq_len + 1, [batch_size])
             tags = paddle.randint(0, num_tags, [batch_size, seq_len])
             transition = paddle.rand((num_tags, num_tags), dtype='float32')
-            scores, path = paddle.text.ops.crf_decode(emission, transition, length, False) # scores: [3.37089300, 1.56825531], path: [[1, 0, 0], [1, 1, 0]]
+            scores, path = paddle.text.viterbi_decode(emission, transition, length, False) # scores: [3.37089300, 1.56825531], path: [[1, 0, 0], [1, 1, 0]]
     """
     if in_dygraph_mode():
         return core.ops.viterbi_decode(potentials, transition_params, lengths,
@@ -117,7 +117,7 @@ class ViterbiDecoder(Layer):
             length = paddle.randint(1, seq_len + 1, [batch_size])
             tags = paddle.randint(0, num_tags, [batch_size, seq_len])
             transition = paddle.rand((num_tags, num_tags), dtype='float32')
-            decoder = paddle.text.ops.ViterbiDecoder(transition, include_bos_eos_tag=False)
+            decoder = paddle.text.ViterbiDecoder(transition, include_bos_eos_tag=False)
             scores, path = decoder(emission, length) # scores: [3.37089300, 1.56825531], path: [[1, 0, 0], [1, 1, 0]]
     """
 
