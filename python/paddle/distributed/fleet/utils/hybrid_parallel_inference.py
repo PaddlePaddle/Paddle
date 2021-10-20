@@ -603,6 +603,15 @@ class HybridParallelInferenceHelper(object):
     def _insert_sendrecv_ops_in_while_block(
             self, block, sync_in_while_lastpp2firstpp_var_names,
             sync_in_while_var_names, stage):
+
+        if sync_in_while_lastpp2firstpp_var_names is None and sync_in_while_var_names is None:
+            return
+
+        if sync_in_while_lastpp2firstpp_var_names is None:
+            sync_in_while_lastpp2firstpp_var_names = []
+        if sync_in_while_var_names is None:
+            sync_in_while_var_names = []
+
         dev_ids = []
         for pair in self._pipeline_pair_in_while:
             prev_id, cur_id = pair
@@ -680,6 +689,9 @@ class HybridParallelInferenceHelper(object):
 
     def _insert_sendrecv_ops_for_results_pipeline_parallel(
             self, block, fetch_var_names_for_pp, stage):
+
+        if fetch_var_names_for_pp is None:
+            return
 
         dev_ids = []
         for pair in self._pipeline_pair_in_while:
