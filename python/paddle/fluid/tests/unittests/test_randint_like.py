@@ -20,19 +20,16 @@ import paddle
 from paddle.static import program_guard, Program
 
 
-def output_hist(out):
-    hist, _ = np.histogram(out, range=(-10, 10))
-    hist = hist.astype("float32")
-    hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
-    return hist, prob
-
-
 # Test python API
 class TestRandintLikeAPI(unittest.TestCase):
     def setUp(self):
-        self.x_int32 = np.zeros((10, 12)).astype('int32')
-        self.x_float32 = np.zeros((10, 12)).astype('float32')
+        self.test_dtype = [
+            "bool", "int8", "int16", "int32", "int64", "float16", "float32",
+            "float64"
+        ]
+        self.x_inputs = []
+        for dtype in self.test_dtype:
+            self.x_inputs.append(np.zeros((10, 12)).astype(dtype))
         self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
@@ -40,62 +37,55 @@ class TestRandintLikeAPI(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # results are from [-100, 100).
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[10, 12], dtype='int32')
-            x_float32 = paddle.fluid.data(
-                name='x_float32', shape=[10, 12], dtype='float32')
-            # x dtype is int32 and output dtype is 'int32'
-            out1 = paddle.randint_like(
-                x_int32, low=-100, high=100, dtype='int32')
-            # x dtype is int32 and output dtype is 'int64'
-            out2 = paddle.randint_like(
-                x_int32, low=-100, high=100, dtype='int64')
-            # x dtype is float32 and output dtype is 'int32'
-            out3 = paddle.randint_like(
-                x_float32, low=-100, high=100, dtype='int32')
-            # x dtype is float32 and output dtype is 'int64'
-            out4 = paddle.randint_like(
-                x_float32, low=-100, high=100, dtype='int64')
+            test_x = []
+            for dtype in self.test_dtype:
+                x = paddle.fluid.data(
+                    name="x_" + str(dtype), shape=[10, 12], dtype=dtype)
+                test_x.append(x)
+
+            test_outputs = []
+            # x dtype ["bool", "int8", "int16", "int32", "int64", "float16", "float32", "float64"]
+            for x in test_x:
+                x_output = []
+                # self.test_dtype ["bool", "int8", "int16", "int32", "int64", "float16", "float32", "float64"]
+                for dtype in self.test_dtype:
+                    out = paddle.randint_like(
+                        x, low=-100, high=100, dtype=dtype)
+                    x_output.append(out)
+                test_outputs.append(x_output)
 
             exe = paddle.static.Executor(self.place)
-            outs_int32 = exe.run(feed={'X': self.x_int32},
-                                 fetch_list=[out1, out2])
-            outs_float32 = exe.run(feed={'X': self.x_float32},
-                                   fetch_list=[out3, out4])
+            for x, output in zip(self.x_inputs, test_outputs):
+                outs = exe.run(feed={'X': x}, fetch_list=output)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x_int32 = paddle.to_tensor(self.x_int32)
-        x_float32 = paddle.to_tensor(self.x_float32)
-        # x dtype is int32 and output dtype is 'int32'
-        out1 = paddle.randint_like(x_int32, low=-100, high=100, dtype='int32')
-        # x dtype is int32 and output dtype is 'int64'
-        out2 = paddle.randint_like(x_int32, low=-100, high=100, dtype='int64')
-        # x dtype is float32 and output dtype is 'int32'
-        out3 = paddle.randint_like(x_float32, low=-100, high=100, dtype='int32')
-        # x dtype is float32 and output dtype is 'int64'
-        out4 = paddle.randint_like(x_float32, low=-100, high=100, dtype='int64')
+        # x dtype ["bool", "int8", "int16", "int32", "int64", "float16", "float32", "float64"]
+        for x in self.x_inputs:
+            x = paddle.to_tensor(x)
+            # self.test_dtype ["bool", "int8", "int16", "int32", "int64", "float16", "float32", "float64"]
+            for dtype in self.test_dtype:
+                out = paddle.randint_like(x, low=-100, high=100, dtype=dtype)
         paddle.enable_static()
 
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[12, 10], dtype='int32')
-            # dtype should be chosen from ['int32', 'int64']
-            self.assertRaises(
-                TypeError,
-                paddle.randint_like,
-                x_int32,
-                high=5,
-                dtype='float32')
-            # low is 5 and high is 5, low must less then high
-            self.assertRaises(
-                ValueError, paddle.randint_like, x_int32, low=5, high=5)
-            # low(default value) is 0 and high is -5, low must less then high
-            self.assertRaises(ValueError, paddle.randint_like, x_int32, high=-5)
-            # if high is None, low must be greater than 0
-            self.assertRaises(ValueError, paddle.randint_like, x_int32, low=-5)
+            test_x = []
+            for dtype in self.test_dtype:
+                x = paddle.fluid.data(
+                    name="x_" + str(dtype), shape=[10, 12], dtype=dtype)
+                test_x.append(x)
+
+            # x dtype ["bool", "int8", "int16", "int32", "int64", "float16", "float32", "float64"]  
+            for x in test_x:
+                # low is 5 and high is 5, low must less then high
+                self.assertRaises(
+                    ValueError, paddle.randint_like, x, low=5, high=5)
+                # low(default value) is 0 and high is -5, low must less then high
+                self.assertRaises(ValueError, paddle.randint_like, x, high=-5)
+                # if high is None, low must be greater than 0
+                self.assertRaises(ValueError, paddle.randint_like, x, low=-5)
 
 
 if __name__ == "__main__":
