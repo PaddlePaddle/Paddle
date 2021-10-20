@@ -17,7 +17,6 @@
 #include <atomic>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -27,6 +26,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -69,7 +69,6 @@ class CinnCompiler {
 
  private:
   CinnCompiler() = default;
-
   std::unique_ptr<CinnCompiledObject> CompileGraph const(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
@@ -80,6 +79,8 @@ class CinnCompiler {
                      CinnCacheKey::Hash>
       cache_;
   std::atomic_int64_t real_compiled_num_{0};
+
+  DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };
 
 }  // namespace paddle2cinn

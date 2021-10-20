@@ -19,10 +19,13 @@
 #include <string>
 
 #include "cinn/common/target.h"
+#include "cinn/frontend/net_builder.h"  // need to remove
+#include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -37,6 +40,34 @@ using ir::Graph;
 using ::cinn::common::Target;
 using ::cinn::hlir::framework::GraphCompiler;
 
+// TODO(wangzhen31): just for local compile, remove after
+// the CinnGraphSymbolization PR is merged
+namespace {
+class CinnGraphSymbolization {
+ public:
+  CinnGraphSymbolization(
+      int64_t graph_id, const Graph& graph, const Target& target,
+      const std::map<std::string, const LoDTensor*>& input_tensors) {}
+  ::cinn::frontend::Program operator()() {
+    constexpr int M = 32;
+    constexpr int N = 24;
+
+    ::cinn::frontend::NetBuilder builder("net_builder");
+    auto a = builder.CreateInput(Float(32), {M, N}, "A");
+    auto b = builder.CreateInput(Float(32), {M, N}, "B");
+    auto c = builder.add(a, b);
+    auto d = builder.add(a, c);
+    auto program = builder.Build();
+
+    return program;
+  }
+  const std::unordered_map<std::string, std::string>& var_model_to_program_map()
+      const {
+    return {{"fakeA", "A"}, {"fakeB", "B"}};
+  }
+}
+}  // namespace
+
 CinnCompiler* CinnCompiler::GetInstance() {
   static CinnCompiler instance;
   return &instance;
@@ -47,6 +78,10 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   ProgramDesc program;
   GraphToProgram(graph, &program);
   program.Proto()->SerializeToString(&graph_key);
+  LOG_IF(WARNING, graphs_.cout(graph_key))
+      << "The graph being added is already in CinnCompiler, and its value will "
+         "be updated. The graph key is:\n"
+      << graph_key;
   graphs_[graph_key] = std::move(graph);
   return graph_key;
 }
@@ -88,11 +123,14 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph const(
   auto frontend_program = symbol();
   auto cinn_graph =
       std::make_shared<cinn::hlir::framework::Graph>(frontend_program, target);
+  VLOG(4) << "The i-" << real_compiled_num_
+          << " compilation, and its related graph:\n"
+          << cinn_graph->Visualize();
   auto scope = cinn::hlir::framework::BuildScope(target, cinn_graph);
-  GraphCompiler gc(target, scope, cinn_graph);
+  GraphCompiler graph_compiler(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
-  auto runtime_program = gc.Build(options);
+  auto runtime_program = graph_compiler.Build(options);
   return std::make_unique<CinnCompiledObject>(
       std::move(runtime_program), scope, symbol.var_model_to_program_map());
 }

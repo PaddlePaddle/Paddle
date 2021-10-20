@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -144,17 +145,17 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
                                          const GraphNodeSet& cluster_inputs) {
   // Graph's constructor must has one parameter, and in our code,
   // the ProgramDesc is useless, so here we pass a temporary object.
-  auto sub_graph = std::make_unique<Graph>(framework::ProgramDesc());
+  auto subgraph = std::make_unique<Graph>(framework::ProgramDesc());
 
   std::unordered_map<Node*, Node*> old_op2new_op;
   for (auto* op : cluster) {
-    auto sub_node = sub_graph->CreateOpNode(op->Op());
+    auto sub_node = subgraph->CreateOpNode(op->Op());
     old_op2new_op[op] = sub_node;
   }
 
   std::unordered_map<Node*, Node*> old_var2new_var;
   for (auto* var : cluster_internals) {
-    auto sub_node = sub_graph->CreateVarNode(var->Var());
+    auto sub_node = subgraph->CreateVarNode(var->Var());
     old_var2new_var[var] = sub_node;
   }
 
@@ -193,9 +194,9 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
   }
 
-  AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, sub_graph.get());
-  AddParamVar(param_vars, cluster, old_op2new_op, sub_graph.get());
-  AddOutputVar(output_vars, cluster, old_op2new_op, sub_graph.get());
+  AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, subgraph.get());
+  AddParamVar(param_vars, cluster, old_op2new_op, subgraph.get());
+  AddOutputVar(output_vars, cluster, old_op2new_op, subgraph.get());
 
   for (auto* var : cluster_internals) {
     for (auto* op : var->inputs) {
@@ -210,7 +211,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
   }
 
-  return sub_graph;
+  return subgraph;
 }
 
 // This interface is used to classify all variables involved in a cluster into
@@ -371,7 +372,7 @@ void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
-void SearchAllSubgraphs(Graph* graph) {
+void SearchAllSubgraphs(Graph* graph, std::vector<Graph*>* cinn_subgraphs) {
   auto teller = [](const Node* node) {
     return ::cinn::frontend::OpMapperRegistry::Global()->Find(node->Name()) !=
            nullptr;
@@ -379,7 +380,8 @@ void SearchAllSubgraphs(Graph* graph) {
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
 
-  auto* cinn_runner = CinnCompiler::GetInstance();
+  cinn_subgraphs->clear();
+  auto* cinn_compiler = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
     // classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
@@ -387,8 +389,13 @@ void SearchAllSubgraphs(Graph* graph) {
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
     AnalyseClusterVariables(cluster_set, &cluster_inputs, &cluster_outputs,
                             &cluster_internals);
-    std::string compilation_key = cinn_runner->AddGraph(
-        CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs));
+    // create a new subgraph according to the found cluster
+    auto new_graph =
+        CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs);
+    // keep a copy of the created subgraph in BuildCinnPass
+    cinn_subgraphs->push_back(new_graph.get());
+    // save the created subgraph in CinnCompiler
+    std::string compilation_key = cinn_compiler->AddGraph(std::move(new_graph));
     // replacing subgraph to a new special op node
     ReplaceSubGraphWithSpecialOpNode(cluster_set, cluster_inputs,
                                      cluster_outputs, cluster_internals,
@@ -396,7 +403,10 @@ void SearchAllSubgraphs(Graph* graph) {
   }
 }
 
-void BuildCinnPass::ApplyImpl(Graph* graph) const { SearchAllSubgraphs(graph); }
+void BuildCinnPass::ApplyImpl(Graph* graph) const {
+  auto& cinn_subgraphs = Get<std::vector<Graph*>>("cinn_subgraphs");
+  SearchAllSubgraphs(graph, cinn_subgraphs);
+}
 
 }  // namespace paddle2cinn
 }  // namespace framework
