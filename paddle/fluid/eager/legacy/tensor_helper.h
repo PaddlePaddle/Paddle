@@ -15,13 +15,13 @@
 #pragma once
 
 #include <vector>
-#include "paddle/tcmpt/api/all.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
-pt::TensorMeta* MutableMeta(paddle::experimental::Tensor* tensor);
+ptenTensorMeta* MutableMeta(paddle::experimental::Tensor* tensor);
 void InitializeTensor(paddle::experimental::Tensor* tensor,
-                      const pt::TensorMeta& meta,
-                      const pt::TensorStatus& status);
+                      const ptenTensorMeta& meta,
+                      const ptenTensorStatus& status);
 void InitializeTensor(paddle::experimental::Tensor* tensor);
 }

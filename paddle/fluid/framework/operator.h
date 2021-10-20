@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/pten/api/include/core.h"
 
 namespace paddle {
 namespace framework {
@@ -119,8 +119,6 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
-
-OpKernelType TransPtKernelKeyToOpKernelType(const pt::KernelKey& kernel_key);
 
 class ExecutionContext;
 class OperatorBase;
@@ -537,14 +535,16 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
-  /* member functions for adapting to tcmpt lib */
-  // TODO(chenweihang): Temporarily as a class method
-  virtual pt::KernelKey ConstructPtKernelKey(
-      const VariableValueMap& inputs, const AttributeMap& attrs,
-      const platform::Place& ctx_place) const;
-
-  virtual pt::KernelContext ConstructPtKernelContext(
-      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
+  /* member functions for adapting to pten lib */
+  /** In the Tensor calculation library, the new Kernel adopts a clearer and
+    * more streamlined design. The arguments of the Kernel and the input and
+    * output arguments registered in the original OpMaker do not match in some
+    * cases, so we use map to record the arguments required by the kernel.
+    * When selecting Kernel during Op execution, select the arguments of the
+    * original Op according to the GetExpectedPtKernelArgs returned arguments.
+    */
+  virtual KernelSignature GetExpectedPtKernelArgs(
+      const ExecutionContext& ctx) const;
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
@@ -567,8 +567,9 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
-                    const platform::Place& place) const;
+  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
+
+  void ChooseKernel(const ExecutionContext& ctx) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;
@@ -585,9 +586,11 @@ class OperatorWithKernel : public OperatorBase {
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
 
-  /* member functions for adapting to tcmpt lib */
-  void ChoosePtKernel(const RuntimeContext& ctx,
-                      const platform::DeviceContext& dev_ctx) const;
+  /* member functions for adapting to pten lib */
+  void ChoosePtKernel(const ExecutionContext& ctx) const;
+
+  pten::KernelContext BuildPtKernelContext(
+      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -599,11 +602,12 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
-  // TODO(chenweihang): Similar duplicate members are used for new tcmpt lib,
-  // maybe we have better impl methods
+  // NOTE(chenweihang): Similar op members are used to adapt to
+  // new pten kernel, if there is a better design in the future,
+  // we may polish the implementation here
   mutable bool run_pt_kernel_ = false;
-  mutable std::unique_ptr<pt::KernelKey> pt_kernel_key_;
-  mutable std::unique_ptr<pt::Kernel> pt_kernel_;
+  mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

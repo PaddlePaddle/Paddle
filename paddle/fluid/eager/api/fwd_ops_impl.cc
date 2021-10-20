@@ -29,8 +29,8 @@
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
 #include "paddle/fluid/eager/function_api.h"
-#include "paddle/tcmpt/api/all.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
 

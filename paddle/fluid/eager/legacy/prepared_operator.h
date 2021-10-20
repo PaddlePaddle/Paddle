@@ -25,7 +25,7 @@
 #include "paddle/fluid/framework/operator.h"
 
 #include "paddle/fluid/imperative/kernel_args_names_maker.h"
-#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/pten/api/include/core.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -151,7 +151,7 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const pt::KernelKey& pt_kernel_key, const pt::Kernel& pt_kernel,
+             const ptenKernelKey& pt_kernel_key, const ptenKernel& pt_kernel,
              platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
@@ -188,8 +188,8 @@ class PreparedOp {
   // TODo(chenweihang): Similar duplicate members are used for new tcmpt lib,
   // maybe we have better impl methods
   bool run_pt_kernel_{false};
-  pt::KernelKey pt_kernel_key_;
-  pt::Kernel pt_kernel_;
+  ptenKernelKey pt_kernel_key_;
+  ptenKernel pt_kernel_;
 };
 
 }  // namespace imperative

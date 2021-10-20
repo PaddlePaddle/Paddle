@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
 // Accumulation API

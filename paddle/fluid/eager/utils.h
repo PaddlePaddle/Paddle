@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/hapi/all.h"
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
     const paddle::experimental::Tensor& tensor);
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(

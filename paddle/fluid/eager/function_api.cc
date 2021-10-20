@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/eager/function_api.h"
 
-#include "paddle/tcmpt/api/all.h"
-#include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/hapi/all.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -26,33 +26,33 @@ namespace egr {
 Controller* Controller::controller_ = new Controller();
 
 template <typename DeviceContext>
-static void ScaleDeviceDispatch(const pt::DenseTensor& dense_tensor,
+static void ScaleDeviceDispatch(const ptenDenseTensor& dense_tensor,
                                 const DeviceContext& dev_ctx, float scale,
                                 float bias, bool bias_after_scale,
-                                pt::DenseTensor* dense_out) {
+                                ptenDenseTensor* dense_out) {
   switch (dense_tensor.type()) {
-    case pt::DataType::kFLOAT64: {
-      pt::Scale<double>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
+    case ptenDataType::kFLOAT64: {
+      ptenScale<double>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
                         bias /* bias */,
                         bias_after_scale /* bias_after_scale */,
                         dense_out /* out tensor */);
       break;
     }
-    case pt::DataType::kFLOAT32: {
-      pt::Scale<float>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
+    case ptenDataType::kFLOAT32: {
+      ptenScale<float>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
                        bias /* bias */, bias_after_scale /* bias_after_scale */,
                        dense_out /* out tensor */);
       break;
     }
-    case pt::DataType::kINT64: {
-      pt::Scale<int64_t>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
+    case ptenDataType::kINT64: {
+      ptenScale<int64_t>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
                          bias /* bias */,
                          bias_after_scale /* bias_after_scale */,
                          dense_out /* out tensor */);
       break;
     }
-    case pt::DataType::kINT32: {
-      pt::Scale<int32_t>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
+    case ptenDataType::kINT32: {
+      ptenScale<int32_t>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
                          bias /* bias */,
                          bias_after_scale /* bias_after_scale */,
                          dense_out /* out tensor */);
@@ -67,11 +67,11 @@ static void ScaleDeviceDispatch(const pt::DenseTensor& dense_tensor,
 
 // TODO(jiabin): This may have serious performance issue move code from
 // gradient_accumulator.cc
-static void FillConstCPUFunctor(pt::DenseTensor* tensor_dense, double value) {
+static void FillConstCPUFunctor(ptenDenseTensor* tensor_dense, double value) {
   PADDLE_ENFORCE(tensor_dense, paddle::platform::errors::Fatal(
                                    "Receive nullptr of dense tensor"));
   switch (tensor_dense->type()) {
-    case pt::DataType::kINT64: {
+    case ptenDataType::kINT64: {
       int64_t* data_ptr = tensor_dense->mutable_data<int64_t>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<int64_t>(value);
@@ -79,7 +79,7 @@ static void FillConstCPUFunctor(pt::DenseTensor* tensor_dense, double value) {
 
       break;
     }
-    case pt::DataType::kINT32: {
+    case ptenDataType::kINT32: {
       int32_t* data_ptr = tensor_dense->mutable_data<int32_t>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<int32_t>(value);
@@ -87,7 +87,7 @@ static void FillConstCPUFunctor(pt::DenseTensor* tensor_dense, double value) {
 
       break;
     }
-    case pt::DataType::kFLOAT64: {
+    case ptenDataType::kFLOAT64: {
       double* data_ptr = tensor_dense->mutable_data<double>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<double>(value);
@@ -95,7 +95,7 @@ static void FillConstCPUFunctor(pt::DenseTensor* tensor_dense, double value) {
 
       break;
     }
-    case pt::DataType::kFLOAT32: {
+    case ptenDataType::kFLOAT32: {
       float* data_ptr = tensor_dense->mutable_data<float>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<float>(value);
@@ -113,7 +113,7 @@ static void FillConstCPUFunctor(pt::DenseTensor* tensor_dense, double value) {
 
 // TODO(jiabin): This may have serious performance issue move code from
 // gradient_accumulator.cc
-static void FillConstCUDAFunctor(pt::DenseTensor* tensor_dense, double value) {
+static void FillConstCUDAFunctor(ptenDenseTensor* tensor_dense, double value) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -121,7 +121,7 @@ static void FillConstCUDAFunctor(pt::DenseTensor* tensor_dense, double value) {
   auto stream = dev_ctx->stream();
 
   switch (tensor_dense->type()) {
-    case pt::DataType::kINT64: {
+    case ptenDataType::kINT64: {
       std::vector<int64_t> host_data(tensor_dense->numel(),
                                      static_cast<int64_t>(value));
       int64_t* device_ptr = tensor_dense->mutable_data<int64_t>();
@@ -130,7 +130,7 @@ static void FillConstCUDAFunctor(pt::DenseTensor* tensor_dense, double value) {
                            sizeof(int64_t) * tensor_dense->numel(), stream);
       break;
     }
-    case pt::DataType::kINT32: {
+    case ptenDataType::kINT32: {
       std::vector<int32_t> host_data(tensor_dense->numel(),
                                      static_cast<int32_t>(value));
       int32_t* device_ptr = tensor_dense->mutable_data<int32_t>();
@@ -139,7 +139,7 @@ static void FillConstCUDAFunctor(pt::DenseTensor* tensor_dense, double value) {
                            sizeof(int32_t) * tensor_dense->numel(), stream);
       break;
     }
-    case pt::DataType::kFLOAT64: {
+    case ptenDataType::kFLOAT64: {
       std::vector<double> host_data(tensor_dense->numel(),
                                     static_cast<double>(value));
       double* device_ptr = tensor_dense->mutable_data<double>();
@@ -148,7 +148,7 @@ static void FillConstCUDAFunctor(pt::DenseTensor* tensor_dense, double value) {
                            sizeof(double) * tensor_dense->numel(), stream);
       break;
     }
-    case pt::DataType::kFLOAT32: {
+    case ptenDataType::kFLOAT32: {
       std::vector<float> host_data(tensor_dense->numel(),
                                    static_cast<float>(value));
       float* device_ptr = tensor_dense->mutable_data<float>();
@@ -171,14 +171,14 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
   // TODO(jiabin): Support multiple tensor here, Create DenseTensor is not a
   // proper way to Demo it
   // Run Forward Function
-  auto dense_tensor = std::dynamic_pointer_cast<pt::DenseTensor>(x.impl());
+  auto dense_tensor = std::dynamic_pointer_cast<ptenDenseTensor>(x.impl());
 
   // Init output tensor
   auto tensor_meta =
-      pt::TensorMeta(dense_tensor->dims(), dense_tensor->backend(),
+      ptenTensorMeta(dense_tensor->dims(), dense_tensor->backend(),
                      dense_tensor->type(), dense_tensor->layout());
-  auto dense_out = std::make_shared<pt::DenseTensor>(std::move(tensor_meta),
-                                                     pt::TensorStatus());
+  auto dense_out = std::make_shared<ptenDenseTensor>(std::move(tensor_meta),
+                                                     ptenTensorStatus());
 
   // Handle Device Context
   const paddle::platform::Place& expected_kernel_place =
@@ -214,22 +214,22 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
   out->set_impl(dense_out);
 }
 
-void FillConstAPI(double value, const pt::DDim& ddim,
-                  const pt::Backend& backend, const pt::DataType& dtype,
-                  const pt::DataLayout& layout,
+void FillConstAPI(double value, const ptenDDim& ddim,
+                  const ptenBackend& backend, const ptenDataType& dtype,
+                  const ptenDataLayout& layout,
                   paddle::experimental::Tensor* target) {
   // Create new tensor->impl and fill it with 1.0
   // Fill 1.0
-  std::shared_ptr<pt::DenseTensor> tensor_dense = nullptr;
+  std::shared_ptr<ptenDenseTensor> tensor_dense = nullptr;
   if (!target->defined() || !target->initialized()) {
     VLOG(6) << "Init undefined or uninitialized tensor in FillConstAPI";
-    auto tensor_meta = pt::TensorMeta(ddim, backend, dtype, layout);
-    tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta),
-                                                     pt::TensorStatus());
+    auto tensor_meta = ptenTensorMeta(ddim, backend, dtype, layout);
+    tensor_dense = std::make_shared<ptenDenseTensor>(std::move(tensor_meta),
+                                                     ptenTensorStatus());
     target->set_impl(tensor_dense);
 
   } else {
-    tensor_dense = std::dynamic_pointer_cast<pt::DenseTensor>(target->impl());
+    tensor_dense = std::dynamic_pointer_cast<ptenDenseTensor>(target->impl());
   }
 
   if (!tensor_dense) {
@@ -238,12 +238,12 @@ void FillConstAPI(double value, const pt::DDim& ddim,
   }
   VLOG(6) << "Call FillConstKernel";
   switch (tensor_dense->backend()) {
-    case pt::Backend::kCPU: {
+    case ptenBackend::kCPU: {
       VLOG(8) << "Call FillConst CPU Kernel";
       FillConstCPUFunctor(tensor_dense.get(), value);
       break;
     }
-    case pt::Backend::kCUDA: {
+    case ptenBackend::kCUDA: {
       VLOG(8) << "Call FillConst CUDA Kernel";
       FillConstCUDAFunctor(tensor_dense.get(), value);
       break;

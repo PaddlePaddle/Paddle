@@ -16,8 +16,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/eager/gradient_accumulation.h"
-#include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/core/dtype.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/dtype.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"

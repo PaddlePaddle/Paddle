@@ -82,13 +82,13 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
 
 inline std::string GetDtypeStr(
     const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
-  return framework::DataTypeToString(pt::TransToProtoVarType(tensor->type()));
+  return framework::DataTypeToString(ptenTransToProtoVarType(tensor->type()));
 }
 
 inline bool NeedCast(
     const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
-  auto place = pt::TransToFluidPlace(tensor->place());
-  auto data_type = pt::TransToProtoVarType(tensor->type());
+  auto place = ptenTransToFluidPlace(tensor->place());
+  auto data_type = ptenTransToProtoVarType(tensor->type());
   if (platform::is_gpu_place(place) || platform::is_cuda_pinned_place(place) ||
       platform::is_xpu_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
@@ -106,7 +106,7 @@ static inline std::shared_ptr<paddle::experimental::Tensor> CastToType(
     const std::shared_ptr<paddle::experimental::Tensor>& tensor,
     const framework::proto::VarType::Type dst_type) {
   imperative::NameTensorMap ins = {{"X", {tensor}}};
-  auto in_data_type = pt::TransToProtoVarType(tensor->type());
+  auto in_data_type = ptenTransToProtoVarType(tensor->type());
   framework::AttributeMap attrs = {{"in_dtype", in_data_type},
                                    {"out_dtype", dst_type}};
   auto out = std::shared_ptr<paddle::experimental::Tensor>(
@@ -125,7 +125,7 @@ static inline std::shared_ptr<paddle::experimental::Tensor> CastToFP16(
     const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
   auto dst_type = framework::proto::VarType::FP16;
   if (NeedCast(tensor) &&
-      (pt::TransToProtoVarType(tensor->type()) != dst_type)) {
+      (ptenTransToProtoVarType(tensor->type()) != dst_type)) {
     return CastToType(tensor, dst_type);
   }
   return tensor;
@@ -135,7 +135,7 @@ static inline std::shared_ptr<paddle::experimental::Tensor> CastToFP32(
     const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
   auto dst_type = framework::proto::VarType::FP32;
   if (NeedCast(tensor) &&
-      (pt::TransToProtoVarType(tensor->type()) != dst_type)) {
+      (ptenTransToProtoVarType(tensor->type()) != dst_type)) {
     return CastToType(tensor, dst_type);
   }
   return tensor;
@@ -146,9 +146,9 @@ static inline framework::proto::VarType::Type GetPromoteType(
   auto dst_type = framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
     for (const auto& tensor : pair.second) {
-      if (pt::TransToProtoVarType(tensor->type()) ==
+      if (ptenTransToProtoVarType(tensor->type()) ==
           framework::proto::VarType::FP32) {
-        dst_type = pt::TransToProtoVarType(tensor->type());
+        dst_type = ptenTransToProtoVarType(tensor->type());
         break;
       }
     }
@@ -159,7 +159,7 @@ static inline framework::proto::VarType::Type GetPromoteType(
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
       if (pair.first == "X" &&
-          pt::TransToProtoVarType(pair.second.front()->DataType()) ==
+          ptenTransToProtoVarType(pair.second.front()->DataType()) ==
               framework::proto::VarType::FP16) {
         dst_type = framework::proto::VarType::FP16;
       }

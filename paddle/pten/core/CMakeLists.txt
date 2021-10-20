@@ -1,0 +1,19 @@
+IF(WITH_MKLDNN)
+    set(MKLDNN_CTX_DEPS mkldnn)
+ELSE()
+    set(MKLDNN_CTX_DEPS)
+ENDIF()
+
+cc_library(backend SRCS backend.cc)
+
+if(WITH_GPU)
+    cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place backend gpu_info)
+elseif(WITH_ROCM)
+    cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place backend gpu_info)
+else()
+    cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place backend)
+endif()
+cc_library(dense_tensor SRCS dense_tensor.cc DEPS enforce data_type ddim allocator place convert_utils ${MKLDNN_CTX_DEPS})
+
+cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce backend)
+cc_library(kernel_context SRCS kernel_context.cc DEPS enforce device_context)

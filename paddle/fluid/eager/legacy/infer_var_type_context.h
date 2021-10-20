@@ -22,8 +22,8 @@
 #include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/tcmpt/api/all.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
 
@@ -135,7 +135,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     // TODO(jiabin): Supoort SelectedRows later. We do nothing here for now
     // since we only support DenseTensor
     PADDLE_ENFORCE_EQ(type, framework::proto::VarType::LOD_TENSOR,
-                      "We can only support LOD_TENSOR with pt::Tensor");
+                      "We can only support LOD_TENSOR with ptenTensor");
     InitializeTensor(out.get());
   }
 
@@ -144,7 +144,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     // TODO(jiabin): We do nothing here for now, since we only support
     // DenseTensor
     auto* meta = MutableMeta(out.get());
-    auto pt_dtype = pt::TransToPtDataType(type);
+    auto pt_dtype = ptenTransToPtDataType(type);
     meta->type = pt_dtype;
   }
 
@@ -166,7 +166,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   framework::proto::VarType::Type GetInputDataType(
       const std::string& name, const int& index = 0) const override {
-    return pt::TransToProtoVarType(inputs_.at(name)[index]->type());
+    return ptenTransToProtoVarType(inputs_.at(name)[index]->type());
   }
 
   void SetOutputDataType(const std::string& name,

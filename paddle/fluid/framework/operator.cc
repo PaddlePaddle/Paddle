@@ -23,12 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/fluid/framework/tcmpt_utils.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/imperative/kernel_args_names_maker.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -51,7 +50,7 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
-DECLARE_bool(use_pt_kernel);
+DECLARE_bool(run_pt_kernel);
 
 namespace paddle {
 namespace framework {
@@ -1077,22 +1076,6 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-OpKernelType TransPtKernelKeyToOpKernelType(const pt::KernelKey& kernel_key) {
-  proto::VarType::Type data_type = pt::TransToProtoVarType(kernel_key.dtype());
-  platform::Place place = pt::TransToFluidPlace(kernel_key.backend());
-  DataLayout data_layout = pt::TransToFluidDataLayout(kernel_key.layout());
-  LibraryType library_type = LibraryType::kPlain;
-  if (kernel_key.backend() == pt::Backend::kMKLDNN) {
-    library_type = LibraryType::kMKLDNN;
-  } else if (kernel_key.backend() == pt::Backend::kCUDNN) {
-    library_type = LibraryType::kCUDNN;
-  } else {
-    // do nothing
-  }
-  // TODO(chenweihang): the customized_type_value is lost
-  return OpKernelType(data_type, place, data_layout, library_type);
-}
-
 static std::string RuntimeContextDebugString(const RuntimeContext& ctx) {
   std::stringstream ss;
   ss << "RuntimeContext(Inputs: ";
@@ -1149,22 +1132,23 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 #endif
 
+  auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
+
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
-
-  if (FLAGS_use_pt_kernel &&
-      pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
-    if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
-      ChoosePtKernel(*runtime_ctx, *dev_ctx);
+  if (FLAGS_run_pt_kernel &&
+      pten::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
+    if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
+      ChoosePtKernel(exe_ctx);
     }
     run_pt_kernel_ = pt_kernel_->IsValid();
   }
   if (!run_pt_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
-      ChooseKernel(*runtime_ctx, scope, place);
+      ChooseKernel(exe_ctx);
     }
   }
 
@@ -1175,10 +1159,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("prepare_data",
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      if (run_pt_kernel_) {
-        kernel_type_.reset(
-            new OpKernelType(TransPtKernelKeyToOpKernelType(*pt_kernel_key_)));
-      }
       transfer_scope = PrepareData(scope, *kernel_type_,
                                    &transfered_inplace_vars, runtime_ctx);
     }
@@ -1208,8 +1188,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
     if (run_pt_kernel_) {
-      // TODO(chenweihang): here will intrduce copy
-      auto op_kernel_ctx = ConstructPtKernelContext(*runtime_ctx, *dev_ctx);
+      auto op_kernel_ctx = BuildPtKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
     } else {
       (*kernel_func_)(
@@ -1262,104 +1241,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-// TODO(chenweihang): now only check single var input
-static bool IsValidVar(const std::string& name,
-                       const VariableValueMap& inputs) {
-  auto it = inputs.find(name);
-  if (it == inputs.end()) {
-    return false;
-  }
-  auto* var = it->second.empty() ? nullptr : it->second[0];
-  return var != nullptr;
-}
+OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
+    const ExecutionContext& ctx) const {
+  auto& dev_ctx = ctx.device_context();
 
-// TODO(chenweihang): enhance rules, not all dispensable inputs
-// are host tensor, now only for scale kernel verify
-static bool ContainHostTensor(const proto::OpProto& op_proto,
-                              const VariableValueMap& inputs) {
-  for (int i = 0; i < op_proto.inputs_size(); ++i) {
-    auto in = op_proto.inputs()[i];
-    if (in.has_dispensable() && in.dispensable()) {
-      return IsValidVar(in.name(), inputs);
-    }
-  }
-  return false;
-}
-
-// TODO(yuanrisheng): enhance rules, for get kernel that contains Intermediate
-// Tensor
-static bool ContainMidOutputTensor(const proto::OpProto& op_proto,
-                                   const VariableValueMap& outputs) {
-  for (int i = 0; i < op_proto.outputs_size(); ++i) {
-    auto output = op_proto.outputs()[i];
-    if (output.has_intermediate() && output.intermediate()) {
-      return IsValidVar(output.name(), outputs);
-    }
-  }
-  return false;
-}
-
-static pt::KernelName ConstructPtKernelName(const std::string& op_type,
-                                            const proto::OpProto& op_proto,
-                                            const VariableValueMap& inputs,
-                                            const VariableValueMap& outputs) {
-  std::string overload_name;
-  // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-  if (ContainHostTensor(op_proto, inputs)) {
-    if (overload_name != "") {
-      overload_name += ".";
-    }
-    overload_name += pt::kContainHostTensorSuffix;
-  }
-  if (ContainMidOutputTensor(op_proto, outputs)) {
-    if (overload_name != "") {
-      overload_name += ".";
-    }
-    overload_name += pt::kContainMidOutputTensorSuffix;
-  }
-  return pt::KernelName(op_type, overload_name);
-}
-
-void OperatorWithKernel::ChoosePtKernel(
-    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
-  // 1. construct operation name
-  // TODO(chenweihang): add rules for construct op name
-  auto kernel_name =
-      ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs, ctx.outputs);
-
-  // 2. construct op kernel key
-  pt_kernel_key_.reset(new pt::KernelKey(
-      ConstructPtKernelKey(ctx.inputs, Attrs(), dev_ctx.GetPlace())));
-
-  // 3. selecte op kernel
-  pt_kernel_.reset(new pt::Kernel(pt::KernelFactory::Instance().SelectKernel(
-      kernel_name, *pt_kernel_key_)));
-
-  // for debug
-  VLOG(1) << "ChoosePtKernel - kernel name: " << kernel_name
-          << " | kernel key: " << *pt_kernel_key_
-          << " | kernel: " << *pt_kernel_;
-}
-
-void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
-                                      const Scope& scope,
-                                      const platform::Place& place) const {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
-
-  // check if op[type] has kernel registered.
-  auto& all_op_kernels = AllOpKernels();
-  auto kernels_iter = all_op_kernels.find(type_);
-  PADDLE_ENFORCE_NE(
-      kernels_iter, all_op_kernels.end(),
-      platform::errors::Unavailable(
-          "There are no kernels which are registered in the %s operator.",
-          type_));
-
-  OpKernelMap& kernels = kernels_iter->second;
-
-  auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx));
+  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
@@ -1376,9 +1262,9 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
       if (SupportGPU()) {
-        expected_kernel_key.place_ = dev_ctx->GetPlace();
+        expected_kernel_key.place_ = dev_ctx.GetPlace();
       } else if (SupportNPU()) {
-        expected_kernel_key.place_ = dev_ctx->GetPlace();
+        expected_kernel_key.place_ = dev_ctx.GetPlace();
       } else {
         expected_kernel_key.place_ = platform::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
@@ -1389,6 +1275,46 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   }
   VLOG(3) << "op type:" << type_
           << ", expected_kernel_key:" << expected_kernel_key;
+  return expected_kernel_key;
+}
+
+void OperatorWithKernel::ChoosePtKernel(const ExecutionContext& ctx) const {
+  pt_kernel_signature_.reset(
+      new KernelSignature(this->GetExpectedPtKernelArgs(ctx)));
+
+  VLOG(1) << KernelSignatureToString(*pt_kernel_signature_.get());
+
+  kernel_type_.reset(new OpKernelType(InnerGetExpectedKernelType(ctx)));
+
+  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
+  auto pt_kernel_key = TransOpKernelTypeToPtKernelKey(*kernel_type_.get());
+  pt_kernel_.reset(
+      new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+          pt_kernel_name, pt_kernel_key)));
+
+  if (pt_kernel_->IsValid()) {
+    VLOG(1) << "Static mode ChoosePtKernel - kernel name: " << pt_kernel_name
+            << " | kernel key: " << pt_kernel_key
+            << " | kernel: " << *pt_kernel_;
+  } else {
+    VLOG(1) << "Static mode ChoosePtKernel - kernel `" << pt_kernel_name
+            << "` not found.";
+  }
+}
+
+void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
+  // check if op[type] has kernel registered.
+  auto& all_op_kernels = AllOpKernels();
+  auto kernels_iter = all_op_kernels.find(type_);
+  PADDLE_ENFORCE_NE(
+      kernels_iter, all_op_kernels.end(),
+      platform::errors::Unavailable(
+          "There are no kernels which are registered in the %s operator.",
+          type_));
+
+  OpKernelMap& kernels = kernels_iter->second;
+
+  auto expected_kernel_key = InnerGetExpectedKernelType(ctx);
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
@@ -1844,107 +1770,64 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
                       tensor.layout());
 }
 
-pt::KernelKey OperatorWithKernel::ConstructPtKernelKey(
-    const VariableValueMap& inputs, const AttributeMap& attrs,
-    const platform::Place& ctx_place) const {
-  // 1. get backend based place and attrs
-  auto attr_reader = AttrReader(attrs);
-  pt::Backend backend = pt::TransToPtBackend(ctx_place);
-  if (attrs.count("use_mkldnn") != 0 &&
-      attr_reader.Get<bool>("use_mkldnn") == true) {
-    backend = pt::Backend::kMKLDNN;
-  } else if (attrs.count("use_cudnn") != 0 &&
-             attr_reader.Get<bool>("use_cudnn") == true) {
-    backend = pt::Backend::kCUDNN;
+KernelSignature OperatorWithKernel::GetExpectedPtKernelArgs(
+    const ExecutionContext& ctx) const {
+  if (KernelSignatureMap::Instance().Has(Type())) {
+    return *(KernelSignatureMap::Instance().GetNullable(Type()));
   } else {
-    // do nothing
+    KernelArgsNameMakerByOpProto maker(Info().proto_);
+    auto signature = maker.GetKernelSignature();
+    KernelSignatureMap::Instance().Insert(Type(), signature);
+    return signature;
   }
-  // TODO(chenweihang): add more rules
-  // if (HasAttr("op_device"))
-
-  // 2. get layout
-  // default layout same as tensor default layout, need futher check
-  pt::DataLayout layout = pt::DataLayout::kNCHW;
-  if (backend == pt::Backend::kMKLDNN) {
-    layout = pt::DataLayout::kMKLDNN;
-  }
-
-  // 3. parse data_type form inputs
-  proto::VarType::Type dafault_data_type =
-      static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = dafault_data_type;
-  for (auto& var_pair : inputs) {
-    ParseInputDataType(var_pair.second, var_pair.first, &data_type);
-  }
-  PADDLE_ENFORCE_NE(
-      data_type, dafault_data_type,
-      platform::errors::NotFound(
-          "DataType should be indicated by input Variable at %s.", Type()));
-  pt::DataType dtype = pt::TransToPtDataType(data_type);
-
-  // TODO(chenweihang): polish special dtype rules
-  if (attrs.count("dtype") != 0 &&
-      attr_reader.Get<int>("dtype") != static_cast<int>(data_type)) {
-    dtype = pt::TransToPtDataType(static_cast<framework::proto::VarType::Type>(
-        attr_reader.Get<int>("dtype")));
-  }
-
-  // 4. build pt KernelKey
-  return pt::KernelKey(backend, layout, dtype);
 }
 
-pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
+pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   VLOG(1) << RuntimeContextDebugString(ctx);
 
-  // TODO(chenweihang): now only work for very simple case (sign op),
+  // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
   // 2. the dispensbale, duplicable input and output
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  pt::KernelContext op_kernel_ctx(dev_ctx);
+  pten::KernelContext op_kernel_ctx(dev_ctx);
+
+  auto& input_names = std::get<0>(pt_kernel_signature_->second);
+  auto& attr_names = std::get<1>(pt_kernel_signature_->second);
+  auto& output_names = std::get<2>(pt_kernel_signature_->second);
+
   auto input_defs = pt_kernel_->args_def().input_defs();
-  auto output_defs = pt_kernel_->args_def().output_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
-
-  // TODO(chenweihang): use ordered_map for VariableNameMap and VariableValueMap
-  // If we the VariableValueMap are ordered, we can get tensor by iter the map,
-  // and its order is same as OpProto
-
-  paddle::imperative::KernelArgsNameMakerByOpProto<Variable> argMaker(
-      Info().proto_, &ctx.inputs, &ctx.outputs);
-
-  auto& input_names = argMaker.GetInputArgsNames();
-  auto& output_names = argMaker.GetOutputArgsNames();
-  auto& attr_pairs = argMaker.GetAttrsArgsNamesAndTypes();
+  auto output_defs = pt_kernel_->args_def().output_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
-                        "the size of inputs_args names (%d) must be equal to "
+                        "The size of inputs_args names (%d) must be equal to "
                         "the size of kernel input_defs (%d).",
                         input_names.size(), input_defs.size()));
 
   PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
                     platform::errors::InvalidArgument(
-                        "the size of outputs_args names (%d) must be equal to "
+                        "The size of outputs_args names (%d) must be equal to "
                         "the size of kernel output_defs (%d).",
                         output_names.size(), output_defs.size()));
 
-  PADDLE_ENFORCE_EQ(attr_pairs.size(), attr_defs.size(),
+  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
                     platform::errors::InvalidArgument(
-                        "the size of attribute_args names (%d) must be equal "
+                        "The size of attribute_args names (%d) must be equal "
                         "to the size of kernel attribute_defs (%d).",
-                        attr_pairs.size(), attr_defs.size()));
+                        attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto in_def = input_defs.at(i);
-    VLOG(1) << "in_def: " << in_def.backend << ", " << in_def.dtype << ", "
+    VLOG(2) << "in_def: " << in_def.backend << ", " << in_def.dtype << ", "
             << in_def.layout;
 
     auto ins_vector = ctx.inputs.at(input_names[i]);
-    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_inputs;
+    std::vector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
 
     for (auto var : ins_vector) {
       auto pt_in = framework::InputVariableToPtTensor(*var, in_def);
@@ -1957,7 +1840,7 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     auto out_def = output_defs.at(i);
     auto outs_vector = ctx.outputs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_outputs;
+    std::vector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto pt_out = framework::OutputVariableToPtTensor(var, out_def);
       tmp_outputs.emplace_back(pt_out);
@@ -1965,49 +1848,34 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
   }
 
-  for (size_t i = 0; i < attr_defs.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(pt::Scalar))) {
-      // TODO(chenweihang): support other attrs
-      // In principle, the attr required by the dynamic mode should be
-      // passed in from the Python side, and there is no need to look up
-      // from the default_map, but now this nor work
-      switch (attr_pairs[i].second) {
-        case framework::proto::AttrType::INT:
-          op_kernel_ctx.EmplaceBackAttr(
-              pt::Scalar(Attr<int>(attr_pairs[i].first)));
-          break;
-        case framework::proto::AttrType::FLOAT:
-          op_kernel_ctx.EmplaceBackAttr(
-              pt::Scalar(Attr<float>(attr_pairs[i].first)));
-          break;
-        case framework::proto::AttrType::BOOLEAN:
-          op_kernel_ctx.EmplaceBackAttr(
-              pt::Scalar(Attr<double>(attr_pairs[i].first)));
-          break;
-        default:
-          // TODO(chenweihang): support other attrs type
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "unsupported cast op attribute `%s` when construct "
-              "KernelContext.",
-              attr_pairs[i].first));
+  for (size_t i = 0; i < attr_names.size(); ++i) {
+    auto& attr = Attrs().at(attr_names[i]);
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
+      // TODO(chenweihang): support other attrs later
+      // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
+      // attribtue type by attr_defs
+      if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+        op_kernel_ctx.EmplaceBackAttr(
+            pten::Scalar(BOOST_GET_CONST(float, attr)));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "unsupported cast op attribute `%s` to Scalar when construct "
+            "KernelContext.",
+            attr_names[i]));
       }
     } else {
-      // TODO(chenweihang): support other attrs
-      // In principle, the attr required by the dynamic mode should be
-      // passed in from the Python side, and there is no need to look up
-      // from the default_map, but now this nor work
+      // TODO(chenweihang): support other attrs later
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
-        op_kernel_ctx.EmplaceBackAttr(Attr<int>(attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
-        op_kernel_ctx.EmplaceBackAttr(Attr<float>(attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
-        op_kernel_ctx.EmplaceBackAttr(Attr<bool>(attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else {
-        // TODO(chenweihang): support other attrs type
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
             "KernelContext.",
-            attr_pairs[i].first));
+            attr_names[i]));
       }
     }
   }

@@ -14,8 +14,8 @@
 
 #pragma once
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/tcmpt/api/all.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
 using NameTensorMap =

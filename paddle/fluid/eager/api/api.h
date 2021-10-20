@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
 

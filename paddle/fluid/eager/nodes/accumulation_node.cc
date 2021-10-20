@@ -15,9 +15,9 @@
 #include "paddle/fluid/eager/nodes/accumulation_node.h"
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/eager/gradient_accumulation.h"
-#include "paddle/tcmpt/api/all.h"
-#include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/hapi/all.h"
 
 #include "paddle/fluid/platform/device_context.h"
 

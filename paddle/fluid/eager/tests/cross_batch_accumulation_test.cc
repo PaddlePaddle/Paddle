@@ -25,8 +25,8 @@
 
 #include "paddle/fluid/eager/api/api.h"
 
-#include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/core/tensor_meta.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
@@ -49,7 +49,7 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::experimental::Tensor& target_tensor = target_tensors[0];

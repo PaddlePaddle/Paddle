@@ -20,11 +20,6 @@ limitations under the License. */
 #include <vector>
 
 namespace paddle {
-
-namespace framework {
-class Variable;
-}  // namespace framework
-
 namespace imperative {
 
 class VariableWrapper;
@@ -50,12 +45,6 @@ template <>
 struct NameVarMapTrait<VariableWrapper> {
   using Type = std::map<std::string, SavedVariableWrapperList>;
 };
-
-template <>
-struct NameVarMapTrait<paddle::framework::Variable> {
-  using Type = std::map<std::string, std::vector<paddle::framework::Variable*>>;
-};
-
 }  // namespace details
 
 template <typename T>

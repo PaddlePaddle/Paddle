@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/nodes/scale_node.h"
 #include "paddle/fluid/eager/function_api.h"
 
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/hapi/all.h"
 
 #include "paddle/fluid/platform/device_context.h"
 
@@ -48,7 +48,7 @@ operator()(
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {
     // TODO(jiabin): Shall we apply hook slot by slot here or accept
-    // vector<vector<pt::tensor>> to apply all hooks?
+    // vector<vector<ptentensor>> to apply all hooks?
     std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
         ApplyGradientHooks(grads);
     ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,

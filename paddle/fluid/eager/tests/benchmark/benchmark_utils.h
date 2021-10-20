@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/tcmpt/api/all.h"
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
 

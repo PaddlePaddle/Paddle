@@ -23,8 +23,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
-#include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/core/tensor_meta.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
@@ -41,7 +41,7 @@ TEST(Forward, SingleNode) {
 
   // Create Target Tensor
   paddle::experimental::Tensor t = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
@@ -94,7 +94,7 @@ TEST(Forward, LinearNodes) {
 
   // Create Target Tensor
   paddle::experimental::Tensor t = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
@@ -189,7 +189,7 @@ TEST(Forward, BranchedNodes) {
 
   // Create Target Tensor
   paddle::experimental::Tensor t = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];

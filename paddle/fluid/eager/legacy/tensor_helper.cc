@@ -24,31 +24,31 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace egr {
-pt::TensorMeta* MutableMeta(paddle::experimental::Tensor* tensor) {
+ptenTensorMeta* MutableMeta(paddle::experimental::Tensor* tensor) {
   if (!tensor->defined()) {
-    pt::TensorMeta meta;
-    pt::TensorStatus status;
-    auto dense_tensor = std::make_shared<pt::DenseTensor>(meta, status);
+    ptenTensorMeta meta;
+    ptenTensorStatus status;
+    auto dense_tensor = std::make_shared<ptenDenseTensor>(meta, status);
     tensor->set_impl(dense_tensor);
   }
-  return std::static_pointer_cast<pt::DenseTensor>(tensor->impl())
+  return std::static_pointer_cast<ptenDenseTensor>(tensor->impl())
       ->mutable_meta();
 }
 void InitializeTensor(paddle::experimental::Tensor* tensor,
-                      const pt::TensorMeta& meta,
-                      const pt::TensorStatus& status) {
+                      const ptenTensorMeta& meta,
+                      const ptenTensorStatus& status) {
   // TODO(jiabin) Support init Tensor with other kinds of TensorInterface.
   if (!tensor->defined()) {
-    auto dense_tensor = std::make_shared<pt::DenseTensor>(meta, status);
+    auto dense_tensor = std::make_shared<ptenDenseTensor>(meta, status);
     tensor->set_impl(dense_tensor);
   }
 }
 void InitializeTensor(paddle::experimental::Tensor* tensor) {
   // TODO(jiabin) Support init Tensor with other kinds of TensorInterface.
   if (!tensor->defined()) {
-    pt::TensorMeta meta;
-    pt::TensorStatus status;
-    auto dense_tensor = std::make_shared<pt::DenseTensor>(meta, status);
+    ptenTensorMeta meta;
+    ptenTensorStatus status;
+    auto dense_tensor = std::make_shared<ptenDenseTensor>(meta, status);
     tensor->set_impl(dense_tensor);
   }
 }

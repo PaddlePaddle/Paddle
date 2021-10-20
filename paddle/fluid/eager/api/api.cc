@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/api/api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/nodes/accumulation_node.h"
-#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace egr {
 
@@ -41,7 +41,7 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
   // TODO(jiabin): Support More Tensor type here
   auto tensor_instance =
-      std::dynamic_pointer_cast<pt::DenseTensor>(tensor.impl());
+      std::dynamic_pointer_cast<ptenDenseTensor>(tensor.impl());
 
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
   paddle::experimental::Tensor* grad_tensor = meta->MutableGrad();

@@ -47,6 +47,15 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
                                    expected_kernel_type.place_,
                                    tensor.layout());
   }
+
+  framework::KernelSignature GetExpectedPtKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return std::make_pair(
+        "fill_any_like",
+        std::make_tuple(paddle::SmallVector<std::string>({"X"}),
+                        paddle::SmallVector<std::string>({"value"}),
+                        paddle::SmallVector<std::string>({"Out"})));
+  }
 };
 
 class FillAnyLikeOpMaker : public framework::OpProtoAndCheckerMaker {

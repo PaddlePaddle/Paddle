@@ -24,8 +24,8 @@
 #include "paddle/fluid/eager/nodes/accumulation_node.h"
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
-#include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/core/tensor_meta.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
@@ -34,12 +34,12 @@ using namespace egr;  // NOLINT
 
 paddle::experimental::Tensor hook_function(
     const paddle::experimental::Tensor& t) {
-  auto t_dense = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
+  auto t_dense = std::dynamic_pointer_cast<ptenDenseTensor>(t.impl());
 
-  auto ret_meta = pt::TensorMeta(t_dense->dims(), t_dense->backend(),
+  auto ret_meta = ptenTensorMeta(t_dense->dims(), t_dense->backend(),
                                  t_dense->type(), t_dense->layout());
-  auto ret_dense = std::make_shared<pt::DenseTensor>(std::move(ret_meta),
-                                                     pt::TensorStatus());
+  auto ret_dense = std::make_shared<ptenDenseTensor>(std::move(ret_meta),
+                                                     ptenTensorStatus());
 
   float* t_ptr = t_dense->mutable_data<float>();
   float* ret_ptr = ret_dense->mutable_data<float>();
@@ -47,7 +47,7 @@ paddle::experimental::Tensor hook_function(
     ret_ptr[i] = t_ptr[i] + 5.0;
   }
 
-  auto ret_impl = std::dynamic_pointer_cast<pt::TensorInterface>(ret_dense);
+  auto ret_impl = std::dynamic_pointer_cast<ptenTensorInterface>(ret_dense);
   paddle::experimental::Tensor ret = paddle::experimental::Tensor();
   ret.set_impl(ret_impl);
 
@@ -60,7 +60,7 @@ TEST(FwdBwdJoint, SingleNode) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
@@ -78,7 +78,7 @@ TEST(FwdBwdJoint, SingleNode) {
   RunBackward(outs, {});
 
   VLOG(7) << "Target Grad is: "
-          << std::static_pointer_cast<pt::DenseTensor>(
+          << std::static_pointer_cast<ptenDenseTensor>(
                  EagerUtils::unsafe_autograd_meta(tensor)->Grad().impl())
                  ->data<float>()[0];
   // Examine Backward Grad
@@ -102,7 +102,7 @@ TEST(FwdBwdJoint, LinearNodes) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
@@ -152,7 +152,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
@@ -184,7 +184,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
 
   // Examine Forward Output 2
   {
-    auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out2.impl());
+    auto dense_out = std::dynamic_pointer_cast<ptenDenseTensor>(out2.impl());
     float* ptr = dense_out->mutable_data<float>();
     for (int i = 0; i < 20; i++) {
       PADDLE_ENFORCE(
@@ -220,7 +220,7 @@ TEST(FwdBwdJoint, GradientHook) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
@@ -296,7 +296,7 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
@@ -348,7 +348,7 @@ TEST(FwdBwdJoint, SingleNodeCUDA) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCUDA, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCUDA, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
@@ -387,7 +387,7 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCUDA, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+      ddim, ptenBackend::kCUDA, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
       5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 

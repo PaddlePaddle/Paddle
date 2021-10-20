@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include "paddle/tcmpt/hapi/all.h"
+#include "paddle/pten/hapi/all.h"
 
 namespace egr {
 
 // Public
 void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
               bool bias_after_scale, paddle::experimental::Tensor* out);
-void FillConstAPI(double value, const pt::DDim& ddim,
-                  const pt::Backend& backend, const pt::DataType& dtype,
-                  const pt::DataLayout& layout,
+void FillConstAPI(double value, const ptenDDim& ddim,
+                  const ptenBackend& backend, const ptenDataType& dtype,
+                  const ptenDataLayout& layout,
                   paddle::experimental::Tensor* target);
 
 // Global

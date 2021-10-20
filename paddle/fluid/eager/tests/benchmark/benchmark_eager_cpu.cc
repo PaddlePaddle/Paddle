@@ -39,7 +39,7 @@ TEST(Benchmark, EagerScalePerformance) {
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
     paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-        ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+        ddim, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
         5.0, true);
     RetainGradForTensor(tensor);
 
@@ -75,13 +75,13 @@ TEST(Benchmark, EagerIntermediateMatmulPerformance) {
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = paddle::framework::make_ddim({2, 2});
     paddle::experimental::Tensor X = EagerUtils::CreateTensorWithValue(
-        ddimX, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+        ddimX, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
         1.0, true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = paddle::framework::make_ddim({2, 2});
     paddle::experimental::Tensor Y = EagerUtils::CreateTensorWithValue(
-        ddimY, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+        ddimY, ptenBackend::kCPU, ptenDataType::kFLOAT32, ptenDataLayout::kNCHW,
         2.0, true);
     RetainGradForTensor(Y);
 
