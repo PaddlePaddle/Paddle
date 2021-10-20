@@ -54,6 +54,25 @@ def get_minor():
 def get_patch():
     return str(_get_version_detail(2))
 
+def get_cuda_version():
+    if '@WITH_GPU@' == 'ON':
+        return '@CUDA_VERSION@'
+    else:
+        return 'False'
+
+def get_cudnn_version():
+    if '@WITH_GPU@' == 'ON':
+        temp_cudnn_version = ''
+        if '@CUDNN_MAJOR_VERSION@':
+            temp_cudnn_version += '@CUDNN_MAJOR_VERSION@'
+            if '@CUDNN_MINOR_VERSION@':
+                temp_cudnn_version += '.@CUDNN_MINOR_VERSION@'
+                if '@CUDNN_PATCHLEVEL_VERSION@':
+                    temp_cudnn_version += '.@CUDNN_PATCHLEVEL_VERSION@'
+        return temp_cudnn_version
+    else:
+        return 'False'
+
 def is_taged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
@@ -102,8 +121,8 @@ def mkl():
             'patch': get_patch(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
-            'cuda': '${ref_CUDA_MAJOR}',
-            'cudnn': '${CUDNN_MAJOR}',
+            'cuda': get_cuda_version(),
+            'cudnn': get_cudnn_version(),
             'commit': commit,
             'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
