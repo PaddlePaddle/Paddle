@@ -1318,14 +1318,15 @@ def bincount(x, weights=None, minlength=0, name=None):
             result2 = paddle.bincount(x, weights=w)
             print(result2) # [0., 2.19999981, 0.40000001, 0., 0.50000000, 0.50000000]
     """
-    check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
+    if x.dtype not in [paddle.int32, paddle.int64]:
+        raise TypeError("Elements in Input(x) should all be integers")
 
-    if paddle.min(x) < 0:
-        raise ValueError("Elements in Input(x) should all be non-negative")
     if in_dygraph_mode():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
+
+    check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
 
     if weights is not None:
         check_variable_and_dtype(weights, 'Weights',

@@ -43,6 +43,12 @@ void BincountInner(const framework::ExecutionContext& context) {
     return;
   }
 
+  PADDLE_ENFORCE_GE(
+      *std::min_element(input_data, input_data + input_numel),
+      static_cast<InputT>(0),
+      platform::errors::InvalidArgument(
+          "The elements in input tensor must be non-negative ints"));
+
   int64_t output_size = static_cast<int64_t>(*std::max_element(
                             input_data, input_data + input_numel)) +
                         1L;

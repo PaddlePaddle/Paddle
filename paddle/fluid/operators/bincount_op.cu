@@ -63,16 +63,29 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
   }
   auto input_x = framework::EigenVector<InputT>::Flatten(*input);
 
-  framework::Tensor input_max_t;
+  framework::Tensor input_min_t, input_max_t;
   auto* input_max_data =
       input_max_t.mutable_data<InputT>({1}, context.GetPlace());
+  auto* input_min_data =
+      input_min_t.mutable_data<InputT>({1}, context.GetPlace());
+
   auto input_max_scala = framework::EigenScalar<InputT>::From(input_max_t);
+  auto input_min_scala = framework::EigenScalar<InputT>::From(input_min_t);
 
   auto* place = context.template device_context<DeviceContext>().eigen_device();
   input_max_scala.device(*place) = input_x.maximum();
+  input_min_scala.device(*place) = input_x.minimum();
 
-  Tensor input_max_cpu;
+  Tensor input_min_cpu, input_max_cpu;
   TensorCopySync(input_max_t, platform::CPUPlace(), &input_max_cpu);
+  TensorCopySync(input_min_t, platform::CPUPlace(), &input_min_cpu);
+
+  InputT input_min = input_min_cpu.data<InputT>()[0];
+
+  PADDLE_ENFORCE_GE(
+      input_min, static_cast<InputT>(0),
+      platform::errors::InvalidArgument(
+          "The elements in input tensor must be non-negative ints"));
 
   int64_t output_size =
       static_cast<int64_t>(input_max_cpu.data<InputT>()[0]) + 1L;

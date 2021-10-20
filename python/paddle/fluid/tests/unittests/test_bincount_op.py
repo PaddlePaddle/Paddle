@@ -47,7 +47,7 @@ class TestBincountOpAPI(unittest.TestCase):
                                 'weights': w},
                           fetch_list=[output])
             actual = np.array(res[0])
-            expected = np.bincount(inputs, weights=weights)
+            expected = np.bincount(img, weights=w)
             self.assertTrue(
                 (actual == expected).all(),
                 msg='bincount output is wrong, out =' + str(actual))
@@ -69,6 +69,16 @@ class TestBincountOpError(unittest.TestCase):
     def run_network(self, net_func):
         with fluid.dygraph.guard():
             net_func()
+
+    def test_input_value_error(self):
+        """Test input tensor should be non-negative."""
+
+        def net_func():
+            input_value = paddle.to_tensor([1, 2, 3, 4, -5])
+            paddle.bincount(input_value)
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
 
     def test_input_shape_error(self):
         """Test input tensor should be 1-D tansor."""
@@ -97,7 +107,7 @@ class TestBincountOpError(unittest.TestCase):
             input_value = paddle.to_tensor([1., 2., 3., 4., 5.])
             paddle.bincount(input_value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self.run_network(net_func)
 
     def test_weights_shape_error(self):
