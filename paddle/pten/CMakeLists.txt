@@ -1,4 +1,3 @@
-include(pten)
 # pten api
 add_subdirectory(api)
 # pten high level api
