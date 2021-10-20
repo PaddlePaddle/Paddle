@@ -200,6 +200,9 @@ int32_t GraphBrpcService::initialize() {
       &GraphBrpcService::remove_graph_node;
   _service_handler_map[PS_GRAPH_SET_NODE_FEAT] =
       &GraphBrpcService::graph_set_node_feat;
+  _service_handler_map[PS_GRAPH_SAMPLE_NODES_FROM_ONE_SERVER] =
+      &GraphBrpcService::sample_neighboors_across_multi_servers;
+
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
 
@@ -212,7 +215,7 @@ int32_t GraphBrpcService::initialize_shard_info() {
     if (_is_initialize_shard_info) {
       return 0;
     }
-    size_t server_size = _server->environment()->get_ps_servers().size();
+    server_size = _server->environment()->get_ps_servers().size();
     auto &table_map = *(_server->table());
     for (auto itr : table_map) {
       itr.second->set_shard(_rank, server_size);
@@ -448,6 +451,7 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
 int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl) {
+  // sleep(5);
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
@@ -509,7 +513,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
   std::function<void(void *)> func = [&, node_id_buckets, query_idx_buckets,
                                       request_call_num](void *done) {
     local_fut.get();
-    std::vector<size_t> actual_size, idx;
+    std::vector<int> actual_size;
     auto *closure = (DownpourBrpcClosure *)done;
     std::vector<std::unique_ptr<butil::IOBufBytesIterator>> res(
         remote_call_num);
@@ -524,23 +528,25 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
         size_t node_size;
         res[request_idx].reset(new butil::IOBufBytesIterator(res_io_buffer));
         size_t num;
-        res.back()->copy_and_forward(&num, sizeof(size_t));
+        res[request_idx]->copy_and_forward(&num, sizeof(size_t));
       }
     }
-    size_t size;
+    int size;
     int local_index = 0;
     for (size_t i = 0; i < node_num; i++) {
       if (fail_num > 0 && failed[seq[i]]) {
         size = 0;
       } else if (request2server[seq[i]] != rank) {
-        res[seq[i]]->copy_and_forward(&size, size_of_size_t);
+        res[seq[i]]->copy_and_forward(&size, sizeof(int));
       } else {
         size = local_actual_sizes[local_index++];
       }
       actual_size.push_back(size);
     }
     cntl->response_attachment().append(actual_size.data(),
-                                       actual_size.size() * size_of_size_t);
+                                       actual_size.size() * sizeof(int));
+
+    local_index = 0;
     for (size_t i = 0; i < node_num; i++) {
       if (fail_num > 0 && failed[seq[i]]) {
         continue;
@@ -556,8 +562,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
     closure->set_promise_value(0);
   };
 
-  DownpourBrpcClosure *closure =
-      new DownpourBrpcClosure(request_call_num, func);
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(remote_call_num, func);
 
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
