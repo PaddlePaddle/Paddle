@@ -272,7 +272,8 @@ class QuantizationTransformPass(object):
     the quantized ops's inputs.
     """
     _supported_quantizable_op_type = [
-        'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul'
+        'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul',
+        'matmul_v2'
     ]
 
     def __init__(self,
