@@ -62,7 +62,7 @@ using DDim = paddle::framework::DDim;
  * and functions for setting data members, can not provide other functions.
  */
 struct TensorMeta {
-  TensorMeta() = delete;
+  TensorMeta() = default;
   TensorMeta& operator=(const TensorMeta&) = delete;
   TensorMeta& operator=(TensorMeta&&) = delete;
 

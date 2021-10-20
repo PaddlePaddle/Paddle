@@ -41,6 +41,7 @@ limitations under the License. */
  */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/tcmpt/hapi/include/tensor_signature.h"
 
 namespace paddle {
 namespace experimental {
@@ -261,6 +262,15 @@ class Tensor final {
    * 2. Kernel calculation does not require AutogradMeta.
    */
   std::shared_ptr<AbstractAutogradMeta> autograd_meta_ = nullptr;
+  /**
+   * TensorSignature is used to store auxiliary description information
+   * needed by Tensor.
+   *
+   * The currently stored information includes:
+   * 1. name: used for Debug analysis in the development of new dygraph.
+   * 2. backend_set: used by the API to determine the kernel backend.
+   */
+  std::shared_ptr<TensorSignature> signature_{nullptr};
 };
 
 }  // namespace experimental

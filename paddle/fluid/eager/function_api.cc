@@ -23,15 +23,7 @@
 
 namespace egr {
 
-static std::shared_ptr<paddle::platform::Place> _expected_place(nullptr);
-
-const paddle::platform::Place& GetExpectedPlace() {
-  return *_expected_place.get();
-}
-
-void SetExpectedPlace(const paddle::platform::Place& place) {
-  _expected_place = std::make_shared<paddle::platform::Place>(place);
-}
+Controller* Controller::controller_ = new Controller();
 
 template <typename DeviceContext>
 static void ScaleDeviceDispatch(const pt::DenseTensor& dense_tensor,
@@ -189,7 +181,8 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
                                                      pt::TensorStatus());
 
   // Handle Device Context
-  const paddle::platform::Place& expected_kernel_place = GetExpectedPlace();
+  const paddle::platform::Place& expected_kernel_place =
+      Controller::Instance().GetExpectedPlace();
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
 

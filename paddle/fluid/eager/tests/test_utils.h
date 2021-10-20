@@ -87,6 +87,6 @@ inline void InitEnv(paddle::platform::Place place) {
   paddle::framework::InitDevices();
 
   // Init Tracer Place
-  SetExpectedPlace(place);
+  Controller::Instance().SetExpectedPlace(place);
 }
 }  // namespace egr

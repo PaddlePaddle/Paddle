@@ -92,9 +92,13 @@ constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 constexpr char kAllKernelsMustComputeRuntimeShape[] =
     "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
 
-// define some kernel priority
-/* Define multiple kernel type fallback order*/
-extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+/// This name is used for paddle::experimental::Tensor temporally, once we have
+/// name, remove it.
+constexpr char kPtenTensorTempName[] = "@PtenTensor@"
+    // define some kernel priority
+    /* Define multiple kernel type fallback order*/
+    extern std::vector<std::tuple<platform::Place, LibraryType>>
+        kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
   std::string result;

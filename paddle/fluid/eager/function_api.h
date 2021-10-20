@@ -27,7 +27,24 @@ void FillConstAPI(double value, const pt::DDim& ddim,
                   paddle::experimental::Tensor* target);
 
 // Global
-const paddle::platform::Place& GetExpectedPlace();
-void SetExpectedPlace(const paddle::platform::Place& place);
+class Controller {
+ public:
+  static Controller& Instance() { return *controller_; }
+  const paddle::platform::Place& GetExpectedPlace() const {
+    return *expected_place_.get();
+  }
+  void SetExpectedPlace(const paddle::platform::Place& place) {
+    expected_place_ = std::make_shared<paddle::platform::Place>(place);
+  }
+  void SetAMPLevel(int level) { amp_level_ = level; }
+  const int GetAMPLevel() const { return amp_level_; }
+
+ private:
+  Controller() = default;
+  static Controller* controller_;
+  std::shared_ptr<paddle::platform::Place> expected_place_ = nullptr;
+  int amp_level_ = 0;
+  DISABLE_COPY_AND_ASSIGN(Controller);
+};
 
 }  // namespace egr

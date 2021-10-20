@@ -83,32 +83,39 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
 
   switch (static_cast<pt::Backend>(place_id)) {
     case pt::Backend::kCPU:
-      egr::SetExpectedPlace(paddle::platform::CPUPlace());
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::CPUPlace());
       break;
     case pt::Backend::kCUDA:
-      egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::CUDAPlace(device_id));
       break;
     case pt::Backend::kCUDAPinned:
-      egr::SetExpectedPlace(paddle::platform::CUDAPinnedPlace());
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::CUDAPinnedPlace());
       break;
     case pt::Backend::kHIP:
-      egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::CUDAPlace(device_id));
       break;
     case pt::Backend::kXPU:
-      egr::SetExpectedPlace(paddle::platform::XPUPlace(device_id));
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::XPUPlace(device_id));
       break;
     case pt::Backend::kNPU:
-      egr::SetExpectedPlace(paddle::platform::NPUPlace(device_id));
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::NPUPlace(device_id));
       break;
     case pt::Backend::kNPUPinned:
-      egr::SetExpectedPlace(paddle::platform::NPUPinnedPlace());
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::NPUPinnedPlace());
       break;
     // TODO(wanghuancoder)
     // case pt::Backend::kMKLDNN:
-    //   egr::SetExpectedPlace(paddle::platform::CPUPlace());
+    //   egr::Controller::Instance().SetExpectedPlace(paddle::platform::CPUPlace());
     //   break;
     // case pt::Backend::kCUDNN:
-    //   egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+    //   egr::Controller::Instance().SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
     //   break;
     default:
       break;
