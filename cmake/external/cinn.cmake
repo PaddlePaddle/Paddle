@@ -27,16 +27,15 @@ add_definitions(-w)
 include(ExternalProject)
 set(CINN_SOURCE_DIR ${THIRD_PARTY_PATH}/CINN)
 # TODO(zhhsplendid): Modify git tag after we have release tag
-set(CINN_GIT_TAG 3f004bfa3ed273ecf1de8e7b946433038c79b84f)
-set(CINN_OPTIONAL_ARGS -DWITH_CUDA=${WITH_GPU} -DWITH_CUDNN=${WITH_GPU} -DPUBLISH_LIBS=ON)
-set(CINN_BUILD_COMMAND $(MAKE) cinncore -j && $(MAKE) cinnapi -j)
+set(CINN_GIT_TAG 9292e711c1ff3bcf04d3d986a612c37711a46b4c)
+set(CINN_OPTIONAL_ARGS -DWITH_CUDA=${WITH_GPU} -DWITH_CUDNN=${WITH_GPU} -DPUBLISH_LIBS=ON -DWITH_TESTING=ON)
+set(CINN_BUILD_COMMAND $(MAKE) cinncore_static -j && $(MAKE) cinncore -j && $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
   GIT_REPOSITORY   "${GIT_URL}/PaddlePaddle/CINN.git"
   GIT_TAG          ${CINN_GIT_TAG}
   PREFIX           ${CINN_SOURCE_DIR}
-  UPDATE_COMMAND   ""
   BUILD_COMMAND    ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND  ""
   CMAKE_ARGS       ${CINN_OPTIONAL_ARGS})
@@ -108,5 +107,5 @@ set(CINN_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/cinn/include")
 add_library(cinn SHARED IMPORTED GLOBAL)
 set_target_properties(cinn PROPERTIES IMPORTED_LOCATION "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 include_directories(${CINN_INCLUDE_DIR})
-add_dependencies(cinn external_cinn absl isl llvm glog gflag)
+add_dependencies(cinn external_cinn absl isl llvm)
 
