@@ -28,6 +28,7 @@ import warnings
 import six
 import struct
 import json
+import traceback
 
 import paddle
 import paddle.fluid as fluid
@@ -578,16 +579,14 @@ def start_local_trainers(cluster,
 
 def pull_worker_log(tp):
     if tp.log_fn:
-        with open(tp.log_fn.name, 'r') as fin:
+        piece_size = 4096
+        with open(tp.log_fn.name, "rb") as fin:
             fin.seek(tp.log_offset, 0)
-            for line in fin:
-                try:
-                    sys.stdout.write(line)
-                except UnicodeEncodeError:
-                    sys.stdout.write(
-                        'UnicodeEncodeError occurs at this line. '
-                        'Please refer to the original log file "%s"\n' %
-                        tp.log_fn.name)
+            while True:
+                piece = fin.read(piece_size)
+                if piece == b'':
+                    break
+                sys.stdout.buffer.write(piece)
             tp.log_offset = fin.tell()
 
 
@@ -622,11 +621,13 @@ def watch_local_trainers(procs, nranks):
             format(nranks, error_rank))
         terminate_local_procs(procs)
         return
-    except:
+    except Exception as e:
+        traceback.print_exc()
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
-            format(nranks, error_rank))
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted by {}. Please check its log.".
+            format(nranks, error_rank, e))
         terminate_local_procs(procs)
+        raise e
         return
 
     return alive
