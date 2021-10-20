@@ -135,10 +135,6 @@ def prune_model(place,
             main_program = fluid.Program()
             startup_program = fluid.Program()
 
-            place = paddle.CPUPlace()
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
                 label = fluid.layers.data(name='label', shape=[None, 10])
@@ -157,6 +153,8 @@ def prune_model(place,
                 # will insert necessary masking operations for ASP workflow.
                 optimizer = sparsity.decorate(optimizer)
                 optimizer.minimize(loss, startup_program)
+
+            place = paddle.CPUPlace()
 
             exe = fluid.Executor(place)
             exe.run(startup_program)
