@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 #define MF_DIM 8
-#define MF_MAX_DIM
 
 typedef uint64_t FeatureKey;
 
@@ -34,8 +33,8 @@ struct FeatureValue {
   float lr_g2sum;
   int mf_size;
   int mf_dim;
-  float mf[MF_DIM + 1];
   uint64_t cpu_ptr;
+  float mf[0];
 
   friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
     out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
@@ -53,7 +52,7 @@ struct FeaturePushValue {
   int slot;
   float lr_g;
   int mf_dim;
-  float mf_g[MF_MAX_DIM];
+  float mf_g[0];
 
   __device__ __forceinline__ FeaturePushValue
   operator+(const FeaturePushValue& a) const {
@@ -63,7 +62,7 @@ struct FeaturePushValue {
     out.show = a.show + show;
     out.clk = a.clk + clk;
     out.lr_g = a.lr_g + lr_g;
-    for (int i = 0; i < MF_DIM; ++i) {
+    for (int i = 0; i < out.mf_dim; ++i) {
       out.mf_g[i] = a.mf_g[i] + mf_g[i];
     }
     return out;

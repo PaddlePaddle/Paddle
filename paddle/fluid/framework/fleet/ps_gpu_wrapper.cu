@@ -61,9 +61,9 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
   }
 }
 
-__global__ void PullCopy(float** dest, const FeatureValue* src,
-                         const int64_t* len, int hidden, int slot_num,
-                         int total_len, uint64_t** keys) {
+__global__ void PullCopy(float** dest, const char* src,
+                         const int64_t* len, int slot_num,
+                         int total_len, uint64_t** keys, int max_val_size) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -82,9 +82,9 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
       *(dest[x] + y * (mf_dim + 3) + 1) = 0;
       *(dest[x] + y * (mf_dim + 3) + 2) = 0;
     } else {
-      *(dest[x] + y * (mf_dim + 3)) = (src + i)->show;
-      *(dest[x] + y * (mf_dim + 3) + 1) = (src + i)->clk;
-      *(dest[x] + y * (mf_dim + 3) + 2) = (src + i)->lr;
+      *(dest[x] + y * (mf_dim + 3)) = (FeatureValue*)(src + i * max_val_size)->show;
+      *(dest[x] + y * (mf_dim + 3) + 1) = (FeatureValue*)(src + i * max_val_size)->clk;
+      *(dest[x] + y * (mf_dim + 3) + 2) = (FeatureValue*)(src + i * max_val_size)->lr;
     }
     if ((src + i)->mf_size == 0 || *(keys[x] + y) == 0) {
       for (int j = 0; j < mf_dim; j++) {
@@ -92,7 +92,7 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
       }
     } else {
       for (int j = 0; j < mf_dim; j++) {
-        *(dest[x] + y * (mf_dim + 3) + 3 + j) = (src + i)->mf[1 + j];
+        *(dest[x] + y * (mf_dim + 3) + 3 + j) = (FeatureValue*)(src + i * max_val_size)->mf[1 + j];
       }
     }
   }
@@ -142,9 +142,9 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
   }
 }
 
-__global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
-                         int hidden, int slot_num, int total_len, int bs,
-                         int* slot_vector, int mf_dim_vector) {
+__global__ void PushCopyWithPool(FeaturePushValue* dest, float** src, int64_t* len,
+                         int slot_num, int total_len, int bs,
+                         int* slot_vector, int max_val_size, HBMMemoryPool* pool) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -157,25 +157,27 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    int mf_dim = mf_dim_vector[x];
     (dest + i)->slot = slot_vector[x];
-    (dest + i)->mf_dim = mf_dim;
-    (dest + i)->show = *(src[x] + y * (mf_dim + 3));
-    (dest + i)->clk = *(src[x] + y * (mf_dim + 3) + 1);
-    (dest + i)->lr_g = *(src[x] + y * (mf_dim + 3) + 2) * -1. * bs;
+    int mf_dim = slot_vector[x + slot_num];
+
+    (dest + i)->mf_g = (float*)pool.mem_address(i);
     for (int j = 0; j < mf_dim; j++) {
-      (dest + i)->mf_g[j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
+      (dest + i)->mf_g[j] = *(src[x] + y * (mf_dim + 2) + 3 + j) * -1. * bs;
     }
+    (dest + i)->show = *(src[x] + y * (mf_dim + 2));
+    (dest + i)->clk = *(src[x] + y * (mf_dim + 2) + 1);
+    (dest + i)->lr_g = *(src[x] + y * (mf_dim + 2) + 2) * -1. * bs;
   }
 }
 
 void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                                uint64_t** gpu_keys,
                                const std::vector<float*>& values,
-                               const FeatureValue* total_values_gpu,
+                               const char* total_values_gpu,
                                const int64_t* gpu_len, const int slot_num,
                                const int hidden_size,
-                               const int64_t total_length) {
+                               const int64_t total_length,
+                               const int max_val_size) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
@@ -187,7 +189,7 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
 
   PullCopy<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
       gpu_values, total_values_gpu, gpu_len, hidden_size, slot_num,
-      total_length, gpu_keys);
+      total_length, gpu_keys, max_val_size);
   cudaStreamSynchronize(stream);
 }
 
@@ -206,7 +208,7 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
 
 void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const std::vector<const float*>& grad_values,
-                               FeaturePushValue* total_grad_values_gpu,
+                               char* total_grad_values_gpu,
                                const std::vector<int64_t>& slot_lengths,
                                const int hidden_size,
                                const int64_t total_length,
@@ -237,9 +239,23 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
   cudaMemcpy(d_slot_vector, slot_vector_.data(),
              slot_lengths_lod.size() * sizeof(int), cudaMemcpyHostToDevice);
 
-  PushCopy<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
+  if (!multi_mf_dim) {
+    PushCopy<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
       total_grad_values_gpu, gpu_values, gpu_len, hidden_size,
-      slot_lengths.size(), total_length, batch_size, d_slot_vector);
+      slot_lengths.size(), total_length, batch_size, d_slot_vector, max_val_size);
+  } else {
+    auto& batch_grad_pool = batch_grad_pools_[dev_id];
+    if (batch_grad_pool == NULL) {
+      batch_grad_pool = new HBMMemoryPool(size_t(len * 1.2), mf_max_dim * sizeof(float));
+    }
+    if (batch_grad_pool->capacity() < len) {
+      batch_grad_pool->reset(size_t(len * 1.2));
+    }
+    PushCopyWithPool<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
+      total_grad_values_gpu, gpu_values, gpu_len,
+      slot_lengths.size(), total_length, batch_size, d_slot_vector, max_val_size, batch_grad_pool);
+  }
+  
   cudaStreamSynchronize(stream);
 }
 

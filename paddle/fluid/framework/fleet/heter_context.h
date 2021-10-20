@@ -54,6 +54,8 @@ class HeterContext {
 #endif
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
+  std::vector<std::vector<std::vector<FeatureKey>>> device_dim_keys_;
+  std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>> device_dim_ptr_;
   std::vector<std::mutex*> mutex_;
 
   uint32_t shard_num_ = 37;
