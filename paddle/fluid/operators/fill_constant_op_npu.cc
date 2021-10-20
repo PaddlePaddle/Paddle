@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/utils.h"
 
+#define CANN_VERSION_CODE 503003
 namespace paddle {
 namespace operators {
 
@@ -66,11 +67,21 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     out_var->mutable_data<T>(shape, ctx.GetPlace());
 
     NpuOpRunner runner;
+#if (CANN_VERSION_CODE >= 503003)
+    runner.SetType("FillD")
+        .AddInput(tensor_value)
+        .AddOutput(*out_var)
+        .AddAttrs(
+            {{ "dims",
+               framework::vectorize(shape) }})
+        .Run(stream);
+#else
     runner.SetType("Fill")
         .AddInput(framework::vectorize(shape))
         .AddInput(tensor_value)
         .AddOutput(*out_var)
         .Run(stream);
+#endif
   }
 };
 }  // namespace operators
