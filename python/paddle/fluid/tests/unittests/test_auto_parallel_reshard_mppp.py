@@ -25,7 +25,6 @@ import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.completion import complete_backward_annotation
 from paddle.distributed.auto_parallel.reshard import reshard
 
 paddle.enable_static()
@@ -187,7 +186,6 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        complete_backward_annotation(dist_main_prog, dist_context)
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
 
         # check send and recv result

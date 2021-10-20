@@ -37,6 +37,8 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedSoftmaxImpl, self).__init__()
         self._name = name
+        self._forward_implemented = False
+        self._backward_implemented = True
 
     def is_process_mesh_compatible(self, op_dist_attr):
         """ No restriction for now. """
@@ -85,6 +87,10 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
                 changed = True
 
         return changed
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        pass
 
 
 register_distributed_operator_impl(

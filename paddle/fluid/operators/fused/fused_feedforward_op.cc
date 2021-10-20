@@ -82,19 +82,12 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
     if (context->Attrs().Get<bool>("dropout2_is_test") == false) {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
-    context->SetOutputDim(
-        "Ln1Mean",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-    context->SetOutputDim(
-        "Ln1Variance",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-    context->SetOutputDim(
-        "Ln2Mean",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-    context->SetOutputDim(
-        "Ln2Variance",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-
+    framework::DDim mean_dim =
+        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+    context->SetOutputDim("Ln1Mean", mean_dim);
+    context->SetOutputDim("Ln1Variance", mean_dim);
+    context->SetOutputDim("Ln2Mean", mean_dim);
+    context->SetOutputDim("Ln2Variance", mean_dim);
     context->ShareLoD("X", "Out");
   }
 
@@ -146,28 +139,27 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Dropout1Out", "The output of dropout1").AsIntermediate();
     AddOutput("Dropout2Out", "The output of dropout2").AsIntermediate();
 
-    AddAttr<bool>("normalize_pre_or_post", "true is pre layernorm")
-        .SetDefault(false);
+    AddAttr<bool>("pre_layer_norm", "true is pre layernorm").SetDefault(false);
     AddAttr<float>("ln1_epsilon", "epsilon of pre layer_norm")
         .SetDefault(1e-5f);
     AddAttr<float>("ln2_epsilon", "epsilon of post layer_norm")
         .SetDefault(1e-5f);
     AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
-    AddAttr<float>("dropout1_prob", "the dropout_prob of first dropout")
+    AddAttr<float>("dropout1_rate", "the dropout rate of first dropout")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'dropout1_prob' must be between 0.0 and 1.0."));
+                  "'dropout1_rate' must be between 0.0 and 1.0."));
         });
-    AddAttr<float>("dropout2_prob", "the dropout_prob of second dropout")
+    AddAttr<float>("dropout2_rate", "the dropout rate of second dropout")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'dropout2_prob' must be between 0.0 and 1.0."));
+                  "'dropout2_rate' must be between 0.0 and 1.0."));
         });
     AddAttr<std::string>("dropout1_implementation",
                          "the dropout implementation of first dropout")
@@ -203,11 +195,11 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
         the function of fused_feedforward operator is the same as the following pseudo code:
         residual = src;
         ln1_out = src;
-        if(normalize_pre_or_post){
+        if(pre_layer_norm){
             ln1_out = layer_norm(src);
         }
         out = linear(dropout(activation(dropout(linear(ln1_out)))));
-        if(!normalize_pre_or_post) {
+        if(!pre_layer_norm) {
             out = layer_norm(out);
         }
         )DOC");
