@@ -68,7 +68,8 @@ class InterpreterCore {
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list);
 
   void RunInstructionAsync(size_t instr_id);
-  void RunNextInstruction(const Instruction& instr_id);
+  void RunNextInstructions(const Instruction& instr_id,
+                           std::queue<size_t>* reserve_for_local_thread);
   void AddFetch(const std::vector<std::string>& fetch_names);
 
   void BuildSkipShareLoDInfo();

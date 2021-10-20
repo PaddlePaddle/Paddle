@@ -374,7 +374,8 @@ void InterpreterCore::ExecuteInstructionList(
           vec_instr.size(), op_run_number_.load()));
 }
 
-void InterpreterCore::RunNextInstruction(const Instruction& instr) {
+void InterpreterCore::RunNextInstructions(
+    const Instruction& instr, std::queue<size_t>* reserve_for_local_thread) {
   auto& next_instr = instr.next_instruction_;
   auto& atomic_deps = async_work_queue_.AtomicDeps();
   auto IsReady = [&](size_t next_id) {
@@ -393,12 +394,12 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
     // keep all async_ops running in current thread
     for (auto next_id : next_instr.direct_run_) {
       if (IsReady(next_id)) {
-        RunInstructionAsync(next_id);
+        reserve_for_local_thread->push(next_id);
       }
     }
     for (auto next_id : next_instr.event_wait_run_) {
       if (IsReady(next_id)) {
-        RunInstructionAsync(next_id);
+        reserve_for_local_thread->push(next_id);
       }
     }
   } else {
@@ -426,25 +427,31 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
-    if (first_op != 0) RunInstructionAsync(first_op);
+    if (first_op != 0) reserve_for_local_thread->push(first_op);
   }
 }
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
-  auto& instr_node = vec_instruction_[instr_id];
-  platform::RecordEvent instruction_event(
-      instr_node.kernel_func_.operator_base_->Type());
-  event_manager_.WaitEvent(instr_node, place_);
+  std::queue<size_t> q;
+  q.push(instr_id);
+  while (!q.empty()) {
+    instr_id = q.front();
+    q.pop();
+    auto& instr_node = vec_instruction_[instr_id];
+    platform::RecordEvent instruction_event(
+        instr_node.kernel_func_.operator_base_->Type());
+    event_manager_.WaitEvent(instr_node, place_);
 
-  RunInstruction(instr_node);
+    RunInstruction(instr_node);
 
-  event_manager_.RecordEvent(instr_node, place_);
-  op_run_number_.fetch_add(1, std::memory_order_relaxed);
+    event_manager_.RecordEvent(instr_node, place_);
+    op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
-  // GC infomation
-  CheckGC(instr_id, instr_node.gc_check_var_list);
+    // GC infomation
+    CheckGC(instr_id, instr_node.gc_check_var_list);
 
-  RunNextInstruction(instr_node);
+    RunNextInstructions(instr_node, &q);
+  }
 }
 
 void InterpreterCore::CheckGC(size_t instr_id,
