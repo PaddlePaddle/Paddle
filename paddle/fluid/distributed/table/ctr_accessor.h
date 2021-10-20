@@ -24,21 +24,22 @@
 namespace paddle {
 namespace distributed {
 
+/*
 // double unit accessor
 class CtrDoubleUnitAccessor : public ValueAccessor {
  public:
   struct CtrDoubleUnitFeatureValue {
-    /*
-       float unseen_days;
-       float delta_score;
-       double show;
-       double click;
-       float slot;
-       float embed_w;
-       std::vector<float> embed_g2sum;
-       std::vector<float> embedx_w;
-       std::vector<float> embedx_g2sum;
-       */
+
+//       float unseen_days;
+//       float delta_score;
+//       double show;
+//       double click;
+//       float slot;
+//       float embed_w;
+//       std::vector<float> embed_g2sum;
+//       std::vector<float> embedx_w;
+//       std::vector<float> embedx_g2sum;
+
     int dim() { return 6 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; }
     int dim_size(size_t dim, int embedx_dim) { return sizeof(float); }
     int size() { return (dim() + 2) * sizeof(float); }
@@ -56,10 +57,10 @@ class CtrDoubleUnitAccessor : public ValueAccessor {
     float& unseen_days(float* val) { return val[unseen_days_index()]; }
     float& delta_score(float* val) { return val[delta_score_index()]; }
     double& show(float* val) {
-      return ((reinterpret_cast<double*>)(val + show_index()))[0];
+      return (reinterpret_cast<double*>(val + show_index()))[0];
     }
     double& click(float* val) {
-      return ((reinterpret_cast<double*>)(val + click_index()))[0];
+      return (reinterpret_cast<double*>(val + click_index()))[0];
     }
     float& slot(float* val) { return val[slot_index()]; }
     float& embed_w(float* val) { return val[embed_w_index()]; }
@@ -71,13 +72,13 @@ class CtrDoubleUnitAccessor : public ValueAccessor {
     int embedx_sgd_dim;
   };
   struct CtrDoubleUnitPushValue {
-    /*
-       float slot;
-       float show;
-       float click;
-       float embed_g;
-       std::vector<float> embedx_g;
-       */
+
+//       float slot;
+//       float show;
+//       float click;
+//       float embed_g;
+//       std::vector<float> embedx_g;
+
     static int dim(int embedx_dim) { return 4 + embedx_dim; }
     static int dim_size(int dim, int embedx_dim) { return sizeof(float); }
     static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
@@ -109,12 +110,12 @@ class CtrDoubleUnitAccessor : public ValueAccessor {
     }
   };
   struct CtrDoubleUnitPullValue {
-    /*
-       float show;
-       float click;
-       float embed_w;
-       std::vector<float> embedx_w;
-       */
+
+//       float show;
+//       float click;
+//       float embed_w;
+//       std::vector<float> embedx_w;
+
     static int dim(int embedx_dim) { return 3 + embedx_dim; }
     static int dim_size(size_t dim) { return sizeof(float); }
     static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
@@ -194,7 +195,7 @@ class CtrDoubleUnitAccessor : public ValueAccessor {
   float get_field(float* value, const std::string& name) override {
     // CHECK(name == "show");
     if (name == "show") {
-      return (static_cast<float>)unit_feature_value.show(value);
+      return static_cast<float>(unit_feature_value.show(value));
     }
     return 0.0;
   }
@@ -211,6 +212,7 @@ class CtrDoubleUnitAccessor : public ValueAccessor {
   float _show_click_decay_rate;
   int32_t _ssd_unseenday_threshold;
 };
+*/
 
 /**
  * @brief Accessor for unit

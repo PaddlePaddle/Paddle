@@ -20,6 +20,7 @@
 namespace paddle {
 namespace distributed {
 
+/*
 // double unit
 int CtrDoubleUnitAccessor::initialize() {
   auto name = _config.embed_sgd_param().name();
@@ -210,10 +211,12 @@ int32_t CtrDoubleUnitAccessor::select(float** select_values,
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
     float* value = const_cast<float*>(values[value_item]);
-    select_value[CtrDoubleUnitPullValue::show_index()] = (static_cast<float>)*(
-        reinterpret_cast<double*>)(value + unit_feature_value.show_index());
-    select_value[CtrDoubleUnitPullValue::click_index()] = (static_cast<float>)*(
-        reinterpret_cast<double*>)(value + unit_feature_value.click_index());
+    select_value[CtrDoubleUnitPullValue::show_index()] = static_cast<float>(*(
+// TODO(zhaocaibei123): show_index()+1 ?
+        reinterpret_cast<double*>(value + unit_feature_value.show_index())));
+    select_value[CtrDoubleUnitPullValue::click_index()] = static_cast<float>(*(
+// TODO(zhaocaibei123): click_index()+1 ?
+        reinterpret_cast<double*>(value + unit_feature_value.click_index())));
     select_value[CtrDoubleUnitPullValue::embed_w_index()] =
         value[unit_feature_value.embed_w_index()];
     memcpy(select_value + CtrDoubleUnitPullValue::embedx_w_index(),
@@ -233,13 +236,13 @@ int32_t CtrDoubleUnitAccessor::merge(float** update_values,
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
-    /**(double*)(update_value + CtrDoubleUnitPushValue::show_index()) +=
-    *(double*)(other_update_value + CtrDoubleUnitPushValue::show_index());
-    *(double*)(update_value + CtrDoubleUnitPushValue::click_index()) +=
-    *(double*)(other_update_value + CtrDoubleUnitPushValue::click_index());
-    for (auto i = 3u; i < total_dim; ++i) {
-        update_value[i] += other_update_value[i];
-    }*/
+//    (double*)(update_value + CtrDoubleUnitPushValue::show_index()) +=
+//    *(double*)(other_update_value + CtrDoubleUnitPushValue::show_index());
+//    *(double*)(update_value + CtrDoubleUnitPushValue::click_index()) +=
+//    *(double*)(other_update_value + CtrDoubleUnitPushValue::click_index());
+//    for (auto i = 3u; i < total_dim; ++i) {
+//        update_value[i] += other_update_value[i];
+//    }
     for (auto i = 0u; i < total_dim; ++i) {
       if (i != CtrDoubleUnitPushValue::slot_index()) {
         update_value[i] += other_update_value[i];
@@ -260,12 +263,12 @@ int32_t CtrDoubleUnitAccessor::update(float** update_values,
     float push_show = push_value[CtrDoubleUnitPushValue::show_index()];
     float push_click = push_value[CtrDoubleUnitPushValue::click_index()];
     float slot = push_value[CtrDoubleUnitPushValue::slot_index()];
-    *(reinterpret_cast<double*>)(update_value +
-                                 unit_feature_value.show_index()) +=
-        (static_cast<double>)push_show;
-    *(reinterpret_cast<double*>)(update_value +
-                                 unit_feature_value.click_index()) +=
-        (static_cast<double>)push_click;
+    *(reinterpret_cast<double*>(update_value +
+                                 unit_feature_value.show_index())) +=
+        static_cast<double>(push_show);
+    *(reinterpret_cast<double*>(update_value +
+                                 unit_feature_value.click_index())) +=
+        static_cast<double>(push_click);
     update_value[unit_feature_value.slot_index()] = slot;
     update_value[unit_feature_value.delta_score_index()] +=
         (push_show - push_click) *
@@ -320,8 +323,10 @@ std::string CtrDoubleUnitAccessor::parse_to_string(const float* v,
   os.clear();
   os.str("");
   os << v[0] << " " << v[1] << " "
-     << (static_cast<float>)((reinterpret_cast<double*>)(v + 2))[0] << " "
-     << (static_cast<float>)((reinterpret_cast<double*>)(v + 4))[0] << " "
+     << static_cast<float>((reinterpret_cast<double*>(v + 2))[0]) << " "  //
+TODO(zhaocaibei123): const float* => double*
+     << static_cast<float>((reinterpret_cast<double*>(v + 4))[0]) << " "  //
+TODO(zhaocaibei123): const float* => double*
      << v[6] << " " << v[7];
 
   for (int i = unit_feature_value.embed_g2sum_index();
@@ -362,14 +367,15 @@ int CtrDoubleUnitAccessor::parse_from_string(const std::string& str,
   // copy unseen_days..delta_score
   memcpy(value, data_buff_ptr, show_index * sizeof(float));
   // copy show & click
-  *(reinterpret_cast<double*>)(value + show_index) =
-      (static_cast<double>)data_buff_ptr[2];
-  *(reinterpret_cast<double*>)(value + click_index) =
-      (static_cast<double>)data_buff_ptr[3];
+  *(reinterpret_cast<double*>(value + show_index)) =
+      static_cast<double>(data_buff_ptr[2]);
+  *(reinterpret_cast<double*>(value + click_index)) =
+      static_cast<double>(data_buff_ptr[3]);
   // copy embed_w..embedx_w
   memcpy(value + slot_index, data_buff_ptr + 4, (str_len - 4) * sizeof(float));
   return str_len + 2;
 }
+*/
 
 // for unit begin
 int CtrUnitAccessor::initialize() {
