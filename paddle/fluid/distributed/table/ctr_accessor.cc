@@ -36,7 +36,7 @@ int CtrDoubleUnitAccessor::initialize() {
   unit_feature_value.embedx_dim = _config.embedx_dim();
   unit_feature_value.embedx_sgd_dim = _embedx_sgd_rule->dim();
   _show_click_decay_rate =
-      _config.downpour_accessor_param().show_click_decay_rate();
+      _config.ctr_accessor_param().show_click_decay_rate();
 
   LOG(INFO) << "zcb debug accessor initializing: sgd_rule: " << name;
 
@@ -76,15 +76,15 @@ size_t CtrDoubleUnitAccessor::update_size() {
   return update_dim() * sizeof(float);
 }
 bool CtrDoubleUnitAccessor::shrink(float* value) {
-  // auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  // auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
+  // auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delete_threshold =
-  // _config.downpour_accessor_param().delete_threshold();
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
+  // _config.ctr_accessor_param().delete_threshold();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
-      _config.downpour_accessor_param().delete_after_unseen_days();
-  auto delete_threshold = _config.downpour_accessor_param().delete_threshold();
+      _config.ctr_accessor_param().delete_after_unseen_days();
+  auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
   // time_decay first
   unit_feature_value.show(value) *= _show_click_decay_rate;
   unit_feature_value.click(value) *= _show_click_decay_rate;
@@ -99,12 +99,12 @@ bool CtrDoubleUnitAccessor::shrink(float* value) {
 }
 
 bool CtrDoubleUnitAccessor::save(float* value, int param) {
-  // auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  // auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  // auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
+  // auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  // auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
   if (param == 2) {
     delta_threshold = 0;
   }
@@ -148,9 +148,9 @@ bool CtrDoubleUnitAccessor::save(float* value, int param) {
 }
 
 void CtrDoubleUnitAccessor::update_stat_after_save(float* value, int param) {
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
   if (param == 2) {
     delta_threshold = 0;
   }
@@ -197,11 +197,11 @@ bool CtrDoubleUnitAccessor::need_extend_mf(float* value) {
   auto click =
       (reinterpret_cast<double*>(value + unit_feature_value.click_index()))[0];
   // float score = (show - click) *
-  // _config.downpour_accessor_param().nonclk_coeff()
+  // _config.ctr_accessor_param().nonclk_coeff()
   auto score =
-      (show - click) * _config.downpour_accessor_param().nonclk_coeff() +
-      click * _config.downpour_accessor_param().click_coeff();
-  //+ click * _config.downpour_accessor_param().click_coeff();
+      (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
+      click * _config.ctr_accessor_param().click_coeff();
+  //+ click * _config.ctr_accessor_param().click_coeff();
   return score >= _config.embedx_threshold();
 }
 // from CtrCtrFeatureValue to CtrCtrPullValue
@@ -272,11 +272,11 @@ int32_t CtrDoubleUnitAccessor::update(float** update_values,
     update_value[unit_feature_value.slot_index()] = slot;
     update_value[unit_feature_value.delta_score_index()] +=
         (push_show - push_click) *
-            _config.downpour_accessor_param().nonclk_coeff() +
-        push_click * _config.downpour_accessor_param().click_coeff();
+            _config.ctr_accessor_param().nonclk_coeff() +
+        push_click * _config.ctr_accessor_param().click_coeff();
     // (push_show - push_click) *
-    // _config.downpour_accessor_param().nonclk_coeff() +
-    // push_click * _config.downpour_accessor_param().click_coeff();
+    // _config.ctr_accessor_param().nonclk_coeff() +
+    // push_click * _config.ctr_accessor_param().click_coeff();
     update_value[unit_feature_value.unseen_days_index()] = 0;
     _embed_sgd_rule->update_value(
         update_value + unit_feature_value.embed_w_index(),
@@ -311,10 +311,10 @@ bool CtrDoubleUnitAccessor::create_value(int stage, const float* value) {
   }
 }
 double CtrDoubleUnitAccessor::show_click_score(double show, double click) {
-  // auto nonclk_coeff = _config.downpour_accessor_param().nonclk_coeff();
-  // auto click_coeff = _config.downpour_accessor_param().click_coeff();
-  auto nonclk_coeff = _config.downpour_accessor_param().nonclk_coeff();
-  auto click_coeff = _config.downpour_accessor_param().click_coeff();
+  // auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
+  // auto click_coeff = _config.ctr_accessor_param().click_coeff();
+  auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
+  auto click_coeff = _config.ctr_accessor_param().click_coeff();
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 std::string CtrDoubleUnitAccessor::parse_to_string(const float* v,
@@ -392,8 +392,7 @@ int CtrUnitAccessor::initialize() {
   unit_feature_value.embed_sgd_dim = _embed_sgd_rule->dim();
   unit_feature_value.embedx_dim = _config.embedx_dim();
   unit_feature_value.embedx_sgd_dim = _embedx_sgd_rule->dim();
-  _show_click_decay_rate =
-      _config.downpour_accessor_param().show_click_decay_rate();
+  _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
 
   return 0;
 }
@@ -433,15 +432,15 @@ size_t CtrUnitAccessor::update_dim_size(size_t dim) { return sizeof(float); }
 size_t CtrUnitAccessor::update_size() { return update_dim() * sizeof(float); }
 
 bool CtrUnitAccessor::shrink(float* value) {
-  // auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  // auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
+  // auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delete_threshold =
-  // _config.downpour_accessor_param().delete_threshold();
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
+  // _config.ctr_accessor_param().delete_threshold();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
-      _config.downpour_accessor_param().delete_after_unseen_days();
-  auto delete_threshold = _config.downpour_accessor_param().delete_threshold();
+      _config.ctr_accessor_param().delete_after_unseen_days();
+  auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
 
   // time_decay first
   unit_feature_value.show(value) *= _show_click_decay_rate;
@@ -458,12 +457,12 @@ bool CtrUnitAccessor::shrink(float* value) {
 }
 
 bool CtrUnitAccessor::save(float* value, int param) {
-  // auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  // auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  // auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
+  // auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  // auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
   if (param == 2) {
     delta_threshold = 0;
   }
@@ -505,9 +504,9 @@ bool CtrUnitAccessor::save(float* value, int param) {
 }
 
 void CtrUnitAccessor::update_stat_after_save(float* value, int param) {
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
   if (param == 2) {
     delta_threshold = 0;
   }
@@ -552,11 +551,10 @@ bool CtrUnitAccessor::need_extend_mf(float* value) {
   float show = value[unit_feature_value.show_index()];
   float click = value[unit_feature_value.click_index()];
   // float score = (show - click) *
-  // _config.downpour_accessor_param().nonclk_coeff()
-  float score =
-      (show - click) * _config.downpour_accessor_param().nonclk_coeff() +
-      click * _config.downpour_accessor_param().click_coeff();
-  //+ click * _config.downpour_accessor_param().click_coeff();
+  // _config.ctr_accessor_param().nonclk_coeff()
+  float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
+                click * _config.ctr_accessor_param().click_coeff();
+  //+ click * _config.ctr_accessor_param().click_coeff();
   return score >= _config.embedx_threshold();
 }
 
@@ -619,12 +617,11 @@ int32_t CtrUnitAccessor::update(float** update_values,
     update_value[unit_feature_value.click_index()] += push_click;
     update_value[unit_feature_value.slot_index()] = slot;
     update_value[unit_feature_value.delta_score_index()] +=
-        (push_show - push_click) *
-            _config.downpour_accessor_param().nonclk_coeff() +
-        push_click * _config.downpour_accessor_param().click_coeff();
+        (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
+        push_click * _config.ctr_accessor_param().click_coeff();
     // (push_show - push_click) *
-    // _config.downpour_accessor_param().nonclk_coeff() +
-    // push_click * _config.downpour_accessor_param().click_coeff();
+    // _config.ctr_accessor_param().nonclk_coeff() +
+    // push_click * _config.ctr_accessor_param().click_coeff();
     update_value[unit_feature_value.unseen_days_index()] = 0;
     _embed_sgd_rule->update_value(
         update_value + unit_feature_value.embed_w_index(),
@@ -661,10 +658,10 @@ bool CtrUnitAccessor::create_value(int stage, const float* value) {
 }
 
 float CtrUnitAccessor::show_click_score(float show, float click) {
-  // auto nonclk_coeff = _config.downpour_accessor_param().nonclk_coeff();
-  // auto click_coeff = _config.downpour_accessor_param().click_coeff();
-  auto nonclk_coeff = _config.downpour_accessor_param().nonclk_coeff();
-  auto click_coeff = _config.downpour_accessor_param().click_coeff();
+  // auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
+  // auto click_coeff = _config.ctr_accessor_param().click_coeff();
+  auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
+  auto click_coeff = _config.ctr_accessor_param().click_coeff();
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 
@@ -715,8 +712,7 @@ int CtrCommonAccessor::initialize() {
   common_feature_value.embed_sgd_dim = _embed_sgd_rule->dim();
   common_feature_value.embedx_dim = _config.embedx_dim();
   common_feature_value.embedx_sgd_dim = _embedx_sgd_rule->dim();
-  _show_click_decay_rate =
-      _config.downpour_accessor_param().show_click_decay_rate();
+  _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
 
   return 0;
 }
@@ -756,11 +752,11 @@ size_t CtrCommonAccessor::update_dim_size(size_t dim) { return sizeof(float); }
 size_t CtrCommonAccessor::update_size() { return update_dim() * sizeof(float); }
 
 bool CtrCommonAccessor::shrink(float* value) {
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
-      _config.downpour_accessor_param().delete_after_unseen_days();
-  auto delete_threshold = _config.downpour_accessor_param().delete_threshold();
+      _config.ctr_accessor_param().delete_after_unseen_days();
+  auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
 
   // time_decay first
   common_feature_value.show(value) *= _show_click_decay_rate;
@@ -777,9 +773,9 @@ bool CtrCommonAccessor::shrink(float* value) {
 }
 
 bool CtrCommonAccessor::save(float* value, int param) {
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
   if (param == 2) {
     delta_threshold = 0;
   }
@@ -822,9 +818,9 @@ bool CtrCommonAccessor::save(float* value, int param) {
 }
 
 void CtrCommonAccessor::update_stat_after_save(float* value, int param) {
-  auto base_threshold = _config.downpour_accessor_param().base_threshold();
-  auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
-  auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
   if (param == 2) {
     delta_threshold = 0;
   }
@@ -871,11 +867,10 @@ bool CtrCommonAccessor::need_extend_mf(float* value) {
   float show = value[common_feature_value.show_index()];
   float click = value[common_feature_value.click_index()];
   // float score = (show - click) *
-  // _config.downpour_accessor_param().nonclk_coeff()
-  float score =
-      (show - click) * _config.downpour_accessor_param().nonclk_coeff() +
-      click * _config.downpour_accessor_param().click_coeff();
-  //+ click * _config.downpour_accessor_param().click_coeff();
+  // _config.ctr_accessor_param().nonclk_coeff()
+  float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
+                click * _config.ctr_accessor_param().click_coeff();
+  //+ click * _config.ctr_accessor_param().click_coeff();
   return score >= _config.embedx_threshold();
 }
 
@@ -939,12 +934,11 @@ int32_t CtrCommonAccessor::update(float** update_values,
     update_value[common_feature_value.click_index()] += push_click;
     update_value[common_feature_value.slot_index()] = slot;
     update_value[common_feature_value.delta_score_index()] +=
-        (push_show - push_click) *
-            _config.downpour_accessor_param().nonclk_coeff() +
-        push_click * _config.downpour_accessor_param().click_coeff();
+        (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
+        push_click * _config.ctr_accessor_param().click_coeff();
     // (push_show - push_click) *
-    // _config.downpour_accessor_param().nonclk_coeff() +
-    // push_click * _config.downpour_accessor_param().click_coeff();
+    // _config.ctr_accessor_param().nonclk_coeff() +
+    // push_click * _config.ctr_accessor_param().click_coeff();
     update_value[common_feature_value.unseen_days_index()] = 0;
     _embed_sgd_rule->update_value(
         update_value + common_feature_value.embed_w_index(),
@@ -981,10 +975,10 @@ bool CtrCommonAccessor::create_value(int stage, const float* value) {
 }
 
 float CtrCommonAccessor::show_click_score(float show, float click) {
-  // auto nonclk_coeff = _config.downpour_accessor_param().nonclk_coeff();
-  // auto click_coeff = _config.downpour_accessor_param().click_coeff();
-  auto nonclk_coeff = _config.downpour_accessor_param().nonclk_coeff();
-  auto click_coeff = _config.downpour_accessor_param().click_coeff();
+  // auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
+  // auto click_coeff = _config.ctr_accessor_param().click_coeff();
+  auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
+  auto click_coeff = _config.ctr_accessor_param().click_coeff();
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 

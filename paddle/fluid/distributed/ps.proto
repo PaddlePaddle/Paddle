@@ -123,7 +123,7 @@ message TableAccessorParameter {
   optional uint32 fea_dim = 4 [ default = 11 ];
   optional uint32 embedx_dim = 5 [ default = 8 ];
   optional uint32 embedx_threshold = 6 [ default = 10 ];
-  optional CtrAccessorParameter downpour_accessor_param = 7;
+  optional CtrAccessorParameter ctr_accessor_param = 7;
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
   //  optional SparseCommonSGDRuleParameter sparse_commonsgd_param = 9;
   optional SparseCommonSGDRuleParameter embed_sgd_param = 10;

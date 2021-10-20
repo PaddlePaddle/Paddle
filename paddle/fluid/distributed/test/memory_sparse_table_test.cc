@@ -43,12 +43,12 @@ TEST(CommonSparseTable, SGD) {
   accessor_config->set_fea_dim(11);
   accessor_config->set_embedx_dim(8);
   accessor_config->set_embedx_threshold(5);
-  accessor_config->mutable_downpour_accessor_param()->set_nonclk_coeff(0.2);
-  accessor_config->mutable_downpour_accessor_param()->set_click_coeff(1);
-  accessor_config->mutable_downpour_accessor_param()->set_base_threshold(0.5);
-  accessor_config->mutable_downpour_accessor_param()->set_delta_threshold(0.2);
-  accessor_config->mutable_downpour_accessor_param()->set_delta_keep_days(16);
-  accessor_config->mutable_downpour_accessor_param()->set_show_click_decay_rate(
+  accessor_config->mutable_ctr_accessor_param()->set_nonclk_coeff(0.2);
+  accessor_config->mutable_ctr_accessor_param()->set_click_coeff(1);
+  accessor_config->mutable_ctr_accessor_param()->set_base_threshold(0.5);
+  accessor_config->mutable_ctr_accessor_param()->set_delta_threshold(0.2);
+  accessor_config->mutable_ctr_accessor_param()->set_delta_keep_days(16);
+  accessor_config->mutable_ctr_accessor_param()->set_show_click_decay_rate(
       0.99);
 
   accessor_config->mutable_embed_sgd_param()->set_name("SparseNaiveSGDRule");

@@ -28,12 +28,12 @@ TableAccessorParameter gen_param() {
   param.set_accessor_class("CtrCommonAccessor");
   param.set_fea_dim(11);
   param.set_embedx_dim(8);
-  param.mutable_downpour_accessor_param()->set_nonclk_coeff(0.2);
-  param.mutable_downpour_accessor_param()->set_click_coeff(1);
-  param.mutable_downpour_accessor_param()->set_base_threshold(0.5);
-  param.mutable_downpour_accessor_param()->set_delta_threshold(0.2);
-  param.mutable_downpour_accessor_param()->set_delta_keep_days(16);
-  param.mutable_downpour_accessor_param()->set_show_click_decay_rate(0.99);
+  param.mutable_ctr_accessor_param()->set_nonclk_coeff(0.2);
+  param.mutable_ctr_accessor_param()->set_click_coeff(1);
+  param.mutable_ctr_accessor_param()->set_base_threshold(0.5);
+  param.mutable_ctr_accessor_param()->set_delta_threshold(0.2);
+  param.mutable_ctr_accessor_param()->set_delta_keep_days(16);
+  param.mutable_ctr_accessor_param()->set_show_click_decay_rate(0.99);
   /*
   param.mutable_embed_sgd_param()->set_name("naive");
   auto* naive_param = param.mutable_embed_sgd_param()->mutable_naive();
