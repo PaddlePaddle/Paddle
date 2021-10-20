@@ -11,6 +11,8 @@
 
 #pragma once
 #include <map>
+#include <memory>
+#include <mutex>
 #include <vector>
 #include "ThreadPool.h"
 
@@ -32,10 +34,15 @@ namespace data {
 
 class Pipeline {
   public:
-    Pipeline(const BlockDesc &global_block, const platform::Place &place,
+    Pipeline(const std::shared_ptr<BlockDesc> global_block, const platform::Place &place,
              int64_t start_op_index, int64_t end_op_index, int64_t program_id,
              const std::vector<std::string> &output_var_names,
-             size_t prefetch_queue_size = 2);
+             size_t prefetch_queue_size);
+
+    // ~Pipeline() {
+    //   VLOG(1) << "~Pipeline";
+    //   Close();
+    // }
 
     inline size_t PrefetchCap() { return prefetch_queue_.Cap(); }
 
@@ -58,25 +65,25 @@ class Pipeline {
       out_tensor.set_lod(lod_tensor.lod());
     }
 
-    void StartPrefetchThread(const ParallelExecutor &executor,const std::vector<std::string> &skip_vars);
+    void StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor, 
+                             const std::vector<std::string> &skip_vars);
 
     void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
-    std::shared_ptr<BlockDesc> global_block_;
+    ThreadPool thread_pool_;
+    std::atomic<bool> closed_;
+
     Scope scope_;
+    std::shared_ptr<BlockDesc> global_block_;
+    platform::Place place_;
     int64_t start_op_index_;
     int64_t end_op_index_;
     int64_t program_id_;
 
     std::vector<std::string> output_var_names_;
 
-    platform::Place place_;
-
-    ThreadPool thread_pool_;
     const size_t prefetch_queue_size_;
     LoDTensorBlockingQueue prefetch_queue_;
-    std::atomic<bool> closed_;
-
 };
 
 class PipelineManager {
@@ -85,33 +92,34 @@ class PipelineManager {
   private:
     DISABLE_COPY_AND_ASSIGN(PipelineManager);
 
-    static std::shared_ptr<PipelineManager> pm_instance_ptr_;
+    static PipelineManager* pm_instance_ptr_;
     std::map<int64_t, std::shared_ptr<Pipeline>> prog_id_to_pipeline_;
+    static std::mutex m_;
 
   public:
-    static PipelineManager& Instance() {
+    static PipelineManager* Instance() {
       if (pm_instance_ptr_ == nullptr) {
-        pm_instance_ptr_ = std::shared_ptr<PipelineManager>(new PipelineManager);
+        std::lock_guard<std::mutex> lk(m_);
+        if (pm_instance_ptr_ == nullptr) {
+          pm_instance_ptr_ = new PipelineManager;
+        }
       }
-      return *pm_instance_ptr_;
+      return pm_instance_ptr_;
     }
 
     std::shared_ptr<Pipeline> GetPipeline(
-        int64_t program_id, const BlockDesc &global_block,
+        int64_t program_id, BlockDesc* global_block,
         const platform::Place &place, int64_t start_op_index,
         int64_t end_op_index,
         const std::vector<std::string> &output_var_names,
-        size_t prefetch_queue_size = 2) {
+        size_t prefetch_queue_size) {
       auto iter = prog_id_to_pipeline_.find(program_id);
       if (iter != prog_id_to_pipeline_.end()) {
         prog_id_to_pipeline_[program_id] = \
             std::shared_ptr<Pipeline>(new Pipeline(
-                                        global_block, place, 
-                                        start_op_index,
-                                        end_op_index,
-                                        program_id,
-                                        output_var_names,
-                                        prefetch_queue_size));
+                  std::shared_ptr<BlockDesc>(global_block), place,
+                  start_op_index, end_op_index, program_id,
+                  output_var_names, prefetch_queue_size));
         return prog_id_to_pipeline_[program_id];
       } else {
         return iter->second;
@@ -125,7 +133,6 @@ class PipelineManager {
       prog_id_to_pipeline_.clear();
     }
 };
-
 
 }  // data
 }  // namespace operators

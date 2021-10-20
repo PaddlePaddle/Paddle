@@ -5,5 +5,5 @@
 # If there are some redefined error in compiling with the source file which
 # in combination rule, you can remove the source file from the following rules.
 register_unity_group(cc
-    dataloader_op.cc
-    pipeline.cc)
+    pipeline.cc
+    dataloader_op.cc)

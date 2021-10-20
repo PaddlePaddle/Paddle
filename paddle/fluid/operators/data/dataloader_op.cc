@@ -52,10 +52,14 @@ class DataLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("end_op_index",
                      "(int64_t)"
                      "The index of the op to stop execution");
-    AddAttr<int64_t>(
-        "program_id",
-        "(int64_t)"
-        "The unique hash id used as cache key for ExecutorInfoCache.");
+    AddAttr<int64_t>("program_id",
+                     "(int64_t)"
+                     "The unique hash id used as cache key for "
+                     "ExecutorInfoCache");
+    AddAttr<int64_t>("prefetch_depth",
+                     "(size_t)"
+                     "The prefetch batch number")
+        .SetDefault(2);
     AddComment(R"DOC(
         DataLoader Op
          )DOC");
