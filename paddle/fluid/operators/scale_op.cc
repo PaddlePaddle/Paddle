@@ -71,7 +71,7 @@ class ScaleOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
-  framework::KernelSignature GetExpectedPtKernelArgs(
+  framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
     if (ctx.HasInput("ScaleTensor")) {
       return std::make_pair(

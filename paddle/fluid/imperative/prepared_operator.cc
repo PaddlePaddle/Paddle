@@ -153,12 +153,12 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
   if (FLAGS_run_pt_kernel &&
       pten::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
-    auto pt_kernel_signature = op.GetExpectedPtKernelArgs(dygraph_exe_ctx);
+    auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
 
     VLOG(1) << framework::KernelSignatureToString(pt_kernel_signature);
 
     auto pt_kernel_name = pten::KernelName(pt_kernel_signature.first);
-    auto pt_kernel_key = TransOpKernelTypeToPtKernelKey(expected_kernel_key);
+    auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
     auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
 
@@ -171,7 +171,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
     } else {
-      VLOG(1) << "Dynamic mode ChoosePtKernel - kernel `" << pt_kernel_name
+      VLOG(1) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
               << "` not found.";
     }
   }
@@ -243,7 +243,7 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
-static pten::KernelContext BuildDygraphPtKernelContext(
+static pten::KernelContext BuildDygraphPtenKernelContext(
     const framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
@@ -292,7 +292,7 @@ static pten::KernelContext BuildDygraphPtKernelContext(
     for (auto var : ins_vector) {
       const auto& variable = var->Var();
 
-      auto pt_in = framework::InputVariableToPtTensor(variable, in_def);
+      auto pt_in = framework::InputVariableToPtenTensor(variable, in_def);
       tmp_inputs.emplace_back(pt_in);
     }
     op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
@@ -306,7 +306,7 @@ static pten::KernelContext BuildDygraphPtKernelContext(
     for (auto var : outs_vector) {
       auto* variable = var->MutableVar();
 
-      auto pt_out = framework::OutputVariableToPtTensor(variable, out_def);
+      auto pt_out = framework::OutputVariableToPtenTensor(variable, out_def);
       tmp_outputs.emplace_back(pt_out);
     }
     op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
@@ -401,7 +401,7 @@ static void PreparedOpRunPtImpl(
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  auto op_kernel_ctx = BuildDygraphPtKernelContext<VarType>(
+  auto op_kernel_ctx = BuildDygraphPtenKernelContext<VarType>(
       pt_kernel_signature, pt_kernel, ins, outs, attrs, default_attrs,
       *dev_ctx);
 

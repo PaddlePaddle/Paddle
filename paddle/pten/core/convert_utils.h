@@ -30,10 +30,10 @@ namespace pten {
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
-Backend TransToPtBackend(const paddle::platform::Place& place);
-DataType TransToPtDataType(
+Backend TransToPtenBackend(const paddle::platform::Place& place);
+DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype);
-DataLayout TransToPtDataLayout(const paddle::framework::DataLayout& layout);
+DataLayout TransToPtenDataLayout(const paddle::framework::DataLayout& layout);
 
 paddle::platform::Place TransToFluidPlace(const Backend& backend);
 paddle::framework::proto::VarType::Type TransToProtoVarType(

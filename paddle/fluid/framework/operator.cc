@@ -1146,7 +1146,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (FLAGS_run_pt_kernel &&
       pten::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
-      ChoosePtKernel(exe_ctx);
+      ChoosePtenKernel(exe_ctx);
     }
     run_pt_kernel_ = pt_kernel_->IsValid();
   }
@@ -1192,7 +1192,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
     if (run_pt_kernel_) {
-      auto op_kernel_ctx = BuildPtKernelContext(*runtime_ctx, *dev_ctx);
+      auto op_kernel_ctx = BuildPtenKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
     } else {
       (*kernel_func_)(
@@ -1282,26 +1282,26 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   return expected_kernel_key;
 }
 
-void OperatorWithKernel::ChoosePtKernel(const ExecutionContext& ctx) const {
+void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(this->GetExpectedPtKernelArgs(ctx)));
+      new KernelSignature(this->GetExpectedPtenKernelArgs(ctx)));
 
   VLOG(1) << KernelSignatureToString(*pt_kernel_signature_.get());
 
   kernel_type_.reset(new OpKernelType(InnerGetExpectedKernelType(ctx)));
 
   auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
-  auto pt_kernel_key = TransOpKernelTypeToPtKernelKey(*kernel_type_.get());
+  auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(
       new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
           pt_kernel_name, pt_kernel_key)));
 
   if (pt_kernel_->IsValid()) {
-    VLOG(1) << "Static mode ChoosePtKernel - kernel name: " << pt_kernel_name
+    VLOG(1) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
             << " | kernel key: " << pt_kernel_key
             << " | kernel: " << *pt_kernel_;
   } else {
-    VLOG(1) << "Static mode ChoosePtKernel - kernel `" << pt_kernel_name
+    VLOG(1) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
             << "` not found.";
   }
 }
@@ -1774,7 +1774,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
                       tensor.layout());
 }
 
-KernelSignature OperatorWithKernel::GetExpectedPtKernelArgs(
+KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
   if (KernelSignatureMap::Instance().Has(Type())) {
     return *(KernelSignatureMap::Instance().GetNullable(Type()));
@@ -1786,7 +1786,7 @@ KernelSignature OperatorWithKernel::GetExpectedPtKernelArgs(
   }
 }
 
-pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
+pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   VLOG(1) << RuntimeContextDebugString(ctx);
 
@@ -1834,7 +1834,7 @@ pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
     std::vector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
 
     for (auto var : ins_vector) {
-      auto pt_in = framework::InputVariableToPtTensor(*var, in_def);
+      auto pt_in = framework::InputVariableToPtenTensor(*var, in_def);
       tmp_inputs.emplace_back(pt_in);
     }
     op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
@@ -1846,7 +1846,7 @@ pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
 
     std::vector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
-      auto pt_out = framework::OutputVariableToPtTensor(var, out_def);
+      auto pt_out = framework::OutputVariableToPtenTensor(var, out_def);
       tmp_outputs.emplace_back(pt_out);
     }
     op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
