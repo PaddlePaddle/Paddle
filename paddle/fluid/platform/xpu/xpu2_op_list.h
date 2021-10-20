@@ -184,6 +184,9 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"scale", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                              pOpKernelType(vartype::FP16, XPUPlace()),
+                              pOpKernelType(vartype::INT64, XPUPlace())})}
       // AddMore
   };
 
