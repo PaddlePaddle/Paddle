@@ -94,7 +94,7 @@ class MatMulOpConverter : public OpConverter {
                                  {output_name}, test_mode);
       } else {
         layer->setName(("matmul_op_float_has_alpha: MatrixMultiplyLayer" +
-                        " (Output: " + {output_name}[0] + ")")
+                        " (Output: " + output_name + ")")
                            .c_str());
         auto create_weights = [&](float data,
                                   const std::string& type) -> float* {
