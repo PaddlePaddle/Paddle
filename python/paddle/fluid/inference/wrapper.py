@@ -15,6 +15,8 @@
 from ..core import AnalysisConfig, PaddleDType, PaddlePlace
 from ..core import PaddleInferPredictor, PaddleInferTensor
 
+import numpy as np
+
 DataType = PaddleDType
 PlaceType = PaddlePlace
 PrecisionType = AnalysisConfig.Precision
