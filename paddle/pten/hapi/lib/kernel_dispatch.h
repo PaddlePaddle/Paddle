@@ -14,9 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <limits>
 #include <string>
 #include <utility>
 
+#include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/layout.h"
+#include "paddle/pten/hapi/include/backend_set.h"
 #include "paddle/pten/hapi/include/tensor.h"
 
 // TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
@@ -35,6 +39,39 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 #endif
 
 namespace detail {
+std::size_t CountLeadingZeros(uint64_t val) {
+  if (val == 0) {
+    return 64;
+  }
+  std::size_t zero_bits = 0;
+  for (std::size_t shift = 64 >> 1; shift; shift >>= 1) {
+    uint64_t tmp = val >> shift;
+    if (tmp) {
+      val = tmp;
+    } else {
+      zero_bits |= shift;
+    }
+  }
+  return zero_bits;
+}
+}  // namespace detail
+
+// TODO(chenweihang): support DataLayout and DataType selected
+struct KernelKeySet {
+  BackendSet backend_set{Backend::UNDEFINED};
+  DataLayout layout{DataLayout::UNDEFINED};
+  DataType dtype{DataType::UNDEFINED};
+
+  // TODO(chenweihang): iterate all kernelkey for kernel selection
+  pten::KernelKey GetHigestPriorityKernelKey() {
+    return pten::KernelKey(static_cast<Backend>(64 - detail::CountLeadingZeros(
+                                                         backend_set.bitset())),
+                           layout,
+                           dtype);
+  }
+};
+
+namespace detail {
 
 template <typename Functor>
 struct ArgsIterator {
@@ -46,7 +83,7 @@ struct ArgsIterator {
   template <typename T, typename... Args>
   inline Functor& apply(T&& arg, Args&&... args) {
     self()(std::forward<T>(arg));
-    if (self().short_circurt()) {
+    if (self().short_circuit()) {
       return self();
     } else {
       return apply(std::forward<Args>(args)...);
@@ -59,30 +96,19 @@ struct ArgsIterator {
   inline Functor& self() { return *static_cast<Functor*>(this); }
 };
 
-struct KernelNameAndKeyParser : ArgsIterator<KernelNameAndKeyParser> {
-  std::string kernel_name;
-  pten::Backend backend;
-  paddle::experimental::DataLayout layout;
-  paddle::experimental::DataType dtype;
+struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
+  KernelKeySet key_set;
 
-  explicit KernelNameAndKeyParser(const std::string& name)
-      : kernel_name(name) {}
-
-  // TODO(chenweihang): use bit set here
   // TODO(chenweihang): deal with multiple diff input Tensors
+  // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
-    if (x.is_cpu()) {
-      backend = pten::Backend::kCPU;
-    } else if (x.is_cuda()) {
-      backend = pten::Backend::kCUDA;
-    } else {
-      throw std::runtime_error("Unsupported backend when parser args.");
-    }
-    layout = x.layout();
-    dtype = x.type();
+    key_set.backend_set = key_set.backend_set | x.backend_set();
+    // TODO(chenweihang): selecte multi layout and dtype
+    key_set.layout = x.layout();
+    key_set.dtype = x.type();
   }
 
-  // skip other type args
+  // skip other type args, these args don't used in kernel selection
   template <typename T>
   void operator()(const T& x) {
     // do nothing
@@ -91,36 +117,15 @@ struct KernelNameAndKeyParser : ArgsIterator<KernelNameAndKeyParser> {
 
 }  // namespace detail
 
-// TODO(chenweihang): Determine the Kernel name and key according to the
-// function name and the input Tensor parameters. For example, if the input
-// x holds SelectedRows, then the Kernel name should be added with the `sr`
-// suffix on the basis of the function name, or the input contains HostTensor,
-// and the `host` suffix should be added on the basis of the function name.
 template <typename... Args>
-std::pair<pten::KernelName, pten::KernelKey> ParseKernelNameAndKeyByArgs(
-    const std::string& fn_name, const Args&... args) {
-  auto parser = detail::KernelNameAndKeyParser(fn_name);
-  parser(args...);
-  // TODO(chenweihang): polish design here
-  pten::KernelName kernel_name(parser.kernel_name);
-  pten::KernelKey kernel_key(parser.backend, parser.layout, parser.dtype);
-  return std::make_pair(kernel_name, kernel_key);
+KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
+  return detail::KernelKeyParser().apply(args...).key_set;
 }
 
 paddle::platform::DeviceContext* GetDeviceContextByBackend(
     pten::Backend backend) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto place = pten::TransToFluidPlace(backend);
-  // switch (backend) {
-  //   case Backend::kCPU:
-  //     return pool.GetByPlace(paddle::platform::CPUPlace());
-  //   case Backend::kCUDA:
-  //     return pool.GetByPlace(paddle::platform::CUDAPlace());
-  //   default:
-  //     throw std::runtime_error(
-  //       "Unsupported backend when getting device context.");
-  // }
-  return pool.Get(place);
+  return pool.Get(pten::TransToFluidPlace(backend));
 }
 
 }  // namespace experimental

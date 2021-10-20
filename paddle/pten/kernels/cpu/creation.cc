@@ -33,7 +33,7 @@ PT_REGISTER_MODULE(CreationCPU);
 
 PT_REGISTER_KERNEL("fill_any_like",
                    CPU,
-                   Any,
+                   ANY,
                    pten::FillAnyLike,
                    float,
                    double,

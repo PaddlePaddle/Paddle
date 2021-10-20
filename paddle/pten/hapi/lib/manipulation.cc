@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/pten/api/include/core.h"
-#include "paddle/pten/hapi/lib/kernel_generate.h"
+#include "paddle/pten/hapi/lib/kernel_dispatch.h"
 #include "paddle/pten/infershape/unary.h"
 
 namespace paddle {
@@ -26,18 +26,13 @@ namespace experimental {
 
 Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   // 1. Get kernel signature and kernel
-  auto kernel_signature =
-      ParseKernelNameAndKeyByArgs("flatten_contiguous_range", x);
-  VLOG(1) << kernel_signature.first;
-  VLOG(1) << kernel_signature.second;
-  VLOG(1) << pten::KernelFactory::Instance();
-
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      kernel_signature.first, kernel_signature.second);
-  VLOG(1) << kernel;
+      "flatten_contiguous_range", kernel_key);
 
   // 2. Get Device Context
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_signature.second.backend());
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
   auto kernel_context = pten::KernelContext(*dev_ctx);
 
   // 3. Auto data transform
@@ -47,16 +42,15 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   kernel_context.EmplaceBackAttr(stop_axis);
 
   // 4. InferShape
-  // TODO(chenweihang): how to auto selected infershape?
   auto out_meta = FlattenInferShape(dense_x->meta(), start_axis, stop_axis);
 
   // 5. Prepare outputs
   Tensor out;
-  // TODO(chenweihang): deal with multiple outputs
   auto dense_out =
       std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
+  out.set_backend_set(x.backend_set());
 
   // 6. Call kernel
   kernel(&kernel_context);

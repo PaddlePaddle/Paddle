@@ -55,4 +55,4 @@ void Copy(const CPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst) {
 // TODO(chenweihang): replace by better impl
 PT_REGISTER_MODULE(UtilsCPU);
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", CPU, Any, pten::Copy) {}
+PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", CPU, ANY, pten::Copy) {}

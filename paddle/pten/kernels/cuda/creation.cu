@@ -33,7 +33,7 @@ PT_REGISTER_MODULE(CreationCUDA);
 
 PT_REGISTER_KERNEL("fill_any_like",
                    CUDA,
-                   Any,
+                   ANY,
                    pten::FillAnyLike,
                    float,
                    double,

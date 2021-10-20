@@ -17,5 +17,6 @@ limitations under the License. */
 // user apis
 #include "paddle/pten/hapi/include/creation.h"
 #include "paddle/pten/hapi/include/linalg.h"
+#include "paddle/pten/hapi/include/manipulation.h"
 #include "paddle/pten/hapi/include/math.h"
 #include "paddle/pten/hapi/include/tensor.h"

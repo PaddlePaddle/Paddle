@@ -121,11 +121,11 @@ void ScaleHost(const CUDAContext& dev_ctx,
 PT_REGISTER_MODULE(MathCUDA);
 
 using float16 = paddle::platform::float16;
-PT_REGISTER_KERNEL("sign", CUDA, Any, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL("mean", CUDA, Any, pten::Mean, float, double, float16) {}
+PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
+PT_REGISTER_KERNEL("mean", CUDA, ANY, pten::Mean, float, double, float16) {}
 PT_REGISTER_KERNEL("scale",
                    CUDA,
-                   Any,
+                   ANY,
                    pten::Scale,
                    float,
                    double,
@@ -137,7 +137,7 @@ PT_REGISTER_KERNEL("scale",
                    int64_t) {}
 PT_REGISTER_KERNEL("scale.host",
                    CUDA,
-                   Any,
+                   ANY,
                    pten::ScaleHost,
                    float,
                    double,
@@ -147,5 +147,5 @@ PT_REGISTER_KERNEL("scale.host",
                    int16_t,
                    int,
                    int64_t) {
-  kernel->InputAt(1).SetBackend(pten::Backend::kCPU);
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
 }

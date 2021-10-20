@@ -33,9 +33,9 @@ TEST(API, mean) {
   // 1. create tensor
   auto dense_x = std::make_shared<pten::DenseTensor>(
       pten::TensorMeta(framework::make_ddim({3, 4}),
-                       pten::Backend::kCPU,
-                       paddle::experimental::DataType::kFLOAT32,
-                       paddle::experimental::DataLayout::kNCHW),
+                       pten::Backend::CPU,
+                       pten::DataType::FLOAT32,
+                       pten::DataLayout::NCHW),
       pten::TensorStatus());
   auto* dense_x_data = dense_x->mutable_data<float>();
 
@@ -55,8 +55,8 @@ TEST(API, mean) {
   ASSERT_EQ(out.shape()[0], 1);
   ASSERT_EQ(out.numel(), 1);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), paddle::experimental::DataType::kFLOAT32);
-  ASSERT_EQ(out.layout(), paddle::experimental::DataLayout::kNCHW);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto expect_result = sum / 12;
