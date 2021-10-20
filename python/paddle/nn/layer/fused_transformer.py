@@ -207,17 +207,17 @@ class FusedMultiHeadAttention(Layer):
             dtype=self._dtype,
             is_bias=True)
         ## layer_norm parameters.
+        self.pre_ln_scale = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[embed_dim],
+            default_initializer=Constant(value=1.0))
+        self.pre_ln_bias = self.create_parameter(
+            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
         self.ln_scale = self.create_parameter(
             attr=self._weight_attr,
             shape=[embed_dim],
             default_initializer=Constant(value=1.0))
         self.ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
-        self.ln_2_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.ln_2_bias = self.create_parameter(
             attr=self._bias_attr, shape=[embed_dim], is_bias=True)
 
         ## dropout parameters
@@ -285,10 +285,10 @@ class FusedMultiHeadAttention(Layer):
                 seq_len=seq_len,
                 num_heads=self.num_heads,
                 pre_layer_norm=self.normalize_before,
-                ln_scale=self.ln_scale,
-                ln_bias=self.ln_bias,
-                ln_2_scale=self.ln_2_scale,
-                ln_2_bias=self.ln_2_bias,
+                ln_scale=self.pre_ln_scale,
+                ln_bias=self.pre_ln_bias,
+                ln_2_scale=self.ln_scale,
+                ln_2_bias=self.ln_bias,
                 epsilon=1e-05,
                 out_linear_bias=self.out_linear_bias,
                 dropout=self.dropout,
@@ -304,10 +304,10 @@ class FusedMultiHeadAttention(Layer):
                 qkv_weight=self.qkv_weight,
                 out_linear_weight=self.out_linear_weight,
                 pre_layer_norm=self.normalize_before,
-                ln_scale=self.ln_scale,
-                ln_bias=self.ln_bias,
-                ln_2_scale=self.ln_2_scale,
-                ln_2_bias=self.ln_2_bias,
+                ln_scale=self.pre_ln_scale,
+                ln_bias=self.pre_ln_bias,
+                ln_2_scale=self.ln_scale,
+                ln_2_bias=self.ln_bias,
                 epsilon=1e-05,
                 qkv_bias=self.qkv_bias,
                 out_linear_bias=self.out_linear_bias,
