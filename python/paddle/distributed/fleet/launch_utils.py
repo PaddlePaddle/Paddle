@@ -26,6 +26,7 @@ import socket
 import warnings
 import six
 import struct
+import json
 
 import paddle
 import paddle.fluid as fluid
@@ -817,10 +818,10 @@ def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         ranks_per_node = node_mapping_ranks[node_rank]
         for i in range(len(ranks_per_node)):
             trainer = Trainer()
-            # change global rank(mapped) to relative rank within each node.
+            # change global rank(mapped) to local rank within each node.
             # e.g. mapped ranks of node: 3,4,7 -> 0,1,2
-            relative_rank = ranks_per_node.index(ranks_per_node[i])
-            trainer.accelerators.append(relative_rank)
+            local_rank = ranks_per_node.index(ranks_per_node[i])
+            trainer.accelerators.append(local_rank)
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             # global mapped ranks
             trainer.rank = ranks_per_node[i]
@@ -836,7 +837,19 @@ def get_mapped_cluster_from_args(args, device_mode):
     assert device_mode == DeviceMode.GPU, \
         "Only support get mapped cluster for gpu now."
     gpus_num = fluid.core.get_cuda_device_count()
-    node_ips = [x.strip() for x in args.ips.split(',')]
+
+    # parse ip-ranks json file
+    json_data = None
+    with args.rank_mapping_file as json_file:
+        json_data = json.load(json_file)
+
+    node_ips = []
+    node_ranks_mapping = []
+    ip_ranks_list = json_data['ip_ranks']
+    for ip_ranks in ip_ranks_list:
+        node_ips.append(ip_ranks['ip'])
+        node_ranks_mapping.append(ip_ranks['ranks'])
+
     if len(node_ips) == 1:
         node_ip = node_ips[0]
     else:
@@ -849,46 +862,34 @@ def get_mapped_cluster_from_args(args, device_mode):
         "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
-    assert args.ranks_mapped is not None, \
-        "ranks_mapped should be provided when enable_rank_mapping is set."
-    # for example: 0,1;4,5,6;3,7 -> [[0,1], [4,5,6], [3,7]]
-    node_mapping_ranks_tmp = [x.strip() for x in args.ranks_mapped.split(';')]
-    node_mapping_ranks = []
-    for s in node_mapping_ranks_tmp:
-        ranks_in_node = [int(x.strip()) for x in s.split(',')]
-        node_mapping_ranks.append(ranks_in_node)
-
-    assert len(node_mapping_ranks[node_rank]) <= gpus_num, \
-        "number of ranks mapped to one node should not exceed the max."
-    assert len(node_mapping_ranks) == len(node_ips), \
+    assert len(node_ranks_mapping[node_rank]) <= gpus_num, \
+        "number of ranks mapped to one node should not exceed the avaiable ones."
+    assert len(node_ranks_mapping) == len(node_ips), \
         "ranks length should be equal to ips length."
 
     logger.debug("parsed from args: node_ips:{} node_ip:{} "
-                 "node_rank:{} node_mapping_ranks:{}".format(
-                     node_ips, node_ip, node_rank, node_mapping_ranks[
+                 "node_rank:{} node_ranks_mapping:{}".format(
+                     node_ips, node_ip, node_rank, node_ranks_mapping[
                          node_rank]))
 
     # NOTE: there are different number of global mapped ranks on each node.
+    free_ports = []
     trainer_endpoints = []
     for ip in node_ips:
         node_rank = node_ips.index(ip)
-        free_ports = None
-        if not cloud_utils.use_paddlecloud() and len(
-                node_ips) <= 1 and os.environ.get('FLAGS_START_PORT') is None:
-            free_ports = find_free_ports(len(node_mapping_ranks[node_rank]))
-            if free_ports is not None:
-                free_ports = list(free_ports)
+        if os.environ.get('FLAGS_START_PORT') is not None:
+            start_port = int(os.environ.get('FLAGS_START_PORT'))
+            free_ports = [
+                x
+                for x in range(start_port, start_port + len(node_ranks_mapping[
+                    node_rank]))
+            ]
         else:
-            start_port = 6070
-            if os.environ.get('FLAGS_START_PORT') is not None:
-                start_port = int(os.environ.get('FLAGS_START_PORT'))
-
-            end_port = start_port + len(node_mapping_ranks[node_rank])
-            free_ports = [x for x in range(start_port, end_port)]
+            free_ports = find_free_ports(len(node_ranks_mapping[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
 
     return get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
-                              node_mapping_ranks)
+                              node_ranks_mapping)
 
 
 class ParameterServerLauncher(object):

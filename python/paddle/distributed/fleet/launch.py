@@ -65,6 +65,7 @@ import os
 import time
 import six
 import copy
+import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
 import paddle.fluid as fluid
@@ -158,16 +159,27 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
     collective_group.add_argument(
-        "--ranks_mapped",
-        type=str,
-        default="",
-        help="This mapped ranks information is used specifically for "
-        "lazy launch for auto parallel. Some of the ranks in each node "
+        "--rank_mapping_file",
+        type=argparse.FileType('r'),
+        default=sys.stdin,
+        help="This rank mapping information in json format is used specifically "
+        "for lazy launch for auto parallel. Some of the ranks in each node "
         "may not be used, and the indices of rank should be kept the same "
         "as the indices of sub-task splited by auto parallel. "
-        "Paddle cluster nodes-ranks mapping example, such as 0,1;4,5,6;3,7..")
+        " { "
+        "   \"ip_ranks\": [ "
+        "     { "
+        "       \"ip\": \"127.0.0.1\", "
+        "       \"ranks\": [0,1] "
+        "     }, "
+        "     { "
+        "       \"ip\": \"127.0.0.2\", "
+        "       \"ranks\": [2,3,4] "
+        "     } "
+        "   ] "
+        " } ")
     collective_group.add_argument(
-        "--enable_rank_mapping",
+        "--enable_auto_mapping",
         type=bool,
         default=False,
         help="Set true to enable the lazy launch for auto-parallel scenario.")
@@ -264,7 +276,7 @@ def launch_collective(args):
             device_mode=device_mode,
             start_port=start_port)
     # lazy launch for auto-parallel
-    elif args.enable_rank_mapping == True:
+    elif args.enable_auto_mapping == True:
         cluster, pod = get_mapped_cluster_from_args(args, device_mode)
     elif cloud_utils.use_paddlecloud() and trainers_num != 1:
         cluster, pod = cloud_utils.get_cloud_cluster(

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,14 +19,26 @@ set -e
 # use single node
 echo "begin test"
 
+RANK_MAPPING_FILE_NAME="rank_mapping_file.json"
+cat > ${RANK_MAPPING_FILE_NAME} <<EOF
+{
+    "ip_ranks": [
+        {
+            "ip": "127.0.0.1",
+            "ranks": [0,1]
+        }
+    ]
+}
+EOF
+
 export FLAGS_START_PORT=35789
-distributed_args="--ips=127.0.0.1 --ranks_mapped=0,1 --enable_rank_mapping true --log_dir=testlog"
-python -m paddle.distributed.fleet.launch ${distributed_args} multi_process.py fleetlaunchcloud_mapped_ranks
+distributed_args="--rank_mapping_file ${RANK_MAPPING_FILE_NAME} --enable_auto_mapping true --log_dir=testlog"
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.fleet.launch ${distributed_args} multi_process.py fleetlaunchcloud_rank_mapping
 
 str1="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
 str2="selected_gpus:1 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35790 trainer_id:1"
-file_0="multi_process_fleetlaunchcloud_mapped_ranks.check_0.log"
-file_1="multi_process_fleetlaunchcloud_mapped_ranks.check_1.log"
+file_0="multi_process_fleetlaunchcloud_rank_mapping.check_0.log"
+file_1="multi_process_fleetlaunchcloud_rank_mapping.check_1.log"
 
 echo "paddlecloud params test"
 if grep -q "$str1" "$file_0"; then
