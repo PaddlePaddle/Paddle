@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/backend.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/data_layout.h"
@@ -30,8 +30,6 @@ namespace pten {
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
-// TODO(chenweihang): Use the original var type as much as possible
-// to avoid transform, such as DataLayout, VarType
 Backend TransToPtBackend(const paddle::platform::Place& place);
 DataType TransToPtDataType(
     const paddle::framework::proto::VarType::Type& dtype);

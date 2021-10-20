@@ -536,32 +536,20 @@ class CudnnBNAddReluTester {
     bn_bias->Resize({1, 1, 1, channels_});
 
     // input
-    float *sum_ptr = sum->data<float>();
-    float *sum_of_square_ptr = sum_of_square->data<float>();
-    float *bn_scale_ptr = bn_scale->data<float>();
-    float *bn_bias_ptr = bn_bias->data<float>();
-
     mean->Resize({1, 1, 1, channels_});
     var->Resize({1, 1, 1, channels_});
 
     // output
-    float *mean_ptr = mean->data<float>();
-    float *var_ptr = var->data<float>();
-    float *saved_mean_ptr =
-        saved_mean->mutable_data<float>({1, 1, 1, channels_}, place);
-    float *saved_var_ptr =
-        saved_var->mutable_data<float>({1, 1, 1, channels_}, place);
-    T *equiv_scale_ptr =
-        equiv_scale->mutable_data<T>({1, 1, 1, channels_}, place);
-    T *equiv_bias_ptr =
-        equiv_bias->mutable_data<T>({1, 1, 1, channels_}, place);
+    equiv_scale->Resize({1, 1, 1, channels_});
+    equiv_bias->Resize({1, 1, 1, channels_});
+    saved_mean->Resize({1, 1, 1, channels_});
+    saved_var->Resize({1, 1, 1, channels_});
 
     auto param_shape = framework::vectorize<int>(bn_scale->dims());
     op::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
-    bn_op.Forward(ctx, sum_ptr, sum_of_square_ptr, bn_scale_ptr, bn_bias_ptr,
-                  saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
-                  equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_, ele_count_,
-                  true);
+    bn_op.Forward(ctx, *sum, *sum_of_square, *bn_scale, *bn_bias, saved_mean,
+                  saved_var, mean, var, equiv_scale, equiv_bias, eps_,
+                  momentum_, ele_count_, true);
   }
 
   // Get forward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
@@ -627,21 +615,13 @@ class CudnnBNAddReluTester {
                                   &saved_var_z, &equiv_scale_z, &equiv_bias_z);
     }
 
-    T *x_ptr = x.data<T>();
-    T *z_ptr = (fuse_add_ || has_shortcut_) ? z.data<T>() : nullptr;
-    T *equiv_scale_x_ptr = equiv_scale_x.data<T>();
-    T *equiv_bias_x_ptr = equiv_bias_x.data<T>();
-    T *equiv_scale_z_ptr = has_shortcut_ ? equiv_scale_z.data<T>() : nullptr;
-    T *equiv_bias_z_ptr = has_shortcut_ ? equiv_bias_z.data<T>() : nullptr;
-    T *y_ptr =
-        y.mutable_data<T>({batch_size_, height_, width_, channels_}, place);
+    y.Resize(framework::make_ddim({batch_size_, height_, width_, channels_}));
 
     int c = channels_;
     int64_t nhw = ele_count_;
     int32_t c_int32_elems = ((c + 63) & ~63) / 32;
     int32_t nhw_int32_elems = (nhw + 31) & ~31;
-    int32_t *bitmask_ptr = bitmask.mutable_data<int32_t>(
-        {nhw_int32_elems, c_int32_elems, 1}, place);
+    bitmask.Resize(framework::make_ddim({nhw_int32_elems, c_int32_elems, 1}));
 
     auto data_shape = framework::vectorize<int>(x.dims());
     auto param_shape = framework::vectorize<int>(bn_scale_x.dims());
@@ -651,8 +631,8 @@ class CudnnBNAddReluTester {
     op::CudnnScaleBiasAddRelu<T> sbar_op(ctx, act_type_, fuse_add_,
                                          has_shortcut_, data_shape, param_shape,
                                          bitmask_shape);
-    sbar_op.Forward(ctx, x_ptr, equiv_scale_x_ptr, equiv_bias_x_ptr, y_ptr,
-                    bitmask_ptr, z_ptr, equiv_scale_z_ptr, equiv_bias_z_ptr);
+    sbar_op.Forward(ctx, x, equiv_scale_x, equiv_bias_x, &z, &equiv_scale_z,
+                    &equiv_bias_z, &y, &bitmask);
 
     TensorCopySync(mean_x, platform::CPUPlace(), cpu_mean_x);
     TensorCopySync(var_x, platform::CPUPlace(), cpu_var_x);
@@ -697,19 +677,10 @@ class CudnnBNAddReluTester {
     saved_mean.Resize({1, 1, 1, channels_});
     saved_var.Resize({1, 1, 1, channels_});
 
-    T *dy_ptr = dy.data<T>();
-    T *x_ptr = x.data<T>();
-    float *bn_scale_ptr = bn_scale.data<float>();
-    float *bn_bias_ptr = bn_bias.data<float>();
-    float *saved_mean_ptr = saved_mean.data<float>();
-    float *saved_var_ptr = saved_var.data<float>();
-    int32_t *bitmask_ptr = bitmask.data<int32_t>();
-    T *dx_ptr =
-        dx.mutable_data<T>({batch_size_, height_, width_, channels_}, place);
-    T *dz_ptr =
-        dz.mutable_data<T>({batch_size_, height_, width_, channels_}, place);
-    float *dscale_ptr = dscale.mutable_data<float>({1, 1, 1, channels_}, place);
-    float *dbias_ptr = dbias.mutable_data<float>({1, 1, 1, channels_}, place);
+    dx.Resize(framework::make_ddim({batch_size_, height_, width_, channels_}));
+    dz.Resize(framework::make_ddim({batch_size_, height_, width_, channels_}));
+    dscale.Resize(framework::make_ddim({1, 1, 1, channels_}));
+    dbias.Resize(framework::make_ddim({1, 1, 1, channels_}));
 
     auto data_shape = framework::vectorize<int>(x.dims());
     auto param_shape = framework::vectorize<int>(bn_scale.dims());
@@ -718,9 +689,8 @@ class CudnnBNAddReluTester {
     std::string act_type = "relu";
     op::CudnnScaleBiasAddRelu<T> sbar_op(ctx, act_type, true, false, data_shape,
                                          param_shape, bitmask_shape);
-    sbar_op.Backward(ctx, dy_ptr, x_ptr, bn_scale_ptr, bn_bias_ptr,
-                     saved_mean_ptr, saved_var_ptr, bitmask_ptr, dx_ptr, dz_ptr,
-                     dscale_ptr, dbias_ptr, eps_);
+    sbar_op.Backward(ctx, dy, x, bn_scale, bn_bias, saved_mean, saved_var,
+                     &bitmask, &dx, &dz, &dscale, &dbias, eps_);
 
     TensorCopySync(dx, platform::CPUPlace(), cpu_dx);
     TensorCopySync(dz, platform::CPUPlace(), cpu_dz);

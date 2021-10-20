@@ -20,6 +20,7 @@ from .context import get_default_distributed_context
 from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
 from .process import get_all_process_groups
+from .utils import make_data_unshard
 from .reshard import reshard
 
 
@@ -93,8 +94,8 @@ class AutoParallelizer:
         # The last step: remove all distributed attributes to be compatiable
         # with inference.
         self._remove_distributed_attrs(partitioned_main_prog)
+        make_data_unshard(partitioned_main_prog, partitioned_startup_prog)
 
-        complete_backward_annotation(partitioned_main_prog, self._dist_context)
         reshard(partitioned_main_prog, partitioned_startup_prog, rank,
                 self._dist_context)
 

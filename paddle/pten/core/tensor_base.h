@@ -16,12 +16,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/utils/type_registry.h"
-
-#include "paddle/pten/core/backend.h"
 
 namespace pten {
 

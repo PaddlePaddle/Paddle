@@ -62,7 +62,7 @@ using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL("dot",
                    CPU,
-                   Any,
+                   ANY,
                    pten::Dot,
                    float,
                    double,

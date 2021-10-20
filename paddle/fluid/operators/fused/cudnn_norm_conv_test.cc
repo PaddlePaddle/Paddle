@@ -229,15 +229,6 @@ class CudnnNormConvolutionTester {
             platform::DeviceContextPool::Instance().Get(
                 platform::CUDAPlace(0)));
 
-    if (!Support(*ctx)) {
-      LOG(INFO)
-          << "Current test is only supported in the platforms with "
-          << "compatiblity greater than or equal to 70 and the kernel size "
-          << "must be equal to 1 or 3. Besides, when the kernel size is 1, "
-          << "the stride must be 1 if the compatiblity is equal to 70.";
-      return;
-    }
-
     framework::Tensor cpu_output_base;
     framework::Tensor cpu_sum_base;
     framework::Tensor cpu_sum_of_square_base;
@@ -325,14 +316,10 @@ class CudnnNormConvolutionTester {
     TensorCopySync(cpu_input_, place, &input);
     TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
 
-    T *input_ptr = input.data<T>();
-    T *filter_ptr = filter_nhwc.data<T>();
-    T *output_ptr = output.mutable_data<T>(
-        {batch_size_, out_height_, out_width_, output_channels_}, place);
-    float *sum_ptr =
-        sum.mutable_data<float>({1, 1, 1, output_channels_}, place);
-    float *sum_of_square_ptr =
-        sum_of_square.mutable_data<float>({1, 1, 1, output_channels_}, place);
+    output.Resize(framework::make_ddim(
+        {batch_size_, out_height_, out_width_, output_channels_}));
+    sum.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
+    sum_of_square.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
 
     auto input_shape = framework::vectorize<int>(input.dims());
     auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
@@ -340,8 +327,7 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolution<T> conv_op(ctx, input_shape, filter_shape,
                                         output_shape, padding_, stride_,
                                         dilation_, group_);
-    conv_op.Forward(ctx, input_ptr, filter_ptr, output_ptr, sum_ptr,
-                    sum_of_square_ptr);
+    conv_op.Forward(ctx, input, filter_nhwc, &output, &sum, &sum_of_square);
 
     TensorCopySync(output, platform::CPUPlace(), cpu_output);
     TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
@@ -362,11 +348,8 @@ class CudnnNormConvolutionTester {
     TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
     TensorCopySync(cpu_output_grad_, place, &output_grad);
 
-    T *input_ptr = input.data<T>();
-    T *filter_ptr = filter_nhwc.data<T>();
-    T *output_grad_ptr = output_grad.data<T>();
-    T *input_grad_ptr = input_grad.mutable_data<T>(input.dims(), place);
-    T *filter_grad_ptr = filter_grad.mutable_data<T>(filter_nhwc.dims(), place);
+    input_grad.Resize(input.dims());
+    filter_grad.Resize(filter_nhwc.dims());
 
     auto input_shape = framework::vectorize<int>(input.dims());
     auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
@@ -374,24 +357,11 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx, input_shape, filter_shape,
                                                  output_shape, padding_,
                                                  stride_, dilation_, group_);
-    conv_grad_op.Backward(ctx, input_ptr, output_grad_ptr, filter_ptr,
-                          input_grad_ptr, filter_grad_ptr);
+    conv_grad_op.Backward(ctx, input, filter_nhwc, output_grad, &input_grad,
+                          &filter_grad);
 
     TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);
     TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
-  }
-
-  bool Support(const platform::CUDADeviceContext &ctx) {
-    if (ctx.GetComputeCapability() == 70) {
-      if ((kernel_size_ == 3) || ((kernel_size_ == 1) && (stride_ == 1))) {
-        return true;
-      }
-    } else if (ctx.GetComputeCapability() > 70) {
-      if ((kernel_size_ == 3) || (kernel_size_ == 1)) {
-        return true;
-      }
-    }
-    return false;
   }
 
  private:
@@ -477,6 +447,15 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3), paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3));
+  }
 }

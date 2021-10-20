@@ -175,9 +175,9 @@ OpKernelType TransPtKernelKeyToOpKernelType(const pten::KernelKey& kernel_key) {
   platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
   DataLayout data_layout = pten::TransToFluidDataLayout(kernel_key.layout());
   LibraryType library_type = LibraryType::kPlain;
-  if (kernel_key.backend() == pten::Backend::kMKLDNN) {
+  if (kernel_key.backend() == pten::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
-  } else if (kernel_key.backend() == pten::Backend::kCUDNN) {
+  } else if (kernel_key.backend() == pten::Backend::CUDNN) {
     library_type = LibraryType::kCUDNN;
   } else {
     // do nothing
@@ -190,9 +190,9 @@ pten::KernelKey TransOpKernelTypeToPtKernelKey(
     const OpKernelType& kernel_type) {
   pten::Backend backend = pten::TransToPtBackend(kernel_type.place_);
   if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
-    backend = pten::Backend::kMKLDNN;
+    backend = pten::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
-    backend = pten::Backend::kCUDNN;
+    backend = pten::Backend::CUDNN;
   } else {
     // do
   }

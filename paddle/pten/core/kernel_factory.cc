@@ -51,11 +51,10 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
                         "The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
-  if (kernel_key.layout() != paddle::experimental::DataLayout::kAny) {
+  // TODO(chenweihang): polish refind impl here
+  if (kernel_key.layout() != pten::DataLayout::ANY) {
     pten::KernelKey any_layout_kernel_key(
-        kernel_key.backend(),
-        paddle::experimental::DataLayout::kAny,
-        kernel_key.dtype());
+        kernel_key.backend(), pten::DataLayout::ANY, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
   PADDLE_ENFORCE_NE(

@@ -32,17 +32,17 @@ TEST(API, copy) {
   // 1. create tensor
   auto dense_src = std::make_shared<pten::DenseTensor>(
       pten::TensorMeta(framework::make_ddim({2, 3}),
-                       pten::Backend::kCPU,
-                       paddle::experimental::DataType::kFLOAT32,
-                       paddle::experimental::DataLayout::kNCHW),
+                       pten::Backend::CPU,
+                       pten::DataType::FLOAT32,
+                       pten::DataLayout::NCHW),
       pten::TensorStatus());
   auto* dense_x_data = dense_src->mutable_data<float>();
 
   auto dense_dst = std::make_shared<pten::DenseTensor>(
       pten::TensorMeta(framework::make_ddim({2, 3}),
-                       pten::Backend::kCPU,
-                       paddle::experimental::DataType::kFLOAT32,
-                       paddle::experimental::DataLayout::kNCHW),
+                       pten::Backend::CPU,
+                       pten::DataType::FLOAT32,
+                       pten::DataLayout::NCHW),
       pten::TensorStatus());
 
   for (size_t i = 0; i < 2; ++i) {
