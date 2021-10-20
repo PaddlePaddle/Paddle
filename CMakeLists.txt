@@ -385,6 +385,7 @@ if (WITH_HETERPS)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
     endif()
 endif()
+
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")

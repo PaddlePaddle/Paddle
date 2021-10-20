@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
+#include "paddle/fluid/distributed/service/heter_server.h"
 
 namespace paddle {
 namespace framework {
@@ -149,17 +150,20 @@ void HeterPipelineTrainer::Run() {
       std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[0]);
     listen_ptr_.reset(
         new std::thread(std::bind(&HeterSectionWorker::RunListen, worker_0.get())));
-  } 
-  VLOG(3) << "for debug " << threads_.size();
+  }
+ 
+  VLOG(3) << "HeterPipelineTrainer threads size:" << threads_.size();
   if (pipeline_stage_ == 0) { // for cpu trainer
     for (int thidx = 0; thidx < thread_num_; ++thidx) {
         threads_.push_back(
           std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
     }
   } else { // for heter worker
-    threads_.push_back(
-        std::thread(&DeviceWorker::TrainFiles, workers_[0].get()));
+    //threads_.push_back(
+    //    std::thread(&DeviceWorker::TrainFiles, workers_[0].get()));
+    // for heter worker, it will block until training end
     (listen_ptr_.get())->join();
+    listen_ptr_.reset(nullptr);
   }
   for (auto& th : threads_) {
     th.join();
@@ -168,6 +172,10 @@ void HeterPipelineTrainer::Run() {
 }
 
 void HeterPipelineTrainer::Finalize() {
+  if (listen_ptr_) {
+     (listen_ptr_.get())->join();
+     listen_ptr_.reset(nullptr); 
+  }
   if (need_dump_field_) {
     FinalizeDumpEnv();
   }

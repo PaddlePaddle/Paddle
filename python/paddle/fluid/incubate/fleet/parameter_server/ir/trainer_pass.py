@@ -918,11 +918,11 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
     # append the listen_and_serv op
     heter_program.global_block().append_op(
         type="heter_listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)
-    heter_program.global_block().append_op(
-        type="trainer_barrier",
-        inputs={'X': []},
-        outputs={},
-        attrs={RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE})
+    #heter_program.global_block().append_op(
+    #    type="trainer_barrier",
+    #    inputs={'X': []},
+    #    outputs={},
+    #    attrs={RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE})
     check_heter_compile_time_strategy(program, config, send_grad_var_list)
 
 

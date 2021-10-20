@@ -301,9 +301,16 @@ if(WITH_DISTRIBUTE)
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor heter_service_proto fleet)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(DISTRIBUTE_COMPILE_FLAGS
+                "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(multi_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heter_section_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   else()
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
             dist_multi_trainer.cc heter_pipeline_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -314,6 +321,15 @@ if(WITH_DISTRIBUTE)
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor)
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(DISTRIBUTE_COMPILE_FLAGS
+                "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
+    set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heter_section_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -335,6 +351,15 @@ elseif(WITH_PSLIB)
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor ${BRPC_DEP})
 else()
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS
+              "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(heter_section_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc heter_pipeline_trainer.cc
