@@ -26,6 +26,12 @@ logger = logging.getLogger("ELASTIC")
 ELASTIC_EXIT_CODE = 101
 
 
+# 1: Fault tolerance, 2: Elastic
+class ElasticLevel:
+    FAULT_TOLERANCE = 1
+    ELASTIC = 2
+
+
 class ElasticStatus:
     COMPLETED = "completed"
     ERROR = "error"
@@ -106,7 +112,8 @@ class ElasticManager(object):
         self.args = args
         server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
         name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
-        np = args.np or int(os.getenv('PADDLE_ELASTIC_NP', 0))
+        self.min_np, self.max_np = self._parse_np(args.np)
+        np = self.min_np
         host = args.host or os.getenv('POD_IP')
         scale = args.scale or int(os.getenv('PADDLE_ELASTIC_SCALE', 0))
         force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
@@ -114,8 +121,16 @@ class ElasticManager(object):
         self.endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
         self.trainers = os.getenv('PADDLE_TRAINERS', '')
 
+        # auto correct the value of elastic_level
+        # 1: Fault tolerant, 2: Elastic
         self.elastic_level = int(
-            os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL', 1))
+            os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL',
+                      ElasticLevel.FAULT_TOLERANCE))
+        if self.min_np == self.max_np or \
+                (self.min_np > 0 and self.max_np == 0):
+            self.elastic_level = ElasticLevel.FAULT_TOLERANCE
+        if self.min_np > 0 and self.max_np > self.min_np:
+            self.elastic_level = ElasticLevel.ELASTIC
 
         # compatible with kuberntes service discovery
         if not server and os.getenv(
@@ -243,6 +258,29 @@ class ElasticManager(object):
         if len(hosts) == 0:
             self.etcd.delete_prefix(self.prefix)
 
+    def _parse_np(np: str) -> dict:
+        """
+        np format is "MIN" or "MIN:MAX" 
+        """
+        np_str = np or os.getenv('PADDLE_ELASTIC_NP', "0")
+        np_dict = np_str.split(":")
+        min_np = max_np = 0
+        if len(np_dict) == 1:
+            # Fault tolerant
+            min_np = int(np_dict[0])
+            min_np = 1 if min_np <= 0 else min_np
+        elif len(np_dict) == 2:
+            # Elastic
+            min_np = int(np_dict[0])
+            max_np = int(np_dict[1])
+            min_np = 1 if min_np <= 0 else min_np
+            max_np = min_np if min_np > max_np else max_np
+        else:
+            raise ValueError(
+                f'the np={np} needs to be in "MIN" or "MIN:MAX" format')
+
+        return min_np, max_np
+
     def _get_host(self):
         try:
             return socket.gethostbyname(socket.getfqdn(socket.gethostname()))
@@ -260,10 +298,19 @@ class ElasticManager(object):
         self.hosts = [
             six.ensure_str(i[0]) for i in self.etcd.get_prefix(self.node_prefix)
         ]
-        if len(self.hosts) == self.np:
-            return True
-        else:
-            return False
+
+        if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
+            if len(self.hosts) == self.np:
+                return True
+            else:
+                return False
+
+        if self.elastic_level == ElasticLevel.ELASTIC:
+            hosts_num = len(self.hosts)
+            if hosts_num >= self.min_np and hosts_num <= self.max_np:
+                return True
+            else:
+                return False
 
     def _update_hosts(self):
         assert len(self.hosts) != 0, 'hosts empty'
@@ -336,7 +383,8 @@ class ElasticManager(object):
                 self.exit(completed=completed)
                 if completed:
                     return ElasticStatus.COMPLETED
-                if self.elastic_level == 1:
+                if self.elastic_level == ElasticLevel.FAULT_TOLERANCE or \
+                    self.elastic_level == ElasticLevel.ELASTIC:
                     return ElasticStatus.RESTART
                 else:
                     return ElasticStatus.ERROR
