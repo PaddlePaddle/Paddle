@@ -216,7 +216,7 @@ template <typename InT, typename OutT, int NX, int NY, int BlockSize, int Arity,
           class OpFunc>
 __device__ __forceinline__ void ElementwiseAny(OutT* out, InT (*ins)[NX * NY],
                                                OpFunc compute) {
-  InT args[Arity];
+  __local__ InT args[Arity];
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
 #pragma unroll
@@ -228,9 +228,9 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out, InT (*ins)[NX * NY],
 }
 
 /**
- * @brief Binary calculation according to OpFunc. Shape of in1 and in2 are the
- * different. The shape of in1 and in2 are different. When in1's shape is
- * [1, NX], in2's shape is [NY, NX], then output's shape is [NY, NX].
+ * @brief Binary calculation according to OpFunc. The shape of in1 and in2 are
+ * different. When in1's shape is [1, NX], in2's shape is [NY, NX], then
+ * output's shape is [NY, NX].
  *
  * @template paraments
  * InT: The data type of in1 and in2.
