@@ -32,7 +32,7 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, LoDTensor>(
     paddle::experimental::DataLayout layout) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(tensor.dims(), backend, dtype, layout, tensor.offset()),
+      pten::DenseTensorMeta(dtype, tensor.dims(), layout),
       pten::TensorStatus());
 
   if (holder != nullptr) {
@@ -50,7 +50,7 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, Tensor>(
     paddle::experimental::DataLayout layout) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(tensor.dims(), backend, dtype, layout, tensor.offset()),
+      pten::DenseTensorMeta(dtype, tensor.dims(), layout),
       pten::TensorStatus());
 
   if (holder != nullptr) {

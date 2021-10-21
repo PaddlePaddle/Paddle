@@ -14,45 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/tensor_base.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
 namespace candidate {
-
-using DDim = paddle::framework::DDim;
-
-/// \brief The meta data of dense tensor. Take the structure type
-/// and use all default operations.
-///
-struct DenseTensorMeta {
-  using DataType = paddle::experimental::DataType;
-  using DataLayout = paddle::experimental::DataLayout;
-
-  DenseTensorMeta() = default;
-  DenseTensorMeta(DataType type, const DDim& dims);
-  DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout);
-  DenseTensorMeta(DataType type,
-                  const DDim& dims,
-                  DataLayout layout,
-                  const std::vector<std::vector<size_t>>& lod);
-
-  /// \brief Test whether the metadata is valid. Does not throw exceptions.
-  /// \return Whether the metadata is valid.
-  bool valid() const noexcept;
-
-  /// During the entire life cycle of a DenseTensor, the following attributes
-  /// marked with `const` are expected to remain unchanged.
-  const bool is_scalar{false};
-  DDim dims;
-  const DataType type{DataType::FLOAT32};
-  const DataLayout layout{DataLayout::NCHW};
-  std::vector<std::vector<size_t>> lod;
-};
 
 /// \brief The Dense tensor store values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional

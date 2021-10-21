@@ -32,11 +32,12 @@ using DDim = paddle::framework::DDim;
 TEST(API, flatten) {
   // 1. create tensor
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 2, 2, 3}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 2, 2, 3}),
+
+                            pten::DataLayout::NCHW),
+      pten::TensorStatus(),
+      pten::Backend::CPU);
   auto* dense_x_data = dense_x->mutable_data<float>();
 
   for (int i = 0; i < dense_x->numel(); i++) {

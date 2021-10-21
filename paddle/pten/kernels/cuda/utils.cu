@@ -39,7 +39,8 @@ void Copy(const CUDAContext& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
   dst->Resize(src.dims());
-  dst->mutable_meta()->layout = src.meta().layout;
+  const_cast<pten::DenseTensorMeta::DataLayout&>(dst->mutable_meta()->layout) =
+      src.meta().layout;
   auto size = src.numel() * paddle::framework::SizeOfType(
                                 TransToProtoVarType(src.data_type()));
 

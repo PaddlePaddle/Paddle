@@ -63,13 +63,33 @@ class DenseTensor : public TensorBase {
    *
    * Note: Tensor objects lacking meta information are not allowed to exist.
    */
-  DenseTensor(const TensorMeta& meta, const TensorStatus& status)
-      : meta_(meta), status_(status) {}
+  DenseTensor(const DenseTensorMeta& meta, const TensorStatus& status)
+      : meta_(meta), status_(status) {
+    int64_t init_numel = paddle::framework::product(meta.dims);
+    if (init_numel >= 0) {
+      numel_ = init_numel;
+    }
+  }
 
-  DenseTensor(TensorMeta&& meta, TensorStatus&& status)
-      : meta_(std::move(meta)), status_(std::move(status)) {}
+  DenseTensor(const DenseTensorMeta& meta,
+              const TensorStatus& status,
+              Backend backend)
+      : meta_(meta), status_(status), backend_(backend) {
+    int64_t init_numel = paddle::framework::product(meta.dims);
+    if (init_numel >= 0) {
+      numel_ = init_numel;
+    }
+  }
 
-  int64_t numel() const override { return meta_.numel; }
+  DenseTensor(DenseTensorMeta&& meta, TensorStatus&& status)
+      : meta_(std::move(meta)), status_(std::move(status)) {
+    int64_t init_numel = paddle::framework::product(meta.dims);
+    if (init_numel >= 0) {
+      numel_ = init_numel;
+    }
+  }
+
+  int64_t numel() const override { return numel_; }
 
   const paddle::framework::DDim& dims() const override { return meta_.dims; }
 
@@ -79,7 +99,7 @@ class DenseTensor : public TensorBase {
 
   const paddle::platform::Place& place() const override;
 
-  Backend backend() const override { return meta_.backend; }
+  Backend backend() const override { return backend_; }
 
   bool valid() const override { return allocation_ != nullptr; }
 
@@ -92,9 +112,9 @@ class DenseTensor : public TensorBase {
     return allocation_;
   }
 
-  const TensorMeta& meta() const { return meta_; }
+  const DenseTensorMeta& meta() const { return meta_; }
 
-  TensorMeta* mutable_meta() { return &meta_; }
+  DenseTensorMeta* mutable_meta() { return &meta_; }
 
   /* Data Access Methods */
 
@@ -142,9 +162,13 @@ class DenseTensor : public TensorBase {
   // The actual Tensor storage holder
   std::shared_ptr<paddle::memory::allocation::Allocation> allocation_;
   // The Tensor meta data
-  TensorMeta meta_;
+  DenseTensorMeta meta_;
   // The Tensor status data
   TensorStatus status_;
+
+  Backend backend_{Backend::CPU};
+  int64_t numel_{1};
+  size_t offset_{0};
 };
 
 }  // namespace pten

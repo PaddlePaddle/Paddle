@@ -17,18 +17,19 @@ limitations under the License. */
 
 namespace pten {
 
-TensorMeta UnchangedInferShape(const TensorMeta& x_meta) { return x_meta; }
+DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta) {
+  return x_meta;
+}
 
-TensorMeta ReductionInferShape(const TensorMeta& x_meta) {
+DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta) {
   const auto& out_dims = paddle::framework::make_ddim({1});
-  TensorMeta return_meta(
-      out_dims, x_meta.backend, x_meta.type, x_meta.layout, x_meta.offset);
+  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
   return return_meta;
 }
 
-TensorMeta FlattenInferShape(const TensorMeta& x_meta,
-                             int start_axis,
-                             int stop_axis) {
+DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
+                                  int start_axis,
+                                  int stop_axis) {
   auto& x_dims = x_meta.dims;
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
@@ -62,8 +63,7 @@ TensorMeta FlattenInferShape(const TensorMeta& x_meta,
     out_shape.push_back(x_dims[i]);
   }
   const auto& out_dims = paddle::framework::make_ddim(out_shape);
-  TensorMeta return_meta(
-      out_dims, x_meta.backend, x_meta.type, x_meta.layout, x_meta.offset);
+  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
 
   if (x_dims[0] == return_meta.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)

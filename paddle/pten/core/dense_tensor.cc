@@ -53,7 +53,7 @@ void DenseTensor::ShareAllocation(
 
 // TODO(chenweihang): Add other place branchs
 paddle::platform::Place DenseTensor::GetPlaceByBackend() const {
-  switch (meta_.backend) {
+  switch (backend_) {
     case Backend::CPU:
       return CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -67,7 +67,7 @@ paddle::platform::Place DenseTensor::GetPlaceByBackend() const {
 }
 
 size_t DenseTensor::MemorySize() const {
-  return allocation_ == nullptr ? 0UL : allocation_->size() - meta_.offset;
+  return allocation_ == nullptr ? 0UL : allocation_->size() - offset_;
 }
 
 void DenseTensor::CheckMemorySize() const {
@@ -92,7 +92,7 @@ void DenseTensor::CheckMemorySize() const {
 const void* DenseTensor::data() const {
   CheckMemorySize();
   return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_.offset);
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + offset_);
 }
 
 void* DenseTensor::mutable_data() {
@@ -112,7 +112,7 @@ void* DenseTensor::mutable_data() {
     allocation_ = paddle::memory::AllocShared(place, size);
   } else {
     if (!(allocation_->place() == place) ||
-        allocation_->size() < size + meta_.offset) {
+        allocation_->size() < size + offset_) {
       allocation_.reset();
       allocation_ = paddle::memory::AllocShared(place, size);
     } else {
@@ -120,7 +120,7 @@ void* DenseTensor::mutable_data() {
     }
   }
   return reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_.offset);
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + offset_);
 }
 
 }  // namespace pten

@@ -28,114 +28,58 @@ limitations under the License. */
 
 namespace pten {
 
-// template <typename T>
-// using Vector = paddle::framework::Vector<T>;
-
-/*
- * LoD is short for Level of Details.
- *
- * - in a level, each element indicates relative offset of the lower level
- * - the first element should be 0 and that indicates that this sequence start
- * from 0
- * - each sequence's begin and end(no-inclusive) is level[id, id+1]
- *
- * For example:
- *    3-level LoD stores
- *
- *    0 2 3
- *    0 2 4 7
- *    0 2 5 7 10 12 15 20
- */
-// using LoD = std::vector<paddle::framework::Vector<size_t>>;
-using LoD = std::vector<std::vector<size_t>>;
 using DDim = paddle::framework::DDim;
-/**
- * The Meta data member of DenseTensor.
- *
- * Here the `meta` represents information describing the basic features and
- * data features of Tensor, and does not include the status information of
- * Tensor
- *
- * Note: TensorMeta is a struct, the members are named like
- * ordinary nonmember variables, such as `type` instead of `type_`.
- * And we direct access its members, in addition to constructor, destructor
- * and functions for setting data members, can not provide other functions.
- */
-struct TensorMeta {
-  TensorMeta() = delete;
-  TensorMeta& operator=(const TensorMeta&) = delete;
-  TensorMeta& operator=(TensorMeta&&) = delete;
+using LoD = std::vector<std::vector<size_t>>;
 
-  TensorMeta(const TensorMeta&) = default;
-  // TensorMeta(TensorMeta&&) = default;
+/// \brief The meta data of dense tensor. Take the structure type
+/// and use all default operations.
+///
+struct DenseTensorMeta {
+  using DataType = paddle::experimental::DataType;
+  using DataLayout = paddle::experimental::DataLayout;
 
-  TensorMeta(TensorMeta&& meta)
-      : dims(meta.dims),
-        backend(meta.backend),
-        type(meta.type),
-        layout(meta.layout),
-        numel(meta.numel),
-        offset(meta.offset),
-        lod(meta.lod) {}
+  DenseTensorMeta() = default;
+  DenseTensorMeta(DataType type, const DDim& dims);
+  DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout);
+  DenseTensorMeta(DataType type,
+                  const DDim& dims,
+                  DataLayout layout,
+                  const std::vector<std::vector<size_t>>& lod);
 
-  // Compatible Contructor
-  TensorMeta(const DDim& dims,
-             Backend backend,
-             DataType type,
-             DataLayout layout,
-             size_t offset = 0UL,
-             const LoD& lod = {})
-      : dims(dims),
-        backend(backend),
-        type(type),
-        layout(layout),
-        offset(offset),
-        lod(lod) {
-    int64_t init_numel = paddle::framework::product(dims);
-    if (init_numel >= 0) {
-      numel = init_numel;
-    }
-  }
+  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept;
 
-  virtual ~TensorMeta() = default;
-
+  /// During the entire life cycle of a DenseTensor, the following attributes
+  /// marked with `const` are expected to remain unchanged.
+  const bool is_scalar{false};
   DDim dims;
-
-  Backend backend{Backend::CPU};
-  DataType type{DataType::FLOAT32};
-  DataLayout layout{DataLayout::NCHW};
-
-  /**
-   * [ Why not calculate numel based on dims? ]
-   *
-   * Tensor may be 0-dimensional, but 0-dimensional Tensor may have values.
-   * For example:
-   *
-   *   import paddle
-   *
-   *   a = paddle.to_tensor([1, 2, 3])
-   *   print(a[0].shape) # expected: []
-   *   print(a[0].numel()) # expected: 1
-   *
-   * Now Paddle can not get expected result above, because the old Tensor's
-   * numel is calculated based on dims.
-   */
-  int64_t numel{1};
-
-  size_t offset{0};
-
-  /**
-   * [ Why basic TensorMeta hold LoD? ]
-   *
-   * LoDTensor is still the main Tensor concept in Paddle.
-   * Although only a small number of ops need to use LoD information,
-   * LoD may need to be passed between Op's input and output, which is
-   * difficult to remove in a short time.
-   *
-   * But we don't want to add a Tensor type because of LoD, which makes
-   * the concept complicated, so LoD is a member held by Tensor by default.
-   */
+  const DataType type{DataType::FLOAT32};
+  const DataLayout layout{DataLayout::NCHW};
   LoD lod;
 };
+
+inline DenseTensorMeta::DenseTensorMeta(DataType type, const DDim& dims)
+    : dims(dims), type(type) {}
+
+inline DenseTensorMeta::DenseTensorMeta(DataType type,
+                                        const DDim& dims,
+                                        DataLayout layout)
+    : dims(dims), type(type), layout(layout) {}
+
+inline DenseTensorMeta::DenseTensorMeta(
+    DataType type,
+    const DDim& dims,
+    DataLayout layout,
+    const std::vector<std::vector<size_t>>& lod)
+    : dims(dims), type(type), layout(layout), lod(lod) {}
+
+inline bool DenseTensorMeta::valid() const noexcept {
+  bool valid{true};
+  valid = valid && (type != DataType::UNDEFINED);
+  valid = valid && (layout != DataLayout::UNDEFINED);
+  valid = valid && (is_scalar || product(dims));
+  return valid;
+}
 
 }  // namespace pten

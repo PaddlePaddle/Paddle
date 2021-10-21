@@ -50,7 +50,7 @@ Tensor full_like(const Tensor& x,
   Tensor out;
   // InferDataType
   if (dtype != pten::DataType::UNDEFINED) {
-    out_meta.type = dtype;
+    const_cast<pten::DenseTensorMeta::DataType&>(out_meta.type) = dtype;
   }
   auto dense_out =
       std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());

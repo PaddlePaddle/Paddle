@@ -32,11 +32,12 @@ using DDim = paddle::framework::DDim;
 TEST(API, full_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 2}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 2}),
+
+                            pten::DataLayout::NCHW),
+      pten::TensorStatus(),
+      pten::Backend::CPU);
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
 
@@ -66,11 +67,12 @@ TEST(API, full_like) {
 TEST(API, zeros_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 2}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 2}),
+
+                            pten::DataLayout::NCHW),
+      pten::TensorStatus(),
+      pten::Backend::CPU);
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 1;
 
@@ -98,11 +100,12 @@ TEST(API, zeros_like) {
 TEST(API, ones_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 2}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 2}),
+
+                            pten::DataLayout::NCHW),
+      pten::TensorStatus(),
+      pten::Backend::CPU);
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
 

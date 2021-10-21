@@ -17,26 +17,6 @@ limitations under the License. */
 namespace pten {
 namespace candidate {
 
-DenseTensorMeta::DenseTensorMeta(DataType type, const DDim& dims)
-    : dims(dims), type(type) {}
-DenseTensorMeta::DenseTensorMeta(DataType type,
-                                 const DDim& dims,
-                                 DataLayout layout)
-    : dims(dims), type(type), layout(layout) {}
-DenseTensorMeta::DenseTensorMeta(DataType type,
-                                 const DDim& dims,
-                                 DataLayout layout,
-                                 const std::vector<std::vector<size_t>>& lod)
-    : dims(dims), type(type), layout(layout), lod(lod) {}
-
-bool DenseTensorMeta::valid() const noexcept {
-  bool valid{true};
-  valid = valid && (type != DataType::UNDEFINED);
-  valid = valid && (layout != DataLayout::UNDEFINED);
-  valid = valid && (is_scalar || product(dims));
-  return valid;
-}
-
 DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
                          const DenseTensorMeta& meta)
     : meta_(meta),
