@@ -49,15 +49,19 @@ def multi_head_attn(q, k, v, weight, meta_data, seq_data_info):
         'V': v,
         'W': weight,
         'QO_Seqlen': seq_data_info.qo_seqlen_tensor,
-        'KV_Seqlen': seq_data_info.kv_seqlen_tensor
+        'KV_Seqlen': seq_data_info.kv_seqlen_tensor,
+        'QO_Seqlen_host': seq_data_info.qo_seqlen,
+        'KV_Seqlen_host': seq_data_info.kv_seqlen,
+        'low_windows':seq_data_info.low_win_idx,
+        'high_windows':seq_data_info.hi_win_idx
     }
 
     attrs = {
         'cache_key': weight.name,
-        'attn_QO_Seqlen': seq_data_info.qo_seqlen,
-        'attn_KV_Seqlen': seq_data_info.kv_seqlen,
-        'attn_low_windows': seq_data_info.low_win_idx,
-        'attn_high_windows': seq_data_info.hi_win_idx,
+        # 'attn_QO_Seqlen': seq_data_info.qo_seqlen,
+        # 'attn_KV_Seqlen': seq_data_info.kv_seqlen,
+        # 'attn_low_windows': seq_data_info.low_win_idx,
+        # 'attn_high_windows': seq_data_info.hi_win_idx,
         'attn_dropout_rate': meta_data.dropout_rate,
         'attn_heads': meta_data.nheads,
         'attn_sm_scaler': meta_data.sm_scaler,

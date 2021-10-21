@@ -31,6 +31,10 @@ class MHAOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "MHA");
     OP_INOUT_CHECK(ctx->HasInput("QO_Seqlen"), "Input", "QO_Seqlen", "MHA");
     OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen"), "Input", "KV_Seqlen", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("QO_Seqlen_host"), "Input", "QO_Seqlen_host", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen_host"), "Input", "KV_Seqlen_host", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("low_windows"), "Input", "low_windows", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("high_windows"), "Input", "high_windows", "MHA");
 
     auto q_dims = ctx->GetInputDim("Q");
     PADDLE_ENFORCE_EQ(q_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
@@ -68,6 +72,30 @@ class MHAOp : public framework::OperatorWithKernel {
                           "The number of sequence length should be equal"
                           " to batch size."));
 
+    auto qo_slen_host_dims = ctx->GetInputDim("QO_Seqlen_host");
+    PADDLE_ENFORCE_EQ(qo_slen_host_dims[0], qo_slen_dims[0],
+                      platform::errors::InvalidArgument(
+                          "The number of sequence length should be equal"
+                          " to batch size."));
+
+    auto kv_slen_host_dims = ctx->GetInputDim("KV_Seqlen_host");
+    PADDLE_ENFORCE_EQ(kv_slen_host_dims[0], kv_slen_dims[0],
+                      platform::errors::InvalidArgument(
+                          "The number of sequence length should be equal"
+                          " to batch size."));
+
+    auto low_windows = ctx->GetInputDim("low_windows");
+    PADDLE_ENFORCE_EQ(low_windows[0], q_dims[1],
+                      platform::errors::InvalidArgument(
+                          "The number of low windows should be equal"
+                          " to sequence length."));
+
+    auto high_windows = ctx->GetInputDim("high_windows");
+    PADDLE_ENFORCE_EQ(high_windows[0], k_dims[1],
+                      platform::errors::InvalidArgument(
+                          "The number of high windows should be equal"
+                          " to sequence length."));
+
     std::vector<int64_t> output_dims;
     for (int i = 0; i < q_dims.size(); ++i) {
       output_dims.push_back(q_dims[i]);
@@ -85,6 +113,17 @@ class MHAOp : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+      // VLOG(0) << "\nMHA OP GetKernelTypeForVar: " << var_name
+      //         << "\nTensor: " << tensor 
+      //         << "\nKernel Type: " << expected_kernel_type;
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                    expected_kernel_type.place_,
+                                    tensor.layout());
+  }
 };
 
 class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -96,16 +135,20 @@ class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W", "(Tensor), V");
     AddInput("QO_Seqlen", "(Tensor), QO_Seqlen");
     AddInput("KV_Seqlen", "(Tensor), KV_Seqlen");
+    AddInput("QO_Seqlen_host", "(Tensor), QO_Seqlen_host");
+    AddInput("KV_Seqlen_host", "(Tensor), KV_Seqlen_host");
+    AddInput("low_windows", "(Tensor), low_windows");
+    AddInput("high_windows", "(Tensor), high_windows");
 
     AddOutput("O", "(Tensor), O");
 
     AddAttr<std::string>("cache_key", "");
 
-    AddAttr<std::vector<int>>("attn_QO_Seqlen", "");
-    AddAttr<std::vector<int>>("attn_KV_Seqlen", "");
-    AddAttr<std::vector<int>>("attn_low_windows", "(Tensor), attn_low_windows");
-    AddAttr<std::vector<int>>("attn_high_windows",
-                              "(Tensor), attn_high_windows");
+    // AddAttr<std::vector<int>>("attn_QO_Seqlen", "");
+    // AddAttr<std::vector<int>>("attn_KV_Seqlen", "");
+    // AddAttr<std::vector<int>>("attn_low_windows", "(Tensor), attn_low_windows");
+    // AddAttr<std::vector<int>>("attn_high_windows",
+    //                           "(Tensor), attn_high_windows");
 
     AddAttr<float>("attn_dropout_rate", "");
     AddAttr<int>("attn_heads", "");
@@ -141,6 +184,10 @@ class MHAGradOp : public framework::OperatorWithKernel {
                    "O@GRAD", "mha");
     OP_INOUT_CHECK(ctx->HasInput("QO_Seqlen"), "Input", "QO_Seqlen", "mha");
     OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen"), "Input", "KV_Seqlen", "mha");
+    // OP_INOUT_CHECK(ctx->HasInput("QO_Seqlen_host"), "Input", "QO_Seqlen_host", "mha");
+    // OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen_host"), "Input", "KV_Seqlen_host", "mha");
+    OP_INOUT_CHECK(ctx->HasInput("low_windows"), "Input", "low_windows", "mha");
+    OP_INOUT_CHECK(ctx->HasInput("high_windows"), "Input", "high_windows", "mha");
 
     std::string var_names[4] = {"Q", "K", "V", "W"};
     for (auto s : var_names) {
@@ -161,6 +208,14 @@ class MHAGradOp : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                    expected_kernel_type.place_,
+                                    tensor.layout());
+  }
 };
 
 template <typename T>
@@ -177,6 +232,8 @@ class MHAOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("W", this->Input("W"));
     retv->SetInput("QO_Seqlen", this->Input("QO_Seqlen"));
     retv->SetInput("KV_Seqlen", this->Input("KV_Seqlen"));
+    retv->SetInput("low_windows", this->Input("low_windows"));
+    retv->SetInput("high_windows", this->Input("high_windows"));
     retv->SetInput(framework::GradVarName("O"), this->OutputGrad("O"));
     retv->SetOutput(framework::GradVarName("Q"), this->InputGrad("Q"));
     retv->SetOutput(framework::GradVarName("K"), this->InputGrad("K"));

@@ -32,6 +32,9 @@ class MHAMetaData {
   cudnnSeqDataDescriptor_t o_desc = nullptr;
   cudnnHandle_t cudnn_handle = nullptr;
 
+  cudaStream_t memcpy_stream = nullptr;
+  cudaEvent_t memcpy_event = nullptr;
+
   memory::allocation::AllocationPtr workspace = nullptr;
   memory::allocation::AllocationPtr reserve_space = nullptr;
 
@@ -54,6 +57,8 @@ class MHAMetaData {
         platform::dynload::cudnnCreateSeqDataDescriptor(&v_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&memcpy_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreate(&memcpy_event));
   }
 
   ~MHAMetaData() {
@@ -67,6 +72,8 @@ class MHAMetaData {
         platform::dynload::cudnnDestroySeqDataDescriptor(v_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroySeqDataDescriptor(o_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(memcpy_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(memcpy_event));
   }
 };
 
@@ -120,15 +127,56 @@ class MHAKernel : public framework::OpKernel<T> {
     int attn_max_kv_seq_len = context.Attr<int>("attn_max_kv_seq_len");
     int attn_beam_size = context.Attr<int>("attn_beam_size");
 
+    // TODO(Ming Huang): Work around now is using user-defined key
+    const std::string key = context.Attr<std::string>("cache_key");
+
+    std::vector<int> qo_slen_host(qo_slen->dims()[0]);
+    std::vector<int> kv_slen_host(kv_slen->dims()[0]);
+
+    // TODO(Ming Huang): Initialize below tensors in CPUPlace.
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(qo_slen_host.data(),
+                   reinterpret_cast<const void*>(qo_slen->data<int>()),
+                   qo_slen->dims()[0] * sizeof(int),
+                   cudaMemcpyDeviceToHost,
+                   MHASingleton::Instance().Data(key).memcpy_stream));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(kv_slen_host.data(),
+                   reinterpret_cast<const void*>(kv_slen->data<int>()),
+                   kv_slen->dims()[0] * sizeof(int),
+                   cudaMemcpyDeviceToHost,
+                   MHASingleton::Instance().Data(key).memcpy_stream));
+
+    const Tensor* low_windows = context.Input<Tensor>("low_windows");
+    const Tensor* high_windows = context.Input<Tensor>("high_windows");
+    const int* low_windows_data = low_windows->data<int>();
+    const int* high_windows_data = high_windows->data<int>();
+
+    std::vector<int> attn_low_windows(q->dims()[1]);
+    std::vector<int> attn_high_windows(q->dims()[1]);
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(attn_low_windows.data(),
+                   reinterpret_cast<const void*>(low_windows_data),
+                   q->dims()[1] * sizeof(int),
+                   cudaMemcpyDeviceToHost,
+                   MHASingleton::Instance().Data(key).memcpy_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(attn_high_windows.data(),
+                   reinterpret_cast<const void*>(high_windows_data),
+                   q->dims()[1] * sizeof(int),
+                   cudaMemcpyDeviceToHost,
+                   MHASingleton::Instance().Data(key).memcpy_stream));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventRecord(MHASingleton::Instance().Data(key).memcpy_event,
+                        MHASingleton::Instance().Data(key).memcpy_stream));
+
     auto dtype = platform::CudnnDataType<T>::type;
     auto comp_prec =
         dtype == CUDNN_DATA_DOUBLE ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
 
     auto cudnn_handle = dev_ctx.cudnn_handle();
-
-    // TODO(Ming Huang): Work around now is using user-defined key
-    const std::string key = context.Attr<std::string>("cache_key");
-
     MHASingleton::Instance().Data(key).SetCudnnHandle(cudnn_handle);
 
     cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
@@ -175,25 +223,33 @@ class MHAKernel : public framework::OpKernel<T> {
           dev_ctx, MHASingleton::Instance().Data(key).reserve_size);
     }
 
-    std::vector<int> qo_slen_host =
-        context.Attr<std::vector<int>>("attn_QO_Seqlen");
-    std::vector<int> kv_slen_host =
-        context.Attr<std::vector<int>>("attn_KV_Seqlen");
+    // const Tensor* qo_slen_host = context.Input<Tensor>("QO_Seqlen_host");
+    // const Tensor* kv_slen_host = context.Input<Tensor>("KV_Seqlen_host");
+    // const int* qo_slen_host_data = qo_slen_host->data<int>();
+    // const int* kv_slen_host_data = kv_slen_host->data<int>();
+
+    // std::vector<int> qo_slen_host =
+    //     context.Attr<std::vector<int>>("attn_QO_Seqlen");
+    // std::vector<int> kv_slen_host =
+    //     context.Attr<std::vector<int>>("attn_KV_Seqlen");
+
     // std::vector<int> qo_slen_host(qo_slen->dims()[0]);
     // std::vector<int> kv_slen_host(kv_slen->dims()[0]);
 
     // // TODO(rewang): use memory::Copy
     // PADDLE_ENFORCE_CUDA_SUCCESS(
-    //     cudaMemcpy(qo_slen_host.data(),
+    //     cudaMemcpyAsync(qo_slen_host.data(),
     //                reinterpret_cast<const void*>(qo_slen->data<int>()),
     //                qo_slen->dims()[0] * sizeof(int),
     //                cudaMemcpyDeviceToHost));
 
     // PADDLE_ENFORCE_CUDA_SUCCESS(
-    //     cudaMemcpy(kv_slen_host.data(),
+    //     cudaMemcpyAsync(kv_slen_host.data(),
     //                reinterpret_cast<const void*>(kv_slen->data<int>()),
     //                kv_slen->dims()[0] * sizeof(int),
-    //                cudaMemcpyDeviceToHost));
+    //                cudaMemcpyDeviceToHost, ));
+    PADDLE_ENFORCE_CUDA_SUCCESS( 
+        cudaEventSynchronize(MHASingleton::Instance().Data(key).memcpy_event));
 
     cudnnSeqDataAxis_t axes[CUDNN_SEQDATA_DIM_COUNT];
     axes[0] = CUDNN_SEQDATA_BATCH_DIM;
@@ -238,10 +294,27 @@ class MHAKernel : public framework::OpKernel<T> {
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         qo_slen_host.data(), nullptr));
 
-    std::vector<int> attn_low_windows =
-        context.Attr<std::vector<int>>("attn_low_windows");
-    std::vector<int> attn_high_windows =
-        context.Attr<std::vector<int>>("attn_high_windows");
+    // std::vector<int> attn_low_windows =
+    //     context.Attr<std::vector<int>>("attn_low_windows");
+    // std::vector<int> attn_high_windows =
+    //     context.Attr<std::vector<int>>("attn_high_windows");
+    // const Tensor* low_windows = context.Input<Tensor>("low_windows");
+    // const Tensor* high_windows = context.Input<Tensor>("high_windows");
+    // const int* low_windows_data = low_windows->data<int>();
+    // const int* high_windows_data = high_windows->data<int>();
+
+    // std::vector<int> attn_low_windows(q->dims()[1]);
+    // std::vector<int> attn_high_windows(q->dims()[1]);
+    // PADDLE_ENFORCE_CUDA_SUCCESS(
+    //     cudaMemcpy(attn_low_windows.data(),
+    //                reinterpret_cast<const void*>(low_windows_data),
+    //                q->dims()[1] * sizeof(int),
+    //                cudaMemcpyDeviceToHost));
+    // PADDLE_ENFORCE_CUDA_SUCCESS(
+    //     cudaMemcpy(attn_high_windows.data(),
+    //                reinterpret_cast<const void*>(high_windows_data),
+    //                q->dims()[1] * sizeof(int),
+    //                cudaMemcpyDeviceToHost));
 
     o->mutable_data<T>(context.GetPlace());
     const T* q_data = q->data<T>();
@@ -292,10 +365,34 @@ class MHAGradKernel : public framework::OpKernel<T> {
     // TODO(Ming Huang): Work around now is using user-defined key
     const std::string key = context.Attr<std::string>("cache_key");
 
-    std::vector<int> attn_low_windows =
-        context.Attr<std::vector<int>>("attn_low_windows");
-    std::vector<int> attn_high_windows =
-        context.Attr<std::vector<int>>("attn_high_windows");
+    // std::vector<int> attn_low_windows =
+    //     context.Attr<std::vector<int>>("attn_low_windows");
+    // std::vector<int> attn_high_windows =
+    //     context.Attr<std::vector<int>>("attn_high_windows");
+
+    const Tensor* low_windows = context.Input<Tensor>("low_windows");
+    const Tensor* high_windows = context.Input<Tensor>("high_windows");
+    const int* low_windows_data = low_windows->data<int>();
+    const int* high_windows_data = high_windows->data<int>();
+
+    std::vector<int> attn_low_windows(q->dims()[1]);
+    std::vector<int> attn_high_windows(q->dims()[1]);
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(attn_low_windows.data(),
+                   reinterpret_cast<const void*>(low_windows_data),
+                   q->dims()[1] * sizeof(int),
+                   cudaMemcpyDeviceToHost,
+                   MHASingleton::Instance().Data(key).memcpy_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(attn_high_windows.data(),
+                   reinterpret_cast<const void*>(high_windows_data),
+                   q->dims()[1] * sizeof(int),
+                   cudaMemcpyDeviceToHost,
+                   MHASingleton::Instance().Data(key).memcpy_stream));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventRecord(MHASingleton::Instance().Data(key).memcpy_event,
+                        MHASingleton::Instance().Data(key).memcpy_stream));
 
     const T* dout_data = dout->data<T>();
     const T* q_data = q->data<T>();
@@ -336,6 +433,9 @@ class MHAGradKernel : public framework::OpKernel<T> {
           memory::Alloc(dev_ctx, framework::product(v->dims()) * sizeof(T));
       dv_data = static_cast<T*>(dv_buf->ptr());
     }
+
+    PADDLE_ENFORCE_CUDA_SUCCESS( 
+        cudaEventSynchronize(MHASingleton::Instance().Data(key).memcpy_event));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnMultiHeadAttnBackwardData(
