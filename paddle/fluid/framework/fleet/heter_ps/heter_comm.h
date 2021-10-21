@@ -195,7 +195,6 @@ class HeterComm {
   int block_size_{256};
   float load_factor_{0.75};
   std::vector<Table*> tables_;
-  std::vector<std::vector<HBMMemoryPool*>> hbm_pools_ // in multi mfdim, one table need hbm pools of totol dims number 
   std::shared_ptr<HeterPsResource> resource_;
   CustomGradMerger merger_;
   int topo_aware_{1};
@@ -206,7 +205,6 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
-  std::vector<std::vector<MemoryPool*>> mem_pools_;
   std::unordered_map<int, int> dim_index_map_;
   int multi_mf_dim_{0};
   int max_mf_dim{0};
