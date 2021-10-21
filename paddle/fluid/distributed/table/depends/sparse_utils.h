@@ -31,8 +31,9 @@ struct PullSparseValue {
         feasigns_(nullptr),
         frequencies_(nullptr) {}
 
-  explicit PullSparseValue(std::vector<uint64_t> feasigns,
-                           std::vector<uint32_t> frequencies, int dim) {
+  explicit PullSparseValue(std::vector<uint64_t>& feasigns,     // NOLINT
+                           std::vector<uint32_t>& frequencies,  // NOLINT
+                           int dim) {
     numel_ = feasigns.size();
     dim_ = dim;
     is_training_ = true;

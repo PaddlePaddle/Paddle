@@ -19,13 +19,12 @@ from paddle.optimizer.lr import PolynomialDecay
 import unittest
 
 
-def gen_pow2_warmup_op_lr(warmup_steps, total_steps, start_lr, base_lr, end_lr,
-                          place):
+def gen_pow2_warmup_op_lr(warmup_steps, total_steps, base_lr, end_lr, place):
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        lr = pow2_decay_with_linear_warmup(warmup_steps, total_steps, start_lr,
-                                           base_lr, end_lr)
+        lr = pow2_decay_with_linear_warmup(warmup_steps, total_steps, base_lr,
+                                           end_lr)
         exe = paddle.static.Executor(place)
     with paddle.static.scope_guard(paddle.static.Scope()):
         exe.run(startup)
@@ -35,7 +34,7 @@ def gen_pow2_warmup_op_lr(warmup_steps, total_steps, start_lr, base_lr, end_lr,
 
 
 class Pow2Warmup(LinearWarmup):
-    def __init__(self, warmup_steps, total_steps, start_lr, base_lr, end_lr):
+    def __init__(self, warmup_steps, total_steps, base_lr, end_lr):
         assert total_steps > warmup_steps
         lr_sch = PolynomialDecay(
             learning_rate=base_lr,
@@ -46,13 +45,13 @@ class Pow2Warmup(LinearWarmup):
         super(Pow2Warmup, self).__init__(
             learning_rate=lr_sch,
             warmup_steps=warmup_steps,
-            start_lr=start_lr,
+            start_lr=0.0,
             end_lr=base_lr)
 
 
-def gen_pow2_warmup_py_lr(warmup_steps, total_steps, start_lr, base_lr, end_lr,
-                          place):
-    lr_sch = Pow2Warmup(warmup_steps, total_steps, start_lr, base_lr, end_lr)
+def gen_pow2_warmup_py_lr(warmup_steps, total_steps, base_lr, end_lr, place):
+    lr_sch = Pow2Warmup(warmup_steps, total_steps, base_lr, end_lr)
+    lr_sch.step()
     while True:
         yield lr_sch()
         lr_sch.step()
@@ -64,7 +63,6 @@ class TestPow2WarmupLRScheduler(unittest.TestCase):
         self.params = {
             'warmup_steps': 30,
             'total_steps': 100,
-            'start_lr': 0.01,
             'base_lr': 0.02,
             'end_lr': 0.001,
         }

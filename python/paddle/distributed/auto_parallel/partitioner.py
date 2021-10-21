@@ -23,15 +23,15 @@ from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid.backward import append_backward, _some_in_set_, _append_grad_suffix_
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator
-from paddle.distributed.auto_parallel.operators.common import find_best_compatible_distributed_operator_impl
 from paddle.fluid.clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops, ClipGradByGlobalNorm
 from paddle.distributed.fleet.base.distributed_strategy import DistributedStrategy
-from paddle.distributed.auto_parallel.context import DistributedContext
+from paddle.distributed.auto_parallel.context import DistributedContext, DistOpHelper
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op, is_optimizer_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from .process import new_process_group
 from .interface import _g_process_mesh_map
-from .utils import _get_comm_group
+from .attribute import OperatorDistributedAttribute
+from paddle.distributed.auto_parallel.completion import complete_backward_annotation, complete_update_annotation
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
 
@@ -121,16 +121,6 @@ class Partitioner(object):
         # with auto_backward in forward, the following flag 
         # should be set to False
         self._compatible_with_auto_backward = True
-
-        # data parallelism        
-        self._enable_data_parallel = False
-        self._dp_degree = 0
-        self._dp_group = None
-
-        # tensor parallelism        
-        self._enable_tensor_parallel = False
-        self._tp_degree = 0
-        self._tp_group = None
 
     def transpile_forward(self, serial_main_program, serial_startup_program):
         """
@@ -236,9 +226,6 @@ class Partitioner(object):
             raise RuntimeError(
                 "Not all vars or ops are annotated in main program !")
 
-        # determine parallelism mode
-        self._determine_parallel_mode(main_program)
-
         # dist op & partition vars
         new_main_prog, new_startup_program = self._dist_var_op_forward_transpile(
             main_program, startup_program)
@@ -269,11 +256,6 @@ class Partitioner(object):
         if self._dist_strategy.sharding:
             self._sharding_backward_transpile(new_main_prog,
                                               new_startup_program)
-
-        # Data Parallel pass
-        if self._enable_data_parallel:
-            self._gradient_sync_transpile(dist_main_program,
-                                          dist_startup_program)
 
         return params_grads
 
@@ -311,8 +293,77 @@ class Partitioner(object):
 
         partitioned_main_prog = fluid.Program()
         partitioned_global_block = partitioned_main_prog.global_block()
-        serial_global_block = serial_main_program.global_block()
+        serial_main_block = serial_main_program.global_block()
         serial_ops = serial_main_program.global_block().ops
+
+        # transpile startup program
+        if serial_startup_program == None:
+            partitioned_startup_prog = None
+        else:
+            partitioned_startup_prog = fluid.Program()
+            # create parameter
+            partitioned_startup_global_block = partitioned_startup_prog.global_block(
+            )
+            param2shape = {}
+            temp_varname_map = {}
+            for var in serial_startup_program.list_vars():
+                if isinstance(var, Parameter):
+                    # TODO if var not belong to this rank, should be filtered
+                    serial_main_var = serial_main_block.var(var.name)
+                    dist_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
+                        serial_main_var)
+                    target_shape = _get_dist_shape(serial_main_var, dist_attr)
+                    new_name = var.name + self._dist_varname_suffix
+                    temp_varname_map[var.name] = new_name
+                    _partition_parameter(self._auto_parallel_context,
+                                         serial_main_var,
+                                         partitioned_startup_global_block,
+                                         new_name, target_shape)
+                    param2shape[new_name] = target_shape
+
+            # copy initializer
+            for op in serial_startup_program.global_block().ops:
+                # TODO if var not belong to this rank, should be filtered
+                output_vars = op.desc.output_arg_names()
+                assert len(
+                    output_vars
+                ) == 1, "initializer should output only ONE variable, but got [{}]".format(
+                    str(op.desc))
+                assert temp_varname_map[output_vars[
+                    0]] in param2shape, "try to initialize [{}] which is not a Parameter".format(
+                        output_vars[0])
+                new_op_desc = partitioned_startup_global_block.desc.append_op()
+                new_op_desc.copy_from(op.desc)
+                new_op_desc._rename_output(output_vars[0],
+                                           temp_varname_map[output_vars[0]])
+                new_op_desc._set_attr(
+                    "shape", param2shape[temp_varname_map[output_vars[0]]])
+                partitioned_startup_global_block._sync_with_cpp()
+
+                # set distribute atrribute
+                new_op = partitioned_startup_global_block.ops[-1]
+                assert new_op.type == new_op_desc.type()
+                assert new_op.desc == new_op_desc
+                output_var = partitioned_startup_global_block.var(output_vars[
+                    0])
+                output_var_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
+                    output_var)
+                op_attr = OperatorDistributedAttribute(
+                    new_op, self._auto_parallel_context)
+                op_attr.set_process_mesh(output_var_attr.get_process_mesh())
+                op_attr.set_output_dims_mapping(
+                    output_var.name, output_var_attr.get_dims_mapping())
+                op_attr.set_input_dims_mapping(
+                    output_var.name, output_var_attr.get_dims_mapping())
+                self._auto_parallel_context.set_op_distributed_attr_for_program(
+                    new_op, op_attr)
+
+        # TODO move helper init to a comm place
+        dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
+        dist_op_helper.set_dst_main_program(partitioned_main_prog)
+        dist_op_helper.set_dst_startup_program(partitioned_startup_prog)
+        dist_op_helper.set_varname_mapping(self._serial2dist_varname_mapping)
+        dist_op_helper.set_rank_id(self._rank_id)
 
         # transpile main program
         for op in serial_ops:
@@ -321,9 +372,9 @@ class Partitioner(object):
             for serial_input_varname in op.desc.input_arg_names():
                 if serial_input_varname not in self._serial2dist_varname_mapping:
                     new_varname = serial_input_varname + self._dist_varname_suffix
-                    if serial_global_block.has_var(serial_input_varname):
+                    if serial_main_block.has_var(serial_input_varname):
                         _partition_var(self._auto_parallel_context,
-                                       serial_global_block,
+                                       serial_main_block,
                                        partitioned_global_block,
                                        serial_input_varname, new_varname)
                     else:
@@ -337,118 +388,27 @@ class Partitioner(object):
                 if serial_output_varname not in self._serial2dist_varname_mapping:
                     new_varname = serial_output_varname + self._dist_varname_suffix
                     _partition_var(self._auto_parallel_context,
-                                   serial_global_block,
-                                   partitioned_global_block,
+                                   serial_main_block, partitioned_global_block,
                                    serial_output_varname, new_varname)
                     self._serial2dist_varname_mapping[
                         serial_output_varname] = new_varname
 
             # partition op
-            if _found_match_dist_op(self._auto_parallel_context, op):
-                # replace with corresponding dist op
-                _insert_dist_op(op, partitioned_global_block,
-                                self._serial2dist_varname_mapping,
-                                self._auto_parallel_context, self._rank_id)
+            kinputs, koutputs = dist_op_helper.prepare_forward_context(op)
+            dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
+                op)
+            if _is_dist_op_forward_implement(self._auto_parallel_context, op):
+                dist_ops = get_distributed_operator(op.type)
+                dist_op_impl = dist_ops.get_impl(dist_attr.get_impl_idx())
+                dist_op_impl.forward(self._auto_parallel_context, **kinputs,
+                                     **koutputs)
+
             else:
                 # replicate op
-                _insert_src_op(op, partitioned_global_block,
-                               self._serial2dist_varname_mapping)
-
-        # transpile startup program
-        if serial_startup_program == None:
-            partitioned_startup_prog = None
-        else:
-            partitioned_startup_prog = fluid.Program()
-            # create parameter
-            partitioned_startup_global_block = partitioned_startup_prog.global_block(
-            )
-            param2shape = {}
-            for var in partitioned_main_prog.list_vars():
-                if isinstance(var, Parameter):
-                    _partition_parameter(self._auto_parallel_context, var,
-                                         partitioned_startup_global_block,
-                                         var.name, var.shape)
-                    param2shape[var.name] = var.shape
-
-            # copy initializer
-            for op in serial_startup_program.global_block().ops:
-                output_vars = op.desc.output_arg_names()
-                assert len(
-                    output_vars
-                ) == 1, "initializer should output only ONE variable, but got [{}]".format(
-                    str(op.desc))
-                assert self._serial2dist_varname_mapping[output_vars[
-                    0]] in param2shape, "try to initialize [{}] which is not a Parameter".format(
-                        output_vars[0])
-                new_op_desc = partitioned_startup_global_block.desc.append_op()
-                new_op_desc.copy_from(op.desc)
-                new_op_desc._rename_output(
-                    output_vars[0],
-                    self._serial2dist_varname_mapping[output_vars[0]])
-                new_op_desc._set_attr("shape", param2shape[
-                    self._serial2dist_varname_mapping[output_vars[0]]])
-                partitioned_startup_global_block._sync_with_cpp()
-
-            # MP broadcast not split parameter
-            # NOTE Theoretically, the MP param init broadcast should be handled by
-            # each dist op itself. but if we insert the broadcast op at that moment, the broadcast
-            # will before the initializer, which lead to a undertermined case.
-            if self._enable_tensor_parallel:
-                param_to_sync = []
-                for param in partitioned_startup_prog.all_parameters():
-                    if not self._is_var_distributed(param):
-                        param_to_sync.append(param)
-                        # FIXME the ring id should be set by autoparallel.mapping module
-                        # it should be determined by dp groups butfixed it here for hacking
-                        partitioned_startup_global_block.append_op(
-                            type='c_broadcast',
-                            inputs={'X': param},
-                            outputs={'Out': param},
-                            attrs={
-                                'ring_id': self._tp_group.id,
-                                'root': 0,
-                                'use_calc_stream': True,
-                                OP_ROLE_KEY: OpRole.Forward
-                            })
-                partitioned_startup_global_block.append_op(
-                    type='c_sync_comm_stream',
-                    inputs={'X': param_to_sync},
-                    outputs={'Out': param_to_sync},
-                    attrs={
-                        'ring_id': self._tp_group.id,
-                        OP_ROLE_KEY: OpRole.Forward
-                    })
-                partitioned_startup_global_block._sync_with_cpp()
-
-            # DP init param broadcast
-            if self._enable_data_parallel:
-                # parameters initialization synchronization 
-                param_to_sync = []
-
-                for param in partitioned_startup_global_block.all_parameters():
-                    param_to_sync.append(param)
-
-                    # FIXME the ring id should be set by autoparallel.mapping module
-                    # it should be determined by dp groups butfixed it here for hacking
-                    partitioned_startup_global_block.append_op(
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={
-                            'ring_id': self._dp_group.id,
-                            'root': 0,
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Forward
-                        })
-                partitioned_startup_global_block.append_op(
-                    type='c_sync_comm_stream',
-                    inputs={'X': param_to_sync},
-                    outputs={'Out': param_to_sync},
-                    attrs={
-                        'ring_id': self._dp_group.id,
-                        OP_ROLE_KEY: OpRole.Forward
-                    })
-                partitioned_startup_global_block._sync_with_cpp()
+                dist_ops = get_distributed_operator("default")
+                dist_op_impl = dist_ops.get_impl(0)
+                dist_op_impl.forward(self._auto_parallel_context, **kinputs,
+                                     **koutputs)
 
         return partitioned_main_prog, partitioned_startup_prog
 
@@ -493,12 +453,65 @@ class Partitioner(object):
                     for param in no_grad_set
                 ]
 
-            return _auto_backward(
+            dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
+            params_and_grads = _auto_backward(
                 dist_loss,
                 dist_startup_program,
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set,
-                callbacks=callbacks)
+                callbacks=callbacks,
+                distop_context=dist_op_helper)
+
+            # backward completion 
+            complete_backward_annotation(
+                dist_main_program, dist_context=self._auto_parallel_context)
+
+            # transpiler backward for dist op
+            # get backward ops
+            ops = dist_main_program.global_block().ops
+            first_backward_op_idx = -1
+            forward_op_id2forward_op = {}
+            for idx in range(len(ops)):
+                if is_forward_op(ops[idx]):
+                    forward_op_id2forward_op[ops[idx].desc.id()] = ops[idx]
+
+                if int(ops[idx].attr('op_role')) == int(OpRole.Backward):
+                    first_backward_op_idx = idx
+                    break
+            assert first_backward_op_idx >= 0, "not found backward ops in program"
+            assert len(forward_op_id2forward_op
+                       ) > 0, "not found forward ops in program"
+
+            backward_ops = ops[first_backward_op_idx:]
+            for backward_op in backward_ops:
+                # if the backward op has a corresponding forward op
+                if backward_op.desc.id() in dist_op_helper.gradopidx2opidx:
+                    forward_op_id = dist_op_helper.gradopidx2opidx[
+                        backward_op.desc.id()]
+                    forward_op = forward_op_id2forward_op[forward_op_id]
+                    # TODO backward attr should has _impl_idx
+                    forward_op_dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
+                        forward_op)
+                    # TODO use the backward op itself to find the dist op
+                    dist_ops = get_distributed_operator(forward_op.type)
+                    kinputs, koutputs = dist_op_helper.prepare_backward_context(
+                        backward_op)
+
+                    # TODO use backward op itself to determine impl idx
+                    if _is_dist_op_backward_implement(
+                            self._auto_parallel_context, forward_op):
+                        dist_op_impl = dist_ops.get_impl(
+                            forward_op_dist_attr.get_impl_idx())
+                        dist_op_impl.backward(self._auto_parallel_context,
+                                              **kinputs, **koutputs)
+                    else:
+                        # replicate op
+                        dist_ops = get_distributed_operator("default")
+                        dist_op_impl = dist_ops.get_impl(0)
+                        dist_op_impl.backward(self._auto_parallel_context,
+                                              **kinputs, **koutputs)
+
+            return params_and_grads
         # replace dist grad ops
         else:
             raise RuntimeError("transpile NOT implemented !")
@@ -508,6 +521,10 @@ class Partitioner(object):
 
         with program_guard(main_program, startup_program):
             optimize_ops = user_define_optimizer.apply_gradients(params_grads)
+
+        # update completion 
+        complete_update_annotation(
+            main_program, dist_context=self._auto_parallel_context)
 
         return optimize_ops
 
@@ -543,47 +560,6 @@ class Partitioner(object):
         dist_var = dist_program.global_block().var(dist_varname)
 
         return dist_var
-
-    def _determine_parallel_mode(self, program):
-        """
-        determine the parallelism that is enabled
-        NOTE a hard rule and should be updated in future
-        """
-
-        for param in program.all_parameters():
-            if self._is_var_distributed(param):
-                self._enable_tensor_parallel = True
-                break
-
-        for var in program.list_vars():
-            var_dist_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
-                var)
-            if not var_dist_attr.is_parameter():
-                mapping = var_dist_attr.get_dims_mapping()
-                mesh = var_dist_attr.get_process_mesh().topology
-                if mapping and mapping[0] >= 0 and mesh[mapping[0]] > 1:
-                    self._enable_data_parallel = True
-                    break
-
-        # tensor parallelism
-        if self._enable_tensor_parallel:
-            model_parallel_axis, process_mesh = self._auto_parallel_context._get_model_parallel_info(
-            )
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, self._rank_id)
-            self._tp_degree = len(group_ranks)
-            self._tp_group = new_process_group(group_ranks)
-
-        # data parallelism
-        data_parallel_axis, process_mesh = self._auto_parallel_context._get_data_parallel_info(
-        )
-        if self._enable_data_parallel:
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          data_parallel_axis, self._rank_id)
-            self._dp_degree = len(group_ranks)
-            self._dp_group = new_process_group(group_ranks)
 
     def _is_var_distributed(self, var):
 
@@ -629,68 +605,6 @@ class Partitioner(object):
         """
         raise RuntimeError("sharding transpile is NOT implemented !")
 
-    def _gradient_sync_transpile(self, main_program, startup_program):
-        """
-        append the gradient allreduce ops for all parameters' grad in case of Data Parallel
-        """
-
-        # scale loss by dp degree
-        main_global_block = main_program.global_block()
-        for idx, op in reversed(list(enumerate(main_global_block.ops))):
-            if is_loss_grad_op(op):
-                loss_grad_var = main_global_block.vars[op.output_arg_names[0]]
-                main_global_block._insert_op_without_sync(
-                    idx + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._dp_degree,
-                        OP_ROLE_KEY: OpRole.Backward
-                    })
-                break
-        main_global_block._sync_with_cpp()
-
-        # gradient synchronization
-        # NOTE naive gradient sync without overlapping
-        # so there is not need to sync between calc and comm
-        # collecting grad var
-        grad_to_sync = []
-        for idx, op in reversed(list(enumerate(main_global_block.ops))):
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
-                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
-                if len(op_role_var) != 0:
-                    assert len(op_role_var) % 2 == 0
-                    for i in range(0, len(op_role_var), 2):
-                        param, reduced_grad = op_role_var[i], op_role_var[i + 1]
-                        assert (reduced_grad not in grad_to_sync)
-                        grad_to_sync.append(reduced_grad)
-            if is_optimizer_op(op):
-                first_optimize_op_idx = idx
-
-        # insert allreduce
-        for grad in grad_to_sync:
-            # FIXME the ring id should be set by autoparallel.mapping module
-            # it should be determined by dp groups butfixed it here for hacking
-            main_global_block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': grad},
-                outputs={'Out': grad},
-                attrs={
-                    'ring_id': self._dp_group.id,
-                    'root': 0,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
-        main_global_block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': grad_to_sync},
-            outputs={'Out': grad_to_sync},
-            attrs={'ring_id': self._dp_group.id,
-                   OP_ROLE_KEY: OpRole.Backward})
-        main_global_block._sync_with_cpp()
-
 
 def _get_no_grad_set_name(no_grad_set):
     no_grad_set_name = set()
@@ -723,7 +637,7 @@ def _get_no_grad_set(loss, no_grad_set=None):
     return no_grad_set
 
 
-def _found_match_dist_op(auto_paralle_context, op):
+def _is_dist_op_forward_implement(auto_paralle_context, op):
     dist_attr = auto_paralle_context.get_op_distributed_attr_for_program(op)
     dist_ops = get_distributed_operator(op.type)
 
@@ -731,11 +645,20 @@ def _found_match_dist_op(auto_paralle_context, op):
         dist_attr.get_impl_idx())._forward_implemented
 
 
+def _is_dist_op_backward_implement(auto_paralle_context, op):
+    dist_attr = auto_paralle_context.get_op_distributed_attr_for_program(op)
+    dist_ops = get_distributed_operator(op.type)
+
+    return dist_ops and dist_attr.get_impl_idx() >= 0 and dist_ops.get_impl( \
+        dist_attr.get_impl_idx())._backward_implemented
+
+
 def _auto_backward(loss,
                    startup_program=None,
                    parameter_list=None,
                    no_grad_set=None,
-                   callbacks=None):
+                   callbacks=None,
+                   distop_context=None):
     """
     modification is inplaced
     """
@@ -753,9 +676,14 @@ def _auto_backward(loss,
             loss.shape)
 
     program = loss.block.program
+
     with program_guard(program, startup_program):
-        params_grads = append_backward(loss, parameter_list, act_no_grad_set,
-                                       callbacks)
+        params_grads = append_backward(
+            loss,
+            parameter_list,
+            act_no_grad_set,
+            callbacks,
+            distop_context=distop_context)
 
     return params_grads
 
@@ -822,6 +750,7 @@ def _partition_parameter(auto_paralle_context, src_var, dst_block, dst_varname,
     # param.desc.set_distributed_attr_uid(distributed_attr_uid)
     dist_attr = copy.deepcopy(
         auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
+    assert dist_attr is not None
     dist_attr._owner_tensor = param
     dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
         src_var)._owner_context
@@ -848,6 +777,7 @@ def _partition_intermediate_var(auto_paralle_context, src_var, dst_block,
     # var.desc.set_distributed_attr_uid(distributed_attr_uid)
     dist_attr = copy.deepcopy(
         auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
+    assert dist_attr is not None
     dist_attr._owner_tensor = var
     dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
         src_var)._owner_context
@@ -923,3 +853,11 @@ def _insert_dist_op(src_op, dst_block, varname_mapping, auto_paralle_context,
         input_mapping,
         output_mapping,
         rank_id=rank_id)
+
+
+def is_forward_op(op):
+    role1 = int(core.op_proto_and_checker_maker.OpRole.Forward) | int(
+        core.op_proto_and_checker_maker.OpRole.Loss)
+    role2 = int(core.op_proto_and_checker_maker.OpRole.Forward)
+    op_role = int(op.attr('op_role'))
+    return op_role == role2 or op_role == role1

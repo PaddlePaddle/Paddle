@@ -91,10 +91,30 @@ class XPUOpTest(OpTest):
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
         if not hasattr(cls, "no_need_check_grad") \
             and not is_empty_grad_op(cls.op_type):
-            if cls.dtype is not None and \
-                cls.dtype != np.float32:
+            if cls.dtype is None or \
+                (cls.dtype == np.float16 \
+                    and cls.op_type not in op_accuracy_white_list.NO_FP16_CHECK_GRAD_OP_LIST \
+                    and not hasattr(cls, "exist_check_grad")):
                 raise AssertionError("This test of %s op needs check_grad." %
                                      cls.op_type)
+
+            # check for op test with fp64 precision, but not check mkldnn op test for now
+            if cls.dtype in [np.float32, np.float64] \
+                and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
+                and not hasattr(cls, 'exist_fp64_check_grad') \
+                and not is_xpu_op_test() \
+                and not is_mkldnn_op_test() \
+                and not is_rocm_op_test() \
+                and not is_npu_op_test():
+                raise AssertionError(
+                    "This test of %s op needs check_grad with fp64 precision." %
+                    cls.op_type)
+
+            if not cls.input_shape_is_large \
+                and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
+                raise AssertionError(
+                    "Input's shape should be large than or equal to 100 for " +
+                    cls.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:

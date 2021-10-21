@@ -174,6 +174,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "activation op does not support input's dim is 2 in "
+                   "tensorrt static shape, the output shape has diff.";
+        return false;
+      }
     }
 
     if (op_type == "pool2d") {
@@ -346,6 +352,24 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
+    if (op_type == "softmax") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "softmax op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
+        return false;
+      }
+    }
     if (op_type == "group_norm") {
       if (!with_dynamic_shape) return false;
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
@@ -357,19 +381,34 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
         return false;
+      }
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      if (with_dynamic_shape) {
+        if (axis < 0) return false;
       } else {
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (with_dynamic_shape) {
-          if (axis < 0) return false;
-        } else {
-          if (axis <= 0) return false;
+        if (axis <= 0) return false;
+      }
+      auto concat_inputs = desc.Inputs();
+      if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
+        if (desc.Input("AxisTensor").size() >= 1) {
+          return false;
         }
-        auto concat_inputs = desc.Inputs();
-        if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
-          if (desc.Input("AxisTensor").size() >= 1) {
-            return false;
-          }
-        }
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "concat op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
+        return false;
       }
     }
     if (op_type == "transpose2" || op_type == "transpose") {
@@ -687,6 +726,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Y").size() << ".";
         return false;
       }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "batch_norm op does not support input's dim is 2 in "
+                   "tensorrt static shape, the output shape has diff.";
+        return false;
+      }
     }
 
     if (op_type == "split") {
@@ -772,6 +827,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       if (output_lengths.size() != output_num) {
         VLOG(3) << "The output_length should be equal to the output size.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "split op does not support input's dim is 2 in tensorrt "
+                   "static shape. The output shape has diff.";
         return false;
       }
     }
@@ -926,6 +987,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "gelu op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "gelu op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
+        return false;
+      }
     }
 
     if (op_type == "layer_norm") {
@@ -1041,7 +1108,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
-        VLOG(3) << "dropout op does not support input's dim is 1 in tensorrt.";
+        VLOG(3) << "scale op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "scale op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
         return false;
       }
     }
@@ -1059,6 +1132,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
         VLOG(3) << "swish op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "swish op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
         return false;
       }
     }
@@ -1104,6 +1183,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
+
+#if IS_TRT_VERSION_LT(7000)
+      if (!with_dynamic_shape) {
+        // TODO(inference): fix trt6 static plugin error.
+        VLOG(3) << "prelu static plugin in trt6 has bug.";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "mish") {
@@ -1304,6 +1391,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
         VLOG(3) << "clip op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "clip op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
         return false;
       }
     }
