@@ -23,7 +23,6 @@ from paddle.static import program_guard, Program
 # Test python API
 class TestRandintLikeAPI(unittest.TestCase):
     def setUp(self):
-        self.x_bool = np.zeros((10, 12)).astype("bool")
         self.x_int32 = np.zeros((10, 12)).astype("int32")
         self.x_int64 = np.zeros((10, 12)).astype("int64")
         self.x_float16 = np.zeros((10, 12)).astype("float16")
@@ -38,8 +37,6 @@ class TestRandintLikeAPI(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # results are from [-100, 100).
-            x_bool = paddle.fluid.data(
-                name="x_bool", shape=[10, 12], dtype="bool")
             x_int32 = paddle.fluid.data(
                 name="x_int32", shape=[10, 12], dtype="int32")
             x_int64 = paddle.fluid.data(
@@ -52,14 +49,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                 name="x_float64", shape=[10, 12], dtype="float64")
 
             exe = paddle.static.Executor(self.place)
-
-            # x dtype is bool output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
-            outlist1 = [
-                paddle.randint_like(
-                    x_bool, low=-100, high=100, dtype=dtype)
-                for dtype in self.dtype
-            ]
-            outs1 = exe.run(feed={'x_bool': self.x_bool}, fetch_list=outlist1)
 
             # x dtype is int32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist2 = [
@@ -108,8 +97,8 @@ class TestRandintLikeAPI(unittest.TestCase):
         paddle.disable_static(self.place)
         # x dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
         for x in [
-                self.x_bool, self.x_int32, self.x_int64, self.x_float16,
-                self.x_float32, self.x_float64
+                self.x_int32, self.x_int64, self.x_float16, self.x_float32,
+                self.x_float64
         ]:
             x_inputs = paddle.to_tensor(x)
             # self.dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
@@ -121,8 +110,6 @@ class TestRandintLikeAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x_bool = paddle.fluid.data(
-                name="x_bool", shape=[10, 12], dtype="bool")
             x_int32 = paddle.fluid.data(
                 name="x_int32", shape=[10, 12], dtype="int32")
             x_int64 = paddle.fluid.data(
@@ -133,15 +120,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                 name="x_float32", shape=[10, 12], dtype="float32")
             x_float64 = paddle.fluid.data(
                 name="x_float64", shape=[10, 12], dtype="float64")
-
-            # x dtype is bool
-            # low is 5 and high is 5, low must less then high
-            self.assertRaises(
-                ValueError, paddle.randint_like, x_bool, low=5, high=5)
-            # low(default value) is 0 and high is -5, low must less then high
-            self.assertRaises(ValueError, paddle.randint_like, x_bool, high=-5)
-            # if high is None, low must be greater than 0
-            self.assertRaises(ValueError, paddle.randint_like, x_bool, low=-5)
 
             # x dtype is int32
             # low is 5 and high is 5, low must less then high

@@ -670,7 +670,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
     Args:
         x (Tensor): The input tensor which specifies shape. The dtype of ``x`` 
-            can be bool, int32, int64, float16, float32, float64.
+            can be int32, int64, float16, float32, float64.
         low (int): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
             range is [0, ``low``). Default is 0.
@@ -740,47 +740,38 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             # paddle.int64
 
             # example 6:
-            # dtype is None and the dtype of x is bool
-            x = paddle.zeros((1,2)).astype("bool")
-            out6 = paddle.randint_like(x, low=-5, high=5)
-            print(out6)
-            print(out6.dtype)
-            # [[0, -3]]  # random
-            # paddle.bool
-
-            # example 7:
             # dtype is float64 and the dtype of x is float32
             x = paddle.zeros((1,2)).astype("float32")
-            out7 = paddle.randint_like(x, low=-5, high=5, dtype="float64")
-            print(out7)
-            print(out7.dtype)
+            out6 = paddle.randint_like(x, low=-5, high=5, dtype="float64")
+            print(out6)
+            print(out6.dtype)
             # [[0, -1]]  # random
             # paddle.float64
 
-            # example 8:
+            # example 7:
             # dtype is bool and the dtype of x is float32
             x = paddle.zeros((1,2)).astype("float32")
-            out8 = paddle.randint_like(x, low=-5, high=5, dtype="bool")
-            print(out8)
-            print(out8.dtype)
+            out7 = paddle.randint_like(x, low=-5, high=5, dtype="bool")
+            print(out7)
+            print(out7.dtype)
             # [[0, -1]]  # random
             # paddle.bool
 
-            # example 9:
+            # example 8:
             # dtype is int32 and the dtype of x is float32
             x = paddle.zeros((1,2)).astype("float32")
-            out9 = paddle.randint_like(x, low=-5, high=5, dtype="int32")
-            print(out9)
-            print(out9.dtype)
+            out8 = paddle.randint_like(x, low=-5, high=5, dtype="int32")
+            print(out8)
+            print(out8.dtype)
             # [[0, -1]]  # random
             # paddle.int32
 
-            # example 10:
+            # example 9:
             # dtype is int64 and the dtype of x is float32
             x = paddle.zeros((1,2)).astype("float32")
-            out10 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
-            print(out10)
-            print(out10.dtype)
+            out9 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
+            print(out9)
+            print(out9.dtype)
             # [[0, -1]]  # random
             # paddle.int64
 
