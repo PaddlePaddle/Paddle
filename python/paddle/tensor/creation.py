@@ -399,16 +399,6 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
     Returns: Tensor
 
     Examples:
-        .. code-block:: text
-            x = [[[[1., 2., 3.],
-                  [4., 5., 6.]]]]
-            pad = [0, 0, 1, 1]
-            out = [[[[0., 0., 0.],
-                     [1., 2., 3.],
-                     [4., 5., 6.],
-                     [0., 0., 0.]]]]
-    
-    Code Examples:
         .. code-block:: python
             
             import paddle
