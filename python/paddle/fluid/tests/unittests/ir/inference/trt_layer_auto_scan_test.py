@@ -179,7 +179,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     def run_test(self, quant=False):
         status = True
-        np.random.seed(int(1000 * time.time()) % 2**32)
+        # Choose different tests by week
+        np.random.seed(int(time.strftime("%W")))
         run_flags = []
         for prog_config in self.sample_program_configs():
             # In CI, only run 30% cases

@@ -12,13 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
 #include <string>
+#include <tuple>
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+
+#ifdef PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/helper.h"
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -780,6 +786,22 @@ std::string AnalysisConfig::Summary() {
 
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
     if (use_tensorrt_) {
+#ifdef PADDLE_WITH_TENSORRT
+      auto version2string =
+          [](const std::tuple<int, int, int> &ver) -> std::string {
+        std::ostringstream os;
+        int major = std::get<0>(ver);
+        int minor = std::get<1>(ver);
+        int patch = std::get<2>(ver);
+        os << major << "." << minor << "." << patch;
+        return os.str();
+      };
+      os.InsertRow(
+          {"trt_compile_version",
+           version2string(inference::tensorrt::GetTrtCompileVersion())});
+      os.InsertRow(
+          {"trt_runtime_version",
+           version2string(inference::tensorrt::GetTrtRuntimeVersion())});
       os.InsertRow({"tensorrt_precision_mode",
                     Precision2String(tensorrt_precision_mode_)});
       os.InsertRow({"tensorrt_workspace_size",
@@ -805,6 +827,7 @@ std::string AnalysisConfig::Summary() {
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
       }
+#endif
     }
   }
   os.InsetDivider();
