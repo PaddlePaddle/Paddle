@@ -226,33 +226,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "pool3d") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-      if (paddings.size() > 3) return false;
-      if (desc.Input("X").size() != 1) {
-        VLOG(3) << "TRT Pool3d expect 1 input, but got "
-                << desc.Input("X").size();
-        return false;
-      }
-      if (desc.Output("Out").size() != 1) {
-        VLOG(3) << "TRT Pool3d has only 1 output, but got "
-                << desc.Output("Out").size();
-        return false;
-      }
-      if (!desc.HasAttr("pooling_type")) {
-        return false;
-      } else {
-        std::string pool_type =
-            BOOST_GET_CONST(std::string, desc.GetAttr("pooling_type"));
-        if (pool_type != "max" && pool_type != "avg") {
-          VLOG(3) << "Wrong pool3d op type, the trt do not support the "
-                  << pool_type << " pool type.";
-          return false;
-        }
-      }
-    }
-
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
         op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {

@@ -108,18 +108,16 @@ class Pool3DPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &output_shape_);
   }
 
-  Pool3DPlugin* clone() const TRT_NOEXCEPT override {
-    return new Pool3DPlugin(ceil_mode_, pool3d_type_, adaptive_, ksize_,
-                            strides_, paddings_, input_shape_);
-  }
+  Pool3DPlugin* clone() const TRT_NOEXCEPT override;
 
-  const char* getPluginType() const TRT_NOEXCEPT override {
-    return "pool3d_plugin";
-  }
-  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+  const char* getPluginType() const TRT_NOEXCEPT override;
+
+  int getNbOutputs() const TRT_NOEXCEPT override;
+
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
-  int initialize() TRT_NOEXCEPT override { return 0; }
+  int initialize() TRT_NOEXCEPT override;
+
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batchSize, const void* const* inputs, void** outputs,
 #else
@@ -172,17 +170,10 @@ class Pool3DPluginDynamic : public DynamicPluginTensorRT {
 
   Pool3DPluginDynamic(void const* serialData, size_t serialLength);
   ~Pool3DPluginDynamic() {}
-  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new Pool3DPluginDynamic(ceil_mode_, pool3d_type_, adaptive_, ksize_,
-                                   strides_, paddings_, is_global_);
-  }
-
-  const char* getPluginType() const TRT_NOEXCEPT override {
-    return "pool3d_plugin_dynamic";
-  }
-  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  int initialize() TRT_NOEXCEPT override { return 0; }
-
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
+  const char* getPluginType() const TRT_NOEXCEPT override;
+  int getNbOutputs() const TRT_NOEXCEPT override;
+  int initialize() TRT_NOEXCEPT override;
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
@@ -198,14 +189,12 @@ class Pool3DPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nbInputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) TRT_NOEXCEPT override {}
+                       int nbOutputs) TRT_NOEXCEPT override;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nbOutputs) const TRT_NOEXCEPT override {
-    return 0;
-  }
+                          int nbOutputs) const TRT_NOEXCEPT override;
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
