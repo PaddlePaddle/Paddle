@@ -799,6 +799,15 @@ class PSLib(Fleet):
                 self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
         self._role_maker._barrier_worker()
 
+    def set_date(self, table_id, date):
+        """
+        set_date, eg, 20210918
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.set_date(table_id, str(date))
+        self._role_maker._barrier_worker()
+
     def _set_opt_info(self, opt_info):
         """
         this function saves the result from DistributedOptimizer.minimize()

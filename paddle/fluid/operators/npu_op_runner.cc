@@ -188,6 +188,21 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AddAttrDataType(const std::string &name,
+                                          const NPUAttribute &attr) {
+  PADDLE_ENFORCE_EQ(
+      (attr.type() == typeid(int)), true,
+      platform::errors::InvalidArgument(
+          "Attr type is NOT equal to framework::proto::VarType::Type."));
+  if (!attr_) {
+    attr_ = aclopCreateAttr();
+  }
+  auto dtype = ConvertToNpuDtype(
+      static_cast<framework::proto::VarType::Type>(BOOST_GET_CONST(int, attr)));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclopSetAttrDataType(attr_, name.c_str(), dtype));
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddAttrs(const NPUAttributeMap &attrs) {
   for (const auto &pair : attrs) {
     AddAttr(pair.first, pair.second);

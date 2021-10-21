@@ -109,7 +109,16 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"iou_similarity",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})}
+      {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_mean", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_mean_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"slice", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                              pOpKernelType(vartype::FP16, XPUPlace()),
+                              pOpKernelType(vartype::INT32, XPUPlace())})},
+      {"slice_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                   pOpKernelType(vartype::FP16, XPUPlace()),
+                                   pOpKernelType(vartype::INT32, XPUPlace())})},
       // AddMore
   };
 

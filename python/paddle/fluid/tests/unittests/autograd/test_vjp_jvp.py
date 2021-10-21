@@ -205,6 +205,16 @@ class TestVJP(TestAutogradFunctional):
             vjp_result, grad_result = vjp(), grad()
             self.check_results(grad_result, vjp_result)
 
+    def test_vjp_i2o2_omitting_v_no_create_graph(self):
+        test_cases = [
+            [o2, ['A', 'A']],  #noqa
+        ]  #noqa
+        for f, inputs in test_cases:
+            inputs = self.gen_inputs(inputs)
+            vjp, grad = self.gen_test_pairs(f, inputs)
+            vjp_result, grad_result = vjp(), grad()
+            self.check_results(grad_result, vjp_result)
+
     def test_vjp_nested_no_create_graph(self):
         x = self.gen_input('a')
         test_cases = [
@@ -288,6 +298,17 @@ class TestJVP(TestAutogradFunctional):
             forward_jac = jac(jvp, f, inputs)
             reverse_jac = jac(vjp, f, inputs)
             self.check_results(forward_jac, reverse_jac)
+
+    def test_jvp_i2o2_omitting_v_no_create_graph(self):
+        test_cases = [  #noqa
+            [o2, ['A', 'A']],  #noqa
+        ]  #noqa
+        for f, inputs in test_cases:
+            inputs = self.gen_inputs(inputs)
+            results_omitting_v = jvp(f, inputs)
+            v = [ones_like(x) for x in inputs]
+            results_with_v = jvp(f, inputs, v)
+            self.check_results(results_omitting_v, results_with_v)
 
 
 if __name__ == "__main__":

@@ -175,9 +175,13 @@ class ProgramStats(object):
             return
 
         op_idx = 0
-        while (op_idx < len(self.ops)):
+        while op_idx < len(self.ops):
             op = self.ops[op_idx]
             if op.desc.type() != "dropout":
+                op_idx += 1
+                continue
+            # already insert seed op before dropout
+            if op.input('Seed') is not None and len(op.input('Seed')) == 1:
                 op_idx += 1
                 continue
             # add a seed op so that the two dropout op can generate same output
@@ -1047,7 +1051,8 @@ def _append_backward_ops_(block,
                           grad_to_var,
                           callbacks=None,
                           input_grad_names_set=None,
-                          op_path_dict=None):
+                          op_path_dict=None,
+                          distop_context=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -1104,6 +1109,10 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+        if distop_context is not None:
+            for op_desc in grad_op_desc:
+                assert op_desc.id() not in distop_context.gradopidx2opidx
+                distop_context.gradopidx2opidx[op_desc.id()] = op.desc.id()
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1398,7 +1407,8 @@ def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
                     callbacks=None,
-                    checkpoints=None):
+                    checkpoints=None,
+                    distop_context=None):
     """
     :api_attr: Static Graph
 
@@ -1613,7 +1623,8 @@ def append_backward(loss,
                 grad_to_var,
                 callbacks,
                 input_grad_names_set=input_grad_names_set,
-                op_path_dict=op_path_dict)
+                op_path_dict=op_path_dict,
+                distop_context=distop_context, )
 
     grad_info_map = dict()
 
