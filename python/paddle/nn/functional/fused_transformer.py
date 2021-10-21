@@ -44,7 +44,7 @@ def fused_multi_head_attention(x,
     	out = layer_norm(x);
         out = linear(out) + qkv)bias
     else:
-	    out = linear(x) + bias;
+	out = linear(x) + bias;
     out = transpose(out, perm=[2, 0, 3, 1, 4]);
     # extract q, k and v from out.
     q = out[0:1,::]
@@ -56,8 +56,8 @@ def fused_multi_head_attention(x,
     out = dropout(out);
     out = out * v;
     out = transpose(out, perm=[0, 2, 1, 3]);      
-	out = out_linear(out);
-	out = layer_norm(x + dropout(linear_bias + out));
+    out = out_linear(out);
+    out = layer_norm(x + dropout(linear_bias + out));
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is 
@@ -112,7 +112,7 @@ def fused_multi_head_attention(x,
                 None, None, None, None, 1e-5, qkv_bias,
                 linear_bias, attn_mask)
             # [2, 4, 128]
-            print(output)
+            print(output.shape)
     """
     if in_dygraph_mode():
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out, 
