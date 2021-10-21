@@ -17,7 +17,7 @@ from .. import functional as F
 from paddle.nn import Layer
 from ...framework import ParamAttr
 import paddle
-from paddle.nn.layer.transformer import _convert_attention_mask
+from paddle.nn.layer.transformer import _convert_attention_mask, _convert_param_attr_to_list
 from ..initializer import Constant
 
 import collections
@@ -34,16 +34,16 @@ class FusedMultiHeadAttention(Layer):
         embed_dim (int): The expected feature size in the input and output.
         num_heads (int): The number of heads in multi-head attention.
         dropout_rate (float, optional): The dropout probability used on attention
-            weights to drop some attention targets for the dropout after attention. 
+            weights to drop some attention targets for the dropout after attention.
             0 for no dropout. Default 0.
         attn_dropout_rate (float, optional): The dropout probability used on attention
-            weights to drop some attention targets for the dropout in attention. 
+            weights to drop some attention targets for the dropout in attention.
             0 for no dropout. Default 0.
         kdim (int, optional): The feature size in key. If None, assumed equal to
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
             `embed_dim`. Default None.
-        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm 
+        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm
             or post_layer_norm architecture. Default False.
         need_weights (bool, optional): Indicate whether to return the attention
             weights. Now, only False is supported. Default False.
@@ -152,17 +152,17 @@ class FusedMultiHeadAttention(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 Now, only None is supported. Default None.
         Returns:
             Tensor|tuple: It is a tensor that has the same shape and data type \
-                as `query`, representing attention output. 
+                as `query`, representing attention output.
         """
         if attn_mask is not None:
             # Support bool or int mask
@@ -190,18 +190,72 @@ class FusedFeedForward(Layer):
     def __init__(self,
                  d_model,
                  dim_feedforward,
-                 dropout=0.1,
+                 dropout_rate=0.1,
                  activation="relu",
-                 act_dropout=None,
+                 act_dropout_rate=None,
                  normalize_before=False,
                  weight_attr=None,
                  bias_attr=None):
 
         super(FusedFeedForward, self).__init__()
-        raise NotImplementedError()
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, but recieved {}".format(
+                d_model))
+        assert dim_feedforward > 0, (
+            "Expected dim_feedforward to be greater than 0, but recieved {}".
+            format(dim_feedforward))
+
+        self._dtype = self._helper.get_default_dtype()
+        self._d_model = d_model
+        self._dim_feedforward = dim_feedforward
+        self._dropout_rate = dropout_rate
+        self._act_dropout_rate = dropout_rate if act_dropout_rate is None else act_dropout_rate
+        self._act_method = activation
+        self._normalize_before = normalize_before
+
+        self._linear1_weight = self.create_parameter(
+            shape=[d_model, dim_feedforward],
+            attr=weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self._linear1_bias = self.create_parameter(
+            shape=[dim_feedforward],
+            attr=bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+
+        self._linear2_weight = self.create_parameter(
+            shape=[dim_feedforward, d_model],
+            attr=weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+
+        self._linear2_bias = self.create_parameter(
+            shape=[d_model], attr=bias_attr, dtype=self._dtype, is_bias=True)
+
+        self._ln1_scale = self.create_parameter(
+            shape=[d_model],
+            attr=None,
+            is_bias=False,
+            default_initializer=Constant(1.0))
+        self._ln1_bias = self.create_parameter(
+            shape=[d_model], attr=None, is_bias=True)
+
+        self._ln2_scale = self.create_parameter(
+            shape=[d_model],
+            attr=None,
+            is_bias=False,
+            default_initializer=Constant(1.0))
+        self._ln2_bias = self.create_parameter(
+            shape=[d_model], attr=None, is_bias=True)
 
     def forward(self, src, cache=None):
-        raise NotImplementedError()
+        out = F.fused_feedforward(
+            src, self._linear1_weight, self._linear2_weight, self._linear1_bias,
+            self._linear2_bias, self._ln1_scale, self._ln1_bias,
+            self._ln2_scale, self._ln2_bias, self._dropout_rate,
+            self._act_dropout_rate, self._act_method, self._normalize_before)
+        return out
 
 
 class FusedTransformerEncoderLayer(Layer):
@@ -236,7 +290,7 @@ class FusedTransformerEncoderLayer(Layer):
             MHA, and `weight_attr[1]` would be used as `weight_attr` for linear in FFN.
             Otherwise, MHA and FFN both use it as `weight_attr` to create parameters.
             Default: None, which means the default weight parameter property is used.
-            See usage for details in :code:`ParamAttr` . 
+            See usage for details in :code:`ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
             If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             MHA, and `bias_attr[1]` would be used as `bias_attr` for linear in FFN.
@@ -244,7 +298,7 @@ class FusedTransformerEncoderLayer(Layer):
             The `False` value means the corresponding layer would not have trainable
             bias parameter. See usage for details in :code:`ParamAttr` . Default: None,
             which means the default bias parameter property is used.
-            
+
 
     Examples:
 
@@ -265,10 +319,10 @@ class FusedTransformerEncoderLayer(Layer):
                  d_model,
                  nhead,
                  dim_feedforward,
-                 dropout=0.1,
+                 dropout_rate=0.1,
                  activation="relu",
-                 attn_dropout=None,
-                 act_dropout=None,
+                 attn_dropout_rate=None,
+                 act_dropout_rate=None,
                  normalize_before=False,
                  weight_attr=None,
                  bias_attr=None):
@@ -277,7 +331,35 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super(FusedTransformerEncoderLayer, self).__init__()
-        raise NotImplementedError()
+        assert d_model > 0, ("Expected d_model to be greater than 0, "
+                             "but recieved {}".format(d_model))
+        assert nhead > 0, ("Expected nhead to be greater than 0, "
+                           "but recieved {}".format(nhead))
+        assert dim_feedforward > 0, (
+            "Expected dim_feedforward to be greater than 0, "
+            "but recieved {}".format(dim_feedforward))
+        attn_dropout_rate = dropout_rate if attn_dropout_rate is None else attn_dropout_rate
+        act_dropout_rate = dropout_rate if act_dropout_rate is None else act_dropout_rate
+        self.normalize_before = normalize_before
+
+        weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
+        bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
+
+        self.fused_attn = FusedMultiHeadAttention(
+            d_model,
+            nhead,
+            dropout_rate=attn_dropout_rate,
+            weight_attr=weight_attrs[0],
+            bias_attr=bias_attrs[0])
+
+        self.ffn = FusedFeedForward(
+            d_model,
+            dim_feedforward,
+            dropout_rate=dropout_rate,
+            act_dropout_rate=act_dropout_rate,
+            normalize_before=self.normalize_before,
+            weight_attr=weight_attrs[1],
+            bias_attr=bias_attrs[1])
 
     def forward(self, src, src_mask=None, cache=None):
         """
@@ -290,11 +372,11 @@ class FusedTransformerEncoderLayer(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (Tensor, optional): It is an instance of `MultiHeadAttention.Cache`.
                 See `TransformerEncoderLayer.gen_cache` for more details. It is
@@ -309,7 +391,16 @@ class FusedTransformerEncoderLayer(Layer):
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
         """
-        raise NotImplementedError()
+        src_mask = _convert_attention_mask(src_mask, src.dtype)
+        if cache is None:
+            attn_out = self.fused_attn(src, attn_mask=src_mask)
+        else:
+            attn_out, incremental_cache = self.fused_attn(
+                src, attn_mask=src_mask, cache=cache)
+
+        ffn_out = self.ffn(attn_out)
+
+        return ffn_out if cache is None else (ffn_out, incremental_cache)
 
 
 class FusedTransformer(Layer):
@@ -320,12 +411,12 @@ class FusedTransformer(Layer):
 
     Please refer to `Attention is all you need <http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf>`_ ,
     and see `TransformerEncoder` and `TransformerDecoder` for more details.
-    
+
     Users can configurate the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
     normalization (in pre-process or post-precess of multi-head attention or FFN),
     and some transformer like models are different on this, such as
-    `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ . 
+    `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ .
     The default architecture here places layer normalization in post-process and
     applies another layer normalization on the output of last encoder/decoder layer.
 
@@ -351,30 +442,30 @@ class FusedTransformer(Layer):
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
-            If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3, 
-            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]` 
-            would be used as `weight_attr` for cross attention of `TransformerDecoder`, 
-            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN. 
-            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention 
-            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for 
-            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr` 
-            for self attention, cross attention and linear in FFN. Otherwise, 
-            the three sub-layers all uses it as `weight_attr` to create parameters. 
-            Default: None, which means the default weight parameter property is used. 
+            If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3,
+            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]`
+            would be used as `weight_attr` for cross attention of `TransformerDecoder`,
+            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN.
+            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention
+            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for
+            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr`
+            for self attention, cross attention and linear in FFN. Otherwise,
+            the three sub-layers all uses it as `weight_attr` to create parameters.
+            Default: None, which means the default weight parameter property is used.
             See usage for details
-            in :code:`ParamAttr` . 
+            in :code:`ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
-            If it is a list/tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3, 
-            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]` 
-            would be used as `bias_attr` for cross attention of `TransformerDecoder`, 
-            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN. 
-            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention 
-            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for 
-            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr` 
-            for self attention, cross attention and linear in FFN. Otherwise, 
-            the three sub-layers all uses it as `bias_attr` to create parameters. 
-            The `False` value means the corresponding layer would not have trainable 
-            bias parameter. See usage for details in :code:`ParamAttr` . 
+            If it is a list/tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3,
+            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]`
+            would be used as `bias_attr` for cross attention of `TransformerDecoder`,
+            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN.
+            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention
+            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for
+            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr`
+            for self attention, cross attention and linear in FFN. Otherwise,
+            the three sub-layers all uses it as `bias_attr` to create parameters.
+            The `False` value means the corresponding layer would not have trainable
+            bias parameter. See usage for details in :code:`ParamAttr` .
             Default: None,which means the default bias parameter property is used.
         custom_encoder (Layer, optional): If custom encoder is provided, use it as the encoder.
             Default None
