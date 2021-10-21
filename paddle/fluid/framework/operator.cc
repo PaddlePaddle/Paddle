@@ -1080,20 +1080,6 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-static std::string RuntimeContextDebugString(const RuntimeContext& ctx) {
-  std::stringstream ss;
-  ss << "RuntimeContext(Inputs: ";
-  for (auto& var_pair : ctx.inputs) {
-    ss << var_pair.first << ", ";
-  }
-  ss << "Outputs: ";
-  for (auto& var_pair : ctx.outputs) {
-    ss << var_pair.first << ", ";
-  }
-  ss << ")";
-  return ss.str();
-}
-
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1144,7 +1130,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
   if (FLAGS_run_pt_kernel &&
-      pten::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
+      pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtenKernel(exe_ctx);
     }
@@ -1651,10 +1637,9 @@ void OperatorWithKernel::ParseInputDataType(
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
             t->IsInitialized(), true,
-            platform::errors::InvalidArgument(
-                "The Tensor in the %s Op's Input Variable %s(%s) is "
-                "not initialized.",
-                Type(), name, Inputs().at(name).at(i)));
+            platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                              "contains uninitialized Tensor.",
+                                              Type(), name));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
                        platform::errors::InvalidArgument(
@@ -1789,8 +1774,6 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
 
 pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
-  VLOG(1) << RuntimeContextDebugString(ctx);
-
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
