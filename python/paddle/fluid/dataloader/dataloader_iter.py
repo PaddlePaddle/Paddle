@@ -360,11 +360,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
-        # try:
-        #     multiprocessing.set_start_method('spawn')
-        # except RuntimeError:
-        #     pass
-
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
         self._worker_status = []
