@@ -118,6 +118,8 @@ void InterpreterCore::Convert() {
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
     temp_inst.type_ = vec_func_list_[i].type_;
+    temp_inst.no_data_transform_index_ =
+        vec_func_list_[i].no_data_transform_index;
 
     OpInOutInfo info;
 
