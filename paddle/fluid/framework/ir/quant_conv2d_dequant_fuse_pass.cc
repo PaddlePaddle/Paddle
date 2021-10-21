@@ -642,8 +642,8 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> quant_types = {
       "fake_quantize_range_abs_max", "fake_quantize_moving_average_abs_max"};
   std::unordered_set<std::string> quantized_op_types = {
-      "conv2d",           "mul", "matmul",          "matmul_v2",
-      "depthwise_conv2d", "fc",  "conv2d_transpose"};
+      "conv2d", "mul", "matmul", "matmul_v2", "depthwise_conv2d", "fc",
+      "conv2d_transpose"};
   auto* scope = param_scope();
 
   for (auto& quant_type : quant_types) {
