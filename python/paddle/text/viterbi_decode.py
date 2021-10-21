@@ -35,8 +35,9 @@ def viterbi_decode(potentials,
             tensor with shape of [num_tags, num_tags]. The data type is float32 or float64. 
         lengths (Tensor):  The input tensor of length of each sequence. This is a 1-D tensor with shape of [batch_size]. The data type is int64. 
         include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
-            as start tag, the penultimate row and the penultimate column of transitions will be considered as stop tag. Defaults to ``True``.
-        name(str, optional): Default value is None.
+            as start tag, the second to last row and the second to last column of transitions will be considered as stop tag. Defaults to ``True``.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         scores(Tensor): The output tensor containing the score for the Viterbi sequence. The shape is [batch_size]
@@ -47,7 +48,6 @@ def viterbi_decode(potentials,
     Example:
         .. code-block:: python
 
-            import numpy as np
             import paddle
             paddle.seed(102)
             batch_size, seq_len, num_tags = 2, 4, 3
@@ -91,8 +91,9 @@ class ViterbiDecoder(Layer):
     Args:
         transitions (`Tensor`): The transition matrix.  Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
         include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
-            as start tag, the penultimate row and the penultimate column of transitions will be considered as stop tag. Defaults to ``True``.
-        name(str, optional): Default value is None.
+            as start tag, the second to last row and the second to last column of transitions will be considered as stop tag. Defaults to ``True``.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Shape:
         potentials (Tensor): The input tensor of unary emission. This is a 3-D tensor with shape of 
@@ -109,7 +110,6 @@ class ViterbiDecoder(Layer):
     Example:
         .. code-block:: python
 
-            import numpy as np
             import paddle
             paddle.seed(102)
             batch_size, seq_len, num_tags = 2, 4, 3
