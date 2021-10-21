@@ -14,10 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
 #include <vector>
-#include "paddle/fluid/platform/cudnn_desc.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -40,8 +38,7 @@ class CudnnFusionOp {
         &op_variant_params_, op_id));
   }
 
-  ~CudnnFusionOp() {
-    // New 'fused op' descriptor destruction
+  ~CudnnFusionOp() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -121,41 +118,49 @@ class CudnnFusionOp {
 
   // Get the workspace, which is required before Execute().
   size_t GetWorkspaceSizeInBytes(cudnnHandle_t cudnn_handle) {
-    size_t workspace_bytes = 0U;
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
-        cudnn_handle, op_, op_const_params_, &workspace_bytes));
-    plan_created_ = true;
-    return workspace_bytes;
+    if (!plan_created_) {
+      workspace_bytes_ = 0U;
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
+          cudnn_handle, op_, op_const_params_, &workspace_bytes_));
+      plan_created_ = true;
+    }
+    return workspace_bytes_;
   }
 
  private:
   bool plan_created_;
+  size_t workspace_bytes_;
 
   cudnnFusedOpsPlan_t op_;
   cudnnFusedOpsConstParamPack_t op_const_params_;
   cudnnFusedOpsVariantParamPack_t op_variant_params_;
 };
 
-static inline std::vector<int> GetStrides(const std::vector<int> &shape) {
-  if (shape.size() < 1) {
-    return {};
+class CudnnFusionOpCache {
+ public:
+  static CudnnFusionOpCache &Instance() {
+    static CudnnFusionOpCache instance;
+    return instance;
   }
-  int dim = static_cast<int>(shape.size());
-  std::vector<int> pro_shape(shape);
-  std::vector<int> strides(dim);
-  int temp = pro_shape[1];
-  pro_shape.erase(pro_shape.begin() + 1);
-  pro_shape.push_back(temp);
-  strides.back() = 1;
-  for (int i = dim - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * pro_shape[i + 1];
-  }
-  strides.pop_back();
-  strides.insert(strides.begin() + 1, 1);
-  return strides;
-}
 
-static inline int64_t AlignUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
+  framework::AlgorithmsCache<CudnnFusionOp *> *GetForward() {
+    return &forward_cache_;
+  }
+  framework::AlgorithmsCache<CudnnFusionOp *> *GetBackward() {
+    return &backward_cache_;
+  }
+
+ private:
+  CudnnFusionOpCache() {}
+  ~CudnnFusionOpCache() {
+    // Need to delete the memory of cache.
+  }
+  CudnnFusionOpCache(const CudnnFusionOpCache &) {}
+
+ private:
+  framework::AlgorithmsCache<CudnnFusionOp *> forward_cache_;
+  framework::AlgorithmsCache<CudnnFusionOp *> backward_cache_;
+};
 
 #endif  // CUDNN_VERSION >= 8000
 }  // namespace operators
