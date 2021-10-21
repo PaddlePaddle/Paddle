@@ -383,12 +383,12 @@ def zeros_like(x, dtype=None, name=None):
 
 def zeropad2d(x, pad, data_format="NCHW", name=None):
     """
-    Pad tensor with 0 according to 'pad'.
+    Pads the input tensor boundaries with zero according to 'pad'.
 
     Args:
         x(Tensor): The input tensor with data type float32/float64/int32/int64.
-        pad(Tensor | List[int] | Tuple[int]): The padding size with data type int.
-            The input dimension should be 3 and pad has the form (pad_left, pad_right,
+        pad(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            The input dimension should be 4 and pad has the form (pad_left, pad_right,
             pad_top, pad_bottom).
         data_format(str): An string from: "NHWC", "NCHW". Specify the data format of 
             the input data. Default: "NCHW".
@@ -402,7 +402,7 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
         .. code-block:: text
             x = [[[[1., 2., 3.],
                   [4., 5., 6.]]]]
-            pad = [0, 0, 0, 0, 0, 0, 1, 1,]
+            pad = [0, 0, 1, 1]
             out = [[[[0., 0., 0.],
                      [1., 2., 3.],
                      [4., 5., 6.],
@@ -444,6 +444,10 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
 
     if isinstance(pad, Variable):
         pad = pad.numpy()
+    assert len(
+        pad
+    ) == 4, "when the type of 'pad' is not int, the length of 'pad' shoud be 4."
+    pad = [pad[2], pad[3], pad[0], pad[1]]
     out = core.ops.pad2d(x, "paddings", pad, "value", 0, "data_format",
                          data_format, "name", name)
 

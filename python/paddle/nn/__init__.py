@@ -52,6 +52,7 @@ from .layer.activation import Maxout  # noqa: F401
 from .layer.common import Pad1D  # noqa: F401
 from .layer.common import Pad2D  # noqa: F401
 from .layer.common import Pad3D  # noqa: F401
+from .layer.common import ZeroPad2d  # noqa: F401
 from .layer.common import CosineSimilarity  # noqa: F401
 from .layer.common import Embedding  # noqa: F401
 from .layer.common import Linear  # noqa: F401
@@ -204,6 +205,7 @@ __all__ = [     #noqa
            'Pad1D',
            'Pad2D',
            'Pad3D',
+           'ZeroPad2d',
            'CosineSimilarity',
            'Dropout',
            'Dropout2D',

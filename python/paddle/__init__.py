@@ -427,6 +427,7 @@ __all__ = [  # noqa
            'tril',
            'pow',
            'zeros_like',
+           'zeropad2d',
            'maximum',
            'topk',
            'index_select',
