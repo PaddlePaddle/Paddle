@@ -164,29 +164,29 @@ paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
 
 size_t DataTypeSize(DataType dtype) {
   switch (dtype) {
-    case DataType::kUndef:
+    case DataType::UNDEFINED:
       return 0;
-    case DataType::kBOOL:
+    case DataType::BOOL:
       return sizeof(bool);
-    case DataType::kINT8:
+    case DataType::INT8:
       return sizeof(int8_t);
-    case DataType::kUINT8:
+    case DataType::UINT8:
       return sizeof(uint8_t);
-    case DataType::kINT16:
+    case DataType::INT16:
       return sizeof(int16_t);
-    case DataType::kINT32:
+    case DataType::INT32:
       return sizeof(int);
-    case DataType::kINT64:
+    case DataType::INT64:
       return sizeof(int64_t);
-    case DataType::kFLOAT16:
+    case DataType::FLOAT16:
       return sizeof(paddle::platform::float16);
-    case DataType::kFLOAT32:
+    case DataType::FLOAT32:
       return sizeof(float);
-    case DataType::kFLOAT64:
+    case DataType::FLOAT64:
       return sizeof(double);
-    case DataType::kCOMPLEX64:
+    case DataType::COMPLEX64:
       return sizeof(paddle::platform::complex<float>);
-    case DataType::kCOMPLEX128:
+    case DataType::COMPLEX128:
       return sizeof(paddle::platform::complex<double>);
     default:
       return 0;
@@ -195,55 +195,55 @@ size_t DataTypeSize(DataType dtype) {
 
 DataType String2DataType(const std::string& str) {
   if (str == "bool") {
-    return DataType::kBOOL;
+    return DataType::BOOL;
   } else if (str == "float16") {
-    return DataType::kFLOAT16;
+    return DataType::FLOAT16;
   } else if (str == "float32") {
-    return DataType::kFLOAT32;
+    return DataType::FLOAT32;
   } else if (str == "float64") {
-    return DataType::kFLOAT64;
+    return DataType::FLOAT64;
   } else if (str == "int8") {
-    return DataType::kINT8;
+    return DataType::INT8;
   } else if (str == "int16") {
-    return DataType::kINT16;
+    return DataType::INT16;
   } else if (str == "int32") {
-    return DataType::kINT32;
+    return DataType::INT32;
   } else if (str == "int64") {
-    return DataType::kINT64;
+    return DataType::INT64;
   } else if (str == "uint8") {
-    return DataType::kUINT8;
+    return DataType::UINT8;
   } else if (str == "complex64") {
-    return DataType::kCOMPLEX64;
+    return DataType::COMPLEX64;
   } else if (str == "complex128") {
-    return DataType::kCOMPLEX128;
+    return DataType::COMPLEX128;
   } else {
-    return DataType::kUndef;
+    return DataType::UNDEFINED;
   }
 }
 
 std::string DataType2String(DataType dtype) {
   switch (dtype) {
-    case DataType::kBOOL:
+    case DataType::BOOL:
       return "bool";
-    case DataType::kINT8:
+    case DataType::INT8:
       return "int8";
-    case DataType::kUINT8:
+    case DataType::UINT8:
       return "uint8";
-    case DataType::kINT16:
+    case DataType::INT16:
       return "int16";
-    case DataType::kINT32:
+    case DataType::INT32:
       return "int32";
-    case DataType::kINT64:
+    case DataType::INT64:
       return "int64";
-    case DataType::kFLOAT16:
+    case DataType::FLOAT16:
       return "float16";
-    case DataType::kFLOAT32:
+    case DataType::FLOAT32:
       return "float32";
-    case DataType::kFLOAT64:
+    case DataType::FLOAT64:
       return "float64";
-    case DataType::kCOMPLEX64:
+    case DataType::COMPLEX64:
       return "complex64";
-    case DataType::kCOMPLEX128:
+    case DataType::COMPLEX128:
       return "complex128";
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -255,27 +255,27 @@ std::string DataType2String(DataType dtype) {
 
 int TensorDtype2NumpyDtype(pten::DataType dtype) {
   switch (dtype) {
-    case pten::DataType::kBOOL:
+    case pten::DataType::BOOL:
       return NPY_TYPES::NPY_BOOL;
-    case pten::DataType::kINT8:
+    case pten::DataType::INT8:
       return NPY_TYPES::NPY_INT8;
-    case pten::DataType::kUINT8:
+    case pten::DataType::UINT8:
       return NPY_TYPES::NPY_UINT8;
-    case pten::DataType::kINT16:
+    case pten::DataType::INT16:
       return NPY_TYPES::NPY_INT16;
-    case pten::DataType::kINT32:
+    case pten::DataType::INT32:
       return NPY_TYPES::NPY_INT32;
-    case pten::DataType::kINT64:
+    case pten::DataType::INT64:
       return NPY_TYPES::NPY_INT64;
-    case pten::DataType::kFLOAT16:
+    case pten::DataType::FLOAT16:
       return NPY_TYPES::NPY_FLOAT;  // numpy not have float16
-    case pten::DataType::kFLOAT32:
+    case pten::DataType::FLOAT32:
       return NPY_TYPES::NPY_FLOAT;
-    case pten::DataType::kFLOAT64:
+    case pten::DataType::FLOAT64:
       return NPY_TYPES::NPY_DOUBLE;
-    case pten::DataType::kCOMPLEX64:
+    case pten::DataType::COMPLEX64:
       return NPY_TYPES::NPY_COMPLEX64;
-    case pten::DataType::kCOMPLEX128:
+    case pten::DataType::COMPLEX128:
       return NPY_TYPES::NPY_COMPLEX128;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(

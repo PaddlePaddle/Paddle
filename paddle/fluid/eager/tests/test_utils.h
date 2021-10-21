@@ -36,7 +36,7 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
   T* ptr = grad_dense->mutable_data<T>();
 
   std::vector<T> host_data(grad_dense->numel());
-  if (grad_dense->backend() == pten::Backend::kCUDA) {
+  if (grad_dense->backend() == pten::Backend::CUDA) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -62,7 +62,7 @@ bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
   T* ptr = dense_t->mutable_data<T>();
 
   std::vector<T> host_data(dense_t->numel());
-  if (dense_t->backend() == pten::Backend::kCUDA) {
+  if (dense_t->backend() == pten::Backend::CUDA) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(

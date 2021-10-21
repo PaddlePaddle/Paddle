@@ -19,9 +19,10 @@ limitations under the License. */
 #include <utility>
 #include "glog/logging.h"
 
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/hapi/include/tensor_signature.h"
-
 /**
  * [ Why still include the fluid headers? ]
  *
@@ -40,9 +41,6 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/pten/hapi/include/tensor_signature.h"
 
 namespace paddle {
 namespace experimental {
@@ -85,7 +83,10 @@ class AbstractAutogradMeta {
 class Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
-  Tensor() {}
+  Tensor() { signature_.reset(new TensorSignature()); }
+  explicit Tensor(const std::string& name) {
+    signature_.reset(new TensorSignature(name));
+  }
   Tensor(const Tensor&) = default;
   Tensor(Tensor&&) = default;
 
@@ -174,6 +175,14 @@ class Tensor final {
    */
   void set_impl(const std::shared_ptr<pten::TensorBase>& impl) { impl_ = impl; }
 
+  /**
+   * @description: Set the signature of current Tensor.
+   * @param {const std::shared_ptr<TensorSignature>& }
+   * @return None
+   */
+  void set_signature(const std::shared_ptr<TensorSignature>& signature) {
+    signature_ = signature;
+  }
   // TODO(chenweihang): Whether API Tensor need `data` and `mutable_data`?
 
   // TODO(chenweihang): slice and split methods use kernels?
@@ -204,12 +213,14 @@ class Tensor final {
   Tensor& operator=(const Tensor& x) & {
     impl_ = x.impl_;
     autograd_meta_ = x.autograd_meta_;
+    signature_ = x.signature_;
     return *this;
   }
 
   Tensor& operator=(Tensor&& x) & {
     impl_ = std::move(x.impl_);
     autograd_meta_ = std::move(x.autograd_meta_);
+    signature_ = x.signature_;
     return *this;
   }
 
@@ -257,7 +268,7 @@ class Tensor final {
    *    information, not Tensor data description-related information.
    * 2. Kernel calculation does not require AutogradMeta.
    */
-  std::shared_ptr<AutogradMetaInterface> autograd_meta_{nullptr};
+  std::shared_ptr<AbstractAutogradMeta> autograd_meta_{nullptr};
 
   /**
    * TensorSignature is used to store auxiliary description information

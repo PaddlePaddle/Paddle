@@ -77,8 +77,8 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
-      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
+      1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
@@ -176,8 +176,8 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
-      pten::DataLayout::kNCHW, 1.0 /*value*/, false /*is_leaf*/);
+      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
+      1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::experimental::Tensor& target_tensor = target_tensors[0];
 

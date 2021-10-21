@@ -39,6 +39,8 @@ struct TensorSignature final {
       : backend_set(t_backend_set) {}
   TensorSignature(const std::string& t_name, const BackendSet& t_backend_set)
       : name(t_name), backend_set(t_backend_set) {}
+  TensorSignature(const std::string& t_name, const Backend& t_backend)
+      : name(t_name), backend_set(t_backend) {}
 };
 
 }  // namespace experimental

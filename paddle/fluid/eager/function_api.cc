@@ -31,28 +31,28 @@ static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
                                 float bias, bool bias_after_scale,
                                 pten::DenseTensor* dense_out) {
   switch (dense_tensor.data_type()) {
-    case pten::DataType::kFLOAT64: {
+    case pten::DataType::FLOAT64: {
       pten::Scale<double>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
                           bias /* bias */,
                           bias_after_scale /* bias_after_scale */,
                           dense_out /* out tensor */);
       break;
     }
-    case pten::DataType::kFLOAT32: {
+    case pten::DataType::FLOAT32: {
       pten::Scale<float>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
                          bias /* bias */,
                          bias_after_scale /* bias_after_scale */,
                          dense_out /* out tensor */);
       break;
     }
-    case pten::DataType::kINT64: {
+    case pten::DataType::INT64: {
       pten::Scale<int64_t>(dev_ctx, dense_tensor /* tensor */,
                            scale /* scale */, bias /* bias */,
                            bias_after_scale /* bias_after_scale */,
                            dense_out /* out tensor */);
       break;
     }
-    case pten::DataType::kINT32: {
+    case pten::DataType::INT32: {
       pten::Scale<int32_t>(dev_ctx, dense_tensor /* tensor */,
                            scale /* scale */, bias /* bias */,
                            bias_after_scale /* bias_after_scale */,
@@ -72,7 +72,7 @@ static void FillConstCPUFunctor(pten::DenseTensor* tensor_dense, double value) {
   PADDLE_ENFORCE(tensor_dense, paddle::platform::errors::Fatal(
                                    "Receive nullptr of dense tensor"));
   switch (tensor_dense->data_type()) {
-    case pten::DataType::kINT64: {
+    case pten::DataType::INT64: {
       int64_t* data_ptr = tensor_dense->mutable_data<int64_t>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<int64_t>(value);
@@ -80,7 +80,7 @@ static void FillConstCPUFunctor(pten::DenseTensor* tensor_dense, double value) {
 
       break;
     }
-    case pten::DataType::kINT32: {
+    case pten::DataType::INT32: {
       int32_t* data_ptr = tensor_dense->mutable_data<int32_t>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<int32_t>(value);
@@ -88,7 +88,7 @@ static void FillConstCPUFunctor(pten::DenseTensor* tensor_dense, double value) {
 
       break;
     }
-    case pten::DataType::kFLOAT64: {
+    case pten::DataType::FLOAT64: {
       double* data_ptr = tensor_dense->mutable_data<double>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<double>(value);
@@ -96,7 +96,7 @@ static void FillConstCPUFunctor(pten::DenseTensor* tensor_dense, double value) {
 
       break;
     }
-    case pten::DataType::kFLOAT32: {
+    case pten::DataType::FLOAT32: {
       float* data_ptr = tensor_dense->mutable_data<float>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
         data_ptr[i] = static_cast<float>(value);
@@ -123,7 +123,7 @@ static void FillConstCUDAFunctor(pten::DenseTensor* tensor_dense,
   auto stream = dev_ctx->stream();
 
   switch (tensor_dense->data_type()) {
-    case pten::DataType::kINT64: {
+    case pten::DataType::INT64: {
       std::vector<int64_t> host_data(tensor_dense->numel(),
                                      static_cast<int64_t>(value));
       int64_t* device_ptr = tensor_dense->mutable_data<int64_t>();
@@ -132,7 +132,7 @@ static void FillConstCUDAFunctor(pten::DenseTensor* tensor_dense,
                            sizeof(int64_t) * tensor_dense->numel(), stream);
       break;
     }
-    case pten::DataType::kINT32: {
+    case pten::DataType::INT32: {
       std::vector<int32_t> host_data(tensor_dense->numel(),
                                      static_cast<int32_t>(value));
       int32_t* device_ptr = tensor_dense->mutable_data<int32_t>();
@@ -141,7 +141,7 @@ static void FillConstCUDAFunctor(pten::DenseTensor* tensor_dense,
                            sizeof(int32_t) * tensor_dense->numel(), stream);
       break;
     }
-    case pten::DataType::kFLOAT64: {
+    case pten::DataType::FLOAT64: {
       std::vector<double> host_data(tensor_dense->numel(),
                                     static_cast<double>(value));
       double* device_ptr = tensor_dense->mutable_data<double>();
@@ -150,7 +150,7 @@ static void FillConstCUDAFunctor(pten::DenseTensor* tensor_dense,
                            sizeof(double) * tensor_dense->numel(), stream);
       break;
     }
-    case pten::DataType::kFLOAT32: {
+    case pten::DataType::FLOAT32: {
       std::vector<float> host_data(tensor_dense->numel(),
                                    static_cast<float>(value));
       float* device_ptr = tensor_dense->mutable_data<float>();
@@ -240,12 +240,12 @@ void FillConstAPI(double value, const pten::DDim& ddim,
   }
   VLOG(6) << "Call FillConstKernel";
   switch (tensor_dense->backend()) {
-    case pten::Backend::kCPU: {
+    case pten::Backend::CPU: {
       VLOG(8) << "Call FillConst CPU Kernel";
       FillConstCPUFunctor(tensor_dense.get(), value);
       break;
     }
-    case pten::Backend::kCUDA: {
+    case pten::Backend::CUDA: {
       VLOG(8) << "Call FillConst CUDA Kernel";
       FillConstCUDAFunctor(tensor_dense.get(), value);
       break;
