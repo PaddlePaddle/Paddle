@@ -1174,6 +1174,23 @@ MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
       .IsType<bool>()
       .End();
 
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("trans_y")  // QK(true) QKV(false)
+      .IsType<bool>()
+      .End();
+
   AddOpCompat(OpCompat("softmax"))
       .AddInput("X")
       .IsTensor()

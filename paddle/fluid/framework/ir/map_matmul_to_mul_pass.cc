@@ -307,8 +307,8 @@ void MapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     desc.SetInput("X", {matmul_v2_in_x->Name()});
     desc.SetInput("Y", {matmul_v2_in_y->Name()});
     desc.SetOutput("Out", {matmul_v2_out->Name()});
-    desc.SetAttr("transpose_X", matmul_v2_op->Op()->GetAttr("transpose_X"));
-    desc.SetAttr("transpose_Y", matmul_v2_op->Op()->GetAttr("transpose_Y"));
+    desc.SetAttr("transpose_X", matmul_v2_op->Op()->GetAttr("trans_x"));
+    desc.SetAttr("transpose_Y", matmul_v2_op->Op()->GetAttr("trans_y"));
     if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
       desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
