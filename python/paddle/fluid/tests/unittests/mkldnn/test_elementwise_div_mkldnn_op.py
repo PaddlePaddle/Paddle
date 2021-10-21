@@ -43,15 +43,13 @@ class TestMKLDNNElementwiseDivOp(OpTest):
         self.out = np.divide(self.x, self.y)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X', 'Y'], 'Out', None, 0.005, False, 0.02)
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=0.02)
+        self.check_grad(['Y'], 'Out', set("X"), 0.005, False, 0.02)
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(
-            ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=0.02)
+        self.check_grad(['X'], 'Out', set('Y'), 0.005, False, 0.02)
 
     def init_axis(self):
         self.axis = -1
@@ -136,24 +134,23 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X", "Y"],
-            "Out",
-            user_defined_grads=[
-                np.divide(self.x, self.y), np.divide(
-                    (np.multiply(-self.x, self.x)), np.multiply(self.y, self.y))
-            ],
-            user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
+                                   "Out",
+                                   user_defined_grads=[
+                                       np.divide(self.x, self.y),
+                                       np.divide((np.multiply(-self.x, self.x)),
+                                                 np.multiply(self.y, self.y))
+                                   ],
+                                   user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ignore_x(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["Y"],
-            "Out",
-            user_defined_grads=[
-                np.divide((np.multiply(-self.x, self.y)),
-                          np.multiply(self.y, self.y))
-            ],
-            user_defined_grad_outputs=[self.y_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["Y"],
+                                   "Out",
+                                   user_defined_grads=[
+                                       np.divide((np.multiply(-self.x, self.y)),
+                                                 np.multiply(self.y, self.y))
+                                   ],
+                                   user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
