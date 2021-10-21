@@ -47,9 +47,10 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   CHECK(dense_tensor.lod().size() == lod_tensor.lod().size());
   CHECK(dense_tensor.lod()[0] ==
         static_cast<std::vector<size_t>>((lod_tensor.lod()[0])));
-  CHECK(dense_tensor.data_type() == pten::TransToPtDataType(lod_tensor.type()));
+  CHECK(dense_tensor.data_type() ==
+        pten::TransToPtenDataType(lod_tensor.type()));
   CHECK(dense_tensor.layout() ==
-        pten::TransToPtDataLayout(lod_tensor.layout()));
+        pten::TransToPtenDataLayout(lod_tensor.layout()));
   CHECK(platform::is_cpu_place(lod_tensor.place()));
 
   CHECK(lod_tensor.data<float>()[0] == 1.0f);
@@ -82,8 +83,8 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   framework::Tensor tensor;
   MovesStorage(&dense_tensor, &tensor);
 
-  CHECK(dense_tensor.data_type() == pten::TransToPtDataType(tensor.type()));
-  CHECK(dense_tensor.layout() == pten::TransToPtDataLayout(tensor.layout()));
+  CHECK(dense_tensor.data_type() == pten::TransToPtenDataType(tensor.type()));
+  CHECK(dense_tensor.layout() == pten::TransToPtenDataLayout(tensor.layout()));
   CHECK(platform::is_cpu_place(tensor.place()));
 
   CHECK(tensor.data<float>()[0] == 1.0f);

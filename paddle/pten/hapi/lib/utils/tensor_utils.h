@@ -39,9 +39,9 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
 
 std::shared_ptr<DenseTensor> MakeSharedDenseTensor(
     const paddle::framework::Tensor& src) {
-  DenseTensorMeta meta{pten::TransToPtDataType(src.type()),
+  DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
                        src.dims(),
-                       pten::TransToPtDataLayout(src.layout())};
+                       pten::TransToPtenDataLayout(src.layout())};
   auto shared_storage = pten::make_intrusive<SharedStorage>(src.Holder());
   return std::make_shared<DenseTensor>(std::move(shared_storage),
                                        std::move(meta));
@@ -49,9 +49,9 @@ std::shared_ptr<DenseTensor> MakeSharedDenseTensor(
 
 std::shared_ptr<DenseTensor> MakeSharedDenseTensor(
     const paddle::framework::LoDTensor& src) {
-  DenseTensorMeta meta{pten::TransToPtDataType(src.type()),
+  DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
                        src.dims(),
-                       pten::TransToPtDataLayout(src.layout())};
+                       pten::TransToPtenDataLayout(src.layout())};
   SetLoD(&meta.lod, src.lod());
   auto shared_storage = pten::make_intrusive<SharedStorage>(src.Holder());
   return std::make_shared<DenseTensor>(std::move(shared_storage),
