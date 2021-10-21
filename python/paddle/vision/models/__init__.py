@@ -37,6 +37,14 @@ from .resnext import resnext101_32x4d  # noqa: F401
 from .resnext import resnext101_64x4d  # noqa: F401
 from .resnext import resnext152_32x4d  # noqa: F401
 from .resnext import resnext152_64x4d  # noqa: F401
+from .shufflenetv2 import ShuffleNetV2  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x0_25  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x0_33  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x0_5  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x1_0  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x1_5  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x2_0  # noqa: F401
+from .shufflenetv2 import shufflenetv2_swish  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -63,5 +71,11 @@ __all__ = [ #noqa
     'resnext101_32x4d',
     'resnext101_64x4d',
     'resnext152_32x4d',
-    'resnext152_64x4d'
+    'resnext152_64x4d',
+    'shufflenetv2_x0_25',
+    'shufflenetv2_x0_33',
+    'shufflenetv2_x0_5',
+    'shufflenetv2_x1_0',
+    'shufflenetv2_x1_5',
+    'shufflenetv2_x2_0',
 ]

@@ -53,6 +53,14 @@ from .models import resnext101_32x4d  # noqa: F401
 from .models import resnext101_64x4d  # noqa: F401
 from .models import resnext152_32x4d  # noqa: F401
 from .models import resnext152_64x4d  # noqa: F401
+from .models import ShuffleNetV2  # noqa: F401
+from .models import shufflenetv2_x0_25  # noqa: F401
+from .models import shufflenetv2_x0_33  # noqa: F401
+from .models import shufflenetv2_x0_5  # noqa: F401
+from .models import shufflenetv2_x1_0  # noqa: F401
+from .models import shufflenetv2_x1_5  # noqa: F401
+from .models import shufflenetv2_x2_0  # noqa: F401
+from .models import shufflenetv2_swish  # noqa: F401
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
 from .transforms import Resize  # noqa: F401
