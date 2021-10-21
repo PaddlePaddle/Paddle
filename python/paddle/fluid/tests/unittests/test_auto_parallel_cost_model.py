@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 
+import copy
 import paddle
 import paddle.nn as nn
 import paddle.static as static
@@ -141,28 +142,24 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
+    dist_strategy = fleet.DistributedStrategy()
+
     # auto completion
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
+    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    # logical partition
+    auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
+        complete_train_program, startup_program)
+    dist_params_grads = partitioner.apply_backward(
+        loss, complete_train_program, startup_program, auto_parallel_main_prog,
+        auto_parallel_startup_prog)
+    optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
+                                         auto_parallel_main_prog,
+                                         auto_parallel_startup_prog)
 
-    dist_strategy = fleet.DistributedStrategy()
-    dist_main_prog = []
-    dist_startup_prog = []
-    for rank_id in range(NUM_RANKS):
-        partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-        # logical partition
-        auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
-            complete_train_program, startup_program)
-        dist_params_grads = partitioner.apply_backward(
-            loss, complete_train_program, startup_program,
-            auto_parallel_main_prog, auto_parallel_startup_prog)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer()
-        opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                             auto_parallel_main_prog,
-                                             auto_parallel_startup_prog)
-        dist_main_prog.append(auto_parallel_main_prog)
-        dist_startup_prog.append(auto_parallel_startup_prog)
-    return dist_main_prog, dist_startup_prog
+    return auto_parallel_main_prog, auto_parallel_startup_prog
 
 
 def check_runtime_estimation(cost):
@@ -210,20 +207,20 @@ class TestCostModel(unittest.TestCase):
         self.assertTrue(check_empty_program_memory(cost))
 
     def test_auto_parallel_cost_model(self):
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        dist_context = DistributedContext()
         standalone_cost_data = get_single_node_data()
-        distributed_program, dist_startup_prog = get_dist_prog(
-            train_program, startup_program, dist_context, 0)
+        dist_program = []
         for rank_id in range(NUM_RANKS):
-            complete_backward_annotation(distributed_program[rank_id],
-                                         dist_context)
-            reshard(distributed_program[rank_id], dist_startup_prog[rank_id],
-                    rank_id, dist_context)
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            dist_context = DistributedContext()
+            distributed_program, dist_startup_prog = get_dist_prog(
+                train_program, startup_program, dist_context, rank_id)
+            reshard(distributed_program, dist_startup_prog, rank_id,
+                    dist_context)
+            dist_program.append(distributed_program)
         cluster = None
         cost = estimate_cost(
-            distributed_program,
+            dist_program,
             cluster=cluster,
             pipeline_config=pp_cfg,
             standalone_cost_data=standalone_cost_data,
