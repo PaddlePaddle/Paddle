@@ -213,9 +213,9 @@ class ConvTransposeMKLDNNHandlerT
     auto user_src_md = platform::MKLDNNMemDesc(
         framework::vectorize(input->dims()), platform::MKLDNNGetDataType<T>(),
         input->format());
-    return this->AcquireMemoryWithReorder(
-        user_src_md, this->fwd_pd_->src_desc(),
-        platform::to_void_cast<T>(input_data));
+    return platform::MKLDNNHandlerNoCachingT<T, mkldnn::deconvolution_forward>::
+        AcquireMemoryWithReorder(user_src_md, this->fwd_pd_->src_desc(),
+                                 platform::to_void_cast<T>(input_data));
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryWithReorder(
@@ -386,7 +386,8 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
     // Caching Key for weights is needed
     std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
-                                          ctx.InputName("Filter"), (bias ? ctx.InputName("Bias") : ""));
+                                          ctx.InputName("Filter"),
+                                          (bias ? ctx.InputName("Bias") : ""));
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
         dev_ctx, key, filter, ctx.Attr<int>("groups"));
