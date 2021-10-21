@@ -164,10 +164,6 @@ TEST(mkldnn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-#ifdef GFLAGS_NAMESPACE
   GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-#else
-  ::google::ParseCommandLineFlags(&argc, &argv, true);
-#endif
   return RUN_ALL_TESTS();
 }
