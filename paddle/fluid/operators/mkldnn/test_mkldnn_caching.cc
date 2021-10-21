@@ -138,7 +138,8 @@ TEST(test_conv2d_reuse_cache, cpu_place) {
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal");
-  PADDLE_ENFORCE_EQ(ct.Analyze(9), true,
+  // 3 cached objects are: user_weights, reordered_weights, reorder primitive
+  PADDLE_ENFORCE_EQ(ct.Analyze(3), true,
                     platform::errors::InvalidArgument(
                         "Invalid number of cached oneDNN objects"));
 }
@@ -149,7 +150,7 @@ TEST(test_conv2d_noreuse_cache, cpu_place) {
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");
-  PADDLE_ENFORCE_EQ(ct.Analyze(18), true,
+  PADDLE_ENFORCE_EQ(ct.Analyze(6), true,
                     platform::errors::InvalidArgument(
                         "Invalid number of cached oneDNN objects"));
 }
