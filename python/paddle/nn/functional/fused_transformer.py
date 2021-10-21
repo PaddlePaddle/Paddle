@@ -83,6 +83,7 @@ def fused_feedforward(x,
             x_data = np.random.random((1, 8, 8)).astype("float32")
             linear1_weight_data = np.random.random((8, 8)).astype("float32")
             linear2_weight_data = np.random.random((8, 8)).astype("float32")
+            place = paddle.CUDAPlace(0)
             x = paddle.to_tensor(x_data)
             linear1_weight = paddle.to_tensor(linear1_weight_data)
             linear2_weight = paddle.to_tensor(linear2_weight_data)
