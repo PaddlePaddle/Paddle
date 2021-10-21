@@ -109,7 +109,7 @@ TEST(CinnCompilerTest, TodoTest) {
   std::map<std::string, const LoDTensor*> input_tensors = {
       {"input", &tensor1}, {"fc_w", &tensor2}, {"fc_b", &tensor3}};
 
-  auto compile_fn = [&cinn_compiler](const Target& target) {
+  auto compile_fn = [&](const Target& target) {
     auto* compiled_obj = cinn_compiler->Compile(*graph, input_tensors, target);
     ASSERT_NE(compiled_obj->runtime_program.get(), nullptr);
     ASSERT_NE(compiled_obj->scope.get(), nullptr);

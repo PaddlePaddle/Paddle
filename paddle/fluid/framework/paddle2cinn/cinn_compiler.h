@@ -35,8 +35,8 @@ namespace paddle2cinn {
 struct CinnCompiledObject {
   std::unique_ptr<::cinn::hlir::framework::Program> runtime_program;
   std::shared_ptr<::cinn::hlir::framework::Scope> scope;
-  absl::unordered_map<std::string, std::string> paddle2cinn_varmap;
-}
+  std::unordered_map<std::string, std::string> paddle2cinn_varmap;
+};
 
 // Entrance to use CINN.
 //
@@ -69,10 +69,10 @@ class CinnCompiler {
 
  private:
   CinnCompiler() = default;
-  std::unique_ptr<CinnCompiledObject> CompileGraph const(
+  std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target);
+      const ::cinn::common::Target& target) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,

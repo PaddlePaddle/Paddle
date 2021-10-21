@@ -405,7 +405,7 @@ void SearchAllSubgraphs(Graph* graph, std::vector<Graph*>* cinn_subgraphs) {
 
 void BuildCinnPass::ApplyImpl(Graph* graph) const {
   auto& cinn_subgraphs = Get<std::vector<Graph*>>("cinn_subgraphs");
-  SearchAllSubgraphs(graph, cinn_subgraphs);
+  SearchAllSubgraphs(graph, &cinn_subgraphs);
 }
 
 }  // namespace paddle2cinn
