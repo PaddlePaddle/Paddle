@@ -78,6 +78,7 @@ def fused_feedforward(x,
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             import numpy as np
             x_data = np.random.random((1, 8, 8)).astype("float32")
