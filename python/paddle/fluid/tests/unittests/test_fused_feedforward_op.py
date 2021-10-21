@@ -162,8 +162,8 @@ class TestFusedFFNOpFp16(TestFusedFFNOp):
     def getShape(self):
         self.batch_size = 8
         self.query_length = 128
-        self.d_model = 1024
-        self.dim_feedforward = 1024
+        self.d_model = 512
+        self.dim_feedforward = 512
 
 
 class TestFusedFFNOpFp64(TestFusedFFNOp):

@@ -76,19 +76,19 @@ def fused_feedforward(x,
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        import numpy as np
-        x_data = np.random.random((1, 8, 8)).astype("float32")
-        linear1_weight_data = np.random.random((8, 8)).astype("float32")
-        linear2_weight_data = np.random.random((8, 8)).astype("float32")
-        x = paddle.to_tensor(x_data)
-        linear1_weight = paddle.to_tensor(linear1_weight_data)
-        linear2_weight = paddle.to_tensor(linear2_weight_data)
-        out = paddle.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
-        print(out.numpy().shape)
-        # (1, 8, 8)
+            import paddle
+            import numpy as np
+            x_data = np.random.random((1, 8, 8)).astype("float32")
+            linear1_weight_data = np.random.random((8, 8)).astype("float32")
+            linear2_weight_data = np.random.random((8, 8)).astype("float32")
+            x = paddle.to_tensor(x_data)
+            linear1_weight = paddle.to_tensor(linear1_weight_data)
+            linear2_weight = paddle.to_tensor(linear2_weight_data)
+            out = paddle.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
+            print(out.numpy().shape)
+            # (1, 8, 8)
 
     """
     _verify_dropout_rate(dropout1_rate)
