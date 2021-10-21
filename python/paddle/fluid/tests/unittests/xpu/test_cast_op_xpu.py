@@ -56,7 +56,7 @@ def create_test_class(in_typename, out_typename):
 
 
 for in_type in {'float16', 'float32', 'int32', 'int64', 'bool'}:
-    for out_type in {'float16', 'float32', 'int32', 'int64', 'bool'}:
+    for out_type in {'float16', 'float32', 'int32', 'int64'}:
         create_test_class(in_type, out_type)
 
 
