@@ -1284,11 +1284,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(this->GetExpectedPtenKernelArgs(ctx)));
+      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
 
   VLOG(1) << KernelSignatureToString(*pt_kernel_signature_.get());
 
-  kernel_type_.reset(new OpKernelType(InnerGetExpectedKernelType(ctx)));
+  kernel_type_.reset(
+      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
   auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
   auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
@@ -1780,7 +1781,7 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     return *(KernelSignatureMap::Instance().GetNullable(Type()));
   } else {
     KernelArgsNameMakerByOpProto maker(Info().proto_);
-    auto signature = maker.GetKernelSignature();
+    auto signature = std::move(maker.GetKernelSignature());
     KernelSignatureMap::Instance().Insert(Type(), signature);
     return signature;
   }
@@ -1831,8 +1832,8 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
             << in_def.layout;
 
     auto ins_vector = ctx.inputs.at(input_names[i]);
-    std::vector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
 
+    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
       auto pt_in = framework::InputVariableToPtenTensor(*var, in_def);
       tmp_inputs.emplace_back(pt_in);
@@ -1844,7 +1845,7 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
     auto out_def = output_defs.at(i);
     auto outs_vector = ctx.outputs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
+    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto pt_out = framework::OutputVariableToPtenTensor(var, out_def);
       tmp_outputs.emplace_back(pt_out);

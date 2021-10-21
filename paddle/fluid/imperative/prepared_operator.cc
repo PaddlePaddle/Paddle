@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
+#include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
@@ -262,9 +263,9 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
   auto& attr_names = std::get<1>(pt_kernel_signature.second);
   auto& output_names = std::get<2>(pt_kernel_signature.second);
 
-  auto input_defs = pt_kernel.args_def().input_defs();
-  auto output_defs = pt_kernel.args_def().output_defs();
-  auto attr_defs = pt_kernel.args_def().attribute_defs();
+  auto& input_defs = pt_kernel.args_def().input_defs();
+  auto& output_defs = pt_kernel.args_def().output_defs();
+  auto& attr_defs = pt_kernel.args_def().attribute_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -288,7 +289,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
 
-    std::vector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
+    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
       const auto& variable = var->Var();
 
@@ -302,7 +303,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
+    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto* variable = var->MutableVar();
 
