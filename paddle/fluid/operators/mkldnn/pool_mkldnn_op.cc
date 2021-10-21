@@ -234,16 +234,16 @@ class PoolingMKLDNNHandler
         platform::CreateKey(dev_ctx, workspace_md.dims(),
                             workspace_md.data_type(), unique_name, "@wrk");
     auto mem_p = std::static_pointer_cast<mkldnn::memory>(
-        this->dev_ctx_.GetBlob(workspace_key));
+        dev_ctx.GetBlob(workspace_key));
     if (mem_p == nullptr) {
       static std::mutex acquire_barrier;
       std::lock_guard<std::mutex> block_threads_until_finish_this_job(
           acquire_barrier);
       mem_p = std::static_pointer_cast<mkldnn::memory>(
-          this->dev_ctx_.GetBlob(workspace_key));
+          dev_ctx.GetBlob(workspace_key));
       if (mem_p == nullptr) {
         mem_p = std::make_shared<mkldnn::memory>(workspace_md, this->engine_);
-        this->dev_ctx_.SetBlob(workspace_key, mem_p);
+        dev_ctx.SetBlob(workspace_key, mem_p);
       }
     }
     return mem_p;
