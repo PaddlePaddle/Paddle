@@ -79,7 +79,7 @@ MapMatmulV2ToMatmulPass::MapMatmulV2ToMatmulPass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
-      .End()
+      .End();
 
   AddOpCompat(OpCompat("matmul"))
       .AddInput("X")
@@ -90,7 +90,7 @@ MapMatmulV2ToMatmulPass::MapMatmulV2ToMatmulPass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
-      .End()
+      .End();
 }
 
 Flatten2MatmulFusePass::Flatten2MatmulFusePass() {
@@ -256,7 +256,8 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
-        desc.SetAttr("out_threshold", matmul_op->Op()->GetAttr("out_threshold"));
+        desc.SetAttr("out_threshold",
+                     matmul_op->Op()->GetAttr("out_threshold"));
       }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(matmul_in_x, mul_node);
@@ -290,8 +291,10 @@ void MapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "map matmul_v2 to matmul";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x, matmul_v2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y, matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
+                              matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
+                              matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op, matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_out, matmul_v2_out, matmul_v2_pattern);
 
@@ -310,7 +313,8 @@ void MapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
       desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
       desc.SetAttr("weight_scale", matmul_v2_op->Op()->GetAttr("weight_scale"));
-      desc.SetAttr("out_threshold", matmul_v2_op->Op()->GetAttr("out_threshold"));
+      desc.SetAttr("out_threshold",
+                   matmul_v2_op->Op()->GetAttr("out_threshold"));
     }
     auto matmul_node = g->CreateOpNode(&desc);
     IR_NODE_LINK_TO(matmul_v2_in_x, matmul_node);
@@ -389,7 +393,8 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
-        desc.SetAttr("out_threshold", matmul_op->Op()->GetAttr("out_threshold"));
+        desc.SetAttr("out_threshold",
+                     matmul_op->Op()->GetAttr("out_threshold"));
       }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(squeeze2_in_x, mul_node);
@@ -532,7 +537,8 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
-        desc.SetAttr("out_threshold", matmul_op->Op()->GetAttr("out_threshold"));
+        desc.SetAttr("out_threshold",
+                     matmul_op->Op()->GetAttr("out_threshold"));
       }
       if (!IsCompat(desc)) {
         LOG(WARNING) << "Reshape2MatmulFusePass in out mul op compat failed.";
@@ -618,7 +624,8 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
-        desc.SetAttr("out_threshold", matmul_op->Op()->GetAttr("out_threshold"));
+        desc.SetAttr("out_threshold",
+                     matmul_op->Op()->GetAttr("out_threshold"));
       }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(flatten2_in_x, mul_node);
