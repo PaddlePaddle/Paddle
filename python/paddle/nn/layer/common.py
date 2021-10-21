@@ -1192,7 +1192,7 @@ class Pad3D(Layer):
             self._pad, self._mode, self._value, self._data_format, name_str)
 
 
-class ZeroPad2d(layers.Layer):
+class ZeroPad2d(Layer):
     """
     This interface is used to construct a callable object of the ``ZeroPad2d`` class.
     Pad the input tensor boundaries with zero according to 'padding'.
