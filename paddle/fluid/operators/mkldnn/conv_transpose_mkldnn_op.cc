@@ -331,19 +331,15 @@ class ConvTransposeMKLDNNHandlerT
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
+      const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key,
       const framework::Tensor* bias) {
-    auto bias_mem_p = this->AcquireMemory("@bias_mem_p_target");
-    if (is_test_ && bias_mem_p) {
-      return bias_mem_p;
-    } else {
-      const K* bias_data = bias->data<K>();
-      auto user_bias_md = platform::MKLDNNMemDesc(
-          framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
-          MKLDNNMemoryFormat::x);
-      return this->AcquireMemoryWithReorder(
-          user_bias_md, this->fwd_pd_->bias_desc(),
-          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test_);
-    }
+    const K* bias_data = bias->data<K>();
+    auto user_bias_md = platform::MKLDNNMemDesc(
+        framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
+        MKLDNNMemoryFormat::x);
+    return this->AcquireMemoryWithReorder(
+        dev_ctx, user_bias_md, this->fwd_pd_->bias_desc(),
+        platform::to_void_cast<K>(bias_data), key, "@bias_mem_p", is_test_);
   }
 
  private:
