@@ -22,6 +22,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace distributed {
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
 
 TableAccessorParameter gen_param() {
   TableAccessorParameter param;
@@ -104,12 +108,10 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   // save base feature with time decay
   ASSERT_TRUE(acc->save(value, 2));
 
-  VLOG(3) << "test_save: \n";
+  VLOG(3) << "test_save:";
   for (auto i = 0u; i < acc->dim(); ++i) {
-    VLOG(3) << value[i] << "\n";
+    VLOG(3) << value[i];
   }
-  // ASSERT_FLOAT_EQ(value[2], 0.99 * 2);
-  // ASSERT_FLOAT_EQ(value[3], 0.99 * 3);
 }
 
 TEST(downpour_feature_value_accessor_test, test_create) {
@@ -258,9 +260,8 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   for (auto i = 0u; i < item_size; ++i) {
     for (auto j = 0u; j < acc->dim(); ++j) {
       VLOG(3) << value[i][j] << ":" << exp_value[i][j] << " ";
-      ASSERT_FLOAT_EQ(value[j][i], exp_value[i][j]);
+      ASSERT_FLOAT_EQ(value[i][j], exp_value[i][j]);
     }
-    VLOG(3) << "\n";
   }
 }
 
@@ -294,10 +295,10 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
   str = "0 1 2 3 4 5 6";
   ASSERT_NE(acc->parse_from_string(str, value), 0);
   // make sure init_zero=true
-  /*
+
   for (auto i = 7; i < 15; ++i) {
-      ASSERT_FLOAT_EQ(value[i], 0);
-  }*/
+    ASSERT_FLOAT_EQ(value[i], 0);
+  }
 }
 }  // namespace distributed
 }  // namespace paddle
