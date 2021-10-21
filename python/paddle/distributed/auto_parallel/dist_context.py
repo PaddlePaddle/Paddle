@@ -256,20 +256,14 @@ class DistributedContext:
                         node)
                     dist_tensor_for_program = self._dist_tensors_for_program[
                         tensor_id]
-                    # print("tensor^^^^^^^^^^^^", tensor_dist_attr_for_graph)
-                    # print("tensor&&&&&&&&&&&&", dist_tensor_for_program.dist_attr)
                     dist_tensor_for_program.dist_attr = tensor_dist_attr_for_graph
-                    # print("tensor************", dist_tensor_for_program.dist_attr)
                     updated_tensors[tensor_desc.name()] = True
             if node.is_op() and node.op() is not None:
                 op_desc = node.op()
                 op_id = op_desc.id()
                 op_dist_attr_for_graph = self.get_op_dist_attr_for_graph(node)
                 dist_op_for_program = self._dist_ops_for_program[op_id]
-                # print("operator^^^^^^^^^^^^", op_dist_attr_for_graph)
-                # print("operator&&&&&&&&&&&&", dist_op_for_program.dist_attr)
                 dist_op_for_program.dist_attr = op_dist_attr_for_graph
-                # print("operator************", dist_op_for_program.dist_attr)
 
     def amend_dist_attr_for_program(self):
         for dist_tensor in self._dist_tensors_for_program.values():
@@ -335,7 +329,7 @@ class DistributedContext:
                     assert False, "Tensor {} has a wrong distributed attributes {}.".format(
                         dist_tensor.serial_tensor.name, dist_tensor.dist_attr)
             for op in block.ops:
-                dist_op = self.get_dist_op_for_program(tensor)
+                dist_op = self.get_dist_op_for_program(op)
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
                     assert False, "Operator {} has a wrong distributed attributes {}.".format(
                         dist_op.serial_op.type, dist_tensor.dist_attr)

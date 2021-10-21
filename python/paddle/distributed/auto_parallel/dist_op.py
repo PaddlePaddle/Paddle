@@ -58,7 +58,7 @@ class DistributedOperator:
                     if key.name in self._serial_op.output_arg_names:
                         dist_attr[append_op_output_suffix(key.name)] = True
         self._dist_attr.init(dist_attr)
-        self.init_default_dist_attr()
+        self._init_default_dist_attr()
 
     def get_serial_input(self, name):
         return self._serial_inputs.get(name, None)
@@ -66,23 +66,7 @@ class DistributedOperator:
     def get_serial_output(self, name):
         return self._serial_outputs.get(name, None)
 
-    def mark_as_annotated(self):
-        for field_key in get_op_dist_attr_field_keys():
-            dist_attr_field = getattr(self._dist_attr, field_key)
-            if dist_attr_field:
-                self._dist_attr.mark_as_annotated(field_key)
-        for tensor_dist_attr in self._dist_attr.inputs_dist_attrs.values():
-            for field_key in get_tensor_dist_attr_field_keys():
-                dist_attr_field = getattr(tensor_dist_attr, field_key)
-                if dist_attr_field:
-                    tensor_dist_attr.mark_as_annotated(field_key)
-        for tensor_dist_attr in self._dist_attr.outputs_dist_attrs.values():
-            for field_key in get_tensor_dist_attr_field_keys():
-                dist_attr_field = getattr(tensor_dist_attr, field_key)
-                if dist_attr_field:
-                    tensor_dist_attr.mark_as_annotated(field_key)
-
-    def init_default_dist_attr(self):
+    def _init_default_dist_attr(self):
         for tensor_name in self._serial_op.input_arg_names:
             if self._serial_op.type == "create_py_reader":
                 tensor = None
@@ -187,6 +171,9 @@ class DistributedOperator:
         str = "{{op type: {}, op id: {}".format(self.serial_op.desc.type(),
                                                 self.serial_op.desc.id())
 
+        # str += ", {}".format(self.dist_attr)
+        # return str
+
         if self.dist_attr.is_annotated("process_mesh"):
             annotated_str = "annotated"
         else:
@@ -249,7 +236,7 @@ class DistributedModule:
         for idx in range(op_size, new_op_size):
             op = main_block.ops[idx]
             dist_op = DistributedOperator(op, self._dist_attr)
-            dist_op.mark_as_annotated()
+            dist_op.dist_attr.mark_annotated_as(self._dist_attr)
             default_dist_ctx.add_dist_op_for_program(dist_op)
         if isinstance(output, Variable):
             output = [output]

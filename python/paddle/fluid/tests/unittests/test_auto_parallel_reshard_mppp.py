@@ -259,7 +259,6 @@ class TestMLPReshard(unittest.TestCase):
         auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
             complete_train_program, startup_program)
         reshard(auto_parallel_main_prog, startup_program, rank_id, dist_context)
-        print_program_with_dist_attr(auto_parallel_main_prog, dist_context)
         # the x should not be slice
         self.assertTrue(check_allgather(auto_parallel_main_prog))
 

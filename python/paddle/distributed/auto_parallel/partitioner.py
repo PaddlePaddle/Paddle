@@ -30,6 +30,7 @@ from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
+from .utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.completion import complete_backward_annotation, complete_update_annotation
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]

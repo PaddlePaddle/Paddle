@@ -35,7 +35,6 @@ from paddle.distributed.auto_parallel.process_group import new_process_group
 paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
-ROOT_MESH = auto.ProcessMesh([0])
 
 
 class MLPLayer(nn.Layer):

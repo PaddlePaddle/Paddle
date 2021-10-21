@@ -39,9 +39,9 @@ class DistributedTensor:
         if self._dist_attr is None:
             self._dist_attr = TensorDistributedAttribute()
         self._dist_attr.init(dist_attr)
-        self.init_default_dist_attr()
+        self._init_default_dist_attr()
 
-    def init_default_dist_attr(self):
+    def _init_default_dist_attr(self):
         if self._dist_attr.dims_mapping is None:
             if self.serial_tensor.type == core.VarDesc.VarType.READER:
                 tensor_shape = []
@@ -49,12 +49,6 @@ class DistributedTensor:
                 tensor_shape = self._serial_tensor.shape
             tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
             self._dist_attr.dims_mapping = tensor_dims_mapping
-
-    def mark_as_annotated(self):
-        for field_key in get_tensor_dist_attr_field_keys():
-            dist_attr_field = getattr(self._dist_attr, field_key)
-            if dist_attr_field:
-                self._dist_attr.mark_as_annotated(field_key)
 
     def validate_dist_attr(self):
         if self.serial_tensor.type == core.VarDesc.VarType.READER:
@@ -75,6 +69,10 @@ class DistributedTensor:
     def __str__(self):
         str = "{{tensor name: {}, tensor id: {}".format(
             self.serial_tensor.desc.name(), self.serial_tensor.desc.id())
+
+        # str += ", {}".format(self.dist_attr)
+        # return str
+
         if self.dist_attr.is_annotated("process_mesh"):
             annotated_str = "annotated"
         else:

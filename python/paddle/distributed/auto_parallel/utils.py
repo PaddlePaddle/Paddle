@@ -16,8 +16,6 @@ import threading
 import paddle.fluid.core as core
 import numpy as np
 
-# from .interface import _g_process_mesh_map
-
 
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):

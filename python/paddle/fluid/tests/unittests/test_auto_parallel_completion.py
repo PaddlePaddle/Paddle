@@ -36,7 +36,6 @@ paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
 _global_process_mesh2 = None
-ROOT_MESH = auto.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]])
 
 
 class MLPLayer(nn.Layer):

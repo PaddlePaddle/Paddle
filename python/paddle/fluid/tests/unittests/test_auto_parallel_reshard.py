@@ -193,28 +193,21 @@ def check_send_recv_result(dist_main_prog, rank_id):
     send_result = False
     recv_result = False
     ops = dist_main_prog.global_block().ops
-    print("############ ops len", len(ops))
 
     if rank_id == 0:
         for idx, op in enumerate(ops):
-            print("############# rank 0 op", op.type)
             if op.type == "send_v2" and "gelu_0.tmp_0" in op.input_arg_names:
                 send_result = True
-                print("########### rank 0 send", send_result)
             if op.type == "recv_v2" and "gelu_0.tmp_0@GRAD" in op.output_arg_names[
                     0]:
                 recv_result = True
-                print("########### rank 0 recv", recv_result)
     else:
         for idx, op in enumerate(ops):
-            print("############# rank 1 op", op.type)
             if op.type == "send_v2" and "gelu_0.tmp_0@GRAD" in op.input_arg_names:
                 send_result = True
-                print("########### rank 1 send", send_result)
             if op.type == "recv_v2" and "gelu_0.tmp_0" in op.output_arg_names[
                     0]:
                 recv_result = True
-                print("########### rank 1 recv", recv_result)
 
     return send_result and recv_result
 
@@ -270,7 +263,7 @@ class TestMLPReshard(unittest.TestCase):
             if op.type == "gelu_grad":
                 op_need_check = op
                 break
-        print_program_with_dist_attr(dist_main_prog, dist_context)
+        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # grad op should have dist attr
         self.assertTrue(
@@ -296,8 +289,7 @@ class TestMLPReshard(unittest.TestCase):
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
-        print("##################3")
-        print_program_with_dist_attr(dist_main_prog, dist_context)
+        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))

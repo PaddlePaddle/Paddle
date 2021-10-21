@@ -479,16 +479,6 @@ def complete_annotation(program, dist_context=None):
 
     all_nodes.sort(key=sort_key_fun)
 
-    # print("000000$$$$$$$$$$$$$$$#################################")
-    # for node in all_nodes:
-    #     if node.is_var() and node.var() is not None:
-    #         tensor_dist_attr_for_graph = dist_context.get_tensor_dist_attr_for_graph(node)
-    #         print(node.var().name(), tensor_dist_attr_for_graph)
-    #     if node.is_op() and node.op() is not None:
-    #         op_dist_attr_for_graph = dist_context.get_op_dist_attr_for_graph(node)
-    #         print(node.op().type(), op_dist_attr_for_graph)
-    # print("0000000$$$$$$$$$$$$$$#################################")
-
     reach_fix_point = False
     while not reach_fix_point:
         total_changed = False
@@ -630,23 +620,14 @@ def complete_annotation(program, dist_context=None):
         else:
             reach_fix_point = True
 
-    # print("111111$$$$$$$$$$$$$$$#################################")
-    # for node in all_nodes:
-    #     if node.is_var() and node.var() is not None:
-    #         tensor_dist_attr_for_graph = dist_context.get_tensor_dist_attr_for_graph(node)
-    #         print(node.var().name(), tensor_dist_attr_for_graph)
-    #     if node.is_op() and node.op() is not None:
-    #         op_dist_attr_for_graph = dist_context.get_op_dist_attr_for_graph(node)
-    #         print(node.op().type(), op_dist_attr_for_graph)
-    # print("1111111$$$$$$$$$$$$$$#################################")
     # Copy the corresponding distributed attribute from graph to program
     dist_context.copy_dist_attr_from_graph_to_program()
-    # print_program_with_dist_attr(program, dist_context)
     dist_context.clear_dist_info_for_graph()
 
     # Do the validation check and amend some completion
     dist_context.amend_dist_attr_for_program()
 
+    # print_program_with_dist_attr(program, dist_context)
     dist_context.validate_dist_attr_for_program()
 
     return program

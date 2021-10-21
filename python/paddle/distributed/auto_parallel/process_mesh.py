@@ -129,6 +129,6 @@ class ProcessMesh(object):
         return not self.__eq__(other)
 
     def __str__(self):
-        str = "topology {} and processes {}".format(self.topology,
-                                                    self.processes)
+        str = "shape {} and process group {}".format(self.topology,
+                                                     self.processes)
         return str

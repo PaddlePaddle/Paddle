@@ -46,6 +46,13 @@ from .models import vgg19  # noqa: F401
 from .models import LeNet  # noqa: F401
 from .models import AlexNet  # noqa: F401
 from .models import alexnet  # noqa: F401
+from .models import ResNeXt  # noqa: F401
+from .models import resnext50_32x4d  # noqa: F401
+from .models import resnext50_64x4d  # noqa: F401
+from .models import resnext101_32x4d  # noqa: F401
+from .models import resnext101_64x4d  # noqa: F401
+from .models import resnext152_32x4d  # noqa: F401
+from .models import resnext152_64x4d  # noqa: F401
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
 from .transforms import Resize  # noqa: F401
