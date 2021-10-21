@@ -52,21 +52,24 @@ class CinnGraphSymbolization {
       int64_t graph_id, const Graph& graph, const Target& target,
       const std::map<std::string, const LoDTensor*>& input_tensors) {}
   ::cinn::frontend::Program operator()() {
-    constexpr int M = 32;
-    constexpr int N = 24;
+    constexpr int M = 1000;
+    constexpr int K = 784;
+    constexpr int N = 100;
 
     ::cinn::frontend::NetBuilder builder("net_builder");
-    auto a = builder.CreateInput(Float(32), {M, N}, "A");
-    auto b = builder.CreateInput(Float(32), {M, N}, "B");
-    auto c = builder.add(a, b);
-    auto d = builder.add(a, c);
+    auto a = builder.CreateInput(Float(32), {M, K}, "InputX");
+    auto b = builder.CreateInput(Float(32), {N, K}, "InputY");
+    auto c = builder.CreateInput(Float(32), {N}, "InputZ");
+    auto d = builder.mul(a, b);
+    auto e = builder.add(d, c);
+    auto f = builder.relu(e);
     auto program = builder.Build();
 
     return program;
   }
   const std::unordered_map<std::string, std::string>& var_model_to_program_map()
       const {
-    return {{"fakeA", "A"}, {"fakeB", "B"}};
+    return {{"X", "InputX"}, {"Y", "InputY"}, {"Z", "InputZ"}};
   }
 };
 }  // namespace
@@ -101,7 +104,7 @@ CinnCompiledObject* CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
-  CinnCacheKey cur_key(graph, input_tensors);
+  CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
   if (!cache_.count(cur_key)) {
     real_compiled_num_++;
     cache_[cur_key] = CompileGraph(graph, input_tensors, target);
@@ -126,8 +129,8 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   auto frontend_program = symbol();
   auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
       frontend_program, target);
-  VLOG(4) << "The i-" << real_compiled_num_
-          << " compilation, and its related graph:\n"
+  VLOG(4) << "The i-" << real_compiled_num_ << " compilation ("
+          << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
   auto scope = BuildScope(target, cinn_graph);
   GraphCompiler graph_compiler(target, scope, cinn_graph);

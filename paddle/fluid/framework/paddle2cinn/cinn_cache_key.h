@@ -34,16 +34,20 @@ namespace paddle2cinn {
 class CinnCacheKey {
  public:
   CinnCacheKey(const ir::Graph& graph,
-               const std::map<std::string, const LoDTensor*>& input_tensors);
+               const std::map<std::string, const LoDTensor*>& input_tensors,
+               const std::string& arch_str);
   CinnCacheKey(const ir::Graph& graph,
-               const std::map<std::string, DDim>& input_shapes);
+               const std::map<std::string, DDim>& input_shapes,
+               const std::string& arch_str);
 
   ~CinnCacheKey() {}
 
   void SetKey(const ir::Graph& graph,
-              const std::map<std::string, const LoDTensor*>& input_tensors);
+              const std::map<std::string, const LoDTensor*>& input_tensors,
+              const std::string& arch_str);
   void SetKey(const ir::Graph& graph,
-              const std::map<std::string, DDim>& input_shapes);
+              const std::map<std::string, DDim>& input_shapes,
+              const std::string& arch_str);
 
   bool operator==(const CinnCacheKey& other) const;
   bool operator!=(const CinnCacheKey& other) const;
@@ -56,6 +60,7 @@ class CinnCacheKey {
  private:
   std::string graph_serialize_str_;
   std::map<std::string, DDim> input_shapes_;
+  std::string arch_str_;
 };
 
 }  // namespace paddle2cinn

@@ -44,8 +44,8 @@ class OpMapperRegistry {
   }
 
   inline const OpMapperRegistry* Find(const std::string& name) {
-    std::unordered_set<std::string> fmap_ = {"mul", "add", "relu", "sigmoid",
-                                             "softmax"};
+    std::unordered_set<std::string> fmap_ = {
+        "mul", "add", "elementwise_add", "relu", "sigmoid", "softmax"};
     auto p = fmap_.find(name);
     if (p != fmap_.end()) {
       return this;
@@ -276,7 +276,7 @@ Node* AddSpecialOpToGraph(const GraphNodeSet& cluster_inputs,
                  std::back_inserter(output_names),
                  [](Node* n) { return n->Name(); });
   special_op_desc.SetOutput("Out", output_names);
-  special_op_desc.SetAttr("compilation_key", compilation_key);
+  special_op_desc.SetAttr(kCompilationKey, compilation_key);
   special_op_desc.Flush();
   auto* special_op_node = graph->CreateOpNode(&special_op_desc);
   special_op_node->inputs.assign(cluster_inputs.begin(), cluster_inputs.end());

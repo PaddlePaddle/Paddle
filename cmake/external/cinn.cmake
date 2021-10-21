@@ -27,9 +27,9 @@ add_definitions(-w)
 include(ExternalProject)
 set(CINN_SOURCE_DIR ${THIRD_PARTY_PATH}/CINN)
 # TODO(zhhsplendid): Modify git tag after we have release tag
-set(CINN_GIT_TAG 9292e711c1ff3bcf04d3d986a612c37711a46b4c)
-set(CINN_OPTIONAL_ARGS -DWITH_CUDA=${WITH_GPU} -DWITH_CUDNN=${WITH_GPU} -DPUBLISH_LIBS=ON -DWITH_TESTING=ON)
-set(CINN_BUILD_COMMAND $(MAKE) cinncore_static -j && $(MAKE) cinncore -j && $(MAKE) cinnapi -j)
+set(CINN_GIT_TAG e422c01b7875301996a2baf67a14ba61b0e6192a)
+set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION} -DWITH_CUDA=${WITH_GPU} -DWITH_CUDNN=${WITH_GPU} -DPUBLISH_LIBS=ON -DWITH_TESTING=ON)
+set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -51,49 +51,20 @@ message(STATUS "CINN BINARY_DIR: ${CINN_BINARY_DIR}")
 message(STATUS "CINN SOURCE_DIR: ${CINN_SOURCE_DIR}")
 
 
-#########################
-# Add CINN's dependencies
-#########################
+######################################
+# Add CINN's dependencies header files
+######################################
 
 # Add absl
-set(ABSL_LIB_NAMES
-  hash
-  wyhash
-  city
-  strings
-  throw_delegate
-  bad_any_cast_impl
-  bad_optional_access
-  bad_variant_access
-  raw_hash_set
-  )
-set(ABSL_LIB_DIR "${CINN_BINARY_DIR}/dist/third_party/absl/lib")
 set(ABSL_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/third_party/absl/include")
-add_library(absl STATIC IMPORTED GLOBAL)
-set_target_properties(absl PROPERTIES IMPORTED_LOCATION ${ABSL_LIB_DIR}/libabsl_base.a)
-foreach(lib_name ${ABSL_LIB_NAMES})
-    target_link_libraries(absl INTERFACE ${ABSL_LIB_DIR}/libabsl_${lib_name}.a)
-endforeach()
 include_directories(${ABSL_INCLUDE_DIR})
 
 # Add isl
-set(ISL_LIB_DIR "${CINN_BINARY_DIR}/dist/third_party/isl/lib")
 set(ISL_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/third_party/isl/include")
-add_library(isl STATIC IMPORTED GLOBAL)
-set_target_properties(isl PROPERTIES IMPORTED_LOCATION ${ISL_LIB_DIR}/libisl.a)
 include_directories(${ISL_INCLUDE_DIR})
 
 # Add LLVM
-set(LLVM_LIB_NAMES
-  ExecutionEngine
-  )
-set(LLVM_LIB_DIR "${CINN_BINARY_DIR}/dist/third_party/llvm/lib")
 set(LLVM_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/third_party/llvm/include")
-add_library(llvm STATIC IMPORTED GLOBAL)
-set_target_properties(llvm PROPERTIES IMPORTED_LOCATION ${LLVM_LIB_DIR}/libLLVMCore.a)
-foreach(lib_name ${LLVM_LIB_NAMES})
-    target_link_libraries(llvm INTERFACE ${LLVM_LIB_DIR}/libLLVM${lib_name}.a)
-endforeach()
 include_directories(${LLVM_INCLUDE_DIR})
 
 ######################################################
@@ -107,4 +78,4 @@ set(CINN_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/cinn/include")
 add_library(cinn SHARED IMPORTED GLOBAL)
 set_target_properties(cinn PROPERTIES IMPORTED_LOCATION "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 include_directories(${CINN_INCLUDE_DIR})
-add_dependencies(cinn external_cinn absl isl llvm)
+add_dependencies(cinn external_cinn)
