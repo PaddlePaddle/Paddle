@@ -91,7 +91,8 @@ def fused_multi_head_attention(x,
     Examples:
 
         .. code-block:: python
-
+            
+            # required: gpu            
             import paddle
             import paddle.nn.functional as F
 
