@@ -107,6 +107,44 @@ def _convert_attention_mask(attn_mask, dtype):
     return attn_mask
 
 
+class CUDNNSeqInfo:
+    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
+                 kv_seqlen, qo_seqlen_tensor, kv_seqlen_tensor):
+        self.max_seq_len = max_seq_len
+        self.low_win_idx = low_win_idx
+        self.hi_win_idx = hi_win_idx
+        self.qo_seqlen = qo_seqlen
+        self.kv_seqlen = kv_seqlen
+        self.qo_seqlen_tensor = qo_seqlen_tensor
+        self.kv_seqlen_tensor = kv_seqlen_tensor
+        # self.qo_seqlen_tensor = paddle.to_tensor(qo_seqlen_tensor, place=paddle.CUDAPlace(0))
+        # self.kv_seqlen_tensor = paddle.to_tensor(kv_seqlen_tensor, place=paddle.CUDAPlace(0))
+
+
+class CUDNNSeqInfoInfer(Layer):
+    def __init__(self):
+        super(CUDNNSeqInfoInfer, self).__init__()
+
+    def forward(self, attention_mask):
+        # place = paddle.CPUPlace()
+        max_seq_len = attention_mask.shape[1]
+        # low_win_idx = paddle.to_tensor(paddle.zeros((max_seq_len, ), dtype='int32'), place=place)
+        # hi_win_idx = paddle.to_tensor(paddle.full((max_seq_len, ), max_seq_len, dtype='int32'), place=place)
+        # qo_seqlen = paddle.to_tensor(paddle.sum(attention_mask == 1, axis=1, dtype='int32'), place=place)
+        # kv_seqlen = qo_seqlen
+        low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
+        hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
+        qo_seqlen_tensor = paddle.sum(attention_mask == 1,
+                                      axis=1,
+                                      dtype='int32')
+        kv_seqlen_tensor = qo_seqlen_tensor
+        qo_seqlen = qo_seqlen_tensor
+        kv_seqlen = kv_seqlen_tensor
+
+        return CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
+                            kv_seqlen, qo_seqlen_tensor, kv_seqlen_tensor)
+
+
 class CUDNNMHAMetaData:
     def __init__(self, nheads, hidden_size, dropout_rate=0.0, sm_scaler=1.0):
         self.nheads = nheads
