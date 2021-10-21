@@ -36,6 +36,10 @@ extra {
     type: FLOAT
   }
   attrs {
+    name: "activation_scale"
+    type: FLOAT
+  }
+  attrs {
     name: "Scale_x"
     type: FLOAT
   }
