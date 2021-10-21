@@ -92,6 +92,7 @@ class FusedMultiHeadAttention(Layer):
 
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
+        assert need_weights == None, "need_weight is True is not supported now."
 
         self.qkv_weight = self.create_parameter(
             shape=[3, num_heads, self.head_dim, embed_dim],
@@ -167,6 +168,9 @@ class FusedMultiHeadAttention(Layer):
         if attn_mask is not None:
             # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, query.dtype)
+
+        assert cache == None, "Only support cache is None now."
+
         out = F.fused_multi_head_attention(
             x=query,
             qkv_weight=self.qkv_weight,
