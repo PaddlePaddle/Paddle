@@ -471,7 +471,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
 
         if use_cuda:
-            extra_link_args.append('-lcudart')
+            if core.is_compiled_with_rocm():
+                extra_link_args.append('-lamdhip64')
+            else:
+                extra_link_args.append('-lcudart')
 
         kwargs['extra_link_args'] = extra_link_args
 
