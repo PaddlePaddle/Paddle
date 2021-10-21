@@ -399,7 +399,7 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
 
     if (bias) {
       auto bias_memory_p =
-          handler.AcquireBiasMemoryWithReorder(dev_Ctx, key, bias);
+          handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
