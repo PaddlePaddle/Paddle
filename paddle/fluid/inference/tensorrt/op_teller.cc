@@ -359,12 +359,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
       if (x_shape.size() != y_shape.size()) {
-        VLOG(3) << "matmul op not support broadcast, please check inputs'shape. ";
+        VLOG(3)
+            << "matmul op not support broadcast, please check inputs'shape. ";
         return false;
       }
-      for(int i = 0;i<x_shape.size()-2;i++){
-        if(x_shape[i]!=y_shape[i] && (x_shape[i] ==1 || y_shape[i]==1)){
-          VLOG(3) << "matmul op not support broadcast, please check inputs'shape[i]. ";
+      for (int i = 0; i < x_shape.size() - 2; i++) {
+        if (x_shape[i] != y_shape[i] && (x_shape[i] == 1 || y_shape[i] == 1)) {
+          VLOG(3) << "matmul op not support broadcast, please check "
+                     "inputs'shape[i]. ";
           return false;
         }
       }
@@ -1358,15 +1360,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto y_shape = y_var_desc->GetShape();
       if (y_shape.size() != 2) {
-        VLOG(3) << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes = %d. ",y_shape.size();
+        VLOG(3)
+            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes = "
+            << y_shape.size();
         return false;
       }
 
       // y_num_col_dims ==1
-      if(desc.HasAttr("y_num_col_dims")){
-        int y_num_col_dims = BOOST_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
-        if(y_num_col_dims != 1){
-          VLOG(3) << " fc_op'y_num_col_dims must be 1, but y_num_col_dims = %d. ",y_num_col_dims;
+      if (desc.HasAttr("y_num_col_dims")) {
+        int y_num_col_dims =
+            BOOST_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
+        if (y_num_col_dims != 1) {
+          VLOG(3) << " fc_op'y_num_col_dims must be 1, but y_num_col_dims = "
+                  << y_num_col_dims;
           return false;
         }
       }
@@ -1378,7 +1384,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      : 1);
       if (x_num_col_dims < 1) {
         VLOG(3) << "fc_op expects x_num_col_dims >= 1, "
-                   "but x_num_col_dims = %d. ", x_num_col_dims;
+                   "but x_num_col_dims = "
+                << x_num_col_dims;
         return false;
       }
     }
