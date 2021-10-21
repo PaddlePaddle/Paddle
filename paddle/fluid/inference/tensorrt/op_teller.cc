@@ -363,7 +363,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             << "matmul op not support broadcast, please check inputs'shape. ";
         return false;
       }
-      for (int i = 0; i < x_shape.size() - 2; i++) {
+      uint64_t dims = 2;
+      for (size_t i = 0; i < x_shape.size() - dims; ++i) {
         if (x_shape[i] != y_shape[i] && (x_shape[i] == 1 || y_shape[i] == 1)) {
           VLOG(3) << "matmul op not support broadcast, please check "
                      "inputs'shape[i]. ";
