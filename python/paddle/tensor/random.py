@@ -670,7 +670,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
     Args:
         x (Tensor): The input tensor which specifies shape. The dtype of ``x`` 
-            can be int32, int64, float16, float32, float64.
+            can be bool, int32, int64, float16, float32, float64.
         low (int): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
             range is [0, ``low``). Default is 0.
@@ -775,6 +775,15 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             # [[0, -1]]  # random
             # paddle.int64
 
+            # example 10:
+            # dtype is int64 and the dtype of x is bool
+            x = paddle.zeros((1,2)).astype("bool")
+            out10 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
+            print(out10)
+            print(out10.dtype)
+            # [[0, -1]]  # random
+            # paddle.int64
+
     """
     if high is None:
         if low <= 0:
@@ -787,7 +796,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         dtype = x.dtype
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    shape = paddle.shape(x)
+    shape = x.shape
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
