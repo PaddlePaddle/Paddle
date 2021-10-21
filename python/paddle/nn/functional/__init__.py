@@ -61,6 +61,7 @@ from .common import class_center_sample  # noqa: F401
 from .conv import conv1d  # noqa: F401
 from .conv import conv1d_transpose  # noqa: F401
 from .common import linear  # noqa: F401
+from .fused_transformer import fused_multi_head_attention  # noqa: F401
 from .conv import conv2d  # noqa: F401
 from .conv import conv2d_transpose  # noqa: F401
 from .conv import conv3d  # noqa: F401
@@ -213,5 +214,6 @@ __all__ = [     #noqa
            'instance_norm',
            'class_center_sample',
             'fused_feedforward',
+           'fused_multi_head_attention',
            'sparse_attention',
 ]

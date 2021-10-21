@@ -12,27 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+from .. import functional as F
+from paddle.nn import Layer
+from ...framework import ParamAttr
+import paddle
+from paddle.nn.layer.transformer import _convert_attention_mask
+from ..initializer import Constant
+
+import collections
+
 
 class FusedMultiHeadAttention(Layer):
     """
-    Attention mapps queries and a set of key-value pairs to outputs, and
+   Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
-
     Please refer to `Attention Is All You Need <https://arxiv.org/pdf/1706.03762.pdf>`_
     for more details.
-
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
         num_heads (int): The number of heads in multi-head attention.
-        dropout (float, optional): The dropout probability used on attention
-            weights to drop some attention targets. 0 for no dropout. Default 0
+        dropout_rate (float, optional): The dropout probability used on attention
+            weights to drop some attention targets for the dropout after attention. 
+            0 for no dropout. Default 0.
+        attn_dropout_rate (float, optional): The dropout probability used on attention
+            weights to drop some attention targets for the dropout in attention. 
+            0 for no dropout. Default 0.
         kdim (int, optional): The feature size in key. If None, assumed equal to
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
             `embed_dim`. Default None.
+        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm 
+            or post_layer_norm architecture. Default False.
         need_weights (bool, optional): Indicate whether to return the attention
-            weights. Default False.
+            weights. Now, only False is supported. Default False.
         weight_attr(ParamAttr, optional):  To specify the weight parameter property.
             Default: None, which means the default weight parameter property is used.
             See usage for details in :code:`ParamAttr` .
@@ -40,35 +54,83 @@ class FusedMultiHeadAttention(Layer):
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
             See usage for details in :code:`ParamAttr` .
-         
     Examples:
-
         .. code-block:: python
-
             import paddle
-
-            # encoder input: [batch_size, sequence_length, d_model]
+            # input: [batch_size, sequence_length, embed_dim]
             query = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, num_heads, query_len, query_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
+            multi_head_attn = paddle.nn.FusedMultiHeadAttention(128, 2)
             output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
     """
-
-    Cache = collections.namedtuple("Cache", ["k", "v"])
-    StaticCache = collections.namedtuple("StaticCache", ["k", "v"])
 
     def __init__(self,
                  embed_dim,
                  num_heads,
-                 dropout=0.,
+                 dropout_rate=0.5,
+                 attn_dropout_rate=0.5,
                  kdim=None,
                  vdim=None,
+                 normalize_before=False,
                  need_weights=False,
                  weight_attr=None,
-                 bias_attr=None):
+                 bias_attr=None,
+                 name=None):
         super(FusedMultiHeadAttention, self).__init__()
-        raise NotImplementedError()
+
+        assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
+                               "but recieved {}".format(embed_dim))
+        assert num_heads > 0, ("Expected nhead to be greater than 0, "
+                               "but recieved {}".format(num_heads))
+
+        attn_dropout_rate = dropout_rate if attn_dropout_rate is None else attn_dropout_rate
+        self.normalize_before = normalize_before
+        self._dtype = self._helper.get_default_dtype()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+
+        self.head_dim = embed_dim // num_heads
+        assert self.head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
+
+        self.qkv_weight = self.create_parameter(
+            shape=[3, num_heads, self.head_dim, embed_dim],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self.qkv_bias = self.create_parameter(
+            shape=[3, num_heads, self.head_dim],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+        self.linear_weight = self.create_parameter(
+            shape=[embed_dim, embed_dim],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self.linear_bias = self.create_parameter(
+            shape=[embed_dim],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+
+        self.pre_ln_scale = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[embed_dim],
+            default_initializer=Constant(value=1.0))
+        self.pre_ln_bias = self.create_parameter(
+            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+        self.ln_scale = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[embed_dim],
+            default_initializer=Constant(value=1.0))
+        self.ln_bias = self.create_parameter(
+            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+
+        self.dropout_rate = dropout_rate
+        self.attn_dropout_rate = attn_dropout_rate
+
+        self.name = name
 
     def forward(self, query, key=None, value=None, attn_mask=None, cache=None):
         """
@@ -97,30 +159,31 @@ class FusedMultiHeadAttention(Layer):
                 `-INF` values and the others have 0 values. It can be None when 
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
-                It is a namedtuple with `k` and `v` as fields, and stores tensors
-                shaped `[batch_size, num_heads, length, embed_dim]` which are results
-                of linear projection, reshape and transpose calculations in
-                MultiHeadAttention. If it is an instance of `Cache`, `k` and `v`
-                fields reserve intermediate results of previous positions, which
-                mostly used for decoder self attention. If it is an instance of
-                `StaticCache`, `key` and `value` args would be ignored, `k` and
-                `v` fields would be used as calculated results on `key` and
-                `value`, which mostly used for decoder-encoder cross attention.
-                It is only used for inference and should be None for training.
-                Default None.
+                Now, only None is supported. Default None.
         Returns:
             Tensor|tuple: It is a tensor that has the same shape and data type \
-                as `query`, representing attention output. Or a tuple if \
-                `need_weights` is True or `cache` is not None. If `need_weights` \
-                is True, except for attention output, the tuple also includes \
-                the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`. \
-                If `cache` is not None, the tuple then includes the new cache \
-                having the same type as `cache`, and if it is `StaticCache`, it \
-                is same as the input `cache`, if it is `Cache`, the new cache \
-                reserves tensors concatanating raw tensors with intermediate \
-                results of current query.
+                as `query`, representing attention output. 
         """
-        raise NotImplementedError()
+        if attn_mask is not None:
+            # Support bool or int mask
+            attn_mask = _convert_attention_mask(attn_mask, query.dtype)
+        out = F.fused_multi_head_attention(
+            x=query,
+            qkv_weight=self.qkv_weight,
+            linear_weight=self.linear_weight,
+            pre_layer_norm=self.normalize_before,
+            pre_ln_scale=self.pre_ln_scale,
+            pre_ln_bias=self.pre_ln_bias,
+            ln_scale=self.ln_scale,
+            ln_bias=self.ln_bias,
+            pre_ln_epsilon=1e-05,
+            qkv_bias=self.qkv_bias,
+            linear_bias=self.linear_bias,
+            attn_mask=attn_mask,
+            dropout_rate=self.dropout_rate,
+            attn_dropout_rate=self.attn_dropout_rate,
+            ln_epsilon=1e-05)
+        return out
 
 
 class FusedFeedForward(Layer):
