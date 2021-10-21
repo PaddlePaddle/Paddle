@@ -19,8 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
-DECLARE_bool(use_mkldnn);
 DECLARE_bool(convert_all_blocks);
+DECLARE_bool(use_cinn);
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
@@ -71,6 +72,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
 
+    // Note: This pass is used to enable cinn.
+    if (FLAGS_use_cinn) {
+      AppendPass("build_cinn_pass");
+    }
     SetCollectiveContext();
   }
 
@@ -481,6 +486,7 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
+USE_PASS(build_cinn_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

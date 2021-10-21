@@ -1409,13 +1409,22 @@ class Layer(core.Layer):
             if state is None:
                 raise ValueError("{} is not found in the provided dict.".format(
                     key))
-            state_shape = state.shape() if inspect.ismethod(
-                state.shape) else state.shape
-            if list(state_shape) != list(param.shape):
-                raise ValueError(
-                    "{} receives a shape {}, but the expected shape is {}.".
-                    format(key, list(state_shape), list(param.shape)))
-            return param, state
+            if (isinstance(state, dict) or isinstance(state, list)):
+                if (len(state) != len(param)):
+                    raise ValueError("{} receieves the length of {}, "
+                                     "but the expected shape is {}".format(
+                                         key, len(state), len(param)))
+                else:
+                    return param, state
+            else:
+                state_shape = state.shape() if inspect.ismethod(
+                    state.shape) else state.shape
+
+                if list(state_shape) != list(param.shape):
+                    raise ValueError(
+                        "{} receives a shape {}, but the expected shape is {}.".
+                        format(key, list(state_shape), list(param.shape)))
+                return param, state
 
         matched_param_state = []
         for key, param in self.state_dict().items():
@@ -1466,6 +1475,8 @@ class Layer(core.Layer):
                     param_applied = func(param, device, dtype, blocking)
                     assert param.is_leaf
                     param_applied.stop_gradient = param.stop_gradient
+                    if hasattr(param_applied, 'is_distributed'):
+                        param_applied.is_distributed = param.is_distributed
                     self._parameters[key] = param_applied
 
                 if param.grad is not None:
@@ -1475,6 +1486,9 @@ class Layer(core.Layer):
 
                         grad_applied.stop_gradient = param._grad_ivar(
                         ).stop_gradient
+                        if hasattr(param._grad_ivar(), 'is_distributed'):
+                            grad_applied.is_distributed = param._grad_ivar(
+                            ).is_distributed
                         self._parameters[key]._set_grad_ivar(grad_applied)
 
             self._parameters_transform_map[id(param)] = [param_applied, key]

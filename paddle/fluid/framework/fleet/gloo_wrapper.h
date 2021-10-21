@@ -97,6 +97,26 @@ class ParallelConnectContext : public gloo::rendezvous::Context {
   // slowly in case big size, especialy in HdfsStore
   void connectFullMesh(Store& store,                              // NOLINT
                        std::shared_ptr<transport::Device>& dev);  // NOLINT
+  struct Impl {
+    // IP address of the listening socket.
+    struct sockaddr_storage ss;
+    // Sequence number of this address.
+    // If this is equal to -1, the address is assumed to
+    // represent the listening socket of a device. The sequence number
+    // must be set before it can be used by a pair.
+    ssize_t seq{-1};
+  };
+  std::string getCharIpAddr(uint32_t ipAddress) {
+    const int NBYTES = 4;
+    uint8_t octet[NBYTES];
+    char ipAddressFinal[16];
+    for (int i = 0; i < NBYTES; i++) {
+      octet[i] = ipAddress >> (i * 8);
+    }
+    snprintf(ipAddressFinal, sizeof(ipAddressFinal), "%d.%d.%d.%d", octet[0],
+             octet[1], octet[2], octet[3]);
+    return std::string(ipAddressFinal);
+  }
 
  protected:
   int thread_num_ = 6;
@@ -216,6 +236,24 @@ class GlooWrapper {
     LOG(WARNING) << "AllGather does nothing when WITH_GLOO=OFF";
 #endif
     return ret;
+  }
+
+  // TODO(xiongkun03): support all gather array of
+  //                   numbers with different length
+  //                   can use AllgathervOptions, may be work in different
+  //                   occasion. Need some survey.
+  template <typename T>
+  void AllGatherVector(T* input_ptr, T* output_ptr,
+                       size_t element_num) {  // NOLINT
+    CHECK_EQ(is_initialized_, true);
+#ifdef PADDLE_WITH_GLOO
+    gloo::AllgatherOptions opts(context_);
+    opts.setInput(input_ptr, element_num);
+    opts.setOutput(output_ptr, element_num * size_);
+    gloo::allgather(opts);
+#else
+    LOG(WARNING) << "AllGather does nothing when WITH_GLOO=OFF";
+#endif
   }
 
  protected:

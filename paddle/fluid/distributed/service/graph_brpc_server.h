@@ -32,6 +32,8 @@ class GraphBrpcServer : public PSServer {
   virtual ~GraphBrpcServer() {}
   PsBaseService *get_service() { return _service.get(); }
   virtual uint64_t start(const std::string &ip, uint32_t port);
+  virtual int32_t build_peer2peer_connection(int rank);
+  virtual brpc::Channel *get_cmd_channel(size_t server_index);
   virtual int32_t stop() {
     std::unique_lock<std::mutex> lock(mutex_);
     if (stoped_) return 0;
@@ -50,6 +52,7 @@ class GraphBrpcServer : public PSServer {
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   bool stoped_ = false;
+  int rank;
   brpc::Server _server;
   std::shared_ptr<PsBaseService> _service;
   std::vector<std::shared_ptr<brpc::Channel>> _pserver_channels;
@@ -113,12 +116,18 @@ class GraphBrpcService : public PsBaseService {
   int32_t print_table_stat(Table *table, const PsRequestMessage &request,
                            PsResponseMessage &response, brpc::Controller *cntl);
 
+  int32_t sample_neighboors_across_multi_servers(
+      Table *table, const PsRequestMessage &request,
+      PsResponseMessage &response, brpc::Controller *cntl);
+
  private:
   bool _is_initialize_shard_info;
   std::mutex _initialize_shard_mutex;
   std::unordered_map<int32_t, serviceHandlerFunc> _msg_handler_map;
   std::vector<float> _ori_values;
   const int sample_nodes_ranges = 23;
+  size_t server_size;
+  std::shared_ptr<::ThreadPool> task_pool;
 };
 
 }  // namespace distributed
