@@ -18,8 +18,6 @@
 #                   Utils
 #=================================================
 
-
-
 set -ex
 
 if [ -z ${BRANCH} ]; then
@@ -2390,6 +2388,21 @@ function find_temporary_files() {
     fi
 }
 
+function build_pr_and_develop() {
+    build_only
+    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
+    rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+    git checkout .
+    git checkout -b develop_base_pr upstream/$BRANCH
+    build_only
+    mkdir build/dev_whl && cp build/python/dist/*.whl build/dev_whl
+}
+
 
 function main() {
     local CMD=$1 
@@ -2398,6 +2411,9 @@ function main() {
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        ;;
+      build_pr_dev)
+        build_pr_and_develop 
         ;;
       build_and_check)
         set +e
