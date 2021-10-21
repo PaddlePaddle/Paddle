@@ -94,7 +94,7 @@ class TestZeroPad2d(unittest.TestCase):
         pad = [1, 2, 3, 4]
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[0], pad[1]], [pad[2], pad[3]]])
+            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]])
 
         x_tensor = paddle.to_tensor(x)
         ret_res = paddle.zeropad2d(x_tensor, pad).numpy()
@@ -107,7 +107,7 @@ class TestZeroPad2d(unittest.TestCase):
         pad = (1, 2, 3, 4)
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[0], pad[1]], [pad[2], pad[3]]])
+            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]])
 
         x_tensor = paddle.to_tensor(x)
         ret_res = paddle.zeropad2d(x_tensor, pad).numpy()
@@ -120,7 +120,7 @@ class TestZeroPad2d(unittest.TestCase):
         pad = [1, 2, 3, 4]
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[0], pad[1]], [pad[2], pad[3]]])
+            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]])
 
         x_tensor = paddle.to_tensor(x)
         pad_tensor = paddle.to_tensor(pad)
