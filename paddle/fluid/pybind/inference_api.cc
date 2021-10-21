@@ -355,6 +355,8 @@ void BindInferenceApi(py::module *m) {
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("get_version", &paddle_infer::GetVersion);
+  m->def("get_trt_compile_version", &paddle_infer::GetTrtCompileVersion);
+  m->def("get_trt_runtime_version", &paddle_infer::GetTrtRuntimeVersion);
   m->def("get_num_bytes_of_data_type", &paddle_infer::GetNumBytesOfDataType);
 }
 
