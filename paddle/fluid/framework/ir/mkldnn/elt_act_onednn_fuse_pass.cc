@@ -40,8 +40,7 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
       else if (act_type == "clip") {
         attr_map.emplace("min", "activation_alpha");
         attr_map.emplace("max", "activation_beta");
-      }
-      else {
+      } else {
         attr_map.emplace("alpha", "activation_alpha");
         attr_map.emplace("beta", "activation_beta");
       }
@@ -100,9 +99,8 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
       }
     }
 
-    if (act_type == "gelu"
-        && activation_op->HasAttr("approximate")
-        && BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
+    if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
+        BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
       elementwise_op->SetAttr("activation_type", std::string("gelu_tanh"));
     else
       elementwise_op->SetAttr("activation_type", act_type);
