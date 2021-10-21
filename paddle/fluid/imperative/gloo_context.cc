@@ -67,7 +67,6 @@ void GLOOParallelContext::InitWithRingID(int ring_id) {
 void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
                                             int ring_id, bool use_calc_stream) {
-  // AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
   if (src.IsType<framework::LoDTensor>()) {
     if (!dst->IsType<framework::LoDTensor>()) {
       dst->Clear();
@@ -124,8 +123,6 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
 
 void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
                                     framework::SelectedRows *dst) {
-  // auto ;
-  // int local_rank = strategy_.local_rank_;
   int nranks = strategy_.nranks_;
   VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
@@ -149,9 +146,6 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
   dst_rows->resize(rows_num);
   auto *dst_rows_ptr = dst_rows->MutableData(place);
   const int64_t *src_rows_ptr = src_rows.Data(place);
-
-  // VLOG(3) << "Selected Rows of src:" << string::join_strings(dst_rows, ',')
-
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
@@ -171,7 +165,6 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
     gloo_wrapper->AllGatherVector<int64_t>(const_cast<int64_t *>(src_rows_ptr),
                                            static_cast<int64_t *>(dst_rows_ptr),
                                            rows_num_vector[0]);
-
     switch (dtype) {
       GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP32, float,
                            gloo_wrapper);

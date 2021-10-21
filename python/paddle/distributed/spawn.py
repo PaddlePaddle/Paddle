@@ -297,14 +297,13 @@ def _set_trainer_env(env_dict, backend):
     # is keep same with mainprocess(usually empty), so manually update the flags here
 
     # NOTE(xiongkun): why put backend here?  because if gloo, we shouldn't set FLAGS_selectedXXX
-    #
 
     if backend == 'nccl':
         set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
     elif backend == 'bkcl':
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
     else:
-        #NOTE(xiongkun) why not raise Error ? 
+        #NOTE(xiongkun) why not raise error ? 
         # So far, we added support for CPU parallel, and will be applied when paddle is not 
         # compiled with cuda or xp. just do nothing.
         pass
