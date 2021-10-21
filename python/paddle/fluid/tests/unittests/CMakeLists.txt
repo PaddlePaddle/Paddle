@@ -97,6 +97,7 @@ endforeach()
 
 if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
