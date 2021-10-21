@@ -170,9 +170,11 @@ void InitializeTempVar(const std::vector<std::string>& variable_names,
 
 void SharePaddleTensorWithCinnBuffer(LoDTensor* paddle_tensor,
                                      cinn_buffer_t* cinn_buffer) {
-  cinn_buffer->resize(
-      reinterpret_cast<const cinn_dimension_t*>(paddle_tensor->dims().Get()),
-      paddle_tensor->dims().size());
+  std::vector<cinn_dimension_t> cinn_dims(paddle_tensor->dims().size());
+  for (auto i = 0; i < cinn_dims.size(); ++i) {
+    cinn_dims[i] = static_cast<cinn_dimension_t>(paddle_tensor->dims().at(i));
+  }
+  cinn_buffer->resize(cinn_dims.data(), cinn_dims.size());
   cinn_buffer->memory =
       reinterpret_cast<uint8_t*>(paddle_tensor->data<float>());
 }

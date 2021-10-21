@@ -165,7 +165,9 @@ if (WITH_CINN)
   cc_library(cinn_launch_op_helper SRCS cinn_launch_op_helper.cc DEPS operator cinn)
   cc_test(cinn_launch_op_helper_test SRCS cinn_launch_op_helper_test.cc DEPS cinn_launch_op_helper)
   op_library(cinn_launch_op SRCS cinn_launch_op.cc DEPS cinn_launch_op_helper cinn ${OP_HEADER_DEPS})
-  cc_test(cinn_launch_op_test SRCS cinn_launch_op_test.cc DEPS cinn_launch_op elementwise_add_op)
+  if (WITH_GPU)
+      nv_test(cinn_launch_op_test SRCS cinn_launch_op_test.cc DEPS cinn_launch_op elementwise_add_op)
+  endif()
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.

@@ -100,7 +100,7 @@ TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
   compiled_tensor1->Resize(CinnShape(dims1));
   auto compiled_tensor2 = compiled_scope.GetTensor("var2");
   compiled_tensor2->Resize(CinnShape(dims2));
-  auto compiled_tensor3 = compiled_scope.GetTensor("var4");
+  auto compiled_tensor3 = compiled_scope.GetTensor("var3");
   compiled_tensor3->Resize(CinnShape({10}));
 
   // expected equality
@@ -110,16 +110,186 @@ TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
 
   // cast throw
   ASSERT_THROW(CheckTensorEquivalent(
-                   {{"var1", tensor1}, {"var4", tensor2}},
+                   {{"var1", tensor1}, {"var4", tensor4}},
                    {{"var1", compiled_tensor1}, {"var2", compiled_tensor2}}),
                paddle::platform::EnforceNotMet);
   ASSERT_THROW(CheckTensorEquivalent(
-                   {{"var1", tensor1}, {"var3", tensor2}},
+                   {{"var1", tensor1}, {"var3", tensor3}},
                    {{"var1", compiled_tensor1}, {"var3", compiled_tensor3}}),
                paddle::platform::EnforceNotMet);
 }
 
-TEST(CinnLaunchOpHelperTest, TestInitializeOutputVar) {}
+TEST(CinnLaunchOpHelperTest, TestInitializeOutputVar) {
+  // build test data
+  platform::CPUPlace place;
+  Scope scope;
+  scope.Var("var1");
+  scope.Var("var2");
+
+  CinnScope compiled_scope;
+  compiled_scope.Var<CinnTensor>("var1");
+  compiled_scope.Var<CinnTensor>("var2");
+  compiled_scope.Var<CinnTensor>("var3");
+  auto compiled_tensor1 = compiled_scope.GetTensor("var1");
+  compiled_tensor1->Resize(CinnShape({2, 3}));
+  auto compiled_tensor2 = compiled_scope.GetTensor("var2");
+  compiled_tensor2->Resize(CinnShape({5, 6, 7}));
+  auto compiled_tensor3 = compiled_scope.GetTensor("var3");
+  compiled_tensor3->Resize(CinnShape({10}));
+
+  // expected result
+  InitializeOutputVar(scope, place,
+                      {{"var1", compiled_tensor1}, {"var2", compiled_tensor2}});
+  auto* var1 = scope.FindVar("var1");
+  ASSERT_TRUE(var1->IsInitialized());
+  ASSERT_TRUE(var1->IsType<LoDTensor>());
+  EXPECT_TRUE(var1->Get<LoDTensor>().IsInitialized());
+  EXPECT_EQ(var1->Get<LoDTensor>().dims(), framework::make_ddim({2, 3}));
+  auto* var2 = scope.FindVar("var2");
+  ASSERT_TRUE(var2->IsInitialized());
+  ASSERT_TRUE(var2->IsType<LoDTensor>());
+  EXPECT_TRUE(var2->Get<LoDTensor>().IsInitialized());
+  EXPECT_EQ(var2->Get<LoDTensor>().dims(), framework::make_ddim({5, 6, 7}));
+
+  // cast throw
+  ASSERT_THROW(InitializeOutputVar(scope, place, {{"var1", compiled_tensor1},
+                                                  {"var3", compiled_tensor3}}),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchOpHelperTest, TestSeperateTempVar) {
+  // build test data
+  CinnScope compiled_scope;
+  compiled_scope.Var<CinnTensor>("cinn_temp_var1");
+  compiled_scope.Var<CinnTensor>("cinn_input_var1");
+  compiled_scope.Var<CinnTensor>("cinn_input_var2");
+  compiled_scope.Var<CinnTensor>("cinn_temp_var2");
+  compiled_scope.Var<CinnTensor>("cinn_output_var1");
+
+  // expected result
+  auto temporary_variable_names =
+      SeperateTempVar(compiled_scope, {{"input_var1", "cinn_input_var1"},
+                                       {"input_var2", "cinn_input_var2"},
+                                       {"output_var1", "cinn_output_var1"}},
+                      {"input_var1", "input_var2"}, {"output_var1"});
+  ASSERT_EQ(temporary_variable_names.size(), 2);
+  EXPECT_EQ(
+      std::unordered_set<std::string>(temporary_variable_names.begin(),
+                                      temporary_variable_names.end()),
+
+      std::unordered_set<std::string>({"cinn_temp_var1", "cinn_temp_var2"}));
+
+  // cast throw
+  ASSERT_THROW(
+      SeperateTempVar(compiled_scope, {{"input_var1", "cinn_input_var1"},
+                                       {"input_var2", "cinn_input_var2"},
+                                       {"output_var1", "cinn_output_var1"}},
+                      {"input_var1", "not_exsit_var"}, {"output_var1"}),
+      paddle::platform::EnforceNotMet);
+
+  ASSERT_THROW(
+      SeperateTempVar(compiled_scope, {{"input_var1", "cinn_input_var1"},
+                                       {"input_var2", "cinn_input_var2"},
+                                       {"output_var1", "not_exsit_var"}},
+                      {"input_var1", "input_var2"}, {"output_var1"}),
+      paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchOpHelperTest, TestInitializeTempVar) {
+  // build test data
+  Scope temp_scope;
+  platform::CPUPlace place;
+  CinnScope compiled_scope;
+  compiled_scope.Var<CinnTensor>("temp_var1");
+  compiled_scope.Var<CinnTensor>("temp_var2");
+  compiled_scope.Var<CinnTensor>("var3");
+  auto compiled_tensor1 = compiled_scope.GetTensor("temp_var1");
+  compiled_tensor1->Resize(CinnShape({2, 3}));
+  auto compiled_tensor2 = compiled_scope.GetTensor("temp_var2");
+  compiled_tensor2->Resize(CinnShape({5, 6, 7}));
+  auto compiled_tensor3 = compiled_scope.GetTensor("var3");
+  compiled_tensor3->Resize(CinnShape({10}));
+
+  // expected result
+  InitializeTempVar({"temp_var1", "temp_var2"}, compiled_scope, place,
+                    &temp_scope);
+  ASSERT_EQ(temp_scope.LocalVarNames().size(), 2);
+  auto* temp_var1 = temp_scope.FindVar("temp_var1");
+  ASSERT_NE(temp_var1, nullptr);
+  EXPECT_TRUE(temp_var1->IsInitialized());
+  EXPECT_TRUE(temp_var1->IsType<LoDTensor>());
+  EXPECT_TRUE(temp_var1->Get<LoDTensor>().IsInitialized());
+  EXPECT_EQ(temp_var1->Get<LoDTensor>().dims(), framework::make_ddim({2, 3}));
+  auto* temp_var2 = temp_scope.FindVar("temp_var2");
+  ASSERT_NE(temp_var2, nullptr);
+  EXPECT_TRUE(temp_var2->IsInitialized());
+  EXPECT_TRUE(temp_var2->IsType<LoDTensor>());
+  EXPECT_TRUE(temp_var2->Get<LoDTensor>().IsInitialized());
+  EXPECT_EQ(temp_var2->Get<LoDTensor>().dims(),
+            framework::make_ddim({5, 6, 7}));
+
+  // cast throw
+  Scope temp_scope2;
+  ASSERT_THROW(InitializeTempVar({"temp_var1", "not_exsit_var"}, compiled_scope,
+                                 place, &temp_scope2),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchOpHelperTest, TestSharePaddleTensorWithCinnBuffer) {
+  // build test data
+  Scope scope;
+  platform::CPUPlace place;
+  auto* var1 = scope.Var("var1");
+  auto* tensor1 = var1->GetMutable<LoDTensor>();
+  tensor1->mutable_data<float>(framework::make_ddim({5, 6}), place);
+  auto* data1 = tensor1->data<float>();
+  data1[0] = 9.99;
+  data1[10] = 19.99;
+  ASSERT_EQ(tensor1->numel(), 30);
+  ASSERT_EQ(tensor1->dims().size(), 2);
+
+  // excepted result
+  cinn_buffer_t cinn_buffer;
+  SharePaddleTensorWithCinnBuffer(tensor1, &cinn_buffer);
+  ASSERT_NE(cinn_buffer.memory, nullptr);
+  ASSERT_EQ(cinn_buffer.num_elements(), 30);
+  auto* shadow_data = reinterpret_cast<float*>(cinn_buffer.memory);
+  EXPECT_FLOAT_EQ(shadow_data[0], 9.99);
+  EXPECT_FLOAT_EQ(shadow_data[10], 19.99);
+}
+
+TEST(CinnLaunchOpHelperTest, TestAppendExecutionArguments) {
+  // build test data
+  Scope scope;
+  platform::CPUPlace place;
+  auto* var1 = scope.Var("var1");
+  auto* tensor1 = var1->GetMutable<LoDTensor>();
+  tensor1->mutable_data<float>(framework::make_ddim({5, 6}), place);
+  auto* var2 = scope.Var("temp_var2");
+  auto* tensor2 = var2->GetMutable<LoDTensor>();
+  tensor2->mutable_data<float>(framework::make_ddim({10}), place);
+
+  // expected result
+  std::map<std::string, cinn_pod_value_t> name2argument;
+  std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers;
+  AppendExecutionArguments(scope, {"var1", "temp_var2"},
+                           {{"var1", "cinn_var1"}}, &name2argument,
+                           &hold_buffers);
+  ASSERT_EQ(name2argument.size(), 2);
+  ASSERT_EQ(hold_buffers.size(), 2);
+  EXPECT_NE(name2argument.count("cinn_var1"), 0);
+  EXPECT_NE(name2argument.count("temp_var2"), 0);
+  EXPECT_EQ(static_cast<cinn_buffer_t*>(name2argument.at("cinn_var1")),
+            hold_buffers.front().get());
+  EXPECT_EQ(static_cast<cinn_buffer_t*>(name2argument.at("temp_var2")),
+            hold_buffers.back().get());
+
+  // cast throw
+  ASSERT_THROW(
+      AppendExecutionArguments(scope, {"var1", "var2"}, {{"var1", "cinn_var1"}},
+                               &name2argument, &hold_buffers),
+      paddle::platform::EnforceNotMet);
+}
 
 }  // namespace details
 }  // namespace operators
