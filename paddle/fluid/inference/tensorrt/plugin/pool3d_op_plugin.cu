@@ -42,18 +42,18 @@ void Pool3DPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, output_shape_);
 }
 
-Pool3DPlugin *Pool3DPlugin::clone() const TRT_NOEXCEPT override {
+Pool3DPlugin *Pool3DPlugin::clone() const TRT_NOEXCEPT {
   return new Pool3DPlugin(ceil_mode_, pool3d_type_, adaptive_, ksize_, strides_,
                           paddings_, input_shape_);
 }
 
-const char *Pool3DPlugin::getPluginType() const TRT_NOEXCEPT override {
+const char *Pool3DPlugin::getPluginType() const TRT_NOEXCEPT {
   return "pool3d_plugin";
 }
 
-int Pool3DPlugin::getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+int Pool3DPlugin::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
-int Pool3DPlugin::initialize() TRT_NOEXCEPT override { return 0; }
+int Pool3DPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
@@ -123,30 +123,26 @@ Pool3DPluginDynamic::Pool3DPluginDynamic(void const *serialData,
   DeserializeValue(&serialData, &serialLength, &is_global_);
 }
 
-nvinfer1::IPluginV2DynamicExt *Pool3DPluginDynamic::clone() const
-    TRT_NOEXCEPT override {
+nvinfer1::IPluginV2DynamicExt *Pool3DPluginDynamic::clone() const TRT_NOEXCEPT {
   return new Pool3DPluginDynamic(ceil_mode_, pool3d_type_, adaptive_, ksize_,
                                  strides_, paddings_, is_global_);
 }
 
-const char *Pool3DPluginDynamic::getPluginType() const TRT_NOEXCEPT override {
+const char *Pool3DPluginDynamic::getPluginType() const TRT_NOEXCEPT {
   return "pool3d_plugin_dynamic";
 }
-int Pool3DPluginDynamic::getNbOutputs() const TRT_NOEXCEPT override {
-  return 1;
-}
+int Pool3DPluginDynamic::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
-int Pool3DPluginDynamic::initialize() TRT_NOEXCEPT override { return 0; }
+int Pool3DPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 void Pool3DPluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc *in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc *out,
-    int nbOutputs) TRT_NOEXCEPT override {}
+    const nvinfer1::DynamicPluginTensorDesc *out, int nbOutputs) TRT_NOEXCEPT {}
 
 size_t Pool3DPluginDynamic::getWorkspaceSize(
     const nvinfer1::PluginTensorDesc *inputs, int nbInputs,
     const nvinfer1::PluginTensorDesc *outputs,
-    int nbOutputs) const TRT_NOEXCEPT override {
+    int nbOutputs) const TRT_NOEXCEPT {
   return 0;
 }
 
