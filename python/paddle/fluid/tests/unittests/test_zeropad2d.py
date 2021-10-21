@@ -47,7 +47,7 @@ class TestZeroPad2dError(unittest.TestCase):
         pad = [2, 2]
         x = np.random.randint(-255, 255, size=self.shape)
         x_tensor = paddle.to_tensor(x)
-        self.assertRaises(ValueError, zeropad2d, x=x_tensor, pad=pad)
+        self.assertRaises(AssertionError, zeropad2d, x=x_tensor, pad=pad)
 
 
 class TestZeroPad2d(unittest.TestCase):
