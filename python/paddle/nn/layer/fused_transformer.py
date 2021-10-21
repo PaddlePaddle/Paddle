@@ -249,7 +249,8 @@ class FusedTransformerEncoderLayer(Layer):
     Examples:
 
         .. code-block:: python
-
+	    
+	    # required: gpu
             import paddle
             from paddle.nn import TransformerEncoderLayer
 
