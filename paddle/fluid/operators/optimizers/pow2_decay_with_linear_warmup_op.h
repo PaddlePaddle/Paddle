@@ -28,31 +28,30 @@ struct Pow2DecayWithLinearWarmupFunctor {
   using RestrictPtr = U *PADDLE_RESTRICT;
 
  public:
-  HOSTDEVICE Pow2DecayWithLinearWarmupFunctor(
-      RestrictPtr<T> lr, RestrictPtr<int64_t> step, size_t warmup_steps,
-      size_t total_steps, AttrT start_lr, AttrT base_lr, AttrT end_lr)
+  HOSTDEVICE Pow2DecayWithLinearWarmupFunctor(RestrictPtr<T> lr,
+                                              RestrictPtr<int64_t> step,
+                                              size_t warmup_steps,
+                                              size_t total_steps, AttrT base_lr,
+                                              AttrT end_lr)
       : lr_(lr),
         step_(step),
         warmup_steps_(warmup_steps),
         total_steps_(total_steps),
-        start_lr_(start_lr),
         base_lr_(base_lr),
         end_lr_(end_lr) {}
 
   HOSTDEVICE void operator()(size_t) const {
-    size_t step = static_cast<size_t>(*step_);
-    *step_ = static_cast<int64_t>(step + 1);
-    if (step < warmup_steps_) {
-      auto new_lr =
-          static_cast<double>(base_lr_ - start_lr_) * step / warmup_steps_ +
-          start_lr_;
+    size_t step = static_cast<size_t>(*step_) + 1;
+    *step_ = static_cast<int64_t>(step);
+    if (step <= warmup_steps_) {
+      auto new_lr = static_cast<double>(step) / warmup_steps_ * base_lr_;
       *lr_ = static_cast<T>(new_lr);
     } else if (step < total_steps_) {
       auto factor = 1 -
                     static_cast<double>(step - warmup_steps_) /
                         (total_steps_ - warmup_steps_);
       auto new_lr =
-          static_cast<double>(base_lr_ - end_lr_) * factor * factor + end_lr_;
+          static_cast<double>(base_lr_ - end_lr_) * (factor * factor) + end_lr_;
       *lr_ = static_cast<T>(new_lr);
     } else {
       *lr_ = static_cast<T>(end_lr_);
@@ -64,7 +63,6 @@ struct Pow2DecayWithLinearWarmupFunctor {
   RestrictPtr<int64_t> step_;
   size_t warmup_steps_;
   size_t total_steps_;
-  AttrT start_lr_;
   AttrT base_lr_;
   AttrT end_lr_;
 };
@@ -98,7 +96,6 @@ class Pow2DecayWithLinearWarmupOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(warmup_steps, total_steps,
                       platform::errors::InvalidArgument(
                           "warmup_steps must not be larger than total_steps."));
-    auto start_lr = ctx.Attr<float>("start_lr");
     auto base_lr = ctx.Attr<float>("base_lr");
     auto end_lr = ctx.Attr<float>("end_lr");
 
@@ -106,11 +103,10 @@ class Pow2DecayWithLinearWarmupOpKernel : public framework::OpKernel<T> {
     auto *step_data = step_out->data<int64_t>();
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, 1);
-    using AttrT = float;
+    using AttrT = double;
     Pow2DecayWithLinearWarmupFunctor<T, AttrT> functor(
         lr_data, step_data, warmup_steps, total_steps,
-        static_cast<AttrT>(start_lr), static_cast<AttrT>(base_lr),
-        static_cast<AttrT>(end_lr));
+        static_cast<AttrT>(base_lr), static_cast<AttrT>(end_lr));
     for_range(functor);
   }
 };
