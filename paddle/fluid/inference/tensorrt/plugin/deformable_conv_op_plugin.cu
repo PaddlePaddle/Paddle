@@ -15,7 +15,6 @@ limitations under the License. */
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <algorithm>
-#include <cassert>
 #include <cstdio>
 
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
@@ -84,9 +83,16 @@ DeformableConvPlugin::DeformableConvPlugin(
   strides_.insert(strides_.end(), strides.cbegin(), strides.cend());
   paddings_.insert(paddings_.end(), paddings.cbegin(), paddings.cend());
   dilations_.insert(dilations_.end(), dilations.cbegin(), dilations.cend());
-  assert(data_type_ == nvinfer1::DataType::kFLOAT ||
-         data_type_ == nvinfer1::DataType::kHALF);
-  assert(paddings_.size() == strides_.size());
+  PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
+                        data_type_ == nvinfer1::DataType::kHALF,
+                    true, platform::errors::InvalidArgument(
+                              "The DeformableConv TRT Plugin's input type "
+                              "should be float or half."));
+  PADDLE_ENFORCE_EQ(
+      paddings_.size(), strides_.size(),
+      platform::errors::InvalidArgument(
+          "The size of paddings (%d) is not equal to the size of strides (%d).",
+          paddings_.size(), strides_.size()));
 }
 
 DeformableConvPlugin::DeformableConvPlugin(
@@ -111,9 +117,16 @@ DeformableConvPlugin::DeformableConvPlugin(
   offset_dim_.insert(offset_dim_.end(), offset_dim.cbegin(), offset_dim.cend());
   mask_dim_.insert(mask_dim_.end(), mask_dim.cbegin(), mask_dim.cend());
   output_dim_.insert(output_dim_.end(), output_dim.cbegin(), output_dim.cend());
-  assert(data_type_ == nvinfer1::DataType::kFLOAT ||
-         data_type_ == nvinfer1::DataType::kHALF);
-  assert(paddings_.size() == strides_.size());
+  PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
+                        data_type_ == nvinfer1::DataType::kHALF,
+                    true, platform::errors::InvalidArgument(
+                              "The DeformableConv TRT Plugin's input type "
+                              "should be float or half."));
+  PADDLE_ENFORCE_EQ(
+      paddings_.size(), strides_.size(),
+      platform::errors::InvalidArgument(
+          "The size of paddings (%d) is not equal to the size of strides (%d).",
+          paddings_.size(), strides_.size()));
 }
 
 DeformableConvPlugin::DeformableConvPlugin(const void* data, size_t length) {
@@ -148,8 +161,10 @@ int DeformableConvPlugin::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
 nvinfer1::Dims DeformableConvPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* inputs, int nb_input_dims) TRT_NOEXCEPT {
-  assert(index == 0);
-  assert(nb_inputs == 3);
+  PADDLE_ENFORCE_EQ(nb_input_dims, 3,
+                    platform::errors::InvalidArgument(
+                        "The number of inputs should be equal to 3, but got %d",
+                        nb_input_dims));
   nvinfer1::Dims ret;
   ret.nbDims = inputs[0].nbDims;
   ret.d[0] = kernel_dims_[0];
@@ -188,8 +203,10 @@ int DeformableConvPlugin::enqueue(int batch_size, const void* const* inputs,
     return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
     return enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The DeformableConv TRT Plugin's input type should be float or half."));
   }
-  assert("unsupported type.");
 }
 
 template <typename T>
@@ -471,8 +488,14 @@ void DeformableConvPlugin::configurePlugin(
     const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
     int max_batct_size) TRT_NOEXCEPT {
-  assert(nb_inputs == 3);
-  assert(nb_outputs == 1);
+  PADDLE_ENFORCE_EQ(
+      nb_inputs, 3,
+      platform::errors::InvalidArgument(
+          "The number of inputs should be equal to 3, but got %d", nb_inputs));
+  PADDLE_ENFORCE_EQ(
+      nb_outputs, 1,
+      platform::errors::InvalidArgument(
+          "The number of inputs should be equal to 1, but got %d", nb_outputs));
 
   for (int i = 0; i < input_dims[0].nbDims; i++) {
     input_dim_.push_back(input_dims[0].d[i]);
@@ -561,7 +584,9 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::createPlugin(
       weights.count = fc->fields[i].length;
       weights.values = fc->fields[i].data;
     } else {
-      assert(false && "unknown plugin field name.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unknown plugin field name [%s] in the DeformableConv TRT Plugin.",
+          field_name));
     }
   }
   weights.type = data_type;

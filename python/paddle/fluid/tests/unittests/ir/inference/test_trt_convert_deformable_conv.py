@@ -131,6 +131,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             "In deformable conv, length of Attr(strides) should be 2.")
 
     def test(self):
+        self.trt_param.workspace_size = 1 << 28
         self.add_skip_trt_case()
         self.run_test()
 
