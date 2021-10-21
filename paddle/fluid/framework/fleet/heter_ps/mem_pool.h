@@ -37,6 +37,9 @@ class MemoryPool {
   size_t capacity() {
     return _capacity;
   }
+  size_t byte_size() {
+    return _capacity * _block_size;
+  }
   void* mem_address(const uint32_t &idx) {
     return (void*)&_mem[(idx - 1) * _block_size];
   }
@@ -52,24 +55,11 @@ class HBMMemoryPool : public managed {
     cudaMalloc(&_mem, (block_size * capacity / 8 + 1) * 8);
     cudaMemset(_mem, 0, block_size * capacity);
   }
-  HBMMemoryPool(size_t capacity, size_t block_size, *MemoryPool mem_pool, int stream_num) {
-    cudaMalloc(&_mem, (block_size * capacity / 8 + 1) * 8);
-    gpuStream_t streams[stream_num];
-    int cur_len = 0;
-    int cur_stream = 0;
-    void* start_mem_pool = (void*)mem_pool.mem();
-
-    while (cur_len < len) {
-      cur_stream = cur_stream % stream_num;
-      int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaMemcpyAsync(_mem + cur_len * _block_size, mem_pool->mem_address(cur_len),
-                          _block_size * tmp_len, cudaMemcpyHostToDevice,
-                          streams[cur_stream]));
-      cur_stream += 1;
-      cur_len += tmp_len;
-    }
-
+  HBMMemoryPool(MemoryPool* mem_pool, int stream_num) {
+    _capacity = mem_pool->capacity();
+    _block_size = mem_pool->block_size();
+    cudaMalloc(&_mem, (_block_size * _capacity / 8 + 1) * 8);
+    cudaMemcpy(_mem, mem_pool->mem(), mem_pool->byte_size(), cudaMemcpyHostToDevice);
   }
     
   ~HBMMemoryPool() {
@@ -86,6 +76,7 @@ class HBMMemoryPool : public managed {
   
   void reset(size_t capacity) {
     cudaFree(_mem);
+    _capacity = capacity;
     cudaMalloc(&_mem, (block_size * capacity / 8 + 1) * 8);
     cudaMemset(_mem, 0, block_size * capacity);
   }

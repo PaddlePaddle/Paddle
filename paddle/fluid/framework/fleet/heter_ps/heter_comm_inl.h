@@ -323,7 +323,7 @@ int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
                                                      ValType* h_vals,
-                                                     const std::vector<int>& len,
+                                                     size_t len,
                                                      size_t chunk_size,
                                                      int stream_num) {
   if (len <= 0) {
@@ -375,7 +375,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
-                                                     const std::vector<paddle::ps::DownpourFixedFeatureValue*>& h_ptr,
+                                                     HBMMemoryPool* hbm_mem_pool,
                                                      size_t len,
                                                      int mf_dim,
                                                      size_t chunk_size,
@@ -387,43 +387,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
 
-  // prepare hbm pool
-  int pool_id = -1;
-  if (dim_index_map.find(mf_dim) != dim_index_map_.end()) {
-    pool_id = dim_index_map_[mf_dim];
-  }
-  PADDLE_ENFORCE_GE(
-        pool_id, 0,
-        platform::errors::OutOfRange("mf_dim is not registered"));
-  auot& mem_pool = mem_pools_[dev_id][pool_id];
-  mem_pool = new MemoryPool(len, sizeof(ValType) + mf_dim * sizeof(float));
-  for (int i = 0; i < len; i++) {
-    ValType* val = mem_pool.mem_address(i);
-    float* ptr_val = (float*)h_ptr[i];
-    val.delta_score = ptr_val[1];
-    val.show = ptr_val[2];
-    val.clk = ptr_val[3];
-    val.slot = ptr_val[6];
-    val.lr = ptr_val[4];
-    val.lr_g2sum = ptr_val[5];
-    val.cpu_ptr = (uint64_t)(h_ptr[i]);
-    val.mf_dim = slot_dim_map_[val.slot];
-    if (dim > 8) { // CpuPS alreay expand as mf_dim
-      val.mf_size = mf_dim;
-      for (int x = 0; x < val.mf_size; x++) {
-        val.mf[x] = ptr_val[x + 8];
-      }
-    } else {
-      val.mf_size = 0;
-      for (int x = 0; x < val.mf_dim; x++) {
-        val.mf[x] = 0;
-      }
-    }
-  }
-
-  auto& hbm_mem_pool = hbm_pools_[dev_id][pool_id];
-  hbm_mem_pool = new HBMMemoryPool(len, sizeof(ValType) + mf_dim * sizeof(float), mem_pool);
-  
+  // use hbm pool
   std::vector<std::shared_ptr<memory::Allocation>> d_key_bufs;
 
   gpuStream_t streams[stream_num];
@@ -445,7 +409,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
                         streams[cur_stream]));
     tables_[num]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()), tmp_len,
-        streams[cur_stream], mem_pool, cur_len);
+        streams[cur_stream], hbm_mem_pool, cur_len);
     cur_stream += 1;
     cur_len += tmp_len;
   }

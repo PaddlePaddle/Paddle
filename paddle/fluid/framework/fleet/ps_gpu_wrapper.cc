@@ -504,9 +504,42 @@ void PSGPUWrapper::BuildGPUTaskMultiDim(std::shared_ptr<HeterContext> gpu_task) 
     int dim_id = i % dims_num;
     int mf_dim = index_dim_vec_[dim_id];
     VLOG(3) << "building table: " << device_id << "with mf dim: " << mf_dim;
-    this->HeterPs_->build_ps(device_id, gpu_task->device_dim_keys_[device_id][dim_id].data(),
-                             gpu_task->device_dim_ptr[device_id][dim_id].data(),
-                             device_dim_keys[device_id][dim_id].size(), mf_dim, 500000, 2);
+    // prepare mem and hbm pool
+    auot& mem_pool = mem_pools_[dev_id][pool_id]; // mem_pools_ need initialized
+    size_t feature_value_size = sizeof(FeatureValue) + mf_dim * sizeof(float);
+    mem_pool = new MemoryPool(len, feature_value_size);
+    auto& device_dim_keys = gpu_task->device_dim_keys_[device_id][dim_id];
+    auto& device_dim_ptrs = gpu_task->device_dim_ptr_[device_id][dim_id];
+    size_t len = device_dim_keys.size();
+    for (int i = 0; i < len; i++) {
+      FeatureValue* val = mem_pool.mem_address(i);
+      float* ptr_val = (float*)device_dim_ptrs[i];
+      size_t dim = device_dim_ptrs[i]->size();
+      val.delta_score = ptr_val[1];
+      val.show = ptr_val[2];
+      val.clk = ptr_val[3];
+      val.slot = ptr_val[6];
+      val.lr = ptr_val[4];
+      val.lr_g2sum = ptr_val[5];
+      val.cpu_ptr = (uint64_t)(h_ptr[i]);
+      val.mf_dim = slot_dim_map_[val.slot];
+      if (dim > 8) { // CpuPS alreay expand as mf_dim
+        val.mf_size = mf_dim;
+        for (int x = 0; x < val.mf_size; x++) {
+          val.mf[x] = ptr_val[x + 8];
+        }
+      } else {
+        val.mf_size = 0;
+        for (int x = 0; x < val.mf_dim; x++) {
+          val.mf[x] = 0;
+        }
+      }
+    }
+    auto& hbm_mem_pool = hbm_pools_[dev_id][pool_id]; // hbm_pools need initialized
+    hbm_mem_pool = new HBMMemoryPool(len, sizeof(ValType) + mf_dim * sizeof(float), mem_pool);
+
+    this->HeterPs_->build_ps(device_id, device_dim_keys.data(),
+                             hbm_mem_pool, len, mf_dim, 500000, 2);
     if (device_dim_keys[device_id][dim_id].size() > 0) {
       HeterPs_->show_one_table(i);
     }

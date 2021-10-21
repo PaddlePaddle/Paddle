@@ -321,6 +321,8 @@ class PSGPUWrapper {
   std::vector<int> index_dim_vec_;
   int multi_mf_dim_{0};
   std::vector<HBMMemoryPool*> batch_grad_pool_;
+  std::vector<std::vector<HBMMemoryPool*>> hbm_pools_ // in multi mfdim, one table need hbm pools of totol dims number 
+  std::vector<std::vector<MemoryPool*>> mem_pools_;
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
