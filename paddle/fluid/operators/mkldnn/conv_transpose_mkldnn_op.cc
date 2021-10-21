@@ -386,7 +386,7 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
     // Caching Key for weights is needed
     std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
-                                          ctx.InputName("Filter"), (bias ? ctx.InputName("Bias") : "");
+                                          ctx.InputName("Filter"), (bias ? ctx.InputName("Bias") : ""));
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
         dev_ctx, key, filter, ctx.Attr<int>("groups"));
