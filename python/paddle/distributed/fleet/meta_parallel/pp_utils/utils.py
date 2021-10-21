@@ -24,12 +24,6 @@ from ..parallel_layers.random import get_rng_state_tracker
 
 __all__ = []
 
-#to support checkpoint continuous
-continuous_data_buffers = []
-continuous_data_offsets = []
-continuous_size_buffers = []
-continuous_size_offsets = []
-_num_checkpoints = None
 
 FLOAT_TYPE_DICT = {
     paddle.float16: "float16",
@@ -99,12 +93,11 @@ _recompute_offload = False
 _recompute_partition = False
 
 
-def _initialize_recompute_setting(is_offload, is_partition, num_checkpoints):
-    global _recompute_offload, _recompute_partition, _num_checkpoints
+def _initialize_recompute_setting(is_offload, is_partition):
+    global _recompute_offload, _recompute_partition
 
     _recompute_offload = is_offload
     _recompute_partition = is_partition
-    _num_checkpoints = num_checkpoints
 
 
 def _initialize_recompute_hcg(hcg):
@@ -119,22 +112,10 @@ def _extract_tensors(all_objects):
         return tuple(tensor_object), tuple(non_tensor_object), tuple(tensor_flags)
     return tensor_object, non_tensor_object, tensor_flags
 
-def _all_gather(tensor, group=None, use_calc_stream=True):
-    """
-    The main difference with paddle.distributed.all_gather: 
-    no need to pass in tensor_list, the returned tensor is spliced
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-    nranks = paddle.distributed.collective._get_global_group(
-    ).nranks if group is None else group.nranks
-    return _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'nranks', nranks)
-
-
-def _split_activation(tensors):
-    global _hcg, continuous_data_buffers, continuous_data_offsets
+def _split_activation(tensors, buffer_params):
+    global _hcg
+    continuous_data_buffers, continuous_data_offsets = buffer_params[:2]
+    _num_checkpoints = buffer_params[-1]
     
     need_partition = _recompute_partition
     mp_degree = _hcg.get_model_parallel_world_size()
@@ -195,8 +176,8 @@ def _split_activation(tensors):
  
     return tensor_inputs
 
-def _get_part_for_backward(args, inputs):
-    global continuous_size_buffers, continuous_size_offsets
+def _get_part_for_backward(args, inputs, buffer_params):
+    continuous_size_buffers, continuous_size_offsets, _num_checkpoints = buffer_params[2:]
     new_args = []
     num_non_tensor = 0
     
@@ -268,7 +249,7 @@ def _merge_tensors(ctx, tensor_object):
     return merge_object
   
 def _merge_activation(ctx, tensors):
-    global _hcg, continuous_data_buffers, continuous_data_offsets, continuous_size_buffers, continuous_size_offsets
+    global _hcg
     mp_degree = _hcg.get_model_parallel_world_size()
     mp_rank = _hcg.get_model_parallel_rank()
     mp_group = _hcg.get_model_parallel_group()
@@ -345,6 +326,9 @@ class _HPRecomputeFunction(PyLayer):
     3. Support MP segmentation of activation to further reduce cuda memory
     4. Adapt to the random state of MP
     """
+   
+    #to support checkpoint continuous
+    _buffer_params = None
 
     @staticmethod
     def forward(ctx, run_function, all_outputs, *args):
@@ -376,8 +360,8 @@ class _HPRecomputeFunction(PyLayer):
             outputs = run_function(*args)
 
         if _recompute_partition:
-            tensor_inputs = _split_activation(args)
-            new_args = _get_part_for_backward(args, tensor_inputs)
+            tensor_inputs = _split_activation(args, _HPRecomputeFunction._buffer_params)
+            new_args = _get_part_for_backward(args, tensor_inputs, _HPRecomputeFunction._buffer_params)
             tensor_object, non_tensor_object, tensor_flags = _extract_tensors(new_args)
             ctx.non_tensor_object = non_tensor_object
             ctx.tensor_flags = tensor_flags
@@ -406,7 +390,7 @@ class _HPRecomputeFunction(PyLayer):
     def backward(ctx, *args):
         with paddle.fluid.dygraph.guard():
             #remove pointers to the continuous buffer.for garbaging the used checkpoints
-            global continuous_data_buffers, continuous_data_offsets, continuous_size_buffers, continuous_size_offsets
+            continuous_data_buffers, continuous_data_offsets, continuous_size_buffers, continuous_size_offsets = _HPRecomputeFunction._buffer_params[:-1]
             for buffers in continuous_data_buffers:
                 buffers = []
                          
@@ -458,15 +442,23 @@ class _HPRecomputeFunction(PyLayer):
                          if isinstance(inp, core.VarBase))
             return grads
 
+    @staticmethod
+    def init_continuous_buffer(continuous_buffer):
+        if continuous_buffer is not None:        
+            assert len(continuous_buffer) == 5, "error to get continuous_buffer params."
+            #to support checkpoint continuous
+            _HPRecomputeFunction._buffer_params = continuous_buffer
 
-def _hp_recompute(function, *args):
+
+def _hp_recompute(function, continuous_buffer, *args):
     # NODTE(shenliang03)The current hybrid parallel recompute has limitations. 
     # It cannot handle the following situations:
     # 1. The calculation output of recompute, there are tensors that do not require gradients.
     # 2. The forward output tensor has no gradient. This problem can be solved temporarily by detach().
     # 3. Here, we only use float dtype to distinguish whether a gradient is needed in output tensor
-
+    
     all_outputs = []
+    _HPRecomputeFunction.init_continuous_buffer(continuous_buffer)
     _HPRecomputeFunction.apply(function, all_outputs, *args)
 
     if len(all_outputs) == 1:

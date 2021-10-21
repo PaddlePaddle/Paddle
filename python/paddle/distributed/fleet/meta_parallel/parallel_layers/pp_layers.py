@@ -159,6 +159,7 @@ class PipelineLayer(Layer):
             logger.info(
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}".
                 format(recompute_offload, recompute_partition))
+        _initialize_recompute_setting(recompute_offload, recompute_partition)
 
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
@@ -194,10 +195,6 @@ class PipelineLayer(Layer):
         self.run_function = []
         self._build_layer()
         
-        num_checkpoints = len(range(0, self.segment_parts[-1], self._recompute_interval)) if self._recompute_interval > 0 else 0 
-        _initialize_recompute_setting(recompute_offload, recompute_partition,
-                                      num_checkpoints)
-
         self.shared_comm = self._construct_shared_comm()
         self._synchronize_shared_weights()
 
@@ -358,7 +355,12 @@ class PipelineLayer(Layer):
             input = self.forward_function(0, len(self.run_function))(input)
         else:
             num_layers = len(self.run_function)
-            for start_idx in range(0, num_layers, self._recompute_interval):
+            checkpoint_idxs = range(0, num_layers, self._recompute_interval)
+            num_checkpoints = len(checkpoint_idxs) if self._recompute_interval > 0 else 0
+            # to support continuous checkpoints.
+            buffer_params = [[], [], [], [],num_checkpoints]
+
+            for start_idx in checkpoint_idxs:
                 end_idx = min(start_idx + self._recompute_interval, num_layers)
                 funcs = self.run_function[start_idx:end_idx]
 
@@ -367,9 +369,11 @@ class PipelineLayer(Layer):
 
                 if self._need_recompute(funcs, input):
                     input = _hp_recompute(
-                        self.forward_function(start_idx, end_idx), *input)
+                        self.forward_function(start_idx, end_idx), buffer_params, *input)
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
+
+            buffer_params = None
 
         return input
 
