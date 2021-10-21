@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
+import paddle
 
 
 def _get_attn_output(q, k, v, wq, wk, wv, wo, seq_len, nheads, vec_size,
@@ -114,7 +115,7 @@ def _generate_seq_len(batch, min_seq_len, max_seq_len, is_pad=True):
             (max_seq_len, ), max_seq_len, dtype=np.int32)  # set a large number
     else:
         # if not pad, we should set the low, high windows inside a batch for each sequence
-        cumsum = np.cumsum(seq_len)
+        cumsum = np.cumsum(seq_len, dtype=np.int32)
         lo_win = np.insert(cumsum[:-1], 0, 0)  # compute for each sequence
         lo_win = np.repeat(lo_win, seq_len)  # set for each token
         hi_win = cumsum
@@ -147,15 +148,19 @@ class TestMHAOpFP16(OpTest):
             'V': V,
             'W': W,
             'QO_Seqlen': qo_slen,
-            'KV_Seqlen': kv_slen
+            'KV_Seqlen': kv_slen,
+            'QO_Seqlen_host': qo_slen,
+            'KV_Seqlen_host': kv_slen,
+            'low_windows': lo_win,
+            'high_windows': hi_win,
         }
 
         self.attrs = {
             'cache_key': str(id(type(self))),
-            'attn_QO_Seqlen': qo_slen,
-            'attn_KV_Seqlen': kv_slen,
-            'attn_low_windows': lo_win,
-            'attn_high_windows': hi_win,
+            # 'attn_QO_Seqlen': qo_slen,
+            # 'attn_KV_Seqlen': kv_slen,
+            # 'attn_low_windows': lo_win,
+            # 'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
             'attn_heads': nheads,
             'attn_sm_scaler': 1.,
@@ -247,15 +252,19 @@ class TestMHAOpPadVarLenFP16(OpTest):
             'V': V,
             'W': W,
             'QO_Seqlen': qo_slen,
-            'KV_Seqlen': kv_slen
+            'KV_Seqlen': kv_slen,
+            'QO_Seqlen_host': qo_slen,
+            'KV_Seqlen_host': kv_slen,
+            'low_windows': lo_win,
+            'high_windows': hi_win,
         }
 
         self.attrs = {
             'cache_key': str(id(type(self))),
-            'attn_QO_Seqlen': qo_slen,
-            'attn_KV_Seqlen': kv_slen,
-            'attn_low_windows': lo_win,
-            'attn_high_windows': hi_win,
+            # 'attn_QO_Seqlen': qo_slen,
+            # 'attn_KV_Seqlen': kv_slen,
+            # 'attn_low_windows': lo_win,
+            # 'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
             'attn_heads': nheads,
             'attn_sm_scaler': 1.,
@@ -348,25 +357,30 @@ class TestMHAOpVarLenFP16(OpTest):
 
         qo_slens = np.sum(qo_slen, dtype=np.int32).reshape(1, )
         kv_slens = np.sum(kv_slen, dtype=np.int32).reshape(1, )
+
         self.inputs = {
             'Q': Q,
             'K': K,
             'V': V,
             'W': W,
             'QO_Seqlen': qo_slens,
-            'KV_Seqlen': kv_slens
+            'KV_Seqlen': kv_slens,
+            'QO_Seqlen_host': qo_slens,
+            'KV_Seqlen_host': kv_slens,
+            'low_windows': lo_win,
+            'high_windows': hi_win,
         }
 
         # TODO(Ming Huang): Is is a work around for 1 batch size. 
         # due to attribute cannot be get as std::vector when list lenght==1
-        qo_slens_host = [*qo_slens, 0]
-        kv_slens_host = [*kv_slens, 0]
+        # qo_slens_host = [*qo_slens, 0]
+        # kv_slens_host = [*kv_slens, 0]
         self.attrs = {
             'cache_key': str(id(type(self))),
-            'attn_QO_Seqlen': qo_slens_host,
-            'attn_KV_Seqlen': kv_slens_host,
-            'attn_low_windows': lo_win,
-            'attn_high_windows': hi_win,
+            # 'attn_QO_Seqlen': qo_slens_host,
+            # 'attn_KV_Seqlen': kv_slens_host,
+            # 'attn_low_windows': lo_win,
+            # 'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
             'attn_heads': nheads,
             'attn_sm_scaler': 1.,

@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 
 import paddle
 from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
-from paddle.nn.layer import CUDNNSeqDataInfo
+from paddle.nn.layer import CUDNNSeqDataInfo, CUDNNSeqInfoInfer
 
 
 def is_equal_atol(a, b, atol):
@@ -111,8 +111,11 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
             place=self.place,
             stop_gradient=False)
 
-        attn_mask = np.ones((batch_size, seq_len))
-        self.seq_data = CUDNNSeqDataInfo(attn_mask, self.place)
+        attn_mask = paddle.to_tensor(np.ones((batch_size, seq_len)), place=self.place)
+        seq_infer = CUDNNSeqInfoInfer()
+        self.seq_data = seq_infer(attn_mask)
+        # attn_mask = np.ones((batch_size, seq_len))
+        # self.seq_data = CUDNNSeqDataInfo(attn_mask, self.place)
         self.attn_tensor = paddle.to_tensor(
             np.ones((batch_size, nheads, seq_len, seq_len)),
             dtype=np.bool,
