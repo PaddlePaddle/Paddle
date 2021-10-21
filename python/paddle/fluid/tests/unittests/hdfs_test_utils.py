@@ -128,25 +128,6 @@ class FSTestBase(unittest.TestCase):
         fs.delete(dst_file)
         local.delete(src_file)
 
-    def _test_download_dir(self, fs):
-        # upload dir
-        src_file = os.path.abspath("./fs_download_dir")
-        dst_file = os.path.abspath("./local_download_dir")
-        file1 = os.path.abspath("./fs_download_dir/file1")
-        file2 = os.path.abspath("./fs_download_dir/file2")
-
-        local = LocalFS()
-        local.mkdirs(src_file)
-        fs.mkdirs(src_file)
-        fs.touch(file1)
-        fs.touch(file2)
-
-        fs.download(src_file, dst_file)
-
-        self.assertTrue(local.is_exist(file1))
-        fs.delete(src_file)
-        local.delete(dst_file)
-
     def _test_try_download(self, fs):
         src_file = os.path.abspath("./test_try_download.src")
         dst_file = os.path.abspath("./test_try_download.dst")
@@ -214,7 +195,7 @@ class FSTestBase(unittest.TestCase):
 
         fs.download(src_file, dst_file)
         local = LocalFS()
-        self.assertTrue(local.is_exist(dst_file))
+        self.assertTrue(local.is_exist(file1))
         local.delete(dst_file)
         fs.delete(src_file)
 
