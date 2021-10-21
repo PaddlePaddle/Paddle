@@ -71,6 +71,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fused_feedforward",
      {"Dropout1Seed", "Dropout2Seed", "Linear1Bias", "Linear2Bias", "Ln1Scale",
       "Ln1Bias", "Ln2Scale", "Ln2Bias"}},
+    {"faster_tokenizer", {"Text", "Vocab", "TextPair"}},
     {"matrix_rank", {"X", "TolTensor"}},
     {"adam",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",

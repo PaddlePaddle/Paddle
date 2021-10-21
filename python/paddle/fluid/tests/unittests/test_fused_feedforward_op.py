@@ -33,7 +33,7 @@ class TestFusedFFNOp(OpTest):
         self.batch_size = np.random.randint(1, 64)
         self.query_length = np.random.randint(32, 256)
         self.d_model = np.random.randint(32, 1024)
-        self.dim_feedforward = np.random.randint(32, 4096)
+        self.dim_feedforward = np.random.randint(32, 1024)
 
     def getDiff(self):
         self.rtol = 1e-3
@@ -163,7 +163,7 @@ class TestFusedFFNOpFp16(TestFusedFFNOp):
         self.batch_size = 8
         self.query_length = 128
         self.d_model = 1024
-        self.dim_feedforward = 4096
+        self.dim_feedforward = 1024
 
 
 class TestFusedFFNOpFp64(TestFusedFFNOp):

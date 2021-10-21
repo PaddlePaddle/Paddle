@@ -18,6 +18,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
 class TrtConvertClipTest(TrtLayerAutoScanTest):
@@ -84,8 +85,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
+    def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
@@ -146,7 +146,21 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
                                                                      True), 1e-5
 
+    def add_skip_trt_case(self):
+        def teller1(program_config, predictor_config):
+            if len(
+                    program_config.inputs['input_data'].shape
+            ) == 2 and not predictor_config.tensorrt_dynamic_shape_enabled():
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "The output shape has diff, but we can add shuffle layer to resolve it."
+        )
+
     def test(self):
+        self.add_skip_trt_case()
         self.run_test()
 
 
