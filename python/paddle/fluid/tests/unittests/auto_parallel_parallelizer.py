@@ -24,7 +24,7 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 import paddle.fluid.core as core
 
 paddle.enable_static()
@@ -131,7 +131,7 @@ class TestMLPAutoParallelizer(unittest.TestCase):
             for op in block.ops:
                 for attr_name in op.attr_names:
                     self.assertTrue(suffix not in attr_name)
-        # print_program_with_distributed_attr(distributed_main_program)
+        # print_program_with_dist_attr(distributed_main_program)
         self.assertIsNotNone(distributed_startup_program)
         self.assertIsNotNone(distributed_main_program)
 
