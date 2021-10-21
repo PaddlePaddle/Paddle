@@ -2389,7 +2389,7 @@ function find_temporary_files() {
 }
 
 function build_pr_and_develop() {
-    build_only
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
     mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
     rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
@@ -2399,7 +2399,7 @@ function build_pr_and_develop() {
     fi
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
-    build_only
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
     mkdir build/dev_whl && cp build/python/dist/*.whl build/dev_whl
 }
 
