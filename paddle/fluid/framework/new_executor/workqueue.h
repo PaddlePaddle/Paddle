@@ -21,6 +21,7 @@
 namespace paddle {
 namespace framework {
 
+constexpr const char* kQueueEmptyEvent = "QueueEmpty";
 class EventsWaiter;
 
 struct WorkQueueOptions {
@@ -43,7 +44,7 @@ struct WorkQueueOptions {
   // block the calling thread until any of events (including "queue empty")
   // occured.
   bool track_task;
-  EventsWaiter* queue_empty_waiter{nullptr};
+  EventsWaiter* queue_empty_waiter{nullptr};  // not owned
 };
 
 class WorkQueue {

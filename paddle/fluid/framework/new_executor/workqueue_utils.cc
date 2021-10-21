@@ -60,24 +60,17 @@ constexpr EventsWaiter::EventId kEmptyEventId = -1;
 EventsWaiter::EventsWaiter()
     : trigger_event_(kEmptyEventId), waiting_(false), cv_(1) {}
 
-EventsWaiter::EventId EventsWaiter::RegisterEvent(EventChecker checker) {
-  checkers_.push_back(std::move(checker));
+std::shared_ptr<EventsWaiter::EventNotifier> EventsWaiter::RegisterEvent(
+    const std::string& name, EventChecker checker) {
+  names_.emplace_back(name);
+  checkers_.emplace_back(std::move(checker));
   EventId id = checkers_.size() - 1;
-  notifiers_.push_back(Notifier(id, *this));
-  return id;
+  auto notifier = std::shared_ptr<EventNotifier>(new EventNotifier(id, this));
+  notifiers_.emplace_back(notifier);
+  return notifier;
 }
 
-std::reference_wrapper<EventsWaiter::Notifier> EventsWaiter::GetEventNotifier(
-    const EventId& id) {
-  int64_t event_num = checkers_.size();
-  if (id < 0 || id >= event_num) {
-    PADDLE_THROW(
-        platform::errors::OutOfRange("Invalid EventId for EventsWaiter"));
-  }
-  return notifiers_[id];
-}
-
-EventsWaiter::EventId EventsWaiter::WaitEvent() {
+std::string EventsWaiter::WaitEvent() {
   // only one user can wait at any time
   bool waiting = false;
   if (!waiting_.compare_exchange_strong(waiting, true,
@@ -103,19 +96,7 @@ EventsWaiter::EventId EventsWaiter::WaitEvent() {
   }
   trigger_event_.store(kEmptyEventId, std::memory_order_relaxed);
   waiting_.store(false);
-  return id;
-}
-
-const std::set<EventsWaiter::EventId> EventsWaiter::WaitEvents() {
-  std::set<EventId> ids;
-  auto trigger_ev = WaitEvent();
-  ids.insert(trigger_ev);
-  for (int64_t i = 0; i < static_cast<int64_t>(checkers_.size()); ++i) {
-    if (checkers_[i]()) {
-      ids.insert(i);
-    }
-  }
-  return ids;
+  return names_.at(id);
 }
 
 void EventsWaiter::SetTriggerEvent(const EventId& id) {
@@ -123,7 +104,13 @@ void EventsWaiter::SetTriggerEvent(const EventId& id) {
   cv_.Notify(true);
 }
 
-void EventsWaiter::Notifier::NotifyEvent() { waiter_.SetTriggerEvent(id_); }
+std::string EventsWaiter::EventNotifier::GetEventName() {
+  return waiter_.names_.at(id_);
+}
+
+void EventsWaiter::EventNotifier::NotifyEvent() {
+  waiter_.SetTriggerEvent(id_);
+}
 
 }  // namespace framework
 }  // namespace paddle

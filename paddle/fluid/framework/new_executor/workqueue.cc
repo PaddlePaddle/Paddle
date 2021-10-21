@@ -13,7 +13,7 @@ namespace paddle {
 namespace framework {
 namespace {
 
-using TaskTracker = TaskTracker<EventsWaiter::Notifier>;
+using TaskTracker = TaskTracker<EventsWaiter::EventNotifier>;
 
 class WorkQueueImpl : public WorkQueue {
  public:
@@ -21,10 +21,10 @@ class WorkQueueImpl : public WorkQueue {
     if (options_.track_task && options.queue_empty_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
       TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      auto event_id = options.queue_empty_waiter->RegisterEvent(
+      auto notifier = options.queue_empty_waiter->RegisterEvent(
+          kQueueEmptyEvent,
           [tracker]() { return tracker->PendingTaskNum() == 0; });
-      auto notifier = options.queue_empty_waiter->GetEventNotifier(event_id);
-      tracker_ = new (storage) TaskTracker(notifier.get());
+      tracker_ = new (storage) TaskTracker(*notifier.get());
     }
     queue_ = new NonblockingThreadPool(options_.num_threads,
                                        options_.allow_spinning);
@@ -90,10 +90,10 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
         options.queue_empty_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
       TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      auto event_id = options.queue_empty_waiter->RegisterEvent(
+      auto notifier = options.queue_empty_waiter->RegisterEvent(
+          kQueueEmptyEvent,
           [tracker]() { return tracker->PendingTaskNum() == 0; });
-      auto notifier = options.queue_empty_waiter->GetEventNotifier(event_id);
-      tracker_ = new (storage) TaskTracker(notifier.get());
+      tracker_ = new (storage) TaskTracker(*notifier.get());
     }
     queues_[idx] = new (&queues_storage_[idx])
         NonblockingThreadPool(options.num_threads, options.allow_spinning);

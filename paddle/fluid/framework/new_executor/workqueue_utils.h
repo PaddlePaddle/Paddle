@@ -18,7 +18,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include <memory>
 #include <set>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/new_executor/event_count.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -67,21 +69,27 @@ void* AlignedMalloc(size_t size, size_t alignment);
 
 void AlignedFree(void* memory_ptr);
 
-// A multiplexing waiter, be able to wait multi events simultaneously
-// Blocking the calling thread to wait any of the registered events
+// A multiplexing waiter, be able to wait multi events simultaneously.
+// Blocking the calling thread to wait any of the registered events.
+// Non-thread-safe.
 class EventsWaiter {
  public:
   using EventId = int64_t;
 
   using EventChecker = std::function<bool()>;
 
-  class Notifier {
+  class EventNotifier {
    public:
     void NotifyEvent();
 
+    EventId GetEventId() { return id_; }
+
+    std::string GetEventName();
+
    private:
     friend EventsWaiter;
-    Notifier(EventId id, EventsWaiter& waiter) : id_(id), waiter_(waiter) {}
+    EventNotifier(EventId id, EventsWaiter* waiter)
+        : id_(id), waiter_(*waiter) {}
 
     EventId id_;
     EventsWaiter& waiter_;
@@ -93,22 +101,20 @@ class EventsWaiter {
 
   EventsWaiter& operator=(const EventsWaiter&) = delete;
 
-  // RegisterEvent must be called before WaitEvent
-  EventId RegisterEvent(EventChecker checker);
-
-  std::reference_wrapper<Notifier> GetEventNotifier(const EventId& id);
+  // All the RegisterEvent functions must be called before any WaitEvent
+  std::shared_ptr<EventNotifier> RegisterEvent(const std::string& name,
+                                               EventChecker checker);
 
   // Wait any of the registered events
-  EventId WaitEvent();
-
-  const std::set<EventId> WaitEvents();
+  std::string WaitEvent();
 
  private:
-  friend Notifier;
+  friend EventNotifier;
   void SetTriggerEvent(const EventId& id);
 
+  std::vector<std::string> names_;
   std::vector<EventChecker> checkers_;
-  std::vector<Notifier> notifiers_;
+  std::vector<std::shared_ptr<EventNotifier>> notifiers_;
   std::atomic<EventId> trigger_event_;
   std::atomic<bool> waiting_;
   EventCount cv_;
