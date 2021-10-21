@@ -983,10 +983,10 @@ struct MatmulV2 : public PatternBase {
       : PatternBase(pattern, name_scope, "matmul_v2") {}
 
   PDNode* operator()();
-  PATTERN_DECL_NODE(matmul_in_x);
-  PATTERN_DECL_NODE(matmul_in_y);
-  PATTERN_DECL_NODE(matmul_op);
-  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(matmul_v2_out);
 };
 
 // Squeeze2 + Matmul

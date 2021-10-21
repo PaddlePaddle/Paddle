@@ -1606,6 +1606,7 @@ PDNode *patterns::Matmul::operator()() {
                          ->assert_is_op_input("matmul", "X");
   auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
                          ->AsInput()
+                         ->assert_is_persistable_var()
                          ->assert_is_op_input("matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
@@ -1616,22 +1617,21 @@ PDNode *patterns::Matmul::operator()() {
 }
 
 PDNode *patterns::MatmulV2::operator()() {
-  auto matmul_op =
-      pattern->NewNode(matmul_op_repr())->assert_is_op("matmul_v2");
+  auto matmul_v2_op =
+      pattern->NewNode(matmul_v2_op_repr())->assert_is_op("matmul_v2");
 
-  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+  auto matmul_v2_in_x = pattern->NewNode(matmul_v2_in_x_repr())
                          ->AsInput()
                          ->assert_is_op_input("matmul_v2", "X");
-  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
-                         ->assert_is_persistable_var()
+  auto matmul_v2_in_y = pattern->NewNode(matmul_v2_in_y_repr())
                          ->AsInput()
                          ->assert_is_op_input("matmul_v2", "Y");
-  auto matmul_out = pattern->NewNode(matmul_out_repr())
+  auto matmul_v2_out = pattern->NewNode(matmul_v2_out_repr())
                         ->AsOutput()
                         ->assert_is_op_output("matmul_v2", "Out");
 
-  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
-  return matmul_out;
+  matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y}).LinksTo({matmul_v2_out});
+  return matmul_v2_out;
 }
 
 PDNode *patterns::Squeeze2Matmul::operator()() {

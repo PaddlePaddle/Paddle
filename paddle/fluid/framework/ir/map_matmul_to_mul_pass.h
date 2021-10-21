@@ -47,12 +47,12 @@ class MapMatmul2MulPass : public FusePassBase {
 };
 
 /*
- * Map matmul_v2 to mul, the same as MapMatmul2MulPass.
+ * Map matmul_v2 to matmul. 
  */
-class MapMatmulv2ToMulPass : public FusePassBase {
+class MapMatmulV2ToMatmulPass : public FusePassBase {
  public:
-  MapMatmulv2ToMulPass();
-  virtual ~MapMatmulv2ToMulPass() {}
+  MapMatmulV2ToMatmulPass();
+  virtual ~MapMatmulV2ToMatmulPass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;
