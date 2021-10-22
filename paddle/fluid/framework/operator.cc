@@ -78,6 +78,8 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
     } else {
       return var->Get<SelectedRows>().GetCompleteDims();
     }
+  } else if (var->IsType<Strings>()) {
+    return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
   } else {
     return DDim({-1});
   }
@@ -108,6 +110,8 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     } else {
       return DataTypeToString(tensor.type());
     }
+  } else if (var->IsType<Strings>()) {
+    return "strings";
   } else {
     return "";
   }
@@ -1076,20 +1080,6 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-static std::string RuntimeContextDebugString(const RuntimeContext& ctx) {
-  std::stringstream ss;
-  ss << "RuntimeContext(Inputs: ";
-  for (auto& var_pair : ctx.inputs) {
-    ss << var_pair.first << ", ";
-  }
-  ss << "Outputs: ";
-  for (auto& var_pair : ctx.outputs) {
-    ss << var_pair.first << ", ";
-  }
-  ss << ")";
-  return ss.str();
-}
-
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1140,9 +1130,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
   if (FLAGS_run_pt_kernel &&
-      pten::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
+      pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
-      ChoosePtKernel(exe_ctx);
+      ChoosePtenKernel(exe_ctx);
     }
     run_pt_kernel_ = pt_kernel_->IsValid();
   }
@@ -1188,7 +1178,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
     if (run_pt_kernel_) {
-      auto op_kernel_ctx = BuildPtKernelContext(*runtime_ctx, *dev_ctx);
+      auto op_kernel_ctx = BuildPtenKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
     } else {
       (*kernel_func_)(
@@ -1278,26 +1268,27 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   return expected_kernel_key;
 }
 
-void OperatorWithKernel::ChoosePtKernel(const ExecutionContext& ctx) const {
+void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(this->GetExpectedPtKernelArgs(ctx)));
+      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
 
   VLOG(1) << KernelSignatureToString(*pt_kernel_signature_.get());
 
-  kernel_type_.reset(new OpKernelType(InnerGetExpectedKernelType(ctx)));
+  kernel_type_.reset(
+      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
   auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
-  auto pt_kernel_key = TransOpKernelTypeToPtKernelKey(*kernel_type_.get());
+  auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(
       new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
           pt_kernel_name, pt_kernel_key)));
 
   if (pt_kernel_->IsValid()) {
-    VLOG(1) << "Static mode ChoosePtKernel - kernel name: " << pt_kernel_name
+    VLOG(1) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
             << " | kernel key: " << pt_kernel_key
             << " | kernel: " << *pt_kernel_;
   } else {
-    VLOG(1) << "Static mode ChoosePtKernel - kernel `" << pt_kernel_name
+    VLOG(1) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
             << "` not found.";
   }
 }
@@ -1646,10 +1637,9 @@ void OperatorWithKernel::ParseInputDataType(
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
             t->IsInitialized(), true,
-            platform::errors::InvalidArgument(
-                "The Tensor in the %s Op's Input Variable %s(%s) is "
-                "not initialized.",
-                Type(), name, Inputs().at(name).at(i)));
+            platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                              "contains uninitialized Tensor.",
+                                              Type(), name));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
                        platform::errors::InvalidArgument(
@@ -1770,22 +1760,20 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
                       tensor.layout());
 }
 
-KernelSignature OperatorWithKernel::GetExpectedPtKernelArgs(
+KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
   if (KernelSignatureMap::Instance().Has(Type())) {
     return *(KernelSignatureMap::Instance().GetNullable(Type()));
   } else {
     KernelArgsNameMakerByOpProto maker(Info().proto_);
-    auto signature = maker.GetKernelSignature();
+    auto signature = std::move(maker.GetKernelSignature());
     KernelSignatureMap::Instance().Insert(Type(), signature);
     return signature;
   }
 }
 
-pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
+pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
-  VLOG(1) << RuntimeContextDebugString(ctx);
-
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
@@ -1827,10 +1815,10 @@ pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
             << in_def.layout;
 
     auto ins_vector = ctx.inputs.at(input_names[i]);
-    std::vector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
 
+    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
-      auto pt_in = framework::InputVariableToPtTensor(*var, in_def);
+      auto pt_in = framework::InputVariableToPtenTensor(*var, in_def);
       tmp_inputs.emplace_back(pt_in);
     }
     op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
@@ -1840,9 +1828,9 @@ pten::KernelContext OperatorWithKernel::BuildPtKernelContext(
     auto out_def = output_defs.at(i);
     auto outs_vector = ctx.outputs.at(output_names[i]);
 
-    std::vector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
+    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
-      auto pt_out = framework::OutputVariableToPtTensor(var, out_def);
+      auto pt_out = framework::OutputVariableToPtenTensor(var, out_def);
       tmp_outputs.emplace_back(pt_out);
     }
     op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);

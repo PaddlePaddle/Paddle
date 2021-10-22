@@ -26,9 +26,9 @@
 
 namespace pten {
 
-#define BACKEND(arg__) pten::Backend::k##arg__
-#define DATALAYOUT(arg__) paddle::experimental::DataLayout::k##arg__
-#define DATATYPE(arg__) paddle::experimental::DataType::k##arg__
+#define BACKEND(arg__) pten::Backend::arg__
+#define DATALAYOUT(arg__) pten::DataLayout::arg__
+#define DATATYPE(arg__) pten::DataType::arg__
 
 template <typename Func>
 struct KernelArgsParseFunctor;
@@ -45,8 +45,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     // TODO(chenweihang): The fluid Tensor's default layout is NCHW,
     // it is not same as kernel's layout, we should fix this error on
     // fluid Tensor
-    auto default_tensor_layout = paddle::experimental::DataLayout::kNCHW;
-    if (default_key.layout() != paddle::experimental::DataLayout::kAny) {
+    auto default_tensor_layout = pten::DataLayout::NCHW;
+    if (default_key.layout() != pten::DataLayout::ANY) {
       default_tensor_layout = default_key.layout();
     }
     auto args_type = ParseArgType(Indices{});
@@ -106,11 +106,11 @@ struct KernelRegistrar {
                   KernelArgsParseFn args_parse_fn,
                   KernelArgsDefFn args_def_fn,
                   KernelFn kernel_fn) {
-    if (layout == DataLayout::kAny) {
-      for (DataLayout layout_iter = DataLayout::kNHWC;
-           layout_iter != DataLayout::kNumLayouts;
+    if (layout == DataLayout::ANY) {
+      for (DataLayout layout_iter = DataLayout::NHWC;
+           layout_iter != DataLayout::NUM_DATA_LAYOUTS;
            layout_iter++) {
-        for (DataType dtype = DataType::kBOOL; dtype != DataType::kNumDataTypes;
+        for (DataType dtype = DataType::BOOL; dtype != DataType::NUM_DATA_TYPES;
              dtype++) {
           ConstructKernel(kernel_name_cstr,
                           backend,
@@ -122,7 +122,7 @@ struct KernelRegistrar {
         }
       }
     } else {
-      for (DataType dtype = DataType::kBOOL; dtype != DataType::kNumDataTypes;
+      for (DataType dtype = DataType::BOOL; dtype != DataType::NUM_DATA_TYPES;
            dtype++) {
         ConstructKernel(kernel_name_cstr,
                         backend,
@@ -149,6 +149,7 @@ struct KernelRegistrar {
     args_parse_fn(kernel_key, kernel.mutable_args_def());
     args_def_fn(&kernel);
 
+    KernelFactory::Instance().InsertCompatibleOpType(kernel_name.name());
     KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
   }
 };

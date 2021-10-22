@@ -23,16 +23,11 @@ namespace experimental {
 
 Tensor full_like(const Tensor& x,
                  const pten::Scalar& value,
-                 paddle::experimental::DataType dtype =
-                     paddle::experimental::DataType::kUndef);
+                 DataType dtype = DataType::UNDEFINED);
 
-Tensor ones_like(const Tensor& x,
-                 paddle::experimental::DataType dtype =
-                     paddle::experimental::DataType::kUndef);
+Tensor ones_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
 
-Tensor zeros_like(const Tensor& x,
-                  paddle::experimental::DataType dtype =
-                      paddle::experimental::DataType::kUndef);
+Tensor zeros_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
 
 }  // namespace experimental
 }  // namespace paddle

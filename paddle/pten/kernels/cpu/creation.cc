@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/cpu/creation.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/common/eigen/fill.h"
+#include "paddle/pten/kernels/functions/eigen/fill.h"
 
 namespace pten {
 
@@ -33,7 +33,7 @@ PT_REGISTER_MODULE(CreationCPU);
 
 PT_REGISTER_KERNEL("fill_any_like",
                    CPU,
-                   Any,
+                   ANY,
                    pten::FillAnyLike,
                    float,
                    double,

@@ -30,68 +30,71 @@ using float16 = ::paddle::platform::float16;
 using bfloat16 = ::paddle::platform::bfloat16;
 
 enum class DataType {
-  kUndef = 0,
-  kBOOL,
-  kINT8,   // Char
-  kUINT8,  // BYte
-  kINT16,
-  kINT32,
-  kUINT32,
-  kINT64,
-  kUINT64,
-  kBFLOAT16,
-  kFLOAT16,
-  kUINT16,
-  kFLOAT32,
-  kFLOAT64,
-  kCOMPLEX64,
-  kCOMPLEX128,
-  kNumDataTypes
+  UNDEFINED = 0,
+  BOOL,
+  INT8,   // Char
+  UINT8,  // BYte
+  INT16,
+  INT32,
+  UINT32,
+  INT64,
+  UINT64,
+  BFLOAT16,
+  FLOAT16,
+  UINT16,
+  FLOAT32,
+  FLOAT64,
+  COMPLEX64,
+  COMPLEX128,
+  NUM_DATA_TYPES
 };
 
 inline size_t SizeOf(DataType data_type) {
   switch (data_type) {
-    case DataType::kBOOL:
-    case DataType::kUINT8:
-    case DataType::kINT8:
+    case DataType::BOOL:
+    case DataType::UINT8:
+    case DataType::INT8:
       return 1;
-    case DataType::kFLOAT16:
-    case DataType::kINT16:
-    case DataType::kUINT16:
+    case DataType::FLOAT16:
+    case DataType::INT16:
+    case DataType::UINT16:
       return 2;
-    case DataType::kFLOAT32:
-    case DataType::kINT32:
-    case DataType::kUINT32:
+    case DataType::FLOAT32:
+    case DataType::INT32:
+    case DataType::UINT32:
       return 4;
-    case DataType::kFLOAT64:
-    case DataType::kINT64:
-    case DataType::kUINT64:
+    case DataType::FLOAT64:
+    case DataType::INT64:
+    case DataType::UINT64:
       return 8;
-    case DataType::kUndef:
-    case DataType::kBFLOAT16:
-    case DataType::kCOMPLEX64:
-    case DataType::kCOMPLEX128:
-    case DataType::kNumDataTypes:
+    case DataType::UNDEFINED:
+    case DataType::BFLOAT16:
+    case DataType::COMPLEX64:
+    case DataType::COMPLEX128:
+    case DataType::NUM_DATA_TYPES:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type %d is not supported by tensor.",
           static_cast<int>(data_type)));
-      return 0;
   }
+  return 0;
 }
 
-#define PT_FOR_EACH_DATA_TYPE(_)     \
-  _(bool, DataType::kBOOL)           \
-  _(int8_t, DataType::kINT8)         \
-  _(uint8_t, DataType::kUINT8)       \
-  _(int16_t, DataType::kINT16)       \
-  _(int, DataType::kINT32)           \
-  _(int64_t, DataType::kINT64)       \
-  _(bfloat16, DataType::kBFLOAT16)   \
-  _(float16, DataType::kFLOAT16)     \
-  _(float, DataType::kFLOAT32)       \
-  _(double, DataType::kFLOAT64)      \
-  _(complex64, DataType::kCOMPLEX64) \
-  _(complex128, DataType::kCOMPLEX128)
+#define PT_FOR_EACH_DATA_TYPE(_)    \
+  _(bool, DataType::BOOL)           \
+  _(int8_t, DataType::INT8)         \
+  _(uint8_t, DataType::UINT8)       \
+  _(int16_t, DataType::INT16)       \
+  _(uint16_t, DataType::UINT16)     \
+  _(int32_t, DataType::INT32)       \
+  _(uint32_t, DataType::UINT32)     \
+  _(int64_t, DataType::INT64)       \
+  _(uint64_t, DataType::UINT64)     \
+  _(bfloat16, DataType::BFLOAT16)   \
+  _(float16, DataType::FLOAT16)     \
+  _(float, DataType::FLOAT32)       \
+  _(double, DataType::FLOAT64)      \
+  _(complex64, DataType::COMPLEX64) \
+  _(complex128, DataType::COMPLEX128)
 
 template <DataType T>
 struct DataTypeToCppType;
@@ -121,43 +124,43 @@ PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_CppTypeToDataType)
 
 inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   switch (dtype) {
-    case DataType::kUndef:
+    case DataType::UNDEFINED:
       os << "Undefined";
       break;
-    case DataType::kBOOL:
+    case DataType::BOOL:
       os << "bool";
       break;
-    case DataType::kINT8:
+    case DataType::INT8:
       os << "int8";
       break;
-    case DataType::kUINT8:
+    case DataType::UINT8:
       os << "uint8";
       break;
-    case DataType::kINT16:
+    case DataType::INT16:
       os << "int16";
       break;
-    case DataType::kINT32:
+    case DataType::INT32:
       os << "int32";
       break;
-    case DataType::kINT64:
+    case DataType::INT64:
       os << "int64";
       break;
-    case DataType::kBFLOAT16:
+    case DataType::BFLOAT16:
       os << "bfloat16";
       break;
-    case DataType::kFLOAT16:
+    case DataType::FLOAT16:
       os << "float16";
       break;
-    case DataType::kFLOAT32:
+    case DataType::FLOAT32:
       os << "float32";
       break;
-    case DataType::kFLOAT64:
+    case DataType::FLOAT64:
       os << "float64";
       break;
-    case DataType::kCOMPLEX64:
+    case DataType::COMPLEX64:
       os << "complex64";
       break;
-    case DataType::kCOMPLEX128:
+    case DataType::COMPLEX128:
       os << "complex128";
       break;
     default:

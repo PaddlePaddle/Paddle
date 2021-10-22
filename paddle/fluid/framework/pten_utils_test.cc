@@ -37,11 +37,11 @@ TEST(TcmptUtils, MakeTensor) {
   std::vector<float> expect_value = {0.2, 0.5};
   ASSERT_EQ(dense_x->data<float>()[0], expect_value[0]);
   ASSERT_EQ(dense_x->data<float>()[1], expect_value[1]);
-  ASSERT_EQ(dense_x->backend(), pten::Backend::kCPU);
-  ASSERT_EQ(dense_x->data_type(), paddle::experimental::DataType::kFLOAT32);
+  ASSERT_EQ(dense_x->backend(), pten::Backend::CPU);
+  ASSERT_EQ(dense_x->data_type(), pten::DataType::FLOAT32);
 }
 
-TEST(TcmptUtils, VarToPtTensor) {
+TEST(TcmptUtils, VarToPtenTensor) {
   // 1. create Variable
   Variable v;
   auto selected_rows = v.GetMutable<SelectedRows>();
@@ -49,19 +49,18 @@ TEST(TcmptUtils, VarToPtTensor) {
   auto* data =
       value->mutable_data<int>(make_ddim({1, 1}), paddle::platform::CPUPlace());
   data[0] = 123;
-  pten::Backend expect_backend = pten::Backend::kCPU;
+  pten::Backend expect_backend = pten::Backend::CPU;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  expect_backend = pten::Backend::kCUDA;
+  expect_backend = pten::Backend::CUDA;
 #endif
-  auto tensor_def = pten::TensorArgDef(expect_backend,
-                                       paddle::experimental::DataLayout::kNCHW,
-                                       paddle::experimental::DataType::kINT32);
+  auto tensor_def = pten::TensorArgDef(expect_backend, pten::DataLayout::NCHW,
+                                       pten::DataType::INT32);
   // 2. test API
-  auto tensor_x = InputVariableToPtTensor(v, tensor_def);
+  auto tensor_x = InputVariableToPtenTensor(v, tensor_def);
   // 3. check result
   ASSERT_EQ(tensor_x->backend(), expect_backend);
-  ASSERT_EQ(tensor_x->data_type(), paddle::experimental::DataType::kINT32);
+  ASSERT_EQ(tensor_x->data_type(), pten::DataType::INT32);
 }
 
 }  // namespace framework

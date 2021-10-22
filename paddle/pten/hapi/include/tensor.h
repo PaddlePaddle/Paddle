@@ -1,11 +1,8 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +14,6 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include <utility>
-#include "glog/logging.h"
 
 #include "paddle/pten/core/tensor_base.h"
 
@@ -26,11 +22,11 @@ limitations under the License. */
  *
  * We hope to organize the basic implementation of Tensor and the logic related
  * to Tensor computation into an independent library, which we call
- * [Tensor Compute Library, pten], so we extract or rewrite the original
+ * [Tensor Operation Library, pten], so we extract or rewrite the original
  * Kernels.
  *
  * In the future, the training library, inference library and custom operators
- * will link to this Tensor Compute library.
+ * will link to this Tensor Operation library.
  *
  * However, if we directly split the link relation, we need to make too many
  * changes, which will affect the stability of the framework, so here we still
@@ -41,7 +37,6 @@ limitations under the License. */
  */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/hapi/include/tensor_signature.h"
 
 namespace paddle {
 namespace experimental {
@@ -56,7 +51,7 @@ class AbstractAutogradMeta {
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ Paddle "Tensor CoMPuTe (pten)" Library ].
+ * [ "Paddle Tensor Operation (pten)" Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained
@@ -140,26 +135,14 @@ class Tensor final {
   /**
    * Backend judgment APIs, shield the concept of Backend.
    */
-  bool is_cpu() const { return impl_->backend() == pten::Backend::kCPU; }
-  bool is_cuda() const { return impl_->backend() == pten::Backend::kCUDA; }
-  bool is_hip() const;
-  bool is_xpu() const;
-  bool is_npu() const;
-  bool is_mkldnn() const;
-  bool is_cudnn() const;
-
-  bool is_selected_rows() const;
+  bool is_cpu() const { return paddle::platform::is_cpu_place(place()); }
+  bool is_cuda() const { return paddle::platform::is_gpu_place(place()); }
 
   /**
    * Backend convert APIs.
    */
   Tensor cpu() const;
   Tensor cuda() const;
-  Tensor hip() const;
-  Tensor xpu() const;
-  Tensor npu() const;
-  Tensor mkldnn() const;
-  Tensor cudnn() const;
 
   /* Part 4: Data Access methods */
   /**
@@ -202,13 +185,12 @@ class Tensor final {
    */
   void reset() { impl_.reset(); }
 
-  /* Part 6: Operator overloading used by eager */
+  /* Part 6: Operator overloading */
   Tensor& operator=(const Tensor& x) & {
     impl_ = x.impl_;
     autograd_meta_ = x.autograd_meta_;
     return *this;
   }
-
   Tensor& operator=(Tensor&& x) & {
     impl_ = std::move(x.impl_);
     autograd_meta_ = std::move(x.autograd_meta_);
@@ -227,7 +209,7 @@ class Tensor final {
   /* Part 8: Auto generated Tensor methods */
   // ...
 
- public:
+ private:
   /**
    * [ Why use abstract TensorImpl interface here? ]
    *
@@ -259,16 +241,13 @@ class Tensor final {
    *    information, not Tensor data description-related information.
    * 2. Kernel calculation does not require AutogradMeta.
    */
-  std::shared_ptr<AbstractAutogradMeta> autograd_meta_ = nullptr;
+  std::shared_ptr<AbstractAutogradMeta> autograd_meta_{nullptr};
+
   /**
-   * TensorSignature is used to store auxiliary description information
-   * needed by Tensor.
-   *
-   * The currently stored information includes:
-   * 1. name: used for Debug analysis in the development of new dygraph.
-   * 2. backend_set: used by the API to determine the kernel backend.
+   * Tensor name: used for adapt original execution mechanism and debug analysis
+   * in the development of new dygraph.
    */
-  std::shared_ptr<TensorSignature> signature_{nullptr};
+  std::string name_;
 };
 
 }  // namespace experimental

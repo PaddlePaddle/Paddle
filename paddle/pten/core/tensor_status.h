@@ -14,12 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/backend.h"
-
 namespace pten {
-
 class TensorInplaceVersion {
  public:
   explicit TensorInplaceVersion(uint32_t inplace_version = 0)

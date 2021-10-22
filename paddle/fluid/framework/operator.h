@@ -540,9 +540,9 @@ class OperatorWithKernel : public OperatorBase {
     * output arguments registered in the original OpMaker do not match in some
     * cases, so we use map to record the arguments required by the kernel.
     * When selecting Kernel during Op execution, select the arguments of the
-    * original Op according to the GetExpectedPtKernelArgs returned arguments.
+    * original Op according to the GetExpectedPtenKernelArgs returned arguments.
     */
-  virtual KernelSignature GetExpectedPtKernelArgs(
+  virtual KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
  private:
@@ -586,9 +586,9 @@ class OperatorWithKernel : public OperatorBase {
                                    const std::string& name) const;
 
   /* member functions for adapting to pten lib */
-  void ChoosePtKernel(const ExecutionContext& ctx) const;
+  void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
-  pten::KernelContext BuildPtKernelContext(
+  pten::KernelContext BuildPtenKernelContext(
       const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
 
  protected:

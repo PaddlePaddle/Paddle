@@ -33,37 +33,39 @@ namespace framework {
 
 /* tensor translate */
 
-template <typename PtTensorImplT, typename VariableT>
-std::shared_ptr<PtTensorImplT> MakeTensorImpl(
+template <typename PtenTensorImplT, typename VariableT>
+std::shared_ptr<PtenTensorImplT> MakeTensorImpl(
     const VariableT& tensor, pten::Backend backend,
     paddle::experimental::DataType dtype,
     paddle::experimental::DataLayout layout);
 
-template <typename PtTensorImplT>
-std::shared_ptr<PtTensorImplT> MakeTensorImpl(const LoDTensor& tensor,
-                                              const platform::Place& place,
-                                              proto::VarType::Type type);
+template <typename PtenTensorImplT>
+std::shared_ptr<PtenTensorImplT> MakeTensorImpl(const LoDTensor& tensor,
+                                                const platform::Place& place,
+                                                proto::VarType::Type type);
 
-template <typename PtTensorImplT>
-std::shared_ptr<PtTensorImplT> MakeTensorImpl(const Tensor& tensor,
-                                              const platform::Place& place,
-                                              proto::VarType::Type type);
+template <typename PtenTensorImplT>
+std::shared_ptr<PtenTensorImplT> MakeTensorImpl(const Tensor& tensor,
+                                                const platform::Place& place,
+                                                proto::VarType::Type type);
 
-template <typename PtTensorImplT>
-void ShareTensorImpl(PtTensorImplT* tensor_impl, LoDTensor* out);
+template <typename PtenTensorImplT>
+void ShareTensorImpl(PtenTensorImplT* tensor_impl, LoDTensor* out);
 
-template <typename PtTensorImplT>
-void ShareTensorImpl(PtTensorImplT* tensor_impl, Tensor* out);
+template <typename PtenTensorImplT>
+void ShareTensorImpl(PtenTensorImplT* tensor_impl, Tensor* out);
 
-std::shared_ptr<pten::TensorBase> InputVariableToPtTensor(
+std::shared_ptr<pten::TensorBase> InputVariableToPtenTensor(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def);
-std::shared_ptr<pten::TensorBase> OutputVariableToPtTensor(
+std::shared_ptr<pten::TensorBase> OutputVariableToPtenTensor(
     framework::Variable* variable, const pten::TensorArgDef& arg_def);
 
 /* Kernel Key translate */
 
-OpKernelType TransPtKernelKeyToOpKernelType(const pten::KernelKey& kernel_key);
-pten::KernelKey TransOpKernelTypeToPtKernelKey(const OpKernelType& kernel_type);
+OpKernelType TransPtenKernelKeyToOpKernelType(
+    const pten::KernelKey& kernel_key);
+pten::KernelKey TransOpKernelTypeToPtenKernelKey(
+    const OpKernelType& kernel_type);
 
 /* Kernel Args parse */
 

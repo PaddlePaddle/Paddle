@@ -82,40 +82,42 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
   int device_id = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1);
 
   switch (static_cast<pten::Backend>(place_id)) {
-    case pten::Backend::kCPU:
+    case pten::Backend::CPU:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::CPUPlace());
       break;
-    case pten::Backend::kCUDA:
+    case pten::Backend::CUDA:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::CUDAPlace(device_id));
       break;
-    case pten::Backend::kCUDAPinned:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::CUDAPinnedPlace());
-      break;
-    case pten::Backend::kHIP:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::CUDAPlace(device_id));
-      break;
-    case pten::Backend::kXPU:
+    case pten::Backend::XPU:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::XPUPlace(device_id));
       break;
-    case pten::Backend::kNPU:
+    case pten::Backend::NPU:
       egr::Controller::Instance().SetExpectedPlace(
           paddle::platform::NPUPlace(device_id));
       break;
-    case pten::Backend::kNPUPinned:
+    case pten::Backend::MKLDNN:
       egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::NPUPinnedPlace());
+          paddle::platform::CPUPlace());
+      break;
+    case pten::Backend::CUDNN:
+      egr::Controller::Instance().SetExpectedPlace(
+          paddle::platform::CUDAPlace(device_id));
       break;
     // TODO(wanghuancoder)
-    // case pten::Backend::kMKLDNN:
-    //   egr::Controller::Instance().SetExpectedPlace(paddle::platform::CPUPlace());
+    // case pten::Backend::CUDAPinned:
+    //   egr::Controller::Instance().SetExpectedPlace(
+    //       paddle::platform::CUDAPinnedPlace());
     //   break;
-    // case pten::Backend::kCUDNN:
-    //   egr::Controller::Instance().SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+    // case pten::Backend::HIP:
+    //   egr::Controller::Instance().SetExpectedPlace(
+    //       paddle::platform::CUDAPlace(device_id));
+    //   break;
+    // case pten::Backend::NPUPinned:
+    //   egr::Controller::Instance().SetExpectedPlace(
+    //       paddle::platform::NPUPinnedPlace());
     //   break;
     default:
       break;
@@ -201,12 +203,15 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
 
 static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
                                      PyObject* kwargs) {
+  // TODO(jiabin): Support Kwargs here
   PyObject* data = PyTuple_GET_ITEM(args, 0);
   auto str_dtype = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
   pten::DataType dtype = pten::String2DataType(str_dtype);
   int place_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 2), 2);
   int device_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 3), 3);
   bool stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+  // TODO(jiabin): Support this when python given name
+  // auto str_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 5), 5);
 
   if (check_numpy_available() && PyArray_Check(data)) {
     return eager_api_numpy_to_tensor(data, dtype, place_id, device_id,

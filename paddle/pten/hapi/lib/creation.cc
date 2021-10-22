@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/api/include/infershape.h"
-#include "paddle/pten/hapi/lib/kernel_generate.h"
+#include "paddle/pten/hapi/lib/kernel_dispatch.h"
 
 namespace paddle {
 namespace experimental {
@@ -29,23 +29,18 @@ Tensor full_like(const Tensor& x,
                  const pten::Scalar& value,
                  paddle::experimental::DataType dtype) {
   // 1. Get kernel signature and kernel
-  auto kernel_signature = ParseKernelNameAndKeyByArgs("fill_any_like", x);
-  VLOG(1) << kernel_signature.first;
-  VLOG(1) << kernel_signature.second;
-  VLOG(1) << pten::KernelFactory::Instance();
-
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      kernel_signature.first, kernel_signature.second);
-  VLOG(1) << kernel;
+      "fill_any_like", kernel_key);
 
   // 2. Get Device Context
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_signature.second.backend());
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
   auto kernel_context = pten::KernelContext(*dev_ctx);
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
-
   kernel_context.EmplaceBackAttr(value);
 
   // 4. InferShape
@@ -54,7 +49,7 @@ Tensor full_like(const Tensor& x,
   // 5. Prepare outputs
   Tensor out;
   // InferDataType
-  if (dtype != paddle::experimental::DataType::kUndef) {
+  if (dtype != pten::DataType::UNDEFINED) {
     out_meta.type = dtype;
   }
   auto dense_out =

@@ -86,6 +86,7 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/hipfft.h"
 #include "paddle/fluid/platform/dynload/hiprand.h"
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
@@ -1110,6 +1111,14 @@ inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
+/***** HIPFFT ERROR *****/
+inline bool is_error(hipfftResult_t stat) { return stat != HIPFFT_SUCCESS; }
+
+inline std::string build_rocm_error_msg(hipfftResult_t stat) {
+  std::string msg(" HIPFFT error, ");
+  return msg + platform::dynload::hipfftGetErrorString(stat) + " ";
+}
+
 namespace details {
 
 template <typename T>
@@ -1126,6 +1135,7 @@ DEFINE_EXTERNAL_API_TYPE(hipError_t, hipSuccess);
 DEFINE_EXTERNAL_API_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(miopenStatus_t, miopenStatusSuccess);
 DEFINE_EXTERNAL_API_TYPE(rocblas_status, rocblas_status_success);
+DEFINE_EXTERNAL_API_TYPE(hipfftResult_t, HIPFFT_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);

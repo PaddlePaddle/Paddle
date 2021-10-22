@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/backend.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/ddim.h"
@@ -27,9 +27,6 @@ limitations under the License. */
 // #include "paddle/fluid/framework/mixed_vector.h"
 
 namespace pten {
-
-using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
 
 // template <typename T>
 // using Vector = paddle::framework::Vector<T>;
@@ -81,14 +78,11 @@ struct TensorMeta {
         offset(meta.offset),
         lod(meta.lod) {}
 
-  // Bad constructor, may introduce bug
-  // explicit TensorMeta(DDim dims) : dims(dims) {}
-
   // Compatible Contructor
   TensorMeta(const DDim& dims,
              Backend backend,
              DataType type,
-             DataLayout layout = DataLayout::kNCHW,
+             DataLayout layout = DataLayout::NCHW,
              size_t offset = 0UL,
              const LoD& lod = {})
       : dims(dims),
@@ -107,9 +101,9 @@ struct TensorMeta {
 
   DDim dims;
 
-  Backend backend{Backend::kCPU};
-  DataType type{DataType::kFLOAT32};
-  DataLayout layout{DataLayout::kNCHW};
+  Backend backend{Backend::CPU};
+  DataType type{DataType::FLOAT32};
+  DataLayout layout{DataLayout::NCHW};
 
   /**
    * [ Why not calculate numel based on dims? ]

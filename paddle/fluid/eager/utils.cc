@@ -78,17 +78,17 @@ paddle::experimental::Tensor VarBaseToTensor(
   if (var->IsType<paddle::framework::LoDTensor>()) {
     const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
     ddim = framework_tensor.dims();
-    backend = pten::TransToPtBackend(framework_tensor.place());
-    dtype = pten::TransToPtDataType(framework_tensor.type());
-    layout = pten::TransToPtDataLayout(framework_tensor.layout());
+    backend = pten::TransToPtenBackend(framework_tensor.place());
+    dtype = pten::TransToPtenDataType(framework_tensor.type());
+    layout = pten::TransToPtenDataLayout(framework_tensor.layout());
     allocation = framework_tensor.Holder();
 
   } else if (var->IsType<paddle::framework::Tensor>()) {
     const auto& framework_tensor = var->Get<paddle::framework::Tensor>();
     ddim = framework_tensor.dims();
-    backend = pten::TransToPtBackend(framework_tensor.place());
-    dtype = pten::TransToPtDataType(framework_tensor.type());
-    layout = pten::TransToPtDataLayout(framework_tensor.layout());
+    backend = pten::TransToPtenBackend(framework_tensor.place());
+    dtype = pten::TransToPtenDataType(framework_tensor.type());
+    layout = pten::TransToPtenDataLayout(framework_tensor.layout());
     allocation = framework_tensor.Holder();
 
   } else {

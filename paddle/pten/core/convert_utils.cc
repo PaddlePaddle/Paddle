@@ -21,100 +21,82 @@ limitations under the License. */
 
 namespace pten {
 
-// TODO(chenweihang): Add other place branchs
-Backend TransToPtBackend(const paddle::platform::Place& place) {
+// TODO(chenweihang): Add other place trans cases later
+Backend TransToPtenBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
-    return Backend::kCPU;
+    return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
-    return Backend::kCUDA;
-  } else if (paddle::platform::is_cuda_pinned_place(place)) {
-    return Backend::kCUDAPinned;
-  } else if (paddle::platform::is_xpu_place(place)) {
-    return Backend::kXPU;
-  } else if (paddle::platform::is_npu_place(place)) {
-    return Backend::kNPU;
-  } else if (paddle::platform::is_npu_pinned_place(place)) {
-    return Backend::kNPUPinned;
+    return Backend::CUDA;
   } else {
-    return Backend::kUndef;
+    return Backend::UNDEFINED;
   }
 }
 
-paddle::experimental::DataType TransToPtDataType(
+paddle::experimental::DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used
   switch (dtype) {
     case paddle::framework::proto::VarType::FP32:
-      return DataType::kFLOAT32;
+      return DataType::FLOAT32;
     case paddle::framework::proto::VarType::FP64:
-      return DataType::kFLOAT64;
+      return DataType::FLOAT64;
     case paddle::framework::proto::VarType::INT64:
-      return DataType::kINT64;
+      return DataType::INT64;
     case paddle::framework::proto::VarType::INT32:
-      return DataType::kINT32;
+      return DataType::INT32;
     case paddle::framework::proto::VarType::INT8:
-      return DataType::kINT8;
+      return DataType::INT8;
     case paddle::framework::proto::VarType::UINT8:
-      return DataType::kUINT8;
+      return DataType::UINT8;
     case paddle::framework::proto::VarType::INT16:
-      return DataType::kINT16;
+      return DataType::INT16;
     case paddle::framework::proto::VarType::COMPLEX64:
-      return DataType::kCOMPLEX64;
+      return DataType::COMPLEX64;
     case paddle::framework::proto::VarType::COMPLEX128:
-      return DataType::kCOMPLEX128;
+      return DataType::COMPLEX128;
     case paddle::framework::proto::VarType::FP16:
-      return DataType::kFLOAT16;
+      return DataType::FLOAT16;
     case paddle::framework::proto::VarType::BF16:
-      return DataType::kBFLOAT16;
+      return DataType::BFLOAT16;
     case paddle::framework::proto::VarType::BOOL:
-      return DataType::kBOOL;
+      return DataType::BOOL;
     default:
-      return DataType::kUndef;
+      return DataType::UNDEFINED;
   }
 }
 
-DataLayout TransToPtDataLayout(const paddle::framework::DataLayout& layout) {
+DataLayout TransToPtenDataLayout(const paddle::framework::DataLayout& layout) {
   switch (layout) {
     case paddle::framework::DataLayout::kNHWC:
-      return DataLayout::kNHWC;
+      return DataLayout::NHWC;
     case paddle::framework::DataLayout::kNCHW:
-      return DataLayout::kNCHW;
+      return DataLayout::NCHW;
     case paddle::framework::DataLayout::kAnyLayout:
-      return DataLayout::kAny;
+      return DataLayout::ANY;
     case paddle::framework::DataLayout::kMKLDNN:
-      return DataLayout::kMKLDNN;
+      return DataLayout::MKLDNN;
     default:
-      return DataLayout::kUndef;
+      return DataLayout::UNDEFINED;
   }
 }
 
 paddle::platform::Place TransToFluidPlace(const Backend& backend) {
-  // TODO(chenweihang): add other trans cases
+  // TODO(chenweihang): add other trans cases later
   switch (backend) {
-    case pten::Backend::kCPU:
+    case pten::Backend::CPU:
       return paddle::platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::kCUDA:
+    case pten::Backend::CUDA:
       return paddle::platform::CUDAPlace(
           paddle::platform::GetCurrentDeviceId());
 #endif
-#ifdef PADDLE_WITH_XPU
-    case pten::Backend::kXPU:
-      // TODO(chenweihang): add device id
-      return paddle::platform::XPUPlace();
-#endif
-#ifdef PADDLE_WITH_NPU
-    case pten::Backend::kNPU:
-      // TODO(chenweihang): add device id
-      return paddle::platform::NPUPlace();
-#endif
 #ifdef PADDLE_WITH_MKLDNN
-    case pten::Backend::kMKLDNN:
+    case pten::Backend::MKLDNN:
       return paddle::platform::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::kCUDNN:
+    case pten::Backend::CUDNN:
       return paddle::platform::CUDAPlace(
           paddle::platform::GetCurrentDeviceId());
 #endif
@@ -130,29 +112,29 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
   // Set the order of case branches according to the frequency with
   // the data type is used
   switch (dtype) {
-    case DataType::kFLOAT32:
+    case DataType::FLOAT32:
       return paddle::framework::proto::VarType::FP32;
-    case DataType::kFLOAT64:
+    case DataType::FLOAT64:
       return paddle::framework::proto::VarType::FP64;
-    case DataType::kINT64:
+    case DataType::INT64:
       return paddle::framework::proto::VarType::INT64;
-    case DataType::kINT32:
+    case DataType::INT32:
       return paddle::framework::proto::VarType::INT32;
-    case DataType::kINT8:
+    case DataType::INT8:
       return paddle::framework::proto::VarType::INT8;
-    case DataType::kUINT8:
+    case DataType::UINT8:
       return paddle::framework::proto::VarType::UINT8;
-    case DataType::kINT16:
+    case DataType::INT16:
       return paddle::framework::proto::VarType::INT16;
-    case DataType::kCOMPLEX64:
+    case DataType::COMPLEX64:
       return paddle::framework::proto::VarType::COMPLEX64;
-    case DataType::kCOMPLEX128:
+    case DataType::COMPLEX128:
       return paddle::framework::proto::VarType::COMPLEX128;
-    case DataType::kFLOAT16:
+    case DataType::FLOAT16:
       return paddle::framework::proto::VarType::FP16;
-    case DataType::kBFLOAT16:
+    case DataType::BFLOAT16:
       return paddle::framework::proto::VarType::BF16;
-    case DataType::kBOOL:
+    case DataType::BOOL:
       return paddle::framework::proto::VarType::BOOL;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -164,13 +146,13 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
 
 paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
   switch (layout) {
-    case DataLayout::kNHWC:
+    case DataLayout::NHWC:
       return paddle::framework::DataLayout::kNHWC;
-    case DataLayout::kNCHW:
+    case DataLayout::NCHW:
       return paddle::framework::DataLayout::kNCHW;
-    case DataLayout::kAny:
+    case DataLayout::ANY:
       return paddle::framework::DataLayout::kAnyLayout;
-    case DataLayout::kMKLDNN:
+    case DataLayout::MKLDNN:
       return paddle::framework::DataLayout::kMKLDNN;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -182,29 +164,29 @@ paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
 
 size_t DataTypeSize(DataType dtype) {
   switch (dtype) {
-    case DataType::kUndef:
+    case DataType::UNDEFINED:
       return 0;
-    case DataType::kBOOL:
+    case DataType::BOOL:
       return sizeof(bool);
-    case DataType::kINT8:
+    case DataType::INT8:
       return sizeof(int8_t);
-    case DataType::kUINT8:
+    case DataType::UINT8:
       return sizeof(uint8_t);
-    case DataType::kINT16:
+    case DataType::INT16:
       return sizeof(int16_t);
-    case DataType::kINT32:
+    case DataType::INT32:
       return sizeof(int);
-    case DataType::kINT64:
+    case DataType::INT64:
       return sizeof(int64_t);
-    case DataType::kFLOAT16:
+    case DataType::FLOAT16:
       return sizeof(paddle::platform::float16);
-    case DataType::kFLOAT32:
+    case DataType::FLOAT32:
       return sizeof(float);
-    case DataType::kFLOAT64:
+    case DataType::FLOAT64:
       return sizeof(double);
-    case DataType::kCOMPLEX64:
+    case DataType::COMPLEX64:
       return sizeof(paddle::platform::complex<float>);
-    case DataType::kCOMPLEX128:
+    case DataType::COMPLEX128:
       return sizeof(paddle::platform::complex<double>);
     default:
       return 0;
@@ -213,55 +195,55 @@ size_t DataTypeSize(DataType dtype) {
 
 DataType String2DataType(const std::string& str) {
   if (str == "bool") {
-    return DataType::kBOOL;
+    return DataType::BOOL;
   } else if (str == "float16") {
-    return DataType::kFLOAT16;
+    return DataType::FLOAT16;
   } else if (str == "float32") {
-    return DataType::kFLOAT32;
+    return DataType::FLOAT32;
   } else if (str == "float64") {
-    return DataType::kFLOAT64;
+    return DataType::FLOAT64;
   } else if (str == "int8") {
-    return DataType::kINT8;
+    return DataType::INT8;
   } else if (str == "int16") {
-    return DataType::kINT16;
+    return DataType::INT16;
   } else if (str == "int32") {
-    return DataType::kINT32;
+    return DataType::INT32;
   } else if (str == "int64") {
-    return DataType::kINT64;
+    return DataType::INT64;
   } else if (str == "uint8") {
-    return DataType::kUINT8;
+    return DataType::UINT8;
   } else if (str == "complex64") {
-    return DataType::kCOMPLEX64;
+    return DataType::COMPLEX64;
   } else if (str == "complex128") {
-    return DataType::kCOMPLEX128;
+    return DataType::COMPLEX128;
   } else {
-    return DataType::kUndef;
+    return DataType::UNDEFINED;
   }
 }
 
 std::string DataType2String(DataType dtype) {
   switch (dtype) {
-    case DataType::kBOOL:
+    case DataType::BOOL:
       return "bool";
-    case DataType::kINT8:
+    case DataType::INT8:
       return "int8";
-    case DataType::kUINT8:
+    case DataType::UINT8:
       return "uint8";
-    case DataType::kINT16:
+    case DataType::INT16:
       return "int16";
-    case DataType::kINT32:
+    case DataType::INT32:
       return "int32";
-    case DataType::kINT64:
+    case DataType::INT64:
       return "int64";
-    case DataType::kFLOAT16:
+    case DataType::FLOAT16:
       return "float16";
-    case DataType::kFLOAT32:
+    case DataType::FLOAT32:
       return "float32";
-    case DataType::kFLOAT64:
+    case DataType::FLOAT64:
       return "float64";
-    case DataType::kCOMPLEX64:
+    case DataType::COMPLEX64:
       return "complex64";
-    case DataType::kCOMPLEX128:
+    case DataType::COMPLEX128:
       return "complex128";
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -273,27 +255,27 @@ std::string DataType2String(DataType dtype) {
 
 int TensorDtype2NumpyDtype(pten::DataType dtype) {
   switch (dtype) {
-    case pten::DataType::kBOOL:
+    case pten::DataType::BOOL:
       return NPY_TYPES::NPY_BOOL;
-    case pten::DataType::kINT8:
+    case pten::DataType::INT8:
       return NPY_TYPES::NPY_INT8;
-    case pten::DataType::kUINT8:
+    case pten::DataType::UINT8:
       return NPY_TYPES::NPY_UINT8;
-    case pten::DataType::kINT16:
+    case pten::DataType::INT16:
       return NPY_TYPES::NPY_INT16;
-    case pten::DataType::kINT32:
+    case pten::DataType::INT32:
       return NPY_TYPES::NPY_INT32;
-    case pten::DataType::kINT64:
+    case pten::DataType::INT64:
       return NPY_TYPES::NPY_INT64;
-    case pten::DataType::kFLOAT16:
+    case pten::DataType::FLOAT16:
       return NPY_TYPES::NPY_FLOAT;  // numpy not have float16
-    case pten::DataType::kFLOAT32:
+    case pten::DataType::FLOAT32:
       return NPY_TYPES::NPY_FLOAT;
-    case pten::DataType::kFLOAT64:
+    case pten::DataType::FLOAT64:
       return NPY_TYPES::NPY_DOUBLE;
-    case pten::DataType::kCOMPLEX64:
+    case pten::DataType::COMPLEX64:
       return NPY_TYPES::NPY_COMPLEX64;
-    case pten::DataType::kCOMPLEX128:
+    case pten::DataType::COMPLEX128:
       return NPY_TYPES::NPY_COMPLEX128;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(

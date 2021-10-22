@@ -17,8 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(KernelFactory, KernelKey) {
-  pten::KernelKey key(pten::Backend::kCPU,
-                      paddle::experimental::DataLayout::kNCHW,
-                      paddle::experimental::DataType::kFLOAT32);
+  pten::KernelKey key(
+      pten::Backend::CPU, pten::DataLayout::NCHW, pten::DataType::FLOAT32);
   std::cout << key;
 }

@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/cuda/linalg.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/common/eigen/dot.h"
+#include "paddle/pten/kernels/functions/eigen/dot.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"
@@ -39,7 +39,7 @@ using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL("dot",
                    CUDA,
-                   Any,
+                   ANY,
                    pten::Dot,
                    float,
                    double,

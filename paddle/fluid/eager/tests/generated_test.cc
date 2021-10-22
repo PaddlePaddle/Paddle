@@ -42,8 +42,8 @@ TEST(Generated, Sigmoid) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   paddle::experimental::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::kCPU, pten::DataType::kFLOAT32,
-      pten::DataLayout::kNCHW, 0.0, true);
+      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
+      0.0, true);
   RetainGradForTensor(tensor);
 
   auto output_tensor = sigmoid_dygraph_function(
@@ -73,14 +73,14 @@ TEST(Generated, Matmul_v2) {
   // 1. Prepare Input
   paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
   paddle::experimental::Tensor X = EagerUtils::CreateTensorWithValue(
-      ddimX, pten::Backend::kCPU, pten::DataType::kFLOAT32,
-      pten::DataLayout::kNCHW, 3.0, true);
+      ddimX, pten::Backend::CPU, pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 3.0, true);
   RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = paddle::framework::make_ddim({16, 20});
   paddle::experimental::Tensor Y = EagerUtils::CreateTensorWithValue(
-      ddimY, pten::Backend::kCPU, pten::DataType::kFLOAT32,
-      pten::DataLayout::kNCHW, 2.0, true);
+      ddimY, pten::Backend::CPU, pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 2.0, true);
   RetainGradForTensor(Y);
 
   auto output_tensor = matmul_v2_dygraph_function(

@@ -23,20 +23,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-template <>
-void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
-                                        LoDTensor* out) {
-  out->ResetHolderWithType(tensor_impl->allocation(),
-                           pten::TransToProtoVarType(tensor_impl->data_type()));
-}
-
-template <>
-void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
-                                        Tensor* out) {
-  out->ResetHolderWithType(tensor_impl->allocation(),
-                           pten::TransToProtoVarType(tensor_impl->data_type()));
-}
 // TODO(chenweihang, shixiaowei): adapt SelectedRows
 template <>
 std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, LoDTensor>(
@@ -79,8 +65,8 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor>(
     const LoDTensor& tensor, const platform::Place& place,
     proto::VarType::Type type) {
   return MakeTensorImpl<pten::DenseTensor, LoDTensor>(
-      tensor, pten::TransToPtBackend(place), pten::TransToPtDataType(type),
-      pten::TransToPtDataLayout(tensor.layout()));
+      tensor, pten::TransToPtenBackend(place), pten::TransToPtenDataType(type),
+      pten::TransToPtenDataLayout(tensor.layout()));
 }
 
 template <>
@@ -88,11 +74,25 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor>(
     const Tensor& tensor, const platform::Place& place,
     proto::VarType::Type type) {
   return MakeTensorImpl<pten::DenseTensor, Tensor>(
-      tensor, pten::TransToPtBackend(place), pten::TransToPtDataType(type),
-      pten::TransToPtDataLayout(tensor.layout()));
+      tensor, pten::TransToPtenBackend(place), pten::TransToPtenDataType(type),
+      pten::TransToPtenDataLayout(tensor.layout()));
 }
 
-std::shared_ptr<pten::TensorBase> InputVariableToPtTensor(
+template <>
+void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
+                                        LoDTensor* out) {
+  out->ResetHolderWithType(tensor_impl->allocation(),
+                           pten::TransToProtoVarType(tensor_impl->data_type()));
+}
+
+template <>
+void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
+                                        Tensor* out) {
+  out->ResetHolderWithType(tensor_impl->allocation(),
+                           pten::TransToProtoVarType(tensor_impl->data_type()));
+}
+
+std::shared_ptr<pten::TensorBase> InputVariableToPtenTensor(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def) {
   auto expected_place = pten::TransToFluidPlace(arg_def.backend);
 
@@ -137,7 +137,7 @@ std::shared_ptr<pten::TensorBase> InputVariableToPtTensor(
   return nullptr;
 }
 
-std::shared_ptr<pten::TensorBase> OutputVariableToPtTensor(
+std::shared_ptr<pten::TensorBase> OutputVariableToPtenTensor(
     framework::Variable* variable, const pten::TensorArgDef& arg_def) {
   // mutable_data before run kernel, to avoid share output form
   // KernelContext to original tensor
@@ -169,15 +169,16 @@ std::shared_ptr<pten::TensorBase> OutputVariableToPtTensor(
   return nullptr;
 }
 
-OpKernelType TransPtKernelKeyToOpKernelType(const pten::KernelKey& kernel_key) {
+OpKernelType TransPtenKernelKeyToOpKernelType(
+    const pten::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
   platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
   DataLayout data_layout = pten::TransToFluidDataLayout(kernel_key.layout());
   LibraryType library_type = LibraryType::kPlain;
-  if (kernel_key.backend() == pten::Backend::kMKLDNN) {
+  if (kernel_key.backend() == pten::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
-  } else if (kernel_key.backend() == pten::Backend::kCUDNN) {
+  } else if (kernel_key.backend() == pten::Backend::CUDNN) {
     library_type = LibraryType::kCUDNN;
   } else {
     // do nothing
@@ -186,20 +187,20 @@ OpKernelType TransPtKernelKeyToOpKernelType(const pten::KernelKey& kernel_key) {
   return OpKernelType(data_type, place, data_layout, library_type);
 }
 
-pten::KernelKey TransOpKernelTypeToPtKernelKey(
+pten::KernelKey TransOpKernelTypeToPtenKernelKey(
     const OpKernelType& kernel_type) {
-  pten::Backend backend = pten::TransToPtBackend(kernel_type.place_);
+  pten::Backend backend = pten::TransToPtenBackend(kernel_type.place_);
   if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
-    backend = pten::Backend::kMKLDNN;
+    backend = pten::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
-    backend = pten::Backend::kCUDNN;
+    backend = pten::Backend::CUDNN;
   } else {
     // do
   }
   paddle::experimental::DataLayout layout =
-      pten::TransToPtDataLayout(kernel_type.data_layout_);
+      pten::TransToPtenDataLayout(kernel_type.data_layout_);
   paddle::experimental::DataType dtype =
-      pten::TransToPtDataType(kernel_type.data_type_);
+      pten::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);
 }
 
@@ -214,16 +215,17 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
     auto& in = op_proto_->inputs()[i];
     auto& in_name = in.name();
     if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(1) << "Parse PtKernel input: skip extra & quant input - " << in_name;
+      VLOG(1) << "Parse PtenKernel input: skip extra & quant input - "
+              << in_name;
       continue;
     }
     // If contains dispensable input, we should override the
-    // GetExpectedPtKernelArgs method self
+    // GetExpectedPtenKernelArgs method self
     if (in.has_dispensable() && in.dispensable()) {
-      VLOG(1) << "Parse PtKernel input: skip dispensable input - " << in_name;
+      VLOG(1) << "Parse PtenKernel input: skip dispensable input - " << in_name;
       continue;
     }
-    VLOG(1) << "Parse PtKernel input: " << in_name;
+    VLOG(1) << "Parse PtenKernel input: " << in_name;
     input_names_.emplace_back(in_name);
   }
   return input_names_;
@@ -235,7 +237,7 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
     auto& out = op_proto_->outputs()[i];
     auto& out_name = out.name();
     // TODO(chenweihang): outputs also need skip some cases
-    VLOG(1) << "Parse PtKernel output: " << out_name;
+    VLOG(1) << "Parse PtenKernel output: " << out_name;
     output_names_.emplace_back(out_name);
   }
   return output_names_;
@@ -249,16 +251,17 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
     if (attr_name == "use_mkldnn" || attr_name == "op_role" ||
         attr_name == "op_role_var" || attr_name == "op_namescope" ||
         attr_name == "op_callstack" || attr_name == "op_device") {
-      VLOG(1) << "Parse PtKernel attribute: skip needless attr - " << attr_name;
+      VLOG(1) << "Parse PtenKernel attribute: skip needless attr - "
+              << attr_name;
       continue;
     }
     if ((attr.has_extra() && attr.extra()) ||
         (attr.has_quant() && attr.quant())) {
-      VLOG(1) << "Parse PtKernel attribute: skip extra & quant attr - "
+      VLOG(1) << "Parse PtenKernel attribute: skip extra & quant attr - "
               << attr_name;
       continue;
     }
-    VLOG(1) << "Parse PtKernel attribute: " << attr_name;
+    VLOG(1) << "Parse PtenKernel attribute: " << attr_name;
     attr_names_.emplace_back(attr_name);
   }
 

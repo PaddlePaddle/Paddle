@@ -68,6 +68,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"faster_tokenizer", {"Text", "Vocab", "TextPair"}},
     {"matrix_rank", {"X", "TolTensor"}},
     {"adam",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
@@ -556,7 +557,7 @@ GenerateOpFunctions() {
     // since only OperatorWithKernel can run in dygraph mode.
     // if the pten lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !pten::KernelFactory::Instance().ContainsKernel(op_type.c_str())) {
+        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 

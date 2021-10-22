@@ -53,20 +53,17 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
     Py_INCREF(Py_None);
     return Py_None;
   }
-
   auto tensor_dims = self->eagertensor.shape();
   auto numpy_dtype = pten::TensorDtype2NumpyDtype(self->eagertensor.type());
   auto sizeof_dtype = pten::DataTypeSize(self->eagertensor.type());
   npy_intp py_dims[paddle::framework::DDim::kMaxRank];
   npy_intp py_strides[paddle::framework::DDim::kMaxRank];
-
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
     py_dims[i] = static_cast<size_t>(tensor_dims[i]);
     py_strides[i] = sizeof_dtype * numel;
     numel *= py_dims[i];
   }
-
   PyObject* array =
       PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType(numpy_dtype),
                            tensor_dims.size(), py_dims, py_strides, nullptr,
