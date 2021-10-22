@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <ostream>
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace experimental {
 
@@ -28,8 +30,8 @@ namespace experimental {
  * but in order to make the boundary of the kernel clearer and the function
  * more specific, we need to distinguish the calculation method.
  *
- * Such as the kernel for CUDA device, it can be a native CUDA kernel,
- * or a kernel implemented by CUDNN library.
+ * Such as the kernel for CPU device, it can be a native CPU kernel,
+ * or a kernel implemented by MKLDNN library.
  *
  * Note(chenweihang): HIP is not needed now, we can added it if needed
  * in the future
@@ -78,7 +80,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       os << "CUDNN";
       break;
     default:
-      throw std::runtime_error("Invalid Backend type.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid enum backend type `%d`.", static_cast<int>(backend)));
   }
   return os;
 }

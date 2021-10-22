@@ -26,7 +26,7 @@ namespace paddle {
 namespace experimental {
 
 Tensor full_like(const Tensor& x,
-                 const pten::Scalar& value,
+                 const Scalar& value,
                  paddle::experimental::DataType dtype) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
@@ -56,7 +56,6 @@ Tensor full_like(const Tensor& x,
       std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
-  out.set_backend_set(x.backend_set());
 
   // 6. Call kernel
   kernel(&kernel_context);
@@ -64,11 +63,11 @@ Tensor full_like(const Tensor& x,
   return out;
 }
 
-Tensor ones_like(const Tensor& x, paddle::experimental::DataType dtype) {
+Tensor ones_like(const Tensor& x, DataType dtype) {
   return full_like(x, 1, dtype);
 }
 
-Tensor zeros_like(const Tensor& x, paddle::experimental::DataType dtype) {
+Tensor zeros_like(const Tensor& x, DataType dtype) {
   return full_like(x, 0, dtype);
 }
 

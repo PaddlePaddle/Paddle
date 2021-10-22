@@ -49,7 +49,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
  * Currently, only the first two cases are adapted.
  *
  * The principle here is that the implementation in the kernel must reuse the
- * corresponding functions in the Tensor compute library and cannot maintain
+ * corresponding functions in the Tensor Operation library and cannot maintain
  * two copies of the code.
  */
 template <typename DeviceContext, typename T>
