@@ -67,7 +67,6 @@ class CuFFTHandle {
  public:
   CuFFTHandle() {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftCreate(&handle_));
-    std::cout << ">>>>>>>>> Create handle: " << handle_ << std::endl;
   }
 
   CuFFTHandle(const CuFFTHandle& other) = delete;
@@ -80,7 +79,6 @@ class CuFFTHandle {
   const ::cufftHandle& get() const { return handle_; }
 
   ~CuFFTHandle() {
-    std::cout << "<<<<<<<<<< Destroy handle: " << handle_ << std::endl;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftDestroy(handle_));
   }
 };
@@ -377,7 +375,6 @@ class PlanLRUCache {
     // Miss
     // remove if needed
     if (_usage_list.size() >= _max_size) {
-      std::cout << "<<<<<<<<<<<Cache already full, removing" << std::endl;
       auto last = _usage_list.end();
       last--;
       _cache_map.erase(last->first);
