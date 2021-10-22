@@ -169,12 +169,6 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   return os;
 }
 
-inline DataType& operator++(DataType& dtype, int) {
-  dtype =
-      DataType(static_cast<std::underlying_type<DataType>::type>(dtype) + 1);
-  return dtype;
-}
-
 }  // namespace experimental
 }  // namespace paddle
 
