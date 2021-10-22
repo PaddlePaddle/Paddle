@@ -23,40 +23,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "cinn/frontend/op_mapper_registry.h"
+#include "cinn/frontend/op_mappers/use_op_mappers.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-// #include "cinn/frontend/op_mapper_registry.h"
-// #include "cinn/frontend/op_mappers/use_op_mappers.h"
-
-// TODO(jiangcheng05): just for local compile, remove after
-// paddle and CINN have been binded
-// The APIs are the same as CINN:
-// https://github.com/PaddlePaddle/CINN/blob/develop/cinn/utils/registry.h
-namespace cinn {
-namespace frontend {
-class OpMapperRegistry {
- public:
-  static OpMapperRegistry* Global() {
-    static OpMapperRegistry inst;
-    return &inst;
-  }
-
-  inline const OpMapperRegistry* Find(const std::string& name) {
-    std::unordered_set<std::string> fmap_ = {
-        "mul", "add", "elementwise_add", "relu", "sigmoid", "softmax"};
-    auto p = fmap_.find(name);
-    if (p != fmap_.end()) {
-      return this;
-    } else {
-      return nullptr;
-    }
-  }
-};
-
-}  // namespace frontend
-}  // namespace cinn
 
 namespace paddle {
 namespace framework {
