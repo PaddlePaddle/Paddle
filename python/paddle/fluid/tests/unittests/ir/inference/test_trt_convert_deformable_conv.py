@@ -18,6 +18,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
 class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
@@ -36,63 +37,103 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([2, 3, 32, 32]).astype(np.float32)
+        def compute_output_size(input_size: List[int],
+                                kernel_sizes: List[int],
+                                attrs: List[Dict[str, Any]]):
+            strides = attrs[0]['strides']
+            paddings = attrs[0]['paddings']
+            dilations = attrs[0]['dilations']
+            output_size = []
+            for i, k, s, p, d in zip(input_size, kernel_sizes, strides,
+                                     paddings, dilations):
+                k = d * (k - 1) + 1
+                output_size.append((i + 2 * p - k) // s + 1)
+            return output_size
 
-        def generate_offset1(attrs: List[Dict[str, Any]]):
-            return np.random.random([2, 18, 32, 32]).astype(np.float32)
+        def generate_input1(batch: int,
+                            input_size: List[int],
+                            kernel_sizes: List[int],
+                            attrs: List[Dict[str, Any]]):
+            return np.random.random([batch, 3] + input_size).astype(np.float32)
 
-        def generate_mask1(attrs: List[Dict[str, Any]]):
-            return np.random.random([2, 9, 32, 32]).astype(np.float32)
+        def generate_offset1(batch: int,
+                             input_size: List[int],
+                             kernel_sizes: List[int],
+                             attrs: List[Dict[str, Any]]):
+            output_size = compute_output_size(input_size, kernel_sizes, attrs)
+            return np.random.random([batch, 2 * np.prod(kernel_sizes)] +
+                                    output_size).astype(np.float32)
 
-        def generate_filter1(attrs: List[Dict[str, Any]]):
-            return np.random.random([6, 3, 3, 3]).astype(np.float32)
+        def generate_mask1(batch: int,
+                           input_size: List[int],
+                           kernel_sizes: List[int],
+                           attrs: List[Dict[str, Any]]):
+            output_size = compute_output_size(input_size, kernel_sizes, attrs)
+            return np.random.random([batch, np.prod(kernel_sizes)] +
+                                    output_size).astype(np.float32)
 
-        for strides in [[1, 1]]:
-            for paddings in [[1, 1]]:
-                for groups in [1, ]:
-                    for dilations in [[1, 1]]:
-                        dics = [{
-                            "strides": strides,
-                            "paddings": paddings,
-                            "groups": groups,
-                            "dilations": dilations,
-                            "deformable_groups": 1,
-                            "im2col_step": 1
-                        }]
+        def generate_filter1(batch: int,
+                             input_size: List[int],
+                             kernel_sizes: List[int],
+                             attrs: List[Dict[str, Any]]):
+            return np.random.random([6, 3] + kernel_sizes).astype(np.float32)
 
-                        ops_config = [{
-                            "op_type": "deformable_conv",
-                            "op_inputs": {
-                                "Input": ["input_data"],
-                                "Offset": ["offset_data"],
-                                "Mask": ["mask_data"],
-                                "Filter": ["filter_data"]
-                            },
-                            "op_outputs": {
-                                "Output": ["output_data"]
-                            },
-                            "op_attrs": dics[0]
-                        }]
-                        ops = self.generate_op_config(ops_config)
+        for batch in [1, ]:
+            for input_size in [[32, 32]]:
+                for kernel_sizes in [[3, 3]]:
+                    for strides in [[1, 1], [2, 2]]:
+                        for paddings in [[1, 1], [0, 2]]:
+                            for groups in [1, ]:
+                                for dilations in [[1, 1], [2, 2]]:
+                                    dics = [{
+                                        "strides": strides,
+                                        "paddings": paddings,
+                                        "groups": groups,
+                                        "dilations": dilations,
+                                        "deformable_groups": 1,
+                                        "im2col_step": 1
+                                    }]
 
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={
-                                "filter_data": TensorConfig(data_gen=partial(
-                                    generate_filter1, dics))
-                            },
-                            inputs={
-                                "input_data": TensorConfig(data_gen=partial(
-                                    generate_input1, dics)),
-                                "offset_data": TensorConfig(data_gen=partial(
-                                    generate_offset1, dics)),
-                                "mask_data": TensorConfig(data_gen=partial(
-                                    generate_mask1, dics))
-                            },
-                            outputs=["output_data"])
+                                ops_config = [{
+                                    "op_type": "deformable_conv",
+                                    "op_inputs": {
+                                        "Input": ["input_data"],
+                                        "Offset": ["offset_data"],
+                                        "Mask": ["mask_data"],
+                                        "Filter": ["filter_data"]
+                                    },
+                                    "op_outputs": {
+                                        "Output": ["output_data"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
 
-                        yield program_config
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights={
+                                        "filter_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_filter1, batch, input_size,
+                                            kernel_sizes, dics))
+                                    },
+                                    inputs={
+                                        "input_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, batch, input_size,
+                                            kernel_sizes, dics)),
+                                        "offset_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_offset1, batch, input_size,
+                                            kernel_sizes, dics)),
+                                        "mask_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_mask1, batch,
+                                                input_size, kernel_sizes, dics))
+                                    },
+                                    outputs=["output_data"])
+
+                                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):

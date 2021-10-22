@@ -334,10 +334,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "deformable_conv") {
+      if (with_dynamic_shape) {
+        VLOG(3) << "Deformable conv trt plugin does not support dynamic shape";
+        return false;
+      }
       auto* block = desc.Block();
       auto input_name = desc.Input("Input")[0];
       auto* input_desc = block->FindVar(input_name);
       const auto input_shape = input_desc->GetShape();
+
+      if (input_shape.size() != 4) {
+        VLOG(3) << "Input of deformable conv should be 4-D Tensor, but got "
+                << input_shape.size();
+        return false;
+      }
 
       auto filter_name = desc.Input("Filter")[0];
       auto* filter_desc = block->FindVar(filter_name);
