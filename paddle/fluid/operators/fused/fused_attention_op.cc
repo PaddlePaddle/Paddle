@@ -522,7 +522,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -532,4 +531,3 @@ REGISTER_OPERATOR(fused_attention, ops::FusedAttentionOp,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
-
