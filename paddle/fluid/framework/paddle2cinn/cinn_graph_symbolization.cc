@@ -46,7 +46,7 @@ OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(const Tensor& tensor) {
     info.shape.emplace_back(static_cast<int>(dim[i]));
   }
 
-  auto cinn_var_type = TransformVarTypeToCinn(tensor.type());
+  auto cinn_var_type = TransformVarDataTypeToCinn(tensor.type());
   info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
   return info;
 }
@@ -93,6 +93,7 @@ CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) const {
   auto parameter_names = GetGraphInputParameterNames();
 
   for (const auto& param_name : parameter_names) {
+    VLOG(4) << "add param var [" << param_name << "] info scope";
     // if cannot find var in graph input, skip.
     // scope accepte the CINN format name, so here we need transform
     // paddle format name to CINN format.
@@ -157,6 +158,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   // add all tensor's feed info into context
   for (auto& feed_pair : feed_map) {
     ctx.AddFeedInfo(feed_pair.first, feed_pair.second);
+    VLOG(4) << "add feed var [" << feed_pair.first << "] info context";
   }
   RunGraph(ctx);
 

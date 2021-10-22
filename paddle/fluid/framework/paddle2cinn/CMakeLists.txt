@@ -1,7 +1,7 @@
 cc_library(cinn_cache_key SRCS cinn_cache_key.cc DEPS boost graph graph_helper lod_tensor proto_desc)
 cc_library(cinn_compiled_object SRCS cinn_compiled_object.cc DEPS feed_fetch_method graph lod_tensor proto_desc)
 cc_library(cinn_runner SRCS cinn_runner.cc DEPS cinn_cache_key cinn_compiled_object feed_fetch_method graph lod_tensor scope)
-cc_library(build_cinn_pass SRCS build_cinn_pass.cc DEPS pass subgraph_detector)
+cc_library(build_cinn_pass SRCS build_cinn_pass.cc DEPS pass subgraph_detector cinn)
 cc_library(transform_desc SRCS transform_desc.cc DEPS proto_desc cinn)
 cc_library(cinn_graph_symbolization SRCS cinn_graph_symbolization.cc DEPS lod_tensor graph graph_helper transform_desc cinn)
 

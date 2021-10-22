@@ -69,19 +69,7 @@ class CinnGraphSymbolizationForTest {
 
 class CinnGraphSymbolizationTest : public ::testing::Test {
  public:
-  std::unique_ptr<CinnGraphSymbolization> symbol_;
-  std::unique_ptr<CinnGraphSymbolizationForTest> test_;
-
-  OpMapperContext CreateNewContext() {
-    return test_->CreateNewContext(builder_.get(), feed_map_);
-  }
-
-  std::shared_ptr<::cinn::hlir::framework::Scope> CreateCinnScope() {
-    return test_->CreateCinnScope(feed_map_);
-  }
-
- protected:
-  void SetUp() override {
+  CinnGraphSymbolizationTest() {
     int64_t graph_id = 100;
     graph_ = BuildAllOpSupportCinnGraph();
     target_ = CreateDefaultTarget();
@@ -95,11 +83,22 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     feed_map_ = test_->GetFeedInfoMapFromInput();
   }
 
+  std::unique_ptr<CinnGraphSymbolization> symbol_;
+  std::unique_ptr<CinnGraphSymbolizationForTest> test_;
+  std::map<std::string, const LoDTensor*> feed_targets_;
+
+  OpMapperContext CreateNewContext() {
+    return test_->CreateNewContext(builder_.get(), feed_map_);
+  }
+
+  std::shared_ptr<::cinn::hlir::framework::Scope> CreateCinnScope() {
+    return test_->CreateCinnScope(feed_map_);
+  }
+
  private:
   std::unique_ptr<Graph> graph_;
   ::cinn::common::Target target_;
   std::map<std::string, LoDTensor> feed_tensors_;
-  std::map<std::string, const LoDTensor*> feed_targets_;
   std::unique_ptr<NetBuilder> builder_;
   FeedInfoMap feed_map_;
 
@@ -114,10 +113,28 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
 
     OpDesc add_op;
     add_op.SetType("add");
+    add_op.SetInput("X", {"var3"});
+    add_op.SetInput("Y", {"var4"});
+    add_op.SetOutput("Out", {"var5"});
+
     OpDesc mul_op;
     mul_op.SetType("mul");
+    mul_op.SetInput("X", {"var1"});
+    mul_op.SetInput("Y", {"var2"});
+    mul_op.SetOutput("Out", {"var3"});
+
     OpDesc relu_op;
     relu_op.SetType("relu");
+    relu_op.SetInput("X", {"var5"});
+    relu_op.SetOutput("Out", {"var6"});
+
+    OpDesc feed_var1;
+    feed_var1.SetType("feed");
+    feed_var1.SetOutput("Out", {"var1"});
+
+    OpDesc feed_var4;
+    feed_var4.SetType("feed");
+    feed_var4.SetOutput("Out", {"var4"});
 
     VarDesc var1("var1");
     VarDesc var2("var2");
@@ -132,6 +149,9 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     ir::Node* mul = g->CreateOpNode(&mul_op);
     ir::Node* relu = g->CreateOpNode(&relu_op);
 
+    ir::Node* feed1 = g->CreateOpNode(&feed_var1);
+    ir::Node* feed4 = g->CreateOpNode(&feed_var4);
+
     ir::Node* v1 = g->CreateVarNode(&var1);
     ir::Node* v2 = g->CreateVarNode(&var2);
     ir::Node* v3 = g->CreateVarNode(&var3);
@@ -140,6 +160,8 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     ir::Node* v6 = g->CreateVarNode(&var6);
 
     // fill op node
+    feed1->outputs = {v1};
+    feed4->outputs = {v4};
     mul->inputs = {v1, v2};
     mul->outputs = {v3};
     add->inputs = {v3, v4};
@@ -148,12 +170,15 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     relu->outputs = {v6};
 
     // fill variable node
+    v1->inputs = {feed1};
     v1->outputs = {mul};
+
     v2->outputs = {mul};
 
     v3->inputs = {mul};
     v3->outputs = {add};
 
+    v4->inputs = {feed4};
     v4->outputs = {add};
 
     v5->inputs = {add};
@@ -178,8 +203,9 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
 
     auto create_tensor = []() {
       LoDTensor tensor;
-      DDim dims = {256, 1024, 1024};
+      DDim dims = {256, 1024};
       tensor.Resize(dims);
+      tensor.mutable_data(platform::CPUPlace(), proto::VarType::FP32);
       return tensor;
     };
 #define FillFeedList(Name) feed_targets[#Name] = create_tensor();
@@ -188,8 +214,12 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     FillFeedList(var3);
     FillFeedList(var4);
     FillFeedList(var5);
-    FillFeedList(var6)
+    FillFeedList(var6);
 #undef FillFeedList
+    DDim y_dim = {1024, 1024};
+    feed_targets["var2"].Resize(y_dim);
+
+    return feed_targets;
   }
 
   std::map<std::string, const LoDTensor*> ConvertFeedType(
@@ -202,12 +232,6 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
   }
 };
 
-TEST_F(CinnGraphSymbolizationTest, basic) {
-  ASSERT_NO_THROW((*symbol_)());
-  ASSERT_FALSE(symbol_->var_map().empty());
-  ASSERT_FALSE(symbol_->var_model_to_program_map().empty());
-}
-
 TEST_F(CinnGraphSymbolizationTest, feed_map) {
   auto feed_map = test_->GetFeedInfoMapFromInput();
   auto ctx = CreateNewContext();
@@ -216,7 +240,7 @@ TEST_F(CinnGraphSymbolizationTest, feed_map) {
   ASSERT_TRUE(feed_map.count("var2"));
 
   auto feed_info = feed_map.at("var1");
-  ASSERT_EQ(feed_info.shape, std::vector<int>({256, 1024, 1024}));
+  ASSERT_EQ(feed_info.shape, std::vector<int>({256, 1024}));
   ASSERT_EQ(feed_info.type, ::cinn::common::F32());
 }
 
@@ -232,7 +256,7 @@ TEST_F(CinnGraphSymbolizationTest, scope) {
   ASSERT_NE(var2, nullptr);
 
   auto& cinn_tensor = absl::get<CinnTensor>(*var2);
-  ASSERT_EQ(cinn_tensor->shape().data(), std::vector<int>({256, 1024, 1024}));
+  ASSERT_EQ(cinn_tensor->shape().data(), std::vector<int>({1024, 1024}));
   ASSERT_EQ(cinn_tensor->type(), ::cinn::common::F32());
 }
 
@@ -243,17 +267,31 @@ TEST_F(CinnGraphSymbolizationTest, sortgraph) {
   for (auto& desc : cinn_op_descs) {
     sort_names.emplace_back(desc->Type());
   }
-  ASSERT_EQ(sort_names, std::vector<std::string>({"mul", "add", "relu"}));
+  ASSERT_EQ(sort_names,
+            std::vector<std::string>({"feed", "mul", "feed", "add", "relu"}));
 }
 
 TEST_F(CinnGraphSymbolizationTest, runop) {
   auto cinn_op_descs = test_->TransformAllGraphOpToCinn();
+  auto feed_map = test_->GetFeedInfoMapFromInput();
+
   auto ctx = CreateNewContext();
+  // add all tensor's feed info into context
+  for (auto& feed_pair : feed_map) {
+    ctx.AddFeedInfo(feed_pair.first, feed_pair.second);
+  }
+
   ASSERT_NO_THROW(test_->RunOp(*cinn_op_descs[0], ctx));
 
   CinnOpDesc desc;
   desc.SetType("fake");
   ASSERT_ANY_THROW(test_->RunOp(desc, ctx));
+}
+
+TEST_F(CinnGraphSymbolizationTest, basic) {
+  ASSERT_NO_THROW((*symbol_)());
+  ASSERT_FALSE(symbol_->var_map().empty());
+  ASSERT_FALSE(symbol_->var_model_to_program_map().empty());
 }
 
 }  // namespace paddle2cinn
