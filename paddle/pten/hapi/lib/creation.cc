@@ -56,7 +56,6 @@ Tensor full_like(const Tensor& x,
       std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
-  out.set_backend_set(x.backend_set());
 
   // 6. Call kernel
   kernel(&kernel_context);

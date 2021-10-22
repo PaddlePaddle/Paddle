@@ -19,18 +19,17 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/pten/core/tensor_base.h"
-#include "paddle/pten/hapi/include/tensor_signature.h"
 
 /**
  * [ Why still include the fluid headers? ]
  *
  * We hope to organize the basic implementation of Tensor and the logic related
  * to Tensor computation into an independent library, which we call
- * [Tensor Compute Library, pten], so we extract or rewrite the original
+ * [Tensor Operation Library, pten], so we extract or rewrite the original
  * Kernels.
  *
  * In the future, the training library, inference library and custom operators
- * will link to this Tensor Compute library.
+ * will link to this Tensor Operation library.
  *
  * However, if we directly split the link relation, we need to make too many
  * changes, which will affect the stability of the framework, so here we still
@@ -47,15 +46,15 @@ namespace experimental {
 
 class Tensor;
 
-class AutogradMetaInterface {
+class AbstractAutogradMeta {
  public:
-  // No AutogradMetaInterface should be created
-  virtual ~AutogradMetaInterface() {}
+  // No AbstractAutogradMeta should be created
+  virtual ~AbstractAutogradMeta() {}
 };
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ Paddle "Tensor CoMPuTe (pten)" Library ].
+ * [ "Paddle Tensor Operation (pten)" Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained
@@ -97,7 +96,6 @@ class Tensor final {
     if (impl_.get() == nullptr) {
       throw std::runtime_error("TensorImpl with nullptr is not supported");
     }
-    signature_.reset(new TensorSignature(impl_->backend()));
   }
 
   /* Part 2: Dimension, DataType and DataLayout methods */
@@ -140,16 +138,8 @@ class Tensor final {
   /**
    * Backend judgment APIs, shield the concept of Backend.
    */
-  BackendSet backend_set() const { return signature_->backend_set; }
-  void set_backend_set(const BackendSet& backend_set) {
-    if (signature_ == nullptr) {
-      signature_.reset(new TensorSignature());
-    }
-    signature_->backend_set = backend_set;
-  }
-
-  bool is_cpu() const { return signature_->backend_set.Has(Backend::CPU); }
-  bool is_cuda() const { return signature_->backend_set.Has(Backend::CUDA); }
+  bool is_cpu() const { return paddle::platform::is_cpu_place(place()); }
+  bool is_cuda() const { return paddle::platform::is_gpu_place(place()); }
 
   /**
    * Backend convert APIs.
@@ -211,11 +201,11 @@ class Tensor final {
   }
 
   /* Part 7: Autograd methods */
-  AutogradMetaInterface* get_autograd_meta() const {
+  AbstractAutogradMeta* get_autograd_meta() const {
     return autograd_meta_.get();
   }
 
-  void set_autograd_meta(std::shared_ptr<AutogradMetaInterface> autograd_meta) {
+  void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
     autograd_meta_ = std::move(autograd_meta);
   }
 
@@ -244,7 +234,7 @@ class Tensor final {
   std::shared_ptr<pten::TensorBase> impl_;
 
   /**
-   * [ Why need abstract AutogradMetaInterface here? ]
+   * [ Why need abstract AbstractAutogradMeta here? ]
    *
    * Dynamic graphs need to hold backward information
    *
@@ -254,17 +244,13 @@ class Tensor final {
    *    information, not Tensor data description-related information.
    * 2. Kernel calculation does not require AutogradMeta.
    */
-  std::shared_ptr<AutogradMetaInterface> autograd_meta_{nullptr};
+  std::shared_ptr<AbstractAutogradMeta> autograd_meta_{nullptr};
 
   /**
-   * TensorSignature is used to store auxiliary description information
-   * needed by Tensor.
-   *
-   * The currently stored information includes:
-   * 1. name: used for Debug analysis in the development of new dygraph.
-   * 2. backend_set: used by the API to determine the kernel backend.
+   * Tensor name: used for adapt original execution mechanism and debug analysis
+   * in the development of new dygraph.
    */
-  std::shared_ptr<TensorSignature> signature_{nullptr};
+  std::string name_;
 };
 
 }  // namespace experimental
