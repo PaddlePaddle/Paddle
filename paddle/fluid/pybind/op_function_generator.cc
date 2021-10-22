@@ -68,6 +68,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"faster_tokenizer", {"Text", "Vocab", "TextPair"}},
     {"matrix_rank", {"X", "TolTensor"}},
     {"adam",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",

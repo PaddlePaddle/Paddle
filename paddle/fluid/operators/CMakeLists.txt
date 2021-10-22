@@ -17,6 +17,7 @@ add_subdirectory(metrics)
 add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
+add_subdirectory(string)
 add_subdirectory(jit)
 if(WITH_MKLDNN)
     add_subdirectory(mkldnn)
@@ -78,10 +79,12 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op sparse_attention_op lstm_op run_program_op eye_op recurrent_op
-        sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op 
+        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
+op_library(save_combine_op DEPS string_array)
+op_library(load_combine_op DEPS string_array)
 
 if (WITH_GPU OR WITH_ROCM)
     if(WITH_ROCM)
@@ -102,8 +105,7 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
-
-if (WITH_GPU AND (NOT WITH_ROCM))
+if (WITH_GPU OR WITH_ROCM)
     if (MKL_FOUND AND WITH_ONEMKL)
         op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS dynload_cuda dynload_mklrt ${OP_HEADER_DEPS})
         target_include_directories(spectral_op PRIVATE ${MKL_INCLUDE})
@@ -117,6 +119,11 @@ else()
     else()
         op_library(spectral_op SRCS spectral_op.cc DEPS ${OP_HEADER_DEPS})
     endif()
+endif()
+
+if (WITH_ASCEND_CL)
+  op_library(sync_batch_norm_op)
+  file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(sync_batch_norm);\n")
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
