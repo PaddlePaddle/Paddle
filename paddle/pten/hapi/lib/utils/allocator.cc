@@ -12,17 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 
-#include "paddle/pten/core/kernel_registry.h"
+namespace paddle {
+namespace experimental {
 
-// symbol declare
-PT_DECLARE_MODULE(MathCPU);
-PT_DECLARE_MODULE(LinalgCPU);
-PT_DECLARE_MODULE(CreationCPU);
+memory::Allocator::AllocationDeleter DefaultAllocator::deleter_;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(MathCUDA);
-PT_DECLARE_MODULE(LinalgCUDA);
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
+}  // namespace experimental
+}  // namespace paddle

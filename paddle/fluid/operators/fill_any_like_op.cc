@@ -48,7 +48,7 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
                                    tensor.layout());
   }
 
-  framework::KernelSignature GetExpectedPtKernelArgs(
+  framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
     return std::make_pair(
         "fill_any_like",

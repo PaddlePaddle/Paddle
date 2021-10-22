@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/common/eigen/common.h"
+#include "paddle/pten/kernels/functions/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -24,27 +24,26 @@ namespace pten {
 namespace eigen {
 
 template <typename DevCtx, typename T>
-void Scale(const DevCtx& dev_ctx,
-           const DenseTensor& x,
-           float scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out) {
-  // calc
-  out->mutable_data<T>();
-  auto eigen_out = pten::EigenVector<T>::Flatten(*out);
-  auto eigen_x = pten::EigenVector<T>::Flatten(x);
-  auto& dev = *dev_ctx.eigen_device();
-  // TODO(chenweihang): now the eigen function here need the dtype of scale,
-  // eigen_x, bias should be same, so here need cast for two scalar arg,
-  // maybe we declare that the type of scale and bias is T?
-  paddle::operators::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
-      dev,
-      eigen_out,
-      eigen_x,
-      static_cast<T>(scale),
-      static_cast<T>(bias),
-      bias_after_scale);
+void Dot(const DevCtx& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& y,
+         DenseTensor* out) {
+  out->mutable_data();
+  if (1 == out->dims().size()) {
+    auto eigen_out = pten::EigenScalar<T>::From(*out);
+    auto eigen_x = pten::EigenVector<T>::Flatten(x);
+    auto eigen_y = pten::EigenVector<T>::Flatten(y);
+
+    auto& dev = *dev_ctx.eigen_device();
+    eigen_out.device(dev) = (eigen_x * eigen_y).sum();
+  } else {
+    auto eigen_out = pten::EigenMatrix<T>::From(*out);
+    auto eigen_x = pten::EigenMatrix<T>::From(x);
+    auto eigen_y = pten::EigenMatrix<T>::From(y);
+
+    auto& dev = *dev_ctx.eigen_device();
+    eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
+  }
 }
 
 }  // namespace eigen

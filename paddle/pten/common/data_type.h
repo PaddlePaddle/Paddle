@@ -75,8 +75,8 @@ inline size_t SizeOf(DataType data_type) {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type %d is not supported by tensor.",
           static_cast<int>(data_type)));
-      return 0;
   }
+  return 0;
 }
 
 #define PT_FOR_EACH_DATA_TYPE(_)    \
@@ -84,8 +84,11 @@ inline size_t SizeOf(DataType data_type) {
   _(int8_t, DataType::INT8)         \
   _(uint8_t, DataType::UINT8)       \
   _(int16_t, DataType::INT16)       \
-  _(int, DataType::INT32)           \
+  _(uint16_t, DataType::UINT16)     \
+  _(int32_t, DataType::INT32)       \
+  _(uint32_t, DataType::UINT32)     \
   _(int64_t, DataType::INT64)       \
+  _(uint64_t, DataType::UINT64)     \
   _(bfloat16, DataType::BFLOAT16)   \
   _(float16, DataType::FLOAT16)     \
   _(float, DataType::FLOAT32)       \

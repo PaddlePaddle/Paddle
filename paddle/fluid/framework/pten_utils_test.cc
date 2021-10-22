@@ -41,7 +41,7 @@ TEST(TcmptUtils, MakeTensor) {
   ASSERT_EQ(dense_x->data_type(), pten::DataType::FLOAT32);
 }
 
-TEST(TcmptUtils, VarToPtTensor) {
+TEST(TcmptUtils, VarToPtenTensor) {
   // 1. create Variable
   Variable v;
   auto selected_rows = v.GetMutable<SelectedRows>();
@@ -57,7 +57,7 @@ TEST(TcmptUtils, VarToPtTensor) {
   auto tensor_def = pten::TensorArgDef(expect_backend, pten::DataLayout::NCHW,
                                        pten::DataType::INT32);
   // 2. test API
-  auto tensor_x = InputVariableToPtTensor(v, tensor_def);
+  auto tensor_x = InputVariableToPtenTensor(v, tensor_def);
   // 3. check result
   ASSERT_EQ(tensor_x->backend(), expect_backend);
   ASSERT_EQ(tensor_x->data_type(), pten::DataType::INT32);

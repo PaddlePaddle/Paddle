@@ -33,7 +33,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/hapi/include/tensor_signature.h"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wconversion-null"
 
@@ -184,11 +183,6 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
 
   std::shared_ptr<pten::DenseTensor> densetensor(
       new pten::DenseTensor(std::move(meta), pten::TensorStatus()));
-  // TODO(jiabin): remove name init for signature
-  std::shared_ptr<paddle::experimental::TensorSignature> signature(
-      new paddle::experimental::TensorSignature(
-          egr::Controller::Instance().GenerateUniqueName(),
-          densetensor->backend()));
 
   auto holder = std::make_shared<EagerNumpyAllocation>(numpy_data, dtype);
   densetensor->ShareAllocation(holder);
@@ -197,7 +191,6 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   if (obj) {
     auto v = (EagerTensorObject*)obj;  // NOLINT
     v->eagertensor.set_impl(densetensor);
-    v->eagertensor.set_signature(signature);
     auto meta = egr::EagerUtils::autograd_meta(&(v->eagertensor));
     meta->SetStopGradient(stop_gradient);
   } else {

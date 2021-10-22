@@ -1,10 +1,3 @@
-if(WIN32)
-    set(CURRENT_BINARY_DIR ${PADDLE_BINARY_DIR}/paddle/pten/kernels/cuda)
-    kernel_instantiate(creation.cu)
-    kernel_instantiate(math.cu)
-    kernel_instantiate(linalg.cu)
-endif()
-
 if(WITH_GPU)
   nv_library(math_cuda SRCS math.cu DEPS eigen_function dense_tensor convert_utils kernel_context kernel_factory)
   nv_library(linalg_cuda SRCS linalg.cu DEPS eigen_function dense_tensor kernel_context kernel_factory)

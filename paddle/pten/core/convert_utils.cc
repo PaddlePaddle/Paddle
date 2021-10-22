@@ -22,7 +22,7 @@ limitations under the License. */
 namespace pten {
 
 // TODO(chenweihang): Add other place trans cases later
-Backend TransToPtBackend(const paddle::platform::Place& place) {
+Backend TransToPtenBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
     return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
@@ -32,7 +32,7 @@ Backend TransToPtBackend(const paddle::platform::Place& place) {
   }
 }
 
-paddle::experimental::DataType TransToPtDataType(
+paddle::experimental::DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used
@@ -66,7 +66,7 @@ paddle::experimental::DataType TransToPtDataType(
   }
 }
 
-DataLayout TransToPtDataLayout(const paddle::framework::DataLayout& layout) {
+DataLayout TransToPtenDataLayout(const paddle::framework::DataLayout& layout) {
   switch (layout) {
     case paddle::framework::DataLayout::kNHWC:
       return DataLayout::NHWC;

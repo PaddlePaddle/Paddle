@@ -557,7 +557,7 @@ GenerateOpFunctions() {
     // since only OperatorWithKernel can run in dygraph mode.
     // if the pten lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !pten::KernelFactory::Instance().ContainsKernel(op_type.c_str())) {
+        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 

@@ -1,11 +1,8 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,22 +14,19 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include <utility>
-#include "glog/logging.h"
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/pten/core/tensor_base.h"
-#include "paddle/pten/hapi/include/tensor_signature.h"
+
 /**
  * [ Why still include the fluid headers? ]
  *
  * We hope to organize the basic implementation of Tensor and the logic related
  * to Tensor computation into an independent library, which we call
- * [Tensor Compute Library, pten], so we extract or rewrite the original
+ * [Tensor Operation Library, pten], so we extract or rewrite the original
  * Kernels.
  *
  * In the future, the training library, inference library and custom operators
- * will link to this Tensor Compute library.
+ * will link to this Tensor Operation library.
  *
  * However, if we directly split the link relation, we need to make too many
  * changes, which will affect the stability of the framework, so here we still
@@ -41,6 +35,8 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace experimental {
@@ -55,7 +51,7 @@ class AbstractAutogradMeta {
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ Paddle "Tensor CoMPuTe (pten)" Library ].
+ * [ "Paddle Tensor Operation (pten)" Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained
@@ -83,10 +79,7 @@ class AbstractAutogradMeta {
 class Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
-  Tensor() { signature_.reset(new TensorSignature()); }
-  explicit Tensor(const std::string& name) {
-    signature_.reset(new TensorSignature(name));
-  }
+  Tensor() {}
   Tensor(const Tensor&) = default;
   Tensor(Tensor&&) = default;
 
@@ -100,7 +93,6 @@ class Tensor final {
     if (impl_.get() == nullptr) {
       throw std::runtime_error("TensorImpl with nullptr is not supported");
     }
-    signature_.reset(new TensorSignature(impl_->backend()));
   }
 
   /* Part 2: Dimension, DataType and DataLayout methods */
@@ -143,16 +135,8 @@ class Tensor final {
   /**
    * Backend judgment APIs, shield the concept of Backend.
    */
-  BackendSet backend_set() const { return signature_->backend_set; }
-  void set_backend_set(const BackendSet& backend_set) {
-    if (signature_ == nullptr) {
-      signature_.reset(new TensorSignature());
-    }
-    signature_->backend_set = backend_set;
-  }
-
-  bool is_cpu() const { return signature_->backend_set.Has(Backend::CPU); }
-  bool is_cuda() const { return signature_->backend_set.Has(Backend::CUDA); }
+  bool is_cpu() const { return paddle::platform::is_cpu_place(place()); }
+  bool is_cuda() const { return paddle::platform::is_gpu_place(place()); }
 
   /**
    * Backend convert APIs.
@@ -175,14 +159,6 @@ class Tensor final {
    */
   void set_impl(const std::shared_ptr<pten::TensorBase>& impl) { impl_ = impl; }
 
-  /**
-   * @description: Set the signature of current Tensor.
-   * @param {const std::shared_ptr<TensorSignature>& }
-   * @return None
-   */
-  void set_signature(const std::shared_ptr<TensorSignature>& signature) {
-    signature_ = signature;
-  }
   // TODO(chenweihang): Whether API Tensor need `data` and `mutable_data`?
 
   // TODO(chenweihang): slice and split methods use kernels?
@@ -209,18 +185,15 @@ class Tensor final {
    */
   void reset() { impl_.reset(); }
 
-  /* Part 6: Operator overloading used by eager */
+  /* Part 6: Operator overloading */
   Tensor& operator=(const Tensor& x) & {
     impl_ = x.impl_;
     autograd_meta_ = x.autograd_meta_;
-    signature_ = x.signature_;
     return *this;
   }
-
   Tensor& operator=(Tensor&& x) & {
     impl_ = std::move(x.impl_);
     autograd_meta_ = std::move(x.autograd_meta_);
-    signature_ = x.signature_;
     return *this;
   }
 
@@ -236,7 +209,7 @@ class Tensor final {
   /* Part 8: Auto generated Tensor methods */
   // ...
 
- public:
+ private:
   /**
    * [ Why use abstract TensorImpl interface here? ]
    *
@@ -271,14 +244,10 @@ class Tensor final {
   std::shared_ptr<AbstractAutogradMeta> autograd_meta_{nullptr};
 
   /**
-   * TensorSignature is used to store auxiliary description information
-   * needed by Tensor.
-   *
-   * The currently stored information includes:
-   * 1. name: used for Debug analysis in the development of new dygraph.
-   * 2. backend_set: used by the API to determine the kernel backend.
+   * Tensor name: used for adapt original execution mechanism and debug analysis
+   * in the development of new dygraph.
    */
-  std::shared_ptr<TensorSignature> signature_{nullptr};
+  std::string name_;
 };
 
 }  // namespace experimental
