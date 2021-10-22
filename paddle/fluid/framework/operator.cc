@@ -313,10 +313,12 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx = pool.Get(place);
     int param_num = 0;
-    for (auto& var_map : Outputs()) {
-      for (std::string name : var_map.second) {
-        param_num++;
-        show_var(scope, name, dev_ctx);
+    if (strcmp("1", getenv("SHOW_OP_OUTPUT")) == 0) {
+      for (auto& var_map : Outputs()) {
+        for (std::string name : var_map.second) {
+          param_num++;
+          show_var(scope, name, dev_ctx);
+        }
       }
     }
   } catch (platform::EnforceNotMet& exception) {
