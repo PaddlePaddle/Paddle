@@ -277,20 +277,13 @@ class AllocatorFacadePrivate {
     CUdevice device;
     int val;
     try {
-      auto result =
-          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId());
-      PADDLE_ENFORCE_EQ(
-          result, CUDA_SUCCESS,
-          platform::errors::Fatal("Call CUDA API cuDeviceGet faild, return %d.",
-                                  result));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
 
-      result = paddle::platform::dynload::cuDeviceGetAttribute(
-          &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
-          device);
-      PADDLE_ENFORCE_EQ(
-          result, CUDA_SUCCESS,
-          platform::errors::Fatal(
-              "Call CUDA API cuDeviceGetAttribute faild, return %d.", result));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          paddle::platform::dynload::cuDeviceGetAttribute(
+              &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+              device));
     } catch (...) {
       val = 0;
     }
