@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
@@ -2152,18 +2153,29 @@ class ConditionalBlock(object):
         self.inputs = inputs
         self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
+        self.inside_block = None
+        self.origin_output = None
 
     def block(self):
         return ConditionalBlockGuard(self)
 
+    def _complete_for_if_op(self):
+        pass
+
     def complete(self):
-        inside_block = self.helper.main_program.current_block()
-        parent_block = self.helper.main_program.block(inside_block.parent_idx)
+        self.inside_block = self.helper.main_program.current_block()
+
+        if os.environ.get("FLAGS_new_cond", None):
+            self._complete_for_if_op()
+            return
+
+        parent_block = self.helper.main_program.block(
+            self.inside_block.parent_idx)
 
         intermediate = set()
         params = set()
         params, intermediate = get_inputs_outputs_in_block(
-            inside_block, params, intermediate, helper=self.helper)
+            self.inside_block, params, intermediate, helper=self.helper)
 
         # Todo(liym27) Here assume that all params are in recursive parent block
         # but when minimize() called in control flow, some params may be in
@@ -2189,12 +2201,12 @@ class ConditionalBlock(object):
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
             attrs={
-                'sub_block': inside_block,
+                'sub_block': self.inside_block,
                 'is_scalar_condition': self.is_scalar_condition
             })
 
-        if self.need_append_conditional_block_grad(inside_block):
-            self.append_conditional_block_grad(parent_block, inside_block,
+        if self.need_append_conditional_block_grad(self.inside_block):
+            self.append_conditional_block_grad(parent_block, self.inside_block,
                                                conditional_block_op)
 
     def need_append_conditional_block_grad(self, inside_block):
@@ -2297,6 +2309,136 @@ def copy_var_to_parent_block(var, layer_helper):
             dtype=var.dtype, shape=var.shape, type=var.type)
         assign(var, parent_block_var)
     return parent_block_var
+
+
+def cond_v2(pred, true_fn=None, false_fn=None, name=None):
+    """
+    A new version of Cond API implemented with `IfOp`.
+    """
+
+    def _build_sub_block(branch_fn):
+        branch_out = None
+        if branch_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn/false_fn in cond must be callable, but received {}".
+                    format(type(branch_fn).__name__))
+            branch_sub_block = ConditionalBlock(
+                [pred], is_scalar_condition=True)
+            with branch_sub_block.block():
+                branch_sub_block.output = branch_fn()
+
+        return branch_sub_block.output, branch_sub_block.inside_block
+
+    def _check_output(true_output, false_output):
+        if true_output is None:
+            raise ValueError(
+                "Incompatible return values of true_fn and false_fn in cond: "
+                "true_fn returns None while false_fn returns non-None")
+        if false_output is None:
+            raise ValueError(
+                "Incompatible return values of true_fn and false_fn in cond: "
+                "true_fn returns non-None while false_fn returns None")
+
+        # Merge true and false output if they are not None
+        try:
+            assert_same_structure(true_output, false_output, check_types=False)
+        except ValueError as e:
+            raise ValueError(
+                "Incompatible return values of true_fn and false_fn in cond: {}".
+                format(e))
+
+    helper = LayerHelper('cond_v2', **locals())
+    true_output, true_block = _build_sub_block(true_fn)
+    false_output, false_block = _build_sub_block(false_fn)
+
+    if true_output is None and false_output is None:
+        return None
+    # ensure output from each branch with same structure.
+    _check_output(true_output, false_output)
+
+    return _build_if(pred, true_output, true_block, false_output, false_block,
+                     helper)
+
+
+def _build_if(pred, true_output, true_block, false_output, false_block, helper):
+    """
+    Build an IfOp to represent true_block and false_output and return
+    final outputs.
+
+    Considering the following case:
+
+      1. Parse all input_vars needed in true_block and false_block;
+      2. Parse all output_vars created in outer scope but modified in sub_block
+      3. Create output_vars of IfOp with same structure as branch_outs
+
+    # TODO(Aurelius84): Considering the inplace case.
+    """
+    parent_block = true_block.program.block(true_block.parent_idx)
+
+    def _get_in_out_var_names(branch_block):
+        out_var_names = set()
+        in_var_names = set()
+
+        for op in true_block.ops:
+            assert isinstance(op, Operator)
+            for iname in op.input_names:
+                for in_var_name in op.input(iname):
+                    # op1 -> var -> op2, var is intermidate.
+                    if in_var_name not in out_var_names:
+                        in_var_names.add(in_var_name)
+
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    out_var_names.add(out_var_name)
+        return in_var_names, out_var_names
+
+    # parse all input_vars needed in branch blocks
+    if_input_names, if_output_names = set(), set()
+    for block in [true_block, false_block]:
+        in_var_names, out_var_names = _get_in_out_var_names(block)
+        if_input_names |= in_var_names
+        if_output_names |= out_var_names
+
+    input_vars = [
+        parent_block._var_recursive(var_name) for var_name in if_input_names
+    ]
+
+    # output_vars = []
+    # for out_name in if_output_names:
+    #     out_var = parent_block._find_var_recursive(out_name)
+    #     if out_var:
+    #         output_vars.append(out_var)
+
+    # create output_vars of IfOp using as placeholder
+    output_vars = []
+    for var in true_output:
+        if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+            and parent_block._find_var_recursive(var.name):
+            parent_block_var = var
+        else:
+            parent_block_var = parent_block.create_var(
+                dtype=var.dtype, shape=var.shape, type=var.type)
+        output_vars.append(parent_block_var)
+
+    step_scope = parent_block.create_var(type=core.VarDesc.VarType.STEP_SCOPES)
+    if_op = parent_block.append_op(
+        type='if',
+        inputs={
+            'Cond': [pred],
+            'Input': input_vars,
+        },
+        outputs={'Out': output_vars,
+                 'Scope': [step_scope]},
+        attrs={
+            'true_block': true_block,
+            'false_block': false_block,
+            'TrueOut': [var.name for var in true_output],
+            'FalseOut': [var.name for var in false_output],
+            'is_scalar_condition': True
+        })
+
+    return output_vars
 
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
@@ -2412,6 +2554,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
     check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
     check_type(name, "name", (str, type(None)), "fluid.layers.cond")
+
+    if os.environ.get("FLAGS_new_cond", None):
+        return cond_v2(pred, true_fn, false_fn, name)
+
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
