@@ -25,7 +25,7 @@ using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
 using DenseTensor = pten::candidate::DenseTensor;
-using DenseTensorMeta = pten::candidate::DenseTensorMeta;
+using DenseTensorMeta = pten::DenseTensorMeta;
 
 TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   const DDim dims({2, 1});

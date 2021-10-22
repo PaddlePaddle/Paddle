@@ -32,8 +32,8 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, LoDTensor>(
     paddle::experimental::DataLayout layout) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<pten::DenseTensor>(
-      pten::DenseTensorMeta(dtype, tensor.dims(), layout),
-      pten::TensorStatus());
+      pten::DenseTensorMeta(dtype, tensor.dims(), layout), pten::TensorStatus(),
+      backend);
 
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
@@ -50,8 +50,8 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, Tensor>(
     paddle::experimental::DataLayout layout) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<pten::DenseTensor>(
-      pten::DenseTensorMeta(dtype, tensor.dims(), layout),
-      pten::TensorStatus());
+      pten::DenseTensorMeta(dtype, tensor.dims(), layout), pten::TensorStatus(),
+      backend);
 
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
@@ -102,6 +102,7 @@ std::shared_ptr<pten::TensorBase> InputVariableToPtenTensor(
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+      CHECK(platform::is_same_place(tmp_tensor.place(), expected_place));
       auto pt_in =
           framework::MakeTensorImpl<pten::DenseTensor, framework::LoDTensor>(
               tmp_tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
@@ -119,6 +120,7 @@ std::shared_ptr<pten::TensorBase> InputVariableToPtenTensor(
     if (!platform::is_same_place(tensor.value().place(), expected_place)) {
       framework::Tensor tmp_tensor;
       TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
+      CHECK(platform::is_same_place(tmp_tensor.place(), expected_place));
       // TODO(chenweihang): adapt SelectedRows by xiaowei's design
       auto pt_in =
           framework::MakeTensorImpl<pten::DenseTensor, framework::Tensor>(
