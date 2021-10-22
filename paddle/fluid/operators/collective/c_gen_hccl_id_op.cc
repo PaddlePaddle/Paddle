@@ -33,10 +33,10 @@ namespace operators {
 
 static void GenHCCLID(std::vector<HcclRootInfo>* hccl_ids) {
   constexpr int timeout = 2 * 60 + 10;  // 2MSL+10s
-  constexpr int retry_time = 1;
+  constexpr int retry_time = 2 * 60 + 10;
   for (size_t i = 0; i < hccl_ids->size(); ++i) {
     bool failed = true;
-    for (auto retry_times = 0; retry_times * retry_time < timeout;
+    for (auto retry_times = 0; retry_times * retry_time < 5 * timeout;
          ++retry_times) {
       auto err = platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]);
       if (err == 0) {
