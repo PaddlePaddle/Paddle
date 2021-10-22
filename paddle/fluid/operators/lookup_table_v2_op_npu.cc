@@ -21,6 +21,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+constexpr int64_t kNoPadding = -1;
+
 template <typename DeviceContext, typename T>
 class LookupTableV2NPUKernel : public framework::OpKernel<T> {
  public:
@@ -35,16 +38,46 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
-    NpuOpRunner runner;
-    runner.SetType("GatherV2")
-        .AddInput(*table_t)
-        .AddInput(*ids_t)
-        .AddInput(std::vector<int32_t>{0})
-#if (CANN_VERSION_CODE >= 503003)
-        .AddAttrs({{"batch_dims", 0}})
-#endif
-        .AddOutput(*output_t);
-    runner.Run();
+    int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");
+    if (padding_idx == kNoPadding) {
+      NpuOpRunner runner;
+      runner.SetType("GatherV2")
+          .AddInput(*table_t)
+          .AddInput(*ids_t)
+          .AddInput(std::vector<int32_t>{0})
+          .AddOutput(*output_t);
+      runner.Run();
+    } else {
+      Tensor tmp_table_t(table_t->type());
+      tmp_table_t.mutable_data<T>(table_t->dims(), ctx.GetPlace());
+
+      Tensor index;
+      index.mutable_data<int32_t>({1, 1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<int32_t>(&index,
+                                         static_cast<int32_t>(padding_idx));
+
+      auto updata_dim = framework::make_ddim({1, table_t->dims()[1]});
+      Tensor update;
+      update.mutable_data<T>(updata_dim, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&update, static_cast<T>(0));
+      update.Resize(updata_dim);
+
+      NpuOpRunner update_runner;
+      update_runner.SetType("TensorScatterUpdate")
+          .AddInput(*table_t)
+          .AddInput(index)
+          .AddInput(update)
+          .AddOutput(tmp_table_t);
+      update_runner.Run();
+
+      NpuOpRunner runner;
+      runner.SetType("GatherV2")
+          .AddInput(tmp_table_t)
+          .AddInput(*ids_t)
+          .AddInput(std::vector<int32_t>{0})
+          .AddOutput(*output_t);
+      runner.Run();
+    }
   }
 };
 
