@@ -2264,7 +2264,7 @@ def solve(x, y, name=None):
 
 def eigvalsh(x, UPLO='L', name=None):
     """
-    compute the eigenvalues of a 
+    Computes the eigenvalues of a 
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 
     Args:

@@ -60,7 +60,7 @@ class EigvalshGradKernel : public framework::OpKernel<T> {
             ctx);
     auto tV = dito.Transpose(dito.Conj(output_v));
 
-    // comput elementwise multiply of output_v and output_w_grad
+    // compute elementwise multiply of output_v and output_w_grad
     x_grad.mutable_data<T>(output_v.dims(), ctx.GetPlace());
     auto output_v_vector = EigenVector<T>::Flatten(output_v);
     auto output_w_grad_vector = EigenVector<ValueType>::Flatten(output_w_grad);
