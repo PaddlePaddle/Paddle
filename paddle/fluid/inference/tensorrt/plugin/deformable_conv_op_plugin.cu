@@ -200,13 +200,16 @@ int DeformableConvPlugin::enqueue(int batch_size, const void* const* inputs,
 #endif
                                   cudaStream_t stream) TRT_NOEXCEPT {
   if (data_type_ == nvinfer1::DataType::kFLOAT) {
-    return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
+    enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
-    return enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+    enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
+#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The DeformableConv TRT Plugin's input type should be float or half."));
   }
+  return cudaGetLastError() != cudaSuccess;
 }
 
 template <typename T>
@@ -322,29 +325,28 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
 }
 
 template <typename T>
-cublasStatus_t gemm_impl(cublasHandle_t handle, cublasOperation_t transa,
-                         cublasOperation_t transb, int m, int n, int k,
-                         const T* alpha, const T* A, int lda, const T* B,
-                         int ldb, const T* beta, T* C, int ldc);
+void gemm_impl(cublasHandle_t handle, cublasOperation_t transa,
+               cublasOperation_t transb, int m, int n, int k, const T* alpha,
+               const T* A, int lda, const T* B, int ldb, const T* beta, T* C,
+               int ldc);
 
 template <>
-cublasStatus_t gemm_impl<float>(cublasHandle_t handle, cublasOperation_t transa,
-                                cublasOperation_t transb, int m, int n, int k,
-                                const float* alpha, const float* A, int lda,
-                                const float* B, int ldb, const float* beta,
-                                float* C, int ldc) {
-  return platform::dynload::cublasSgemm(handle, transa, transb, m, n, k, alpha,
-                                        A, lda, B, ldb, beta, C, ldc);
+void gemm_impl<float>(cublasHandle_t handle, cublasOperation_t transa,
+                      cublasOperation_t transb, int m, int n, int k,
+                      const float* alpha, const float* A, int lda,
+                      const float* B, int ldb, const float* beta, float* C,
+                      int ldc) {
+  platform::dynload::cublasSgemm(handle, transa, transb, m, n, k, alpha, A, lda,
+                                 B, ldb, beta, C, ldc);
 }
 
 template <>
-cublasStatus_t gemm_impl<half>(cublasHandle_t handle, cublasOperation_t transa,
-                               cublasOperation_t transb, int m, int n, int k,
-                               const half* alpha, const half* A, int lda,
-                               const half* B, int ldb, const half* beta,
-                               half* C, int ldc) {
-  return platform::dynload::cublasHgemm(handle, transa, transb, m, n, k, alpha,
-                                        A, lda, B, ldb, beta, C, ldc);
+void gemm_impl<half>(cublasHandle_t handle, cublasOperation_t transa,
+                     cublasOperation_t transb, int m, int n, int k,
+                     const half* alpha, const half* A, int lda, const half* B,
+                     int ldb, const half* beta, half* C, int ldc) {
+  platform::dynload::cublasHgemm(handle, transa, transb, m, n, k, alpha, A, lda,
+                                 B, ldb, beta, C, ldc);
 }
 
 template <typename T>
@@ -398,9 +400,8 @@ int DeformableConvPlugin::enqueue_impl(int batch_size,
       const T* weight = filter + g * M * K;
       const T* col = data_col + g * K * N;
       T* out = output + i * im2col_step_ * output_stride + g * M * N;
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          gemm_impl<T>(cublasHandle_, CUBLAS_OP_N, CUBLAS_OP_N, N, M, K, &alpha,
-                       col, N, weight, K, &beta, out, N));
+      gemm_impl<T>(cublasHandle_, CUBLAS_OP_N, CUBLAS_OP_N, N, M, K, &alpha,
+                   col, N, weight, K, &beta, out, N);
     }
   }
   return 0;
