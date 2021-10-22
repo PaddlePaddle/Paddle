@@ -49,13 +49,14 @@ def fused_feedforward(x,
     This operator only supports running on GPU. The function of the operator is consistent with
     the following pseudo code:
 
-.. math::
-    residual = src;
-    if pre_layer_norm:
-        src = layer_norm(src)
-    src = linear(dropout(activation(dropout(linear(src)))))
-    if not pre_layer_norm:
-        src = layer_norm(out)
+    .. code-block:: python
+
+        residual = src;
+        if pre_layer_norm:
+            src = layer_norm(src)
+        src = linear(dropout(activation(dropout(linear(src)))))
+        if not pre_layer_norm:
+            src = layer_norm(out)
 
     Args:
         x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16, float32 or float64, the shape is`[batch\_size, sequence\_length, d_model]`.
