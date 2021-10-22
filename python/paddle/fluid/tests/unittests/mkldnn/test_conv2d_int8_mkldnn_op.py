@@ -23,8 +23,7 @@ from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, Te
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
-    out, in_n, out_h, out_w, out_c = conv2d_forward_naive(input, filter, group,
-                                                          conv_param)
+    out, _, _, _, _ = conv2d_forward_naive(input, filter, group, conv_param)
     return out
 
 
@@ -53,39 +52,45 @@ class TestConv2DInt8Op(TestConv2DOp):
             'pad': self.pad,
             'dilation': self.dilations
         }
+        # This implementation of convolution quantization is based on OneDNN documentation
+        # https://oneapi-src.github.io/oneDNN/dev_guide_int8_computations.html#doxid-dev-guide-int8-computations-1dg-i8-comp-s11
+        scale_output_shift = (self.scale_out /
+                              (self.scale_in * self.scale_weights[0]))
 
         filter = np.random.random(self.filter_size).astype(self.weighttype)
-        if self.srctype == np.uint8:
-            input = np.random.randint(0, 10,
-                                      self.input_size).astype(self.srctype)
-        else:
+
+        if self.srctype == np.int8:
             input = np.random.randint(-5, 5,
                                       self.input_size).astype(self.srctype)
             input_shift = (np.ones(self.input_size) * 128).astype(np.uint8)
 
-        if self.srctype == np.int8:
-            filter_int = np.round(filter * self.scale_weights[0] *
-                                  0.5).astype(np.int32)
-            scale_output_shift = self.scale_out / (self.scale_in *
-                                                   self.scale_weights[0] * 0.5)
+            if core.supports_vnni():
+                filter_int = np.round(filter *
+                                      self.scale_weights[0]).astype(np.int32)
+            else:
+                # When the Intel AVX2 or Intel AVX512 Instruction Set is used
+                # the reorder additionally scales the weights by 0.5
+                # to overcome the potential overflow issue.
+                filter_int = np.round(filter * self.scale_weights[0] *
+                                      0.5).astype(np.int32)
+                scale_output_shift = scale_output_shift / 0.5
+
             output1 = conv2d_forward_refer(
-                np.round((input.astype(np.int32) + input_shift) *
-                         self.scale_in).astype(np.int32), filter_int,
+                np.round(input + input_shift).astype(np.int32), filter_int,
                 self.groups,
                 conv2d_param).astype(np.float32) * scale_output_shift
             output2 = conv2d_forward_refer(
-                np.round((input_shift) * self.scale_in).astype(np.int32),
-                filter_int, self.groups,
+                np.round(input_shift).astype(np.int32), filter_int, self.groups,
                 conv2d_param).astype(np.float32) * scale_output_shift
             if self.fuse_residual:
                 input_residual = np.random.randint(
                     -5, 5, self.input_residual_size).astype(self.srctype)
-                output_tmp = np.round(output1 - output2 + input_residual.astype(
-                    self.srctype) * (self.scale_out / self.scale_in_eltwise))
+                output_res = np.round(output1 - output2 + input_residual * (
+                    self.scale_out / self.scale_in_eltwise))
                 if self.fuse_activation == "relu":
-                    output = np.maximum(output_tmp, 0).astype(self.dsttype)
+                    output = np.maximum(output_res, 0).astype(self.dsttype)
                 else:
-                    output = output_tmp.astype(self.dsttype)
+                    output = output_res.astype(self.dsttype)
             else:
                 if self.fuse_activation == "relu":
                     output = np.maximum(np.round(output1 - output2),
@@ -94,32 +99,30 @@ class TestConv2DInt8Op(TestConv2DOp):
                     output = np.round(output1 - output2).astype(self.dsttype)
 
         else:
+            input = np.random.randint(0, 10,
+                                      self.input_size).astype(self.srctype)
             filter_int = np.round(filter *
                                   self.scale_weights[0]).astype(np.int32)
-            scale_output_shift = self.scale_out / (self.scale_in *
-                                                   self.scale_weights[0])
+
             output1 = conv2d_forward_refer(
                 input.astype(np.int32), filter_int, self.groups,
-                conv2d_param).astype(np.float32)
-            output1_tmp = np.round(output1 * (
-                self.scale_out / (self.scale_in * self.scale_weights[0])))
+                conv2d_param).astype(np.float32) * scale_output_shift
 
             if self.fuse_residual:
                 input_residual = np.random.randint(
                     0, 10, self.input_residual_size).astype(self.srctype)
-                output_tmp_res = np.round(output1 * (self.scale_out / (
-                    self.scale_in * self.scale_weights[
-                        0])) + input_residual.astype(np.int32) * (
-                            self.scale_out / self.scale_in_eltwise))
+                output_res = np.round(output1 + input_residual * (
+                    self.scale_out / self.scale_in_eltwise))
                 if self.fuse_activation == "relu":
-                    output = np.maximum(output_tmp_res, 0).astype(self.dsttype)
+                    output = np.maximum(output_res, 0).astype(self.dsttype)
                 else:
-                    output = output_tmp_res.astype(self.dsttype)
+                    output = output_res.astype(self.dsttype)
             else:
                 if self.fuse_activation == "relu":
-                    output = np.maximum(output1_tmp, 0).astype(self.dsttype)
+                    output = np.maximum(np.round(output1),
+                                        0).astype(self.dsttype)
                 else:
-                    output = output1_tmp.astype(self.dsttype)
+                    output = np.round(output1).astype(self.dsttype)
 
         self.inputs = {
             'Input':
@@ -169,7 +172,7 @@ class TestConv2DInt8Op(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.input_residual_size = [1, 2, 3, 3]
         self.filter_size = [2, f_c, 3, 3]
-        self.scale_in = 1.0
+        self.scale_in = 0.95
         self.scale_out = 0.5
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.6
@@ -185,7 +188,7 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.fuse_residual = True
 
 
-#--------------------test conv2d u8 in and u8 out with residual fuse--------------------
+# --------------------test conv2d u8 in and u8 out with residual fuse--------------------
 
 
 class TestConv2D(TestConv2DInt8Op):
@@ -197,7 +200,7 @@ class TestConv2D(TestConv2DInt8Op):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
-        self.scale_in = 1.0
+        self.scale_in = 0.95
         self.scale_out = 0.5
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.6
@@ -224,7 +227,7 @@ class TestWithStride(TestConv2DInt8Op):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
-        self.scale_in = 1.0
+        self.scale_in = 0.95
         self.scale_out = 0.8
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.5
@@ -240,7 +243,7 @@ class TestWithDilations(TestConv2DInt8Op):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
-        self.scale_in = 1.0
+        self.scale_in = 0.95
         self.scale_out = 0.8
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.5
@@ -255,7 +258,7 @@ class TestWith1x1(TestConv2DInt8Op):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1]
-        self.scale_in = 1.0
+        self.scale_in = 0.95
         self.scale_out = 0.5
         self.scale_weights = [12.0]
         self.scale_in_eltwise = 0.5
@@ -270,7 +273,7 @@ class TestWithInput1x1Filter1x1(TestConv2DInt8Op):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1]
-        self.scale_in = 1.0
+        self.scale_in = 0.95
         self.scale_out = 0.5
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.8
@@ -290,32 +293,32 @@ def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
 
 def create_test_int8_class(parent):
 
-    #--------------------test conv2d s8 in and u8 out--------------------
+    # --------------------test conv2d s8 in and u8 out--------------------
     class TestS8U8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "relu", False)
 
-    #--------------------test conv2d s8 in and s8 out--------------------
+    # --------------------test conv2d s8 in and s8 out--------------------
     class TestS8S8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "", False)
 
-    #--------------------test conv2d u8 in and s8 out--------------------
+    # --------------------test conv2d u8 in and s8 out--------------------
     class TestU8S8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", False)
 
-    #--------------------test conv2d u8 in and u8 out without residual fuse--------------------
+    # --------------------test conv2d u8 in and u8 out without residual fuse--------------------
     class TestU8U8Case(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "relu", False)
 
-    #--------------------test conv2d s8 in and s8 out with residual fuse--------------------
+    # --------------------test conv2d s8 in and s8 out with residual fuse--------------------
     class TestS8S8ResCase(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "", True)
 
-    #--------------------test conv2d u8 in and s8 out with residual fuse--------------------
+    # --------------------test conv2d u8 in and s8 out with residual fuse--------------------
     class TestU8S8ResCase(parent):
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", True)
@@ -333,9 +336,9 @@ def create_test_int8_class(parent):
     TestS8S8Case.__name__ = cls_name_s8s8
     TestU8S8Case.__name__ = cls_name_u8s8
     TestU8U8Case.__name__ = cls_name_u8u8
-
     TestS8S8ResCase.__name__ = cls_name_s8s8_re_1
     TestU8S8ResCase.__name__ = cls_name_u8s8_re_1
+
     globals()[cls_name_s8u8] = TestS8U8Case
     globals()[cls_name_s8s8] = TestS8S8Case
     globals()[cls_name_u8s8] = TestU8S8Case
@@ -344,7 +347,7 @@ def create_test_int8_class(parent):
     globals()[cls_name_u8s8_re_1] = TestU8S8ResCase
 
     if os.name != 'nt':
-        #--------------------test conv2d s8 in and u8 out with residual fuse--------------------
+        # --------------------test conv2d s8 in and u8 out with residual fuse--------------------
         class TestS8U8ResCase(parent):
             def init_data_type(self):
                 init_data_type_with_fusion(self, np.int8, "relu", True)
