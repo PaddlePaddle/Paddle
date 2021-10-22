@@ -1301,6 +1301,8 @@ def bincount(x, weights=None, minlength=0, name=None):
         x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
         weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
         minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The tensor of frequency.
