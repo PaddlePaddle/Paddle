@@ -1358,7 +1358,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       // y'shapes == 2
-      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+      auto fc_inputs = desc.Inputs();
+      std::string fc_y = "";
+      if (fc_inputs.find("Y") != fc_inputs.end()) {
+        fc_y = "Y";
+      } else if (fc_inputs.find("W") != fc_inputs.end()) {
+        fc_y = "W";
+      } else {
+        VLOG(3) << " input_y(fc_op) must be Y or W ";
+        return false;
+      }
+      auto* y_var_desc = block->FindVar(desc.Input(fc_y)[0]);
       const auto y_shape = y_var_desc->GetShape();
       if (y_shape.size() != 2) {
         VLOG(3)
