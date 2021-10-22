@@ -68,9 +68,9 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
 }
 
 #if defined(PADDLE_WITH_CUDA)
-CuFFTConfig create_cufft_config(const framework::Tensor& input,
-                                const framework::Tensor& output,
-                                int signal_ndim) {
+FFTConfig& create_cufft_config(const framework::Tensor& input,
+                               const framework::Tensor& output,
+                               int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -89,11 +89,18 @@ CuFFTConfig create_cufft_config(const framework::Tensor& input,
               framework::vectorize(output.dims()), signal_size, fft_type,
               value_type);
 
-  return CuFFTConfig(key);
+  const int64_t device_id = static_cast<int64_t>(
+      reinterpret_cast<const platform::CUDAPlace*>(&input.place())
+          ->GetDeviceId());
+  PlanLRUCache& plan_cache = cufft_get_plan_cache(device_id);
+  std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
+  guard.lock();
+
+  return plan_cache.lookup(key);
 }
 
 // Execute a pre-planned transform
-static void exec_cufft_plan_raw(const CuFFTConfig& config, void* in_data,
+static void exec_cufft_plan_raw(const FFTConfig& config, void* in_data,
                                 void* out_data, bool forward) {
   auto& plan = config.plan();
 
@@ -102,7 +109,7 @@ static void exec_cufft_plan_raw(const CuFFTConfig& config, void* in_data,
 }
 
 template <typename DeviceContext, typename Ti, typename To>
-void exec_cufft_plan(const DeviceContext& ctx, const CuFFTConfig& config,
+void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
                      framework::Tensor* input, framework::Tensor* output,
                      bool forward) {
   // execute transform plan
@@ -136,9 +143,9 @@ void exec_cufft_plan(const DeviceContext& ctx, const CuFFTConfig& config,
 
 #elif defined(PADDLE_WITH_HIP)
 
-HIPFFTConfig create_hipfft_config(const framework::Tensor& input,
-                                  const framework::Tensor& output,
-                                  int signal_ndim) {
+FFTConfig create_hipfft_config(const framework::Tensor& input,
+                               const framework::Tensor& output,
+                               int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -157,11 +164,11 @@ HIPFFTConfig create_hipfft_config(const framework::Tensor& input,
               framework::vectorize(output.dims()), signal_size, fft_type,
               value_type);
 
-  return HIPFFTConfig(key);
+  return FFTConfig(key);
 }
 
 // Execute a pre-planned transform
-static void exec_hipfft_plan_raw(const HIPFFTConfig& config, void* in_data,
+static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
                                  void* out_data, bool forward) {
   auto& plan = config.plan();
 
@@ -216,7 +223,7 @@ static void exec_hipfft_plan_raw(const HIPFFTConfig& config, void* in_data,
 }
 
 template <typename DeviceContext, typename Ti, typename To>
-void exec_hipfft_plan(const DeviceContext& ctx, const HIPFFTConfig& config,
+void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
                       framework::Tensor* input, framework::Tensor* output,
                       bool forward) {
   auto fft_type = config.transform_type();
@@ -310,7 +317,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
 
 #if defined(PADDLE_WITH_CUDA)
   // create plan
-  CuFFTConfig config =
+  FFTConfig config =
       create_cufft_config(collapsed_input, collapsed_output, signal_ndim);
   // prepare cufft for execution
   PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -325,7 +332,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
 
 #elif defined(PADDLE_WITH_HIP)
   // create plan
-  HIPFFTConfig config =
+  FFTConfig config =
       create_hipfft_config(collapsed_input, collapsed_output, signal_ndim);
   // prepare cufft for execution
   PADDLE_ENFORCE_CUDA_SUCCESS(
