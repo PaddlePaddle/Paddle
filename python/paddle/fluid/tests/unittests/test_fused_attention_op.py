@@ -33,6 +33,7 @@ class TestFusedAttentionOp(OpTest):
         self.generate_input_data()
         paddle.set_default_dtype(self.x_type)
         self.__class__.op_type = "fused_attention"
+        # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = True
         self.q_proj = Linear(
             self.embed_dim,

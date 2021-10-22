@@ -61,6 +61,10 @@ int32_t GraphBrpcServer::initialize() {
   return 0;
 }
 
+brpc::Channel *GraphBrpcServer::get_cmd_channel(size_t server_index) {
+  return _pserver_channels[server_index].get();
+}
+
 uint64_t GraphBrpcServer::start(const std::string &ip, uint32_t port) {
   std::unique_lock<std::mutex> lock(mutex_);
 
@@ -77,6 +81,42 @@ uint64_t GraphBrpcServer::start(const std::string &ip, uint32_t port) {
     return 0;
   }
   _environment->registe_ps_server(ip, port, _rank);
+  return 0;
+}
+
+int32_t GraphBrpcServer::build_peer2peer_connection(int rank) {
+  this->rank = rank;
+  auto _env = environment();
+  brpc::ChannelOptions options;
+  options.protocol = "baidu_std";
+  options.timeout_ms = 500000;
+  options.connection_type = "pooled";
+  options.connect_timeout_ms = 10000;
+  options.max_retry = 3;
+
+  std::vector<PSHost> server_list = _env->get_ps_servers();
+  _pserver_channels.resize(server_list.size());
+  std::ostringstream os;
+  std::string server_ip_port;
+  for (size_t i = 0; i < server_list.size(); ++i) {
+    server_ip_port.assign(server_list[i].ip.c_str());
+    server_ip_port.append(":");
+    server_ip_port.append(std::to_string(server_list[i].port));
+    _pserver_channels[i].reset(new brpc::Channel());
+    if (_pserver_channels[i]->Init(server_ip_port.c_str(), "", &options) != 0) {
+      VLOG(0) << "GraphServer connect to Server:" << server_ip_port
+              << " Failed! Try again.";
+      std::string int_ip_port =
+          GetIntTypeEndpoint(server_list[i].ip, server_list[i].port);
+      if (_pserver_channels[i]->Init(int_ip_port.c_str(), "", &options) != 0) {
+        LOG(ERROR) << "GraphServer connect to Server:" << int_ip_port
+                   << " Failed!";
+        return -1;
+      }
+    }
+    os << server_ip_port << ",";
+  }
+  LOG(INFO) << "servers peer2peer connection success:" << os.str();
   return 0;
 }
 
@@ -160,6 +200,9 @@ int32_t GraphBrpcService::initialize() {
       &GraphBrpcService::remove_graph_node;
   _service_handler_map[PS_GRAPH_SET_NODE_FEAT] =
       &GraphBrpcService::graph_set_node_feat;
+  _service_handler_map[PS_GRAPH_SAMPLE_NODES_FROM_ONE_SERVER] =
+      &GraphBrpcService::sample_neighboors_across_multi_servers;
+
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
 
@@ -172,10 +215,10 @@ int32_t GraphBrpcService::initialize_shard_info() {
     if (_is_initialize_shard_info) {
       return 0;
     }
-    size_t shard_num = _server->environment()->get_ps_servers().size();
+    server_size = _server->environment()->get_ps_servers().size();
     auto &table_map = *(_server->table());
     for (auto itr : table_map) {
-      itr.second->set_shard(_rank, shard_num);
+      itr.second->set_shard(_rank, server_size);
     }
     _is_initialize_shard_info = true;
   }
@@ -209,7 +252,9 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
   int service_ret = (this->*handler_func)(table, *request, *response, cntl);
   if (service_ret != 0) {
     response->set_err_code(service_ret);
-    response->set_err_msg("server internal error");
+    if (!response->has_err_msg()) {
+      response->set_err_msg("server internal error");
+    }
   }
 }
 
@@ -403,7 +448,156 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
 
   return 0;
 }
+int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
+    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    brpc::Controller *cntl) {
+  // sleep(5);
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 2) {
+    set_response_code(
+        response, -1,
+        "graph_random_sample request requires at least 2 arguments");
+    return 0;
+  }
+  size_t node_num = request.params(0).size() / sizeof(uint64_t),
+         size_of_size_t = sizeof(size_t);
+  uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
+  int sample_size = *(uint64_t *)(request.params(1).c_str());
+  // std::vector<uint64_t> res = ((GraphTable
+  // *)table).filter_out_non_exist_nodes(node_data, sample_size);
+  std::vector<int> request2server;
+  std::vector<int> server2request(server_size, -1);
+  std::vector<uint64_t> local_id;
+  std::vector<int> local_query_idx;
+  size_t rank = get_rank();
+  for (int query_idx = 0; query_idx < node_num; ++query_idx) {
+    int server_index =
+        ((GraphTable *)table)->get_server_index_by_id(node_data[query_idx]);
+    if (server2request[server_index] == -1) {
+      server2request[server_index] = request2server.size();
+      request2server.push_back(server_index);
+    }
+  }
+  if (server2request[rank] != -1) {
+    auto pos = server2request[rank];
+    std::swap(request2server[pos],
+              request2server[(int)request2server.size() - 1]);
+    server2request[request2server[pos]] = pos;
+    server2request[request2server[(int)request2server.size() - 1]] =
+        request2server.size() - 1;
+  }
+  size_t request_call_num = request2server.size();
+  std::vector<std::unique_ptr<char[]>> local_buffers;
+  std::vector<int> local_actual_sizes;
+  std::vector<size_t> seq;
+  std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
+  std::vector<std::vector<int>> query_idx_buckets(request_call_num);
+  for (int query_idx = 0; query_idx < node_num; ++query_idx) {
+    int server_index =
+        ((GraphTable *)table)->get_server_index_by_id(node_data[query_idx]);
+    int request_idx = server2request[server_index];
+    node_id_buckets[request_idx].push_back(node_data[query_idx]);
+    query_idx_buckets[request_idx].push_back(query_idx);
+    seq.push_back(request_idx);
+  }
+  size_t remote_call_num = request_call_num;
+  if (request2server.size() != 0 && request2server.back() == rank) {
+    remote_call_num--;
+    local_buffers.resize(node_id_buckets.back().size());
+    local_actual_sizes.resize(node_id_buckets.back().size());
+  }
+  cntl->response_attachment().append(&node_num, sizeof(size_t));
+  auto local_promise = std::make_shared<std::promise<int32_t>>();
+  std::future<int> local_fut = local_promise->get_future();
+  std::vector<bool> failed(server_size, false);
+  std::function<void(void *)> func = [&, node_id_buckets, query_idx_buckets,
+                                      request_call_num](void *done) {
+    local_fut.get();
+    std::vector<int> actual_size;
+    auto *closure = (DownpourBrpcClosure *)done;
+    std::vector<std::unique_ptr<butil::IOBufBytesIterator>> res(
+        remote_call_num);
+    size_t fail_num = 0;
+    for (size_t request_idx = 0; request_idx < remote_call_num; ++request_idx) {
+      if (closure->check_response(request_idx, PS_GRAPH_SAMPLE_NEIGHBOORS) !=
+          0) {
+        ++fail_num;
+        failed[request2server[request_idx]] = true;
+      } else {
+        auto &res_io_buffer = closure->cntl(request_idx)->response_attachment();
+        size_t node_size;
+        res[request_idx].reset(new butil::IOBufBytesIterator(res_io_buffer));
+        size_t num;
+        res[request_idx]->copy_and_forward(&num, sizeof(size_t));
+      }
+    }
+    int size;
+    int local_index = 0;
+    for (size_t i = 0; i < node_num; i++) {
+      if (fail_num > 0 && failed[seq[i]]) {
+        size = 0;
+      } else if (request2server[seq[i]] != rank) {
+        res[seq[i]]->copy_and_forward(&size, sizeof(int));
+      } else {
+        size = local_actual_sizes[local_index++];
+      }
+      actual_size.push_back(size);
+    }
+    cntl->response_attachment().append(actual_size.data(),
+                                       actual_size.size() * sizeof(int));
 
+    local_index = 0;
+    for (size_t i = 0; i < node_num; i++) {
+      if (fail_num > 0 && failed[seq[i]]) {
+        continue;
+      } else if (request2server[seq[i]] != rank) {
+        char temp[actual_size[i] + 1];
+        res[seq[i]]->copy_and_forward(temp, actual_size[i]);
+        cntl->response_attachment().append(temp, actual_size[i]);
+      } else {
+        char *temp = local_buffers[local_index++].get();
+        cntl->response_attachment().append(temp, actual_size[i]);
+      }
+    }
+    closure->set_promise_value(0);
+  };
+
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(remote_call_num, func);
+
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+
+  for (int request_idx = 0; request_idx < remote_call_num; ++request_idx) {
+    int server_index = request2server[request_idx];
+    closure->request(request_idx)->set_cmd_id(PS_GRAPH_SAMPLE_NEIGHBOORS);
+    closure->request(request_idx)->set_table_id(request.table_id());
+    closure->request(request_idx)->set_client_id(rank);
+    size_t node_num = node_id_buckets[request_idx].size();
+
+    closure->request(request_idx)
+        ->add_params((char *)node_id_buckets[request_idx].data(),
+                     sizeof(uint64_t) * node_num);
+    closure->request(request_idx)
+        ->add_params((char *)&sample_size, sizeof(int));
+    PsService_Stub rpc_stub(
+        ((GraphBrpcServer *)get_server())->get_cmd_channel(server_index));
+    // GraphPsService_Stub rpc_stub =
+    //     getServiceStub(get_cmd_channel(server_index));
+    closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
+    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
+                     closure->response(request_idx), closure);
+  }
+  if (server2request[rank] != -1) {
+    ((GraphTable *)table)
+        ->random_sample_neighboors(node_id_buckets.back().data(), sample_size,
+                                   local_buffers, local_actual_sizes);
+  }
+  local_promise.get()->set_value(0);
+  if (remote_call_num == 0) func(closure);
+  fut.get();
+  return 0;
+}
 int32_t GraphBrpcService::graph_set_node_feat(Table *table,
                                               const PsRequestMessage &request,
                                               PsResponseMessage &response,
@@ -412,7 +606,7 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
   if (request.params_size() < 3) {
     set_response_code(
         response, -1,
-        "graph_set_node_feat request requires at least 2 arguments");
+        "graph_set_node_feat request requires at least 3 arguments");
     return 0;
   }
   size_t node_num = request.params(0).size() / sizeof(uint64_t);
