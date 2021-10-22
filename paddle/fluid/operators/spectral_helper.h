@@ -70,6 +70,12 @@ class CuFFTHandle {
     std::cout << ">>>>>>>>> Create handle: " << handle_ << std::endl;
   }
 
+  CuFFTHandle(const CuFFTHandle& other) = delete;
+  CuFFTHandle& operator=(const CuFFTHandle& other) = delete;
+
+  CuFFTHandle(CuFFTHandle&& other) = delete;
+  CuFFTHandle& operator=(CuFFTHandle&& other) = delete;
+
   ::cufftHandle& get() { return handle_; }
   const ::cufftHandle& get() const { return handle_; }
 
@@ -145,6 +151,12 @@ class FFTConfig {
 
     ws_size = ws_size_t;
   }
+
+  FFTConfig(const FFTConfig& other) = delete;
+  FFTConfig& operator=(const FFTConfig& other) = delete;
+
+  FFTConfig(FFTConfig&& other) = delete;
+  FFTConfig& operator=(FFTConfig&& other) = delete;
 
   const cufftHandle& plan() const { return plan_ptr.get(); }
 
@@ -331,6 +343,9 @@ class PlanLRUCache {
 
   explicit PlanLRUCache(int64_t max_size) { _set_max_size(max_size); }
 
+  PlanLRUCache(const PlanLRUCache& other) = delete;
+  PlanLRUCache& operator=(const PlanLRUCache& other) = delete;
+
   PlanLRUCache(PlanLRUCache&& other) noexcept
       : _usage_list(std::move(other._usage_list)),
         _cache_map(std::move(other._cache_map)),
@@ -362,6 +377,7 @@ class PlanLRUCache {
     // Miss
     // remove if needed
     if (_usage_list.size() >= _max_size) {
+      std::cout << "<<<<<<<<<<<Cache already full, removing" << std::endl;
       auto last = _usage_list.end();
       last--;
       _cache_map.erase(last->first);
