@@ -1512,6 +1512,7 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
+                # required: gpu
                 import paddle
 
                 linear=paddle.nn.Linear(2, 2)
