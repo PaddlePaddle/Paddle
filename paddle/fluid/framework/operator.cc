@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/common/scalar.h"
 
 namespace paddle {
 namespace framework {

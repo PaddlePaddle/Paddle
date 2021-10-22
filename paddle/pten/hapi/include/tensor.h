@@ -39,6 +39,7 @@ limitations under the License. */
  * or the corresponding components will be re-implemented.
  */
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -93,9 +94,9 @@ class Tensor final {
    */
   explicit Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
       : impl_(std::move(tensor_impl)) {
-    if (impl_.get() == nullptr) {
-      throw std::runtime_error("TensorImpl with nullptr is not supported");
-    }
+    PADDLE_ENFORCE_NOT_NULL(impl_,
+                            platform::errors::InvalidArgument(
+                                "TensorImpl with nullptr is not supported"));
   }
 
   /* Part 2: Dimension, DataType and DataLayout methods */
