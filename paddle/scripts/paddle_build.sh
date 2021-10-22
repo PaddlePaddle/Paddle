@@ -2577,6 +2577,7 @@ function main() {
         parallel_test
         ;;
       cpu_cicheck_py35)
+        sleep 30d
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       gpu_cicheck_py35)
