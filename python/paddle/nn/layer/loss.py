@@ -1045,14 +1045,15 @@ class CTCLoss(Layer):
     Parameters:
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
-
+        grad_norm_type(str, optional): None for no grad norm. Support 'instance', 'batch', 'frame'  corresponding for 'norm_by_times', 'norm_by_batchsize', 'norm_by_total_logits_len'.
+            more details for `paddle.nn.functional.ctc_loss`.
+        
     Shape:
         log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64.
         labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
-        norm_by_times (bool, default false) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
-
+       
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
 
@@ -1109,10 +1110,26 @@ class CTCLoss(Layer):
             print(loss)  #[1.1376063]
     """
 
-    def __init__(self, blank=0, reduction='mean'):
+    def __init__(self, blank=0, reduction='mean', grad_norm_type=None):
         super(CTCLoss, self).__init__()
         self.blank = blank
         self.reduction = reduction
+        self.grad_norm_type = grad_norm_type
+
+        assert grad_norm_type in ('instance', 'batch', 'frame', None)
+        self.norm_by_times = False
+        self.norm_by_batchsize = False
+        self.norm_by_total_logits_len = False
+        if grad_norm_type is None:
+            pass
+        elif grad_norm_type == 'instance':
+            self.norm_by_times = True
+        elif grad_norm_type == 'batch':
+            self.norm_by_batchsize = True
+        elif grad_norm_type == 'frame':
+            self.norm_by_total_logits_len = True
+        else:
+            raise ValueError(f"CTCLoss Grad Norm no support {grad_norm_type}")
 
     def forward(self,
                 log_probs,
@@ -1129,9 +1146,9 @@ class CTCLoss(Layer):
             label_lengths,
             self.blank,
             self.reduction,
-            norm_by_times=norm_by_times,
-            norm_by_batchsize=norm_by_batchsize,
-            norm_by_total_logits_len=norm_by_total_logits_len)
+            self.norm_by_times,
+            self.norm_by_batchsize,
+            self.norm_by_total_logits_len)
 
 
 class SmoothL1Loss(Layer):
