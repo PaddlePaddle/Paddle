@@ -93,7 +93,7 @@ MapMatmulV2ToMatmulPass::MapMatmulV2ToMatmulPass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
-      .IsNumEQ(1)
+      .IsNumEQ(1.0f)
       .End()
       .AddOutput("Out")
       .IsTensor()
