@@ -144,7 +144,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     // TODO(jiabin): We do nothing here for now, since we only support
     // DenseTensor
     auto* meta = MutableMeta(out.get());
-    auto pt_dtype = pten::TransToPtDataType(type);
+    auto pt_dtype = pten::TransToPtenDataType(type);
     meta->type = pt_dtype;
   }
 
