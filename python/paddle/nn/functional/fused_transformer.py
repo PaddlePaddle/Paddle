@@ -45,8 +45,11 @@ def fused_feedforward(x,
                       pre_layer_norm=False,
                       name=None):
     """
-    This is a fusion operator to compute feed forward layer in transformer model architecture,
-    the fused_feedforward operator is the same as the following pseudo code:
+    This is a fusion operator to compute feed forward layer in transformer model architecture.
+    This operator only supports running on GPU. The function of the operator is consistent with
+    the following pseudo code:
+
+.. math::
     residual = src;
     if pre_layer_norm:
         src = layer_norm(src)
@@ -69,7 +72,7 @@ def fused_feedforward(x,
         activation (str, optional): The activation. Default "relu".
         ln1_epsilon (float, optional): Small float of first layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
         ln2_epsilon (float, optional): Small float of second layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
-        pre_layer_norm (bool, optional):
+        pre_layer_norm (bool, optional): add layer_norm in the pre-processing stage or post-processing state.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -84,7 +87,6 @@ def fused_feedforward(x,
             x_data = np.random.random((1, 8, 8)).astype("float32")
             linear1_weight_data = np.random.random((8, 8)).astype("float32")
             linear2_weight_data = np.random.random((8, 8)).astype("float32")
-            place = paddle.CUDAPlace(0)
             x = paddle.to_tensor(x_data)
             linear1_weight = paddle.to_tensor(linear1_weight_data)
             linear2_weight = paddle.to_tensor(linear2_weight_data)
