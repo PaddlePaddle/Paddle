@@ -36,6 +36,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -56,6 +57,7 @@
 
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 
@@ -617,6 +619,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    argument_.SetXpuDeviceId(config_.xpu_device_id_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
@@ -1403,6 +1406,7 @@ USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(nearest_interp);
+USE_TRT_CONVERTER(nearest_interp_v2);
 USE_TRT_CONVERTER(reshape);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
@@ -1469,6 +1473,22 @@ int GetNumBytesOfDataType(DataType dtype) {
 }
 
 std::string GetVersion() { return paddle::get_version(); }
+
+std::tuple<int, int, int> GetTrtCompileVersion() {
+#ifdef PADDLE_WITH_TENSORRT
+  return paddle::inference::tensorrt::GetTrtCompileVersion();
+#else
+  return std::tuple<int, int, int>{0, 0, 0};
+#endif
+}
+
+std::tuple<int, int, int> GetTrtRuntimeVersion() {
+#ifdef PADDLE_WITH_TENSORRT
+  return paddle::inference::tensorrt::GetTrtRuntimeVersion();
+#else
+  return std::tuple<int, int, int>{0, 0, 0};
+#endif
+}
 
 std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);

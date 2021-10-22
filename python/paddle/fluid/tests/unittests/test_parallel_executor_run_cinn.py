@@ -23,7 +23,7 @@ paddle.enable_static()
 
 class TestParallelExecutorRunCinn(unittest.TestCase):
     def test_run_from_cinn(self):
-        paddle.set_flags({'FLAGS_use_cinn': True})
+        paddle.set_flags({'FLAGS_use_cinn': False})
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
