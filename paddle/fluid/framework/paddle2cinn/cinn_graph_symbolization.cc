@@ -130,7 +130,9 @@ void CinnGraphSymbolization::RunOp(const CinnOpDesc& op_desc,
   auto kernel = ::cinn::frontend::OpMapperRegistry::Global()->Find(op_type);
   PADDLE_ENFORCE_NE(
       kernel, nullptr,
-      platform::errors::NotFound("Op %s Not Support by CINN", op_type.c_str()));
+      platform::errors::NotFound("Op %s Not Support by CINN, Please Register"
+                                 " it in CINN",
+                                 op_type.c_str()));
   VLOG(4) << "Running Op " << op_type;
   kernel->Run(op_desc, ctx);
 }
