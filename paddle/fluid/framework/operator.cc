@@ -59,18 +59,17 @@ namespace framework {
 template <typename T>
 void print_data(const std::vector<T>& vec, std::stringstream& sstr) {
   auto& vec1 = vec;
-  size_t step = vec1.size() / 20;
-  step = step < 1 ? 1 : step;
-  for (size_t i = 0; i < vec1.size(); i += step) {
+  for (size_t i = 0; i < vec1.size(); i++) {
     sstr << vec1[i] << " ";
-  }
-  if (vec1.size() > 0) {
-    sstr << vec1[vec1.size() - 1];
   }
 }
 
 void show_var(const Scope& scope, const std::string& var_name,
               const platform::DeviceContext* ctx) {
+  const char* mathed = getenv("MATCHED_SUBSTR");
+  if (mathed && var_name.find(mathed) == std::string::npos) {
+    return;
+  }
   auto* var = scope.FindVar(var_name);
   std::stringstream sstr;
   VLOG(0) << "try to find: " << var_name;
