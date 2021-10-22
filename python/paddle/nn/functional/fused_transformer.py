@@ -45,7 +45,9 @@ def fused_feedforward(x,
                       pre_layer_norm=False,
                       name=None):
     """
-    This is a fusion operator to compute feed forward layer in transformer model architecture. This operator only supports running on GPU. The function of the operator is consistent with he following pseudo code:
+    This is a fusion operator to compute feed forward layer in transformer model architecture.
+    This operator only supports running on GPU. The function of the operator is consistent with
+    the following pseudo code:
 
 .. math::
     residual = src;
