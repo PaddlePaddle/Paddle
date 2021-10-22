@@ -317,7 +317,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
 
 #if defined(PADDLE_WITH_CUDA)
   // create plan
-  FFTConfig config =
+  FFTConfig& config =
       create_cufft_config(collapsed_input, collapsed_output, signal_ndim);
   // prepare cufft for execution
   PADDLE_ENFORCE_CUDA_SUCCESS(
