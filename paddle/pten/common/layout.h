@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
   return os;
 }
 
-inline DataLayout& operator++(DataLayout layout, int) {
+inline DataLayout& operator++(DataLayout& layout, int) {
   layout = DataLayout(
       static_cast<std::underlying_type<DataLayout>::type>(layout) + 1);
   return layout;
