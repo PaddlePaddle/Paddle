@@ -54,8 +54,8 @@ class DenseTensor : public TensorBase {
 
   // DenseTensor(const DenseTensor&) = delete;
   // DenseTensor& operator=(const DenseTensor&) = delete;
-  DenseTensor(DenseTensor&&) = delete;
-  DenseTensor& operator=(DenseTensor&&) = delete;
+  DenseTensor(DenseTensor&&) = default;
+  DenseTensor& operator=(DenseTensor&&) = default;
 
   /**
    * If we still malloc memory by mutable_data,

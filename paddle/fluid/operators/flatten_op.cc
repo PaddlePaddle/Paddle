@@ -80,13 +80,13 @@ class FlattenOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    //#ifdef PADDLE_WITH_MKLDNN
+    // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
     //                                     framework::DataLayout::kMKLDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
-    //#endif
+    // #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -158,13 +158,13 @@ class FlattenGradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-    //#ifdef PADDLE_WITH_MKLDNN
+    // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
     //                                     framework::DataLayout::kMKLDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
-    //#endif
+    // #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -228,13 +228,13 @@ class Flatten2Op : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    //#ifdef PADDLE_WITH_MKLDNN
+    // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
     //                                     framework::DataLayout::kMKLDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
-    //#endif
+    // #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -286,13 +286,13 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-    //#ifdef PADDLE_WITH_MKLDNN
+    // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
     //                                     framework::DataLayout::kMKLDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
-    //#endif
+    // #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -364,6 +364,25 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
     }
 
     return out_shape;
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (ctx.HasOutput("XShape")) {
+      return std::make_pair(
+          "flatten_contiguous_range.mid",
+          std::make_tuple(
+              paddle::SmallVector<std::string>({"X"}),
+              paddle::SmallVector<std::string>({"start_axis", "stop_axis"}),
+              paddle::SmallVector<std::string>({"Out", "XShape"})));
+    } else {
+      return std::make_pair(
+          "flatten_contiguous_range",
+          std::make_tuple(
+              paddle::SmallVector<std::string>({"X"}),
+              paddle::SmallVector<std::string>({"start_axis", "stop_axis"}),
+              paddle::SmallVector<std::string>({"Out"})));
+    }
   }
 };
 

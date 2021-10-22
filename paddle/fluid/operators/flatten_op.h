@@ -15,10 +15,13 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/api/include/manipulation.h"
 
 namespace paddle {
 namespace operators {
@@ -122,13 +125,17 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *in = context.Input<framework::LoDTensor>("X");
     auto *out = context.Output<framework::LoDTensor>("Out");
-    auto out_dims = out->dims();
-
     out->mutable_data(context.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
-    out->Resize(out_dims);
+    auto &start_axis = context.Attr<int>("start_axis");
+    auto &stop_axis = context.Attr<int>("stop_axis");
+    auto &dev_ctx = context.device_context<DeviceContext>();
+    auto pt_x = framework::MakeTensorImpl<pten::DenseTensor>(*in, in->place(),
+                                                             in->type());
+    auto pt_out = framework::MakeTensorImpl<pten::DenseTensor>(
+        *out, out->place(), out->type());
+
+    // call new kernel
+    pten::Flatten<T>(dev_ctx, *pt_x.get(), start_axis, stop_axis, pt_out.get());
   }
 };
 
