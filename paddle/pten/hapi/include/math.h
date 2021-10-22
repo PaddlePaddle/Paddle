@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+// TODO(chenweihang): add scale API
+// TODO(chenweihang): move mean API into stat.h/cc
 Tensor mean(const Tensor& x);
 
 }  // namespace experimental

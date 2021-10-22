@@ -31,15 +31,3 @@ TEST(DenseTensor, Constructor) {
   ASSERT_EQ(tensor.data_type(), pten::DataType::FLOAT32);
   ASSERT_EQ(tensor.layout(), pten::DataLayout::NCHW);
 }
-
-TEST(DenseTensor, Dims) {
-  // impl later
-}
-
-TEST(DenseTensor, Place) {
-  // impl later
-}
-
-TEST(DenseTensor, Data) {
-  // impl later
-}
