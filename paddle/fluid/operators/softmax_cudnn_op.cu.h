@@ -196,7 +196,9 @@ struct DataTransformFunctor {
   HOSTDEVICE explicit inline DataTransformFunctor(int n) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x);
+    return x == -std::numeric_limits<Tx>::infinity()
+               ? -std::numeric_limits<Ty>::infinity()
+               : static_cast<Ty>(x);
   }
 };
 
