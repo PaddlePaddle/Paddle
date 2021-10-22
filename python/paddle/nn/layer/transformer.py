@@ -26,7 +26,7 @@ from ... import tensor
 from ...fluid import layers
 from .. import Layer, LayerList
 from ...framework import ParamAttr
-from ...fluid.data_feeder import convert_dtype
+from paddle.fluid.data_feeder import convert_dtype
 
 __all__ = []
 
