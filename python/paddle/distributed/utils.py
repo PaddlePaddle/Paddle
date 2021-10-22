@@ -642,7 +642,8 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-            "PADDLE_DISTRI_BACKEND": backend,  # add backend here, otherwise backend will be auto
+            "PADDLE_DISTRI_BACKEND":
+            backend,  # add backend here, otherwise backend will be auto
         }
     else:
         raise ValueError("backend must be one of 'gloo, nccl, bkcl'")
