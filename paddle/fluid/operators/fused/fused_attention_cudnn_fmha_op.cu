@@ -99,14 +99,20 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
 
     float attn_dropout_rate = ctx.Attr<float>("attn_dropout_prob");
     int attn_heads = ctx.Attr<int>("attn_heads");  // must
-    std::vector<int> attn_low_windows =
-        ctx.Attr<std::vector<int>>("attn_low_windows");
-    std::vector<int> attn_high_windows =
-        ctx.Attr<std::vector<int>>("attn_high_windows");
-    std::vector<int> attn_qo_seqlen =
-        ctx.Attr<std::vector<int>>("attn_qo_seqlen");
-    std::vector<int> attn_kv_seqlen =
-        ctx.Attr<std::vector<int>>("attn_kv_seqlen");
+
+    // std::vector<int> attn_low_windows =
+    //     ctx.Attr<std::vector<int>>("attn_low_windows");
+    // std::vector<int> attn_high_windows =
+    //     ctx.Attr<std::vector<int>>("attn_high_windows");
+    // std::vector<int> attn_qo_seqlen =
+    //     ctx.Attr<std::vector<int>>("attn_qo_seqlen");
+    // std::vector<int> attn_kv_seqlen =
+    //     ctx.Attr<std::vector<int>>("attn_kv_seqlen");
+
+    const Tensor*  attn_low_windows = ctx.Input<Tensor>("AttnLowWinHost"); 
+    const Tensor*  attn_high_windows = ctx.Input<Tensor>("AttnHighWinHost"); 
+    const Tensor*  attn_qo_seqlen = ctx.Input<Tensor>("QOSeqLenHost"); 
+    const Tensor*  attn_kv_seqlen = ctx.Input<Tensor>("KVSeqLenHost"); 
      
     auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
     PADDLE_ENFORCE_NOT_NULL(
@@ -146,22 +152,66 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
     double attn_sm_scaler = 1.0/sqrt(dim_head); // 1/sqrt(dim_head)
     // double attn_sm_scaler = 1.0;
 
-#if 0
-    std::cout << "attn_vec_size, attn_q_proj_size, attn_o_proj_size = " <<
+#if 1
     std::cout << "low_win = " << std::endl;
+#if 0
+    auto *attn_low_windows_data = attn_low_windows->data<int>();
     for (int i=0; i<max_seq_len; i++) {
-        std::cout << attn_low_windows[i] << " "; 
+        std::cout << attn_low_windows_data[i] << " "; 
     }
     std::cout << std::endl;
+    std::cout << "high_win = " << std::endl;
+    auto *attn_high_windows_data = attn_high_windows->data<int>();
     for (int i=0; i<max_seq_len; i++) {
-        std::cout << attn_high_windows[i] << " "; 
+        std::cout << attn_high_windows_data[i] << " "; 
     }
     std::cout << std::endl;
-
-    const auto ln_out_dims = ln_out->dims();
-    std::cout << "ln_out_dims = " << ln_out_dims << std::endl;
+#endif
+    std::cout << "low_windows dims = " << attn_low_windows->dims() << std::endl;
+    std::cout << "high_windows dims = " << attn_high_windows->dims() << std::endl;
+    std::cout << "seq_len_host dims = " << attn_qo_seqlen->dims() << std::endl;
 #endif
 
+   // memcpy:
+#if 0
+   Tensor attn_low_windows_temp;
+   attn_low_windows_temp.Resize({max_seq_len});
+   attn_low_windows_temp.mutable_data<int>(ctx.GetPlace());
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_low_windows_temp.data<int>(),
+      reinterpret_cast<const void*>(attn_low_windows_input->data<int>()),
+      max_seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+  const Tensor* attn_low_windows = &attn_low_windows_temp;
+
+  Tensor attn_high_windows_temp;
+  attn_high_windows_temp.Resize({max_seq_len});
+  attn_high_windows_temp.mutable_data<int>(ctx.GetPlace());
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_high_windows_temp.data<int>(),
+      reinterpret_cast<const void*>(attn_high_windows_input->data<int>()),
+      max_seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+  const Tensor* attn_high_windows = &attn_high_windows_temp;
+
+  Tensor attn_qo_seqlen_temp;
+  attn_qo_seqlen_temp.Resize({batch_size});
+  attn_qo_seqlen_temp.mutable_data<int>(ctx.GetPlace());
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_qo_seqlen_temp.data<int>(),
+      reinterpret_cast<const void*>(attn_qo_seqlen_input->data<int>()),
+      batch_size * sizeof(int), cudaMemcpyDeviceToHost));
+  const Tensor* attn_qo_seqlen = &attn_qo_seqlen_temp;
+
+  Tensor attn_kv_seqlen_temp;
+  attn_kv_seqlen_temp.Resize({batch_size});
+  attn_kv_seqlen_temp.mutable_data<int>(ctx.GetPlace());
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_kv_seqlen_temp.data<int>(),
+      reinterpret_cast<const void*>(attn_kv_seqlen_input->data<int>()),
+      batch_size * sizeof(int), cudaMemcpyDeviceToHost));
+  const Tensor* attn_kv_seqlen = &attn_kv_seqlen_temp;
+#endif
+
+#if 1
     auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
                                                epsilon, bsz_seq, dim_embed);
     
@@ -208,6 +258,7 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
             out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
             bias_dropout_residual_out_data, dropout_mask_out_data, 
             final_out_data, ln_mean_2_data, ln_var_2_data);
+#endif
 
   }
 };
@@ -298,10 +349,13 @@ class FusedAttentionCuDNNFMHAGradKernel : public framework::OpKernel<T> {
         (d_ln_2_bias == nullptr ? nullptr
                                 : d_ln_2_bias->mutable_data<U>(ctx.GetPlace()));                       
     
-    std::vector<int> attn_low_windows =
-        ctx.Attr<std::vector<int>>("attn_low_windows");
-    std::vector<int> attn_high_windows =
-        ctx.Attr<std::vector<int>>("attn_high_windows");
+    // std::vector<int> attn_low_windows =
+    //     ctx.Attr<std::vector<int>>("attn_low_windows");
+    // std::vector<int> attn_high_windows =
+    //    ctx.Attr<std::vector<int>>("attn_high_windows");
+    const Tensor*  attn_low_windows = ctx.Input<Tensor>("AttnLowWinHost"); 
+    const Tensor*  attn_high_windows = ctx.Input<Tensor>("AttnHighWinHost"); 
+
     const Tensor* mha_w = ctx.Input<Tensor>("W");
     const Tensor* mha_qo_slen = ctx.Input<Tensor>("QO_Seqlen");
     const Tensor* mha_kv_slen = ctx.Input<Tensor>("KV_Seqlen");
@@ -334,6 +388,41 @@ class FusedAttentionCuDNNFMHAGradKernel : public framework::OpKernel<T> {
     d_v.Resize(input_x_dims);
     T *d_v_data = d_v.mutable_data<T>(ctx.GetPlace());
     
+#if 0
+    std::cout << "low_win = " << std::endl;
+    auto *attn_low_windows_data = attn_low_windows->data<int>();
+    for (int i=0; i<max_seq_len; i++) {
+        std::cout << attn_low_windows_data[i] << " "; 
+    }
+    std::cout << std::endl;
+     std::cout << "high_win = " << std::endl;
+    auto *attn_high_windows_data = attn_high_windows->data<int>();
+    for (int i=0; i<max_seq_len; i++) {
+        std::cout << attn_high_windows_data[i] << " "; 
+    }
+    std::cout << std::endl;
+#endif
+
+#if 0
+    Tensor attn_low_windows_temp;
+    attn_low_windows_temp.Resize({max_seq_len});
+    attn_low_windows_temp.mutable_data<int>(ctx.GetPlace());
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+        attn_low_windows_temp.data<int>(),
+        reinterpret_cast<const void*>(attn_low_windows_input->data<int>()),
+        max_seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+    const Tensor* attn_low_windows = &attn_low_windows_temp;
+
+    Tensor attn_high_windows_temp;
+    attn_high_windows_temp.Resize({max_seq_len});
+    attn_high_windows_temp.mutable_data<int>(ctx.GetPlace());
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+        attn_high_windows_temp.data<int>(),
+        reinterpret_cast<const void*>(attn_high_windows_input->data<int>()),
+        max_seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+    const Tensor* attn_high_windows = &attn_high_windows_temp;
+#endif
+
     auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
                                             epsilon, bsz_seq, dim_embed);
 
@@ -347,7 +436,7 @@ class FusedAttentionCuDNNFMHAGradKernel : public framework::OpKernel<T> {
         dropout_mask_out_data, ln_2_scale_data, ln_2_mean_data, ln_2_var_data,
         d_bias_dropout_residual_out_data, d_ln_2_scale_data, d_ln_2_bias_data,
         d_out_linear_out_data, d_out_linear_bias_data, d_residual_data);
-    
+#if 1
     if (pre_layer_norm) {
         auto *ln_mean_data = ln_mean->data<U>();
         auto *ln_var_data = ln_var->data<U>();
@@ -409,9 +498,10 @@ class FusedAttentionCuDNNFMHAGradKernel : public framework::OpKernel<T> {
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
                             ctx.cuda_device_context(), ins, &outs, 
                             elewise_add_axis, AddFunctor<T>());
-    
-    }
 #endif
+    
+#endif
+    }
 };
 
 

@@ -29,21 +29,32 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
 // std::cout << "i am in op infershape\n";
 #if CUDNN_VERSION >= 8000
     // mha
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "x", "FusedAttentionOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "x",
+                   "FusedAttentionCuDNNFMHAOp");
     // OP_INOUT_CHECK(ctx->HasInput("K"), "Input", "K", "FusedAttentionOp");
     // OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("QO_Seqlen"), "Input", "QO_Seqlen",
-                   "FusedAttentionOp");
+                   "FusedAttentionCuDNNFMHAOp");
     OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen"), "Input", "KV_Seqlen",
-                   "FusedAttentionOp");
+                   "FusedAttentionCuDNNFMHAOp");
+
+    OP_INOUT_CHECK(ctx->HasInput("AttnLowWinHost"), "Input", "AttnLowWinHost",
+                   "FusedAttentionCuDNNFMHAOp");
+    OP_INOUT_CHECK(ctx->HasInput("AttnHighWinHost"), "Input", "AttnHighWinHost",
+                   "FusedAttentionCuDNNFMHAOp");
+    OP_INOUT_CHECK(ctx->HasInput("QOSeqLenHost"), "Input", "QOSeqLenHost",
+                   "FusedAttentionCuDNNFMHAOp");
+    OP_INOUT_CHECK(ctx->HasInput("KVSeqLenHost"), "Input", "KVSeqLenHost",
+                   "FusedAttentionCuDNNFMHAOp");
+
     OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
-                   "FusedAttentionOp");
+                   "FusedAttentionCuDNNFMHAOp");
 
     auto x_dims = ctx->GetInputDim("X");
     // PADDLE_ENFORCE_EQ(x_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
     //                   platform::errors::InvalidArgument(
     //                       "The input tensor X's dimensions of
-    //                       FusedAttentionOp "
+    //                       FusedAttentionCuDNNFMHAOp "
     //                       "should be equal to %d . But received X's "
     //                       "dimensions = %d.",
     //                       CUDNN_SEQDATA_DIM_COUNT, x_dims.size()));
@@ -59,26 +70,41 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The number of sequence length should be equal"
                           " to batch size."));
+
+    auto low_windows_dims = ctx->GetInputDim("AttnLowWinHost");
+    PADDLE_ENFORCE_EQ(low_windows_dims[0], x_dims[1],
+                      platform::errors::InvalidArgument(
+                          "The number of attn_low_windows should be equal"
+                          " to sequence_length."));
+    auto high_windows_dims = ctx->GetInputDim("AttnHighWinHost");
+    PADDLE_ENFORCE_EQ(high_windows_dims[0], x_dims[1],
+                      platform::errors::InvalidArgument(
+                          "The number of attn_high_windows should be equal"
+                          " to sequence_length."));
+
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
-                     "FusedAttentionOp");
+                     "FusedAttentionCuDNNFMHAOp");
       OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
-                     "FusedAttentionOp");
+                     "FusedAttentionCuDNNFMHAOp");
       OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
-                     "FusedAttentionOp");
+                     "FusedAttentionCuDNNFMHAOp");
     }
 
+    OP_INOUT_CHECK(ctx->HasOutput("ReserveSpace"), "Output", "ReserveSpace",
+                   "FusedAttentionCuDNNFMHAOp");
+
     OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
-                   "FusedAttentionOp");
+                   "FusedAttentionCuDNNFMHAOp");
 
     OP_INOUT_CHECK(ctx->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
-                   "FusedAttentionOp");
+                   "FusedAttentionCuDNNFMHAOp");
     OP_INOUT_CHECK(ctx->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
-                   "FusedAttentionOp");
+                   "FusedAttentionCuDNNFMHAOp");
     OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
-                   "BiasDropoutResidualOut", "FusedAttentionOp");
+                   "BiasDropoutResidualOut", "FusedAttentionCuDNNFMHAOp");
     OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"), "Output", "DropoutMaskOut",
-                   "FusedAttentionOp");
+                   "FusedAttentionCuDNNFMHAOp");
 
     auto x_dim = ctx->GetInputDim("X");
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
@@ -113,6 +139,16 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
     auto input_data_type = input->type();
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "AttnLowWinHost" || var_name == "AttnHighWinHost" ||
+        var_name == "QOSeqLenHost" || var_name == "KVSeqLenHost") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class FusedAttentionCuDNNFMHAOpMaker
@@ -127,6 +163,11 @@ class FusedAttentionCuDNNFMHAOpMaker
     AddInput("W", "(Tensor), W");
     AddInput("QO_Seqlen", "(Tensor), QO_Seqlen");
     AddInput("KV_Seqlen", "(Tensor), KV_Seqlen");
+
+    AddInput("AttnLowWinHost", "(Tensor), AttnLowWinHost");
+    AddInput("AttnHighWinHost", "(Tensor), AttnHighWinHost");
+    AddInput("QOSeqLenHost", "(Tensor), QOSeqLenHost");
+    AddInput("KVSeqLenHost", "(Tensor), KVSeqLenHost");
 
     AddInput("LnScale",
              "(optional) Scale is a 1-dimensional tensor of size "
@@ -157,9 +198,7 @@ class FusedAttentionCuDNNFMHAOpMaker
         .AsIntermediate();
     AddOutput("LnOut", "The output of pre layer_norm.").AsIntermediate();
 
-    AddOutput("ReserveSpace",
-              "Reserve GPU space for triggering the new semi-persistent "
-              "NHWC kernel")
+    AddOutput("ReserveSpace", "Reserve GPU space for CuDNN MultiHeadAttn.")
         .AsDispensable()
         .AsExtra();
     AddOutput("OutLinearOut", "Result after out_linear.").AsIntermediate();
@@ -190,11 +229,11 @@ class FusedAttentionCuDNNFMHAOpMaker
                                 epsilon));
         });
     // mha
-    AddAttr<std::vector<int>>("attn_low_windows", "(Tensor), attn_low_windows");
-    AddAttr<std::vector<int>>("attn_high_windows",
-                              "(Tensor), attn_high_windows");
-    AddAttr<std::vector<int>>("attn_qo_seqlen", "(Tensor), attn_qo_seqlen");
-    AddAttr<std::vector<int>>("attn_kv_seqlen", "(Tensor), attn_kv_seqlen");
+    // AddAttr<std::vector<int>>("attn_low_windows", "(Tensor),
+    // attn_low_windows"); AddAttr<std::vector<int>>("attn_high_windows",
+    //                           "(Tensor), attn_high_windows");
+    // AddAttr<std::vector<int>>("attn_qo_seqlen", "(Tensor), attn_qo_seqlen");
+    // AddAttr<std::vector<int>>("attn_kv_seqlen", "(Tensor), attn_kv_seqlen");
 
     AddAttr<float>("attn_dropout_prob", "");
     AddAttr<int>("attn_heads", "");
@@ -288,6 +327,16 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
                    "FusedAttentionCuDNNFMHAGrad");
     OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen"), "Input", "KV_Seqlen",
                    "FusedAttentionCuDNNFMHAGrad");
+
+    OP_INOUT_CHECK(ctx->HasInput("AttnLowWinHost"), "Input", "AttnLowWinHost",
+                   "FusedAttentionCuDNNFMHAGrad");
+    OP_INOUT_CHECK(ctx->HasInput("AttnHighWinHost"), "Input", "AttnHighWinHost",
+                   "FusedAttentionCuDNNFMHAGrad");
+    OP_INOUT_CHECK(ctx->HasInput("QOSeqLenHost"), "Input", "QOSeqLenHost",
+                   "FusedAttentionCuDNNFMHAGrad");
+    OP_INOUT_CHECK(ctx->HasInput("KVSeqLenHost"), "Input", "KVSeqLenHost",
+                   "FusedAttentionCuDNNFMHAGrad");
+
     OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
                    "FusedAttentionCuDNNFMHAGrad");
 
@@ -360,6 +409,16 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
     auto input_data_type = input->type();
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "AttnLowWinHost" || var_name == "AttnHighWinHost" ||
+        var_name == "QOSeqLenHost" || var_name == "KVSeqLenHost") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 template <typename T>
@@ -380,6 +439,11 @@ class FusedAttentionCuDNNFMHAGradOpMaker
     op->SetInput("W", this->Input("W"));
     op->SetInput("QO_Seqlen", this->Input("QO_Seqlen"));
     op->SetInput("KV_Seqlen", this->Input("KV_Seqlen"));
+
+    op->SetInput("AttnLowWinHost", this->Input("AttnLowWinHost"));
+    op->SetInput("AttnHighWinHost", this->Input("AttnHighWinHost"));
+    op->SetInput("QOSeqLenHost", this->Input("QOSeqLenHost"));
+    op->SetInput("KVSeqLenHost", this->Input("KVSeqLenHost"));
 
     if (this->HasInput("LnScale")) {
       op->SetInput("LnScale", this->Input("LnScale"));

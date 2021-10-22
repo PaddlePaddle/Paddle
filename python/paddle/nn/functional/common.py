@@ -1653,14 +1653,12 @@ def fused_multihead_attention_cudnn_impl(x,
         # print("weight.name = ", weight.name)
         ## finally code
         ln_mean, ln_variance, ln_out, _, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention_cudnn_fmha(
-            x, weight, seq_len, seq_len, ln_scale, ln_bias, out_linear_bias, ln_2_scale, ln_2_bias,
+            x, weight, seq_len, seq_len, attn_low_windows, attn_high_windows, 
+            attn_qo_seqlen, attn_kv_seqlen, ln_scale, ln_bias, out_linear_bias, 
+            ln_2_scale, ln_2_bias,
             'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon, 
             'ln2_epsilon', ln2_epsilon, 'attn_heads', num_heads, 
-            'attn_dropout_prob', attn_dropout, 'dropout_prob', dropout, 
-            'attn_low_windows', attn_low_windows, 
-            'attn_high_windows', attn_high_windows,
-            'attn_qo_seqlen', attn_qo_seqlen,
-            'attn_kv_seqlen', attn_kv_seqlen)
+            'attn_dropout_prob', attn_dropout, 'dropout_prob', dropout)
         #return ln_out, out_linear_out, bias_dropout_residual_out, final_out
         #return ln_out, out_linear_out, final_out
         return final_out
@@ -1679,6 +1677,10 @@ def fused_multihead_attention_cudnn_impl(x,
         inputs['W'] = [weight]
         inputs['QO_Seqlen'] = [seq_len]
         inputs['KV_Seqlen'] = [seq_len]
+        inputs['AttnLowWinHost'] = [attn_low_windows]
+        inputs['AttnHighWinHost'] = [attn_high_windows]
+        inputs['QOSeqLenHost'] = [attn_qo_seqlen]
+        inputs['KVSeqLenHost'] = [attn_kv_seqlen]
         if ln_scale:
             inputs['LnScale'] = [ln_scale]
         if ln_bias:
@@ -1697,10 +1699,10 @@ def fused_multihead_attention_cudnn_impl(x,
             'attn_heads': num_heads,
             'attn_dropout_prob': attn_dropout,
             'dropout_prob': dropout,
-            'attn_low_windows': attn_low_windows,
-            'attn_high_windows': attn_high_windows,
-            'attn_qo_seq_len': attn_qo_seqlen,
-            'attn_kv_seqlen': attn_kv_seqlen,
+            # 'attn_low_windows': attn_low_windows,
+            # 'attn_high_windows': attn_high_windows,
+            # 'attn_qo_seq_len': attn_qo_seqlen,
+            # 'attn_kv_seqlen': attn_kv_seqlen,
         }
 
         # set outputs
@@ -1709,6 +1711,7 @@ def fused_multihead_attention_cudnn_impl(x,
         ln_variance_out = helper.create_variable_for_type_inference(
             dtype=dtype, stop_gradient=True)
         ln_out = helper.create_variable_for_type_inference(dtype=dtype)
+        reserve_space = helper.create_variable_for_type_inference(dtype=dtype)
         out_linear_out = helper.create_variable_for_type_inference(dtype=dtype)
         dropout_mask_out = helper.create_variable_for_type_inference(
             dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
@@ -1727,6 +1730,7 @@ def fused_multihead_attention_cudnn_impl(x,
                 "LnMean": ln_mean_out,
                 "LnVariance": ln_variance_out,
                 "LnOut": ln_out,
+                "ReserveSpace": reserve_space,
                 "OutLinearOut": out_linear_out,
                 "DropoutMaskOut": dropout_mask_out,
                 "Ln2Mean": ln_2_mean_out,

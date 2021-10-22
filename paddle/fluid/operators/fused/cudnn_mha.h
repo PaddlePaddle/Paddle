@@ -99,35 +99,12 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
                  int attn_vec_size, int attn_q_proj_size, int attn_k_proj_size,
                  int attn_v_proj_size, int attn_o_proj_size,
                  int attn_max_qo_seq_len, int attn_max_kv_seq_len,
-                 int attn_beam_size, std::vector<int> attn_low_windows,
-                 std::vector<int> attn_high_windows, Tensor* o,
-                 std::vector<int> attn_qo_seqlen,
-                 std::vector<int> attn_kv_seqlen, Tensor* reserve_space) {
-  //   auto& dev_ctx =
-  //       context.template device_context<platform::CUDADeviceContext>();
-  //   const Tensor* q = context.Input<Tensor>("Q");
-  //   const Tensor* k = context.Input<Tensor>("K");
-  //   const Tensor* v = context.Input<Tensor>("V");
-  //   const Tensor* w = context.Input<Tensor>("W");
-  //   const Tensor* qo_slen = context.Input<Tensor>("QO_Seqlen");
-  //   const Tensor* kv_slen = context.Input<Tensor>("KV_Seqlen");
-
-  //   Tensor* o = context.Output<Tensor>("O");
-
-  //   float attn_dropout_rate = context.Attr<float>("attn_dropout_rate");
-  //   int attn_heads = context.Attr<int>("attn_heads");
-  //   double attn_sm_scaler =
-  //       static_cast<double>(context.Attr<float>("attn_sm_scaler"));
-  //   int attn_vec_size = context.Attr<int>("attn_vec_size");
-  //   int attn_q_proj_size = context.Attr<int>("attn_q_proj_size");
-  //   int attn_k_proj_size = context.Attr<int>("attn_k_proj_size");
-  //   int attn_v_proj_size = context.Attr<int>("attn_v_proj_size");
-  //   int attn_o_proj_size = context.Attr<int>("attn_o_proj_size");
-  //   int attn_max_qo_seq_len = context.Attr<int>("attn_max_qo_seq_len");
-  //   int attn_max_kv_seq_len = context.Attr<int>("attn_max_kv_seq_len");
-  //   int attn_beam_size = context.Attr<int>("attn_beam_size");
-
+                 int attn_beam_size, const Tensor* attn_low_windows,
+                 const Tensor* attn_high_windows, Tensor* o,
+                 const Tensor* attn_qo_seqlen, const Tensor* attn_kv_seqlen,
+                 Tensor* reserve_space) {
   int batch_size = q->dims()[0];
+  int seq_len = q->dims()[1];
   auto dtype = platform::CudnnDataType<T>::type;
   auto comp_prec =
       dtype == CUDNN_DATA_DOUBLE ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
@@ -137,8 +114,6 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   size_t reserve_space_size = 0;
   void* reserve_space_ptr = nullptr;
 
-  // TODO(Ming Huang): Need to come out a way to pass related variables from
-  // FWD to BWD.
   const std::string key = typeid(T).name();
   MHASingleton::Instance().Data(key).SetCudnnHandle(cudnn_handle);
 
@@ -203,19 +178,97 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   reserve_space_ptr = reserve_space->mutable_data(dev_ctx.GetPlace(), q->type(),
                                                   reserve_space_size);
 
-  //   std::vector<int> qo_slen_host(qo_slen->dims()[0]);
-  //   std::vector<int> kv_slen_host(kv_slen->dims()[0]);
+  const int* attn_low_windows_data = attn_low_windows->data<int>();
+  const int* attn_high_windows_data = attn_high_windows->data<int>();
+  const int* attn_qo_seqlen_data = attn_qo_seqlen->data<int>();
+  const int* attn_kv_seqlen_data = attn_kv_seqlen->data<int>();
 
-  //   // TODO(rewang): use memory::Copy
-  //   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-  //       qo_slen_host.data(), reinterpret_cast<const
-  //       void*>(qo_slen->data<int>()), qo_slen->dims()[0] * sizeof(int),
-  //       cudaMemcpyDeviceToHost));
+  Tensor attn_low_windows_host;
+  Tensor attn_high_windows_host;
+  Tensor attn_qo_seqlen_host;
+  Tensor attn_kv_seqlen_host;
+  paddle::platform::CPUPlace cpu_place;
+  if (!platform::is_cpu_place(attn_low_windows->place())) {
+    attn_low_windows_host.mutable_data(cpu_place, attn_low_windows->type(),
+                                       seq_len * sizeof(int));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(attn_low_windows_host.data<int>(),
+                   reinterpret_cast<const void*>(attn_low_windows->data<int>()),
+                   seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+    attn_low_windows_data = attn_low_windows_host.data<int>();
+  }
+  if (!platform::is_cpu_place(attn_high_windows->place())) {
+    attn_high_windows_host.mutable_data(cpu_place, attn_high_windows->type(),
+                                        seq_len * sizeof(int));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+        attn_high_windows_host.data<int>(),
+        reinterpret_cast<const void*>(attn_high_windows->data<int>()),
+        seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+    attn_high_windows_data = attn_high_windows_host.data<int>();
+  }
+  if (!platform::is_cpu_place(attn_qo_seqlen->place())) {
+    attn_qo_seqlen_host.mutable_data(cpu_place, attn_qo_seqlen->type(),
+                                     batch_size * sizeof(int));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(attn_qo_seqlen_host.data<int>(),
+                   reinterpret_cast<const void*>(attn_qo_seqlen->data<int>()),
+                   batch_size * sizeof(int), cudaMemcpyDeviceToHost));
+    attn_qo_seqlen_data = attn_qo_seqlen_host.data<int>();
+  }
+  if (!platform::is_cpu_place(attn_kv_seqlen->place())) {
+    attn_kv_seqlen_host.mutable_data(cpu_place, attn_kv_seqlen->type(),
+                                     batch_size * sizeof(int));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(attn_kv_seqlen_host.data<int>(),
+                   reinterpret_cast<const void*>(attn_kv_seqlen->data<int>()),
+                   batch_size * sizeof(int), cudaMemcpyDeviceToHost));
+    attn_kv_seqlen_data = attn_kv_seqlen_host.data<int>();
+  }
+
+#if 0
+  std::vector<int> attn_qo_seqlen(q->dims()[0]);
+  std::vector<int> attn_kv_seqlen(q->dims()[0]);
+  std::vector<int> attn_low_windows(q->dims()[1]);
+  std::vector<int> attn_high_windows(q->dims()[1]);
+  // for (int i = 0; i < q->dims()[0]; i++) {
+  //   attn_qo_seqlen[i] = q->dims()[1];
+  //   attn_kv_seqlen[i] = q->dims()[1];
+  // }
+  // for (int i = 0; i < q->dims()[1]; i++) {
+  //   attn_low_windows[i] = 0;
+  //   attn_high_windows[i] = q->dims()[1];
+  // }
+  // TODO(rewang): use memory::Copy
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_qo_seqlen.data(),
+      reinterpret_cast<const void*>(attn_qo_seqlen_input->data<int>()),
+      q->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_kv_seqlen.data(),
+      reinterpret_cast<const void*>(attn_kv_seqlen_input->data<int>()),
+      q->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_low_windows.data(),
+      reinterpret_cast<const void*>(attn_low_windows_input->data<int>()),
+      q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_high_windows.data(),
+      reinterpret_cast<const void*>(attn_high_windows_input->data<int>()),
+      q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
+#endif
 
   //   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
   //       kv_slen_host.data(), reinterpret_cast<const
   //       void*>(kv_slen->data<int>()), kv_slen->dims()[0] * sizeof(int),
   //       cudaMemcpyDeviceToHost));
+
+  // const Tensor* attn_low_windows,
+  // const Tensor* attn_high_windows, Tensor* o,
+  // const Tensor* attn_qo_seqlen, const Tensor* attn_kv_seqlen,
 
   cudnnSeqDataAxis_t axes[CUDNN_SEQDATA_DIM_COUNT];  // [Batch, Beam, Seq, Vec]
   axes[0] = CUDNN_SEQDATA_BATCH_DIM;
@@ -240,7 +293,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).q_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        attn_qo_seqlen.data(), nullptr));
+        attn_qo_seqlen_data, nullptr));
     // dimA, axes, batch_size * attn_beam_size, qo_slen_host.data(), nullptr));
   }
 
@@ -258,7 +311,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).k_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        attn_kv_seqlen.data(), nullptr));
+        attn_kv_seqlen_data, nullptr));
     // dimA, axes, batch_size * attn_beam_size, kv_slen_host.data(), nullptr));
   }
 
@@ -276,7 +329,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).v_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        attn_kv_seqlen.data(), nullptr));
+        attn_kv_seqlen_data, nullptr));
     // dimA, axes, batch_size * attn_beam_size, kv_slen_host.data(), nullptr));
   }
 
@@ -294,7 +347,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).o_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        attn_qo_seqlen.data(), nullptr));
+        attn_qo_seqlen_data, nullptr));
     // dimA, axes, batch_size * attn_beam_size, qo_slen_host.data(), nullptr));
   }
 
@@ -315,7 +368,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
 
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
       cudnn_handle, MHASingleton::Instance().Data(key).attn_desc, -1,
-      attn_low_windows.data(), attn_high_windows.data(), qo_slen->data<int>(),
+      attn_low_windows_data, attn_high_windows_data, qo_slen->data<int>(),
       kv_slen->data<int>(), MHASingleton::Instance().Data(key).q_desc, q_data,
       residuals, MHASingleton::Instance().Data(key).k_desc, k_data,
       MHASingleton::Instance().Data(key).v_desc, v_data,
@@ -352,8 +405,8 @@ template <typename T>
 void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
                    const Tensor* dout, const Tensor* q, const Tensor* k,
                    const Tensor* v, const Tensor* w, const Tensor* qo_slen,
-                   const Tensor* kv_slen, std::vector<int> attn_low_windows,
-                   std::vector<int> attn_high_windows, Tensor* dq, Tensor* dk,
+                   const Tensor* kv_slen, const Tensor* attn_low_windows,
+                   const Tensor* attn_high_windows, Tensor* dq, Tensor* dk,
                    Tensor* dv, Tensor* dw, const Tensor* reserve_space) {
   //   auto& dev_ctx =
   //       context.template device_context<platform::CUDADeviceContext>();
@@ -370,6 +423,8 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   //   Tensor* dk = context.Output<Tensor>(framework::GradVarName("K"));
   //   Tensor* dv = context.Output<Tensor>(framework::GradVarName("V"));
   //   Tensor* dw = context.Output<Tensor>(framework::GradVarName("W"));
+  int batch_size = q->dims()[0];
+  int seq_len = q->dims()[1];
 
   auto cudnn_handle = dev_ctx.cudnn_handle();
 
@@ -390,6 +445,31 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   const T* v_data = v->data<T>();
   const T* w_data = w->data<T>();
 
+  const int* attn_low_windows_data = attn_low_windows->data<int>();
+  const int* attn_high_windows_data = attn_high_windows->data<int>();
+
+  Tensor attn_low_windows_host;
+  Tensor attn_high_windows_host;
+  paddle::platform::CPUPlace cpu_place;
+  if (!platform::is_cpu_place(attn_low_windows->place())) {
+    attn_low_windows_host.mutable_data(cpu_place, attn_low_windows->type(),
+                                       seq_len * sizeof(int));
+    attn_low_windows_data = attn_low_windows_host.data<int>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(attn_low_windows_host.data<int>(),
+                   reinterpret_cast<const void*>(attn_low_windows->data<int>()),
+                   seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+  }
+  if (!platform::is_cpu_place(attn_high_windows->place())) {
+    attn_high_windows_host.mutable_data(cpu_place, attn_high_windows->type(),
+                                        seq_len * sizeof(int));
+    attn_high_windows_data = attn_high_windows_host.data<int>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+        attn_high_windows_host.data<int>(),
+        reinterpret_cast<const void*>(attn_high_windows->data<int>()),
+        seq_len * sizeof(int), cudaMemcpyDeviceToHost));
+  }
+
   // limin-todo:
   //   dq->mutable_data<T>(context.GetPlace());
   //   dk->mutable_data<T>(context.GetPlace());
@@ -403,9 +483,26 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   T* dv_data = dv->data<T>();
   T* dw_data = dw->data<T>();
 
+#if 0
+  std::vector<int> attn_low_windows(q->dims()[1]);
+  std::vector<int> attn_high_windows(q->dims()[1]);
+  // for (int i = 0; i < q->dims()[1]; i++) {
+  //   attn_low_windows[i] = 0;
+  //   attn_high_windows[i] = q->dims()[1];
+  // }
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_low_windows_data(),
+      reinterpret_cast<const void*>(attn_low_windows_input->data<int>()),
+      q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+      attn_high_windows.data(),
+      reinterpret_cast<const void*>(attn_high_windows_input->data<int>()),
+      q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
+#endif
+
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnBackwardData(
       cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-      attn_low_windows.data(), attn_high_windows.data(), qo_slen->data<int>(),
+      attn_low_windows_data, attn_high_windows_data, qo_slen->data<int>(),
       kv_slen->data<int>(), MHASingleton::Instance().Data(key).o_desc,
       dout_data, MHASingleton::Instance().Data(key).q_desc, dq_data, q_data,
       MHASingleton::Instance().Data(key).k_desc, dk_data, k_data,

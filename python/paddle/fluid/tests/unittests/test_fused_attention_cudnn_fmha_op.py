@@ -201,6 +201,18 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         dout_tensor = paddle.to_tensor(self.dout)
         epsilon = 1e-05
         ln2_epsilon = 1e-05
+        # self.attn_low_windows
+        attn_low_windows_tensor_host = paddle.to_tensor(self.attn_low_windows, place=paddle.CPUPlace())
+        # self.attn_high_windows
+        attn_high_windows_tensor_host = paddle.to_tensor(self.attn_high_windows, place=paddle.CPUPlace())
+        # self.seq_len_vec
+        seq_len_tensor_host = paddle.to_tensor(self.seq_len_vec, place=paddle.CPUPlace())
+
+        # attn_low_windows_tensor_host = paddle.to_tensor(self.attn_low_windows)
+        # # self.attn_high_windows
+        # attn_high_windows_tensor_host = paddle.to_tensor(self.attn_high_windows)
+        # # self.seq_len_vec
+        # seq_len_tensor_host = paddle.to_tensor(self.seq_len_vec)
 
         # if attn_mask is not None:
         #     # Support bool or int mask
@@ -213,9 +225,9 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
                 self.pre_layer_norm, ln1_scale, ln1_bias, 
                 ln2_scale, ln2_bias, epsilon, out_linear_bias, 
                 self.dropout_prob, self.attn_dropout_prob, 
-                ln2_epsilon, self.attn_low_windows, 
-                self.attn_high_windows,
-                self.seq_len_vec, self.seq_len_vec)
+                ln2_epsilon, attn_low_windows_tensor_host, 
+                attn_high_windows_tensor_host,
+                seq_len_tensor_host, seq_len_tensor_host)
             paddle.autograd.backward(
                 [final_out], [dout_tensor], retain_graph=True)
 
