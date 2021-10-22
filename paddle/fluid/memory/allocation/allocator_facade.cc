@@ -56,7 +56,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Whether to use system allocator to allocate CPU and GPU memory. "
     "Only used for unittests.");
 
-PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
+PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, true,
                             "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
 DECLARE_string(allocator_strategy);
