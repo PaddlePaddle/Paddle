@@ -63,7 +63,7 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
   return output_shape;
 }
 
-class Pool3DPlugin : public PluginTensorRT {
+class Pool3DPlugin : public PluginTensorRTV2Ext {
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   // TRT will call this func when we need to serialize the configuration of
@@ -112,11 +112,18 @@ class Pool3DPlugin : public PluginTensorRT {
 
   const char* getPluginType() const TRT_NOEXCEPT override;
 
+  nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* input_types,
+      int nb_inputs) const TRT_NOEXCEPT override;
+
   int getNbOutputs() const TRT_NOEXCEPT override;
 
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
+
   int initialize() TRT_NOEXCEPT override;
+
+  void destroy() TRT_NOEXCEPT override;
 
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batchSize, const void* const* inputs, void** outputs,
@@ -152,7 +159,6 @@ class Pool3DPluginCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(Pool3DPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class Pool3DPluginDynamic : public DynamicPluginTensorRT {
  public:
   Pool3DPluginDynamic() {}
@@ -231,7 +237,6 @@ class Pool3DPluginDynamicCreator : public TensorRTPluginCreator {
   }
 };
 REGISTER_TRT_PLUGIN_V2(Pool3DPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

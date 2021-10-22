@@ -55,11 +55,31 @@ int Pool3DPlugin::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
 int Pool3DPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
+nvinfer1::DataType Pool3DPlugin::getOutputDataType(
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
+  return input_types[0];
+}
+
+void Pool3DPlugin::destroy() TRT_NOEXCEPT { delete this; }
+
 nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
-  assert(nbInputs == 1);
-  assert(index == 0);
-  assert(inputDims[0].nbDims == 4);
+  PADDLE_ENFORCE_EQ(nbInputs, 1,
+                    platform::errors::InvalidArgument(
+                        "The Pool3D Plugin only has one input, so the nbInputs "
+                        "value should be 1, but get %d.",
+                        nbInputs));
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "The Pool3D Plugin only has one input, so "
+                                  "the index value should be 0, but get %d.",
+                                  index));
+  PADDLE_ENFORCE_EQ(inputDims[0].nbDims, 4,
+                    platform::errors::InvalidArgument(
+                        "The Pool3D Plugin only has four Dimensions, so the "
+                        "nbDims value should be 4, but get %d.",
+                        inputDims[0].nbDims));
+
   nvinfer1::Dims const &input_dims = inputDims[0];
 
   nvinfer1::Dims output_dims = input_dims;
@@ -78,7 +98,6 @@ int Pool3DPlugin::enqueue(int batchSize, const void *const *inputs,
                           void *const *outputs, void *workspace,
                           cudaStream_t stream) TRT_NOEXCEPT {
 #endif
-  auto const &input_dims = this->getInputDims(0);
   int input_size = 0;
   float const *idata = reinterpret_cast<float const *>(inputs[0]);
   float *const *odatas = reinterpret_cast<float *const *>(outputs);
@@ -108,7 +127,6 @@ int Pool3DPlugin::enqueue(int batchSize, const void *const *inputs,
 }
 
 // Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
 
 Pool3DPluginDynamic::Pool3DPluginDynamic(void const *serialData,
                                          size_t serialLength) {
@@ -350,7 +368,6 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
 
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

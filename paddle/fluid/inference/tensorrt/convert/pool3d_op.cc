@@ -96,6 +96,14 @@ class Pool3dOpConverter : public OpConverter {
     bool adaptive = false;
     if (op_desc.HasAttr("adaptive"))
       adaptive = BOOST_GET_CONST(bool, op_desc.GetAttr("adaptive"));
+    std::string padding_algorithm = "EXPLICIT";
+    if (op_desc.HasAttr("padding_algorithm"))
+      padding_algorithm =
+          BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+    if (padding_algorithm == "VALID" || padding_algorithm == "SAME") {
+      std::fill(paddings.begin(), paddings.end(), 0);
+    }
+
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
         nvinfer1::ReduceOperation::kMAX;
@@ -115,11 +123,9 @@ class Pool3dOpConverter : public OpConverter {
     nvinfer1::DimsCHW nv_paddings(paddings[0], paddings[1], paddings[2]);
     nvinfer1::ILayer *layer = nullptr;
     if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr("X_scale"));
       float input_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
-#endif
     }
 
     if (engine_->with_dynamic_shape()) {
@@ -135,12 +141,10 @@ class Pool3dOpConverter : public OpConverter {
                                                   reduce_operation, 28, true);
         layer = reduce_layer;
       } else {
-#if IS_TRT_VERSION_GE(6000)
         plugin::Pool3DPluginDynamic *plugin = new plugin::Pool3DPluginDynamic(
             ceil_mode, pool_type, adaptive, ksize, strides, paddings,
             global_pooling);
         layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
-#endif
       }
       auto output_name = op_desc.Output("Out")[0];
       layer->setName(("pool3d (Output: " + output_name + ")").c_str());
@@ -153,24 +157,13 @@ class Pool3dOpConverter : public OpConverter {
     }
 
     if (global_pooling == true) {
-      nv_ksize.d[0] = input_shape.d[input_dims - 3];  // d
-      nv_ksize.d[1] = input_shape.d[input_dims - 2];  // h
-      nv_ksize.d[2] = input_shape.d[input_dims - 1];  // w
-
-      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, PoolingNd, *const_cast<nvinfer1::ITensor *>(input1),
-          nv_pool_type, nv_ksize);
-      PADDLE_ENFORCE_NOT_NULL(
-          pool_layer, platform::errors::Fatal(
-                          "trt pool layer in converter could not be created."));
+      auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,
+                                                reduce_operation, 14, true);
+      layer = reduce_layer;
       auto output_name = op_desc.Output("Out")[0];
-      pool_layer->setStrideNd(nv_strides);
-      pool_layer->setPaddingNd(nv_paddings);
-      pool_layer->setAverageCountExcludesPadding(exclusive);
-      pool_layer->setName(("pool3d (Output: " + output_name + ")").c_str());
-      pool_layer->getOutput(0)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, pool_layer->getOutput(0));
-      layer = pool_layer;
+      layer->setName(("pool3d (Output: " + output_name + ")").c_str());
+      layer->getOutput(0)->setName(output_name.c_str());
+      engine_->SetITensor(output_name, layer->getOutput(0));
       if (test_mode) {
         engine_->DeclareOutput(output_name);
       }
@@ -198,7 +191,7 @@ class Pool3dOpConverter : public OpConverter {
         plugin::Pool3DPlugin *plugin =
             new plugin::Pool3DPlugin(ceil_mode, plugin_pool_type, adaptive,
                                      ksize, strides, paddings, input_shape_v);
-        auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
+        auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
             platform::errors::Fatal(
@@ -216,7 +209,7 @@ class Pool3dOpConverter : public OpConverter {
       plugin::Pool3DPlugin *plugin =
           new plugin::Pool3DPlugin(ceil_mode, plugin_pool_type, adaptive, ksize,
                                    strides, paddings, input_shape_v);
-      auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
+      auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer,
           platform::errors::Fatal(
