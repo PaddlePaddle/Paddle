@@ -98,7 +98,7 @@ MapMatmulV2ToMatmulPass::MapMatmulV2ToMatmulPass() {
       .AddOutput("Out")
       .IsTensor()
       .End()
-      .AddAttr("transpose_Y")
+      .AddAttr("transpose_X")
       .IsType<bool>()
       .End()
       .AddAttr("transpose_Y")
