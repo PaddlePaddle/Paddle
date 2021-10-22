@@ -511,6 +511,8 @@ struct Instruction {
   std::map<std::string, std::vector<int>> input_index_;
   std::map<std::string, std::vector<int>> output_index_;
 
+  std::unordered_set<int> no_data_transform_index_;
+
   std::vector<size_t> gc_check_var_list;
   NextInstruction next_instruction_;
 
@@ -527,6 +529,7 @@ struct OpFuncNode {
   // int unsed;
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
+  std::unordered_set<int> no_data_transform_index;
 
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
