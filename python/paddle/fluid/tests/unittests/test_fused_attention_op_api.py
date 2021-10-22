@@ -143,8 +143,6 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     return out_linear_bias_dropout_residual_ln_out
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
 class TestFusedAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.config()
