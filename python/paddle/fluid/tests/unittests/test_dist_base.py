@@ -520,7 +520,7 @@ class TestParallelDyGraphRunnerBase(object):
             # such as : batch = [2,3,4,5], then the first rank will get [2]  and 
             # the second rank will get [3,4,5]. 
             # this function is for test sparse_embedding_differ_length
-            if args.diff_batch:
+            if hasattr(args, diff_batch) and args.diff_batch:
                 assert len(
                     batch) > 2, "in differ_batch mode, len(batch) must > 2."
                 if paddle.distributed.get_rank() == 0:
