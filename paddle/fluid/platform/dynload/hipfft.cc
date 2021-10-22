@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,29 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/paddle_to_cinn_pass.h"
-
-#include "gtest/gtest.h"
-
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/dynload/hipfft.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace platform {
+namespace dynload {
 
-TEST(PaddleToCinnPassTest, TodoTest) {
-  ProgramDesc program;
-  Graph graph(program);
+std::once_flag hipfft_dso_flag;
+void *hipfft_dso_handle;
 
-  auto pass = paddle::framework::ir::PassRegistry::Instance().Get(
-      "paddle_to_cinn_pass");
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-  pass->Apply(&graph);
-}
+HIPFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace dynload
+}  // namespace platform
 }  // namespace paddle
-
-USE_PASS(paddle_to_cinn_pass);

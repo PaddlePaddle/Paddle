@@ -335,9 +335,9 @@ void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-
-  string::PrettyLogDetail("---    fused %d pairs of fc gru patterns",
-                          fusion_count);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    string::PrettyLogDetail("---    fused %d pairs of fc gru patterns",
+                            fusion_count);
 }
 
 }  // namespace ir
