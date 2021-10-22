@@ -20,10 +20,15 @@
 
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
+#include "cinn/frontend/decomposer/use_decomposer.h"
 #include "cinn/frontend/net_builder.h"  // need to remove after
+#include "cinn/frontend/pass/use_program_pass.h"
+#include "cinn/frontend/program_pass.h"
 #include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
 #include "cinn/hlir/framework/graph_compiler.h"
+#include "cinn/hlir/framework/pass.h"
+#include "cinn/hlir/pass/use_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -42,6 +47,8 @@ using ::cinn::common::Target;
 using ::cinn::common::Float;
 using ::cinn::hlir::framework::GraphCompiler;
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::frontend::ProgramPass;
+using ::cinn::hlir::framework::ApplyPass;
 
 // TODO(wangzhen31): just for local compile, remove after
 // the CinnGraphSymbolization PR is merged
@@ -67,10 +74,15 @@ class CinnGraphSymbolization {
 
     return program;
   }
+
   const std::unordered_map<std::string, std::string>& var_model_to_program_map()
       const {
-    return {{"X", "InputX"}, {"Y", "InputY"}, {"Z", "InputZ"}};
+    return var_model_to_program_map_;
   }
+
+ private:
+  std::unordered_map<std::string, std::string> var_model_to_program_map_{
+      {"X", "InputX"}, {"Y", "InputY"}, {"Z", "InputZ"}};
 };
 }  // namespace
 
@@ -127,11 +139,13 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   CinnGraphSymbolization symbol{real_compiled_num_, graph, target,
                                 input_tensors};
   auto frontend_program = symbol();
+  ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
   auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
       frontend_program, target);
-  VLOG(4) << "The i-" << real_compiled_num_ << " compilation ("
+  VLOG(4) << "The " << real_compiled_num_ << "-th compilation ("
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
+  ApplyPass(cinn_graph.get(), "OpFusion");
   auto scope = BuildScope(target, cinn_graph);
   GraphCompiler graph_compiler(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;

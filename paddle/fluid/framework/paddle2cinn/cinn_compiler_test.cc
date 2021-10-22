@@ -144,14 +144,19 @@ TEST(CinnCompilerTest, TodoTest) {
   auto compile_fn = [&](const Target& target) {
     auto* compiled_obj =
         cinn_compiler->Compile(*compiling_graph, input_tensors, target);
-    ASSERT_NE(compiled_obj->runtime_program.get(), nullptr);
-    ASSERT_NE(compiled_obj->scope.get(), nullptr);
+    ASSERT_NE(compiled_obj->runtime_program, nullptr);
+    ASSERT_NE(compiled_obj->scope, nullptr);
     ASSERT_FALSE(compiled_obj->paddle2cinn_varmap.empty());
-    cinn_compiler->Compile(compilation_key, input_tensors, target);
+    auto* cached_obj =
+        cinn_compiler->Compile(compilation_key, input_tensors, target);
+    ASSERT_EQ(reinterpret_cast<std::uint64_t>(compiled_obj),
+              reinterpret_cast<std::uint64_t>(cached_obj));
   };
 
+  // GPU Compilation
   compile_fn(::cinn::common::DefaultNVGPUTarget());
   ASSERT_EQ(cinn_compiler->real_compiled_num(), 1);
+  // CPU Compilation
   compile_fn(::cinn::common::DefaultHostTarget());
   ASSERT_EQ(cinn_compiler->real_compiled_num(), 2);
 }
