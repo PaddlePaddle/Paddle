@@ -27,12 +27,12 @@
 namespace paddle {
 namespace operators {
 using ScalarType = framework::proto::VarType::Type;
-const int64_t kMaxCUFFTNdim = 3;
-const int64_t kMaxDataNdim = kMaxCUFFTNdim + 1;
+const int64_t kMaxFFTNdim = 3;
+const int64_t kMaxDataNdim = kMaxFFTNdim + 1;
 // This struct is used to easily compute hashes of the
 // parameters. It will be the **key** to the plan cache.
-struct PlanKey {
-  // between 1 and kMaxCUFFTNdim, i.e., 1 <= signal_ndim <= 3
+struct FFTConfigKey {
+  // between 1 and kMaxFFTNdim, i.e., 1 <= signal_ndim <= 3
   int64_t signal_ndim_;
   // These include additional batch dimension as well.
   int64_t sizes_[kMaxDataNdim];
@@ -41,12 +41,12 @@ struct PlanKey {
   FFTTransformType fft_type_;
   ScalarType value_type_;
 
-  PlanKey() = default;
+  FFTConfigKey() = default;
 
-  PlanKey(const std::vector<int64_t>& in_shape,
-          const std::vector<int64_t>& out_shape,
-          const std::vector<int64_t>& signal_size, FFTTransformType fft_type,
-          ScalarType value_type) {
+  FFTConfigKey(const std::vector<int64_t>& in_shape,
+               const std::vector<int64_t>& out_shape,
+               const std::vector<int64_t>& signal_size,
+               FFTTransformType fft_type, ScalarType value_type) {
     // Padding bits must be zeroed for hashing
     memset(this, 0, sizeof(*this));
     signal_ndim_ = signal_size.size() - 1;
@@ -92,7 +92,7 @@ class FFTConfig {
   // Only move semantics is enought for this class. Although we already use
   // unique_ptr for the plan, still remove copy constructor and assignment op so
   // we don't accidentally copy and take perf hit.
-  explicit FFTConfig(const PlanKey& plan_key)
+  explicit FFTConfig(const FFTConfigKey& plan_key)
       : FFTConfig(
             std::vector<int64_t>(plan_key.sizes_,
                                  plan_key.sizes_ + plan_key.signal_ndim_ + 1),
@@ -195,7 +195,7 @@ class FFTConfig {
   // Only move semantics is enought for this class. Although we already use
   // unique_ptr for the plan, still remove copy constructor and assignment op so
   // we don't accidentally copy and take perf hit.
-  explicit FFTConfig(const PlanKey& plan_key)
+  explicit FFTConfig(const FFTConfigKey& plan_key)
       : FFTConfig(
             std::vector<int64_t>(plan_key.sizes_,
                                  plan_key.sizes_ + plan_key.signal_ndim_ + 1),
@@ -328,28 +328,27 @@ static_assert(CUFFT_DEFAULT_CACHE_SIZE >= 0 &&
 // value returned from try_emplace_value.
 // The contract of using this cache is that try_emplace_value should only be
 // used when the max_size is positive.
-class PlanLRUCache {
+class FFTConfigCache {
  public:
-  using kv_t = typename std::pair<PlanKey, FFTConfig>;
-  using map_t =
-      typename std::unordered_map<std::reference_wrapper<PlanKey>,
-                                  typename std::list<kv_t>::iterator,
-                                  KeyHash<PlanKey>, KeyEqual<PlanKey>>;
+  using kv_t = typename std::pair<FFTConfigKey, FFTConfig>;
+  using map_t = typename std::unordered_map<
+      std::reference_wrapper<FFTConfigKey>, typename std::list<kv_t>::iterator,
+      KeyHash<FFTConfigKey>, KeyEqual<FFTConfigKey>>;
   using map_kkv_iter_t = typename map_t::iterator;
 
-  PlanLRUCache() : PlanLRUCache(CUFFT_DEFAULT_CACHE_SIZE) {}
+  FFTConfigCache() : FFTConfigCache(CUFFT_DEFAULT_CACHE_SIZE) {}
 
-  explicit PlanLRUCache(int64_t max_size) { _set_max_size(max_size); }
+  explicit FFTConfigCache(int64_t max_size) { _set_max_size(max_size); }
 
-  PlanLRUCache(const PlanLRUCache& other) = delete;
-  PlanLRUCache& operator=(const PlanLRUCache& other) = delete;
+  FFTConfigCache(const FFTConfigCache& other) = delete;
+  FFTConfigCache& operator=(const FFTConfigCache& other) = delete;
 
-  PlanLRUCache(PlanLRUCache&& other) noexcept
+  FFTConfigCache(FFTConfigCache&& other) noexcept
       : _usage_list(std::move(other._usage_list)),
         _cache_map(std::move(other._cache_map)),
         _max_size(other._max_size) {}
 
-  PlanLRUCache& operator=(PlanLRUCache&& other) noexcept {
+  FFTConfigCache& operator=(FFTConfigCache&& other) noexcept {
     _usage_list = std::move(other._usage_list);
     _cache_map = std::move(other._cache_map);
     _max_size = other._max_size;
@@ -358,10 +357,10 @@ class PlanLRUCache {
 
   // If key is in this cache, return the cached config. Otherwise, emplace the
   // config in this cache and return it.
-  FFTConfig& lookup(PlanKey params) {
+  FFTConfig& lookup(FFTConfigKey params) {
     PADDLE_ENFORCE_GT(_max_size, 0,
                       platform::errors::InvalidArgument(
-                          "The max size of PlanLRUCache must be great than 0,"
+                          "The max size of FFTConfigCache must be great than 0,"
                           "But received is [%d]",
                           _max_size));
 
@@ -440,10 +439,10 @@ class PlanLRUCache {
   size_t _max_size;
 };
 
-static std::vector<std::unique_ptr<PlanLRUCache>> plan_caches;
+static std::vector<std::unique_ptr<FFTConfigCache>> plan_caches;
 static std::mutex plan_caches_mutex;
 
-static inline PlanLRUCache& cufft_get_plan_cache(int64_t device_index) {
+static inline FFTConfigCache& get_fft_plan_cache(int64_t device_index) {
   std::lock_guard<std::mutex> guard(plan_caches_mutex);
 
   if (device_index >= plan_caches.size()) {
@@ -451,7 +450,7 @@ static inline PlanLRUCache& cufft_get_plan_cache(int64_t device_index) {
   }
 
   if (!plan_caches[device_index]) {
-    plan_caches[device_index] = std::make_unique<PlanLRUCache>();
+    plan_caches[device_index] = std::make_unique<FFTConfigCache>();
   }
 
   return *plan_caches[device_index];
