@@ -15,5 +15,20 @@
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
+#include "paddle/pten/api/include/infershape.h"
 #include "paddle/pten/kernels/cpu/linalg.h"
 #include "paddle/pten/kernels/cuda/linalg.h"
+
+namespace pten {
+
+template <typename T, typename ContextT>
+DenseTensor Dot(const ContextT& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y) {
+  auto out_meta = DotInferShape(x.meta(), y.meta());
+  pten::DenseTensor dense_out(out_meta, pten::TensorStatus());
+  Dot<T>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+}  // namespace pten

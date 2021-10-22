@@ -16,9 +16,8 @@ limitations under the License. */
 
 #include <ostream>
 
-// TODO(chenweihang): move this file into hapi/include when compile
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/backend.h"
-
 namespace paddle {
 namespace experimental {
 
@@ -26,8 +25,8 @@ namespace experimental {
  * We use the backend to form a bit set to assist the runtime kernel selection,
  * and the higher backend bit has a higher priority.
  *
- * A Tensor may belong to multiple backends at the same time, such CUDNN and
- * CUDA. Only one backend value cannot
+ * A Tensor may belong to multiple backends at the same time, such CPU and
+ * MKLDNN. Only one backend value cannot
  */
 class BackendSet final {
  public:
@@ -39,10 +38,10 @@ class BackendSet final {
   uint64_t bitset() const { return bitset_; }
 
   bool inline Has(Backend b) const {
-    // TODO(chenweihang): replace by internal assert method later
-    if (b == Backend::UNDEFINED) {
-      throw std::runtime_error("Backend argument can't be UNDEFINED.");
-    }
+    PADDLE_ENFORCE_NE(b,
+                      Backend::UNDEFINED,
+                      platform::errors::InvalidArgument(
+                          "Backend argument can't be UNDEFINED."));
     return static_cast<bool>(bitset_ & BackendSet(b).bitset());
   }
   bool IsEmpty() const { return bitset_ == 0; }

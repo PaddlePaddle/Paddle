@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+#include "paddle/pten/api/include/linalg.h"
+
 PT_DECLARE_MODULE(LinalgCPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -76,6 +78,57 @@ TEST(API, dot) {
   auto actual_result0 = dense_out->data<float>()[0];
   auto actual_result1 = dense_out->data<float>()[1];
   auto actual_result2 = dense_out->data<float>()[2];
+  ASSERT_NEAR(expect_result[0], actual_result0, 1e-6f);
+  ASSERT_NEAR(expect_result[1], actual_result1, 1e-6f);
+  ASSERT_NEAR(expect_result[2], actual_result2, 1e-6f);
+}
+
+TEST(DEV_API, dot) {
+  // 1. create tensor
+  pten::DenseTensor dense_x(pten::TensorMeta(framework::make_ddim({3, 10}),
+                                             pten::Backend::CPU,
+                                             pten::DataType::FLOAT32,
+                                             pten::DataLayout::NCHW),
+                            pten::TensorStatus());
+  auto* dense_x_data = dense_x.mutable_data<float>();
+
+  pten::DenseTensor dense_y(pten::TensorMeta(framework::make_ddim({3, 10}),
+                                             pten::Backend::CPU,
+                                             pten::DataType::FLOAT32,
+                                             pten::DataLayout::NCHW),
+                            pten::TensorStatus());
+  auto* dense_y_data = dense_y.mutable_data<float>();
+
+  float sum[3] = {0.0, 0.0, 0.0};
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 0; j < 10; ++j) {
+      dense_x_data[i * 10 + j] = (i * 10 + j) * 1.0;
+      dense_y_data[i * 10 + j] = (i * 10 + j) * 1.0;
+      sum[i] += (i * 10 + j) * (i * 10 + j) * 1.0;
+    }
+  }
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  // 2. test API
+  auto out = pten::Dot<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      dense_x,
+      dense_y);
+
+  // 3. check result
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
+  ASSERT_EQ(out.meta().backend, pten::Backend::CPU);
+  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+
+  auto expect_result = sum;
+  auto actual_result0 = out.data<float>()[0];
+  auto actual_result1 = out.data<float>()[1];
+  auto actual_result2 = out.data<float>()[2];
   ASSERT_NEAR(expect_result[0], actual_result0, 1e-6f);
   ASSERT_NEAR(expect_result[1], actual_result1, 1e-6f);
   ASSERT_NEAR(expect_result[2], actual_result2, 1e-6f);

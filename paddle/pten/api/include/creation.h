@@ -14,5 +14,20 @@
 
 #pragma once
 
+#include "paddle/pten/api/include/infershape.h"
 #include "paddle/pten/kernels/cpu/creation.h"
 #include "paddle/pten/kernels/cuda/creation.h"
+
+namespace pten {
+
+template <typename T, typename ContextT>
+DenseTensor FillAnyLike(const ContextT& dev_ctx,
+                        const DenseTensor& x,
+                        const Scalar& val) {
+  auto out_meta = UnchangedInferShape(x.meta());
+  pten::DenseTensor dense_out(out_meta, pten::TensorStatus());
+  FillAnyLike<T>(dev_ctx, x, val, &dense_out);
+  return dense_out;
+}
+
+}  // namespace pten

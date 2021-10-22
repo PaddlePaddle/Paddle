@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/pten/hapi/include/tensor.h"
 
 // TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -39,6 +40,19 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 #endif
 
 namespace detail {
+BackendSet GetTensorBackendSet(const Tensor& t) {
+  BackendSet backend_set(pten::TransToPtenBackend(t.place()));
+  switch (t.layout()) {
+    case DataLayout::MKLDNN:
+      backend_set = backend_set | BackendSet(Backend::MKLDNN);
+      break;
+    default:
+      // do nothing
+      break;
+  }
+  return backend_set;
+}
+
 std::size_t CountLeadingZeros(uint64_t val) {
   if (val == 0) {
     return 64;
@@ -102,7 +116,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
-    key_set.backend_set = key_set.backend_set | x.backend_set();
+    key_set.backend_set = key_set.backend_set | detail::GetTensorBackendSet(x);
     // TODO(chenweihang): selecte multi layout and dtype
     key_set.layout = x.layout();
     key_set.dtype = x.type();

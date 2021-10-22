@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace experimental {
 
@@ -26,8 +28,8 @@ enum class DataLayout {
   NUM_DATA_LAYOUTS,
 };
 
-inline std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
-  switch (dtype) {
+inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
+  switch (layout) {
     case DataLayout::UNDEFINED:
       os << "Undefined";
       break;
@@ -44,8 +46,8 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
       os << "MKLDNN";
       break;
     default:
-      // TODO(chenweihang): change to enforce later
-      throw std::runtime_error("Invalid DataLayout type.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid enum data layout type `%d`.", static_cast<int>(layout)));
   }
   return os;
 }

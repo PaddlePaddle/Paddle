@@ -17,6 +17,7 @@
 #include <ostream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include "paddle/pten/common/backend.h"
@@ -37,10 +38,10 @@ using DataLayout = paddle::experimental::DataLayout;
 /**
  * [ Naming considerations ]
  *
- * The tensor Compute library contains many kernels, and the computation
+ * The tensor operation library contains many kernels, and the computation
  * in each specific scenario is represented by an kernel.
  *
- * We directly named it `Kernel` instead of `Kernel`, the tensor Compute
+ * We directly named it `Kernel` instead of `Kernel`, the tensor operation
  * library here and fluid are independent, avoiding developers from
  * misunderstanding the relationship between the two concepts.
  */
@@ -52,10 +53,7 @@ using KernelFn = void (*)(KernelContext* ctx);
 class KernelName final {
  public:
   KernelName(std::string name, std::string overload_name)
-      : name_(std::move(name)), overload_name_(std::move(overload_name)) {
-    hash_value_ = std::hash<std::string>()(name_) ^
-                  (std::hash<std::string>()(overload_name_) << 1);
-  }
+      : name_(std::move(name)), overload_name_(std::move(overload_name)) {}
 
   KernelName(const std::string& kernel_name) {
     ParseNameAndOverloadNameFromString(kernel_name);
@@ -68,24 +66,26 @@ class KernelName final {
 
   const std::string& name() const { return name_; }
   const std::string& overload_name() const { return overload_name_; }
-  size_t hash_value() const { return hash_value_; }
 
   struct Hash {
     size_t operator()(const KernelName& kernel_name) const {
-      return kernel_name.hash_value();
+      return std::hash<std::string>()(kernel_name.name()) ^
+             (std::hash<std::string>()(kernel_name.overload_name()) << 1);
     }
   };
 
+  size_t hash_value() const { return Hash()(*this); }
+
   bool operator<(const KernelName& kernel_name) const {
-    return hash_value_ < kernel_name.hash_value();
+    return hash_value() < kernel_name.hash_value();
   }
 
   bool operator==(const KernelName& kernel_name) const {
-    return hash_value_ == kernel_name.hash_value();
+    return hash_value() == kernel_name.hash_value();
   }
 
   bool operator!=(const KernelName& kernel_name) const {
-    return hash_value_ != kernel_name.hash_value();
+    return hash_value() != kernel_name.hash_value();
   }
 
  private:
@@ -98,17 +98,11 @@ class KernelName final {
       name_ = kernel_name.substr(0, pos);
       overload_name_ = kernel_name.substr(pos + 1, kernel_name.size());
     }
-    hash_value_ = std::hash<std::string>()(name_) ^
-                  (std::hash<std::string>()(overload_name_) << 1);
   }
 
-  // The members cannot be modified except by constructing,
-  // because the hash value need to be re calculated
-  // TODO(chenweihang): use string_view later?
+  // TODO(chenweihang): use string_view to improve performance later
   std::string name_;
   std::string overload_name_;
-  // Avoid calculating Hash value at runtime
-  size_t hash_value_;
 };
 
 class KernelKey {
@@ -116,38 +110,32 @@ class KernelKey {
   KernelKey() = default;
 
   KernelKey(Backend backend, DataLayout layout, DataType dtype)
-      : backend_(backend), layout_(layout), dtype_(dtype) {
-    // |----31-20------|---19-12---|---11-8----|---7-0---|
-    // | For extension | DataType | DataLayout | Backend |
-
-    hash_value_ = 0;
-    hash_value_ |= static_cast<uint8_t>(backend_);
-    hash_value_ |= (static_cast<uint8_t>(layout_) << kBackendBitLength);
-    hash_value_ |= (static_cast<uint16_t>(dtype_)
-                    << (kBackendBitLength + kDataTypeBitLength));
-  }
+      : backend_(backend), layout_(layout), dtype_(dtype) {}
 
   Backend backend() const { return backend_; }
   DataLayout layout() const { return layout_; }
   DataType dtype() const { return dtype_; }
 
-  uint32_t hash_value() const { return hash_value_; }
+  struct Hash {
+    // Note: Now the number of bits we need does not exceed 32 bits, so there is
+    // no need to use 64 bits. If needed in the future, it can be expanded,
+    // but now we don’t over-design.
+    uint32_t operator()(const KernelKey& key) const;
+  };
+
+  uint32_t hash_value() const { return Hash()(*this); }
 
   bool operator<(const KernelKey& key) const {
-    return hash_value_ < key.hash_value();
+    return hash_value() < key.hash_value();
   }
 
   bool operator==(const KernelKey& key) const {
-    return hash_value_ == key.hash_value();
+    return hash_value() == key.hash_value();
   }
 
   bool operator!=(const KernelKey& key) const {
-    return hash_value_ != key.hash_value();
+    return hash_value() != key.hash_value();
   }
-
-  struct Hash {
-    uint32_t operator()(const KernelKey& key) const { return key.hash_value(); }
-  };
 
  private:
   // In total should be smaller than 32.
@@ -158,12 +146,6 @@ class KernelKey {
   Backend backend_{Backend::UNDEFINED};
   DataLayout layout_{DataLayout::UNDEFINED};
   DataType dtype_{DataType::UNDEFINED};
-
-  // Avoid calculating Hash value at runtime.
-  // Note: Now the number of bits we need does not exceed 32 bits, so there is
-  // no need to use 64 bits. If needed in the future, it can be expanded,
-  // but now we don’t over-design.
-  uint32_t hash_value_;
 };
 
 // TODO(chenweihang): how deal with vector<Param>?
@@ -282,7 +264,13 @@ class KernelFactory {
 
   KernelMap& kernels() { return kernels_; }
 
-  bool ContainsKernel(const char* name) const;
+  void InsertCompatibleOpType(const std::string& op_type) {
+    compatible_op_types_.insert(op_type);
+  }
+
+  bool HasCompatiblePtenKernel(const std::string& op_type) const {
+    return compatible_op_types_.count(op_type) > 0;
+  }
 
   const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,
                                          const KernelKey& kernel_key) const;
@@ -299,6 +287,9 @@ class KernelFactory {
   KernelFactory() = default;
 
   KernelMap kernels_;
+  // Used to be compatible with the original execution system and
+  // quickly confirm whether the new kernel can be called
+  std::unordered_set<std::string> compatible_op_types_;
 };
 
 /** operator << overload **/

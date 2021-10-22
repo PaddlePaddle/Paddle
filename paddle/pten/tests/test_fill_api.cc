@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+#include "paddle/pten/api/include/creation.h"
+
 PT_DECLARE_MODULE(CreationCPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -124,5 +126,40 @@ TEST(API, ones_like) {
   auto* actual_result = dense_out->data<float>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_EQ(actual_result[i], 1);
+  }
+}
+
+TEST(DEV_API, fill_any_like) {
+  // 1. create tensor
+  pten::DenseTensor dense_x(pten::TensorMeta(framework::make_ddim({3, 2}),
+                                             pten::Backend::CPU,
+                                             pten::DataType::FLOAT32,
+                                             pten::DataLayout::NCHW),
+                            pten::TensorStatus());
+  auto* dense_x_data = dense_x.mutable_data<float>();
+  dense_x_data[0] = 0;
+  float val = 1.0;
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  // 2. test API
+  auto out = pten::FillAnyLike<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      dense_x,
+      val);
+
+  // 3. check result
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
+  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.meta().backend, pten::Backend::CPU);
+  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+
+  auto* actual_result = out.data<float>();
+  for (auto i = 0; i < 6; i++) {
+    ASSERT_NEAR(actual_result[i], val, 1e-6f);
   }
 }

@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/scalar.h"
 
 #include "paddle/fluid/platform/device_context.h"
 

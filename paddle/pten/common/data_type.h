@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -164,8 +163,8 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
       os << "complex128";
       break;
     default:
-      // TODO(chenweihang): change to enforce later
-      throw std::runtime_error("Invalid DataType type.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid enum data type `%d`.", static_cast<int>(dtype)));
   }
   return os;
 }
