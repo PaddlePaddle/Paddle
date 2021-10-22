@@ -2390,8 +2390,8 @@ function find_temporary_files() {
 
 function build_pr_and_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
-    rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
+    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
+    rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     if [ ${cmake_change} ];then
@@ -2400,7 +2400,7 @@ function build_pr_and_develop() {
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-    mkdir build/dev_whl && cp build/python/dist/*.whl build/dev_whl
+    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
 }
 
 
