@@ -79,7 +79,9 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      if ((idx | idy) == 0) {
+        paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      }
     }
     idy += BlockDimY * GridDimX;
   }

@@ -308,7 +308,9 @@ __global__ void KernelMaxPool2DGrad(
 
     if (maxIndex != -1) {
       // atomic add
-      platform::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
+      if (index == 0) {
+        platform::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
+      }
     }
   }
 }
@@ -974,7 +976,9 @@ __global__ void KernelMaxPool3DGrad(
     }
     if (maxIdx != -1) {
       // atomic add
-      platform::CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
+      if (index == 0) {
+        platform::CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
+      }
     }
   }
 }
