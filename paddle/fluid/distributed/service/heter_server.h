@@ -215,7 +215,7 @@ class HeterServer {
   }
 
   using SharedTaskQueue = std::shared_ptr<std::unordered_map<int, std::shared_ptr<
-                            ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>
+                            ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>;
 
   void SetTaskQueue(SharedTaskQueue task_queue) {
       request_handler_->SetTaskQueue(task_queue);

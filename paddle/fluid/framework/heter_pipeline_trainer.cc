@@ -23,20 +23,28 @@ namespace framework {
 
 class Variable;
 
+using MiniScope = std::unordered_map<int, Scope*>;
+using MicroScope = std::unordered_map<int, std::shared_ptr<std::vector<Scope*>>>;
+using TaskQueue = std::unordered_map<int, std::shared_ptr<
+                            ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >;
+
 void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
-  SetDataset(dataset);
-  const std::vector<paddle::framework::DataFeed*> readers =
+  if (pipeline_stage_ == 0) {
+    SetDataset(dataset);
+    const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
-  VLOG(3) << "readers num: " << readers.size();
-  // change thread num is not supported
-  PADDLE_ENFORCE_EQ(thread_num_, readers.size(),
+    VLOG(3) << "readers num: " << readers.size();
+    // change thread num is not supported
+    PADDLE_ENFORCE_EQ(thread_num_, readers.size(),
                     platform::errors::InvalidArgument(
                         "change Dataset thread_num is not supported"));
-  for (int i = 0; i < thread_num_; ++i) {
-    auto this_worker =
-      std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[i]);
+    for (auto& worker_pair: workers_) {
+      auto device_worker = worker_pair.second;
+      auto this_worker =
+        std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(device_worker);
       this_worker->SetDataFeed(readers[i]);
       this_worker->SetReaderPlace(place_);
+    }
   }
 }
 
@@ -132,18 +140,17 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
                                            "root_scope_ can not be nullptr"));
-  if (pipeline_stage_ == 0) { // for cpu trainer
 
     //initialize mini_scopes & micro_scopes
-    mini_scopes.reset(new std::vector<Scope*>{});
-    micro_scopes.reset(new std::vector<std::shared_ptr<std::vector<Scope*>>>{});
+    mini_scopes.reset(new MiniScope{});
+    micro_scopes.reset(new MicroScope{});
+    task_queue_.reset(new TaskQueue{});
 
-
-
-
-    for (int i = 0; i < thread_num_; ++i) {
+    for (auto& worker_pair: workers_) {
+      auto worker_index = worker_pair.first;
+      auto device_worker = worker_pair.second;
       auto this_worker =
-        std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[i]);
+        std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(device_worker);
       this_worker->SetPlace(place);
       this_worker->Initialize(trainer_desc_);
       if (pipeline_stage_ == 0) {
@@ -154,14 +161,13 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 
       // generate mini_batch scope for every worker
       auto* minibatch_scope = &root_scope_->NewScope();
-      mini_scopes_->push_back(minibatch_scope);
+      (*mini_scopes)[worker_index] = minibatch_scope;
       this_worker->SetMinibatchScope(minibatch_scope);
       // after set micro num & mini batch scope 
       this_worker->CreateMicrobatchScopes();
-      micro_scopes_->push_back(this_worker->GetMicrobatchScopes());
+      (*micro_scopes_)[worker_index] = this_worker->GetMicrobatchScopes();
     }
 
-  } else {   // for heter trainer
   
 
 
@@ -169,7 +175,6 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 
 
 
-  }
 }
 
 void HeterPipelineTrainer::Run() {

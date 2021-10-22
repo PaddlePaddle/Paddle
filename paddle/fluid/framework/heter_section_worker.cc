@@ -157,10 +157,10 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
   // create microbatch_id variable
   // and set micro id value
   // TODO(zhangminxu): performance optimization 
-  auto* ptr = microbatch_scopes_[microbatch_id]->Var("microbatch_id");
+  auto* ptr = (*microbatch_scopes_)[microbatch_id]->Var("microbatch_id");
   InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
   framework::Variable* var =
-      microbatch_scopes_[microbatch_id]->FindVar("microbatch_id");
+      (*microbatch_scopes_)[microbatch_id]->FindVar("microbatch_id");
   PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), 1,
                     platform::errors::InvalidArgument(
                         "the type of microbatch_id  should be LoDTensor"));
@@ -170,9 +170,7 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
   void* tensor_data =
       tensor->mutable_data(place, framework::proto::VarType::FP32);
     
-
-  global_mini_id = trainer_id_  + thread_id_ * trainers_;
-  global_micro_id = global_mini_id * num_microbatches_ + microbatch_id; 
+  auto global_micro_id = thread_id_ * num_microbatches_ + microbatch_id; 
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
