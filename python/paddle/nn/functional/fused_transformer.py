@@ -98,9 +98,9 @@ def fused_multi_head_attention(x,
 
             # input: [batch_size, seq_len, embed_dim]
             x = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # qkv_weight: [3, num_head, dim_head, dim_embed]
+            # qkv_weight: [3, num_head, head_dim, embed_dim]
             qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
-            # qkv_bias: [3, num_head, dim_head]
+            # qkv_bias: [3, num_head, head_dim]
             qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
             # linear_weight: [embed_dim, embed_dim]
             linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
@@ -121,6 +121,12 @@ def fused_multi_head_attention(x,
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out, 
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out, 
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
+        assert len(qkv_weight.shape
+                   ) == 4, "The dims of the shape of qkv_weight should be 4."
+        assert qkv_weight.shape[
+            0] == 3, "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
+        assert qkv_weight.shape[3] == x.shape[
+            2], "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, attn_mask,
             linear_weight, linear_bias, ln_scale, ln_bias, 'pre_layer_norm',
