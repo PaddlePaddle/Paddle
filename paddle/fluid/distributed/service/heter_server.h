@@ -202,12 +202,25 @@ class HeterServer {
       request_handler_ = request_handler; 
   }
 
-  void SetMiniBatchScopes(std::shared_ptr<std::vector<Scope*>> mini_scopes) {
+
+
+  using SharedMiniScope = std::shared_ptr<std::unordered_map<int, Scope*>>;
+  using SharedMicroScope = std::shared_ptr<std::unordered_map<int, std::shared_ptr<std::vector<Scope*>>> >;
+
+  void SetMiniBatchScopes(SharedMiniScope  mini_scopes) {
       request_handler_->SetMiniScopes(mini_scopes);
   }
-  void SetMicroBatchScopes(std::shared_ptr<std::vector<std::shared_ptr<std::vector<Scope*>>> > micro_scopes) {
+  void SetMicroBatchScopes(SharedMicroScope micro_scopes) {
       request_handler_->SetMicroScopes(micro_scopes);
   }
+
+  using SharedTaskQueue = std::shared_ptr<std::unordered_map<int, std::shared_ptr<
+                            ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>
+
+  void SetTaskQueue(SharedTaskQueue task_queue) {
+      request_handler_->SetTaskQueue(task_queue);
+  }
+
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
@@ -256,18 +269,21 @@ class HeterRequestHandler {
   //void SetMicroNum(int num_microbatch) { num_microbatch_ = num_microbatch; }
   //void SetMiniNum(int num_minibatch) { num_minibatch_ = num_minibatch; }
   
-  void SetMiniScopes(std::shared_ptr<std::vector<Scope*>> mini_scopes) {
-      mini_scopes_ = mini_scopes;
-      num_minibatch_ = mini_scopes_->size();
-  }
-  void SetMicroScopes(std::shared_ptr<std::vector<std::shared_ptr<std::vector<Scope*>>> > micro_scopes) {
-      micro_scopes_ = micro_scopes;
-      num_microbatch_ = micro_scopes_->size();
-  }
+  //void SetMiniScopes(SharedMiniScope mini_scopes) {
+  //    mini_scopes_ = mini_scopes;
+  //    num_minibatch_ = mini_scopes_->size();
+  //}
+  //void SetMicroScopes(SharedMicroScope micro_scopes) {
+  //    micro_scopes_ = micro_scopes;
+  //    num_microbatch_ = micro_scopes_->size();
+  //}
 
+  //void SetTaskQueue(SharedTaskQueue task_queue) {
+  //    task_queue_ = task_queue;    
+  //}
 
-  void SetTrainers(int trainers) { trainers_ = trainers; }
-  void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
+  //void SetTrainers(int trainers) { trainers_ = trainers; }
+  //void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
   virtual void Start() {}
   virtual void Process(int minibatch_idx) {}
   //virtual void batch_finished(int minibatch_idx, int microbatch_idx) {}
@@ -289,15 +305,19 @@ class HeterRequestHandler {
 
   
   // share with HeterPipelineTrainer
-  std::shared_ptr<std::vector<Scope*> mini_scopes_{nullptr};
-  std::shared_ptr<std::vector<
-      std::shared_ptr<std::vector<Scope*>>> >
-      micro_scopes_{nullptr};
+ // std::shared_ptr<std::vector<Scope*> mini_scopes_{nullptr};
+  //std::shared_ptr<std::vector<
+  //    std::shared_ptr<std::vector<Scope*>>> >
+  //    micro_scopes_{nullptr};
 
-  int num_microbatch_;
-  int num_minibatch_;
-  int trainers_;
-  int trainer_id_;
+
+
+
+
+  //int num_microbatch_;
+  //int num_minibatch_;
+  //int trainers_;
+  //int trainer_id_;
 
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
@@ -386,6 +406,22 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     }
   }
 
+  void SetMiniScopes(SharedMiniScope mini_scopes) {
+      mini_scopes_ = mini_scopes;
+      num_minibatch_ = mini_scopes_->size();
+  }
+  void SetMicroScopes(SharedMicroScope micro_scopes) {
+      micro_scopes_ = micro_scopes;
+      num_microbatch_ = micro_scopes_->size();
+  }
+
+  void SetTaskQueue(SharedTaskQueue task_queue) {
+      task_queue_ = task_queue;    
+  }
+
+  void SetTrainers(int trainers) { trainers_ = trainers; }
+  void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
+  
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
     platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
@@ -469,6 +505,19 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   }
 
  private:
+  
+
+  // share with HeterPipelineTrainer
+  SharedMiniScope mini_scopes_{nullptr};
+  SharedMicroScope micro_scopes_{nullptr};
+  
+  
+  int num_microbatch_;
+  int num_minibatch_;
+  int trainers_;
+  int trainer_id_;
+
+
   std::unordered_map<int, std::unordered_map<int,int>> micro_cnt_;
   //std::vector<int> done_;
 
@@ -482,9 +531,11 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   //std::vector<bool> batch_finished_;
 
   std::vector<std::shared_ptr<std::thread>> process_thread_;
-  std::vector<std::shared_ptr<
-      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >
-      task_queue_;
+  SharedTaskQueue task_queue_;
+
+  //std::vector<std::shared_ptr<
+  //    ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >
+  //    task_queue_;
 };
 
 }  // end namespace distributed

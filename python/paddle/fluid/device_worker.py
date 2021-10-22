@@ -462,11 +462,11 @@ class HeterSection(DeviceWorker):
         from . import core
         trainer_desc.device_worker_name = "HeterSectionWorker"
         pipeline_opt = self._program._pipeline_opt
-        section_param = trainer_desc.section_param
-        section_param.num_microbatches = pipeline_opt["num_microbatches"]
-        section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
-        section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
-        cfg = section_param.section_config
+        heter_section_param = trainer_desc.heter_section_param
+        heter_section_param.num_microbatches = pipeline_opt["num_microbatches"]
+        heter_section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
+        heter_section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
+        cfg = heter_section_param.section_config
         program = pipeline_opt["section_program"]
         cfg.program_desc.ParseFromString(program._get_desc()
                                          .serialize_to_string())

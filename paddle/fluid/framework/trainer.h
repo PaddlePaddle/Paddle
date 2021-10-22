@@ -358,19 +358,18 @@ class HeterPipelineTrainer : public TrainerBase {
 
   int num_pipeline_stages_;
   int pipeline_stage_;
-  std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
+  std::unordered_map<int, std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
+  
   // trainer put data into queue
   // threads get data from queue
-  std::vector<std::shared_ptr<
-      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >
+  std::shared_ptr<std::unordered_map<int, std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>
       task_queue_;
 
-  //Scope* minibatch_scope_;
-  //std::vector<Scope*> microbatch_scopes_;
   platform::DeviceContext* dev_ctx_ = nullptr;
   
-  std::shared_ptr<std::vector<Scope*> mini_scopes_; 
-  std::shared_ptr<std::vector<
+  std::shared_ptr<std::unordered_map<int, Scope*>> mini_scopes_; 
+  std::shared_ptr<std::unorsered_map<int,
       std::shared_ptr<std::vector<Scope*>>> >
       micro_scopes_;
 
