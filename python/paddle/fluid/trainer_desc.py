@@ -122,7 +122,8 @@ class TrainerDesc(object):
         self.proto_desc.trainer_id = trainer_id
 
     def _set_trainers(self, trainers):
-        self.proto_desc.trainers = trainers
+        for trainer_num in trainers:
+            self.proto_desc.trainers.append(trainer_num)
 
     def _set_use_cvm(self, use_cvm=False):
         self.proto_desc.use_cvm = use_cvm

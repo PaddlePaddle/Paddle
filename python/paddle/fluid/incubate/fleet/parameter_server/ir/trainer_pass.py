@@ -999,31 +999,7 @@ def create_trainer_program(program, origin_program, config,
         inputs={'X': []},
         outputs={},
         attrs=attrs)
-    ## append barrier op
-    program.global_block()._insert_op(
-        index=0,
-        type="send_and_recv",
-        inputs={'X': origin_program.global_block().vars[static_var[0]]},
-        outputs={"Out": []},
-        attrs={
-            "mode": "barrier",
-            "send_var_name": ["microbatch_id"],
-            "recv_var_name": [],
-            "message_name": "barrier_batch_finish",
-            "endpoints": config.get_heter_worker_endpoints(),
-            "previous_endpoints": [],
-            "cur_endpoint": config.get_trainer_endpoint(),
-            "trainer_id": config.get_role_id(),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        })
 
-    ## add trainer barrier op
-    #program.global_block()._insert_op(
-    #    index=0,
-    #    type="trainer_barrier",
-    #    inputs={'X': []},
-    #    outputs={},
-    #    attrs={RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE})
     ## TODO add check for bp block
     check_op_device(program.global_block(), DEFAULT_DEVICE)
 
@@ -1038,17 +1014,17 @@ def insert_communicate_op(orign_program,
                           is_forward=True):
 
     if is_forward:
-        heter_worker_endpoint = config.get_heter_worker_endpoints()
-        previous_endpoint = config.get_previous_stage_trainers()
+        next_heter_worker_endpoints = config.get_next_stage_trainers()
+        previous_heter_worker_endpoints = config.get_previous_stage_trainers()
         entrance_var = block_var_detail[stage_id]["forward"]["entrance"]
         comm_info = get_communicate_var_info(orign_program, stage_id + 1,
                                              entrance_var)
 
     else:
-        heter_worker_endpoint = config.get_heter_worker_endpoints()
+        next_heter_worker_endpoints = config.get_next_stage_trainers()
         if heter_worker_endpoint == "":
             heter_worker_endpoint = []
-        previous_endpoint = config.get_previous_stage_trainers()
+        previous_heter_worker_endpoints = config.get_previous_stage_trainers()
         entrance_var = block_var_detail[stage_id - 1]["backward"]["exit"]
         comm_info = get_communicate_var_info(orign_program, stage_id - 1,
                                              entrance_var, "backward")
@@ -1063,9 +1039,8 @@ def insert_communicate_op(orign_program,
             "send_var_name": entrance_var + ["microbatch_id"],
             "recv_var_name": [],
             "message_name": comm_info["block_input_var_name"],
-            "endpoints": heter_worker_endpoint,
-            "previous_endpoints": previous_endpoint,
-            "cur_endpoint": config.get_heter_worker_endpoint(),
+            "next_endpoints": next_heter_worker_endpoints,
+            "previous_endpoints": previous_heter_worker_endpoints,
             "trainer_id": config.get_role_id(),
             "op_device": device,
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -1115,7 +1090,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
 
     if heter_block_index == 1:
         mode = config.get_distributed_mode()
-        heter_worker_endpoint = config.get_heter_worker_endpoints()
+        next_heter_worker_endpoints = config.get_next_stage_trainers()
 
         entrance_var = block_var_detail[heter_block_index]["forward"][
             "entrance"]
@@ -1132,9 +1107,8 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
                 "send_var_name": entrance_var + ["microbatch_id"],
                 "recv_var_name": [],
                 "message_name": comm_info["block_input_var_name"],
-                "endpoints": heter_worker_endpoint,
+                "next_endpoints": next_heter_worker_endpoints,
                 "previous_endpoints": [],
-                "cur_endpoint": config.get_trainer_endpoint(),
                 "trainer_id": config.get_role_id(),
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })

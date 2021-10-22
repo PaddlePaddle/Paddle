@@ -115,17 +115,7 @@ void HeterClient::CreateClient2XpuConnection() {
       }
     }
   }
-  barrier_channel_.reset(new brpc::Channel());
-  if (barrier_channel_->Init(cur_endpoint_.c_str(), "", &options) != 0) {
-    VLOG(0) << "HeterClient channel init fail. Try Again";
-    auto ip_port = paddle::string::Split(cur_endpoint_, ':');
-    std::string ip = ip_port[0];
-    int port = std::stoi(ip_port[1]);
-    std::string int_ip_port = GetIntTypeEndpoint(ip, port);
-    if (barrier_channel_->Init(int_ip_port.c_str(), "", &options) != 0) {
-      LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << int_ip_port;
-    }
-  }
+
 }
 
 void HeterClient::SendAndRecvAsync(
@@ -143,29 +133,8 @@ void HeterClient::SendAndRecvAsync(
   VLOG(3) << "BRPCClient::SendAndRecv Begin, message_name: "
           << message_name_val;
   brpc::Channel* channel = nullptr;
-  if (mode == "barrier") {
-    PADDLE_ENFORCE_EQ(
-        message_name_val, "barrier_batch_finish",
-        platform::errors::Unimplemented(
-            "message_name should be barrier_batch_finish if mode == barrier"));
-    brpc::Controller cntl;
-    cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
-    auto& request_io_buffer = cntl.request_attachment();
-    distributed::MultiVarMsg request, response;
-    channel = barrier_channel_.get();
-    ::paddle::distributed::PsService_Stub stub(channel);
 
-    distributed::SerializeToMultiVarMsgAndIOBuf(
-        message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
-        &request, &request_io_buffer);
-    stub.SendAndRecvVariable(&cntl, &request, &response, NULL);
-    PADDLE_ENFORCE_NE(
-        cntl.Failed(), true,
-        platform::errors::Unimplemented(
-            "HeterClient::SendAndRecv meets brpc error, error message is %s",
-            cntl.ErrorText()));
-    VLOG(4) << "call heter_worker success";
-  } else {
+
     distributed::MultiVarMsg request;
     OnHeterRpcDone* closure = new OnHeterRpcDone([p_ctx, p_scope](void* done) {
       auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
@@ -185,8 +154,6 @@ void HeterClient::SendAndRecvAsync(
     distributed::SerializeToMultiVarMsgAndIOBuf(
         message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
         &request, &request_io_buffer);
-
-
 
     // TODO get micro id from request
     // get micro id from p_scope
@@ -216,6 +183,8 @@ void HeterClient::SendAndRecvAsync(
       auto data = reinterpret_cast<const float*>(tensor->data<void>());
       micro_id = static_cast<int>(data[0]);
     }
+
+
     // select channel according to micro id
     if (mode == "forward") {
       int num = micro_id % xpu_channels_.size();
@@ -228,7 +197,7 @@ void HeterClient::SendAndRecvAsync(
     ::paddle::distributed::PsService_Stub stub(channel);
     stub.SendAndRecvVariable(&closure->cntl, &request, &closure->response,
                              closure);
-  }
+
 }
 
 std::future<int32_t> HeterClient::SendCmd(

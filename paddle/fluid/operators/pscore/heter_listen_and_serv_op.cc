@@ -123,12 +123,12 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                                         cntl);
         });
   }
-  rpc_service_->RegisterServiceHandler(
-      "barrier_batch_finish",
-      [&](const MultiVarMsg *request, MultiVarMsg *response,
-          brpc::Controller *cntl) -> int {
-        return request_send_and_recv_handler_->Handle(request, response, cntl);
-      });
+  //rpc_service_->RegisterServiceHandler(
+  //     "barrier_batch_finish",
+  //     [&](const MultiVarMsg *request, MultiVarMsg *response,
+  //         brpc::Controller *cntl) -> int {
+  //       return request_send_and_recv_handler_->Handle(request, response, cntl);
+  //     });
 
   request_send_and_recv_handler_->Start();
 
@@ -148,22 +148,25 @@ void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
 
 void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                                    const platform::Place &dev_place) const {
-  auto mode = Attr<std::string>("mode");
+
+
+
+  //auto mode = Attr<std::string>("mode");
   // Mark this as PS that it should decide profiling by listening from trainer.
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);
 
-  framework::Scope &recv_scope = scope.KidScope(0);  // the first minibatch scope
-  int minibatch_num = scope.NumKids();
-  int microbatch_per_minibatch = recv_scope.NumKids();
+  //framework::Scope &recv_scope = scope.KidScope(0);  // the first minibatch scope
+  //int minibatch_num = scope.NumKids();
+  //int microbatch_per_minibatch = recv_scope.NumKids();
 
   auto pserver_id = Attr<int>("pserver_id");
   auto fan_in = Attr<int>("fanin");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
+ PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
                     platform::errors::PreconditionNotMet(
                         "RPC service has been created unexpectedly."));
 
@@ -184,23 +187,25 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                         "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
 
-  std::vector<framework::Executor> executor_pool;
-  for (int i = 0; i < minibatch_num; i++) {
-    executor_pool.emplace_back(dev_place);
-  }
+  //std::vector<framework::Executor> executor_pool;
+  //for (int i = 0; i < minibatch_num; i++) {
+  //  executor_pool.emplace_back(dev_place);
+  //}
 
   framework::Executor executor(dev_place);
-
+  sd::shared_ptr<paddle::distributed::HeterRequestHandler> request_send_and_recv_handler_;
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler());
   request_send_and_recv_handler_->SetScope(&scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
   request_send_and_recv_handler_->SetProgram(program);
-  request_send_and_recv_handler_->SetExecutor(&executor_pool);
-  request_send_and_recv_handler_->SetMicroNum(microbatch_per_minibatch);
-  request_send_and_recv_handler_->SetMiniNum(minibatch_num);
+  //request_send_and_recv_handler_->SetExecutor(&executor_pool);
+  //request_send_and_recv_handler_->SetMicroNum(microbatch_per_minibatch);
+  //request_send_and_recv_handler_->SetMiniNum(minibatch_num);
   request_send_and_recv_handler_->SetTrainers(trainers);
   request_send_and_recv_handler_->SetTrainerId(trainer_id);
+  
+  rpc_service_->SetRequestHandler(request_send_and_recv_handler_);
 
   VLOG(2) << "RunAsyncLoop";
   auto message_to_block_id_str =
@@ -210,7 +215,10 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
+
   RunAsyncLoop(&executor, program, &recv_scope);
+
+
   VLOG(3) << "Wait for Server_thread_ stop";
   (server_thread_.get())->join();
   VLOG(3) << "Server_thread_ stop";
@@ -251,10 +259,10 @@ class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<int>("rpc_exec_thread_num", "pserver send thread num.")
         .SetDefault(1);
-    AddAttr<std::string>("mode",
-                         "(string, default sync)"
-                         "execution mode.")
-        .SetDefault("sync");
+    //AddAttr<std::string>("mode",
+    //                     "(string, default sync)"
+    //                     "execution mode.")
+    //    .SetDefault("sync");
   }
 };
 

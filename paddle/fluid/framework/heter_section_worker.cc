@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -32,17 +32,16 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   }
 }
 
-void HeterSectionWorker::BatchBarrier(int barrier_id) {
-  for (auto &op : ops_) {
-    auto op_type = op->Type();
-    if (op_type != "send_and_recv") continue;
-    auto op_mode = op->Attr<std::string>(std::string("mode"));
-    if (op_mode == "barrier") {
-      VLOG(3) << op_mode << " "
-              << op->Attr<std::string>(std::string("message_name"));
-      op->Run(*microbatch_scopes_[barrier_id], place_);
+void HeterSectionWorker::MiniBatchBarrier(const std::vector<int>& barrier_ids) {
+    // get micro id & deserialize data
+    std::set<int> micro_ids;
+    while(micro_ids.size() < barrier_ids.size()) {
+      auto task = thread_queue_.Pop();
+      micro_id = task.first;
+      micro_ids.insert(micro_id);
+       
+
     }
-  }
 }
 
 //void HeterSectionWorker::TrainerBarrier() {
@@ -61,7 +60,7 @@ void HeterSectionWorker::RunListen() {
       if (is_first_stage) {
         if (thread_id_ == 0)
           op->Run(*root_scope_, place_);
-      } else {
+      } else { // for heter worker
         op->Run(*root_scope_, place_);
       }
     }
@@ -69,6 +68,7 @@ void HeterSectionWorker::RunListen() {
 }
 
 void HeterSectionWorker::RunForward(int micro_id) {
+  
   bool is_first_stage = (pipeline_stage_ == 0);
   if (is_first_stage) {
     BindingDataFeedMemory(micro_id);
@@ -77,12 +77,7 @@ void HeterSectionWorker::RunForward(int micro_id) {
       epoch_finish_ = true;
       return;
     }
-   total_ins_num_ += cur_micro_batch;
-   //if (thread_id_ == 0) {
-   //   auto end = std::chrono::system_clock::now();
-   //   auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start_).count(); 
-   //   std::cout << "run "<< total_ins_num_ << " instance, cost: " << duration << "s" <<std::endl;
-   //}
+    total_ins_num_ += cur_micro_batch;
   }
 
   for (auto &op : ops_) {
@@ -90,10 +85,10 @@ void HeterSectionWorker::RunForward(int micro_id) {
     auto op_type = op->Type();
 
     if (op_type == "heter_listen_and_serv") continue;
-    if (op_type == "send_and_recv") {
-      auto op_mode = op->Attr<std::string>(std::string("mode"));
-      if (op_mode == "barrier") continue;
-    }
+    //if (op_type == "send_and_recv") {
+    //  auto op_mode = op->Attr<std::string>(std::string("mode"));
+    //  if (op_mode == "barrier") continue;
+    //}
     //if (op_type == "trainer_barrier") continue;
     bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
                             (op_role == (static_cast<int>(OpRole::kForward) |
@@ -112,12 +107,8 @@ void HeterSectionWorker::RunForward(int micro_id) {
       op->Run(*microbatch_scopes_[micro_id], place_);
     }
   }
-  
-   //if (thread_id_ == 0) {
-  //    auto end = std::chrono::system_clock::now();
-  //    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start_).count(); 
-  //    std::cout << "run "<< total_ins_num_ << " instance, cost: " << duration << "s" <<std::endl;
-  // }
+
+
 
 }
 
@@ -132,7 +123,6 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
 
 
 void HeterSectionWorker::CreateMicrobatchScopes() {
-
   PADDLE_ENFORCE_NOT_NULL(minibatch_scope_, platform::errors::InvalidArgument(
                                            "minibatch_scope_ can not be nullptr when create MicroBatch Scope"));
   microbatch_scopes_.resize(num_microbatches_);
@@ -166,29 +156,29 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 
   // create microbatch_id variable
   // and set micro id value
+  // TODO(zhangminxu): performance optimization 
   auto* ptr = microbatch_scopes_[microbatch_id]->Var("microbatch_id");
-
   InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-
   framework::Variable* var =
       microbatch_scopes_[microbatch_id]->FindVar("microbatch_id");
   PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), 1,
                     platform::errors::InvalidArgument(
                         "the type of microbatch_id  should be LoDTensor"));
   auto* tensor = var->GetMutable<framework::LoDTensor>();
-
   std::vector<int> dims{1};
   tensor->Resize(framework::make_ddim(dims));
-
   void* tensor_data =
       tensor->mutable_data(place, framework::proto::VarType::FP32);
+    
 
+  global_mini_id = trainer_id_  + thread_id_ * trainers_;
+  global_micro_id = global_mini_id * num_microbatches_ + microbatch_id; 
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
-    temp_ptr_float[0] = microbatch_id + thread_id_ * num_microbatches_;
+    temp_ptr_float[0] = global_micro_id;
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(*dev_ctx_)
             .stream();
@@ -200,7 +190,7 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 #endif
   } else {
     float* temp_ptr = reinterpret_cast<float*>(tensor_data);
-    temp_ptr[0] = microbatch_id + thread_id_ * num_microbatches_;
+    temp_ptr[0] = global_micro_id;
   }
 
   for (auto& var : var_list) {
@@ -221,20 +211,23 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 
 void HeterSectionWorker::Run() {
   bool is_first_stage = (pipeline_stage_ == 0);
-  if (is_first_stage) {
+  if (is_first_stage) { // for cpu trainer
+    // forward
     std::vector<int> micro_ids;
-    for (int i = trainer_id_; i < thread_num_ * num_microbatches_; i += trainers_) {
-      if (i >= thread_id_ * num_microbatches_ && i < (thread_id_ + 1) * num_microbatches_) {
+    for (int i = 0; i < num_microbatches_; i++) {
         VLOG(5) << "Run " << i << " stage" << std::endl;
-        RunForward(i - thread_id_ * num_microbatches_);
+        RunForward(i);
         if (epoch_finish_ == true) { break;}
-        micro_ids.push_back(i - thread_id_ * num_microbatches_);
-      }
+        micro_ids.push_back(i);
     }
-    for (auto i : micro_ids) {
-      batch_id_++;
-      BatchBarrier(i);
-    }  
+    // backward
+    MiniBatchBarrier(micro_ids);
+  } else { // for heter worker
+
+
+
+
+
   }
 }
 
@@ -272,11 +265,9 @@ void HeterSectionWorker::TrainFiles() {
   if (is_first_stage) {
     device_reader_->Start();
   }
-  //start_ = std::chrono::system_clock::now(); 
-  while (true) {
+  while (true && !epoch_finish_) {
     Run();
     dev_ctx_->Wait();
-    if (epoch_finish_ == true) { batch_id_ = 0; return;}
   }
 }
 

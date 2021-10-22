@@ -216,6 +216,12 @@ class CompileTimeStrategy(object):
         except Exception:
             return self.role_maker.get_heter_worker_endpoints()
 
+    def get_next_stage_trainers(self):
+        try:
+            return self.role_maker._get_next_trainers()
+        except Exception:
+            return self.role_maker.get_next_trainers()
+
     def get_heter_worker_endpoint(self):
         try:
             return self.role_maker._get_heter_worker_endpoint()

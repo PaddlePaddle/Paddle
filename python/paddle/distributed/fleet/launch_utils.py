@@ -823,6 +823,7 @@ class ParameterServerLauncher(object):
         self.is_local = True
         self.current_node_ip = ""
 
+        self.stage_trainer_num = []
         self.stage_heter_map = {}
         self.stage_list = []
         self.stage_device_map = {}
@@ -879,6 +880,7 @@ class ParameterServerLauncher(object):
                         x.strip().split(":")[0] for x in ip_port_list.split(",")
                     ]
                     self.worker_num = len(worker_endpoints_ips)
+                    self.stage_trainer_num.append(self.worker_num)
                     worker_endpoints_len = [
                         len(x.strip().split(":"))
                         for x in ip_port_list.split(",")
@@ -933,6 +935,7 @@ class ParameterServerLauncher(object):
                         self.heter_worker_endpoints += ","
                     self.heter_worker_endpoints += ip_port_list
                     self.heter_worker_num += len(ip_port_list.split(","))
+                    self.stage_trainer_num.append(len(ip_port_list.split(",")))
             if self.heter_worker_endpoints == "":
                 self.distribute_mode = DistributeMode.PS
                 # get server envs
@@ -1045,9 +1048,6 @@ class ParameterServerLauncher(object):
         for ip in self.worker_endpoints_ips:
             if ip not in self.node_ips:
                 self.node_ips.append(ip)
-       
-        #self.node_ips = list(
-        #    set(self.server_endpoints_ips + self.worker_endpoints_ips))
         
         if self.distribute_mode == DistributeMode.PS_HETER:
             self.heter_worker_endpoints_ips = [
@@ -1061,8 +1061,6 @@ class ParameterServerLauncher(object):
             for ip in self.heter_worker_endpoints_ips:
                 if ip not in self.node_ips:
                     self.node_ips.append(ip)
-            #self.node_ips = list(
-            #    set(self.node_ips + self.heter_worker_endpoints_ips))
 
         if len(set(self.node_ips)) == 1:
             self.is_local = True
@@ -1181,11 +1179,11 @@ class ParameterServerLauncher(object):
         current_env.pop("http_proxy", None)
         current_env.pop("https_proxy", None)
         for idx, cur_server in enumerate(pod.servers):
-            proc_env = {
+            if self.distribute_mode == DistributeMode.PS_HETER:
+              proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_HETER_TRAINER_IP_PORT_LIST":
-                self.heter_worker_endpoints,
+                "PADDLE_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
                 "PADDLE_PORT": cur_server.endpoint.split(":")[1],
                 "TRAINING_ROLE": "PSERVER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
@@ -1194,7 +1192,20 @@ class ParameterServerLauncher(object):
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
-            }
+              }
+            else:
+              proc_env = {
+                "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
+                "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                "PADDLE_PORT": cur_server.endpoint.split(":")[1],
+                "TRAINING_ROLE": "PSERVER",
+                "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                "POD_IP": cur_server.endpoint.split(":")[0],
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                "PADDLE_GLOO_RENDEZVOUS": "3",
+                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+              }
             current_env.update(proc_env)
 
             cmd = [sys.executable, "-u", args.training_script
@@ -1246,14 +1257,18 @@ class ParameterServerLauncher(object):
         for idx, cur_worker in enumerate(pod.workers):
             device_id = "0" if heter_device_num == 0 else str(device_list[
                 (idx) % heter_device_num])
-            proc_env = {
+            if self.distribute_mode == DistributeMode.PS_HETER:
+              proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                "PADDLE_STAGE_TRAINERS_NUM": str(self.stage_trainer_num),
+                "STAGE_ID": "1",
                 "STAGE_NUM": str(len(self.stage_heter_map)),
-                "PADDLE_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2]
-                if self.distribute_mode == DistributeMode.PS_HETER else
-                self.heter_worker_endpoints,
+                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": ""
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2]
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
+                "HETER_DEVICE_TYPE": self.stage_device_map[1],
                 "TRAINING_ROLE": "TRAINER",
                 "POD_IP": cur_worker.endpoint.split(":")[0],
                 "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
@@ -1266,9 +1281,26 @@ class ParameterServerLauncher(object):
                 "CUDA_VISIBLE_DEVICES": device_id,
                 "XPU_VISIBLE_DEVICES": device_id,
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
-            }
+              }
+            else:
+              proc_env = {
+                "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
+                "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                "TRAINING_ROLE": "TRAINER",
+                "POD_IP": cur_worker.endpoint.split(":")[0],
+                "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
+                "PADDLE_TRAINER_ID": str(cur_worker.rank),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                "PADDLE_GLOO_RENDEZVOUS": "3",
+                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                "FLAGS_selected_gpus": "0",
+                "FLAGS_selected_xpus": "0",
+                "CUDA_VISIBLE_DEVICES": device_id,
+                "XPU_VISIBLE_DEVICES": device_id,
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+              }
             current_env.update(proc_env)
-
             cmd = [sys.executable, "-u", args.training_script
                    ] + args.training_script_args
             self.cmds["worker"].append(cmd)
@@ -1324,7 +1356,7 @@ class ParameterServerLauncher(object):
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_HETER_TRAINER_IP_PORT_LIST":
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST":
                 self.stage_heter_map[stage_id + 1]
                 if stage_id <= self.stage_num - 1 else "",
                 "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST":
@@ -1337,6 +1369,7 @@ class ParameterServerLauncher(object):
                 "PADDLE_PORT": cur_heter_worker.endpoint.split(":")[1],
                 "TRAINING_ROLE": "HETER_TRAINER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                "PADDLE_STAGE_TRAINERS_NUM": str(self.stage_trainer_num),
                 "POD_IP": cur_heter_worker.endpoint.split(":")[0],
                 "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",

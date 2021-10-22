@@ -342,8 +342,8 @@ class HeterPipelineTrainer : public TrainerBase {
   void ResetDataset(Dataset* dataset_ptr) override;
 
  protected:
-  int trainer_id_;
-  int trainers_;
+  int trainer_id_; // stage_trainer_id
+  std::vector<int> trainers_;  //  std::vector<int> trainers
   int thread_num_;
   std::vector<std::thread> threads_;
 
@@ -359,13 +359,22 @@ class HeterPipelineTrainer : public TrainerBase {
   int num_pipeline_stages_;
   int pipeline_stage_;
   std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
-  Scope* minibatch_scope_;
-  std::vector<Scope*> microbatch_scopes_;
+  // trainer put data into queue
+  // threads get data from queue
+  std::vector<std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >
+      task_queue_;
+
+  //Scope* minibatch_scope_;
+  //std::vector<Scope*> microbatch_scopes_;
   platform::DeviceContext* dev_ctx_ = nullptr;
+  
+  std::shared_ptr<std::vector<Scope*> mini_scopes_; 
+  std::shared_ptr<std::vector<
+      std::shared_ptr<std::vector<Scope*>>> >
+      micro_scopes_;
 
   std::unique_ptr<std::thread> listen_ptr_ = nullptr;
-  void CopyParameters(int microbatch_id, const ProgramDesc& program,
-                      const platform::Place& place);
 };
 
 }  // namespace framework

@@ -633,6 +633,9 @@ class HeterSectionWorker : public DeviceWorker {
   void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
     microbatch_scopes_ = scope;
   }
+  std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
+    return microbatch_scopes_;
+  }
   void CopyParameters(int microbatch_id, const ProgramDesc& program, const platform::Place& place);
   void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
   void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
@@ -640,8 +643,8 @@ class HeterSectionWorker : public DeviceWorker {
   void CreateMicrobatchScopes();
   void RunForward(int micro_id);
   void RunListen();
-  void BatchBarrier(int barrier_id);
-  void TrainerBarrier();
+  void MiniBatchBarrier(const std::vector<int>& barrier_ids);
+  //void TrainerBarrier();
   void Run();
 
  protected:
@@ -654,15 +657,19 @@ class HeterSectionWorker : public DeviceWorker {
   int pipeline_stage_;
   bool epoch_finish_;
 
-  std::vector<Scope*> microbatch_scopes_;
+  std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
   const Scope* minibatch_scope_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   std::shared_ptr<framework::ProgramDesc> program_;
+  
+  std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> 
+      thread_queue_;
 
   static uint64_t batch_id_;
   uint64_t total_ins_num_ = 0;
-  std::chrono::time_point<std::chrono::system_clock> start_;
+  //std::chrono::time_point<std::chrono::system_clock> start_;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 

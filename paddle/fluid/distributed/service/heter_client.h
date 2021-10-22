@@ -88,11 +88,11 @@ class HeterClient {
   static std::shared_ptr<HeterClient> GetInstance(
       const std::vector<std::string>& endpoint,
       const std::vector<std::string>& previous_endpoint,
-      const std::string cur_endpoint, const int& trainer_id) {
+      const int& trainer_id) {
     if (NULL == s_instance_) {
       is_initialized_ = true;
       s_instance_.reset(new paddle::distributed::HeterClient());
-      s_instance_->SetCurEndpoint(cur_endpoint);
+      //s_instance_->SetCurEndpoint(cur_endpoint);
       s_instance_->SetXpuList(endpoint);
       s_instance_->SetPreviousXpuList(previous_endpoint);
       s_instance_->SetTrainerID(trainer_id);
@@ -119,9 +119,9 @@ class HeterClient {
 
   std::vector<std::string>& GetXpuList() { return xpu_list_; }
 
-  void SetCurEndpoint(std::string cur_endpoint) {
-    cur_endpoint_ = cur_endpoint;
-  }
+  //void SetCurEndpoint(std::string cur_endpoint) {
+  //  cur_endpoint_ = cur_endpoint;
+  //}
 
   void SetXpuList(const std::vector<std::string>& xpu_list) {
     xpu_list_ = xpu_list;
@@ -137,12 +137,12 @@ class HeterClient {
   static std::shared_ptr<HeterClient> s_instance_;
   static bool is_initialized_;
   std::unique_ptr<std::thread> main_thread_{nullptr};
-  std::shared_ptr<brpc::Channel> barrier_channel_;
+  //std::shared_ptr<brpc::Channel> barrier_channel_;
   std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
   std::vector<std::shared_ptr<brpc::Channel>> previous_xpu_channels_;
 
   DISABLE_COPY_AND_ASSIGN(HeterClient);
-  std::string cur_endpoint_;
+  //std::string cur_endpoint_;
   std::vector<std::string> xpu_list_;
   std::vector<std::string> previous_xpu_list_;
 

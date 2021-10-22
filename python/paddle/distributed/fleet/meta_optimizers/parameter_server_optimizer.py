@@ -350,10 +350,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 loss.block.program._pipeline_opt = {
                     "trainer": "HeterPipelineTrainer",
                     "device_worker": "HeterSection",
-                    "trainers":
-                    int(self.role_maker._worker_num()),  ## used in cpu trainer
-                    "trainer_id":
-                    int(self.role_maker._role_id()),  ## used in cpu trainer
+                    "trainers": self.role_maker._get_stage_trainers(),  ## trainer num in all stages
+                    "trainer_id": int(self.role_maker._role_id()),
                     "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
                     "num_pipeline_stages":
                     int(self.role_maker._get_num_stage()),

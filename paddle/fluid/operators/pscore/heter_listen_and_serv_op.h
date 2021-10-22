@@ -89,8 +89,8 @@ class HeterListenAndServOp : public framework::OperatorBase {
  protected:
   mutable std::shared_ptr<paddle::distributed::HeterServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
-  mutable std::shared_ptr<paddle::distributed::HeterRequestHandler>
-      request_send_and_recv_handler_;
+  //mutable std::shared_ptr<paddle::distributed::HeterRequestHandler>
+  //    request_send_and_recv_handler_;
 };
 
 }  // namespace operators

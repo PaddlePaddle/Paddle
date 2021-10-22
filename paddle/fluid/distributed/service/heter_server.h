@@ -47,6 +47,7 @@ namespace paddle {
 namespace framework {
 class Executor;
 class ProgramDesc;
+class Scope;
 }  // namespace framework
 namespace platform {
 class DeviceContext;
@@ -56,6 +57,10 @@ class DeviceContext;
 DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
+
+
+
+class HeterRequestHandler;
 
 static void split(const std::string& str, char sep,
                   std::vector<std::string>* pieces) {
@@ -193,6 +198,17 @@ class HeterServer {
   void SetEndPoint(std::string& endpoint);
   void SetFanin(int& fan_in);
 
+  void SetRequestHandler(std::shared_ptr<HeterRequestHandler> request_handler) { 
+      request_handler_ = request_handler; 
+  }
+
+  void SetMiniBatchScopes(std::shared_ptr<std::vector<Scope*>> mini_scopes) {
+      request_handler_->SetMiniScopes(mini_scopes);
+  }
+  void SetMicroBatchScopes(std::shared_ptr<std::vector<std::shared_ptr<std::vector<Scope*>>> > micro_scopes) {
+      request_handler_->SetMicroScopes(micro_scopes);
+  }
+
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
     if (NULL == s_instance_) {
@@ -214,6 +230,9 @@ class HeterServer {
  protected:
   brpc::Server server_;
   HeterService service_;
+  std::shared_ptr<HeterRequestHandler> request_handler_;
+
+
   DISABLE_COPY_AND_ASSIGN(HeterServer);
   std::mutex mutex_ready_;
 
@@ -233,14 +252,25 @@ class HeterRequestHandler {
   void SetScope(const framework::Scope* scope) { scope_ = scope; }
   void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
   void SetProgram(framework::ProgramDesc* program) { program_ = program; }
-  void SetExecutor(std::vector<framework::Executor>* executor) { executor_ = executor; }
-  void SetMicroNum(int num_microbatch) { num_microbatch_ = num_microbatch; }
-  void SetMiniNum(int num_minibatch) { num_minibatch_ = num_minibatch; }
+  //void SetExecutor(std::vector<framework::Executor>* executor) { executor_ = executor; }
+  //void SetMicroNum(int num_microbatch) { num_microbatch_ = num_microbatch; }
+  //void SetMiniNum(int num_minibatch) { num_minibatch_ = num_minibatch; }
+  
+  void SetMiniScopes(std::shared_ptr<std::vector<Scope*>> mini_scopes) {
+      mini_scopes_ = mini_scopes;
+      num_minibatch_ = mini_scopes_->size();
+  }
+  void SetMicroScopes(std::shared_ptr<std::vector<std::shared_ptr<std::vector<Scope*>>> > micro_scopes) {
+      micro_scopes_ = micro_scopes;
+      num_microbatch_ = micro_scopes_->size();
+  }
+
+
   void SetTrainers(int trainers) { trainers_ = trainers; }
   void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
   virtual void Start() {}
   virtual void Process(int minibatch_idx) {}
-  virtual void batch_finished(int minibatch_idx, int microbatch_idx) {}
+  //virtual void batch_finished(int minibatch_idx, int microbatch_idx) {}
 
   void SetGradToPreparedCtx(
       std::unordered_map<
@@ -253,9 +283,17 @@ class HeterRequestHandler {
 
  protected:
   const platform::DeviceContext* dev_ctx_;
-  std::vector<framework::Executor>* executor_;
+  //std::vector<framework::Executor>* executor_;
   const framework::Scope* scope_;
   framework::ProgramDesc* program_;
+
+  
+  // share with HeterPipelineTrainer
+  std::shared_ptr<std::vector<Scope*> mini_scopes_{nullptr};
+  std::shared_ptr<std::vector<
+      std::shared_ptr<std::vector<Scope*>>> >
+      micro_scopes_{nullptr};
+
   int num_microbatch_;
   int num_minibatch_;
   int trainers_;
@@ -305,14 +343,14 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     }
   }
 
-  void batch_finished(int minibatch_idx, int microbatch_idx) {
-    std::cout <<  "waiting for micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
-    std::unique_lock<std::mutex> lk(this->batch_finished_mutex[minibatch_idx]);
-    this->batch_finished_cond_var[minibatch_idx].wait(
-        lk, [&]() { return micro_cnt_[minibatch_idx][microbatch_idx] == 1; });
-    micro_cnt_[minibatch_idx][microbatch_idx] = 0;
-    std::cout <<  "micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
-  }
+  //void batch_finished(int minibatch_idx, int microbatch_idx) {
+  //  std::cout <<  "waiting for micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
+  //  std::unique_lock<std::mutex> lk(this->batch_finished_mutex[minibatch_idx]);
+  //  this->batch_finished_cond_var[minibatch_idx].wait(
+  //      lk, [&]() { return micro_cnt_[minibatch_idx][microbatch_idx] == 1; });
+  //  micro_cnt_[minibatch_idx][microbatch_idx] = 0;
+  //  std::cout <<  "micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
+  //}
 
   void Process(int minibatch_idx) {
     while (true) {
@@ -352,6 +390,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
              brpc::Controller* cntl) override {
     platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
     FLAGS_eager_delete_tensor_gb = -1;
+    
     // get microID from request
     // deserialize variable to micro scope
     // Push to heter worker's task_queue
@@ -392,26 +431,30 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
       }
 
       // get minibatch id & local micro id from global id
-      PADDLE_ENFORCE_LT(micro_id, num_microbatch_ * num_minibatch_,
-                        platform::errors::InvalidArgument(
-                            "micro_id should less than num_microbatch_ * num_minibatch_."));
+      //PADDLE_ENFORCE_LT(micro_id, num_microbatch_ * num_minibatch_,
+      //                  platform::errors::InvalidArgument(
+      //                      "micro_id should less than num_microbatch_ * num_minibatch_."));
+
+
 
       int minibatch_index = micro_id / num_microbatch_;
       int microbatch_index = micro_id % num_microbatch_;
 
-      if (message_name == "barrier_batch_finish") {
-        PADDLE_ENFORCE_EQ(is_first_stage_, true,
-                          platform::errors::InvalidArgument(
-                             "only trainer in first stage will call barrier_batch_finish")); 
-        batch_finished(minibatch_index, microbatch_index);
-      } else {
       auto& mini_scope = scope_->KidScope(minibatch_index);
       auto& micro_scope = (&mini_scope)->KidScope(microbatch_index);
+
+
+
+
+
       distributed::DeserializeFromMultiVarMsgAndIOBuf(
           *request, &request_io_buffer, *dev_ctx_, &micro_scope);
       // blocking queue handles multi thread
       task_queue_[minibatch_index]->Push(std::make_pair(message_name, micro_id));
-    }
+
+
+
+
     auto response_var_nums = request->recv_var_names_size();
     std::vector<std::string> response_var_names(response_var_nums),
         empty_var_names{};
