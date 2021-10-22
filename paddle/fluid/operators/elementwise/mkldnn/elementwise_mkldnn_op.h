@@ -48,7 +48,9 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
         {"abs", dnnl::algorithm::eltwise_abs},
         {"clip", dnnl::algorithm::eltwise_clip},
         {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh}};
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic}};
 
     const auto& activation_type =
         algo_map.find(ctx.Attr<std::string>("activation_type"));

@@ -27,7 +27,8 @@ using string::PrettyLogDetail;
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {"relu",  "tanh",      "leaky_relu",
                                         "swish", "hardswish", "sqrt",
-                                        "abs",   "clip",      "gelu"};
+                                        "abs",   "clip",      "gelu",
+                                        "relu6", "sigmoid"};
   std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
                                         "elementwise_mul"};
 
@@ -37,6 +38,8 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 
       if (act_type == "swish")
         attr_map.emplace("beta", "activation_alpha");
+      else if (act_type == "relu6")
+        attr_map.emplace("threshold", "activation_alpha");
       else if (act_type == "clip") {
         attr_map.emplace("min", "activation_alpha");
         attr_map.emplace("max", "activation_beta");
