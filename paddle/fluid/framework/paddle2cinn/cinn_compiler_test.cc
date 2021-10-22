@@ -35,11 +35,10 @@ namespace paddle2cinn {
 using ir::Graph;
 using ::cinn::common::Target;
 
-//  X --
-//      | --> mul --> MUL_OUT --
-//  Y --                        | --> elementwise_add --> ADD_OUT --> relu -->
-//  RELU_OUT
-//                          Z --
+//  X -
+//     | -> mul -> MUL_OUT -
+//  Y -                     | -> elementwise_add -> ADD_OUT -> relu -> RELU_OUT
+//                       Z -
 std::unique_ptr<Graph> CreateGraph() {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
@@ -97,7 +96,7 @@ std::unique_ptr<Graph> CreateGraph() {
   return std::make_unique<Graph>(program);
 }
 
-TEST(CinnCompilerTest, TodoTest) {
+TEST(CinnCompilerTest, Compile) {
   auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
   auto cinn_pass = ir::PassRegistry::Instance().Get("build_cinn_pass");
   auto viz_graph = [&viz_pass](const std::string& viz_path, Graph* graph) {
