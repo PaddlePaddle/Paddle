@@ -179,10 +179,10 @@ struct BinarySubFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct LogFunctor {
-  HOSTDEVICE inline LogFunctor() {}
+struct UnaryLogFunctor {
+  HOSTDEVICE inline UnaryLogFunctor() {}
 
-  HOSTDEVICE explicit inline LogFunctor(int n) {}
+  HOSTDEVICE explicit inline UnaryLogFunctor(int n) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(std::log(x));
@@ -304,8 +304,8 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
 
   // write result to register
   if (LogMode) {
-    kps::ElementwiseUnary<AccT, AccT, kBatchSize, 1, 1, LogFunctor<AccT>>(
-        &sum[0], &sum[0], LogFunctor<AccT>());
+    kps::ElementwiseUnary<AccT, AccT, kBatchSize, 1, 1, UnaryLogFunctor<AccT>>(
+        &sum[0], &sum[0], UnaryLogFunctor<AccT>());
   }
 
   AccT out[kBatchSize][kIterationsV][kVSize];
