@@ -244,7 +244,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_relu_mkldnn_fuse_pass",                 //
              "conv_leaky_relu_mkldnn_fuse_pass",           //
              "conv_relu6_mkldnn_fuse_pass",                //
-             "conv_swish_mkldnn_fuse_pass",                // 524
+             "conv_swish_mkldnn_fuse_pass",                //
              "conv_hard_swish_mkldnn_fuse_pass",           //
              "scale_matmul_fuse_pass",                     //
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
