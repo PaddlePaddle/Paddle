@@ -19,6 +19,7 @@ from paddle import _C_ops
 
 __all__ = []
 
+
 def _verify_dropout_rate(dropout_rate):
     if not isinstance(dropout_rate, (float, int)):
         raise TypeError("dropout_rate argument should be a number")
@@ -190,7 +191,7 @@ def fused_multi_head_attention(x,
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
-    to information from different representation subspaces. This API only 
+    to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
     if pre_layer_norm:
     	out = layer_norm(x);
@@ -207,41 +208,41 @@ def fused_multi_head_attention(x,
     out = softmax(out);
     out = dropout(out);
     out = out * v;
-    out = transpose(out, perm=[0, 2, 1, 3]);      
+    out = transpose(out, perm=[0, 2, 1, 3]);
     out = out_linear(out);
     out = layer_norm(x + dropout(linear_bias + out));
 
     Parameters:
-        x (Tensor): The input tensor of fused_multi_head_attention. The shape is 
+        x (Tensor): The input tensor of fused_multi_head_attention. The shape is
             `[batch\_size, sequence\_len, embed\_dim]`.
         qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
-        pre_layer_norm (bool, optional): whether it is pre_layer_norm or post_layer_norm architecture. 
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm or post_layer_norm architecture.
             Default False.
         pre_ln_scale (Tensor, optional): The weight tensor of pre layernorm. Default None.
         pre_ln_bias (Tensor, optional): The bias tensor of pre layernorm. Default None.
         ln_scale (Tensor, optional): The weight tensor of layernorm. Default None.
         ln_bias (Tensor, optional): The bias tensor of layernorm. Default None.
-        pre_ln_epsilon (float, optional): Small float value added to denominator of the pre layer_norm 
+        pre_ln_epsilon (float, optional): Small float value added to denominator of the pre layer_norm
             to avoid dividing by zero. Default is 1e-5.
-        qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`. 
+        qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
         attn_mask (Tensor, optional):
         dropout_rate (float, optional): The dropout probability used on attention
-            weights to drop some attention targets for the dropout after attention. 
+            weights to drop some attention targets for the dropout after attention.
             0 for no dropout. Default 0.
         attn_dropout_rate (float, optional): The dropout probability used on attention
-            weights to drop some attention targets for the dropout in attention. 
+            weights to drop some attention targets for the dropout in attention.
             0 for no dropout. Default 0.
-        ln_epsilon (float, optional): Small float value added to denominator of layer_norm 
+        ln_epsilon (float, optional): Small float value added to denominator of layer_norm
             to avoid dividing by zero. Default is 1e-5.
-         
+
     Examples:
 
         .. code-block:: python
-            
-            # required: gpu            
+
+            # required: gpu
             import paddle
             import paddle.nn.functional as F
 
@@ -267,8 +268,8 @@ def fused_multi_head_attention(x,
             print(output.shape)
     """
     if in_dygraph_mode():
-        # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out, 
-        # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out, 
+        # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
+        # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, attn_mask,
