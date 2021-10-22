@@ -114,6 +114,11 @@ class CustomTensorUtils {
       return platform::Place(
           platform::CUDAPlace(platform::GetCurrentDeviceId()));
 #endif
+    } else if (pc == PlaceType::kHIP) {
+#ifdef PADDLE_WITH_HIP
+      return platform::Place(
+          platform::CUDAPlace(platform::GetCurrentDeviceId()));
+#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported place type code(%d) when "
@@ -127,8 +132,10 @@ class CustomTensorUtils {
     if (platform::is_cpu_place(pc)) {
       return PlaceType::kCPU;
     } else if (platform::is_gpu_place(pc)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
       return PlaceType::kGPU;
+#elif defined(PADDLE_WITH_HIP)
+      return PlaceType::kHIP;
 #endif
     } else {
       PADDLE_THROW(
