@@ -241,6 +241,7 @@ tensor_method_func  = [ #noqa
            'matrix_power',
            'qr',
            'eigvals',
+           'eigvalsh',
            'abs',
            'acos',
            'all',
