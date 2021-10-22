@@ -42,7 +42,6 @@ MapMatmul2MulPass::MapMatmul2MulPass() {
       .AddAttr("alpha")
       .IsNumGE(0.99f)
       .IsNumLE(1.01f)
-      .IsOptional()
       .End()
       .AddAttr("transpose_X")
       .IsBoolEQ(false)
@@ -79,8 +78,13 @@ MapMatmulV2ToMatmulPass::MapMatmulV2ToMatmulPass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
       .End();
-
   AddOpCompat(OpCompat("matmul"))
       .AddInput("X")
       .IsTensor()
@@ -88,8 +92,17 @@ MapMatmulV2ToMatmulPass::MapMatmulV2ToMatmulPass() {
       .AddInput("Y")
       .IsTensor()
       .End()
+      .AddAttr("alpha")
+      .IsNumEQ(1)
+      .End()
       .AddOutput("Out")
       .IsTensor()
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
       .End();
 }
 
@@ -228,10 +241,7 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = 1;
-    if (matmul_op->Op()->HasAttr("alpha")) {
-      alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
-    }
+    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     flag = flag && !transpose_X && !transpose_Y && std::abs(alpha - 1.0) < 1e-5;
 
     std::vector<int64_t> x_shape = matmul_in_x->Var()->GetShape();
@@ -309,6 +319,7 @@ void MapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     desc.SetOutput("Out", {matmul_v2_out->Name()});
     desc.SetAttr("transpose_X", matmul_v2_op->Op()->GetAttr("trans_x"));
     desc.SetAttr("transpose_Y", matmul_v2_op->Op()->GetAttr("trans_y"));
+    desc.SetAttr("alpha", 1.0);
     if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
       desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));

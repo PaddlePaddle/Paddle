@@ -223,7 +223,6 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .AddAttr("alpha")
       .IsNumGE(0.99f)
       .IsNumLE(1.01f)
-      .IsOptional()
       .End()
       .AddAttr("transpose_X")
       .IsBoolEQ(false)
