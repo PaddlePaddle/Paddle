@@ -12,6 +12,7 @@ register_unity_group(cc
     fetch_op.cc
     fetch_v2_op.cc
     get_places_op.cc
+    if_op.cc
     logical_op.cc
     bitwise_op.cc
     tensor_array_read_write_op.cc
