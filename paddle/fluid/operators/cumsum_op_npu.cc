@@ -29,7 +29,7 @@ static void CumsumImp(const Tensor& input, Tensor* output,
           .stream();
   if (input.type() == framework::proto::VarType::INT64) {
     Tensor tmp_input;
-    tmp_input.mutable_data<int32_t>(input.dims(), ctx.GetPlace());
+    tmp_input.mutable_data<float>(input.dims(), ctx.GetPlace());
     auto dst_acl_dtype = ConvertToNpuDtype(tmp_input.type());
     const auto& cast_runner_1 =
         NpuOpRunner("Cast", {input}, {tmp_input},
@@ -37,7 +37,7 @@ static void CumsumImp(const Tensor& input, Tensor* output,
     cast_runner_1.Run(stream);
 
     Tensor tmp_output;
-    tmp_output.mutable_data<int32_t>(output->dims(), ctx.GetPlace());
+    tmp_output.mutable_data<float>(output->dims(), ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("CumsumD", {tmp_input}, {tmp_output}, attr_input);
     runner.Run(stream);
