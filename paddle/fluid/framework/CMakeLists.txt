@@ -51,6 +51,8 @@ proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
   data_feed_proto)
 
+cc_library(string_array SRCS string_array.cc DEPS utf8proc)
+
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 if(WITH_GPU)
@@ -351,7 +353,7 @@ target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_h
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
         graph build_strategy bind_threaded_ssa_graph_executor collective_helper
-        fast_threaded_ssa_graph_executor variable_helper)
+        fast_threaded_ssa_graph_executor variable_helper cinn_runner)
 
 cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
 if(WITH_PSCORE)

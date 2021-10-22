@@ -47,8 +47,8 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
-      framework::TensorCopy(*local_count, platform::CPUPlace(),
-                            &cpu_local_count);
+      framework::TensorCopySync(*local_count, platform::CPUPlace(),
+                                &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
@@ -57,8 +57,8 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
-      framework::TensorCopy(*global_count, platform::CPUPlace(),
-                            &cpu_global_count);
+      framework::TensorCopySync(*global_count, platform::CPUPlace(),
+                                &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }

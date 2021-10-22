@@ -426,6 +426,51 @@ class ElementwiseOpDoubleGradWithoutDXDY
   }
 };
 
+class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using Tensor = framework::Tensor;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    if (ctx->HasOutput("D_DDX")) {
+      ctx->ShareDim("DDX", "D_DDX");
+      ctx->ShareLoD("DDX", "D_DDX");
+    }
+    if (ctx->HasOutput("D_DDY")) {
+      ctx->ShareDim("DDY", "D_DDY");
+      ctx->ShareLoD("DDY", "D_DDY");
+    }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::proto::VarType::Type input_data_type;
+    input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "D_DDOut");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
+  }
+};
+
 template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
@@ -447,9 +492,14 @@ DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplaceInferer,
 DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplaceInferer,
                            {"DDX", "DDOut"});
 
+DECLARE_INPLACE_OP_INFERER(ElementwiseTripleGradOpInplaceInferer,
+                           {"D_DDOut", "D_DDX"});
+
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInferer, "X", "Y");
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInferer, "Y",
                                     "DOut");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseTripleGradNoBufVarsInferer,
+                                    "DDX", "DDY");
 
 }  // namespace operators
 }  // namespace paddle

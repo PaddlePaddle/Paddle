@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/paddle2cinn/cinn_runner.h"
 
 #include <map>
+#include <memory>
+#include <mutex>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
@@ -25,6 +27,19 @@ namespace framework {
 namespace paddle2cinn {
 
 using ir::Graph;
+
+std::once_flag CinnRunner::get_instance_once_flag_;
+std::shared_ptr<CinnRunner> CinnRunner::instance_;
+
+std::shared_ptr<CinnRunner> CinnRunner::GetInstance() {
+  std::call_once(get_instance_once_flag_,
+                 [&]() { instance_.reset(new CinnRunner()); });
+  return instance_;
+}
+
+void CinnRunner::ReplaceWithCinn(Graph* graph) {
+  // TODO(zhhsplendid): call CINN Api when it is ready
+}
 
 std::map<std::string, FetchType*> CinnRunner::Run(
     const Graph& graph, Scope* scope,
