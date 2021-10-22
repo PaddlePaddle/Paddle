@@ -51,23 +51,8 @@ class DistributedContext:
         self._op_distributed_attr_map_for_program = {}
         self._tensor_distributed_attr_map_for_graph = {}
         self._op_distributed_attr_map_for_graph = {}
-        # The following is a hard code and will be removed in the future
-        self._data_parallel_axis = None
-        self._model_parallel_axis = None
+        self._get_dist_op_helper = DistOpHelper()
         self._process_mesh = _g_process_mesh_map.get(0, None)
-        if self._process_mesh is not None:
-            if self._process_mesh.ndim == 1:
-                self._data_parallel_axis = 0
-                self._model_parallel_axis = 0
-            elif self._process_mesh.ndim == 3:
-                self._data_parallel_axis = 1
-                self._model_parallel_axis = 2
-            else:
-                self._data_parallel_axis = 0
-                self._model_parallel_axis = 1
-        else:
-            self._data_parallel_axis = -1
-            self._model_parallel_axis = -1
 
     def is_initialized_for_program(self):
         return self._is_initialized_for_program
@@ -120,16 +105,9 @@ class DistributedContext:
 
     def set_process_mesh(self, process_mesh):
         self._process_mesh = process_mesh
-        if self._process_mesh is not None:
-            if self._process_mesh.ndim == 1:
-                self._data_parallel_axis = 0
-                self._model_parallel_axis = 0
-            else:
-                self._data_parallel_axis = 0
-                self._model_parallel_axis = 1
-        else:
-            self._data_parallel_axis = -1
-            self._model_parallel_axis = -1
+
+    def get_dist_op_helper(self):
+        return self._get_dist_op_helper
 
     def initialize_distributed_attr_for_program(self, program):
         if self._is_initialized_for_program:
@@ -425,10 +403,93 @@ class DistributedContext:
                         and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
                         dims_mapping[i] = -1
 
-    def _get_data_parallel_info(self):
-        # This function is a hard code, and will be obsoleted in the future
-        return self._data_parallel_axis, self._process_mesh
 
-    def _get_model_parallel_info(self):
-        # This function is a hard code, and will be obsoleted in the future
-        return self._model_parallel_axis, self._process_mesh
+class DistOpHelper:
+    """
+    DistOpHelper is used to create a dist op desc in Program.
+    Every time to create a new dist op, the context should be updated for it accordingly.
+    """
+
+    def __init__(self):
+        self._dst_main_program = None
+        self._dst_startup_program = None
+        self._varname_mapping = None
+        self._rank_id = None
+        self._cur_src_op = None
+        self._cur_dist_attr = None
+        self.gradopidx2opidx = {}
+        self.already_init_sync_vars = set()
+
+    def set_dst_main_program(self, prog):
+        self._dst_main_program = prog
+
+    def get_dst_main_program(self):
+        return self._dst_main_program
+
+    def set_dst_startup_program(self, prog):
+        self._dst_startup_program = prog
+
+    def get_dst_startup_program(self):
+        return self._dst_startup_program
+
+    def set_varname_mapping(self, mapping):
+        self._varname_mapping = mapping
+
+    def get_varname_mapping(self):
+        return self._varname_mapping
+
+    def set_rank_id(self, rank_id):
+        self._rank_id = rank_id
+
+    def get_rank_id(self):
+        return self._rank_id
+
+    def set_cur_src_op(self, cur_src_op):
+        self._cur_src_op = cur_src_op
+
+    def get_cur_src_op(self):
+        return self._cur_src_op
+
+    def prepare_forward_context(self, src_op):
+
+        self.set_cur_src_op(src_op)
+
+        # build input varname mapping
+        kinputs = {}
+        for input_name in src_op.desc.input_names():
+            varnames = []
+            for varname in src_op.desc.input(input_name):
+                varnames.append(self._varname_mapping[varname])
+            kinputs[input_name] = varnames
+
+        # build output varname mapping
+        koutputs = {}
+        for output_name in src_op.desc.output_names():
+            varnames = []
+            for varname in src_op.desc.output(output_name):
+                varnames.append(self._varname_mapping[varname])
+            koutputs[output_name] = varnames
+
+        return kinputs, koutputs
+
+    def prepare_backward_context(self, backward_op):
+
+        self.set_cur_src_op(backward_op)
+
+        # build input varname mapping
+        kinputs = {}
+        for input_name in backward_op.desc.input_names():
+            varnames = []
+            for varname in backward_op.desc.input(input_name):
+                varnames.append(varname)
+            kinputs[input_name] = varnames
+
+        # build output varname mapping
+        koutputs = {}
+        for output_name in backward_op.desc.output_names():
+            varnames = []
+            for varname in backward_op.desc.output(output_name):
+                varnames.append(varname)
+            koutputs[output_name] = varnames
+
+        return kinputs, koutputs

@@ -92,9 +92,9 @@ def check_tensor_split(prog1, varnames1, prog2, varnames2, axis, nsplit):
 
 
 def initialization_check(mode, dist_context, dist_startup_prog,
-                         serial_startup_prog, var_need_broadcast):
+                         serial_startup_prog, var_need_broadcast, process_mesh,
+                         mp_parallel_axis, dp_parallel_axis):
     if 'mp' in mode:
-        mp_parallel_axis, process_mesh = dist_context._get_model_parallel_info()
         group_ranks = _get_comm_group(process_mesh.process_group,
                                       process_mesh.topology, mp_parallel_axis,
                                       3)
@@ -110,7 +110,6 @@ def initialization_check(mode, dist_context, dist_startup_prog,
             return False
 
     if 'dp' in mode:
-        dp_parallel_axis, process_mesh = dist_context._get_data_parallel_info()
         group_ranks = _get_comm_group(process_mesh.process_group,
                                       process_mesh.topology, dp_parallel_axis,
                                       3)
@@ -359,9 +358,15 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         # parameter initialization 
         var_need_broadcast = []
         self.assertTrue(
-            initialization_check(_global_parallel_strategy, dist_context,
-                                 dist_startup_prog, serial_startup_prog,
-                                 var_need_broadcast))
+            initialization_check(
+                _global_parallel_strategy,
+                dist_context,
+                dist_startup_prog,
+                serial_startup_prog,
+                var_need_broadcast,
+                _global_process_mesh,
+                mp_parallel_axis=None,
+                dp_parallel_axis=0))
 
     def test_mlp_mp(self):
         global _global_parallel_strategy
@@ -406,9 +411,15 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         var_need_broadcast = sorted(
             ['layer_norm_0.b_0', 'layer_norm_0.w_0', 'linear_1.b_0'])
         self.assertTrue(
-            initialization_check(_global_parallel_strategy, dist_context,
-                                 dist_startup_prog, serial_startup_prog,
-                                 var_need_broadcast))
+            initialization_check(
+                _global_parallel_strategy,
+                dist_context,
+                dist_startup_prog,
+                serial_startup_prog,
+                var_need_broadcast,
+                _global_process_mesh,
+                mp_parallel_axis=0,
+                dp_parallel_axis=None))
 
         # check var and op all have dist_attr in dist_main_program
         self.assertTrue(
@@ -464,9 +475,15 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         var_need_broadcast = sorted(
             ['layer_norm_0.b_0', 'layer_norm_0.w_0', 'linear_1.b_0'])
         self.assertTrue(
-            initialization_check(_global_parallel_strategy, dist_context,
-                                 dist_startup_prog, serial_startup_prog,
-                                 var_need_broadcast))
+            initialization_check(
+                _global_parallel_strategy,
+                dist_context,
+                dist_startup_prog,
+                serial_startup_prog,
+                var_need_broadcast,
+                _global_process_mesh,
+                mp_parallel_axis=1,
+                dp_parallel_axis=0))
 
         # check var and op all have dist_attr in dist_main_program
         self.assertTrue(
@@ -635,9 +652,15 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         # parameter initialization 
         var_need_broadcast = []
         self.assertTrue(
-            initialization_check(_global_parallel_strategy, dist_context,
-                                 dist_startup_prog, serial_startup_prog,
-                                 var_need_broadcast))
+            initialization_check(
+                _global_parallel_strategy,
+                dist_context,
+                dist_startup_prog,
+                serial_startup_prog,
+                var_need_broadcast,
+                _global_process_mesh,
+                mp_parallel_axis=None,
+                dp_parallel_axis=0))
 
     def test_attn_mp(self):
         global _global_parallel_strategy
@@ -686,9 +709,15 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         # parameter initialization 
         var_need_broadcast = ['linear_3.b_0']
         self.assertTrue(
-            initialization_check(_global_parallel_strategy, dist_context,
-                                 dist_startup_prog, serial_startup_prog,
-                                 var_need_broadcast))
+            initialization_check(
+                _global_parallel_strategy,
+                dist_context,
+                dist_startup_prog,
+                serial_startup_prog,
+                var_need_broadcast,
+                _global_process_mesh,
+                mp_parallel_axis=0,
+                dp_parallel_axis=None))
 
         # check var and op all have dist_attr in dist_main_program
         self.assertTrue(
@@ -748,9 +777,15 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         # parameter initialization 
         var_need_broadcast = ['linear_3.b_0']
         self.assertTrue(
-            initialization_check(_global_parallel_strategy, dist_context,
-                                 dist_startup_prog, serial_startup_prog,
-                                 var_need_broadcast))
+            initialization_check(
+                _global_parallel_strategy,
+                dist_context,
+                dist_startup_prog,
+                serial_startup_prog,
+                var_need_broadcast,
+                _global_process_mesh,
+                mp_parallel_axis=1,
+                dp_parallel_axis=0))
 
         # check var and op all have dist_attr in dist_main_program
         self.assertTrue(
@@ -1043,9 +1078,15 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'layer_norm_0.w_0', 'linear_5.b_0'
         ])
         self.assertTrue(
-            initialization_check(_global_parallel_strategy, dist_context,
-                                 dist_startup_prog, serial_startup_prog,
-                                 var_need_broadcast))
+            initialization_check(
+                _global_parallel_strategy,
+                dist_context,
+                dist_startup_prog,
+                serial_startup_prog,
+                var_need_broadcast,
+                _global_process_mesh,
+                mp_parallel_axis=1,
+                dp_parallel_axis=0))
 
         # check var and op all have dist_attr in dist_main_program
         self.assertTrue(
@@ -1117,7 +1158,16 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'fill_constant', 'gaussian_random', 'fill_constant',
             'gaussian_random', 'fill_constant', 'gaussian_random',
             'fill_constant', 'gaussian_random', 'fill_constant',
-            'gaussian_random', 'fill_constant', 'fill_constant', 'fill_constant'
+            'gaussian_random', 'fill_constant', 'fill_constant',
+            'fill_constant', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast'
         ]
         self.assertTrue(dist_ops == ref_ops)
 

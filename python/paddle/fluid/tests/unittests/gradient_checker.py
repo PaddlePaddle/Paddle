@@ -486,12 +486,18 @@ def triple_grad_check(x,
             var_to_np_array_in_scope(scope, place, v.name)
             for v in x_grads_grads
         ]
-    # append second order grads
-    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
 
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init
+
+    # append second order grads
+    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
+
+    # filter None in target_grads_grads for Dy/Dx may be None in kernel
+    filted = [(i, dyi) for i, dyi in enumerate(target_grads_grads)
+              if dyi is not None]
+    filted_idx, filted_target_grads_grads = zip(*filted)
 
     x += x_grads_grads
     x_init += x_grads_grads_init
@@ -499,7 +505,7 @@ def triple_grad_check(x,
     # x <=> [x, dout, ddx]
     grad_check(
         x=x,
-        y=target_grads_grads,
+        y=filted_target_grads_grads,
         x_init=x_init,
         place=place,
         program=program,
