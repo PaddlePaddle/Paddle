@@ -79,8 +79,7 @@ class TestSplitProgram(unittest.TestCase):
             values.append(np.array(scope.find_var(var_name).get_tensor()))
         return values
 
-    def check_split_program(self, place, use_split=True, seed=100,
-                            batch_num=10):
+    def check_split_program(self, place, use_split=True, seed=100, batch_num=5):
         batch_size = 2
 
         np.random.seed(seed)
