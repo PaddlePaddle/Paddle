@@ -120,23 +120,6 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
-  bool HasGradNode() const { return grad_node_ != nullptr; }
-
-  bool IsLeaf() const {
-    if (StopGradient()) {
-      return true;
-    }
-
-    if (grad_.initialized()) {
-      auto meta = egr::EagerUtils::unsafe_autograd_meta(grad_);
-      if (meta->HasGradNode()) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
   paddle::experimental::Tensor grad_;
