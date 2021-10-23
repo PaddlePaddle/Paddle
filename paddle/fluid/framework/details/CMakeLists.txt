@@ -143,7 +143,7 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
 
 if (WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)
-endif (WITH_CINN)
+endif()
 
 if(NOT APPLE AND NOT WIN32 AND (WITH_GPU OR WITH_ROCM))
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
