@@ -61,6 +61,14 @@ class CtrCommonAccessor : public ValueAccessor {
     float& embed_g2sum(float* val) { return val[embed_g2sum_index()]; }
     float& embedx_w(float* val) { return val[embedx_w_index()]; }
     float& embedx_g2sum(float* val) { return val[embedx_g2sum_index()]; }
+    float show_const(const float* val) {
+      float s = val[show_index()];
+      return s;
+    }
+    float click_const(const float* val) {
+      float c = val[click_index()];
+      return c;
+    }
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
@@ -94,6 +102,14 @@ class CtrCommonAccessor : public ValueAccessor {
     }
     static float& click(float* val) {
       return val[CtrCommonPushValue::click_index()];
+    }
+    static float show_const(const float* val) {
+      float s = val[show_index()];
+      return s;
+    }
+    static float click_const(const float* val) {
+      float c = val[click_index()];
+      return c;
     }
     static float& embed_g(float* val) {
       return val[CtrCommonPushValue::embed_g_index()];
@@ -188,18 +204,16 @@ class CtrCommonAccessor : public ValueAccessor {
   }
 
  private:
-  //    float show_click_score(float show, float click);
+  // float show_click_score(float show, float click);
 
- private:
-  // std::shared_ptr<SparseValueSGDRule> _embed_sgd_rule;
-  // std::shared_ptr<SparseValueSGDRule> _embedx_sgd_rule;
-  //    SparseValueSGDRule* _embed_sgd_rule;
-  //    SparseValueSGDRule* _embedx_sgd_rule;
-  //    CtrCommonFeatureValue common_feature_value;
+  // SparseValueSGDRule* _embed_sgd_rule;
+  // SparseValueSGDRule* _embedx_sgd_rule;
+  // CtrCommonFeatureValue common_feature_value;
   float _show_click_decay_rate;
   int32_t _ssd_unseenday_threshold;
 
- public:
+ public:  // TODO(zhaocaibei123): it should be private, but we make it public
+          // for unit test
   CtrCommonFeatureValue common_feature_value;
   float show_click_score(float show, float click);
   SparseValueSGDRule* _embed_sgd_rule;

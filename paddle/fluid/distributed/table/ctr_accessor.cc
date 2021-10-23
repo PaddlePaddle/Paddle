@@ -187,11 +187,8 @@ int32_t CtrCommonAccessor::create(float** values, size_t num) {
 bool CtrCommonAccessor::need_extend_mf(float* value) {
   float show = value[common_feature_value.show_index()];
   float click = value[common_feature_value.click_index()];
-  // float score = (show - click) *
-  // _config.ctr_accessor_param().nonclk_coeff()
   float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
                 click * _config.ctr_accessor_param().click_coeff();
-  //+ click * _config.ctr_accessor_param().click_coeff();
   return score >= _config.embedx_threshold();
 }
 
@@ -205,11 +202,8 @@ int32_t CtrCommonAccessor::select(float** select_values, const float** values,
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
-    float* value = const_cast<float*>(values[value_item]);
-    // select_value[CtrCommonPullValue::show_index()] =
-    // value[common_feature_value.show_index()];
-    // select_value[CtrCommonPullValue::click_index()] =
-    // value[common_feature_value.click_index()];
+    // float* value = const_cast<float*>(values[value_item]);
+    const float* value = values[value_item];
     select_value[CtrCommonPullValue::embed_w_index()] =
         value[common_feature_value.embed_w_index()];
     memcpy(select_value + CtrCommonPullValue::embedx_w_index(),
@@ -257,9 +251,6 @@ int32_t CtrCommonAccessor::update(float** update_values,
     update_value[common_feature_value.delta_score_index()] +=
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
-    // (push_show - push_click) *
-    // _config.ctr_accessor_param().nonclk_coeff() +
-    // push_click * _config.ctr_accessor_param().click_coeff();
     update_value[common_feature_value.unseen_days_index()] = 0;
     _embed_sgd_rule->update_value(
         update_value + common_feature_value.embed_w_index(),
@@ -279,8 +270,12 @@ bool CtrCommonAccessor::create_value(int stage, const float* value) {
   if (stage == 0) {
     return true;
   } else if (stage == 1) {
-    auto show = CtrCommonPushValue::show(const_cast<float*>(value));
-    auto click = CtrCommonPushValue::click(const_cast<float*>(value));
+    // auto show = CtrCommonPushValue::show(const_cast<float*>(value));
+    // auto click = CtrCommonPushValue::click(const_cast<float*>(value));
+    // TODO(zhaocaibei123): less effective than const_cast because copy
+    // operation
+    auto show = CtrCommonPushValue::show_const(value);
+    auto click = CtrCommonPushValue::click_const(value);
     auto score = show_click_score(show, click);
     if (score <= 0) {
       return false;
@@ -296,8 +291,6 @@ bool CtrCommonAccessor::create_value(int stage, const float* value) {
 }
 
 float CtrCommonAccessor::show_click_score(float show, float click) {
-  // auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
-  // auto click_coeff = _config.ctr_accessor_param().click_coeff();
   auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
   auto click_coeff = _config.ctr_accessor_param().click_coeff();
   return (show - click) * nonclk_coeff + click * click_coeff;
@@ -313,8 +306,11 @@ std::string CtrCommonAccessor::parse_to_string(const float* v, int param) {
        i < common_feature_value.embedx_w_index(); i++) {
     os << " " << v[i];
   }
-  auto show = common_feature_value.show(const_cast<float*>(v));
-  auto click = common_feature_value.click(const_cast<float*>(v));
+  // auto show = common_feature_value.show(const_cast<float*>(v));
+  // auto click = common_feature_value.click(const_cast<float*>(v));
+  // TODO(zhaocaibei123): less effective than const_cast because copy operation
+  auto show = common_feature_value.show_const(v);
+  auto click = common_feature_value.click_const(v);
   auto score = show_click_score(show, click);
   if (score >= _config.embedx_threshold()) {
     for (auto i = common_feature_value.embedx_w_index();
