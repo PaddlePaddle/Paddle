@@ -116,7 +116,6 @@ class DenseBlock(nn.Layer):
                  name=None):
         super(DenseBlock, self).__init__()
         self.dropout = dropout
-
         self.dense_layer_func = []
 
         pre_channel = num_channels
