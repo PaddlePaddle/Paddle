@@ -363,6 +363,7 @@ endif (WITH_LITE)
 if (WITH_CINN)
     message(STATUS "Compile Paddle with CINN.")
     include(external/cinn)
+    add_definitions(-DPADDLE_WITH_CINN)
 endif (WITH_CINN)
 
 if (WITH_CRYPTO)
