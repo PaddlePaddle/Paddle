@@ -174,6 +174,6 @@ TEST(tensorrt_tester_LeViT, multi_thread4_trt_fp32_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

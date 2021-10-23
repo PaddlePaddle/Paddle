@@ -54,7 +54,7 @@ class ClipGradFunctor {
  public:
   explicit ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
   HOSTDEVICE T operator()(const T& x, const T& y) const {
-    return (y > min_ && y < max_) ? x : 0;
+    return (y > min_ && y < max_) ? x : static_cast<T>(0);
   }
 
  private:
@@ -79,7 +79,7 @@ class ClipKernel : public framework::OpKernel<T> {
     }
     max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = static_cast<T>(context.Attr<float>("min"));
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
@@ -156,7 +156,7 @@ class ClipGradKernel : public framework::OpKernel<T> {
     }
     max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = static_cast<T>(context.Attr<float>("min"));
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
