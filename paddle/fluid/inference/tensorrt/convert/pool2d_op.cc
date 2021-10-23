@@ -140,9 +140,9 @@ class Pool2dOpConverter : public OpConverter {
       if (!adaptive && !global_pooling && !ceil_mode) {
         // input_shape.d < 0 means we can't get shape info here.
         // we may suffer from issue if shape is not met finally.
-        if (((g_post_pad.w() > 0 && input_shape.d[input_dims - 2] > 0) ||
-             (g_post_pad.h() > 0 && input_shape.d[input_dims - 1] > 0)) &&
-            (padding_algorithm != "SAME")) {
+        if ((padding_algorithm != "SAME") &&
+            ((g_post_pad.w() > 0 && input_shape.d[input_dims - 2] > 0) ||
+             (g_post_pad.h() > 0 && input_shape.d[input_dims - 1] > 0))) {
           auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
                                                  g_pre_pad, g_post_pad);
           PADDLE_ENFORCE_NOT_NULL(
