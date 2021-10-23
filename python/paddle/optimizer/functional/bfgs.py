@@ -15,7 +15,31 @@
 import contextlib
 import paddle
 from ...autograd import vjp
-from .linesearch import hager_zhang as linesearch
+from .linesearch import hz_linesearch as linesearch
+
+def as_float_or_double_tensor(input):
+    r"""Generates a float or double typed tensor from `input`. The data
+    type of `input` is either float or double.
+
+    Args:
+        input(Scalar | List | Tensor): a scalar or a list of floats, or 
+        a tensor with dtype float or double.
+
+    Returns:
+        A tensor with float or double dtype. 
+    """
+    assert isinstance(input, (float, list, paddle.Tensor)), (
+        f'Input `{input}` should be float, list or paddle.Tensor but found 
+        f'{type(input)}.'
+    )
+    try:
+        output = paddle.to_tensor(input)
+        if output.dtype not in paddle.float, paddle.float64:
+            raise TypeError
+    except TypeError:
+        raise TypeError(f'The data type of {input} is {type(input)}, which is not supported.')
+    
+    return output
 
 def verify_symmetric_positive_definite_matrix(H):
     r"""
@@ -47,6 +71,15 @@ def verify_symmetric_positive_definite_matrix(H):
         f"(Batched) matrix {H} is not symmetric."
     )
 
+def pnorm(x, p=2):
+    return paddle.norm(x, p=p, axis=-1)
+
+def infnorm(x):
+    return paddle.norm(x, p='inf', axis=-1)
+
+def matnorm(x):
+    return paddle.norm(x, 'fro')
+
 class BFGS_State(object):
     r"""
     BFFS_State is used to represent intermediate and final result of
@@ -57,34 +90,32 @@ class BFGS_State(object):
         converged (Tensor): a boolean typed tensor of shape [...].
             For each element, True indicates the minimum is found
             up to the gradient tolerance. False if otherwise.
-        linesearch_status (Tensor): a boolean typed tensor of shape
-            [...]. For each element, True indicates line search
-            succeeds to find a step size. False if fails to find
-            a step size when the maximum number of trials is reached.
+        ls (Namedtuple): a summary of the line search result
+            for the next iterate.
+        nf (Tensor): scalar valued tensor holding the number of
+            function calls made.
+        ng (Tensor): scalar valued tensor holding the number of
+            gradient calls made.
         xk (Tensor): the iterate point.
         fk (Tensor): the ``func``'s output.
         gk (Tensor): the ``func``'s gradients. 
         Hk (Tensor): the approximated inverse hessian of ``func``.
     """
-    def __init__(self, k, xk, fk, gk, Hk, converged=None):
-        self.k = k
+    def __init__(self, xk, fk, gk, Hk, k=0, nf=1, ng=1):
         self.xk = xk
         self.fk = fk
         self.gk = gk
-        self.Hk = Hk   
+        self.Hk = Hk
+        self.k = k
+        self.nf = nf
+        self.ng = ng
         self.ls_status = paddle.expand(paddle.to_tensor([True]),
                                        shape=fk.shape)
-        if converged is not None:
-            self.converged = converged
-        else:
-            converged = paddle.to_tensor([False])
-            self.converged = converged.broadcast_to(fk.shape)
+        converged = paddle.to_tensor([False])
+        self.converged = converged.broadcast_to(fk.shape)
 
 
-def iterates(func, x0, H0=None, 
-             grad_tolerance=1e-8,
-             max_iters=50,
-             max_ls_iters=50):
+def iterates(func, x0, H0=None, gtol=1e-8, iters=50, ls_iters=50):
     r"""
     Returns the iterates on the minimization path of a differentiable
     function by applying the BFGS quasi-Newton method. 
@@ -103,72 +134,38 @@ def iterates(func, x0, H0=None,
             batching form has the shape [..., n, n], where the
             batching dimensions have the same shape with ``x0``.
             The default value is None.
-        grad_tolerance (Tensor): the termination condition. If the
-            inf-norm of the gradients is smaller than ``grad_tolerance``
-            then end the minimization path. The default value is 1e-8.
-        max_iters (Scalar): the maximum number minimization iterations.
+        gtol (Scalar): terminates if the gradient norm is smaller than
+            this `gtol`. Currently gradient norm uses inf norm.
+            The default value is 1e-8.
+        iters (Scalar): the maximum number minimization iterations.
             The default value is 50.
-        max_ls_iters (Scalar): the maximum number of line search
-            iterations. The default value is 50.
+        ls_iters (Scalar): the maximum number of line search iterations.
+            The default value is 50.
     
     Returns:
         A generator which returns a BFGS_State per iteration.
-        BFGS_State (Dict):
-            k: the iteration number.
-            converged (Tensor): a boolean typed tensor of shape [...].
-                For each element, True indicates the minimum is found
-                up to the gradient tolerance. False if otherwise.
-            linesearch_status (Tensor): a boolean typed tensor of shape
-                [...]. For each element, True indicates line search
-                succeeds to find a step size. False if fails to find
-                a step size when the maximum number of trials is reached.
-            xk (Tensor): the iterate point.
-            fk (Tensor): the ``func``'s output.
-            gk (Tensor): the ``func``'s gradients. 
-            Hk (Tensor): the approximated inverse hessian of ``func``.
     """
-    def cond(iterate, max_iters=max_iters):
-        return (iterate.k < max_iters
-                & paddle.logical_not(iterate.converged)
-                & iterate.ls_status)
-
-    assert isinstance(x0, paddle.Tensor), (
-        f"{x0} is expected to be paddle.Tensor but found {type(x0).} "
-    )
-
-    # Starting point
+    # Evaluates the starting points
+    x0 = as_float_or_double_tensor(x0)
     f0, g0 = vjp(func, x0)
     
     input_shape = x0.shape
     hessian_shape = input_shape + input_shape[-1:]
     
+    # The initial approximation of the inverse Hessian.
     if H0 is None:
         H0 = paddle.expand(paddle.eye(input_shape[-1]), hessian_shape)
     else:
         verify_symmetric_positive_definite_matrix(H0)        
 
-    # The minimizing loop starts.
-    iterate = BFGS_State(0, x0, f0, g0, H0)
+    # Puts the starting points in the initial state and kicks off minimization 
+    # process.
+    state = BFGS_State(x0, f0, g0, H0)
+    gnorm = infnorm(g0)
 
-    while cond(iterate):
-
-        k, xk, fk = iterate.k, iterate.xk, iterate.fk
-        gk, Hk = iterate.gk, iterate.Hk
-
-        # Calculate the line search direction pk.
-        pk = - paddle.dot(Hk, gk)
-        
-        # Perform line search and get alpha_k
-        def f(ak):
-            r'''
-            The induced single variable function of `func` on a particular direction pk.
-            Args:
-                ak (Tensor): a scalar tensor, or a tensor of shape [...] in batching mode,
-                giving the step sizes alpha_k.
-            '''
-            return func(xk + ak*pk)
-
-        iterate = linesearch(iterate, f, max_iters=max_ls_iters)
+    while paddle.any(gnorm > gtol) and k < iters:
+        # Performs line search
+        ls, alpha_k = linesearch(state, func, gtol=gtol, max_iters=ls_iters)
         
 
         
