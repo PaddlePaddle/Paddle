@@ -138,8 +138,11 @@ class Pool2dOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (!adaptive && !global_pooling && !ceil_mode) {
-        if ((g_post_pad.w() > 0 || g_post_pad.h() > 0) &&
-            (padding_algorithm != "SAME")) {
+        // input_shape.d < 0 means we can't get shape info here.
+        // we may suffer from issue if shape is not met finally.
+        if ((padding_algorithm != "SAME") &&
+            ((g_post_pad.w() > 0 && input_shape.d[input_dims - 2] > 0) ||
+             (g_post_pad.h() > 0 && input_shape.d[input_dims - 1] > 0))) {
           auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
                                                  g_pre_pad, g_post_pad);
           PADDLE_ENFORCE_NOT_NULL(
@@ -148,6 +151,7 @@ class Pool2dOpConverter : public OpConverter {
                              "created. The pointer to pad layer is `NULL`."));
           input1 = pad_layer->getOutput(0);
         }
+
         auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
                                                 nv_pool_type, nv_ksize);
         pool_layer->setStride(nv_strides);
