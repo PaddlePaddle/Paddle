@@ -49,19 +49,19 @@ class CinnCompiler {
   // Singleton
   static CinnCompiler* GetInstance();
 
-  CinnCompiledObject* Compile(
+  const CinnCompiledObject& Compile(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
       const ::cinn::common::Target& target);
 
-  CinnCompiledObject* Compile(
+  const CinnCompiledObject& Compile(
       const std::string& compilation_key,
       const std::map<std::string, const LoDTensor*>& input_tensors,
       const ::cinn::common::Target& target);
 
   std::string AddGraph(std::unique_ptr<ir::Graph> graph);
 
-  ir::Graph* FindGraph(const std::string& key) const;
+  const ir::Graph& FindGraph(const std::string& key) const;
 
   std::int64_t real_compiled_num() const { return real_compiled_num_; }
 

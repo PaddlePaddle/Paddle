@@ -96,23 +96,25 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   ProgramDesc program;
   GraphToProgram(*graph, &program);
   program.Proto()->SerializeToString(&graph_key);
-  LOG_IF(WARNING, graphs_.count(graph_key))
-      << "The graph being added is already in CinnCompiler, and its value will "
-         "be updated. The graph key is:\n"
-      << graph_key;
-  graphs_[graph_key] = std::move(graph);
+  if (!graphs_.count(graph_key)) {
+    graphs_[graph_key] = std::move(graph);
+  } else {
+    LOG(WARNING)
+        << "The graph being added is already in CinnCompiler. Its key is:\n"
+        << graph_key;
+  }
   return graph_key;
 }
 
-Graph* CinnCompiler::FindGraph(const std::string& graph_key) const {
+const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
   PADDLE_ENFORCE_NE(
       graphs_.count(graph_key), 0,
       platform::errors::InvalidArgument("Can not find the target graph: %s",
                                         graph_key.c_str()));
-  return graphs_.at(graph_key).get();
+  return *graphs_.at(graph_key);
 }
 
-CinnCompiledObject* CinnCompiler::Compile(
+const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
@@ -121,15 +123,15 @@ CinnCompiledObject* CinnCompiler::Compile(
     real_compiled_num_++;
     cache_[cur_key] = CompileGraph(graph, input_tensors, target);
   }
-  return cache_[cur_key].get();
+  return *cache_[cur_key];
 }
 
-CinnCompiledObject* CinnCompiler::Compile(
+const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
-  auto* graph = FindGraph(compilation_key);
-  return Compile(*graph, input_tensors, target);
+  const auto& graph = FindGraph(compilation_key);
+  return Compile(graph, input_tensors, target);
 }
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(

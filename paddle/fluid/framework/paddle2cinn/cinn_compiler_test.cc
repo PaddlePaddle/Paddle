@@ -126,9 +126,8 @@ TEST(CinnCompilerTest, Compile) {
 
   const auto& compilation_key = compilation_keys[0];
   auto* cinn_compiler = CinnCompiler::GetInstance();
-  auto* compiling_graph = cinn_compiler->FindGraph(compilation_key);
-  ASSERT_NE(compiling_graph, nullptr);
-  viz_graph("compiling_graph.dot", compiling_graph);
+  const auto& compiling_graph = cinn_compiler->FindGraph(compilation_key);
+  // viz_graph("compiling_graph.dot", const_cast<Graph*>(&compiling_graph));
 
   EXPECT_THROW(cinn_compiler->FindGraph("no_existed"),
                paddle::platform::EnforceNotMet);
@@ -141,15 +140,15 @@ TEST(CinnCompilerTest, Compile) {
       {"X", &tensor1}, {"Y", &tensor2}, {"Z", &tensor3}};
 
   auto compile_fn = [&](const Target& target) {
-    auto* compiled_obj =
-        cinn_compiler->Compile(*compiling_graph, input_tensors, target);
-    ASSERT_NE(compiled_obj->runtime_program, nullptr);
-    ASSERT_NE(compiled_obj->scope, nullptr);
-    ASSERT_FALSE(compiled_obj->paddle2cinn_varmap.empty());
-    auto* cached_obj =
+    const auto& compiled_obj =
+        cinn_compiler->Compile(compiling_graph, input_tensors, target);
+    ASSERT_NE(compiled_obj.runtime_program, nullptr);
+    ASSERT_NE(compiled_obj.scope, nullptr);
+    ASSERT_FALSE(compiled_obj.paddle2cinn_varmap.empty());
+    const auto& cached_obj =
         cinn_compiler->Compile(compilation_key, input_tensors, target);
-    ASSERT_EQ(reinterpret_cast<std::uint64_t>(compiled_obj),
-              reinterpret_cast<std::uint64_t>(cached_obj));
+    ASSERT_EQ(reinterpret_cast<std::uint64_t>(&compiled_obj),
+              reinterpret_cast<std::uint64_t>(&cached_obj));
   };
 
   // GPU Compilation
