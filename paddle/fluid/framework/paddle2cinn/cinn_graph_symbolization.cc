@@ -127,12 +127,12 @@ CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
 void CinnGraphSymbolization::RunOp(const CinnOpDesc& op_desc,
                                    const OpMapperContext& ctx) const {
   const auto& op_type = op_desc.Type();
-  auto kernel = ::cinn::frontend::OpMapperRegistry::Global()->Find(op_type);
-  PADDLE_ENFORCE_NE(
-      kernel, nullptr,
-      platform::errors::NotFound("Op %s Not Support by CINN, Please Register"
-                                 " it in CINN",
-                                 op_type.c_str()));
+  auto* kernel = ::cinn::frontend::OpMapperRegistry::Global()->Find(op_type);
+  PADDLE_ENFORCE_NE(kernel, nullptr,
+                    platform::errors::NotFound(
+                        "Op %s is Not Supported by CINN, please register"
+                        " this op in the CINN repo.",
+                        op_type.c_str()));
   VLOG(4) << "Running Op " << op_type;
   kernel->Run(op_desc, ctx);
 }
