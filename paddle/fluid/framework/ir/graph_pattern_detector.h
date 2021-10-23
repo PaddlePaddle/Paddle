@@ -978,7 +978,7 @@ struct Matmul : public PatternBase {
 
 // MatmulV2: tensor * weight
 struct MatmulV2Weight : public PatternBase {
-  MatmulV2(PDPattern* pattern, const std::string& name_scope)
+  MatmulV2Weight(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "matmul_v2_weight") {}
 
   PDNode* operator()();

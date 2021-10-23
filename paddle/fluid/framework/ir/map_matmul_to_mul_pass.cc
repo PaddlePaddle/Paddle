@@ -68,7 +68,7 @@ MapMatmul2MulPass::MapMatmul2MulPass() {
       .End();
 }
 
-MapMatmulv2ToMulPass::MapMatmulv2ToMulPass() {
+MapMatmulV2ToMulPass::MapMatmulV2ToMulPass() {
   AddOpCompat(OpCompat("matmul_v2"))
       .AddInput("X")
       .IsTensor()
@@ -104,7 +104,7 @@ MapMatmulv2ToMulPass::MapMatmulv2ToMulPass() {
       .End();
 }
 
-MapMatmulv2ToMatmulPass::MapMatmulv2ToMatmulPass() {
+MapMatmulV2ToMatmulPass::MapMatmulV2ToMatmulPass() {
   AddOpCompat(OpCompat("matmul_v2"))
       .AddInput("X")
       .IsTensor()
