@@ -284,7 +284,7 @@ class OffloadHelper(object):
                 break
 
             vars_name = []
-            if op.type == "adam":
+            if op.type == "adam" or op.type == "adamw":
                 # {Moment1Out = [''], Moment2Out = [''], ParamOut = ['']} =
                 # adam(inputs={Moment1 = [''], Moment2 = [''], Param = ['']})
                 vars_name.append(op.desc.input("Moment1")[0])
