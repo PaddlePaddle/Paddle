@@ -360,11 +360,11 @@ if (WITH_LITE)
     include(external/lite)
 endif (WITH_LITE)
 
-if(WITH_CINN)
+if (WITH_CINN)
     message(STATUS "Compile Paddle with CINN.")
     include(external/cinn)
     add_definitions(-DPADDLE_WITH_CINN)
-endif()
+endif (WITH_CINN)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
