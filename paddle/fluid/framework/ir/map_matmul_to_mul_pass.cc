@@ -433,7 +433,7 @@ void MapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     }
     uint64_t dims = 2;
     for (size_t i = 0; i < x_shape.size() - dims; ++i) {
-      if (x_shape[i] != y_shape[i]) {
+      if (x_shape[i] != y_shape[i] && (x_shape[i] == 1 || y_shape[i] == 1)) {
         LOG(WARNING) << "matmul op not support broadcast, please check "
                         "inputs'shape[i]. ";
         return;
@@ -448,9 +448,6 @@ void MapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     desc.SetAttr("transpose_X", matmul_v2_op->Op()->GetAttr("trans_x"));
     desc.SetAttr("transpose_Y", matmul_v2_op->Op()->GetAttr("trans_y"));
     desc.SetAttr("alpha", 1.0f);
-    if (matmul_v2_op->Op()->HasAttr("use_mkldnn")) {
-      desc.SetAttr("use_mkldnn", matmul_v2_op->Op()->GetAttr("use_mkldnn"));
-    }
     if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
       desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
