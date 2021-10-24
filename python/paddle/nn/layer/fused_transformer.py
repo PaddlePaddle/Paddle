@@ -35,10 +35,10 @@ class FusedMultiHeadAttention(Layer):
         num_heads (int): The number of heads in multi-head attention.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention. 
-            0 for no dropout. Default 0.
+            0 for no dropout. Default 0.5.
         attn_dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout in attention. 
-            0 for no dropout. Default 0.
+            0 for no dropout. Default 0.5.
         kdim (int, optional): The feature size in key. If None, assumed equal to
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
