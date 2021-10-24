@@ -78,7 +78,13 @@ def fused_multi_head_attention(x,
         qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`. 
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
-        attn_mask (Tensor, optional):
+        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to 
+ 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor 
+            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the 
+            data type is bool, the unwanted positions have `False` values and the others have `True` values. 
+            When the data type is int, the unwanted positions have 0 values and the others have 1 values. 
+            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values. 
+            It can be None when nothing wanted or needed to be prevented attention to. Default None.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention. 
             0 for no dropout. Default 0.
