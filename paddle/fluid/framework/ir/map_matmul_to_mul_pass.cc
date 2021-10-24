@@ -433,7 +433,7 @@ void MapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     }
     uint64_t dims = 2;
     for (size_t i = 0; i < x_shape.size() - dims; ++i) {
-      if (x_shape[i] != y_shape[i] && (x_shape[i] == 1 || y_shape[i] == 1)) {
+      if (x_shape[i] != y_shape[i]) {
         LOG(WARNING) << "matmul op not support broadcast, please check "
                         "inputs'shape[i]. ";
         return;
