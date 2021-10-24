@@ -110,9 +110,6 @@ TEST(CinnCompilerTest, Compile) {
   auto graph = CreateGraph();
   viz_graph("origin_graph.dot", graph.get());
   // apply build_cinn_pass
-  std::vector<Graph*> cinn_subgraphs;
-  cinn_pass->SetNotOwned<std::vector<Graph*>>("cinn_subgraphs",
-                                              &cinn_subgraphs);
   cinn_pass->Apply(graph.get());
   viz_graph("processed_graph.dot", graph.get());
   // get the compilation_key

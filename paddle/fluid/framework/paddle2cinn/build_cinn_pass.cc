@@ -354,18 +354,17 @@ void SearchAllSubgraphs(Graph* graph) {
 
   auto* cinn_compiler = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
-    // classify var node to inputs, outputs, and internals.
+    // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
 
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
     AnalyseClusterVariables(cluster_set, &cluster_inputs, &cluster_outputs,
                             &cluster_internals);
-    // create a new subgraph according to the found cluster
-    auto new_graph =
-        CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs);
-    // save the created subgraph in CinnCompiler
-    std::string compilation_key = cinn_compiler->AddGraph(std::move(new_graph));
-    // replacing subgraph to a new special op node
+    // Create a new subgraph according to the found cluster and
+    // save it in CinnCompiler
+    std::string compilation_key = cinn_compiler->AddGraph(
+        CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs));
+    // Replace the found cluster to a new special op node
     ReplaceSubGraphWithSpecialOpNode(cluster_set, cluster_inputs,
                                      cluster_outputs, cluster_internals,
                                      compilation_key, graph);
