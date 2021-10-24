@@ -33,105 +33,103 @@ using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 namespace data {
 
 class Pipeline {
-  public:
-    Pipeline(const std::shared_ptr<BlockDesc> global_block, const platform::Place &place,
-             int64_t start_op_index, int64_t end_op_index, int64_t program_id,
-             const std::vector<std::string> &output_var_names,
-             size_t prefetch_queue_size);
+ public:
+  Pipeline(const std::shared_ptr<BlockDesc> global_block,
+           const platform::Place &place, int64_t start_op_index,
+           int64_t end_op_index, int64_t program_id,
+           const std::vector<std::string> &output_var_names,
+           size_t prefetch_queue_size);
 
-    // ~Pipeline() {
-    //   VLOG(1) << "~Pipeline";
-    //   Close();
-    // }
+  // ~Pipeline() {
+  //   VLOG(1) << "~Pipeline";
+  //   Close();
+  // }
 
-    inline size_t PrefetchCap() { return prefetch_queue_.Cap(); }
+  inline size_t PrefetchCap() { return prefetch_queue_.Cap(); }
 
-    inline size_t PrefetchSize() { return prefetch_queue_.Size(); }
+  inline size_t PrefetchSize() { return prefetch_queue_.Size(); }
 
-    inline bool IsClosed() { return closed_; }
+  inline bool IsClosed() { return closed_; }
 
-    inline void Close();
+  inline void Close();
 
-    inline void Reset();
+  inline void Reset();
 
-    void ReadNext(std::vector<Variable *> &out_vars);
+  void ReadNext(std::vector<Variable *> &out_vars);
 
-  private:
-		void copy_tensor(const framework::LoDTensor &lod_tensor,
-										 framework::LoDTensor *out) const {
-      if (lod_tensor.numel() == 0) return;
-      auto &out_tensor = *out;
-      TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
-      out_tensor.set_lod(lod_tensor.lod());
-    }
+ private:
+  void copy_tensor(const framework::LoDTensor &lod_tensor,
+                   framework::LoDTensor *out) const {
+    if (lod_tensor.numel() == 0) return;
+    auto &out_tensor = *out;
+    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
+    out_tensor.set_lod(lod_tensor.lod());
+  }
 
-    void StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor, 
-                             const std::vector<std::string> &skip_vars);
+  void StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
+                           const std::vector<std::string> &skip_vars);
 
-    void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
+  void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
-    ThreadPool thread_pool_;
-    std::atomic<bool> closed_;
+  ThreadPool thread_pool_;
+  std::atomic<bool> closed_;
 
-    Scope scope_;
-    std::shared_ptr<BlockDesc> global_block_;
-    platform::Place place_;
-    int64_t start_op_index_;
-    int64_t end_op_index_;
-    int64_t program_id_;
+  Scope scope_;
+  std::shared_ptr<BlockDesc> global_block_;
+  platform::Place place_;
+  int64_t start_op_index_;
+  int64_t end_op_index_;
+  int64_t program_id_;
 
-    std::vector<std::string> output_var_names_;
+  std::vector<std::string> output_var_names_;
 
-    const size_t prefetch_queue_size_;
-    LoDTensorBlockingQueue prefetch_queue_;
+  const size_t prefetch_queue_size_;
+  LoDTensorBlockingQueue prefetch_queue_;
 };
 
 class PipelineManager {
   // PipelineManager is a signleton manager for Pipeline, we
   // create single Pipeline for a program id
-  private:
-    DISABLE_COPY_AND_ASSIGN(PipelineManager);
+ private:
+  DISABLE_COPY_AND_ASSIGN(PipelineManager);
 
-    static PipelineManager* pm_instance_ptr_;
-    std::map<int64_t, std::shared_ptr<Pipeline>> prog_id_to_pipeline_;
-    static std::mutex m_;
+  static PipelineManager *pm_instance_ptr_;
+  std::map<int64_t, std::shared_ptr<Pipeline>> prog_id_to_pipeline_;
+  static std::mutex m_;
 
-  public:
-    static PipelineManager* Instance() {
+ public:
+  static PipelineManager *Instance() {
+    if (pm_instance_ptr_ == nullptr) {
+      std::lock_guard<std::mutex> lk(m_);
       if (pm_instance_ptr_ == nullptr) {
-        std::lock_guard<std::mutex> lk(m_);
-        if (pm_instance_ptr_ == nullptr) {
-          pm_instance_ptr_ = new PipelineManager;
-        }
-      }
-      return pm_instance_ptr_;
-    }
-
-    std::shared_ptr<Pipeline> GetPipeline(
-        int64_t program_id, BlockDesc* global_block,
-        const platform::Place &place, int64_t start_op_index,
-        int64_t end_op_index,
-        const std::vector<std::string> &output_var_names,
-        size_t prefetch_queue_size) {
-      auto iter = prog_id_to_pipeline_.find(program_id);
-      if (iter != prog_id_to_pipeline_.end()) {
-        prog_id_to_pipeline_[program_id] = \
-            std::shared_ptr<Pipeline>(new Pipeline(
-                  std::shared_ptr<BlockDesc>(global_block), place,
-                  start_op_index, end_op_index, program_id,
-                  output_var_names, prefetch_queue_size));
-        return prog_id_to_pipeline_[program_id];
-      } else {
-        return iter->second;
+        pm_instance_ptr_ = new PipelineManager;
       }
     }
+    return pm_instance_ptr_;
+  }
 
-    PipelineManager() { VLOG(1) << "PipelineManager init"; }
-
-    ~PipelineManager() {
-      VLOG(1) << "~PipelineManager";
-      prog_id_to_pipeline_.clear();
+  std::shared_ptr<Pipeline> GetPipeline(
+      int64_t program_id, BlockDesc *global_block, const platform::Place &place,
+      int64_t start_op_index, int64_t end_op_index,
+      const std::vector<std::string> &output_var_names,
+      size_t prefetch_queue_size) {
+    auto iter = prog_id_to_pipeline_.find(program_id);
+    if (iter == prog_id_to_pipeline_.end()) {
+      prog_id_to_pipeline_[program_id] = std::shared_ptr<Pipeline>(new Pipeline(
+          std::shared_ptr<BlockDesc>(global_block), place, start_op_index,
+          end_op_index, program_id, output_var_names, prefetch_queue_size));
+      return prog_id_to_pipeline_[program_id];
+    } else {
+      return iter->second;
     }
+  }
+
+  PipelineManager() { VLOG(1) << "PipelineManager init"; }
+
+  ~PipelineManager() {
+    VLOG(1) << "~PipelineManager";
+    prog_id_to_pipeline_.clear();
+  }
 };
 
 }  // data

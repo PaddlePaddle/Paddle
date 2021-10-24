@@ -38,6 +38,7 @@ class Pipeline:
         assert isinstance(queue_depth, int), \
                 "queue_depth should be an integer"
         self._queue_depth = queue_depth
+        self._init_programs()
 
     def _init_programs(self):
         self._main_program = fluid.Program()
@@ -48,13 +49,17 @@ class Pipeline:
 
     def __enter__(self):
         # switch main and startup program
-        self._main_program = fluid.switch_main_program(self._main_program)
-        self._startup_program = fluid.switch_startup_program(self._startup_program)
+        paddle.enable_static()
+        self._main_program = framework.switch_main_program(self._main_program)
+        self._startup_program = framework.switch_startup_program(
+            self._startup_program)
         return self
 
-    def __exit__(self):
-        self._main_program = fluid.switch_main_program(self._main_program)
-        self._startup_program = fluid.switch_startup_program(self._startup_program)
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._main_program = framework.switch_main_program(self._main_program)
+        self._startup_program = framework.switch_startup_program(
+            self._startup_program)
+        paddle.disable_static()
 
     def set_outputs(self, outputs):
         if isinstance(outputs, Sequence):
@@ -69,14 +74,12 @@ class Pipeline:
                     "outputs should be list, dict or Variable"
 
     def build(self):
-        self._output_vars = self._prepare_output_vars()
         global_block = self._main_program.desc.block(0)
         program_id = _hash_with_id(self._main_program, self)
 
         self._attrs = ('global_block', global_block, 'start_op_index', 0,
-                       'end_op_index', global_block.op_size(),
-                       'program_id', program_id)
-
+                       'end_op_index', global_block.op_size(), 'program_id',
+                       program_id)
         self._is_built = True
 
     def _prepare_output_vars(self):
@@ -87,19 +90,26 @@ class Pipeline:
             var_desc = var.desc
             output_var = core.VarBase(var_desc.dtype(),
                                       var_desc.shape(),
-                                      var_desc.name(),
-                                      var_desc.type(), False)
+                                      var_desc.name(), var_desc.type(), False)
             output_vars.append(output_var)
 
         return output_vars
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
         assert self._is_built, \
                 "Pipeline not built, please call build() firstly"
+        self._output_vars = self._prepare_output_vars()
+
+        # try:
         _C_ops.dataloader(self._output_vars, *self._attrs)
-        return {k: v for k, v in zip(self._output_vars, self._out_names)}
+        # except KeyboardInterrupt:
+        #     pass
+
+        return {k: v for k, v in zip(self._out_names, self._output_vars)}
 
     # Python 2 compatable
     def next(self):
         return self.__next__()
-

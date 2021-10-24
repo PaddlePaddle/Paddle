@@ -5,7 +5,7 @@ if(WITH_UNITY_BUILD)
 endif()
 
 cc_library(pipeline SRCS pipeline.cc DEPS parallel_executor simple_threadpool)
-op_library(dataloader_op SRCS dataloader_op.cc DEPS pipeline)
+op_library(dataloader_op SRCS dataloader_op.cc dataloader_op.cu.cc DEPS pipeline ${OP_HEADER_DEPS})
 
 # register_operators()
 

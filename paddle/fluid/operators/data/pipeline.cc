@@ -16,11 +16,11 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-Pipeline::Pipeline(
-    const std::shared_ptr<BlockDesc> global_block, const platform::Place &place,
-    int64_t start_op_index, int64_t end_op_index, int64_t program_id,
-    const std::vector<std::string> &output_var_names,
-    size_t prefetch_queue_size)
+Pipeline::Pipeline(const std::shared_ptr<BlockDesc> global_block,
+                   const platform::Place &place, int64_t start_op_index,
+                   int64_t end_op_index, int64_t program_id,
+                   const std::vector<std::string> &output_var_names,
+                   size_t prefetch_queue_size)
     : thread_pool_(1),
       closed_(false),
       global_block_(global_block),
@@ -33,10 +33,11 @@ Pipeline::Pipeline(
       prefetch_queue_(prefetch_queue_size) {
   VLOG(1) << "Pipeline init";
 
-  PADDLE_ENFORCE_GT(end_op_index_, start_op_index_, 
-      platform::errors::InvalidArgument(
-        "end_op_index should be greater than start_op_index, "
-        "but recieve %d <= %d.", end_op_index_, start_op_index_));
+  PADDLE_ENFORCE_GT(end_op_index_, start_op_index_,
+                    platform::errors::InvalidArgument(
+                        "end_op_index should be greater than start_op_index, "
+                        "but recieve %d <= %d.",
+                        end_op_index_, start_op_index_));
 
   // Step1: prepare executor
   auto *program = global_block_->Program();
@@ -44,17 +45,17 @@ Pipeline::Pipeline(
       *program, place_, start_op_index_, end_op_index_,
       /*is_grad=*/false, program_id, &scope_);
   auto &parallel_executor = cache_info.first;
-  
+
   // Step2: parset persistable variables
   auto &skip_eager_delete_vars =
-    framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
-                              program_id, /*is_grad=*/false);
+      framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
+          program_id, /*is_grad=*/false);
   if (cache_info.second /*is_new_created*/) {
     // DataLoader program do not has input variables, not need to
     // skip memory reuse for input variables here
     skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
-        output_var_names.begin(),
-        output_var_names.end());
+                                  output_var_names.begin(),
+                                  output_var_names.end());
     framework::details::ParseSafeEagerDeletionSkipVars(
         *program, end_op_index, output_var_names, &skip_eager_delete_vars);
   }
@@ -63,9 +64,8 @@ Pipeline::Pipeline(
   StartPrefetchThread(parallel_executor, skip_eager_delete_vars);
 }
 
-void Pipeline::StartPrefetchThread(
-    std::shared_ptr<ParallelExecutor> executor,
-    const std::vector<std::string> &skip_vars) {
+void Pipeline::StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
+                                   const std::vector<std::string> &skip_vars) {
   thread_pool_.enqueue([this, executor, skip_vars]() -> void {
     while (!closed_.load()) {
       // Step1: run ops by executor without fetch
@@ -78,8 +78,9 @@ void Pipeline::StartPrefetchThread(
         auto *out_var = scope_.FindVar(output_var_names_[i]);
         PADDLE_ENFORCE_NOT_NULL(
             out_var, platform::errors::NotFound(
-              "The output variable %s is not found in DataLoader "
-              "program's internal scope", output_var_names_[i]));
+                         "The output variable %s is not found in DataLoader "
+                         "program's internal scope",
+                         output_var_names_[i]));
         CheckOutputVarStatus(*out_var, output_var_names_[i]);
         copy_tensor(out_var->Get<LoDTensor>(), &t_arr[i]);
       }
@@ -95,39 +96,38 @@ void Pipeline::StartPrefetchThread(
   });
 }
 
-void Pipeline::CheckOutputVarStatus(
-    const Variable &var, const std::string &var_name) {
+void Pipeline::CheckOutputVarStatus(const Variable &var,
+                                    const std::string &var_name) {
   // only LoDTensor variable type support currently
   PADDLE_ENFORCE_EQ(
       var.IsType<LoDTensor>(), true,
       platform::errors::InvalidArgument(
           "The output variable %s get from DataLoader program's "
           "internal scope holds wrong type. Expect type is "
-          "LoDTensor, but receive type is %s.", var_name,
-          platform::demangle(framework::ToTypeName(var.Type()))));
-  PADDLE_ENFORCE_EQ(
-      var.Get<LoDTensor>().IsInitialized(), true,
-      platform::errors::InvalidArgument(
-        "The tensor in output variable %s get from DataLoader "
-        "program's internal scope is not initialized.", var_name));
+          "LoDTensor, but receive type is %s.",
+          var_name, platform::demangle(framework::ToTypeName(var.Type()))));
+  PADDLE_ENFORCE_EQ(var.Get<LoDTensor>().IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The tensor in output variable %s get from DataLoader "
+                        "program's internal scope is not initialized.",
+                        var_name));
 }
 
 void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
- bool ok = true;
- auto vars = prefetch_queue_.Pop(&ok);
- PADDLE_ENFORCE_EQ(ok, true, platform::errors::Unavailable(
-                              "Pop prefetch queue failed."));
- PADDLE_ENFORCE_EQ(out_vars.size(), vars.size(),
-     platform::errors::InvalidArgument(
-       "Output variable number to read should be variable number "
-       "read from prefetch queue, but recieved %d != %d",
-       out_vars.size(), output_var_names_.size()));
+  bool ok = true;
+  auto vars = prefetch_queue_.Pop(&ok);
+  PADDLE_ENFORCE_EQ(
+      ok, true, platform::errors::Unavailable("Pop prefetch queue failed."));
+  PADDLE_ENFORCE_EQ(
+      out_vars.size(), vars.size(),
+      platform::errors::InvalidArgument(
+          "Output variable number to read should be variable number "
+          "read from prefetch queue, but recieved %d != %d",
+          out_vars.size(), output_var_names_.size()));
 
-
- for (size_t i = 0; i < vars.size(); i++) {
-   // out_vars[i] = &vars[i];
-   copy_tensor(vars[i], out_vars[i]->GetMutable<LoDTensor>());
- }
+  for (size_t i = 0; i < vars.size(); i++) {
+    copy_tensor(vars[i], out_vars[i]->GetMutable<LoDTensor>());
+  }
 }
 
 inline void Pipeline::Close() {
@@ -145,8 +145,8 @@ inline void Pipeline::Reset() {
   // StartPrefetchThread();
 }
 
-// initialization static variables out of PipelineManager 
-PipelineManager* PipelineManager::pm_instance_ptr_ = nullptr;
+// initialization static variables out of PipelineManager
+PipelineManager *PipelineManager::pm_instance_ptr_ = nullptr;
 std::mutex PipelineManager::m_;
 
 }  // data

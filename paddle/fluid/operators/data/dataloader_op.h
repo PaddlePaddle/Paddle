@@ -20,25 +20,25 @@ class Pipeline;
 
 template <typename DeviceContext, typename T>
 class DataLoaderOpKernel : public framework::OpKernel<T> {
-  public:
-    void Compute(const framework::ExecutionContext& ctx) const override {
-      // Step1: get output vars and attrs
-      auto output_vars = ctx.MultiOutputVar("Out");
-      auto output_var_names = ctx.OutputNames("Out");
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    // Step1: get output vars and attrs
+    auto output_vars = ctx.MultiOutputVar("Out");
+    auto output_var_names = ctx.OutputNames("Out");
 
-      auto* global_block = ctx.Attr<BlockDesc *>("global_block");
-      auto start_op_index = ctx.Attr<int64_t>("start_op_index");
-      auto end_op_index = ctx.Attr<int64_t>("end_op_index");
-      auto program_id = ctx.Attr<int64_t>("program_id");
-      auto prefetch_depth = static_cast<size_t>(ctx.Attr<int64_t>("prefetch_depth"));
+    auto* global_block = ctx.Attr<BlockDesc*>("global_block");
+    auto start_op_index = ctx.Attr<int64_t>("start_op_index");
+    auto end_op_index = ctx.Attr<int64_t>("end_op_index");
+    auto program_id = ctx.Attr<int64_t>("program_id");
+    auto prefetch_depth =
+        static_cast<size_t>(ctx.Attr<int64_t>("prefetch_depth"));
 
-      auto pipeline = data::PipelineManager::Instance()->GetPipeline(
-                         program_id, global_block, ctx.GetPlace(),
-                         start_op_index, end_op_index, output_var_names,
-                         prefetch_depth);
+    auto pipeline = data::PipelineManager::Instance()->GetPipeline(
+        program_id, global_block, ctx.GetPlace(), start_op_index, end_op_index,
+        output_var_names, prefetch_depth);
 
-      pipeline->ReadNext(output_vars);
-    }
+    pipeline->ReadNext(output_vars);
+  }
 };
 
 }  // namespace operators

@@ -23,14 +23,20 @@ class DataLoaderOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DataLoaderOp");
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "DataLoaderOp");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   platform::CPUPlace());
+                                   ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return expected_kernel_type;
   }
 };
 
@@ -57,7 +63,7 @@ class DataLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
                      "The unique hash id used as cache key for "
                      "ExecutorInfoCache");
     AddAttr<int64_t>("prefetch_depth",
-                     "(size_t)"
+                     "(int64_t)"
                      "The prefetch batch number")
         .SetDefault(2);
     AddComment(R"DOC(
@@ -71,4 +77,6 @@ class DataLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(dataloader, ops::DataLoaderOp, ops::DataLoaderOpMaker);
-REGISTER_OP_CPU_KERNEL(dataloader, ops::DataLoaderOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    dataloader,
+    ops::DataLoaderOpKernel<paddle::platform::CPUDeviceContext, float>);

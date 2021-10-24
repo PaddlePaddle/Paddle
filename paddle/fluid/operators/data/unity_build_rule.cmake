@@ -7,3 +7,6 @@
 register_unity_group(cc
     pipeline.cc
     dataloader_op.cc)
+
+register_unity_group(cu
+    dataloader_op.cu.cc)
