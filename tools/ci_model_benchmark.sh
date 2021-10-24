@@ -47,7 +47,8 @@ function whl_diff {
         exit 0
     else
         echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
-    fi    bash -x paddle/scripts/paddle_build.sh build_only
+    fi    
+    bash -x paddle/scripts/paddle_build.sh build_only
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     pip uninstall -y paddlepaddle_gpu
     pip install build/python/dist/*.whl
