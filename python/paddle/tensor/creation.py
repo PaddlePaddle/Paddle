@@ -405,9 +405,8 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
             import numpy as np
             
             x_shape = (1, 1, 2, 3)
-            x = paddle.arrange(np.prod(x_shape), dtype='float32').reshape(x_shape) + 1
+            x = paddle.randn(x_shape)
             y = paddle.zeropad2d(x, [1, 2, 1, 1])
-            print(y)
             # [[[[0. 0. 0. 0. 0. 0.]
             #    [0. 1. 2. 3. 0. 0.]
             #    [0. 4. 5. 6. 0. 0.]
