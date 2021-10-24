@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
 DECLARE_bool(check_nan_inf);
-DECLARE_bool(run_pt_kernel);
+DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -118,7 +118,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_type_(kernel_type),
       func_(nullptr),
       dev_ctx_(dev_ctx),
-      run_pt_kernel_(true),
+      run_pten_kernel_(true),
       pt_kernel_signature_(kernel_signature),
       pt_kernel_(pt_kernel) {}
 
@@ -153,7 +153,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
-  if (FLAGS_run_pt_kernel &&
+  if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
 
@@ -417,7 +417,7 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pt_kernel_) {
+  if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, pt_kernel_signature_, pt_kernel_,
                                  dev_ctx_, ins, outs, attrs, default_attrs);
   } else {
@@ -430,7 +430,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pt_kernel_) {
+  if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(op_, pt_kernel_signature_, pt_kernel_,
                                          dev_ctx_, ins, outs, attrs,
                                          default_attrs);

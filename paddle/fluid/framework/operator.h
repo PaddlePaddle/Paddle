@@ -601,7 +601,7 @@ class OperatorWithKernel : public OperatorBase {
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
-  mutable bool run_pt_kernel_ = false;
+  mutable bool run_pten_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
