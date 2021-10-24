@@ -120,6 +120,10 @@ class ElasticManager(object):
 
         self.endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
         self.trainers = os.getenv('PADDLE_TRAINERS', '')
+        self.lastest_trainers = self.trainers
+        logger.info(
+            f"=======>trainers={self.trainers}, lastest_trainers={self.lastest_trainers}"
+        )
 
         # auto correct the value of elastic_level
         # 1: Fault tolerant, 2: Elastic
@@ -258,7 +262,7 @@ class ElasticManager(object):
         if len(hosts) == 0:
             self.etcd.delete_prefix(self.prefix)
 
-    def _parse_np(np: str) -> dict:
+    def _parse_np(self, np: str):
         """
         np format is "MIN" or "MIN:MAX" 
         """
@@ -306,7 +310,16 @@ class ElasticManager(object):
                 return False
 
         if self.elastic_level == ElasticLevel.ELASTIC:
+            # FIXME(xym) add freeze status
             hosts_num = len(self.hosts)
+            lastest_trainers_num = len(self.lastest_trainers.split(","))
+            trainers_num = len(self.trainers.split(","))
+            logger.info(f"math, len(self.hosts)={len(self.hosts)}, \
+                len(self.lastest_trainers)={lastest_trainers_num}, \
+                len(self.trainers)={trainers_num}")
+            if hosts_num < lastest_trainers_num and \
+                 lastest_trainers_num == trainers_num:
+                return False
             if hosts_num >= self.min_np and hosts_num <= self.max_np:
                 return True
             else:
@@ -314,28 +327,86 @@ class ElasticManager(object):
 
     def _update_hosts(self):
         assert len(self.hosts) != 0, 'hosts empty'
-
-        if self.host in self.endpoints:
-            os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.endpoints
-            os.environ['PADDLE_TRAINERS'] = self.trainers
-            logger.info("update env DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
-                self.endpoints))
-            logger.info("update env PADDLE_TRAINERS {} ".format(self.trainers))
-            return
-
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
-        idx = self.hosts.index(self.host)
+        if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
+            self.lastest_trainers = self.trainers
+            if self.host in self.endpoints:
+                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.endpoints
+                os.environ['PADDLE_TRAINERS'] = self.trainers
+                logger.info("update env DISTRIBUTED_TRAINER_ENDPOINTS {} ".
+                            format(self.endpoints))
+                logger.info("update env PADDLE_TRAINERS {} ".format(
+                    self.trainers))
+                return
 
-        # swap if self.host not in the right position
-        if rank >= 0:
-            self.hosts[idx] = self.hosts[rank]
-            self.hosts[rank] = self.host
+            # fault tolerance 
+            idx = self.hosts.index(self.host)
+
+            # swap if self.host not in the right position
+            if rank >= 0:
+                self.hosts[idx] = self.hosts[rank]
+                self.hosts[rank] = self.host
+            else:
+                os.environ['PADDLE_TRAINER_ID'] = '{}'.format(idx)
+
+            hosts = ','.join(self.hosts)
+            self.args.ips = hosts
+            os.environ['PADDLE_TRAINERS'] = hosts
         else:
-            os.environ['PADDLE_TRAINER_ID'] = '{}'.format(idx)
+            # elastic, scale up/down
+            trainers = self.lastest_trainers.split(",")
+            if len(self.hosts) > len(trainers):
+                # scale up
+                logger.info(
+                    f"elastic scale up, hosts={self.hosts}, trainers={trainers}")
 
-        hosts = ','.join(self.hosts)
-        self.args.ips = hosts
-        os.environ['PADDLE_TRAINERS'] = hosts
+                for curr_host in self.hosts:
+                    if curr_host not in trainers:
+                        trainers.append(curr_host)
+                if rank < 0:
+                    os.environ['PADDLE_TRAINER_ID'] = '{}'.format(trainers[
+                        self.host])
+                hosts = ','.join(trainers)
+                self.args.ips = hosts
+                os.environ['PADDLE_TRAINERS'] = hosts
+                self.lastest_trainers = hosts
+            else:
+                # scale down
+                logger.info(
+                    f"elastic scale down, hosts={self.hosts}, trainers={trainers}"
+                )
+
+                # If the shrink node is from the start of the rank, you need to minimize the movement of the rank
+                # eg: 
+                #   the source trainers is:10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3
+                #   10.10.10.0 is deleted
+                #   the new trainers is:10.10.10.3,10.10.10.1,10.10.10.2
+                #   In this case, the rank of 10.10.10.1 and 10.10.10.2 remains unchanged, while the rank of 10.10.10.3 is set to rank0
+                hosts_dict = dict()
+                unsorted_host = []
+                for id, host in enumerate(self.hosts):
+                    idx = trainers.index(host)
+                    if idx <= len(self.hosts) - 1:
+                        hosts_dict[idx] = host
+                    else:
+                        unsorted_host.append(host)
+
+                idle_index = 0
+                sorted_hosts = []
+                for idx in range(len(self.hosts)):
+                    if not hosts_dict.get(idx):
+                        hosts_dict[idx] = unsorted_host[idle_index]
+                        idle_index += 1
+
+                    sorted_hosts.append(hosts_dict.get(idx))
+
+                logger.info(f"elastic scale down, sorted_hosts={sorted_hosts}")
+                hosts = ','.join(sorted_hosts)
+                self.args.ips = hosts
+                os.environ['PADDLE_TRAINERS'] = hosts
+                os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+                    sorted_hosts.index(self.host))
+                self.lastest_trainers = hosts
 
     def wait(self):
         if not self.enable:
@@ -382,21 +453,27 @@ class ElasticManager(object):
                 completed = True if ret == 0 else False
                 self.exit(completed=completed)
                 if completed:
+                    logger.info(":watch, job completed")
                     return ElasticStatus.COMPLETED
                 if self.elastic_level == ElasticLevel.FAULT_TOLERANCE or \
                     self.elastic_level == ElasticLevel.ELASTIC:
+                    logger.info(":watch, job restart")
                     return ElasticStatus.RESTART
                 else:
+                    logger.info(":watch, job error")
                     return ElasticStatus.ERROR
 
             if not self._completed() and (not self._match() or self.need_sync):
                 self.launcher.stop()
+                logger.info(":watch, job hold")
                 return ElasticStatus.HOLD
 
             time.sleep(2)
 
         if self.launcher:
             self.launcher.stop()
+
+        logger.info(":watch, job exit")
         return ElasticStatus.EXIT
 
     def signal_handler(self, sigint, frame):

@@ -33,7 +33,7 @@ def enable_elastic(args, distribute_mode):
     if not args.job_id and not os.getenv('PADDLE_ELASTIC_JOB_ID'):
         return False
 
-    if not args.np and not int(os.getenv('PADDLE_ELASTIC_NP', 0)):
+    if not args.np and not os.getenv('PADDLE_ELASTIC_NP'):
         return False
 
     return True
