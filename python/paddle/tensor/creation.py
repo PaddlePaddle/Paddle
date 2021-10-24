@@ -437,7 +437,6 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
     assert len(
         pad
     ) == 4, "when the type of 'pad' is not int, the length of 'pad' shoud be 4."
-    pad = [pad[2], pad[3], pad[0], pad[1]]
     out = core.ops.pad2d(x, "paddings", pad, "value", 0, "data_format",
                          data_format, "name", name)
 
