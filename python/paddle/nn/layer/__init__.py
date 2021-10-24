@@ -30,7 +30,6 @@ from .common import Bilinear  # noqa: F401
 from .common import Pad1D  # noqa: F401
 from .common import Pad2D  # noqa: F401
 from .common import Pad3D  # noqa: F401
-from .common import ZeroPad2d  # noqa: F401
 from .common import CosineSimilarity  # noqa: F401
 from .common import Embedding  # noqa: F401
 from .common import Linear  # noqa: F401
