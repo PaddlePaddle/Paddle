@@ -64,6 +64,8 @@ class WorkQueue {
 
   virtual size_t NumThreads() const = 0;
 
+  virtual void Cancel() = 0;
+
  protected:
   WorkQueueOptions options_;
 };
@@ -87,6 +89,8 @@ class WorkQueueGroup {
   virtual size_t QueueNumThreads(size_t queue_idx) const = 0;
 
   virtual size_t QueueGroupNumThreads() const = 0;
+
+  virtual void Cancel() = 0;
 
  protected:
   std::vector<WorkQueueOptions> queues_options_;
