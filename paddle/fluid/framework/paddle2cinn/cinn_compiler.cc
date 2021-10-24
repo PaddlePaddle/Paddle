@@ -32,11 +32,10 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
-// #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 namespace paddle {
 namespace framework {
@@ -49,42 +48,6 @@ using ::cinn::hlir::framework::GraphCompiler;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::frontend::ProgramPass;
 using ::cinn::hlir::framework::ApplyPass;
-
-// TODO(wangzhen31): just for local compile, remove after
-// the CinnGraphSymbolization PR is merged
-namespace {
-class CinnGraphSymbolization {
- public:
-  CinnGraphSymbolization(
-      int64_t graph_id, const Graph& graph, const Target& target,
-      const std::map<std::string, const LoDTensor*>& input_tensors) {}
-  ::cinn::frontend::Program operator()() {
-    constexpr int M = 1000;
-    constexpr int K = 784;
-    constexpr int N = 100;
-
-    ::cinn::frontend::NetBuilder builder("net_builder");
-    auto a = builder.CreateInput(Float(32), {M, K}, "InputX");
-    auto b = builder.CreateInput(Float(32), {N, K}, "InputY");
-    auto c = builder.CreateInput(Float(32), {N}, "InputZ");
-    auto d = builder.mul(a, b);
-    auto e = builder.add(d, c);
-    auto f = builder.relu(e);
-    auto program = builder.Build();
-
-    return program;
-  }
-
-  const std::unordered_map<std::string, std::string>& var_model_to_program_map()
-      const {
-    return var_model_to_program_map_;
-  }
-
- private:
-  std::unordered_map<std::string, std::string> var_model_to_program_map_{
-      {"X", "InputX"}, {"Y", "InputY"}, {"Z", "InputZ"}};
-};
-}  // namespace
 
 CinnCompiler* CinnCompiler::GetInstance() {
   static CinnCompiler instance;

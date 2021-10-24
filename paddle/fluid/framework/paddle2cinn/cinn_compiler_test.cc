@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -117,7 +118,7 @@ TEST(CinnCompilerTest, Compile) {
   // get the compilation_key
   std::vector<std::string> compilation_keys;
   for (auto& node : graph->Nodes()) {
-    if (node->IsOp()) {
+    if (node->IsOp() && node->Name() == kCinnLaunchOp) {
       compilation_keys.emplace_back(
           BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)));
     }
@@ -136,6 +137,9 @@ TEST(CinnCompilerTest, Compile) {
   tensor1.Resize({1000, 784});
   tensor2.Resize({784, 100});
   tensor3.Resize({100});
+  tensor1.mutable_data<float>(platform::CPUPlace());
+  tensor2.mutable_data<float>(platform::CPUPlace());
+  tensor3.mutable_data<float>(platform::CPUPlace());
   std::map<std::string, const LoDTensor*> input_tensors = {
       {"X", &tensor1}, {"Y", &tensor2}, {"Z", &tensor3}};
 

@@ -344,7 +344,7 @@ void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
-void SearchAllSubgraphs(Graph* graph, std::vector<Graph*>* cinn_subgraphs) {
+void SearchAllSubgraphs(Graph* graph) {
   auto teller = [](const Node* node) {
     return ::cinn::frontend::OpMapperRegistry::Global()->Find(node->Name()) !=
            nullptr;
@@ -352,7 +352,6 @@ void SearchAllSubgraphs(Graph* graph, std::vector<Graph*>* cinn_subgraphs) {
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
 
-  cinn_subgraphs->clear();
   auto* cinn_compiler = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
     // classify var node to inputs, outputs, and internals.
@@ -364,8 +363,6 @@ void SearchAllSubgraphs(Graph* graph, std::vector<Graph*>* cinn_subgraphs) {
     // create a new subgraph according to the found cluster
     auto new_graph =
         CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs);
-    // keep a copy of the created subgraph in BuildCinnPass
-    cinn_subgraphs->push_back(new_graph.get());
     // save the created subgraph in CinnCompiler
     std::string compilation_key = cinn_compiler->AddGraph(std::move(new_graph));
     // replacing subgraph to a new special op node
@@ -375,10 +372,7 @@ void SearchAllSubgraphs(Graph* graph, std::vector<Graph*>* cinn_subgraphs) {
   }
 }
 
-void BuildCinnPass::ApplyImpl(Graph* graph) const {
-  auto& cinn_subgraphs = Get<std::vector<Graph*>>("cinn_subgraphs");
-  SearchAllSubgraphs(graph, &cinn_subgraphs);
-}
+void BuildCinnPass::ApplyImpl(Graph* graph) const { SearchAllSubgraphs(graph); }
 
 }  // namespace paddle2cinn
 }  // namespace framework
