@@ -625,9 +625,7 @@ class TestWarpCTCOpDygraph(unittest.TestCase):
                                           labels,
                                           input_lengths,
                                           label_lengths,
-                                          norm_by_times=False,
-                                          norm_by_batchsize=False,
-                                          norm_by_total_logits_len=False)
+                                          norm_by_times=False)
             self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
             loss.backward()
             log_probs.clear_gradient()
@@ -637,33 +635,7 @@ class TestWarpCTCOpDygraph(unittest.TestCase):
                                           labels,
                                           input_lengths,
                                           label_lengths,
-                                          norm_by_times=True,
-                                          norm_by_batchsize=False,
-                                          norm_by_total_logits_len=False)
-            self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
-            loss.backward()
-            log_probs.clear_gradient()
-
-            loss = paddle.nn.CTCLoss(
-                blank=0, reduction='sum')(log_probs,
-                                          labels,
-                                          input_lengths,
-                                          label_lengths,
-                                          norm_by_times=False,
-                                          norm_by_batchsize=True,
-                                          norm_by_total_logits_len=False)
-            self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
-            loss.backward()
-            log_probs.clear_gradient()
-
-            loss = paddle.nn.CTCLoss(
-                blank=0, reduction='sum')(log_probs,
-                                          labels,
-                                          input_lengths,
-                                          label_lengths,
-                                          norm_by_times=False,
-                                          norm_by_batchsize=False,
-                                          norm_by_total_logits_len=True)
+                                          norm_by_times=True)
             self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
             loss.backward()
             log_probs.clear_gradient()
