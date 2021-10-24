@@ -14,16 +14,28 @@
 
 from __future__ import print_function
 
+import logging
 import numpy as np
 import paddle
 import unittest
 
 paddle.enable_static()
 
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def set_cinn_flag(val):
+    try:
+        paddle.set_flags({'FLAGS_use_cinn': val})
+    except ValueError:
+        logger.warning("The used paddle is not compiled with CINN.")
+
 
 class TestParallelExecutorRunCinn(unittest.TestCase):
     def test_run_from_cinn(self):
-        paddle.set_flags({'FLAGS_use_cinn': True})
+        set_cinn_flag(False)
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -49,7 +61,7 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
                         fetch_list=[prediction.name],
                         return_merged=False)
 
-        paddle.set_flags({'FLAGS_use_cinn': False})
+        set_cinn_flag(False)
 
 
 if __name__ == '__main__':

@@ -135,12 +135,6 @@ void TensorRTEngine::FreezeNetwork() {
         }
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
-          if (temp_out->isNetworkOutput()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ") is set to float32 because its output("
-                    << temp_out->getName() << ") is the output of the network.";
-            return false;
-          }
           if (!temp_out->dynamicRangeIsSet()) {
             VLOG(1) << "Layer(Name: " << layer->getName()
                     << ") is set to float32 because its output("
@@ -196,6 +190,19 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
+#if IS_TRT_VERSION_LT(7000)
+      // trt6 will check all_of input > 0
+      if (!(std::all_of(input.second.begin(), input.second.end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(max_input_shape_[input.first].begin(),
+                        max_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(optim_input_shape_[input.first].begin(),
+                        optim_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }))) {
+        continue;
+      }
+#endif
       VLOG(4) << "TRT dynamic_shape set " << input.first
               << " min: " << Vec2Str(input.second)
               << ", max: " << Vec2Str(max_input_shape_[input.first])
@@ -225,6 +232,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
   infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
@@ -353,6 +361,13 @@ nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRTV2Ext *plugin) {
   owned_plugin_v2ext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
+}
+
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::IPluginV2IOExt *plugin) {
+  owned_plugin_v2ioext_.emplace_back(plugin);
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
