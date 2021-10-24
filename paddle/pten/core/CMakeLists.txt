@@ -1,5 +1,3 @@
-add_subdirectory(candidate)
-
 IF(WITH_MKLDNN)
     set(MKLDNN_CTX_DEPS mkldnn)
 ELSE()
@@ -13,9 +11,8 @@ elseif(WITH_ROCM)
 else()
     cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place)
 endif()
+cc_library(tensor_base SRCS tensor_base.cc DEPS enforce)
 cc_library(dense_tensor SRCS dense_tensor.cc DEPS enforce data_type ddim allocator place convert_utils ${MKLDNN_CTX_DEPS})
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce)
 cc_library(kernel_context SRCS kernel_context.cc DEPS enforce device_context)
-
-cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS enforce)

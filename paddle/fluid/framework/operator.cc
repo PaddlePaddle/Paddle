@@ -51,7 +51,7 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
-DECLARE_bool(run_pt_kernel);
+DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 namespace framework {
@@ -1130,14 +1130,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
-  if (FLAGS_run_pt_kernel &&
+  if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtenKernel(exe_ctx);
     }
-    run_pt_kernel_ = pt_kernel_->IsValid();
+    run_pten_kernel_ = pt_kernel_->IsValid();
   }
-  if (!run_pt_kernel_) {
+  if (!run_pten_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
     }
@@ -1178,7 +1178,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
-    if (run_pt_kernel_) {
+    if (run_pten_kernel_) {
       auto op_kernel_ctx = BuildPtenKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
     } else {
