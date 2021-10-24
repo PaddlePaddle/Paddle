@@ -104,8 +104,8 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
           this_worker->SetDataFeed(readers[cnt]);
       }
       this_worker->SetMicrobatchNum(num_microbatches_);
-      //this_worker->SetPipelineStageNum(num_pipeline_stages_);
-      //this_worker->SetPipelineStage(pipeline_stage_);
+      this_worker->SetPipelineStageNum(num_pipeline_stages_);
+      this_worker->SetPipelineStage(pipeline_stage_);
       //this_worker->SetTrainerId(trainer_id_);
       //this_worker->SetTrainers(trainers_);
       //this_worker->SetThreadNum(thread_num_);

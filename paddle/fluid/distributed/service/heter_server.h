@@ -471,25 +471,24 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
       //                  platform::errors::InvalidArgument(
       //                      "micro_id should less than num_microbatch_ * num_minibatch_."));
 
-
-
       int minibatch_index = micro_id / num_microbatch_;
       int microbatch_index = micro_id % num_microbatch_;
-
-      auto& mini_scope = scope_->KidScope(minibatch_index);
-      auto& micro_scope = (&mini_scope)->KidScope(microbatch_index);
-
-
-
-
+      
+      PADDLE_ENFORCE_EQ((*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
+                        platform::errors::InvalidArgument(
+                            "minibatch index should in current trainer"));
+	  PADDLE_ENFORCE_EQ((*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(), 1,
+						platform::errors::InvalidArgument(
+							"minibatch index should in current trainer"));
+      
+      auto* micro_scope = (*((*micro_scopes_)[minibatch_index]))[microbatch_index]
+      //auto& mini_scope = scope_->KidScope(minibatch_index);
+      //auto& micro_scope = (&mini_scope)->KidScope(microbatch_index);
 
       distributed::DeserializeFromMultiVarMsgAndIOBuf(
-          *request, &request_io_buffer, *dev_ctx_, &micro_scope);
+          *request, &request_io_buffer, *dev_ctx_, micro_scope);
       // blocking queue handles multi thread
-      task_queue_[minibatch_index]->Push(std::make_pair(message_name, micro_id));
-
-
-
+      task_queue_[minibatch_index]->Push(std::make_pair(message_name, microbatch_index));
 
     auto response_var_nums = request->recv_var_names_size();
     std::vector<std::string> response_var_names(response_var_nums),

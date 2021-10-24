@@ -660,7 +660,12 @@ class HeterSectionWorker : public DeviceWorker {
   std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
   const Scope* minibatch_scope_;
 
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
+  //std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::unique_ptr<OperatorBase> listen_op_{nullptr};
+  std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
+  std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
+
+
   std::shared_ptr<framework::ProgramDesc> program_;
   
   std::shared_ptr<

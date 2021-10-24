@@ -27,8 +27,92 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   program_.reset(
       new ProgramDesc(desc.section_param().section_config().program_desc()));
-  for (auto &op_desc : program_->Block(0).AllOps()) {
-    ops_.push_back(OpRegistry::CreateOp(*op_desc));
+  bool is_first_stage = (pipeline_stage_ == 0);
+  bool is_last_stage = (pipelin_stage_ + 1 == num_pipeline_stages_);
+  if (is_first_stage) {
+    for (auto &op_desc : program_->Block(0).AllOps()) {
+      if (listen_op_ == nullptr) {
+          listen_op_ == std::move(OpRegistry::CreateOp(*op_desc));
+      } else {
+          forward_ops_.push_back(OpRegistry::CreateOp(*op_desc));
+      }
+    }
+    for (auto &op_desc : program_->Block(1).AllOps()) {
+        backward_ops_.push_back(OpRegistry::CreateOp(*op_desc));
+    } 
+  } else if (is_last_stage) {
+    for (auto &op_desc : program_->Block(0).AllOps()) {
+      if (listen_op_ == nullptr) {
+          listen_op_ == std::move(OpRegistry::CreateOp(*op_desc));
+      }
+    }
+    for (auto &op_desc : program_->Block(1).AllOps()) {
+        auto op = std::move(OpRegistry::CreateOp(*op_desc));
+        int op_role = op->Attr<int>(std::string("op_role"));
+        bool is_forward_op = (op_role == static_cast<int>(OpRole::kForward)) ||
+                                (op_role == (static_cast<int>(OpRole::kForward) |
+                                            static_cast<int>(OpRole::kLoss))) ||
+                                (op_role == static_cast<int>(OpRole::kLRSched));
+        if (is_forward_op) {
+            forward_ops_.push_back(op);
+        } else {
+            backward_ops_.push_back(op);
+        }
+    }
+  } else {
+    for (auto &op_desc : program_->Block(0).AllOps()) {
+      if (listen_op_ == nullptr) {
+          listen_op_ == std::move(OpRegistry::CreateOp(*op_desc));
+      }
+    }
+    for (auto &op_desc : program_->Block(1).AllOps()) {
+        forward_ops_.push_back(OpRegistry::CreateOp(*op_desc));
+    }
+    for (auto &op_desc : program_->Block(2).AllOps()) {
+        backward_ops_.push_back(OpRegistry::CreateOp(*op_desc));
+    }
+  }
+}
+
+void HeterSectionWorker::RunBackward(int micro_id) {
+  
+  //bool is_first_stage = (pipeline_stage_ == 0);
+  //if (is_first_stage) {
+  //  BindingDataFeedMemory(micro_id);
+  //  int cur_micro_batch = device_reader_->Next();
+  //  if (cur_micro_batch <= 0) {
+  //    epoch_finish_ = true;
+  //    return;
+  //  }
+  //  total_ins_num_ += cur_micro_batch;
+  //}
+
+  for (auto &op : backward_ops_) {
+    //int op_role = op->Attr<int>(std::string("op_role"));
+    //auto op_type = op->Type();
+
+    //if (op_type == "heter_listen_and_serv") continue;
+    //if (op_type == "send_and_recv") {
+    //  auto op_mode = op->Attr<std::string>(std::string("mode"));
+    //  if (op_mode == "barrier") continue;
+    //}
+    //if (op_type == "trainer_barrier") continue;
+    //bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
+    //                        (op_role == (static_cast<int>(OpRole::kForward) |
+    //                                     static_cast<int>(OpRole::kLoss))) ||
+    //                        (op_role == static_cast<int>(OpRole::kRPC)) ||
+    //                        (op_role == static_cast<int>(OpRole::kLRSched));
+
+    //bool run_others = (op_role == static_cast<int>(OpRole::kForward)) ||
+    //                  (op_role == (static_cast<int>(OpRole::kForward) |
+    //                               static_cast<int>(OpRole::kLoss))) ||
+    //                  (op_role == static_cast<int>(OpRole::kRPC));
+
+    //if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
+      VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
+              << micro_id;
+      op->Run(*microbatch_scopes_[micro_id], place_);
+    //}
   }
 }
 
@@ -38,9 +122,13 @@ void HeterSectionWorker::MiniBatchBarrier(const std::vector<int>& barrier_ids) {
     while(micro_ids.size() < barrier_ids.size()) {
       auto task = thread_queue_.Pop();
       micro_id = task.first;
+	  PADDLE_ENFORCE_EQ(micro_ids.find(micro_id) == micro_ids.end(), true,
+                        platform::errors::InvalidArgument(
+				            "minibatch_scope_ can not be nullptr when create MicroBatch Scope"));
       micro_ids.insert(micro_id);
-       
-
+      // backward data has been deserialized to micro scope
+      // now run backward computation 
+      RunBackward(micro_id);
     }
 }
 
@@ -80,36 +168,33 @@ void HeterSectionWorker::RunForward(int micro_id) {
     total_ins_num_ += cur_micro_batch;
   }
 
-  for (auto &op : ops_) {
-    int op_role = op->Attr<int>(std::string("op_role"));
-    auto op_type = op->Type();
+  for (auto &op : forward_ops_) {
+    //int op_role = op->Attr<int>(std::string("op_role"));
+    //auto op_type = op->Type();
 
-    if (op_type == "heter_listen_and_serv") continue;
+    //if (op_type == "heter_listen_and_serv") continue;
     //if (op_type == "send_and_recv") {
     //  auto op_mode = op->Attr<std::string>(std::string("mode"));
     //  if (op_mode == "barrier") continue;
     //}
     //if (op_type == "trainer_barrier") continue;
-    bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
-                            (op_role == (static_cast<int>(OpRole::kForward) |
-                                         static_cast<int>(OpRole::kLoss))) ||
-                            (op_role == static_cast<int>(OpRole::kRPC)) ||
-                            (op_role == static_cast<int>(OpRole::kLRSched));
+    //bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
+    //                        (op_role == (static_cast<int>(OpRole::kForward) |
+    //                                     static_cast<int>(OpRole::kLoss))) ||
+    //                        (op_role == static_cast<int>(OpRole::kRPC)) ||
+    //                        (op_role == static_cast<int>(OpRole::kLRSched));
 
-    bool run_others = (op_role == static_cast<int>(OpRole::kForward)) ||
-                      (op_role == (static_cast<int>(OpRole::kForward) |
-                                   static_cast<int>(OpRole::kLoss))) ||
-                      (op_role == static_cast<int>(OpRole::kRPC));
+    //bool run_others = (op_role == static_cast<int>(OpRole::kForward)) ||
+    //                  (op_role == (static_cast<int>(OpRole::kForward) |
+    //                               static_cast<int>(OpRole::kLoss))) ||
+    //                  (op_role == static_cast<int>(OpRole::kRPC));
 
-    if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
+    //if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
       VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
               << micro_id;
       op->Run(*microbatch_scopes_[micro_id], place_);
-    }
+    //}
   }
-
-
-
 }
 
 void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
@@ -221,11 +306,14 @@ void HeterSectionWorker::Run() {
     // backward
     MiniBatchBarrier(micro_ids);
   } else { // for heter worker
-
-
-
-
-
+      auto task = thread_queue_.Pop();
+      auto message_name = task.first;
+      auto micro_id = task.second;
+      if (message_name.find("forward") != std::string::npos) {
+          RunForward(micro_id);
+      } else if (message_name.find("backward") != std::string::npos) {
+          RunBackward(micro_di);
+      }
   }
 }
 
