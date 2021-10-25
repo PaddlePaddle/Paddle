@@ -100,9 +100,14 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
     // String is converted into wstring failedly.
     return;
   }
-
-  std::wstring dest_text;
-  for (auto ch : unicode_text) {
+  std::wstring cache_text = L"";
+  auto PushCacheText = [&]() {
+    if (cache_text != L"") {
+      res->emplace_back(cache_text);
+      cache_text = L"";
+    }
+  };
+  for (auto& ch : unicode_text) {
     if (ch == 0 || ch == 0xfffd || IsControl(ch)) {
       continue;
     }
@@ -110,16 +115,15 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
       ch = do_lower_case(ch);
     }
     if (IsChineseChar(ch) || IsPunctuation(ch)) {
-      dest_text += ' ';
-      dest_text += ch;
-      dest_text += ' ';
+      PushCacheText();
+      res->emplace_back(std::wstring{ch});
     } else if (IsWhiteSpace(ch)) {
-      dest_text += ' ';
+      PushCacheText();
     } else {
-      dest_text += ch;
+      cache_text += ch;
     }
   }
-  boost::split(*res, dest_text, boost::is_any_of(kStripChars));
+  PushCacheText();
 }
 
 WordPieceTokenizer::WordPieceTokenizer(

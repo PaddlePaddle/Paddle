@@ -140,21 +140,21 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
       return;
     }
 
-    BertTokenizer* tokenizer_ptr =
-        new BertTokenizer(const_cast<framework::Vocab*>(vocab), do_lower_case);
+    BertTokenizer tokenizer(const_cast<framework::Vocab*>(vocab),
+                            do_lower_case);
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 
     vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs(
         batch_size);
     if (text_pair) {
-      tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text, *text_pair,
-                                 is_split_into_words, max_seq_len,
-                                 pad_to_max_seq_len);
+      tokenizer.BatchEncode(&batch_encode_inputs, *text, *text_pair,
+                            is_split_into_words, max_seq_len,
+                            pad_to_max_seq_len);
     } else {
-      tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text, vector<string>(),
-                                 is_split_into_words, max_seq_len,
-                                 pad_to_max_seq_len);
+      tokenizer.BatchEncode(&batch_encode_inputs, *text, vector<string>(),
+                            is_split_into_words, max_seq_len,
+                            pad_to_max_seq_len);
     }
 
     for (size_t i = 0; i < batch_size; ++i) {
@@ -173,7 +173,7 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
                               static_cast<int64_t>(batch_max_seq_len)}));
     auto* seg_ids_data = seg_ids->mutable_data<T>(ctx.GetPlace());
 
-    auto pad_token_id = tokenizer_ptr->GetPadTokenID();
+    auto pad_token_id = tokenizer.GetPadTokenID();
     for (size_t i = 0; i < batch_size; i++) {
       auto& encoder_input_ids = batch_encode_inputs[i]["input_ids"];
       auto& encoder_seg_ids = batch_encode_inputs[i]["token_type_ids"];
@@ -188,7 +188,6 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
       std::memset(seg_ids_data + i * batch_max_seq_len + seq_len, pad_token_id,
                   (batch_max_seq_len - seq_len) * sizeof(T));
     }
-    delete tokenizer_ptr;
   }
 };
 
