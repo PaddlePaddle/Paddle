@@ -27,6 +27,21 @@ class ExpertCountOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "expert_count",
                    "ExpertCount");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // the dtype of the gate_idx should be same as int64
+    auto gate_idx_dtype =
+        OperatorWithKernel::IndicateVarDataType(ctx, "gate_idx");
+    // auto gate_idx_data_dtype =
+    // static_cast<framework::proto::VarType::Type>(gate_idx_dtype);
+    PADDLE_ENFORCE_EQ(
+        gate_idx_dtype == framework::proto::VarType::INT64, 1,
+        platform::errors::InvalidArgument(
+            "The dtype of the gate_idx_dtype should be same as int64"));
+    return framework::OpKernelType(gate_idx_dtype, ctx.GetPlace());
+  }
 };
 
 class ExpertCountOpMaker : public framework::OpProtoAndCheckerMaker {
