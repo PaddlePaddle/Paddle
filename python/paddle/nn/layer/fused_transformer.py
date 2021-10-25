@@ -202,11 +202,27 @@ class FusedFeedForward(Layer):
             If None, use the value of `dropout_rate`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into, preprocessing or postprocessing. Default False
-        weight_attr (ParamAttr, optional):
-        bias_attr (ParamAttr|bool, optional):
+        weight_attr (ParamAttr, optional): The attribute for the learnable weight of this layer.
+            The default value is None and the weight will be initialized to zero. For detailed
+            information, please refer to paddle.ParamAttr.
+        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias of thi layer.
+            If it is set to False, no bias will be added to the output. If it is set to None or one
+            kind of ParamAttr, a bias parameter will be created according to ParamAttr. For detailed
+            information, please refer to paddle.ParamAttr. The default value is None and the bias
+            will be initialized to zero.
+
     Examples:
         .. code-block:: python
 
+            # required: gpu
+            import paddle
+            from paddle.nn import FusedFeedForward
+
+            fused_feedforward_layer = FusedFeedForward(8, 8)
+            x = paddle.rand((1, 8, 8))
+            out = fused_feedforward_layer(x)
+            print(out.numpy().shape)
+            # (1, 8, 8)
     """
 
     def __init__(self,
@@ -328,13 +344,13 @@ class FusedTransformerEncoderLayer(Layer):
 
 	    # required: gpu
             import paddle
-            from paddle.nn import TransformerEncoderLayer
+            from paddle.nn import FusedTransformerEncoderLayer
 
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, n_head, src_len, src_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
-            encoder_layer = TransformerEncoderLayer(128, 2, 512)
+            encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
             enc_output = encoder_layer(enc_input, attn_mask)  # [2, 4, 128]
     """
 
