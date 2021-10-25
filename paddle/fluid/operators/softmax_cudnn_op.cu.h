@@ -103,29 +103,11 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
 namespace kps = paddle::operators::kernel_primitives;
 
 template <typename Tx, typename Ty = Tx>
-struct MaxFunctor {
+struct ReduceMaxFunctor {
   inline Ty initial() { return -std::numeric_limits<Ty>::infinity(); }
 
   __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
     return max(a, b);
-  }
-};
-
-template <typename T>
-struct MulFunctor {
-  inline T initial() { return static_cast<T>(1.0f); }
-
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
-    return b * a;
-  }
-};
-
-template <typename Tx, typename Ty = Tx>
-struct AddFunctor {
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
-
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return b + a;
   }
 };
 
@@ -158,10 +140,10 @@ struct ExpMulFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct SubFunctor {
-  HOSTDEVICE inline SubFunctor() { y = static_cast<Tx>(0.0f); }
+struct UnarySubFunctor {
+  HOSTDEVICE inline UnarySubFunctor() { y = static_cast<Tx>(0.0f); }
 
-  HOSTDEVICE explicit inline SubFunctor(Tx y) : y((Tx)(y)) {}
+  HOSTDEVICE explicit inline UnarySubFunctor(Tx y) : y((Tx)(y)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x - y);
@@ -169,13 +151,6 @@ struct SubFunctor {
 
  private:
   Tx y;
-};
-
-template <typename T>
-struct BinarySubFunctor {
-  inline T initial() { return static_cast<T>(0.0f); }
-
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -203,10 +178,10 @@ struct DataTransformFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct DivideFunctor {
-  HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
+struct UnaryDivideFunctor {
+  HOSTDEVICE inline UnaryDivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
 
-  HOSTDEVICE explicit inline DivideFunctor(Tx n) : n_inv((Tx)(1.0 / n)) {}
+  HOSTDEVICE explicit inline UnaryDivideFunctor(Tx n) : n_inv((Tx)(1.0 / n)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x * n_inv);
@@ -282,9 +257,11 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
 
   // compute max
   AccT max_value[kBatchSize];
+  kps::Init<AccT, kBatchSize>(&max_value[0],
+                              -std::numeric_limits<AccT>::infinity());
   kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-              MaxFunctor<AccT, AccT>, kps::details::ReduceMode::kLocalMode>(
-      &max_value[0], &srcdata[0][0][0], MaxFunctor<AccT, AccT>(), true);
+              ReduceMaxFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
+      &max_value[0], &srcdata[0][0][0], ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
 
   // compute sum
@@ -298,8 +275,8 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
           ExpSubFunctor<AccT>(max_value[i]));
     }
     kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                AddFunctor<AccT, AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &src_exp[0][0][0], AddFunctor<AccT, AccT>(), true);
+                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
+        &sum[0], &src_exp[0][0][0], kps::AddFunctor<AccT>(), true);
   } else {
     for (int i = 0; i < kBatchSize; ++i) {
       kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
@@ -308,8 +285,8 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
           ExpSubFunctor<AccT>(max_value[i]));
     }
     kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                AddFunctor<AccT, AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &srcdata[0][0][0], AddFunctor<AccT, AccT>(), true);
+                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
+        &sum[0], &srcdata[0][0][0], kps::AddFunctor<AccT>(), true);
   }
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
@@ -323,15 +300,15 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
   if (LogMode) {
     for (int i = 0; i < kBatchSize; ++i) {
       kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            SubFunctor<AccT>>(
+                            UnarySubFunctor<AccT>>(
           &out[i][0][0], &srcdata[i][0][0],
-          SubFunctor<AccT>(max_value[i] + sum[i]));
+          UnarySubFunctor<AccT>(max_value[i] + sum[i]));
     }
   } else {
     for (int i = 0; i < kBatchSize; ++i) {
       kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            DivideFunctor<AccT>>(
-          &out[i][0][0], &srcdata[i][0][0], DivideFunctor<AccT>(sum[i]));
+                            UnaryDivideFunctor<AccT>>(
+          &out[i][0][0], &srcdata[i][0][0], UnaryDivideFunctor<AccT>(sum[i]));
     }
   }
 
@@ -435,20 +412,20 @@ __global__ void WarpSoftmaxBackward(T* dst, const T* grad, const T* src,
   if (LogMode) {
     AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
     kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                AddFunctor<AccT, AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &gradptr[0], AddFunctor<AccT, AccT>(), true);
+                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
+        &sum[0], &gradptr[0], kps::AddFunctor<AccT>(), true);
   } else {
     AccT sum_tmp[kBatchSize][kIterationsV][kVSize];
     for (int i = 0; i < kBatchSize; ++i) {
       AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
       AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
       kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                             MulFunctor<AccT>>(&sum_tmp[i][0][0], &gradptr[0],
-                                               &srcptr[0], MulFunctor<AccT>());
+                             kps::MulFunctor<AccT>>(
+          &sum_tmp[i][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
     }
     kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                AddFunctor<AccT, AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &sum_tmp[0][0][0], AddFunctor<AccT, AccT>(), true);
+                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
+        &sum[0], &sum_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
   }
 
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
@@ -463,19 +440,19 @@ __global__ void WarpSoftmaxBackward(T* dst, const T* grad, const T* src,
                             ExpMulFunctor<AccT>>(&out[i][0][0], &srcptr[0],
                                                  ExpMulFunctor<AccT>(sum[i]));
       kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                             BinarySubFunctor<AccT>>(
-          &out[i][0][0], &gradptr[0], &out[i][0][0], BinarySubFunctor<AccT>());
+                             kps::SubFunctor<AccT>>(
+          &out[i][0][0], &gradptr[0], &out[i][0][0], kps::SubFunctor<AccT>());
     }
   } else {
     for (int i = 0; i < kBatchSize; ++i) {
       AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
       AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
       kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            SubFunctor<AccT>>(&out[i][0][0], &gradptr[0],
-                                              SubFunctor<AccT>(sum[i]));
+                            UnarySubFunctor<AccT>>(
+          &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
       kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                             MulFunctor<AccT>>(
-          &out[i][0][0], &srcptr[0], &out[i][0][0], MulFunctor<AccT>());
+                             kps::MulFunctor<AccT>>(
+          &out[i][0][0], &srcptr[0], &out[i][0][0], kps::MulFunctor<AccT>());
     }
   }
 
