@@ -241,8 +241,17 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
 
   int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
 
+  // max index to read
+  int idx_max_v[kBatchSize];
+#pragma unroll
+  for (int i = 0; i < kBatchSize; i++) {
+    int idx_max = ((i + first_batch) < batch_size) ? element_count : 0;
+    idx_max_v[i] = idx_max / kVSize;
+  }
+
   // read data from global memory
   AccT srcdata[kBatchSize][kIterationsV][kVSize];
+
   kps::Init<AccT, kBatchSize * kIterationsV * kVSize>(
       &srcdata[0][0][0], -std::numeric_limits<AccT>::infinity());
 
@@ -256,13 +265,13 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
       const T* src_ptr =
           reinterpret_cast<const T*>(&src[(first_batch + i) * stride]);
       kps::ReadData<T, AccT, kIterationsV, 1, 1, true>(
-          &srcdata[i][0][0], &src_ptr[0], stride, 0, kWarpSize, 1);
+          &srcdata[i][0][0], &src_ptr[0], idx_max_v[i], 0, kWarpSize, 1);
     } else {
       const VecT* src_v =
           reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
       VecT* reg_v = reinterpret_cast<VecT*>(&src_tmp[i][0][0]);
       kps::ReadData<VecT, VecT, kIterationsV, 1, 1, true>(
-          &reg_v[0], &src_v[0], stride / kVSize, 0, kWarpSize / kVSize, 1);
+          &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize / kVSize, 1);
       // change T to AccT
       kps::ElementwiseUnary<T, AccT, kIterationsV * kVSize, 1, 1,
                             DataTransformFunctor<T, AccT>>(
@@ -334,7 +343,7 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
       T* softmax_ptr =
           reinterpret_cast<T*>(&softmax[(first_batch + i) * stride]);
       kps::WriteData<AccT, T, kIterationsV, 1, 1, true>(
-          &softmax_ptr[0], &out[i][0][0], stride, 0, kWarpSize, 1);
+          &softmax_ptr[0], &out[i][0][0], idx_max_v[i], 0, kWarpSize, 1);
     } else {
       // change AccT to T
       kps::ElementwiseUnary<AccT, T, kIterationsV * kVSize, 1, 1,
@@ -345,7 +354,7 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
           reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
       VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
       kps::WriteData<VecT, VecT, kIterationsV, 1, 1, true>(
-          &softmax_v[0], &reg_v[0], stride / kVSize, 0, kWarpSize / kVSize, 1);
+          &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize / kVSize, 1);
     }
   }
 }
