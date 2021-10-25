@@ -705,8 +705,10 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
  * Value Range: bool, default=false
  * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
  */
+#ifdef PADDLE_WITH_CINN
 PADDLE_DEFINE_EXPORTED_bool(
     use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+#endif
 
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");

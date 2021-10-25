@@ -118,4 +118,8 @@ TEST(shape_info_io, read_and_write) {
   std::vector<std::string> names{"test1"};
   paddle::inference::UpdateShapeRangeInfo(path, min_shape, max_shape, opt_shape,
                                           names);
+
+  ASSERT_THROW(paddle::inference::DeserializeShapeRangeInfo(
+                   "no_exists_file", &min_shape, &max_shape, &opt_shape);
+               , paddle::platform::EnforceNotMet);
 }
