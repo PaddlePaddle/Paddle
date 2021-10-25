@@ -16,7 +16,7 @@ import contextlib
 import paddle
 from ...autograd import vjp
 from .bfgs_utils import as_float_tensor, make_state, update_state
-from .bfgs_utils import any_active, active, converged, failed
+from .bfgs_utils import any_active, active_state, converged_state, failed_state
 from .bfgs_utils import vnorm_inf
 from .linesearch import hz_linesearch as linesearch
 
@@ -49,7 +49,7 @@ def verify_symmetric_positive_definite_matrix(H):
     )
 
 
-class BFGS_State(object):
+class SearchState(object):
     r"""
     BFFS_State is used to represent intermediate and final result of
     the BFGS minimization.
@@ -119,7 +119,7 @@ def iterates(func,
             The default value is 50.
     
     Returns:
-        A generator which returns a BFGS_State per iteration.
+        A generator which returns a SearchState per iteration.
     """
     # Proprocesses inputs and control parameters 
     x0 = as_float_tensor(x0, dtype)
@@ -147,7 +147,7 @@ def iterates(func,
     # Puts the starting points in the initial state and kicks off the
     # minimization process.
     gnorm = vnorm_inf(g0)
-    state = BFGS_State(x0, f0, g0, H0)
+    state = SearchState(x0, f0, g0, H0)
 
     while any_active(state.state) and state.k < iters:
         # Performs line search and updates the state 

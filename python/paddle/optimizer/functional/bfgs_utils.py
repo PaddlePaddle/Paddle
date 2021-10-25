@@ -30,13 +30,13 @@ def matnorm(x):
 def any_active(state):
     return paddle.any(state == 0)
 
-def active(state):
+def active_state(state):
     return state == 0
 
-def converged(state):
+def converged_state(state):
     return state == 1
 
-def failed(state):
+def failed_state(state):
     return state == 2
 
 def make_state(tensor_like, value='active'):

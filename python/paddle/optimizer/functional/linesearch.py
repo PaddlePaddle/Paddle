@@ -14,7 +14,9 @@
 
 import paddle
 from ...autograd import vjp
-
+from .bfgs import SearchState
+from .bfgs_utils import as_float_tensor, make_state, update_state
+from .bfgs_utils import any_active, active_state, converged_state, failed_state
 
 _hz_params = {
     'eps': 1e-6,
@@ -29,11 +31,31 @@ _hz_params = {
 
 def brackets(batch, wolfe_inputs, init_bracket, params):
 
-def hz_linesearch(state, func, gtol, xtol, max_iters=10, params=None):
+def hz_linesearch(state,
+                  func,
+                  gtol,
+                  xtol,
+                  initial_step=None,
+                  max_iters=10,
+                  params=None):
     r"""
     Implements the Hager-Zhang line search method. This method can be used as
     a drop-in replacement of any standard line search algorithm in solving
     a non-linear optimization problem.
+
+    Args:
+        state (SearchState): the search state which this line search is invoked 
+            with.
+        func (Callable): the objective function for the optimization problem.
+        gtol (Tensor): a scalar tensor specifying the gradient tolerance.
+        xtol (Tensor): a scalar tensor specifying the input difference
+            tolerance.
+        initial_step (float, optional): the initial step size to use for the 
+            line search. Default value is None.
+        max_iters (int, optional): the maximum number of trials for locating
+            the next step size. Default value is 10.
+        params (Dict, optional): the control parameters used in the HagerZhang 
+            method. Default is None. 
 
     Reference:
         Algorithm 851: CG_DESCENT, a conjugate gradient method with guaranteed 
@@ -166,10 +188,6 @@ def hz_linesearch(state, func, gtol, xtol, max_iters=10, params=None):
     if params is None:
         params = _hz_params
 
-    state.state = paddle.where(state.state == 0,
-                               directional_deriv >= 0, state.state) 
-
-    
 
     def phi(sa):
         r'''
@@ -208,22 +226,27 @@ def hz_linesearch(state, func, gtol, xtol, max_iters=10, params=None):
             # Stop 
             b = ifelse_select(phiprime_j >= 0, b, expansion * b)
 
+    # For each line search, the input location, function value, gradients and
+    # the approximate inverse hessian are already present in the state date
+    # struture. No need to recompute.
+    k, xk, fk, gk, Hk = state.k, state.xk, state.fk, state.gk, state.Hk  
+
     # The negative inner product of approximate inverse hessian and gradient
     # gives the line search direction p_k. Immediately after p_k is calculated,
     # the directional derivative on p_k should be checked to make sure 
     # the p_k is a descending direction. If that's not the case, then sets
     # the line search state as failed for the corresponding batching element.
-    pk = -paddle.dot(state.Hk, state.gk)
+    pk = -paddle.dot(Hk, gk)
 
-    fprime = dot(state.gk, pk)
+    # The directional derivative of f at x_k on the direction of p_k.
+    # It's also the gradient of phi    
+    deriv = dot(gk, pk)
 
-    state = paddle.where(state.state == 0, , state.state)
-    valid = paddle.logical_and(paddle.isinf(f), fprime < .0)
-    # ls_status &= valid 
-    #   Now if this value is True, continue with line search
-    #   Otherwise, stop.
-    ls_status = paddle.logical_and(ls_status, paddle.logical_not(valid))
-    ls_active = ls_status
+    # Marks inputs with invalid function values and non-negative derivatives 
+    invalid_input = paddle.logical_or(paddle.isinf(fk), deriv >= .0)
+    state.state = update_state(state.state, invalid_input, 'failed')
+
+    
 
     # The initial interval for testing the wolfe condition
     interval = bracket(ls_active, a1, phi, phi0)
