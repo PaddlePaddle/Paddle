@@ -908,8 +908,7 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
         "optimize_blocks": optimizer_block,
         # runtime attribute
         "endpoint": config.get_heter_worker_endpoint(),
-        "fanin": len(config.get_previous_stage_trainers()) +
-        len(config.get_heter_worker_endpoints()),
+        "fanin": len(config.get_previous_stage_trainers()),
         "pserver_id": config.get_role_id(),
         "distributed_mode": config.get_distributed_mode(),
         "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
@@ -986,7 +985,7 @@ def create_trainer_program(program, origin_program, config,
         "optimize_blocks": optimizer_block,
         # runtime attribute
         "endpoint": config.get_trainer_endpoint(),  ## get trainer endpoint
-        "fanin": len(config.get_heter_worker_endpoints()),  ## get heter worker
+        "fanin": 0,  ## get heter worker
         "pserver_id": config.get_role_id(),
         "distributed_mode": config.get_distributed_mode(),
         "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
