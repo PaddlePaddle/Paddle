@@ -219,8 +219,8 @@ def fused_multi_head_attention(x,
             `[batch\_size, sequence\_len, embed\_dim]`.
         qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
-        pre_layer_norm (bool, optional): whether it is pre_layer_norm or post_layer_norm architecture.
-            Default False.
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture 
+	    (False). Default False.
         pre_ln_scale (Tensor, optional): The weight tensor of pre layernorm. Default None.
         pre_ln_bias (Tensor, optional): The bias tensor of pre layernorm. Default None.
         ln_scale (Tensor, optional): The weight tensor of layernorm. Default None.
