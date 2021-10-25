@@ -56,13 +56,13 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(framework::Vocab* vocab,
+  explicit WordPieceTokenizer(const framework::Vocab* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   void Tokenize(const wstring& text, vector<int64_t>* output) const;
 
  private:
-  framework::Vocab* vocab_;
+  const framework::Vocab* vocab_;
   wstring unk_token_{L"[UNK]"};
   int64_t unk_token_id_;
   size_t max_input_chars_per_word_;
@@ -70,7 +70,8 @@ class WordPieceTokenizer {
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(framework::Vocab* vocab, bool do_lower_case = false,
+  explicit BertTokenizer(const framework::Vocab* vocab,
+                         bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
                          const wstring& cls_token = L"[CLS]",
@@ -106,7 +107,7 @@ class BertTokenizer {
   bool do_lower_case_;
   wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
   string padding_site_;
-  framework::Vocab* vocab_;
+  const framework::Vocab* vocab_;
   BasicTokenizer basic_tokenizer_;
   WordPieceTokenizer word_piece_tokenizer_;
   int64_t unk_token_id_, cls_token_id_, mask_token_id_, pad_token_id_,
@@ -140,8 +141,7 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
       return;
     }
 
-    BertTokenizer tokenizer(const_cast<framework::Vocab*>(vocab),
-                            do_lower_case);
+    BertTokenizer tokenizer(vocab, do_lower_case);
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 

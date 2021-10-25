@@ -127,12 +127,12 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    framework::Vocab* vocab, const wstring& unk_token /* = L"[UNK]"*/,
+    const framework::Vocab* vocab, const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
       unk_token_(unk_token),
       max_input_chars_per_word_(max_input_chars_per_word) {
-  unk_token_id_ = (*vocab_)[unk_token_];
+  unk_token_id_ = vocab_->at(unk_token_);
 }
 
 void WordPieceTokenizer::Tokenize(const wstring& text,
@@ -182,7 +182,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
   }
 }
 
-BertTokenizer::BertTokenizer(framework::Vocab* vocab,
+BertTokenizer::BertTokenizer(const framework::Vocab* vocab,
                              bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
@@ -200,11 +200,11 @@ BertTokenizer::BertTokenizer(framework::Vocab* vocab,
       vocab_(vocab),
       basic_tokenizer_(do_lower_case_),
       word_piece_tokenizer_(vocab_, unk_token) {
-  unk_token_id_ = (*vocab_)[unk_token_];
-  pad_token_id_ = (*vocab_)[pad_token_];
-  cls_token_id_ = (*vocab_)[cls_token_];
-  mask_token_id_ = (*vocab_)[mask_token_];
-  sep_token_id_ = (*vocab_)[sep_token_];
+  unk_token_id_ = vocab_->at(unk_token_);
+  pad_token_id_ = vocab_->at(pad_token_);
+  cls_token_id_ = vocab_->at(cls_token_);
+  mask_token_id_ = vocab_->at(mask_token_);
+  sep_token_id_ = vocab_->at(sep_token_);
 
   all_special_tokens_ = vector<wstring>(
       {unk_token_, pad_token_, cls_token_, mask_token_, sep_token_});
