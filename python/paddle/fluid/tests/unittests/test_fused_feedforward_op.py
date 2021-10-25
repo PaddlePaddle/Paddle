@@ -161,8 +161,8 @@ class TestFusedFFNOpFp16(TestFusedFFNOp):
 
     def getShape(self):
         self.batch_size = 8
-        self.query_length = 128
-        self.d_model = 512
+        self.query_length = 64
+        self.d_model = 256
         self.dim_feedforward = 512
 
 
@@ -278,7 +278,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
             real_res.append(fetch)
         self.assertTrue(
             np.allclose(
-                real_res[0], real_res[1], atol=1e-5),
+                real_res[0], real_res[1], atol=1e-3),
             "two value is check diff")
 
 
