@@ -797,6 +797,12 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     shape = x.shape
+
+    if low >= high:
+        raise ValueError(
+            "randint_like's low must less then high, but received low = {0}, "
+            "high = {1}".format(low, high))
+
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
@@ -808,10 +814,6 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32',
                  'int64'], 'randint_like')
-    if low >= high:
-        raise ValueError(
-            "randint_like's low must less then high, but received low = {0}, "
-            "high = {1}".format(low, high))
 
     inputs = dict()
     attrs = {
