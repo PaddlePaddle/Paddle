@@ -16,6 +16,7 @@ import paddle
 from ...autograd import vjp
 from .bfgs import SearchState
 from .bfgs_utils import as_float_tensor, make_state, update_state
+from .bfgs_utils import vnorm_inf, vnorm_p
 from .bfgs_utils import any_active, active_state, converged_state, failed_state
 
 _hz_params = {
@@ -26,10 +27,69 @@ _hz_params = {
     'rho': 5.0,
     'mu': 0.01,
     'theta': .5,
-    'Delta': .7
+    'Delta': .7,
+    'psi_0': 0.01,
+    'psi_1': 0.1,
+    'psi_2': 2
 }
 
-def brackets(batch, wolfe_inputs, init_bracket, params):
+
+def initial(state, params):
+    r"""Generates initial step size.
+    
+    Args:
+        k (int): the iteration number.
+        params(Dict): the control parameters used in the HagerZhang method.
+
+    Returns:
+        The tensor of initial step size.
+    """
+    psi_0, psi_1, psi_2 = params['psi_0'], params['psi_1'], params['psi_2']
+
+    # I0. if k = 0, generate the initial step size c using the following rules.
+    #     (a) If x_0 is not 0, c = psi_0 * infnorm(x_0) / infnorm(g_0)
+    #     (b) If f(x_0) is not 0, then c = psi_0 * |f(x_0)| / vnorm(g_0)^2
+    #     (c) Otherwise, c = 1
+    #
+    # I1. If QuadStep is true, phi(psi_1 * a_k-1) <= phi(0), and the
+    # quadratic interpolant
+    #     q() matches phi(0), phi'(0) and phi(psi * a_k-1) is strongly convex
+    #     with a minimizer a_q, then c = a_k
+    #
+    # I2. Otherwise, c = psi_2 * a_k-1
+    if state.k == 0:
+        x0, f0, g0, a0 = state.xk, state.fk, state.gk, state.ak
+        
+        if a0 is not None:
+            return a0.broadcast_to(f0)
+
+        if paddle.all(x0 == .0):
+            c = psi_0 * paddle.abs(f0) / vnorm_p(g0)**2
+            c = paddle.where(f0 == 0, paddle.ones_like(f0), c)
+        else:
+            c = psi_0 * vnorm_inf(x0) / vnorm_inf(g0)
+    else:
+        # (TODO) implements quadratic interpolant
+        prev_ak = state.ak
+        c = psi_2 * prev_ak
+    
+    return c
+
+def bracket(state, phi, c, params):
+    r"""Generates opposite slope interval."""
+
+    # B0. c_-1 = c
+    #
+    # B1. If phi'(c) >= 0, then return [c_-1, c]
+    #
+    # B2. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
+    #     then return Bisect([0, c])
+    #
+    # B3. Otherwise, c_-1 = c, c = rho * c, goto B1
+
+    prev_c = c
+
+    
 
 def hz_linesearch(state,
                   func,
@@ -119,8 +179,7 @@ def hz_linesearch(state,
         This procedure generates the initial step size.
 
         I0. if k = 0 and no starting point is given, then generate the initial 
-        step size c
-            using the following rules.
+        step size c using the following rules.
             (a) If x_0 is not 0, c = psi_0 * infnorm(x_0) / infnorm(g_0) 
             (b) If f(x_0) is not 0, then c = psi_0 * |f(x_0)| / vnorm(g_0)^2
             (c) Otherwise, c = 1
@@ -189,13 +248,14 @@ def hz_linesearch(state,
         params = _hz_params
 
 
-    def phi(sa):
+    def phi(a):
         r'''
-        phi is used as the objective function restricted on the line search secant.
+        phi is used as the objective function restricted on the line search 
+        secant.
 
         Args:
-            a (Tensor): a scalar tensor, or a tensor of shape [...] in batching mode,
-            giving the step sizes alpha.
+            a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
+            mode, giving the step sizes alpha.
         '''
         if len(p.shape) > 1:
             a = paddle.unsqueeze(a, axis=-1)
@@ -208,7 +268,8 @@ def hz_linesearch(state,
         Args:
             ls_active (Tensor): boolean typed tensor of shape [...] indicating
                 which part of the input to work on 
-            b (Tensor): float typed tensor setting the right ends of the intervals
+            b (Tensor): float typed tensor setting the right ends of the 
+                intervals
         '''
         
         expansion = params['rho']
@@ -246,10 +307,11 @@ def hz_linesearch(state,
     invalid_input = paddle.logical_or(paddle.isinf(fk), deriv >= .0)
     state.state = update_state(state.state, invalid_input, 'failed')
 
-    
+    # Generates initial step size
+    c = initial(state, params)
 
-    # The initial interval for testing the wolfe condition
-    interval = bracket(ls_active, a1, phi, phi0)
+    # Generates the opposite slope interval
+    a, b = bracket(state, phi, c, params)
 
     brackets(select, phi, phi0,  params=params)
 

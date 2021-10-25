@@ -68,12 +68,13 @@ class SearchState(object):
         gk (Tensor): the ``func``'s gradients. 
         Hk (Tensor): the approximated inverse hessian of ``func``.
     """
-    def __init__(self, xk, fk, gk, Hk, k=0, nf=1, ng=1):
+    def __init__(self, xk, fk, gk, Hk, ak=None, k=0, nf=1, ng=1):
         self.xk = xk
         self.fk = fk
         self.gk = gk
         self.Hk = Hk
         self.k = k
+        self.ak = ak
         self.nf = nf
         self.ng = ng
         self.state = make_state(fk)
