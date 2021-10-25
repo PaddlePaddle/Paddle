@@ -35,6 +35,7 @@ namespace imperative {
 struct ParallelStrategy {
   int nranks_{1};
   int local_rank_{0};
+  int local_nranks_{1};
   std::vector<std::string> trainer_endpoints_{};
   std::string current_endpoint_{""};
   int nrings_{1};
@@ -55,6 +56,11 @@ class ParallelContext {
   virtual void AllReduceByStream(const framework::Variable& src,
                                  framework::Variable* dst, int ring_id,
                                  bool use_calc_stream) = 0;
+
+  virtual void InterReduce(const framework::Variable& src,
+                           framework::Variable* dst, int ring_id) = 0;
+
+  virtual void InterBroadCast(framework::Variable* src, int ring_id) = 0;
 
   virtual paddle::platform::DeviceContext* GetDeviceContext(int ring_id) = 0;
 

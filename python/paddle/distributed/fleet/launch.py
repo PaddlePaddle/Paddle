@@ -103,7 +103,12 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="log",
         help="The path for each process's log. Default --log_dir=log/")
-
+    base_group.add_argument(
+        "--backend",
+        type=str,
+        default="auto",
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+        "Default value is auto which perfers nccl or bkcl.")
     base_group.add_argument(
         "--nproc_per_node",
         type=int,
@@ -138,6 +143,16 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu."
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
+
+    if fluid.core.is_compiled_with_npu():
+        base_group.add_argument(
+            "--npus",
+            type=str,
+            default=None,
+            help="It's for xpu training. For example: "
+            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
+        )
+        base_group.add_argument("--selected_npus", dest="npus")
 
     base_group.add_argument(
         "training_script",
@@ -249,10 +264,15 @@ def launch_collective(args):
         logger.debug("get cluster from cloud:{}".format(cluster))
     elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(
-            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-            device_mode=device_mode,
-            start_port=start_port)
+        if args.backend == 'heter':
+            # NOTE(liubo48): local test, not use cloud cluster now.
+            cluster, pod = get_cluster_from_args(args, device_mode,
+                                                 devices_per_proc)
+        else:
+            cluster, pod = ascend_utils.get_cloud_cluster(
+                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+                device_mode=device_mode,
+                start_port=start_port)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,
@@ -265,6 +285,9 @@ def launch_collective(args):
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    # NOTE(liubo48): add whitelist disable env to fix hcclGetRootInfo failure.
+    global_envs["HCCL_WHITELIST_DISABLE"] = "1"
+    global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
 
     procs = start_local_trainers(
         cluster,
@@ -344,12 +367,13 @@ def which_distributed_mode(args):
 
     if len(has_ps_args) > 1 and len(has_collective_args) > 1:
         raise ValueError(
-            "Only one mode(Collective or Parameter-Server) can be selected at the same time, but more than one configuration was received."
-        )
+            "Only one mode(Collective or Parameter-Server) can be selected at the same time, "
+            "but more than one configuration was received.")
 
     if fluid.core.is_compiled_with_cuda():
         accelerators = fluid.core.get_cuda_device_count()
     elif fluid.core.is_compiled_with_npu():
+        args.backend = 'hccl'
         accelerators = fluid.core.get_npu_device_count()
     elif fluid.core.is_compiled_with_xpu():
         accelerators = fluid.core.get_xpu_device_count()
@@ -372,14 +396,18 @@ def which_distributed_mode(args):
     else:
         if not fluid.core.is_compiled_with_cuda(
         ) and not fluid.core.is_compiled_with_xpu():
-            logger.warning(
-                "Not found distinct arguments and not compiled with cuda or xpu. Default use ps mode"
-            )
-            return DistributeMode.PS
+            if args.servers:
+                logger.warning(
+                    "Not found distinct arguments and not compiled with cuda or xpu or npu. "
+                    "But found args.servers not empty, default use ps mode")
+                return DistributeMode.PS
+            else:
+                args.backend = "gloo"
+                return DistributeMode.COLLECTIVE
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"
-            )
+                "Not found distinct arguments and compiled with cuda or xpu or npu. "
+                "Default use collective mode")
             return DistributeMode.COLLECTIVE
 
 
@@ -556,7 +584,21 @@ def launch():
     logger = get_logger()
     _print_arguments(args)
 
-    distribute_mode = which_distributed_mode(args)
+    if args.backend == 'auto':
+        distribute_mode = which_distributed_mode(args)
+        assert args.backend in [
+            'gloo', 'nccl', 'bkcl', 'hccl'
+        ]  # which_distributed_mode must modify args.backend
+    else:
+        assert args.run_mode == 'collective' or args.run_mode == None, \
+            "When backend is not 'auto', run mode must be collective."
+        check_backend(args.backend)
+        distribute_mode = DistributeMode.COLLECTIVE
+
+    block_windows_and_macos(
+        args.backend)  # raise error when using gloo on windows or macos
+    if args.backend == 'gloo':
+        logger.warning("launch start with CPUONLY mode")
 
     if enable_elastic(args, distribute_mode):
         launch_elastic(args, distribute_mode)

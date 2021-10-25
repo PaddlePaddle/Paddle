@@ -7,7 +7,7 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool)
+  cost_model cuda_graph_with_memory_pool heter_ccl_context)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -30,6 +30,11 @@ endif()
 if (WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
+endif()
+
+if (WITH_ASCEND_CL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+  set(PYBIND_DEPS ${PYBIND_DEPS} hccl_context)
 endif()
 
 if(NOT WIN32)
@@ -120,6 +125,10 @@ if(WITH_PYTHON)
   if(WITH_XPU_BKCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
   endif(WITH_XPU_BKCL)
+
+  if(WITH_ASCEND_CL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
+  endif(WITH_ASCEND_CL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})

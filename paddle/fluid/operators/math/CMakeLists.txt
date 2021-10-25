@@ -41,10 +41,15 @@ endfunction()
 
 if (WITH_ASCEND_CL)
   cc_library(beam_search_npu SRCS beam_search_npu.cc DEPS npu_op_runner)
+  cc_library(concat_and_split_npu SRCS concat_and_split_npu.cc DEPS npu_op_runner)
 endif()
 
 # please add new math_library in alphabetical order
-math_library(concat_and_split)
+if (WITH_ASCEND_CL)
+    math_library(concat_and_split DEPS concat_and_split_npu)
+else()
+    math_library(concat_and_split)
+endif()
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)

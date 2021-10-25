@@ -36,6 +36,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
+#include "paddle/fluid/imperative/hccl_context.h"
+#include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -2095,6 +2097,13 @@ void BindImperative(py::module *m_ptr) {
                     [](imperative::ParallelStrategy &self, int local_rank) {
                       self.local_rank_ = local_rank;
                     })
+      .def_property("local_nranks",
+                    [](const imperative::ParallelStrategy &self) {
+                      return self.local_nranks_;
+                    },
+                    [](imperative::ParallelStrategy &self, int local_nranks) {
+                      self.local_nranks_ = local_nranks;
+                    })
       .def_property(
           "trainer_endpoints",
           [](const imperative::ParallelStrategy &self) {
@@ -2200,6 +2209,18 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HCCLParallelContext>>(
+      m, "HCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::NPUPlace &>())
+      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::HCCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
 #if defined(PADDLE_WITH_GLOO)
   // xiongkun
   py::class_<imperative::GLOOParallelContext, imperative::ParallelContext,
@@ -2212,6 +2233,12 @@ void BindImperative(py::module *m_ptr) {
            &imperative::GLOOParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
+
+  py::class_<imperative::HeterParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HeterParallelContext>>(
+      m, "HeterParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &, const int &>())
+      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 
   m.def("pylayer_apply",
         [](const platform::CPUPlace &place, const py::object &cls,

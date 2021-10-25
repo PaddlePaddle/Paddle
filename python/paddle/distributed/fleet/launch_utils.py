@@ -669,14 +669,55 @@ def get_xpus(xpus):
     return res_xpus
 
 
-def get_device_mode():
-    if fluid.core.is_compiled_with_npu() and \
+def get_npus(npus):
+    if npus is None:
+        npus_num = fluid.core.get_npu_device_count()
+        res_npus = [str(x) for x in range(0, npus_num)]
+    else:
+        npu_visible_devices = os.getenv("NPU_VISIBLE_DEVICES")
+        if npu_visible_devices is None or npu_visible_devices == "":
+            res_npus = [x.strip() for x in npus.split(',')]
+        else:
+            # change npus into relative values
+            # e.g. NPU_VISIBLE_DEVICES=4,5,6,7; args.npus=4,5,6,7;
+            # therefore npus=0,1,2,3
+            npu_visible_devices_list = npu_visible_devices.split(',')
+            for x in npus.split(','):
+                assert x in npu_visible_devices_list, "Can't find "\
+                    "your npus %s in NPU_VISIBLE_DEVICES[%s]."\
+                    % (x, npu_visible_devices)
+            res_npus = [
+                npu_visible_devices_list.index(x.strip())
+                for x in npus.split(',')
+            ]
+            logger.info("Change selected_npus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "NPU_VISIBLE_DEVICES:{}".format(
+                            npus, res_npus, npu_visible_devices_list))
+
+    return res_npus
+
+
+def get_device_mode(backend):
+    if backend == 'heter':
+        if fluid.core.is_compiled_with_cuda() and \
+            fluid.core.get_cuda_device_count() > 0:
+            print("launch train in heter mode with GPU device.")
+            return DeviceMode.GPU
+        if fluid.core.is_compiled_with_xpu() and \
+            fluid.core.get_xpu_device_count() > 0:
+            print("launch train in heter mode with XPU device.")
+            return DeviceMode.XPU
+        if fluid.core.is_compiled_with_npu() and \
             fluid.core.get_npu_device_count() > 0:
+            print("launch train in heter mode with NPU device.")
+            return DeviceMode.ASCEND_NPU
+
+    if backend == 'hccl' and fluid.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
-    if fluid.core.is_compiled_with_cuda() and \
-            fluid.core.get_cuda_device_count() > 0:
+    if backend == 'nccl' and fluid.core.get_cuda_device_count() > 0:
         print("launch train in GPU mode!")
         return DeviceMode.GPU
 
@@ -708,7 +749,17 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.ASCEND_NPU:
-        devices_per_proc = None
+        npus = get_npus(args.npus)
+        if args.nproc_per_node is not None:
+            assert (len(npus) % int(args.nproc_per_node)) ==0, \
+                "npus' number:{} mod args.nproc_per_node:{} must == 0".format(len(npus), args.nproc_per_node)
+
+            n = int(len(npus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                npus[i:i + n] for i in six.moves.range(0, len(npus), n)
+            ]
+        else:
+            devices_per_proc = npus
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
@@ -1237,3 +1288,62 @@ class ParameterServerLauncher(object):
             tp.cmd = cmd
 
             self.procs["heter_worker"].append(tp)
+
+
+def check_backend(backend):
+    if backend not in ['nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter']:
+        raise ValueError("paddle.distributed initialize error, "
+                         "backend argument can only be one of "
+                         "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
+                         "but got %s" % backend)
+
+    if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with cuda but you assign 'nccl' as backend."
+        )
+
+    if backend == 'bkcl' and not fluid.core.is_compiled_with_xpu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+    if backend == 'hccl' and not fluid.core.is_compiled_with_npu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with npu but you assign 'hccl' as backend."
+        )
+
+    if backend == 'heter' and not (fluid.core.is_compiled_with_cuda() or
+                                   fluid.core.is_compiled_with_xpu() or
+                                   fluid.core.is_compiled_with_npu()):
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with gup/xpu/npu but you assign 'heter' as backend."
+        )
+
+
+def block_windows_and_macos(backend):
+    if backend != 'gloo': return
+    if utils.OS_NAME.startswith('darwin'):  # MACOS , block
+        raise ValueError(
+            "You are going to using gloo on macos, but currently is not supported"
+        )
+    if utils.IS_WINDOWS:  # MACOS , block
+        raise ValueError(
+            "You are going to using gloo on windows, but currently is not supported"
+        )
+
+
+def get_backend_by_compile_flag():
+    if fluid.core.is_compiled_with_cuda():
+        return 'nccl'
+
+    if fluid.core.is_compiled_with_xpu():
+        return 'bkcl'
+
+    if fluid.core.is_compiled_with_npu():
+        return 'hccl'
+
+    return 'gloo'

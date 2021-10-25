@@ -205,6 +205,7 @@ message DistributedStrategy {
   optional bool asp = 33 [ default = false ];
   optional bool fuse_grad_merge = 34 [ default = false ];
   optional bool semi_auto = 35 [ default = false ];
+  optional bool heter_ccl_mode = 36 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

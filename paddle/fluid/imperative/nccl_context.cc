@@ -20,7 +20,15 @@
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_NCCL
+#include <nccl.h>
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -125,6 +133,42 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
+}
+
+void NCCLParallelContext::InterReduce(const framework::Variable &src,
+                                      framework::Variable *dst, int ring_id) {
+  VLOG(3) << "/// DEBUG /// start inter reduce with ring_id: " << ring_id;
+  const framework::Tensor &src_tensor = src.Get<framework::LoDTensor>();
+  framework::Tensor *dst_tensor = dst->GetMutable<framework::LoDTensor>();
+
+  const auto &place = src_tensor.place();
+  platform::NCCLComm *comm =
+      platform::NCCLCommContext::Instance().Get(ring_id, place);
+  gpuStream_t stream = comm->stream();
+
+  const void *src_ptr = src_tensor.data<void>();
+  dst_tensor->Resize(src_tensor.dims());
+  auto *dst_ptr =
+      dst_tensor->mutable_data(src_tensor.place(), src_tensor.type());
+  auto nccl_dtype = platform::ToNCCLDataType(src_tensor.type());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+      src_ptr, dst_ptr, src_tensor.numel(), nccl_dtype, ncclSum, 0,
+      comm->comm(), stream));
+}
+
+void NCCLParallelContext::InterBroadCast(framework::Variable *src,
+                                         int ring_id) {
+  VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
+  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  const auto &place = src_tensor->place();
+  platform::NCCLComm *comm =
+      platform::NCCLCommContext::Instance().Get(ring_id, place);
+  gpuStream_t stream = comm->stream();
+
+  void *src_ptr = src_tensor->data<void>();
+  auto nccl_dtype = platform::ToNCCLDataType(src_tensor->type());
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }
 
 paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
