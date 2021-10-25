@@ -198,10 +198,16 @@ class DenseNet(nn.Layer):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import DenseNet
 
-            densent = DenseNet()
+            # build model
+            densenet = DenseNet()
 
+            x = paddle.rand([1, 3, 224, 224])
+            out = densenet(x)
+
+            print(out.shape)
     """
 
     def __init__(self,
