@@ -90,8 +90,62 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       new_dims.push_back(1);
     }
 
-    auto out_dims = framework::make_ddim(new_dims);
-    ctx->SetOutputDim("Out", out_dims);
+    auto ddim_out = framework::make_ddim(new_dims);
+
+#ifdef PADDLE_WITH_MKLDNN
+    //  if mkldnn matmul_v2+transpose+reshape fuse activated
+    auto reshape_out = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto transpose_out =
+        ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+
+    if (!reshape_out.empty() && !transpose_out.empty()) {
+      auto reshape_out_size = reshape_out.size();
+      auto transpose_out_size = transpose_out.size();
+      PADDLE_ENFORCE_EQ(transpose_out_size, 4,
+                        platform::errors::InvalidArgument(
+                            "transpose_out supported rank is 4, "
+                            "received %d",
+                            transpose_out_size));
+      const std::vector<int> supported_axis{0, 2, 1, 3};
+      const bool supported_transpose_axis = std::equal(
+          transpose_out.begin(), transpose_out.end(), supported_axis.begin());
+      PADDLE_ENFORCE_EQ(
+          supported_transpose_axis, true,
+          platform::errors::InvalidArgument(
+              "supported transpose axis for the fuse are {0, 2, 1, 3}"));
+      PADDLE_ENFORCE_EQ(
+          reshape_out_size, 3,
+          platform::errors::InvalidArgument("reshape_out supported rank is 3, "
+                                            "received %d",
+                                            reshape_out_size));
+
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+
+      // if "-1" is present then one of reshape dims must be infered
+      if (it != reshape_out.end()) {
+        int index = std::distance(reshape_out.begin(), it);
+
+        auto ddim_out_vec = framework::vectorize(ddim_out);
+
+        int ddim_out_product =
+            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
+                            std::multiplies<int>());
+        int reshape_out_product = std::accumulate(
+            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
+
+        reshape_out[index] = ddim_out_product / reshape_out_product;
+      }
+
+      framework::DDim shape_out =
+          ddim_out.transpose(transpose_out).reshape(reshape_out);
+      ctx->SetOutputDim("Out", shape_out);
+    } else {
+      ctx->SetOutputDim("Out", ddim_out);
+    }
+#else
+    ctx->SetOutputDim("Out", ddim_out);
+#endif
+
     ctx->ShareLoD("X", /* --> */ "Out");
   }
 
@@ -139,6 +193,18 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "Set true to transpose the last two dimensions of Y before "
                   "doing multiplication")
         .SetDefault(false);
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Out",
+        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
+              "it's a shape atribute of fused reshape for `Out` output.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "fused_transpose_Out",
+        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
+              "it's a axis atribute of fused transpose for `Out` output.)DOC")
+        .SetDefault({})
+        .AsExtra();
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)

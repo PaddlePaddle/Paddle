@@ -13,13 +13,18 @@ namespace paddle {
 namespace framework {
 namespace {
 
+using TaskTracker = TaskTracker<EventsWaiter::EventNotifier>;
+
 class WorkQueueImpl : public WorkQueue {
  public:
-  explicit WorkQueueImpl(const WorkQueueOptions& options)
-      : WorkQueue(options), queue_(nullptr), tracker_(nullptr) {
-    if (options_.track_task) {
+  explicit WorkQueueImpl(const WorkQueueOptions& options) : WorkQueue(options) {
+    if (options_.track_task && options.queue_empty_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      tracker_ = new (storage) TaskTracker;
+      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
+      auto notifier = options.queue_empty_waiter->RegisterEvent(
+          kQueueEmptyEvent,
+          [tracker]() { return tracker->PendingTaskNum() == 0; });
+      tracker_ = new (storage) TaskTracker(*notifier.get());
     }
     queue_ = new NonblockingThreadPool(options_.num_threads,
                                        options_.allow_spinning);
@@ -44,20 +49,11 @@ class WorkQueueImpl : public WorkQueue {
     queue_->AddTask(std::move(fn));
   }
 
-  void WaitQueueEmpty() override {
-    if (tracker_ == nullptr) {
-      PADDLE_THROW(
-          platform::errors::Unavailable("set WorkQueueOptions.track_task = "
-                                        "true before call this interface."));
-    }
-    tracker_->WaitTaskNumToZero();
-  }
-
   size_t NumThreads() const override { return queue_->NumThreads(); }
 
  private:
-  NonblockingThreadPool* queue_;
-  TaskTracker* tracker_;
+  NonblockingThreadPool* queue_{nullptr};
+  TaskTracker* tracker_{nullptr};
 };
 
 class WorkQueueGroupImpl : public WorkQueueGroup {
@@ -68,8 +64,6 @@ class WorkQueueGroupImpl : public WorkQueueGroup {
   ~WorkQueueGroupImpl();
 
   void AddTask(size_t queue_idx, std::function<void()> fn) override;
-
-  void WaitQueueGroupEmpty() override;
 
   size_t QueueNumThreads(size_t queue_idx) const override;
 
@@ -92,9 +86,14 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
   queues_storage_ = reinterpret_cast<NonblockingThreadPool*>(buffer);
   for (size_t idx = 0; idx < num_queues; ++idx) {
     const auto& options = queues_options_[idx];
-    if (options.track_task && tracker_ == nullptr) {
+    if (options.track_task && tracker_ == nullptr &&
+        options.queue_empty_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      tracker_ = new (storage) TaskTracker;
+      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
+      auto notifier = options.queue_empty_waiter->RegisterEvent(
+          kQueueEmptyEvent,
+          [tracker]() { return tracker->PendingTaskNum() == 0; });
+      tracker_ = new (storage) TaskTracker(*notifier.get());
     }
     queues_[idx] = new (&queues_storage_[idx])
         NonblockingThreadPool(options.num_threads, options.allow_spinning);
@@ -122,15 +121,6 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
     };
   }
   queues_[queue_idx]->AddTask(std::move(fn));
-}
-
-void WorkQueueGroupImpl::WaitQueueGroupEmpty() {
-  if (nullptr == tracker_) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "set WorkQueueOptions.track_task = true for at least one of queues "
-        "before call this interface."));
-  }
-  tracker_->WaitTaskNumToZero();
 }
 
 size_t WorkQueueGroupImpl::QueueNumThreads(size_t queue_idx) const {
