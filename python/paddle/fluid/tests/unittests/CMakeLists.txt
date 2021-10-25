@@ -456,6 +456,11 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 
+# disable sparse_attention which not in suitable env
+if ( (NOT WITH_GPU) OR (WIN32) OR (PADDLE_WITH_ARM) OR (WITH_ROCM) )
+    list(REMOVE_ITEM TEST_OPS test_sparse_attention_op)
+endif()
+
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
@@ -1038,3 +1043,4 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
+set_tests_properties(test_tensordot PROPERTIES TIMEOUT 1000)

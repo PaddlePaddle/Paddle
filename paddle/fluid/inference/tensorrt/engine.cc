@@ -196,6 +196,19 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
+#if IS_TRT_VERSION_LT(7000)
+      // trt6 will check all_of input > 0
+      if (!(std::all_of(input.second.begin(), input.second.end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(max_input_shape_[input.first].begin(),
+                        max_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(optim_input_shape_[input.first].begin(),
+                        optim_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }))) {
+        continue;
+      }
+#endif
       VLOG(4) << "TRT dynamic_shape set " << input.first
               << " min: " << Vec2Str(input.second)
               << ", max: " << Vec2Str(max_input_shape_[input.first])
@@ -225,6 +238,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
   infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));

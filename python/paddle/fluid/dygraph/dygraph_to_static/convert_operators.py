@@ -20,6 +20,7 @@ from paddle.fluid.layers import array_length, array_read, array_write, create_ar
 from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce_any
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -204,10 +205,45 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
 
     """
     if isinstance(pred, Variable):
-        return _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                                return_vars)
+        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
+                               return_vars)
     else:
-        return _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
+        out = _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
+
+    return _remove_no_value_return_var(out)
+
+
+def _remove_no_value_return_var(out):
+    if out and isinstance(out, tuple):
+        processed_out = out
+        align_ret = out[0]
+        if isinstance(align_ret, tuple):
+            for index, item in enumerate(align_ret):
+                if isinstance(item, Variable) and (
+                        RETURN_NO_VALUE_VAR_NAME in item.name):
+                    # return None
+                    if index == 0:
+                        processed_out = (None, ) + out[1:]
+                    elif index == 1:
+                        processed_out = align_ret[:1] + out[1:]
+                    else:
+                        processed_out = (align_ret[:index], ) + out[1:]
+                    break
+
+        for index, item in enumerate(processed_out):
+            if isinstance(item, Variable) and (
+                    RETURN_NO_VALUE_VAR_NAME in item.name):
+                processed_out = processed_out[:index]
+
+        if not processed_out:
+            return None
+        elif len(processed_out) == 1:
+            return processed_out[0]
+        else:
+            return processed_out
+
+    else:
+        return out
 
 
 def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
