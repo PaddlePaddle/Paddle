@@ -106,10 +106,11 @@ std::vector<uint64_t> Communicator::GetClientInfo() {
   return res;
 }
 
-int Communicator::SetClients(const std::vector<uint64_t> &host_sign_list) {
+int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
   int node = host_sign_list.size();
-  return _ps_env.set_ps_clients(const_cast<uint64_t *>(host_sign_list.data()),
-                                node);
+  // return _ps_env.set_ps_clients(const_cast<uint64_t
+  // *>(host_sign_list.data()),
+  return _ps_env.set_ps_clients(host_sign_list.data(), node);
 }
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,

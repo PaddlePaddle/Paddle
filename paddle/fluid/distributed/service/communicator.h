@@ -248,7 +248,8 @@ class Communicator {
 
   virtual std::vector<uint64_t> GetClientInfo();
 
-  virtual int SetClients(const std::vector<uint64_t> &host_sign_list);
+  // virtual int SetClients(const std::vector<uint64_t> &host_sign_list);
+  virtual int SetClients(std::vector<uint64_t> &host_sign_list);  // NOLINT
 
   // 1. recv dense param
   virtual void RpcRecvDense(const std::vector<std::string> &varnames,

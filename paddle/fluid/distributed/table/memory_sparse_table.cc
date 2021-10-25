@@ -412,7 +412,9 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
                   } else {
                     auto* feature_value = local_shard->Init(key);
                     feature_value->resize(data_size);
-                    float* data_ptr = const_cast<float*>(feature_value->data());
+                    // float* data_ptr =
+                    // const_cast<float*>(feature_value->data());
+                    float* data_ptr = feature_value->data();
                     _value_accesor->create(&data_buffer_ptr, 1);
                     memcpy(data_ptr, data_buffer_ptr,
                            data_size * sizeof(float));
@@ -497,7 +499,9 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
               auto* feature_value = local_shard->Init(key);
               feature_value->resize(value_size);
               _value_accesor->create(&data_buffer_ptr, 1);
-              memcpy(const_cast<float*>(feature_value->data()), data_buffer_ptr,
+              // memcpy(const_cast<float*>(feature_value->data()),
+              // data_buffer_ptr,
+              memcpy(feature_value->data(), data_buffer_ptr,
                      value_size * sizeof(float));
               itr = local_shard->Find(key);
             } else {
@@ -505,7 +509,8 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
             }
 
             auto* feature_value = itr->second;
-            float* value_data = const_cast<float*>(feature_value->data());
+            // float* value_data = const_cast<float*>(feature_value->data());
+            float* value_data = feature_value->data();
             size_t value_size = feature_value->size();
 
             // VLOG(3) << "push sparse, key: " << key << " value: ";
@@ -526,7 +531,8 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
 
               if (_value_accesor->need_extend_mf(data_buffer)) {
                 feature_value->resize(value_col);
-                value_data = const_cast<float*>(feature_value->data());
+                // value_data = const_cast<float*>(feature_value->data());
+                value_data = feature_value->data();
                 _value_accesor->create(&value_data, 1);
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
@@ -591,12 +597,15 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
               auto* feature_value = local_shard->Init(key);
               feature_value->resize(value_size);
               _value_accesor->create(&data_buffer_ptr, 1);
-              memcpy(const_cast<float*>(feature_value->data()), data_buffer_ptr,
+              // memcpy(const_cast<float*>(feature_value->data()),
+              // data_buffer_ptr,
+              memcpy(feature_value->data(), data_buffer_ptr,
                      value_size * sizeof(float));
               itr = local_shard->Find(key);
             }
             auto* feature_value = itr->second;
-            float* value_data = const_cast<float*>(feature_value->data());
+            // float* value_data = const_cast<float*>(feature_value->data());
+            float* value_data = feature_value->data();
             size_t value_size = feature_value->size();
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
               _value_accesor->update(&value_data, &update_data, 1);
@@ -606,7 +615,8 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
               _value_accesor->update(&data_buffer_ptr, &update_data, 1);
               if (_value_accesor->need_extend_mf(data_buffer)) {
                 feature_value->resize(value_col);
-                value_data = const_cast<float*>(feature_value->data());
+                // value_data = const_cast<float*>(feature_value->data());
+                value_data = feature_value->data();
                 _value_accesor->create(&value_data, 1);
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));

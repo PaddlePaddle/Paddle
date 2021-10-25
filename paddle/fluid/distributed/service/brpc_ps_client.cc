@@ -1584,7 +1584,10 @@ void BrpcPsClient::push_dense_task_consume() {
           });
 
       auto &total_send_data_vec = *(task->data());
-      float *total_send_data = const_cast<float *>(total_send_data_vec.data());
+      // float *total_send_data = const_cast<float
+      // *>(total_send_data_vec.data());
+      float *total_send_data =
+          reinterpret_cast<float *>(total_send_data_vec.data());
       size_t total_send_data_size = total_send_data_vec.size();
       {
         CostTimer merge_timer("pslib_downpour_client_push_dense_merge");
