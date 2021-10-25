@@ -242,9 +242,8 @@ class GlooWrapper {
   // NOTE(@xiongkun03): support all gather array of
   //                   numbers with different length
   //                   if the third argument is int, use allgather,
-  //                   if it is vector, use AllgathervOptions, which work in
-  //                   different
-  //                   length occasion.
+  //                   if it is vector, use AllgathervOptions,
+  //                   which works in different length occasion.
   template <typename T>
   void AllGatherVector(T* input_ptr, T* output_ptr,
                        std::vector<size_t>& element_nums) {  // NOLINT

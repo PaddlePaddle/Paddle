@@ -53,15 +53,13 @@ void GLOOParallelContext::InitWithRingID(int ring_id) {
       platform::errors::OutOfRange("Still not implement InitWithRingID"));
 }
 
-#define GLOO_CASE(type, T, gw)                                        \
-  case type: {                                                        \
-    VLOG(4) << "Use the gloo all reduce to sync. SRC:" << src_tensor; \
-    std::vector<T> send_vector##T;                                    \
-    framework::TensorToVector<T>(src_tensor, &send_vector##T);        \
-    auto recv_vector##T = gw->AllReduce<T>(send_vector##T);           \
-    framework::TensorFromVector<T>(recv_vector##T, dst_tensor);       \
-    VLOG(4) << "DST:" << *dst_tensor;                                 \
-    break;                                                            \
+#define GLOO_CASE(type, T, gw)                                  \
+  case type: {                                                  \
+    std::vector<T> send_vector##T;                              \
+    framework::TensorToVector<T>(src_tensor, &send_vector##T);  \
+    auto recv_vector##T = gw->AllReduce<T>(send_vector##T);     \
+    framework::TensorFromVector<T>(recv_vector##T, dst_tensor); \
+    break;                                                      \
   }
 
 void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
@@ -150,17 +148,12 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
   auto *dst_rows_ptr = dst_rows->MutableData(place);
   const int64_t *src_rows_ptr = src_rows.Data(place);
 
-  // VLOG(3) << "Selected Rows of src:" << string::join_strings(dst_rows, ',')
-
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
   auto feature_size = framework::product(dims) / dims[0];
   dst_tensor->Resize(dims);
 
-  VLOG(3) << "Use the gloo all reduce to sync. SRC:" << src_tensor;
-  // framework::SerializeToStream(VLOG(4), src);
-  VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
   std::vector<size_t> element_nums = rows_num_vector;
   std::for_each(element_nums.begin(), element_nums.end(),
                 [feature_size](size_t &x) { x = x * feature_size; });
@@ -181,9 +174,6 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
           platform::errors::InvalidArgument("Invalid datatype for allreduce"));
     }
   }
-  VLOG(3) << "Selected Row DST:" << *dst_tensor;
-  VLOG(3) << "Selected Rows of DST:"
-          << string::join_strings(std::vector<int64_t>(*dst_rows), ',');
 }
 
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
