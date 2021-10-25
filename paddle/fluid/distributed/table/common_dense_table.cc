@@ -65,7 +65,7 @@ int32_t CommonDenseTable::initialize_value() {
     if (varname == "Param") {
       param_dim_ = dim;
       param_idx_ = x;
-    } 
+    }
 
     auto& initializer = common.initializers()[x];
     total_dim_ += dim;
@@ -82,7 +82,7 @@ int32_t CommonDenseTable::initialize_value() {
       VLOG(1) << "debug dense optimizer AdaEpsilon: " << values_[x][0];
     }
   }
-  
+
   fixed_len_params_dim_ = 0;
   for (int x = 0; x < size; ++x) {
     auto& dim = common.dims()[x];
@@ -96,7 +96,8 @@ int32_t CommonDenseTable::initialize_value() {
     param_col_ids_.insert(param_col_ids_.begin() + 1, -1);
   }
 
-  VLOG(1) << "CommonDenseTable::initialize_value total dim: " << total_dim_ << " fixed_len_params_dim: " << fixed_len_params_dim_;
+  VLOG(1) << "CommonDenseTable::initialize_value total dim: " << total_dim_
+          << " fixed_len_params_dim: " << fixed_len_params_dim_;
 
   pull_reservoir_ = ReservoirValue<float>(param_dim_);
   return 0;
@@ -113,9 +114,9 @@ int32_t CommonDenseTable::initialize_optimizer() {
   } else if (name == "adam") {
     optimizer_ = std::make_shared<DAdam>(common, &values_);
     optimizer_->set_global_lr(_global_lr);
-  } else if (name == "adam_d2sum"){
+  } else if (name == "adam_d2sum") {
     optimizer_ = std::make_shared<DAdamD2Sum>(common, &values_);
-    //optimizer_->set_global_lr(_global_lr);  //no use
+    // optimizer_->set_global_lr(_global_lr);  //no use
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
   } else {
@@ -150,7 +151,7 @@ int32_t CommonDenseTable::pour() {
   pull_reservoir_.avg();
   _push_dense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
-  std::cout << "zcb debug CommonDenseTable::pour() done\n";
+  VLOG(2) << "debug CommonDenseTable::pour() done";
   return 0;
 }
 
@@ -190,35 +191,38 @@ int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  std::cout << "zcb debug CommonDenseTable::_push_dense done\n";
+  VLOG(2) << "debug CommonDenseTable::_push_dense done";
   return 0;
 }
 
-
-int32_t CommonDenseTable::load(const std::string& path, const std::string& param) {
+int32_t CommonDenseTable::load(const std::string& path,
+                               const std::string& param) {
   if (param_dim_ <= 0) {
-    return 0;  
+    return 0;
   }
   std::string table_path = table_dir(path);
   auto file_list = _afs_client.list(table_path);
   std::sort(file_list.begin(), file_list.end());
-  for (auto ff: file_list) {
+  for (auto ff : file_list) {
     VLOG(1) << "load dense table file list: " << ff;
   }
   size_t dim_num_per_file = _config.accessor().fea_dim() / file_list.size() + 1;
-  //param_dim_ in last node != _config.accesor().fea_dim() / _shard_num + 1
+  // param_dim_ in last node != _config.accesor().fea_dim() / _shard_num + 1
   size_t dim_num_per_shard = _value_accesor->fea_dim() / _shard_num + 1;
-  size_t start_dim_idx = dim_num_per_shard * _shard_idx; 
+  size_t start_dim_idx = dim_num_per_shard * _shard_idx;
   size_t start_file_idx = start_dim_idx / dim_num_per_file;
   size_t end_file_idx = (start_dim_idx + param_dim_) / dim_num_per_file;
-  end_file_idx = end_file_idx < file_list.size() ? end_file_idx : file_list.size() - 1;
-  VLOG(2) << "load dense table start_file_idx: " << start_file_idx << " end_file_idx: " << end_file_idx;
-    
+  end_file_idx =
+      end_file_idx < file_list.size() ? end_file_idx : file_list.size() - 1;
+  VLOG(2) << "load dense table start_file_idx: " << start_file_idx
+          << " end_file_idx: " << end_file_idx;
+
   int load_param = atoi(param.c_str());
   FsChannelConfig channel_config;
 
   channel_config.converter = _value_accesor->converter(load_param).converter;
-  channel_config.deconverter = _value_accesor->converter(load_param).deconverter;
+  channel_config.deconverter =
+      _value_accesor->converter(load_param).deconverter;
   bool is_read_failed = false;
   int err_no = 0;
   int retry_num = 0;
@@ -247,19 +251,23 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
               if (read_channel->read_line(line_data) != 0) {
                 break;
               }
-              auto str_len = paddle::string::str_to_float(line_data.data(), data_buff_ptr);
+              auto str_len = paddle::string::str_to_float(line_data.data(),
+        data_buff_ptr);
               CHECK(str_len == 1) << "only expect 1 float: " << str_len;
               values_[x][y] = data_buffer[0];
               ++fixed_len_param_idx;
-              VLOG(2) << "CommonDenseTable::load fixed_len_param x: " << x << " y: " << y << " value: " << values_[x][y];
+              VLOG(2) << "CommonDenseTable::load fixed_len_param x: " << x << "
+        y: " << y << " value: " << values_[x][y];
             }
           }
         }
-        CHECK(fixed_len_param_idx == fixed_len_params_dim_) << "dense table load expect fixed_len_params_dim_ " 
+        CHECK(fixed_len_param_idx == fixed_len_params_dim_) << "dense table load
+        expect fixed_len_params_dim_ "
             << fixed_len_params_dim_ << " but got " << fixed_len_param_idx;
         */
 
-        //not all file contains param and the length of last file containing param may not equal to others
+        // not all file contains param and the length of last file containing
+        // param may not equal to others
         size_t file_dim_idx = 0;
         for (; file_dim_idx < dim_num_per_file; ++file_dim_idx) {
           if (read_channel->read_line(line_data) != 0) {
@@ -271,65 +279,78 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
           if (file_dim_idx < file_start_idx) {
             continue;
           }
-          auto str_len = paddle::string::str_to_float(line_data.data(), data_buff_ptr);
-          //TODO: zcb create param_col and map: col_idx => param_idx(or param_idx list) in init()
-          CHECK(str_len == param_col_ids_.size()) << "expect " << param_col_ids_.size() << " float, but got " << str_len;
+          auto str_len =
+              paddle::string::str_to_float(line_data.data(), data_buff_ptr);
+          CHECK(str_len == param_col_ids_.size())
+              << "expect " << param_col_ids_.size() << " float, but got "
+              << str_len;
           for (size_t col_idx = 0; col_idx < str_len; ++col_idx) {
             if (param_col_ids_[col_idx] < 0) {
               continue;
             }
             values_[param_col_ids_[col_idx]][dim_idx] = data_buffer[col_idx];
-            VLOG(2) << "CommonDenseTable::load param x: " << param_col_ids_[col_idx] << " y: " << dim_idx << " value: " << values_[param_col_ids_[col_idx]][dim_idx] << " line " << file_dim_idx;
+            VLOG(2) << "CommonDenseTable::load param x: "
+                    << param_col_ids_[col_idx] << " y: " << dim_idx
+                    << " value: " << values_[param_col_ids_[col_idx]][dim_idx]
+                    << " line " << file_dim_idx;
           }
-          ++ dim_idx;
+          ++dim_idx;
         }
         read_channel->close();
-        VLOG(1) << "DownpourDenseTable load done " << channel_config.path << " file_start_idx: " << file_start_idx << " dim_idx: " << dim_idx;
+        VLOG(1) << "DownpourDenseTable load done " << channel_config.path
+                << " file_start_idx: " << file_start_idx
+                << " dim_idx: " << dim_idx;
         if (err_no == -1) {
-            if (retry_num > FLAGS_pslib_table_save_max_retry_dense) {
-                LOG(ERROR) << "DownpourDenseTable load failed reach max limit!";
-                exit(-1);
-            }
-            ++retry_num;
-            --i;
-            LOG(ERROR) << "DownpourDenseTable load failed after read , retry it! path:"
-                       << channel_config.path << ", retry_num=" << retry_num;
-            continue;
+          if (retry_num > FLAGS_pslib_table_save_max_retry_dense) {
+            LOG(ERROR) << "DownpourDenseTable load failed reach max limit!";
+            exit(-1);
+          }
+          ++retry_num;
+          --i;
+          LOG(ERROR)
+              << "DownpourDenseTable load failed after read , retry it! path:"
+              << channel_config.path << ", retry_num=" << retry_num;
+          continue;
         }
         retry_num = 0;
         start_dim_idx += file_dim_idx - file_start_idx;
-        LOG(INFO) << "DownpourDenseTable load success, path:" << channel_config.path;
+        LOG(INFO) << "DownpourDenseTable load success, path:"
+                  << channel_config.path;
       }
     } catch (...) {
       is_read_failed = true;
-      LOG(ERROR) << "DownpourDenseTable load failed, retry it! path:" << channel_config.path;
+      LOG(ERROR) << "DownpourDenseTable load failed, retry it! path:"
+                 << channel_config.path;
     }
   } while (is_read_failed);
   return 0;
 }
 
-int32_t CommonDenseTable::save(const std::string& path, const std::string& param) {
+int32_t CommonDenseTable::save(const std::string& path,
+                               const std::string& param) {
   int save_param = atoi(param.c_str());
   uint32_t feasign_size;
   VLOG(0) << "CommonDenseTable::save path " << path;
 
   FsChannelConfig channel_config;
   if (_config.compress_in_save()) {
-      channel_config.path = paddle::string::format_string("%s/part-%03d.gz", 
-          table_dir(path).c_str(), _shard_idx);
+    channel_config.path = paddle::string::format_string(
+        "%s/part-%03d.gz", table_dir(path).c_str(), _shard_idx);
   } else {
-      channel_config.path = paddle::string::format_string("%s/part-%03d", 
-          table_dir(path).c_str(), _shard_idx);
+    channel_config.path = paddle::string::format_string(
+        "%s/part-%03d", table_dir(path).c_str(), _shard_idx);
   }
   _afs_client.remove(channel_config.path);
   channel_config.converter = _value_accesor->converter(save_param).converter;
-  channel_config.deconverter = _value_accesor->converter(save_param).deconverter;
+  channel_config.deconverter =
+      _value_accesor->converter(save_param).deconverter;
 
-  //float dim_data_buffer[_data.cols()];
+  // float dim_data_buffer[_data.cols()];
   bool is_write_failed = false;
-  std::vector<std::vector<std::string>> result_buffer_param(param_dim_, std::vector<std::string>());
+  std::vector<std::vector<std::string>> result_buffer_param(
+      param_dim_, std::vector<std::string>());
   std::vector<std::string> result_buffer_fixed_len;
-  //result_buffer_param.reserve(param_dim_);
+  // result_buffer_param.reserve(param_dim_);
   result_buffer_fixed_len.reserve(fixed_len_params_dim_);
 
   auto common = _config.common();
@@ -354,51 +375,56 @@ int32_t CommonDenseTable::save(const std::string& path, const std::string& param
   int retry_num = 0;
   int err_no = 0;
   do {
-      err_no = 0;
-      is_write_failed = false;
-      feasign_size = 0;
-      // 40M
-      auto write_channel = _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
-      /*
-      for (auto& t : result_buffer_fixed_len) {
-          if (0 != write_channel->write_line(t)) {
-              ++retry_num;
-              is_write_failed = true;
-              LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
-                  "path:" << channel_config.path << ", retry_num=" << retry_num;
-              break;
-          }
+    err_no = 0;
+    is_write_failed = false;
+    feasign_size = 0;
+    // 40M
+    auto write_channel =
+        _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+    /*
+    for (auto& t : result_buffer_fixed_len) {
+        if (0 != write_channel->write_line(t)) {
+            ++retry_num;
+            is_write_failed = true;
+            LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
+                "path:" << channel_config.path << ", retry_num=" << retry_num;
+            break;
+        }
+    }
+    VLOG(0) << "result_buffer_param.size(): " << result_buffer_param.size();
+    */
+    for (auto& t : result_buffer_param) {
+      if (_config.common().name() == "adam_d2sum") {
+        t.insert(t.begin() + 1, "0");  // avg_w
       }
-      VLOG(0) << "result_buffer_param.size(): " << result_buffer_param.size();
-      */
-      for (auto& t : result_buffer_param) {
-          if (_config.common().name() == "adam_d2sum") {
-            t.insert(t.begin() + 1, "0"); //avg_w
-          }
-          if (0 != write_channel->write_line(paddle::string::join_strings(t, ' '))) {
-              ++retry_num;
-              is_write_failed = true;
-              LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
-                  "path:" << channel_config.path << ", retry_num=" << retry_num;
-              break;
-          }
+      if (0 !=
+          write_channel->write_line(paddle::string::join_strings(t, ' '))) {
+        ++retry_num;
+        is_write_failed = true;
+        LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
+                      "path:"
+                   << channel_config.path << ", retry_num=" << retry_num;
+        break;
       }
+    }
 
-      ++feasign_size;
-      write_channel->close();
-      if (err_no == -1) {
-          ++retry_num;
-          is_write_failed = true;
-          LOG(ERROR) << "DownpourDenseTable save failed after write, retry it! "
-                     << "path:" << channel_config.path << ", retry_num=" << retry_num;
-      }
-      if (is_write_failed) {
-          _afs_client.remove(channel_config.path);
-      }
-      if (retry_num > paddle::distributed::FLAGS_pslib_table_save_max_retry_dense) {
-          LOG(ERROR) << "DownpourDenseTable save failed reach max limit!";
-          exit(-1);
-      }
+    ++feasign_size;
+    write_channel->close();
+    if (err_no == -1) {
+      ++retry_num;
+      is_write_failed = true;
+      LOG(ERROR) << "DownpourDenseTable save failed after write, retry it! "
+                 << "path:" << channel_config.path
+                 << ", retry_num=" << retry_num;
+    }
+    if (is_write_failed) {
+      _afs_client.remove(channel_config.path);
+    }
+    if (retry_num >
+        paddle::distributed::FLAGS_pslib_table_save_max_retry_dense) {
+      LOG(ERROR) << "DownpourDenseTable save failed reach max limit!";
+      exit(-1);
+    }
   } while (is_write_failed);
   LOG(INFO) << "DownpourDenseTable save success, path:" << channel_config.path;
   return feasign_size;

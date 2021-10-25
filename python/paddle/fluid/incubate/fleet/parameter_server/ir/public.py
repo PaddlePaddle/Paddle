@@ -44,9 +44,7 @@ OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
 SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
 SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
-SPARSE_OP_GRAD_LIST = [
-            "lookup_table_grad", "push_sparse", "push_sparse_v2"
-        ]
+SPARSE_OP_GRAD_LIST = ["lookup_table_grad", "push_sparse", "push_sparse_v2"]
 
 
 def _get_lr_ops(program):
@@ -119,7 +117,8 @@ class MergedVariable:
 
     def __str__(self):
         ov = ','.join([str(oo) for oo in self.ordered_vars])
-        return 'merged_var: {}, ordered_vars: {}, offsets: {}'.format(self.merged_var, ov, self.offsets)
+        return 'merged_var: {}, ordered_vars: {}, offsets: {}'.format(
+            self.merged_var, ov, self.offsets)
 
 
 def Singleton(cls):
@@ -210,7 +209,7 @@ class CompileTimeStrategy(object):
         print("yxf::multi sparse table grad list: {}".format(grads_dict))
         print("yxf::multi sparse table inputs list: {}".format(inputs_dict))
         return ret_list
-    
+
     def _find_distributed_lookup_table_grads(self, table_names):
         local_vars = self.origin_main_program.current_block().vars
         grads_dict = dict()
@@ -223,7 +222,7 @@ class CompileTimeStrategy(object):
                     grads_dict[op.input("W")[0]].extend(
                         [local_vars[name] for name in op.input("Out@GRAD")])
         return grads_dict
-    
+
     def _find_distributed_lookup_table_inputs(self, table_names):
         """
         Find input variable of distribute lookup table in program.
@@ -245,7 +244,7 @@ class CompileTimeStrategy(object):
                     inputs_dict[op.input("W")[0]].extend(
                         [local_vars[name] for name in op.input("Ids")])
         return inputs_dict
-    
+
     def get_distributed_mode(self):
         trainer = self.strategy.get_trainer_runtime_config()
         return trainer.mode
@@ -668,8 +667,8 @@ class CompileTimeStrategy(object):
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False)
-            print('debug zcb dense_ctx')
-            print('k: {}, v: {}'.format(grad_name, str([origin_varnames, var_numel])))
+            #print('debug dense_ctx')
+            #print('k: {}, v: {}'.format(grad_name, str([origin_varnames, var_numel])))
 
             send_ctx[grad_name] = dense_ctx
             idx += 1
@@ -728,8 +727,8 @@ class CompileTimeStrategy(object):
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False)
-            print('debug zcb: send_ctx:')
-            print('k: {}, v: {}'.format(str(sparse_ctx.var_name()), str([grad_name, splited_varname, ep_list, shape, trainer_id, idx, param_name])))
+            #print('debug: send_ctx:')
+            #print('k: {}, v: {}'.format(str(sparse_ctx.var_name()), str([grad_name, splited_varname, ep_list, shape, trainer_id, idx, param_name])))
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx

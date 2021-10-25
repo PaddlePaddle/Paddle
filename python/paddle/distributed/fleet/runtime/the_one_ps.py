@@ -878,8 +878,8 @@ class TheOnePSRuntime(RuntimeBase):
 
                 table.common = common
 
-                print('debug zcb build_merge_accessor:')
-                print(str(ctx))
+                #print('debug build_merge_accessor:')
+                #print(str(ctx))
                 if not ctx.is_sparse():
                     accessor = _build_merge_accessor(ctx)
                     table.accessor = accessor
@@ -1094,7 +1094,6 @@ class TheOnePSRuntime(RuntimeBase):
             tensor = var.get_value()
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
-            ####TODO: zcb put into hdfs
 
     def _ps_inference_save_persistables(self,
                                         executor,

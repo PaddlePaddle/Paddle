@@ -85,7 +85,7 @@ void TrainerBase::FinalizeDumpEnv() {
     th.join();
   }
   queue_.reset();
-  std::cout << "zcb debug dump done";
+  VLOG(2) << "dump done";
 }
 
 }  // end namespace framework
