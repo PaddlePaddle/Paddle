@@ -23,6 +23,13 @@ import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
+from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
+    TestMatMulOpTransposeReshapeEmptyFloat,
+    TestMatMulOpTransposeReshapeBasicFloat,
+    TestMatMulOpTransposeReshapeOtherDimFloat,
+    TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException,
+    TestMatMulOpTransposeReshapeTransposeRankNotSupportedException,
+    TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException)
 
 
 def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
@@ -235,6 +242,22 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
         self.trans_y = True
 
 
+class TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+    def config(self):
+        self.x_shape = (1, 1, 2, 1, 8, 9)
+        self.y_shape = (9, 12)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+    def config(self):
+        self.x_shape = (20, 5)
+        self.y_shape = (1, 2, 1, 5, 11)
+        self.trans_x = False
+        self.trans_y = False
+
+
 #   BF16 TESTS
 def create_bf16_test_class(parent):
     @OpTestTool.skip_if_not_cpu_bf16()
@@ -274,7 +297,8 @@ def create_bf16_test_class(parent):
                 2: [1, 0],
                 3: [0, 2, 1],
                 4: [0, 1, 3, 2],
-                5: [0, 1, 2, 4, 3]
+                5: [0, 1, 2, 4, 3],
+                6: [0, 1, 2, 3, 5, 4]
             }
 
             # expand vector so it will be a valid matrix for multiplication
@@ -370,6 +394,45 @@ create_bf16_test_class(TestMatMulV2Matrix3DXVectorOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp)
+
+
+class TestMatMulV2OpTransposeReshapeEmptyFloat(
+        TestMatMulOpTransposeReshapeEmptyFloat):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeBasicFloat(
+        TestMatMulOpTransposeReshapeBasicFloat):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeOtherDimFloat(
+        TestMatMulOpTransposeReshapeOtherDimFloat):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeTransposeAxisNotSupportedException(
+        TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeRankOfReshapeNotSupportedException(
+        TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeTransposeRankNotSupportedException(
+        TestMatMulOpTransposeReshapeTransposeRankNotSupportedException):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
 
 if __name__ == "__main__":
     paddle.enable_static()

@@ -76,6 +76,8 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
     } else {
       return var->Get<SelectedRows>().GetCompleteDims();
     }
+  } else if (var->IsType<Strings>()) {
+    return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
   } else {
     return DDim({-1});
   }
@@ -106,6 +108,8 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     } else {
       return DataTypeToString(tensor.type());
     }
+  } else if (var->IsType<Strings>()) {
+    return "strings";
   } else {
     return "";
   }
@@ -1589,14 +1593,15 @@ void OperatorWithKernel::ParseInputDataType(
                 "not initialized.",
                 Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
-        PADDLE_ENFORCE(
-            tmp == *data_type || *data_type == default_data_type,
-            platform::errors::InvalidArgument(
-                "The DataType of %s Op's duplicable Variable %s must be "
-                "consistent. The current variable type is (%s), but the "
-                "previous variable type is (%s).",
-                Type(), name, DataTypeToString(tmp),
-                DataTypeToString(*data_type)));
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
+                       platform::errors::InvalidArgument(
+                           "The DataType of %s Op's duplicable or different "
+                           "slot Variable %s must be "
+                           "consistent or reigster GetExpectedKernelType. The "
+                           "current variable type is (%s), but the "
+                           "previous variable type is (%s).",
+                           Type(), name, DataTypeToString(tmp),
+                           DataTypeToString(*data_type)));
         *data_type = tmp;
       }
     }

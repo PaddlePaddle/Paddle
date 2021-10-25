@@ -28,6 +28,17 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
+from .alexnet import AlexNet  # noqa: F401
+from .alexnet import alexnet  # noqa: F401
+from .resnext import ResNeXt  # noqa: F401
+from .resnext import resnext50_32x4d  # noqa: F401
+from .resnext import resnext50_64x4d  # noqa: F401
+from .resnext import resnext101_32x4d  # noqa: F401
+from .resnext import resnext101_64x4d  # noqa: F401
+from .resnext import resnext152_32x4d  # noqa: F401
+from .resnext import resnext152_64x4d  # noqa: F401
+from .inceptionv3 import InceptionV3  # noqa: F401
+from .inceptionv3 import inception_v3  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -45,5 +56,16 @@ __all__ = [ #noqa
     'mobilenet_v1',
     'MobileNetV2',
     'mobilenet_v2',
-    'LeNet'
+    'LeNet',
+    'AlexNet',
+    'alexnet',
+    'ResNeXt',
+    'resnext50_32x4d',
+    'resnext50_64x4d',
+    'resnext101_32x4d',
+    'resnext101_64x4d',
+    'resnext152_32x4d',
+    'resnext152_64x4d',
+    'InceptionV3',
+    'inception_v3'
 ]
