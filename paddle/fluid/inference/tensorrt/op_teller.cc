@@ -1368,6 +1368,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << " input_y(fc_op) must be Y or W ";
         return false;
       }
+
+      //  There is currently no input: Y(weight) more than two dimensions
+      /*
       auto* y_var_desc = block->FindVar(desc.Input(fc_y)[0]);
       const auto y_shape = y_var_desc->GetShape();
       if (y_shape.size() != 2) {
@@ -1376,7 +1379,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             << y_shape.size();
         return false;
       }
-
       // y_num_col_dims ==1
       if (desc.HasAttr("y_num_col_dims")) {
         int y_num_col_dims =
@@ -1387,6 +1389,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
+      */
       int x_num_col_dims =
           desc.HasAttr("x_num_col_dims")
               ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
