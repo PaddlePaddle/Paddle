@@ -824,9 +824,6 @@ class TheOnePSRuntime(RuntimeBase):
             return worker
 
     def _init_server(self, dirname=None, var_names=None, **kwargs):
-        if self.role_maker._is_heter_worker():
-            self._init_heter_worker()
-            return
         role_id = self.compiled_strategy.get_role_id()
         endpoints = self.compiled_strategy.get_ps_endpoints()
         is_sync = self.compiled_strategy.is_sync_mode()

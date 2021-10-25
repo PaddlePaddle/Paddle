@@ -563,8 +563,7 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker._is_server(
-        ) or self._role_maker._is_heter_worker()
+        return self._role_maker._is_server()
 
     def is_heter_worker(self):
         """
@@ -617,6 +616,30 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def init_heter_worker(self):
+        """
+        init_heter_worker executor to initialize startup program,
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.init_heter_worker()
+
+        """
+        self._runtime_handle._init_heter_worker()
 
     @is_non_distributed_check
     @inited_runtime_handler
