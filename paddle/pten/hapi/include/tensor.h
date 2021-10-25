@@ -80,6 +80,7 @@ class Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
   Tensor() {}
+  explicit Tensor(const std::string& name) { name_ = name; }
   Tensor(const Tensor&) = default;
   Tensor(Tensor&&) = default;
 
@@ -95,14 +96,26 @@ class Tensor final {
     }
   }
 
-  /* Part 2: Dimension, DataType and DataLayout methods */
+  /* Part 2: Name access methods */
+  /**
+   * @description: Return the name of current Tensor.
+   * @param None
+   * @return {const std::string&}
+   */
+  const std::string& name() const { return name_; }
+  /**
+ * @description: Set the name of current Tensor.
+ * @param {const std::string& name}
+ * @return None
+ */
+  void set_name(const std::string& name) { name_ = name; }
+  /* Part 3: Dimension, DataType and DataLayout methods */
   /**
    * @description: Return the number of elements of current Tensor.
    * @param None
    * @return {int64_t}
    */
   int64_t numel() const { return impl_->numel(); }
-
   /**
    * @description: Return the shape (dimensions) of current Tensor.
    * @param None

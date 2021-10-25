@@ -153,7 +153,7 @@ PyObject* ToPyObject(const std::string& value) {
   return PyUnicode_FromString(value.c_str());
 }
 
-PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
+PyObject* ToPyObject(const egr::EagerTensor& value) {
   PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
@@ -215,7 +215,7 @@ PyObject* ToPyObject(const std::vector<double>& value) {
   return result;
 }
 
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value) {
+PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {

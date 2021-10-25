@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
-
 namespace egr {
-using NameTensorMap =
-    std::map<std::string, std::vector<paddle::experimental::Tensor>>;
+using NameTensorMap = std::map<std::string, std::vector<egr::EagerTensor>>;
 }  // namespace egr

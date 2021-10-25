@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace egr {
 
@@ -75,9 +76,9 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   ~AutogradMeta() override = default;
 
-  const paddle::experimental::Tensor& Grad() const { return grad_; }
+  const egr::EagerTensor& Grad() const { return grad_; }
 
-  paddle::experimental::Tensor* MutableGrad() { return &grad_; }
+  egr::EagerTensor* MutableGrad() { return &grad_; }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
@@ -118,7 +119,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
-  paddle::experimental::Tensor grad_;
+  egr::EagerTensor grad_;
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy
@@ -227,20 +228,19 @@ class EagerUtils {
   /**
    * We have to use autograd_meta and multi_autograd_meta to initialize
    * autograd_meta for tensor, since we can't init it in
-   * paddle::experimental::Tensor's
+   * egr::EagerTensor's
    * constructor (it's abstract class there)
    *
    * **/
-  static AutogradMeta* autograd_meta(paddle::experimental::Tensor* target);
+  static AutogradMeta* autograd_meta(egr::EagerTensor* target);
 
   static std::vector<AutogradMeta*> multi_autograd_meta(
-      std::vector<paddle::experimental::Tensor>* targets);
+      std::vector<egr::EagerTensor>* targets);
 
-  static std::pair<size_t, size_t> OutRankInfo(
-      const paddle::experimental::Tensor& target);
+  static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);
 
   static std::shared_ptr<GradNodeBase> grad_node(
-      const paddle::experimental::Tensor& target);
+      const egr::EagerTensor& target);
 
   static bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
                                  AutogradMeta** outs, size_t outs_num,
@@ -251,7 +251,7 @@ class EagerUtils {
 
   // If and only if the tensor holds an AccumulationNode
   // Then it's treated as a leaf tensor
-  static bool IsLeafTensor(const paddle::experimental::Tensor& target);
+  static bool IsLeafTensor(const egr::EagerTensor& target);
 
   // Set history is used to set backward info during forward process, it will
   // set forward var's autograd meta's grad node as current backward node.
@@ -260,10 +260,12 @@ class EagerUtils {
   static void SetHistory(AutogradMeta* autograd_meta,
                          const std::shared_ptr<GradNodeBase>& grad_node);
 
-  static paddle::experimental::Tensor CreateTensorWithValue(
-      const pten::DDim& ddim, const pten::Backend& backend,
-      const pten::DataType& dtype, const pten::DataLayout& layout, double value,
-      bool is_leaf = true);
+  static egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
+                                                const pten::Backend& backend,
+                                                const pten::DataType& dtype,
+                                                const pten::DataLayout& layout,
+                                                double value,
+                                                bool is_leaf = true);
   // This is used for Set vector of tensors' rank
   static void SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
                                       size_t slot_id);
@@ -272,10 +274,9 @@ class EagerUtils {
   static void SetOutRankWithSlot(AutogradMeta* target, size_t slot_id);
 
   // This method will return an AutogradMeta pointer unsafely.
-  static AutogradMeta* unsafe_autograd_meta(
-      const paddle::experimental::Tensor& target);
+  static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
-      std::vector<paddle::experimental::Tensor>* targets);
+      std::vector<egr::EagerTensor>* targets);
 };
 
 }  // namespace egr

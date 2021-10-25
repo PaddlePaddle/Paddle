@@ -15,13 +15,12 @@
 #pragma once
 
 #include <vector>
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
-
 namespace egr {
-pten::TensorMeta* MutableMeta(paddle::experimental::Tensor* tensor);
-void InitializeTensor(paddle::experimental::Tensor* tensor,
-                      const pten::TensorMeta& meta,
+pten::TensorMeta* MutableMeta(egr::EagerTensor* tensor);
+void InitializeTensor(egr::EagerTensor* tensor, const pten::TensorMeta& meta,
                       const pten::TensorStatus& status);
-void InitializeTensor(paddle::experimental::Tensor* tensor);
+void InitializeTensor(egr::EagerTensor* tensor);
 }

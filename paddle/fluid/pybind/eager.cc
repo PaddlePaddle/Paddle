@@ -37,10 +37,9 @@ PyTypeObject* pEagerTensorType;
 PyObject* eagertensor_new(PyTypeObject* type, PyObject* args,
                           PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
-  // TODO(jiabin): Use Tensor::set_impl and Tensor::set_signature to init.
-  if (obj == nullptr) {
-    PADDLE_THROW(platform::errors::Fatal(
-        "tp_alloc return null, can not new a PyObject."));
+  if (obj) {
+    auto v = (EagerTensorObject*)obj;  // NOLINT
+    new (&(v->eagertensor)) egr::EagerTensor();
   }
   return obj;
 }

@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/legacy/tensor_helper.h"
 #include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -78,31 +79,31 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     PADDLE_ENFORCE_NE(it, inputs_.end(),
                       platform::errors::PreconditionNotMet(
                           "Can not find [%s] in Input", name));
-    return framework::kPtenTensorTempName;
+    return inputs_.at(name)[index]->name();
   }
 
   bool InputTypeAnyOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::any_of(
-        inputs.begin(), inputs.end(),
-        [&type](const std::shared_ptr<paddle::experimental::Tensor>& var) {
-          // TODO(jiabin): Support this when we figure out if DenseTensor a type
-          // in proto
-          return framework::proto::VarType::LOD_TENSOR == type;
-        });
+    return std::any_of(inputs.begin(), inputs.end(),
+                       [&type](const std::shared_ptr<egr::EagerTensor>& var) {
+                         // TODO(jiabin): Support this when we figure out if
+                         // DenseTensor a type
+                         // in proto
+                         return framework::proto::VarType::LOD_TENSOR == type;
+                       });
   }
 
   bool InputTypeAllOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::all_of(
-        inputs.begin(), inputs.end(),
-        [&type](const std::shared_ptr<paddle::experimental::Tensor>& var) {
-          // TODO(jiabin): Support this when we figure out if DenseTensor a type
-          // in proto
-          return framework::proto::VarType::LOD_TENSOR == type;
-        });
+    return std::all_of(inputs.begin(), inputs.end(),
+                       [&type](const std::shared_ptr<egr::EagerTensor>& var) {
+                         // TODO(jiabin): Support this when we figure out if
+                         // DenseTensor a type
+                         // in proto
+                         return framework::proto::VarType::LOD_TENSOR == type;
+                       });
   }
 
   void SyncTypeAndDataType(const std::string& input_name,
@@ -130,7 +131,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     }
   }
 
-  void SetTensorType(std::shared_ptr<paddle::experimental::Tensor> out,
+  void SetTensorType(std::shared_ptr<egr::EagerTensor> out,
                      framework::proto::VarType::Type type) {
     // TODO(jiabin): Supoort SelectedRows later. We do nothing here for now
     // since we only support DenseTensor
@@ -139,7 +140,7 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     InitializeTensor(out.get());
   }
 
-  void SetTensorDataType(std::shared_ptr<paddle::experimental::Tensor> out,
+  void SetTensorDataType(std::shared_ptr<egr::EagerTensor> out,
                          framework::proto::VarType::Type type) {
     // TODO(jiabin): We do nothing here for now, since we only support
     // DenseTensor

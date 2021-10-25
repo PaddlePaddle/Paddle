@@ -28,18 +28,18 @@
 
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 
 namespace egr {
 
-paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
-                                   float scale, float bias,
-                                   bool bias_after_scale, bool trace_backward) {
+egr::EagerTensor scale(const egr::EagerTensor& x, float scale, float bias,
+                       bool bias_after_scale, bool trace_backward) {
   // 1. Run Forward
   // 1.1 Create outputs
-  paddle::experimental::Tensor out;
+  egr::EagerTensor out;
   // 1.2 Need by original op, we assemble ins, outs, attrs here
 
   // 1.3 Call forward C++ api

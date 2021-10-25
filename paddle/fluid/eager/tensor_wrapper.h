@@ -32,7 +32,7 @@ namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
-  explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
+  explicit TensorWrapper(const egr::EagerTensor& tensor,
                          bool full_reserved = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
@@ -55,12 +55,11 @@ class TensorWrapper {
     out_rank_info_ = EagerUtils::OutRankInfo(tensor);
   }
 
-  paddle::experimental::Tensor recover(
-      const std::shared_ptr<GradNodeBase>& grad_node) {
+  egr::EagerTensor recover(const std::shared_ptr<GradNodeBase>& grad_node) {
     VLOG(6) << "Recover tensor for wrapper";
     if (!intermidiate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
-      return paddle::experimental::Tensor();
+      return egr::EagerTensor();
     }
 
     // if it's full_reserved just return the full copy of tensor
@@ -80,6 +79,6 @@ class TensorWrapper {
  private:
   bool full_reserved_ = false;
   std::pair<size_t, size_t> out_rank_info_;
-  paddle::experimental::Tensor intermidiate_tensor_;
+  egr::EagerTensor intermidiate_tensor_;
 };
 }  // namespace egr

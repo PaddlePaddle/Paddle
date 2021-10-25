@@ -15,10 +15,10 @@
 #pragma once
 
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/pten/hapi/all.h"
-
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/hapi/all.h"
 
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -28,8 +28,7 @@
 namespace egr {
 
 template <typename T>
-bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
-                                T value) {
+bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
   auto grad_dense =
       std::dynamic_pointer_cast<pten::DenseTensor>(meta->Grad().impl());
@@ -56,8 +55,7 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
 }
 
 template <typename T>
-bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
-                            T value) {
+bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
   auto dense_t = std::dynamic_pointer_cast<pten::DenseTensor>(target.impl());
   T* ptr = dense_t->mutable_data<T>();
 

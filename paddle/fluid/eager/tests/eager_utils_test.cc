@@ -27,7 +27,7 @@ TEST(Utils, TensorsToVarBasesSingle) {
   egr::InitEnv(paddle::platform::CPUPlace());
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  paddle::experimental::Tensor tensor = egr::EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = egr::EagerUtils::CreateTensorWithValue(
       ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
       5.0, true);
 
@@ -40,7 +40,7 @@ TEST(Utils, TensorsToVarBasesSingle) {
   const float* ptr = framework_tensor.data<float>();
   if (framework_tensor.numel() != tensor.numel())
     PADDLE_THROW(paddle::platform::errors::Fatal(
-        "VarBase does not match paddle::experimental::Tensor in size"));
+        "VarBase does not match egr::EagerTensor in size"));
 
   for (int i = 0; i < framework_tensor.numel(); i++) {
     if (ptr[i] != 5.0)
@@ -53,7 +53,7 @@ TEST(Utils, TensorsToVarBasesMultiple) {
   egr::InitEnv(paddle::platform::CPUPlace());
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  std::vector<paddle::experimental::Tensor> tensors = {
+  std::vector<egr::EagerTensor> tensors = {
       egr::EagerUtils::CreateTensorWithValue(ddim, pten::Backend::CPU,
                                              pten::DataType::FLOAT32,
                                              pten::DataLayout::NCHW, 1.0, true),
@@ -71,7 +71,7 @@ TEST(Utils, TensorsToVarBasesMultiple) {
     const float* ptr = framework_tensor.data<float>();
     if (framework_tensor.numel() != tensors[0].numel())
       PADDLE_THROW(paddle::platform::errors::Fatal(
-          "VarBase does not match paddle::experimental::Tensor in size"));
+          "VarBase does not match egr::EagerTensor in size"));
 
     for (int i = 0; i < framework_tensor.numel(); i++) {
       if (ptr[i] != 1.0)
@@ -87,7 +87,7 @@ TEST(Utils, TensorsToVarBasesMultiple) {
     const float* ptr = framework_tensor.data<float>();
     if (framework_tensor.numel() != tensors[0].numel())
       PADDLE_THROW(paddle::platform::errors::Fatal(
-          "VarBase does not match paddle::experimental::Tensor in size"));
+          "VarBase does not match egr::EagerTensor in size"));
 
     for (int i = 0; i < framework_tensor.numel(); i++) {
       if (ptr[i] != 2.0)
@@ -112,7 +112,7 @@ TEST(Utils, VarBasesToTensorsSingle) {
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
 
-  paddle::experimental::Tensor tensor = VarBasesToTensors(X)[0];
+  egr::EagerTensor tensor = VarBasesToTensors(X)[0];
 
   PADDLE_ENFORCE(
       egr::CompareTensorWithValue<float>(tensor, 5.0) == true,
@@ -151,8 +151,7 @@ TEST(Utils, VarBasesToTensorsMultiple) {
                          sizeof(float) * src_data.size());
     var_bases.emplace_back(std::move(X));
   }
-  std::vector<paddle::experimental::Tensor> tensors =
-      VarBasesToTensors(var_bases);
+  std::vector<egr::EagerTensor> tensors = VarBasesToTensors(var_bases);
 
   PADDLE_ENFORCE(
       egr::CompareTensorWithValue<float>(tensors[0], 1.0) == true,

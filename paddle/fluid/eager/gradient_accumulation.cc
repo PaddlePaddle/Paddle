@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <memory>
 #include <utility>
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -141,8 +142,7 @@ void TensorAddImpl(const std::shared_ptr<pten::DenseTensor>& src,
   func(dev_ctx, *(src.get()), dst);
 }
 
-void TensorAdd(const paddle::experimental::Tensor& src,
-               paddle::experimental::Tensor* dst) {
+void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
   // TODO(jiabin): Support other tensor type later
   std::shared_ptr<pten::DenseTensor> dst_tensor =
       std::dynamic_pointer_cast<pten::DenseTensor>(dst->impl());

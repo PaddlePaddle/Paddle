@@ -129,7 +129,7 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
 
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
-  paddle::experimental::Tensor ret =
+  egr::EagerTensor ret =
       egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
                      ->eagertensor,
                  CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
@@ -190,9 +190,13 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
   if (obj) {
     auto v = (EagerTensorObject*)obj;  // NOLINT
+    new (&(v->eagertensor)) egr::EagerTensor();
     v->eagertensor.set_impl(densetensor);
+    v->eagertensor.set_name(egr::Controller::Instance().GenerateUniqueName());
     auto meta = egr::EagerUtils::autograd_meta(&(v->eagertensor));
     meta->SetStopGradient(stop_gradient);
+    // TODO(jiabin): Shall we increase ref cnt here to make python ref cnt num
+    // correctly?
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
