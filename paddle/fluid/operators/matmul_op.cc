@@ -388,8 +388,8 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
         dim_product *= dim.at(i);
       }
 
-      int shape_product = std::accumulate(shape.begin(), shape.end(), -1,
-                                          std::multiplies<int>());
+      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
+                                              std::multiplies<int>());
       int index = std::distance(shape.begin(), it_negative);
       shape[index] = dim_product / shape_product;
     }
