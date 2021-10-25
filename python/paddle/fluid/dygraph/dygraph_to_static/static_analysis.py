@@ -343,10 +343,11 @@ class StaticAnalysisVisitor(object):
                     self.var_env.set_var_type(target.id, ret_type)
             return ret_type
 
-        # support AnnAssign
-        # if annotation and value(Constant) are diffent type???
         if isinstance(node, gast.AnnAssign):
             ret_type = {NodeVarType.type_from_annotation(node.annotation)}
+            # if annotation and value(Constant) are diffent type, we use value type
+            if node.value:
+                ret_type = self.node_to_wrapper_map[node.value].node_var_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type
                 self.var_env.set_var_type(node.target.id, ret_type)
@@ -422,7 +423,8 @@ class StaticAnalysisVisitor(object):
             var_type = {NodeVarType.type_from_annotation(node.annotation)}
             self.var_env.set_var_type(node.id, var_type)
 
-        elif parent_node.defaults:
+        # if annotation and value(Constant) are diffent type, we use value type
+        if parent_node.defaults:
             index = index_in_list(parent_node.args, node)
             args_len = len(parent_node.args)
             if index != -1 and args_len - index <= len(parent_node.defaults):
@@ -432,4 +434,5 @@ class StaticAnalysisVisitor(object):
 
                     # Add node with identified type into cur_env.
                     self.var_env.set_var_type(node.id, var_type)
+
         return var_type
