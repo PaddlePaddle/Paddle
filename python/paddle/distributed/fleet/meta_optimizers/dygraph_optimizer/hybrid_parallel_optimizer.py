@@ -50,8 +50,11 @@ class HybridParallelClipGrad:
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
-        sum_square_list_dist = []
-        sum_square_list_not_dist = []
+
+        sum_square_dist_fp16 = []
+        sum_square_dist_fp32 = []
+        sum_square_not_dist_fp16 = []
+        sum_square_not_dist_fp32 = []
 
         for p, g in params_grads:
             if g is None:
@@ -71,20 +74,51 @@ class HybridParallelClipGrad:
 
             if not_shared_enable:
                 if p.is_distributed:
-                    sum_square_list_dist.append(sum_square)
+                    if p.dtype == paddle.float16:
+                        sum_square_dist_fp16.append(sum_square)
+                    elif p.dtype == paddle.float32:
+                        sum_square_dist_fp32.append(sum_square)
                 else:
-                    sum_square_list_not_dist.append(sum_square)
+                    if p.dtype == paddle.float16:
+                        sum_square_not_dist_fp16.append(sum_square)
+                    elif p.dtype == paddle.float32:
+                        sum_square_not_dist_fp32.append(sum_square)
 
-        global_norm_var_dist = layers.concat(sum_square_list_dist) if len(
-            sum_square_list_dist) != 0 else layers.concat(
-                [paddle.to_tensor([0.])])
-        global_norm_var_dist = layers.reduce_sum(global_norm_var_dist)
+        # global norm of distributed FP16 params_and_grads
+        if len(sum_square_dist_fp16) == 0:
+            global_norm_dist_fp16 = paddle.to_tensor([0.], dtype=paddle.float32)
+        else:
+            global_norm_dist_fp16 = layers.concat(sum_square_dist_fp16)
+            global_norm_dist_fp16 = layers.reduce_sum(global_norm_dist_fp16)
+            global_norm_dist_fp16 = paddle.cast(
+                global_norm_dist_fp16, dtype=paddle.float32)
 
-        global_norm_var_not_dist = layers.concat(
-            sum_square_list_not_dist) if len(
-                sum_square_list_not_dist) != 0 else layers.concat(
-                    [paddle.to_tensor([0.])])
-        global_norm_var_not_dist = layers.reduce_sum(global_norm_var_not_dist)
+        # global norm of non-distributed FP16 params_and_grads
+        if len(sum_square_not_dist_fp16) == 0:
+            global_norm_not_dist_fp16 = paddle.to_tensor(
+                [0.], dtype=paddle.float32)
+        else:
+            global_norm_not_dist_fp16 = layers.concat(sum_square_not_dist_fp16)
+            global_norm_not_dist_fp16 = layers.reduce_sum(
+                global_norm_not_dist_fp16)
+            global_norm_not_dist_fp16 = paddle.cast(
+                global_norm_not_dist_fp16, dtype=paddle.float32)
+
+        # global norm of distributed FP32 params_and_grads
+        global_norm_dist_fp32 = layers.concat(sum_square_dist_fp32) if len(
+            sum_square_dist_fp32) != 0 else paddle.to_tensor(
+                [0.], dtype=paddle.float32)
+        global_norm_dist_fp32 = layers.reduce_sum(global_norm_dist_fp32)
+
+        # global norm of non-distributed FP32 params_and_grads
+        global_norm_not_dist_fp32 = layers.concat(
+            sum_square_not_dist_fp32) if len(
+                sum_square_not_dist_fp32) != 0 else paddle.to_tensor(
+                    [0.], dtype=paddle.float32)
+        global_norm_not_dist_fp32 = layers.reduce_sum(global_norm_not_dist_fp32)
+
+        global_norm_var_dist = global_norm_dist_fp16 + global_norm_dist_fp32
+        global_norm_var_not_dist = global_norm_not_dist_fp16 + global_norm_not_dist_fp32
 
         # add all reduce to get global norm of distributed params_and_grads
         if self._hcg.get_model_parallel_world_size() > 1:
@@ -105,22 +139,26 @@ class HybridParallelClipGrad:
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group())
 
-        global_norm_var = layers.sqrt(global_norm_var_dist +
-                                      global_norm_var_not_dist)
+        global_norm_var_fp32 = layers.sqrt(global_norm_var_dist +
+                                           global_norm_var_not_dist)
 
         max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
+            shape=[1], dtype=global_norm_var_fp32.dtype, value=self.clip_norm)
         clip_var = layers.elementwise_div(
             x=max_global_norm,
             y=layers.elementwise_max(
-                x=global_norm_var, y=max_global_norm))
+                x=global_norm_var_fp32, y=max_global_norm))
+        clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
         for p, g in params_grads:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            new_grad = layers.elementwise_mul(x=g, y=clip_var)
+            if p.dtype == paddle.float16:
+                new_grad = layers.elementwise_mul(x=g, y=clip_var_fp16)
+            else:
+                new_grad = layers.elementwise_mul(x=g, y=clip_var)
             params_and_grads.append((p, new_grad))
 
         return params_and_grads

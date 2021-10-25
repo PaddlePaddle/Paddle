@@ -38,7 +38,8 @@ std::vector<size_t> StreamAnalyzer::ParseEventVarIds(
   std::vector<size_t> new_event_var_ids;
   for (auto& item : next_instr.input_index_) {
     for (auto var_id : item.second) {
-      if (unique_var_ids.count(var_id) > 0) {
+      if (unique_var_ids.count(var_id) > 0 &&
+          next_instr.no_data_transform_index_.count(var_id) == 0) {
         new_event_var_ids.push_back(var_id);
       }
     }

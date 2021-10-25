@@ -45,39 +45,44 @@ def fused_feedforward(x,
                       pre_layer_norm=False,
                       name=None):
     """
-    the fused_feedforward operator is the same as the following pseudo code:
-    residual = src;
-    if pre_layer_norm:
-        src = layer_norm(src)
-    src = linear(dropout(activation(dropout(linear(src)))))
-    if not pre_layer_norm:
-        src = layer_norm(out)
+    This is a fusion operator to compute feed forward layer in transformer model architecture.
+    This operator only supports running on GPU. The function of the operator is consistent with
+    the following pseudo code:
+
+    .. code-block:: python
+
+        residual = src;
+        if pre_layer_norm:
+            src = layer_norm(src)
+        src = linear(dropout(activation(dropout(linear(src)))))
+        if not pre_layer_norm:
+            src = layer_norm(out)
 
     Args:
-        x (Tensor): The input tensor of fused_feedforward.
-        linear1_weight (Tensor): The weight of first linear.
-        linear2_weight (Tensor): The weight of second linear.
-        linear1_bias (Tensor, optional): The bias of first linear. Default None.
-        linear2_bias (Tensor, optional): The bias of second linear. Default None.
-        ln1_scale (Tensor, optional): the weight of first layer_norm. Default None.
-        ln1_bias (Tensor, optional): The bias of first layer_norm. Default None.
-        ln2_scale (Tensor, optional): The weight of second layer_norm. Default None.
-        ln2_bias (Tensor, optional): The bias of second layer_norm. Default None.
+        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16, float32 or float64, the shape is`[batch\_size, sequence\_length, d_model]`.
+        linear1_weight (Tensor): The weight of first linear, the data type is same as `x`, the shape is `[d\_model, dim\_feedforward]`.
+        linear2_weight (Tensor): The weight of second linear, the data type is same as `x`, the shape is `[dim\_feedforward, d\_model]`.
+        linear1_bias (Tensor, optional): The bias of first linear, the data type is same as `x`, the shape is `[dim_feedforward]`. Default None.
+        linear2_bias (Tensor, optional): The bias of second linear, the data type is same as `x`, the shape is `[d_model]`. Default None.
+        ln1_scale (Tensor, optional): the weight of first layer_norm, the data type is float32 or float64, the shape is same as `x`. Default None.
+        ln1_bias (Tensor, optional): The bias of first layer_norm, the data type is float32 or float64, the shape is `[d\_model]`. Default None.
+        ln2_scale (Tensor, optional): The weight of second layer_norm, the data type is float32 or float64, the shape is same as `x`. Default None.
+        ln2_bias (Tensor, optional): The bias of second layer_norm, the data type is float32 or float64, the shape is `[d\_model]`. Default None.
         dropout1_rate (float, optional): The first dropout probability of setting units to zero. Default 0.5.
         dropout2_rate (float, optional): The second dropout probability of setting units to zero. Default 0.5.
         activation (str, optional): The activation. Default "relu".
         ln1_epsilon (float, optional): Small float of first layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
         ln2_epsilon (float, optional): Small float of second layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
-        pre_layer_norm (bool, optional):
+        pre_layer_norm (bool, optional): add layer_norm in the pre-processing stage or post-processing state.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output Tensor.
+        Tensor: The output Tensor, the data type and shape is same as `x`.
 
     Examples:
-
         .. code-block:: python
 
+            # required: gpu
             import paddle
             import numpy as np
             x_data = np.random.random((1, 8, 8)).astype("float32")
@@ -89,7 +94,6 @@ def fused_feedforward(x,
             out = paddle.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
             print(out.numpy().shape)
             # (1, 8, 8)
-
     """
     _verify_dropout_rate(dropout1_rate)
     _verify_dropout_rate(dropout2_rate)
