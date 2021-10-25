@@ -48,9 +48,11 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("skip_layernorm");
     int8_teller_set.insert("slice");
 #endif
-#if IS_TRT_VERSION_GE(7130)
-    teller_set.insert("group_norm");
-#endif
+// TODO(baoachun) The group_norm trt plugin will check input's dim
+// not -1 failed when dynamic shape mode.
+// #if IS_TRT_VERSION_GE(7130)
+//     teller_set.insert("group_norm");
+// #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
 #endif
