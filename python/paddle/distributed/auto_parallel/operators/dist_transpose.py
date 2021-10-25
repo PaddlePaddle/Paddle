@@ -37,6 +37,8 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedTranspose2Impl, self).__init__()
         self._name = name
+        self._forward_implemented = False
+        self._backward_implemented = True
 
     def is_process_mesh_compatible(self, op_dist_attr):
         """ No restriction for now. """
@@ -81,6 +83,10 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
         return changed
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        pass
 
 
 register_distributed_operator_impl(

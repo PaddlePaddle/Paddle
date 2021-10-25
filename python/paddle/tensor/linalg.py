@@ -1293,6 +1293,59 @@ def histogram(input, bins=100, min=0, max=0, name=None):
     return out
 
 
+def bincount(x, weights=None, minlength=0, name=None):
+    """
+    Computes frequency of each value in the input tensor. 
+
+    Args:
+        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
+        weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
+        minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor of frequency.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 1, 4, 5])
+            result1 = paddle.bincount(x)
+            print(result1) # [0, 2, 1, 0, 1, 1]
+
+            w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
+            result2 = paddle.bincount(x, weights=w)
+            print(result2) # [0., 2.19999981, 0.40000001, 0., 0.50000000, 0.50000000]
+    """
+    if x.dtype not in [paddle.int32, paddle.int64]:
+        raise TypeError("Elements in Input(x) should all be integers")
+
+    if in_dygraph_mode():
+        return _C_ops.bincount(x, weights, "minlength", minlength)
+
+    helper = LayerHelper('bincount', **locals())
+
+    check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
+
+    if weights is not None:
+        check_variable_and_dtype(weights, 'Weights',
+                                 ['int32', 'int64', 'float32', 'float64'],
+                                 'bincount')
+        out = helper.create_variable_for_type_inference(dtype=weights.dtype)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='bincount',
+        inputs={'X': x,
+                'Weights': weights},
+        outputs={'Out': out},
+        attrs={'minlength': minlength})
+    return out
+
+
 def mv(x, vec, name=None):
     """
     Performs a matrix-vector product of the matrix x and the vector vec.
@@ -1594,6 +1647,70 @@ def matrix_power(x, n, name=None):
     return out
 
 
+def qr(x, mode="reduced", name=None):
+    r"""
+    Computes the QR decomposition of one matrix or batches of matrice (backward is unsupported now).
+
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
+            where ... is zero or more batch dimensions. M and N can be arbitrary
+            positive number. The data type of x should be float32 or float64. 
+        mode (str, optional): A flag to control the behavior of qr, the default is "reduced". 
+            Suppose x's shape is `[..., M, N]` and denoting `K = min(M, N)`:
+            If mode = "reduced", qr op will return reduced Q and R matrices, 
+            which means Q's shape is `[..., M, K]` and R's shape is `[..., K, N]`.
+            If mode = "complete", qr op will return complete Q and R matrices, 
+            which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
+            If mode = "r", qr op will only return reduced R matrix, which means
+            R's shape is `[..., K, N]`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+            
+    Returns:
+        If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R. 
+        If mode = "r", qr will return a tensor which represents R.
+        
+    Examples:            
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
+            q, r = paddle.linalg.qr(x)
+            print (q)
+            print (r)
+
+            # Q = [[-0.16903085,  0.89708523],
+            #      [-0.50709255,  0.27602622],
+            #      [-0.84515425, -0.34503278]])
+
+            # R = [[-5.91607978, -7.43735744],
+            #      [ 0.        ,  0.82807867]])
+            
+            # one can verify : X = Q * R ;     
+    """
+    if in_dygraph_mode():
+        q, r = _C_ops.qr(x, 'mode', mode)
+        if mode == "r":
+            return r
+        else:
+            return q, r
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'qr')
+    check_type(mode, 'mode', str, 'qr')
+    helper = LayerHelper('qr', **locals())
+    q = helper.create_variable_for_type_inference(dtype=x.dtype)
+    r = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = dict()
+    attrs['mode'] = mode
+    helper.append_op(
+        type='qr', inputs={'X': [x]}, outputs={'Q': q,
+                                               'R': r}, attrs=attrs)
+    if mode == "r":
+        return r
+    else:
+        return q, r
+
+
 def eig(x, name=None):
     """
     This API performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
@@ -1674,7 +1791,7 @@ def eigvals(x, name=None):
             Its data type should be float32, float64, complex64, or complex128.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-
+            
     Returns:
         Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`.
             The eigenvalues are complex-valued even when `x` is real.

@@ -98,6 +98,7 @@ from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
+from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
@@ -398,6 +399,7 @@ __all__ = [  # noqa
            'bitwise_not',
            'mm',
            'flip',
+           'bincount',
            'histogram',
            'multiplex',
            'CUDAPlace',

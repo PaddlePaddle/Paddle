@@ -73,6 +73,27 @@ class TestVisonModels(unittest.TestCase):
     def test_alexnet(self):
         self.models_infer('alexnet')
 
+    def test_resnext50_32x4d(self):
+        self.models_infer('resnext50_32x4d')
+
+    def test_resnext50_64x4d(self):
+        self.models_infer('resnext50_64x4d')
+
+    def test_resnext101_32x4d(self):
+        self.models_infer('resnext101_32x4d')
+
+    def test_resnext101_64x4d(self):
+        self.models_infer('resnext101_64x4d')
+
+    def test_resnext152_32x4d(self):
+        self.models_infer('resnext152_32x4d')
+
+    def test_resnext152_64x4d(self):
+        self.models_infer('resnext152_64x4d')
+
+    def test_inception_v3(self):
+        self.models_infer('inception_v3')
+
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)
 
