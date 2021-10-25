@@ -15,96 +15,13 @@
 # limitations under the License.
 
 
-function whl_diff {
-    pip install build/python/dist/*.whl
-    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
-    mkdir -p /tmp/pr && mkdir -p /tmp/develop
-    unzip -q build/python/dist/*.whl -d /tmp/pr
-    rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
-
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
-    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [ ${cmake_change} ];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
-    git checkout .
-    git checkout -b develop_base_pr upstream/$BRANCH
-    [ $? -ne 0 ] && echo "checkout paddle branch failed." && exit 1
-
-    bash -x paddle/scripts/paddle_build.sh build_only
-    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    unzip -q build/python/dist/*.whl -d /tmp/develop
-
-    sed -i '/version.py/d' /tmp/pr/*/RECORD
-    sed -i '/version.py/d' /tmp/develop/*/RECORD
-    diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
-    [ $? -ne 0 ] && echo "diff paddle whl failed." && exit 1
-    if [ ${diff_whl} -eq 0 ];then
-        echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
-        echo "cpu_benchmark=ON" >${cfs_dir}/model_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
-        exit 0
-    else
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
-    fi    
-    bash -x paddle/scripts/paddle_build.sh build_only
-    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    pip uninstall -y paddlepaddle_gpu
-    pip install build/python/dist/*.whl
-    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
-    mkdir -p /tmp/pr && mkdir -p /tmp/develop
-    unzip -q build/python/dist/*.whl -d /tmp/pr
-    rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
-
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
-    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [ ${cmake_change} ];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
-    git checkout .
-    git checkout -b develop_base_pr upstream/$BRANCH
-    [ $? -ne 0 ] && echo "checkout paddle branch failed." && exit 1
-
-    bash -x paddle/scripts/paddle_build.sh build_only
-    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    unzip -q build/python/dist/*.whl -d /tmp/develop
-
-    sed -i '/version.py/d' /tmp/pr/*/RECORD
-    sed -i '/version.py/d' /tmp/develop/*/RECORD
-    diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
-    [ $? -ne 0 ] && echo "diff paddle whl failed." && exit 1
-    if [ ${diff_whl} -eq 0 ];then
-        echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
-        echo "cpu_benchmark=ON" >${cfs_dir}/model_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
-        exit 0
-    else
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
-    fi
-}
-
 function check_whl {
-    pip install build/python/dist/*.whl
+    pip uninstall -y paddlepaddle_gpu
+    pip install build/pr_whl/*.whl
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
-    mkdir -p /tmp/pr && mkdir -p /tmp/develop
-    unzip -q build/python/dist/*.whl -d /tmp/pr
-    rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
 
-    git checkout .
-    git checkout -b develop_base_pr upstream/$BRANCH
-    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
-    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [ ${cmake_change} ];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
-
-    bash -x paddle/scripts/paddle_build.sh build_only
-    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    unzip -q build/python/dist/*.whl -d /tmp/develop
+    unzip -q build/pr_whl/*.whl -d /tmp/pr
+    unzip -q build/dev_whl/*.whl -d /tmp/develop
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD
     sed -i '/version.py/d' /tmp/develop/*/RECORD
@@ -119,6 +36,7 @@ function check_whl {
         echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
     fi
 }
+
 
 function compile_install_paddle {
     export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
