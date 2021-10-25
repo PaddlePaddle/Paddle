@@ -172,9 +172,8 @@ class Pool3dOpConverter : public OpConverter {
 
     if (!adaptive) {
       if (!ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, PoolingNd, *const_cast<nvinfer1::ITensor *>(input1),
-            nv_pool_type, nv_ksize);
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, PoolingNd, *input1,
+                                                nv_pool_type, nv_ksize);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
             platform::errors::Fatal(
