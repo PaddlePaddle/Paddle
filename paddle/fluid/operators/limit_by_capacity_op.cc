@@ -42,13 +42,12 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "capacity");
 
     PADDLE_ENFORCE_EQ(
-        expert_count_dtype == capacity_dtype, 1,
+        expert_count_dtype, capacity_dtype,
         platform::errors::InvalidArgument(
             "The dtype of the expert_count and capacity should be same"));
-    // auto expert_count_data_dtype =
-    // static_cast<framework::proto::VarType::Type>(expert_count_dtype);
+
     PADDLE_ENFORCE_EQ(
-        expert_count_dtype == framework::proto::VarType::INT64, 1,
+        expert_count_dtype, framework::proto::VarType::INT64,
         platform::errors::InvalidArgument("The dtype of the expert_count and "
                                           "capacity should be same as int64"));
     return framework::OpKernelType(expert_count_dtype, ctx.GetPlace());
