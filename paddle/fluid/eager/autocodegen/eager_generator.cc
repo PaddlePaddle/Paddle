@@ -786,12 +786,11 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     size_t input_position = fwd_inputs_name_pos_map.at(input_name);
     if (input.duplicable()) {
       const char* FWD_INS_ARG_TEMPLATE =
-          "const std::vector<paddle::experimental::Tensor>& %s";
+          "const std::vector<egr::EagerTensor>& %s";
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
     } else {
-      const char* FWD_INS_ARG_TEMPLATE =
-          "const paddle::experimental::Tensor& %s";
+      const char* FWD_INS_ARG_TEMPLATE = "const egr::EagerTensor& %s";
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
     }
@@ -894,19 +893,18 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
     if (output.duplicable()) {
       const char* FWD_OUT_TENSORS_TEMPLATE =
-          "  std::vector<paddle::experimental::Tensor> %s = "
+          "  std::vector<egr::EagerTensor> %s = "
           "VarBasesToTensors(outs[\"%s\"]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
                                                output_name, output_name);
-      return_types[return_position] =
-          "std::vector<paddle::experimental::Tensor>";
+      return_types[return_position] = "std::vector<egr::EagerTensor>";
     } else {
       const char* FWD_OUT_TENSOR_TEMPLATE =
-          "  paddle::experimental::Tensor %s = "
+          "  egr::EagerTensor %s = "
           "VarBasesToTensors(outs[\"%s\"])[0];\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                output_name, output_name);
-      return_types[return_position] = "paddle::experimental::Tensor";
+      return_types[return_position] = "egr::EagerTensor";
     }
 
     return_contents[return_position] = output_name;
@@ -1180,7 +1178,7 @@ static std::string GenerateGradNodeCCContents(
   }
 
   const char* BWD_RETURN_TEMPLATE =
-      "  std::vector<std::vector<paddle::experimental::Tensor>> "
+      "  std::vector<std::vector<egr::EagerTensor>> "
       "outputs(outs.size());\n%s\n  "
       "return outputs;";
   std::string return_str =
@@ -1191,9 +1189,9 @@ static std::string GenerateGradNodeCCContents(
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
-      "std::vector<std::vector<paddle::experimental::Tensor>> "
+      "std::vector<std::vector<egr::EagerTensor>> "
       "GradNode%s::operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) {\n%s\n}";
+      "std::vector<std::vector<egr::EagerTensor>>& grads) {\n%s\n}";
   std::string grad_function_str = paddle::string::Sprintf(
       GRAD_FUNCTION_TEMPLATE, op_type, generated_grad_function_body);
 
@@ -1216,9 +1214,9 @@ static std::string GenerateGradNodeHeaderContents(
       "egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}\n"
       "  ~GradNode%s() override = default;\n"
       "\n"
-      "  virtual std::vector<std::vector<paddle::experimental::Tensor>> "
+      "  virtual std::vector<std::vector<egr::EagerTensor>> "
       "operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) "
+      "std::vector<std::vector<egr::EagerTensor>>& grads) "
       "override;\n"
       "\n"
       "  // SetX, SetY, ...\n"
@@ -1283,17 +1281,17 @@ static std::string GenerateGradNodeHeaderContents(
     std::string tensor_wrapper_arg_str;
     if (duplicable_inputs.count(tensor_wrapper_name)) {
       const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
-          "const std::vector<paddle::experimental::Tensor>& %s";
+          "const std::vector<egr::EagerTensor>& %s";
       tensor_wrapper_arg_str = paddle::string::Sprintf(
           ATTR_TENSOR_WRAPPER_ARG_TEMPLATE, tensor_wrapper_name);
 
       const char* TENSOR_WRAPPER_MEMBER_TEMPLATE =
-          "   std::vector<paddle::experimental::Tensor> %s;\n";
+          "   std::vector<egr::EagerTensor> %s;\n";
       tensor_wrapper_members_str += paddle::string::Sprintf(
           TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
     } else {
       const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
-          "const paddle::experimental::Tensor& %s";
+          "const egr::EagerTensor& %s";
       tensor_wrapper_arg_str = paddle::string::Sprintf(
           ATTR_TENSOR_WRAPPER_ARG_TEMPLATE, tensor_wrapper_name);
 

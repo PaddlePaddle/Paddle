@@ -14,16 +14,17 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/pten/hapi/all.h"
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
-    const paddle::experimental::Tensor& tensor);
+    const egr::EagerTensor& tensor);
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
-    const std::vector<paddle::experimental::Tensor>& tensors);
-std::vector<paddle::experimental::Tensor> VarBasesToTensors(
+    const std::vector<egr::EagerTensor>& tensors);
+std::vector<egr::EagerTensor> VarBasesToTensors(
     const std::shared_ptr<paddle::imperative::VarBase>& var_base);
-std::vector<paddle::experimental::Tensor> VarBasesToTensors(
+std::vector<egr::EagerTensor> VarBasesToTensors(
     const std::vector<std::shared_ptr<paddle::imperative::VarBase>>& var_bases);
 
 std::vector<std::shared_ptr<paddle::imperative::VarBase>>

@@ -14,17 +14,17 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 namespace egr {
 
 // Public
-void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
-              bool bias_after_scale, paddle::experimental::Tensor* out);
+void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
+              bool bias_after_scale, egr::EagerTensor* out);
 void FillConstAPI(double value, const pten::DDim& ddim,
                   const pten::Backend& backend, const pten::DataType& dtype,
-                  const pten::DataLayout& layout,
-                  paddle::experimental::Tensor* target);
+                  const pten::DataLayout& layout, egr::EagerTensor* target);
 //
 class UniqueNameGenerator {
  public:

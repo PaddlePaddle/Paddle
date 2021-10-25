@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 
@@ -88,13 +89,13 @@ class GradNodeBase {
    * Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
-   * of paddle::experimental::Tensor?
+   * of egr::EagerTensor?
    * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
    * so, vector of vector
    * is better choice to fit this format.
    * **/
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) = 0;
+  virtual std::vector<std::vector<egr::EagerTensor>> operator()(
+      const std::vector<std::vector<egr::EagerTensor>>& grads) = 0;
 
   /**
    * AddEdges is designed to set input tensors' backward Node as current
@@ -141,9 +142,9 @@ class GradNodeBase {
   /**
    * Register GradientHook or ReduceHook
    * **/
-  void RegisterGradientHook(size_t slot_id, size_t rank,
-                            const std::function<paddle::experimental::Tensor(
-                                const paddle::experimental::Tensor&)>& hook);
+  void RegisterGradientHook(
+      size_t slot_id, size_t rank,
+      const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
   void RegisterReduceHook(const std::function<void(void)>& hook);
 
   /**
@@ -152,8 +153,8 @@ class GradNodeBase {
   inline bool GradientHooksRegistered() { return gradient_hooks_.size() != 0; }
   inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
 
-  std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
+  std::vector<std::vector<egr::EagerTensor>> ApplyGradientHooks(
+      const std::vector<std::vector<egr::EagerTensor>>& tensors);
   void ApplyReduceHooks();
 
  private:
@@ -174,9 +175,9 @@ class GradNodeBase {
   // Customer may register a list of hooks which will be called in order during
   // backward
   // Each entry consists one pair of <out_rank, std::function>
-  std::vector<std::tuple</* slot id */ size_t, /* rank */ size_t,
-                         /* hook */ std::function<paddle::experimental::Tensor(
-                             const paddle::experimental::Tensor&)>>>
+  std::vector<std::tuple<
+      /* slot id */ size_t, /* rank */ size_t,
+      /* hook */ std::function<egr::EagerTensor(const egr::EagerTensor&)>>>
       gradient_hooks_;
   std::vector<std::function<void(void)>> reduce_hooks_;
 };
@@ -250,27 +251,25 @@ class InputBuffer {
 
   InputBuffer(const InputBuffer& other) = default;
 
-  explicit InputBuffer(
-      std::vector<std::vector<paddle::experimental::Tensor>>&& inputs)
+  explicit InputBuffer(std::vector<std::vector<egr::EagerTensor>>&& inputs)
       : buffer_(std::move(inputs)) {}
 
   InputBuffer& operator=(const InputBuffer& other) = default;
 
   // Create new tensor and copy tensor->impl
-  void add(size_t slot_id, size_t rank, const paddle::experimental::Tensor& t,
+  void add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
            bool fill_one = false);
 
-  const std::vector<paddle::experimental::Tensor>& operator[](
-      const size_t& pos) {
+  const std::vector<egr::EagerTensor>& operator[](const size_t& pos) {
     return buffer_[pos];
   }
 
-  const std::vector<std::vector<paddle::experimental::Tensor>>& Buffers() {
+  const std::vector<std::vector<egr::EagerTensor>>& Buffers() {
     return buffer_;
   }
 
  private:
-  std::vector<std::vector<paddle::experimental::Tensor>> buffer_;
+  std::vector<std::vector<egr::EagerTensor>> buffer_;
 };
 
 }  // namespace egr

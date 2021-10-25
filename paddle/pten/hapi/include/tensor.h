@@ -36,6 +36,7 @@ limitations under the License. */
  * or the corresponding components will be re-implemented.
  */
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -80,6 +81,7 @@ class Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
   Tensor() {}
+  explicit Tensor(const std::string& name) { name_ = name; }
   Tensor(const Tensor&) = default;
   Tensor(Tensor&&) = default;
 
@@ -90,19 +92,31 @@ class Tensor final {
    */
   explicit Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
       : impl_(std::move(tensor_impl)) {
-    if (impl_.get() == nullptr) {
-      throw std::runtime_error("TensorImpl with nullptr is not supported");
-    }
+    PADDLE_ENFORCE_NOT_NULL(impl_,
+                            platform::errors::InvalidArgument(
+                                "TensorImpl with nullptr is not supported"));
   }
 
-  /* Part 2: Dimension, DataType and DataLayout methods */
+  /* Part 2: Name access methods */
+  /**
+   * @description: Return the name of current Tensor.
+   * @param None
+   * @return {const std::string&}
+   */
+  const std::string& name() const { return name_; }
+  /**
+ * @description: Set the name of current Tensor.
+ * @param {const std::string& name}
+ * @return None
+ */
+  void set_name(const std::string& name) { name_ = name; }
+  /* Part 3: Dimension, DataType and DataLayout methods */
   /**
    * @description: Return the number of elements of current Tensor.
    * @param None
    * @return {int64_t}
    */
   int64_t numel() const { return impl_->numel(); }
-
   /**
    * @description: Return the shape (dimensions) of current Tensor.
    * @param None

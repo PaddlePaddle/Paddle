@@ -26,6 +26,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -104,9 +105,10 @@ void ScaleHost(const CUDAContext& dev_ctx,
                float bias,
                bool bias_after_scale,
                DenseTensor* out) {
-  if (paddle::platform::is_gpu_place(scale.place())) {
-    throw std::runtime_error("scale host place error.");
-  }
+  PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(scale.place()),
+                    false,
+                    paddle::platform::errors::InvalidArgument(
+                        "Scale argument isn't a host tensor."));
   eigen::Scale<CUDAContext, T>(dev_ctx,
                                x,
                                static_cast<float>(*scale.data<T>()),

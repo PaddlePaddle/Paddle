@@ -15,9 +15,9 @@
 #include "paddle/fluid/eager/nodes/scale_node.h"
 #include "paddle/fluid/eager/function_api.h"
 
-#include "paddle/pten/hapi/all.h"
-
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/hapi/all.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -27,29 +27,28 @@
 namespace egr {
 
 void GradNodeScale::SetTensorWrappers_X(
-    const std::vector<paddle::experimental::Tensor>& tensors) {
+    const std::vector<egr::EagerTensor>& tensors) {
   // Does nothing for scale
 }
 
 void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
 
-std::vector<std::vector<paddle::experimental::Tensor>> GradNodeScale::
-operator()(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
+std::vector<std::vector<egr::EagerTensor>> GradNodeScale::operator()(
+    const std::vector<std::vector<egr::EagerTensor>>& grads) {
   // 1. Check Output Size
   PADDLE_ENFORCE(((grads.size() == 1) && (grads[0].size() == 1)),
                  paddle::platform::errors::Fatal(
                      "ScaleGradNode should take exactly 1 grad tensor"
                      "However received: %d",
                      grads.size()));
-  std::vector<std::vector<paddle::experimental::Tensor>> outs;
+  std::vector<std::vector<egr::EagerTensor>> outs;
   // 2. Create needed out parttern
-  paddle::experimental::Tensor out;
+  egr::EagerTensor out;
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {
     // TODO(jiabin): Shall we apply hook slot by slot here or accept
     // vector<vector<pten::tensor>> to apply all hooks?
-    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
+    std::vector<std::vector<egr::EagerTensor>> hooked_grads =
         ApplyGradientHooks(grads);
     ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,
              true /* bias_after_scale */, &out);

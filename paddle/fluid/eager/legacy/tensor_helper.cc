@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace egr {
-pten::TensorMeta* MutableMeta(paddle::experimental::Tensor* tensor) {
+pten::TensorMeta* MutableMeta(egr::EagerTensor* tensor) {
   if (!tensor->defined()) {
     pten::TensorMeta meta;
     pten::TensorStatus status;
@@ -34,8 +34,7 @@ pten::TensorMeta* MutableMeta(paddle::experimental::Tensor* tensor) {
   return std::static_pointer_cast<pten::DenseTensor>(tensor->impl())
       ->mutable_meta();
 }
-void InitializeTensor(paddle::experimental::Tensor* tensor,
-                      const pten::TensorMeta& meta,
+void InitializeTensor(egr::EagerTensor* tensor, const pten::TensorMeta& meta,
                       const pten::TensorStatus& status) {
   // TODO(jiabin) Support init Tensor with other kinds of TensorBase.
   if (!tensor->defined()) {
@@ -43,7 +42,7 @@ void InitializeTensor(paddle::experimental::Tensor* tensor,
     tensor->set_impl(dense_tensor);
   }
 }
-void InitializeTensor(paddle::experimental::Tensor* tensor) {
+void InitializeTensor(egr::EagerTensor* tensor) {
   // TODO(jiabin) Support init Tensor with other kinds of TensorBase.
   if (!tensor->defined()) {
     pten::TensorMeta meta;

@@ -81,12 +81,11 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
 }
 
 inline std::string GetDtypeStr(
-    const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
+    const std::shared_ptr<egr::EagerTensor>& tensor) {
   return framework::DataTypeToString(pten::TransToProtoVarType(tensor->type()));
 }
 
-inline bool NeedCast(
-    const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
+inline bool NeedCast(const std::shared_ptr<egr::EagerTensor>& tensor) {
   auto place = pten::TransToFluidPlace(tensor->place());
   auto data_type = pten::TransToProtoVarType(tensor->type());
   if (platform::is_gpu_place(place) || platform::is_cuda_pinned_place(place) ||
@@ -102,15 +101,14 @@ inline bool NeedCast(
 
 // NOTE: Trace a cast op, so if a var is casted from fp32 to fp16, then the grad
 // var will be cast back from fp16 to fp32 during backward phase.
-static inline std::shared_ptr<paddle::experimental::Tensor> CastToType(
-    const std::shared_ptr<paddle::experimental::Tensor>& tensor,
+static inline std::shared_ptr<egr::EagerTensor> CastToType(
+    const std::shared_ptr<egr::EagerTensor>& tensor,
     const framework::proto::VarType::Type dst_type) {
   imperative::NameTensorMap ins = {{"X", {tensor}}};
   auto in_data_type = pten::TransToProtoVarType(tensor->type());
   framework::AttributeMap attrs = {{"in_dtype", in_data_type},
                                    {"out_dtype", dst_type}};
-  auto out = std::shared_ptr<paddle::experimental::Tensor>(
-      new paddle::experimental::Tensor());
+  auto out = std::shared_ptr<egr::EagerTensor>(new egr::EagerTensor());
   imperative::NameTensorMap outs = {{"Out", {out}}};
 
   {
@@ -121,8 +119,8 @@ static inline std::shared_ptr<paddle::experimental::Tensor> CastToType(
   return out;
 }
 
-static inline std::shared_ptr<paddle::experimental::Tensor> CastToFP16(
-    const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
+static inline std::shared_ptr<egr::EagerTensor> CastToFP16(
+    const std::shared_ptr<egr::EagerTensor>& tensor) {
   auto dst_type = framework::proto::VarType::FP16;
   if (NeedCast(tensor) &&
       (pten::TransToProtoVarType(tensor->type()) != dst_type)) {
@@ -131,8 +129,8 @@ static inline std::shared_ptr<paddle::experimental::Tensor> CastToFP16(
   return tensor;
 }
 
-static inline std::shared_ptr<paddle::experimental::Tensor> CastToFP32(
-    const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
+static inline std::shared_ptr<egr::EagerTensor> CastToFP32(
+    const std::shared_ptr<egr::EagerTensor>& tensor) {
   auto dst_type = framework::proto::VarType::FP32;
   if (NeedCast(tensor) &&
       (pten::TransToProtoVarType(tensor->type()) != dst_type)) {

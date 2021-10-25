@@ -29,6 +29,71 @@ DECLARE_string(tracer_mkldnn_ops_off);
 
 namespace egr {
 
+void OpRunImpl(const framework::OperatorBase& op, const NameTensorMap& ins,
+               const NameTensorMap& outs, const framework::AttributeMap& attrs,
+               const framework::AttributeMap& default_attrs,
+               const platform::Place& place) {
+  auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
+  PADDLE_ENFORCE_NOT_NULL(
+      op_kernel, platform::errors::PermissionDenied(
+                     "Only support operator with kernel in Dygraph mode."));
+  auto& info = op.Info();
+  if (info.infer_var_type_) {
+    TensorRuntimeInferVarTypeContext infer_var_type_ctx(ins, outs, attrs,
+                                                        default_attrs);
+    info.infer_var_type_(&infer_var_type_ctx);
+  }
+
+  // Initialize output tensor
+  for (auto& tensor_pair : outs) {
+    for (auto& tensor : tensor_pair.second) {
+      if (tensor) {
+        InitializeTensor(tensor);
+      }
+    }
+  }
+
+  /**
+   * [ Why need temporary inputs here? ]
+   *
+   * PrepareData should not change original input tensor inplace.
+   * Suppose the user defines a tensor(int), enters an op to execute,
+   * and then this op rewrites GetExpectedKernelForVar, and converts
+   * this tensor to float type during execution. After the dynamic
+   * graph is executed, the user-defined variable will be lost, and
+   * the user cannot get the originally defined int tensor, because
+   * it has been converted to float, this should be regarded as a bug
+   * in certain usage scenarios
+   *
+   * In static graph mode, when op is executed, a temporary scope
+   * `transfer_scope` is created before PrepareData, the data after
+   * transform is stored in the temporary scope, and then discarded
+   * after the execution of op, but the original input is directly
+   * overwritten in the previous dynamic graph implemention.
+   */
+  auto prepared_op =
+      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
+  auto tmp_ins_ptr =
+      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+  if (tmp_ins_ptr == nullptr) {
+    prepared_op.Run(ins, outs, attrs, default_attrs);
+  } else {
+    prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
+  }
+
+  VLOG(4) << LayerDebugString(op.Type(), ins, outs);
+
+  // set the output var
+  for (auto& var_pair : outs) {
+    for (auto& var : var_pair.second) {
+      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      if (var) {
+        SetForwardDataTypeOfGradVar(var);
+      }
+    }
+  }
+}
+
 void RunOp(const std::string& type, const NameTensorMap& ins,
            const NameTensorMap& outs, framework::AttributeMap attrs,
            const platform::Place& place,
@@ -114,71 +179,6 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
   if (enable_program_desc_tracing_) {
     VLOG(5) << "Trace op " << type << " into ProgramDesc";
     program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
-  }
-}
-
-void OpRunImpl(const framework::OperatorBase& op, const NameTensorMap& ins,
-               const NameTensorMap& outs, const framework::AttributeMap& attrs,
-               const framework::AttributeMap& default_attrs,
-               const platform::Place& place) {
-  auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
-  PADDLE_ENFORCE_NOT_NULL(
-      op_kernel, platform::errors::PermissionDenied(
-                     "Only support operator with kernel in Dygraph mode."));
-  auto& info = op.Info();
-  if (info.infer_var_type_) {
-    TensorRuntimeInferVarTypeContext infer_var_type_ctx(ins, outs, attrs,
-                                                        default_attrs);
-    info.infer_var_type_(&infer_var_type_ctx);
-  }
-
-  // Initialize output tensor
-  for (auto& tensor_pair : outs) {
-    for (auto& tensor : tensor_pair.second) {
-      if (tensor) {
-        InitializeTensor(tensor);
-      }
-    }
-  }
-
-  /**
-   * [ Why need temporary inputs here? ]
-   *
-   * PrepareData should not change original input tensor inplace.
-   * Suppose the user defines a tensor(int), enters an op to execute,
-   * and then this op rewrites GetExpectedKernelForVar, and converts
-   * this tensor to float type during execution. After the dynamic
-   * graph is executed, the user-defined variable will be lost, and
-   * the user cannot get the originally defined int tensor, because
-   * it has been converted to float, this should be regarded as a bug
-   * in certain usage scenarios
-   *
-   * In static graph mode, when op is executed, a temporary scope
-   * `transfer_scope` is created before PrepareData, the data after
-   * transform is stored in the temporary scope, and then discarded
-   * after the execution of op, but the original input is directly
-   * overwritten in the previous dynamic graph implemention.
-   */
-  auto prepared_op =
-      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
-  auto tmp_ins_ptr =
-      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
-  if (tmp_ins_ptr == nullptr) {
-    prepared_op.Run(ins, outs, attrs, default_attrs);
-  } else {
-    prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
-  }
-
-  VLOG(4) << LayerDebugString(op.Type(), ins, outs);
-
-  // set the output var
-  for (auto& var_pair : outs) {
-    for (auto& var : var_pair.second) {
-      // NOTE(zhiqu): The ouput may be NULL because of pruning.
-      if (var) {
-        SetForwardDataTypeOfGradVar(var);
-      }
-    }
   }
 }
 }  // namespace egr

@@ -18,7 +18,7 @@ namespace paddle {
 namespace pybind {
 
 typedef struct {
-  PyObject_HEAD paddle::experimental::Tensor eagertensor;
+  PyObject_HEAD egr::EagerTensor eagertensor;
 } EagerTensorObject;
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
@@ -37,13 +37,13 @@ PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
 PyObject* ToPyObject(const std::string& value);
-PyObject* ToPyObject(const paddle::experimental::Tensor& value);
+PyObject* ToPyObject(const egr::EagerTensor& value);
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value);
+PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
 
 }  // namespace pybind
 }  // namespace paddle

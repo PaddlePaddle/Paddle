@@ -168,8 +168,8 @@ static void FillConstCUDAFunctor(pten::DenseTensor* tensor_dense,
   }
 }
 
-void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
-              bool bias_after_scale, paddle::experimental::Tensor* out) {
+void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
+              bool bias_after_scale, egr::EagerTensor* out) {
   // TODO(jiabin): Support multiple tensor here, Create DenseTensor is not a
   // proper way to Demo it
   // Run Forward Function
@@ -218,8 +218,7 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
 
 void FillConstAPI(double value, const pten::DDim& ddim,
                   const pten::Backend& backend, const pten::DataType& dtype,
-                  const pten::DataLayout& layout,
-                  paddle::experimental::Tensor* target) {
+                  const pten::DataLayout& layout, egr::EagerTensor* target) {
   // Create new tensor->impl and fill it with 1.0
   // Fill 1.0
   std::shared_ptr<pten::DenseTensor> tensor_dense = nullptr;

@@ -529,6 +529,31 @@ __device__ void HigherDimDealSegment(const Tx* x, Ty* y, ReduceOp reducer,
   kps::WriteData<Ty, 1, 1, 1, IsBoundary>(y + store_offset, &temp_data, size);
 }
 
+template <typename Tx, typename MPType, typename ReduceOp, typename TransformOp,
+          typename Calculator, bool IsBoundary>
+__device__ void ReduceAnyKernelImpl(const Tx* input, MPType* reduce_var,
+                                    ReduceOp reducer, TransformOp transformer,
+                                    MPType init, int reduce_num, int input_idx,
+                                    bool reduce_last_dim,
+                                    const Calculator& reduce_index_calculator,
+                                    int stride, int num) {
+  Tx input_reg[REDUCE_VEC_SIZE];
+  MPType input_compute[REDUCE_VEC_SIZE];
+  MPType input_transform[REDUCE_VEC_SIZE];
+
+  kps::Init<MPType, REDUCE_VEC_SIZE>(&input_compute[0], init);
+  kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, Calculator, IsBoundary>(
+      &input_reg[0], input, input_idx, reduce_index_calculator, 1, reduce_num,
+      1, stride, reduce_last_dim);
+  kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      &input_transform[0], &input_reg[0], transformer);
+  kps::Init<MPType, REDUCE_VEC_SIZE, IsBoundary>(input_compute, input_transform,
+                                                 num);
+  kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
+              kps::details::ReduceMode::kLocalMode>(
+      reduce_var, &input_compute[0], reducer, reduce_last_dim);
+}
+
 // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
 // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
 // function will be used
@@ -570,37 +595,17 @@ __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
   // 1. reduce for each thread
   if (left_idx < left_num) {
     // load REDUCE_VEC_SIZE data once, and then compute
-    Tx input_reg[REDUCE_VEC_SIZE];
-    MPType input_compute[REDUCE_VEC_SIZE];
     int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
     for (; input_idx + block_size < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
-      kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, Calculator>(
-          &input_reg[0], input, input_idx, reduce_index_calculator, 1,
-          reduce_num, 1, stride, reduce_last_dim);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
-          &input_compute[0], &input_reg[0], transformer);
-      kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
-                  kps::details::ReduceMode::kLocalMode>(
-          &reduce_var, &input_compute[0], reducer, reduce_last_dim);
+      ReduceAnyKernelImpl<Tx, MPType, ReduceOp, TransformOp, Calculator, false>(
+          input, &reduce_var, reducer, transformer, init, reduce_num, input_idx,
+          reduce_last_dim, reduce_index_calculator, stride, reduce_num);
     }
-
-    kps::Init<MPType, REDUCE_VEC_SIZE>(&input_compute[0], init);
-    kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, Calculator, true>(
-        &input_reg[0], input, input_idx, reduce_index_calculator, 1, reduce_num,
-        1, stride, reduce_last_dim);
-    input_idx += tid;
-#pragma unroll
-    for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
-      if (input_idx >= reduce_num) {
-        break;
-      }
-      input_compute[i] = static_cast<MPType>(transformer(input_reg[i]));
-      input_idx += stride;
-    }
-    kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
-                kps::details::ReduceMode::kLocalMode>(
-        &reduce_var, &input_compute[0], reducer, reduce_last_dim);
+    int num = (reduce_num - input_idx - tid + stride - 1) / stride;
+    ReduceAnyKernelImpl<Tx, MPType, ReduceOp, TransformOp, Calculator, true>(
+        input, &reduce_var, reducer, transformer, init, reduce_num - input_idx,
+        input_idx, reduce_last_dim, reduce_index_calculator, stride, num);
   }
 
   kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::details::kGlobalMode>(

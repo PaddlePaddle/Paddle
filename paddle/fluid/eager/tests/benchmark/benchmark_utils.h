@@ -14,23 +14,21 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
-
 namespace egr {
 
 /* ---- Eager Scale ---- */
-void benchmark_eager_scale_accuracy_check(
-    const paddle::experimental::Tensor& tensor);
-void benchmark_eager_scale(const paddle::experimental::Tensor& tensor);
+void benchmark_eager_scale_accuracy_check(const egr::EagerTensor& tensor);
+void benchmark_eager_scale(const egr::EagerTensor& tensor);
 
 /* ---- Eager MatMul ---- */
 void benchmark_eager_intermediate_matmul_accuracy_check(
-    const paddle::experimental::Tensor& X,
-    const paddle::experimental::Tensor& Y);
-void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
-                                         const paddle::experimental::Tensor& Y);
+    const egr::EagerTensor& X, const egr::EagerTensor& Y);
+void benchmark_eager_intermediate_matmul(const egr::EagerTensor& X,
+                                         const egr::EagerTensor& Y);
 
 }  // namespace egr
 

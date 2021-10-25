@@ -33,13 +33,13 @@ class EagerExecutionContext : public framework::ExecutionContext {
                         const framework::Scope& scope,
                         const platform::DeviceContext& device_context,
                         const framework::RuntimeContext& ctx,
-                        const NameVarMap<VarType>& var_base_map_in,
-                        const NameVarMap<VarType>& var_base_map_out,
+                        const NameTensorMap& tensor_map_in,
+                        const NameTensorMap& tensor_map_out,
                         const framework::AttributeMap& attrs,
                         const framework::AttributeMap& default_attrs)
       : ExecutionContext(op, scope, device_context, ctx),
-        tensor_map_in_(var_base_map_in),
-        tensor_map_out_(var_base_map_out),
+        tensor_map_in_(tensor_map_in),
+        tensor_map_out_(tensor_map_out),
         attrs_(attrs),
         default_attrs_(default_attrs) {}
 
@@ -48,10 +48,9 @@ class EagerExecutionContext : public framework::ExecutionContext {
     PADDLE_ENFORCE_NE(it, tensor_map_in_.end(),
                       platform::errors::PreconditionNotMet(
                           "Can not find [%s] in Input", name));
-    // TODO(jiabin): This is used for paddle::experimental::Tensor temporally,
+    // TODO(jiabin): This is used for egr::EagerTensor temporally,
     // once we have name, remove it.
-    return it->second[0] ? framework::kPtenTensorTempName
-                         : framework::kEmptyVarName;
+    return it->second[0] ? it->second[0]->name() : framework::kEmptyVarName;
   }
 
   std::vector<std::string> InputNames(const std::string& name) const override {
@@ -63,9 +62,9 @@ class EagerExecutionContext : public framework::ExecutionContext {
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
-        // TODO(jiabin): This is used for paddle::experimental::Tensor
+        // TODO(jiabin): This is used for egr::EagerTensor
         // temporally, once we have name, remove it.
-        vec_res.push_back(framework::kPtenTensorTempName);
+        vec_res.push_back(it->second[i]->name());
       } else {
         vec_res.push_back(framework::kEmptyVarName);
       }
@@ -78,7 +77,7 @@ class EagerExecutionContext : public framework::ExecutionContext {
     PADDLE_ENFORCE_NE(
         it, tensor_map_out_.end(),
         platform::errors::NotFound("Can not find [%s] in Output", name));
-    return it->second[0] ? it->second[0]->Name() : framework::kEmptyVarName;
+    return it->second[0] ? it->second[0]->name() : framework::kEmptyVarName;
   }
 
   std::vector<std::string> OutputNames(const std::string& name) const override {
@@ -90,7 +89,7 @@ class EagerExecutionContext : public framework::ExecutionContext {
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
-        vec_res.push_back(it->second[i]->Name());
+        vec_res.push_back(it->second[i]->name());
       } else {
         vec_res.push_back(framework::kEmptyVarName);
       }
