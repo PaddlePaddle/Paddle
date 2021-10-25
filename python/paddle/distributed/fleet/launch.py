@@ -107,8 +107,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--backend",
         type=str,
         default="auto",
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto. Default value is auto which perfers nccl or bkcl."
-    )
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+        "Default value is auto which perfers nccl or bkcl.")
     base_group.add_argument(
         "--nproc_per_node",
         type=int,
@@ -363,14 +363,14 @@ def which_distributed_mode(args):
 
     if len(has_ps_args) > 1 and len(has_collective_args) > 1:
         raise ValueError(
-            "Only one mode(Collective or Parameter-Server) can be selected at the same time, but more than one configuration was received."
-        )
+            "Only one mode(Collective or Parameter-Server) can be selected at the same time, "
+            "but more than one configuration was received.")
 
     if fluid.core.is_compiled_with_cuda():
         accelerators = fluid.core.get_cuda_device_count()
         args.backend = 'nccl'
     elif fluid.core.is_compiled_with_npu():
-        args.backend = 'unknown'
+        args.backend = 'hccl'
         accelerators = fluid.core.get_npu_device_count()
     elif fluid.core.is_compiled_with_xpu():
         args.backend = 'bkcl'
@@ -396,16 +396,16 @@ def which_distributed_mode(args):
         ) and not fluid.core.is_compiled_with_xpu():
             if args.servers:
                 logger.warning(
-                    "Not found distinct arguments and not compiled with cuda or xpu. \
-But found args.servers not empty, default use ps mode")
+                    "Not found distinct arguments and not compiled with cuda or xpu or npu. "
+                    "But found args.servers not empty, default use ps mode")
                 return DistributeMode.PS
             else:
                 args.backend = "gloo"
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"
-            )
+                "Not found distinct arguments and compiled with cuda or xpu or npu. "
+                "Default use collective mode")
             return DistributeMode.COLLECTIVE
 
 
@@ -585,10 +585,11 @@ def launch():
     if args.backend == 'auto':
         distribute_mode = which_distributed_mode(args)
         assert args.backend in [
-            'gloo', 'nccl', 'bkcl', 'unknown'
+            'gloo', 'nccl', 'bkcl', 'hccl'
         ]  # which_distributed_mode must modify args.backend
     else:
-        assert args.run_mode == 'collective' or args.run_mode == None, "When backend is not 'auto', run mode must be collective"
+        assert args.run_mode == 'collective' or args.run_mode == None, \
+            "When backend is not 'auto', run mode must be collective."
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 

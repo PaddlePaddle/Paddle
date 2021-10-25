@@ -56,6 +56,11 @@ class ParallelContext {
                                  framework::Variable* dst, int ring_id,
                                  bool use_calc_stream) = 0;
 
+  virtual void InterReduce(const framework::Variable& src,
+                           framework::Variable* dst, int ring_id) = 0;
+
+  virtual void InterBroadCast(framework::Variable* src, int ring_id) = 0;
+
   virtual paddle::platform::DeviceContext* GetDeviceContext(int ring_id) = 0;
 
   // comm_stream[ring_id] wait compute_stream.

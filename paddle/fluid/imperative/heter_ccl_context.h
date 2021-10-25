@@ -1,4 +1,4 @@
-//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,23 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/variable.h"
+
+#ifdef PADDLE_WITH_NCCL
+#include "paddle/fluid/imperative/nccl_context.h"
+#include "paddle/fluid/platform/cuda_resource_pool.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
+// to be added
+#ifdef PADDLE_WITH_BKCL
+#endif
+
+// to be added
+#ifdef PADDLE_WITH_ASCEND_CL
+#endif
+
+#include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -31,13 +43,12 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-class GLOOParallelContext : public ParallelContext {
+class HeterParallelContext : public ParallelContext {
  public:
-  explicit GLOOParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
-      : ParallelContext(strategy, place) {}
+  explicit HeterParallelContext(const ParallelStrategy& strategy,
+                                const int& device_id);
 
-  ~GLOOParallelContext() override = default;
+  ~HeterParallelContext() override = default;
 
   void Init() override;
 
@@ -61,12 +72,13 @@ class GLOOParallelContext : public ParallelContext {
   void SynchronizeCompute() override;
 
  private:
-  void AllReduce(const framework::Tensor& src, framework::Tensor* dst);
-  void AllReduce(const framework::SelectedRows& src,
-                 framework::SelectedRows* dst);
-
- private:
-  std::unique_ptr<platform::CPUDeviceContext> device_;
+  ParallelStrategy gloo_strategy_;
+  ParallelStrategy node_strategy_;
+  platform::Place node_place_;
+  std::vector<std::string> node_ips_;
+  int inter_ring_id_{-1};
+  std::shared_ptr<imperative::ParallelContext> heter_parallel_ctx_{nullptr};
+  std::shared_ptr<imperative::ParallelContext> gloo_ctx_{nullptr};
 };
 
 }  //  namespace imperative

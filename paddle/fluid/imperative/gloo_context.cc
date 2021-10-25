@@ -195,6 +195,18 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
   }
 }
 
+void GLOOParallelContext::InterReduce(const framework::Variable &src,
+                                      framework::Variable *dst, int ring_id) {
+  // no need to implement.
+  return;
+}
+
+void GLOOParallelContext::InterBroadCast(framework::Variable *src,
+                                         int ring_id) {
+  // no need to implement.
+  return;
+}
+
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
     int ring_id) {
   // return the CPUDeviceContext

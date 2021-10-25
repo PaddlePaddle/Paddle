@@ -672,13 +672,25 @@ def get_xpus(xpus):
 
 
 def get_device_mode(backend):
-    if fluid.core.is_compiled_with_npu() and \
+    if backend == 'heter':
+        if fluid.core.is_compiled_with_cuda() and \
+            fluid.core.get_cuda_device_count() > 0:
+            print("launch train in heter mode with GPU device.")
+            return DeviceMode.GPU
+        if fluid.core.is_compiled_with_xpu() and \
+            fluid.core.get_xpu_device_count() > 0:
+            print("launch train in heter mode with XPU device.")
+            return DeviceMode.XPU
+        if fluid.core.is_compiled_with_npu() and \
             fluid.core.get_npu_device_count() > 0:
+            print("launch train in heter mode with NPU device.")
+            return DeviceMode.ASCEND_NPU
+
+    if backend == 'hccl' and fluid.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
-    if backend == 'nccl' and \
-            fluid.core.get_cuda_device_count() > 0:
+    if backend == 'nccl' and fluid.core.get_cuda_device_count() > 0:
         print("launch train in GPU mode!")
         return DeviceMode.GPU
 
@@ -1247,11 +1259,11 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'auto']:
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'auto', but got %s"
-            % backend)
+    if backend not in ['nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter']:
+        raise ValueError("paddle.distributed initialize error, "
+                         "backend argument can only be one of "
+                         "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
+                         "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
         raise ValueError(
@@ -1263,6 +1275,20 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+    if backend == 'hccl' and not fluid.core.is_compiled_with_npu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with npu but you assign 'hccl' as backend."
+        )
+
+    if backend == 'heter' and not (fluid.core.is_compiled_with_cuda() or
+                                   fluid.core.is_compiled_with_xpu() or
+                                   fluid.core.is_compiled_with_npu()):
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with gup/xpu/npu but you assign 'heter' as backend."
         )
 
 
@@ -1284,5 +1310,8 @@ def get_backend_by_compile_flag():
 
     if fluid.core.is_compiled_with_xpu():
         return 'bkcl'
+
+    if fluid.core.is_compiled_with_npu():
+        return 'hccl'
 
     return 'gloo'
