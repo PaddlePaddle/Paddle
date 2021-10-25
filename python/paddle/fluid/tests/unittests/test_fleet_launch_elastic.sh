@@ -35,7 +35,7 @@ python -m pip install --no-cache-dir etcd3 -i https://mirror.baidu.com/pypi/simp
 
 # common env
 export PADDLE_ELASTIC_NP=2
-export PADDLE_ELASTIC_SERVER=127.0.0.1:2381
+export PADDLE_ELASTIC_SERVER=127.0.0.1:2379
 export PADDLE_ELASTIC_JOB_ID=elastic-demo
 
 # run node 0
@@ -217,7 +217,7 @@ kill $p0 $p1 $p0_1 $p1_1
 #############################
 # common env
 export PADDLE_ELASTIC_NP=2:4
-export PADDLE_ELASTIC_SERVER=127.0.0.1:2381
+export PADDLE_ELASTIC_SERVER=127.0.0.1:2379
 export PADDLE_ELASTIC_JOB_ID=elastic-demo-2
 
 # run node 0
@@ -239,7 +239,7 @@ do
         echo "run node 0 ok"
         break
     else
-        sleep 1
+        sleep 10
     fi
     if [ $i -eq 10 ]; then
         echo "run node 0 error"
@@ -266,7 +266,7 @@ do
         echo "run node 1 ok"
         break
     else
-        sleep 1
+        sleep 10
     fi
     if [ $i -eq 10 ]; then
         echo "run node 1 error"
@@ -293,7 +293,7 @@ do
         echo "run node 2 ok"
         break
     else
-        sleep 1
+        sleep 10
     fi
     if [ $i -eq 10 ]; then
         echo "run node 2 error"

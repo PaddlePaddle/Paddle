@@ -24,6 +24,8 @@ logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
 logger = logging.getLogger("ELASTIC")
 
 ELASTIC_EXIT_CODE = 101
+# unit: seconds
+ELASTIC_TIMEOUT = 60
 
 
 # 1: Fault tolerance, 2: Elastic
@@ -241,6 +243,7 @@ class ElasticManager(object):
         self.watches = [host_watch, np_watch, endpoints_watch]
 
         self.launcher = None
+        self.elastic_startup_time = None
 
     def exit(self, completed=False):
         logger.info('manager exist completed {}'.format(completed))
@@ -311,18 +314,21 @@ class ElasticManager(object):
 
         if self.elastic_level == ElasticLevel.ELASTIC:
             # FIXME(xym) add freeze status
+            if not self.elastic_startup_time:
+                self.elastic_startup_time = time.time()
             hosts_num = len(self.hosts)
-            lastest_trainers_num = len(self.lastest_trainers.split(","))
-            trainers_num = len(self.trainers.split(","))
-            logger.info(f"math, len(self.hosts)={len(self.hosts)}, \
-                len(self.lastest_trainers)={lastest_trainers_num}, \
-                len(self.trainers)={trainers_num}")
-            if hosts_num < lastest_trainers_num and \
-                 lastest_trainers_num == trainers_num:
-                return False
             if hosts_num >= self.min_np and hosts_num <= self.max_np:
+                interval_time = time.time() - self.elastic_startup_time
+                if interval_time <= ELASTIC_TIMEOUT:
+                    logger.info(
+                        f"current interval_time={interval_time} hosts_num={hosts_num} reached the min_np={self.min_np}, wait for timeout"
+                    )
+                    return False
+
+                self.elastic_startup_time = time.time()
                 return True
             else:
+                self.elastic_startup_time = time.time()
                 return False
 
     def _update_hosts(self):
