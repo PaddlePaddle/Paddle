@@ -266,50 +266,23 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
 
   // compute sum
   AccT sum[kBatchSize] = {0};
-  if (LogMode) {
-    AccT src_exp[kBatchSize][kIterationsV][kVSize];
-    for (int i = 0; i < kBatchSize; ++i) {
-      kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            ExpSubFunctor<AccT>>(
-          &src_exp[i][0][0], &srcdata[i][0][0],
-          ExpSubFunctor<AccT>(max_value[i]));
-    }
-    kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &src_exp[0][0][0], kps::AddFunctor<AccT>(), true);
-  } else {
-    for (int i = 0; i < kBatchSize; ++i) {
-      kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            ExpSubFunctor<AccT>>(
-          &srcdata[i][0][0], &srcdata[i][0][0],
-          ExpSubFunctor<AccT>(max_value[i]));
-    }
-    kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &srcdata[0][0][0], kps::AddFunctor<AccT>(), true);
+  for (int i = 0; i < kBatchSize; ++i) {
+    kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
+                          ExpSubFunctor<AccT>>(
+        &srcdata[i][0][0], &srcdata[i][0][0],
+        ExpSubFunctor<AccT>(max_value[i]));
   }
+  kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1, kps::AddFunctor<AccT>,
+              kps::details::ReduceMode::kLocalMode>(
+      &sum[0], &srcdata[0][0][0], kps::AddFunctor<AccT>(), true);
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
   // write result to register
-  if (LogMode) {
-    kps::ElementwiseUnary<AccT, AccT, kBatchSize, 1, 1, UnaryLogFunctor<AccT>>(
-        &sum[0], &sum[0], UnaryLogFunctor<AccT>());
-  }
-
   AccT out[kBatchSize][kIterationsV][kVSize];
-  if (LogMode) {
-    for (int i = 0; i < kBatchSize; ++i) {
-      kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            UnarySubFunctor<AccT>>(
-          &out[i][0][0], &srcdata[i][0][0],
-          UnarySubFunctor<AccT>(max_value[i] + sum[i]));
-    }
-  } else {
-    for (int i = 0; i < kBatchSize; ++i) {
-      kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            UnaryDivideFunctor<AccT>>(
-          &out[i][0][0], &srcdata[i][0][0], UnaryDivideFunctor<AccT>(sum[i]));
-    }
+  for (int i = 0; i < kBatchSize; ++i) {
+    kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
+                          UnaryDivideFunctor<AccT>>(
+        &out[i][0][0], &srcdata[i][0][0], UnaryDivideFunctor<AccT>(sum[i]));
   }
 
   // write result to global memory
@@ -409,51 +382,31 @@ __global__ void WarpSoftmaxBackward(T* dst, const T* grad, const T* src,
 
   // compute sum
   AccT sum[kBatchSize]{0.0};
-  if (LogMode) {
-    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
-    kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &gradptr[0], kps::AddFunctor<AccT>(), true);
-  } else {
-    AccT sum_tmp[kBatchSize][kIterationsV][kVSize];
-    for (int i = 0; i < kBatchSize; ++i) {
-      AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-      AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-      kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                             kps::MulFunctor<AccT>>(
-          &sum_tmp[i][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
-    }
-    kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-                kps::AddFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
-        &sum[0], &sum_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
+  AccT sum_tmp[kBatchSize][kIterationsV][kVSize];
+  for (int i = 0; i < kBatchSize; ++i) {
+    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
+    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
+    kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
+                           kps::MulFunctor<AccT>>(
+        &sum_tmp[i][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
   }
+  kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1, kps::AddFunctor<AccT>,
+              kps::details::ReduceMode::kLocalMode>(
+      &sum[0], &sum_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
 
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
   // write
   AccT out[kBatchSize][kIterationsV][kVSize];
-  if (LogMode) {
-    for (int i = 0; i < kBatchSize; ++i) {
-      AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-      AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-      kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            ExpMulFunctor<AccT>>(&out[i][0][0], &srcptr[0],
-                                                 ExpMulFunctor<AccT>(sum[i]));
-      kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                             kps::SubFunctor<AccT>>(
-          &out[i][0][0], &gradptr[0], &out[i][0][0], kps::SubFunctor<AccT>());
-    }
-  } else {
-    for (int i = 0; i < kBatchSize; ++i) {
-      AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-      AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-      kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                            UnarySubFunctor<AccT>>(
-          &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
-      kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                             kps::MulFunctor<AccT>>(
-          &out[i][0][0], &srcptr[0], &out[i][0][0], kps::MulFunctor<AccT>());
-    }
+  for (int i = 0; i < kBatchSize; ++i) {
+    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
+    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
+    kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
+                          UnarySubFunctor<AccT>>(&out[i][0][0], &gradptr[0],
+                                                 UnarySubFunctor<AccT>(sum[i]));
+    kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
+                           kps::MulFunctor<AccT>>(
+        &out[i][0][0], &srcptr[0], &out[i][0][0], kps::MulFunctor<AccT>());
   }
 
   T out_tmp[kBatchSize][kIterationsV][kVSize];
