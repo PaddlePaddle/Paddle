@@ -1479,8 +1479,6 @@ class Layer(core.Layer):
                         param_applied.is_distributed = param.is_distributed
                     self._parameters[key] = param_applied
 
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", category=UserWarning)
                     if param.grad is not None:
                         with no_grad():
                             grad_applied = func(param._grad_ivar(), device,
@@ -1575,7 +1573,10 @@ class Layer(core.Layer):
             if dtype is None:
                 dtype = t.dtype
 
-            new_t = t._copy_to(device, blocking)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning)
+                new_t = t._copy_to(device, blocking)
+
             if isinstance(t, framework.ParamBase):
                 if dtype is not None and dtype != t.dtype:
                     framework._dygraph_tracer().trace_op(
