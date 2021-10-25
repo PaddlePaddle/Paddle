@@ -26,9 +26,6 @@ namespace ir {
 /*
  * \brief   Fuse the softplus and another activation operators into
  *          softplus with another activation as post-op.
- *
- * \note    Currently only tanh is supported, because this fuse pass is
- * dedicated for ppyolov2_r50vd_365e model
  */
 class SoftplusActivationOneDNNPass : public FusePassBase {
  public:
