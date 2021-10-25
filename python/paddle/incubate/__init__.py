@@ -23,6 +23,7 @@ from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
 from .nn.functional.fused_transformer import fused_multi_head_attention
+from .nn.functional.fused_transformer import fused_feedforward
 
 __all__ = [
     'LookAhead',
@@ -34,4 +35,5 @@ __all__ = [
     'segment_max',
     'segment_min',
     'fused_multi_head_attention',
+    'fused_feedforward',
 ]
