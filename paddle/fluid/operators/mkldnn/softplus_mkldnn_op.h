@@ -24,7 +24,7 @@ class SoftplusMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   SoftplusMKLDNNHandler(const framework::ExecutionContext& ctx, const Tensor* x,
-                        const float beta, const mkldnn::engine engine, )
+                        const float beta, const mkldnn::engine engine)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine,
                                                            ctx.GetPlace()) {
     auto x_tz = framework::vectorize(x->dims());
