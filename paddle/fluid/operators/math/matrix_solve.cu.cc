@@ -171,20 +171,23 @@ class TriangularSolveFunctor<platform::CUDADeviceContext, T> {
                   bool unitriangular) {
     CBLAS_SIDE side = left ? CblasLeft : CblasRight;
     CBLAS_UPLO uplo = upper ? CblasUpper : CblasLower;
-    CBLAS_TRANSPOSE transA = transpose ? CblasNoTrans : CblasTrans;
+    CBLAS_TRANSPOSE transA = transpose ? CblasTrans : CblasNoTrans;
     CBLAS_DIAG diag = unitriangular ? CblasUnit : CblasNonUnit;
 
     const T* a_data = a->data<T>();
     T* b_data = b->mutable_data<T>(context.GetPlace());
 
-    int M = left ? a->dims()[-2] : b->dims()[-2];
-    int N = b->dims()[-1];
+    int a_dim_size = a->dims().size();
+    int b_dim_size = b->dims().size();
+
+    int M = b->dims()[b_dim_size - 2];
+    int N = b->dims()[b_dim_size - 1];
     auto lda = left ? std::max(1, M) : std::max(1, N);
-    auto ldb = std::max(1, M);
+    auto ldb = std::max(1, N);
 
     int batch_size = 1;
     auto& a_dim = a->dims();
-    for (int i = 0; i < a_dim.size() - 2; i++) {
+    for (int i = 0; i < a_dim_size - 2; i++) {
       batch_size *= a_dim[i];
     }
 
@@ -192,10 +195,10 @@ class TriangularSolveFunctor<platform::CUDADeviceContext, T> {
     if (batch_size <= 8 && M >= 64) {
       for (auto i = 0; i < batch_size; i++) {
         blas.TRSM(side, uplo, transA, diag, M, N, static_cast<T>(1.0),
-                  a_data + i * M * M, lda, b_data + i * M * N, ldb);
+                  a_data + i * M * M, lda, b_data + i * N * M, ldb);
       }
     } else {
-      std::vector<T*> cpu_ptrs(batch_size * 2);
+      std::vector<const T*> cpu_ptrs(batch_size * 2);
       for (int i = 0; i < batch_size; ++i) {
         cpu_ptrs[i] = a_data + i * M * M;
         cpu_ptrs[i + batch_size] = b_data + i * M * N;
@@ -218,6 +221,9 @@ class TriangularSolveFunctor<platform::CUDADeviceContext, T> {
     }
   }
 };
+
+template class TriangularSolveFunctor<platform::CUDADeviceContext, float>;
+template class TriangularSolveFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

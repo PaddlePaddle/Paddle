@@ -706,12 +706,12 @@ struct CBlas<platform::complex<float>> {
   }
 
   static void TRSM(const CBLAS_LAYOUT layout, const CBLAS_SIDE side,
-                   const CBLAS_UPLO uplo, cosnt CBLAS_TRANSPOSE transA,
-                   constt CBLAS_DIAG diag, const int M, const int N,
+                   const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA,
+                   const CBLAS_DIAG diag, const int M, const int N,
                    const paddle::platform::complex<float> alpha,
                    const paddle::platform::complex<float> *A, const int lda,
                    paddle::platform::complex<double> *B, const int ldb) {
-    cblas_ztrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
+    cblas_ctrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
   }
 };
 
@@ -753,8 +753,8 @@ struct CBlas<platform::complex<double>> {
   }
 
   static void TRSM(const CBLAS_LAYOUT layout, const CBLAS_SIDE side,
-                   const CBLAS_UPLO uplo, cosnt CBLAS_TRANSPOSE transA,
-                   constt CBLAS_DIAG diag, const int M, const int N,
+                   const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA,
+                   const CBLAS_DIAG diag, const int M, const int N,
                    const paddle::platform::complex<double> alpha,
                    const paddle::platform::complex<double> *A, const int lda,
                    paddle::platform::complex<double> *B, const int ldb) {

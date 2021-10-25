@@ -58,16 +58,16 @@ class TriangularSolveOp : public framework::OperatorWithKernel {
     std::vector<int64_t> y_dims_vec = paddle::framework::vectorize(y_dims);
 
     std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(),
-                                        x_dims_vec.begin() - 2);
+                                        x_dims_vec.end() - 2);
     std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(),
-                                        x_dims_vec.begin() - 2);
+                                        y_dims_vec.end() - 2);
 
     std::vector<int64_t> expand_batch_portion =
         infer_size(x_dims_vec_cut, y_dims_vec_cut);
 
     std::vector<int64_t> y_broadcast_dims({expand_batch_portion});
-    y_broadcast_dims.insert(y_broadcast_dims.end(),
-                            {y_dims[y_dims_n - 2], y_dims[y_dims_n - 1]});
+    y_broadcast_dims.insert(y_broadcast_dims.end(), {y_dims_vec[y_dims_n - 2],
+                                                     y_dims_vec[y_dims_n - 1]});
 
     // dim of 'Out' is the same with 'Y' after broadcast
     ctx->SetOutputDim("Out", framework::make_ddim(y_broadcast_dims));
@@ -179,16 +179,9 @@ REGISTER_OPERATOR(triangular_solve_grad, ops::TriangularSolveGradOp);
 REGISTER_OP_CPU_KERNEL(
     triangular_solve,
     ops::TriangularSolveKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TriangularSolveKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TriangularSolveKernel<paddle::platform::CPUDeviceContext,
-                               paddle::platform::complex<float>>,
-    ops::TriangularSolveKernel<paddle::platform::CPUDeviceContext,
-                               paddle::platform::complex<double>>);
+    ops::TriangularSolveKernel<paddle::platform::CPUDeviceContext, double>);
+
 REGISTER_OP_CPU_KERNEL(
     triangular_solve_grad,
     ops::TriangularSolveGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TriangularSolveGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TriangularSolveGradKernel<paddle::platform::CPUDeviceContext,
-                                   paddle::platform::complex<float>>,
-    ops::TriangularSolveGradKernel<paddle::platform::CPUDeviceContext,
-                                   paddle::platform::complex<double>>);
+    ops::TriangularSolveGradKernel<paddle::platform::CPUDeviceContext, double>);

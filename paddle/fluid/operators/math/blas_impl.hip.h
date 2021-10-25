@@ -747,8 +747,10 @@ template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::BatchedTRSM(
     CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA, CBLAS_DIAG diag,
-    int M, int N, T alpha, const T **a, int lda, T **b, int ldb,
+    int M, int N, T alpha, const T **A, int lda, T **B, int ldb,
     int batch_size) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
   rocblas_side cuSide =
       (side == CblasLeft) ? rocblas_side_right : rocblas_side_left;
   rocblas_fill cuUplo =
@@ -760,7 +762,7 @@ void Blas<platform::CUDADeviceContext>::BatchedTRSM(
   rocblas_diagonal cuDiag =
       (diag == CblasUnit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
 
-  context_.CublasCall([&](rocblas_handle handle) {
+  context_.CublasCall([&](cublasHandle_t handle) {
     CUBlas<T>::TRSM_BATCH(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M,
                           &alpha, A, lda, B, ldb, batch_size);
   });

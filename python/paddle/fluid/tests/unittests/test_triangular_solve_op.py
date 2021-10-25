@@ -16,16 +16,17 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle
-import paddle.fluid.core as core
+
 import sys
 sys.path.append("..")
+import paddle
 from op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
-np.random.seed(2021)
 paddle.enable_static()
+
+import torch
 
 
 class TestTriangularSolveOp(OpTest):
@@ -34,16 +35,21 @@ class TestTriangularSolveOp(OpTest):
     """
 
     def config(self):
-        self.x_shape = [15, 15]
-        self.y_shape = [15, 10]
+        self.x_shape = [12, 12]
+        self.y_shape = [12, 10]
         self.upper = True
         self.transpose = False
         self.unitriangular = False
         self.dtype = "float64"
 
+    def set_output(self):
+        self.output = np.linalg.solve(
+            np.triu(self.inputs['X']), self.inputs['Y'])
+
     def setUp(self):
         self.op_type = "triangular_solve"
         self.config()
+
         self.inputs = {
             'X': np.random.random(self.x_shape).astype(self.dtype),
             'Y': np.random.random(self.y_shape).astype(self.dtype)
@@ -53,9 +59,8 @@ class TestTriangularSolveOp(OpTest):
             'transpose': self.transpose,
             'unitriangular': self.unitriangular,
         }
-        self.outputs = {
-            'Out': np.linalg.solve(self.inputs['X'], self.inputs['Y'])
-        }
+        self.set_output()
+        self.outputs = {'Out': self.output}
 
     def test_check_output(self):
         self.check_output()
@@ -70,12 +75,17 @@ class TestTriangularSolveOp2(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [6, 10, 10]
-        self.y_shape = [10, 15]
+        self.x_shape = [10, 10]
+        self.y_shape = [3, 10, 8]
         self.upper = False
         self.transpose = True
         self.unitriangular = False
         self.dtype = "float64"
+
+    def set_output(self):
+        x = np.tril(self.inputs['X']).transpose(1, 0)
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
 
 
 class TestTriangularSolveOp3(TestTriangularSolveOp):
@@ -84,12 +94,17 @@ class TestTriangularSolveOp3(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [1, 6, 6]
-        self.y_shape = [6, 6, 5]
+        self.x_shape = [1, 10, 10]
+        self.y_shape = [6, 10, 12]
         self.upper = False
         self.transpose = False
-        self.unitriangular = True
+        self.unitriangular = False
         self.dtype = "float64"
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
 
 
 class TestTriangularSolveOp4(TestTriangularSolveOp):
@@ -98,12 +113,17 @@ class TestTriangularSolveOp4(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [6, 4, 4]
-        self.y_shape = [1, 4, 3]
+        self.x_shape = [3, 10, 10]
+        self.y_shape = [1, 10, 12]
         self.upper = True
         self.transpose = True
         self.unitriangular = False
         self.dtype = "float64"
+
+    def set_output(self):
+        x = np.triu(self.inputs['X']).transpose(0, 2, 1)
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
 
 
 class TestTriangularSolveOp5(TestTriangularSolveOp):
@@ -112,12 +132,34 @@ class TestTriangularSolveOp5(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [6, 12, 12]
-        self.y_shape = [12, 5]
-        self.upper = False
-        self.transpose = True
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 10]
+        self.upper = True
+        self.transpose = False
         self.unitriangular = True
-        self.dtype = "float32"
+        self.dtype = "float64"
+
+    def set_output(self):
+        x = np.triu(self.inputs['X'])
+        np.fill_diagonal(x, 1.)
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        x = np.triu(self.inputs['X'])
+        np.fill_diagonal(x, 1.)
+        grad_out = np.ones([10, 10]).astype('float64')
+        grad_y = np.linalg.solve(x.transpose(1, 0), grad_out)
+
+        grad_x = -np.matmul(grad_y, self.output.transpose(1, 0))
+        grad_x = np.triu(grad_x)
+        np.fill_diagonal(grad_x, 0.)
+
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[grad_x, grad_y],
+            user_defined_grad_outputs=[grad_out])
 
 
 class TestTriangularSolveOp6(TestTriangularSolveOp):
@@ -126,12 +168,17 @@ class TestTriangularSolveOp6(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [1, 6, 9, 9]
-        self.y_shape = [3, 1, 9, 7]
+        self.x_shape = [1, 3, 10, 10]
+        self.y_shape = [2, 1, 10, 5]
         self.upper = False
         self.transpose = False
         self.unitriangular = False
         self.dtype = "float64"
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
 
 
 class TestTriangularSolveOp7(TestTriangularSolveOp):
@@ -140,12 +187,17 @@ class TestTriangularSolveOp7(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [6, 9, 9]
-        self.y_shape = [3, 1, 9, 7]
+        self.x_shape = [2, 10, 10]
+        self.y_shape = [5, 1, 10, 2]
         self.upper = True
         self.transpose = True
-        self.unitriangular = True
+        self.unitriangular = False
         self.dtype = "float64"
+
+    def set_output(self):
+        x = np.triu(self.inputs['X']).transpose(0, 2, 1)
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
 
 
 class TestTriangularSolveOp8(TestTriangularSolveOp):
@@ -154,12 +206,17 @@ class TestTriangularSolveOp8(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [7, 3, 3]
-        self.y_shape = [6, 3, 1, 3, 2]
+        self.x_shape = [12, 3, 3]
+        self.y_shape = [2, 3, 12, 3, 2]
         self.upper = False
         self.transpose = False
         self.unitriangular = False
-        self.dtype = "float32"
+        self.dtype = "float64"
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
 
 
 class TestTriangularSolveOp9(TestTriangularSolveOp):
@@ -168,117 +225,18 @@ class TestTriangularSolveOp9(TestTriangularSolveOp):
     """
 
     def config(self):
-        self.x_shape = [6, 1, 6, 5, 5]
-        self.y_shape = [6, 3, 1, 5, 6]
+        self.x_shape = [2, 4, 2, 3, 3]
+        self.y_shape = [4, 1, 3, 10]
         self.upper = False
         self.transpose = False
         self.unitriangular = False
-        self.dtype = "float32"
+        self.dtype = "float64"
 
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.matmul(np.linalg.inv(x), y)
 
-class TestTriangularSolveOp10(TestTriangularSolveOp):
-    """
-    case 10
-    """
-
-    def config(self):
-        self.x_shape = [7, 3, 3]
-        self.y_shape = [6, 3, 1, 3, 1]
-        self.upper = False
-        self.transpose = False
-        self.unitriangular = False
-        self.dtype = "float32"
-
-
-class TestTriangularSolveOp11(TestTriangularSolveOp):
-    """
-    case 11
-    """
-
-    def config(self):
-        self.x_shape = [6, 9, 9]
-        self.y_shape = [3, 3, 1, 9, 7]
-        self.upper = False
-        self.transpose = False
-        self.unitriangular = False
-        self.dtype = "float32"
-
-
-class TestTriangularSolveOp12(TestTriangularSolveOp):
-    """
-    case 12
-    """
-
-    def config(self):
-        self.x_shape = [5, 3, 7, 9, 9]
-        self.y_shape = [3, 1, 9, 9]
-        self.upper = False
-        self.transpose = False
-        self.unitriangular = False
-        self.dtype = "float32"
-
-
-class TestTriangularSolveOp13(TestTriangularSolveOp):
-    """
-    case 13
-    """
-
-    def config(self):
-        self.x_shape = [256, 256]
-        self.y_shape = [3, 256, 512]
-        self.upper = False
-        self.transpose = False
-        self.unitriangular = False
-        self.dtype = "float32"
-
-
-class TestTriangularSolveOp14(TestTriangularSolveOp):
-    """
-    case 13
-    """
-
-    def config(self):
-        self.x_shape = [256, 256]
-        self.y_shape = [3, 256, 512]
-        self.upper = True
-        self.transpose = False
-        self.unitriangular = False
-        self.dtype = "float32"
-
-
-class TestTriangularSolveOp15(TestTriangularSolveOp):
-    """
-    case 14
-    """
-
-    def config(self):
-        self.x_shape = [3, 5, 6, 7, 7]
-        self.y_shape = [3, 1, 1, 7, 4]
-        self.upper = False
-        self.transpose = True
-        self.unitriangular = False
-        self.dtype = "float32"
-
-
-class TestTriangularSolveOp16(TestTriangularSolveOp):
-    """
-    case 15
-    """
-
-    def config(self):
-        self.x_shape = [3, 1, 1, 3, 3]
-        self.y_shape = [6, 3, 3, 1]
-        self.upper = False
-        self.transpose = True
-        self.unitriangular = False
-        self.dtype = "float32"
-
-
-#--------------------test exception-------------------
-#TODO: test complex
-
-#--------------------test exception-------------------
-#TODO: test exception, singular check
 
 if __name__ == "__main__":
     unittest.main()
