@@ -30,10 +30,10 @@ class TestFusedFFNOp(OpTest):
         self.layer_norm_dtype = "float32"
 
     def getShape(self):
-        self.batch_size = np.random.randint(1, 64)
-        self.query_length = np.random.randint(32, 256)
-        self.d_model = np.random.randint(32, 1024)
-        self.dim_feedforward = np.random.randint(32, 1024)
+        self.batch_size = np.random.randint(1, 32)
+        self.query_length = np.random.randint(32, 128)
+        self.d_model = np.random.randint(32, 512)
+        self.dim_feedforward = np.random.randint(32, 512)
 
     def getDiff(self):
         self.rtol = 1e-3
@@ -48,6 +48,8 @@ class TestFusedFFNOp(OpTest):
     def setUp(self):
         paddle.disable_static()
         self.__class__.op_type = "fused_feedforward"
+        #check grad in test_out_and_grad()
+        self.__class__.no_need_check_grad = True
         self.getDtype()
         self.getShape()
         self.getDiff()
@@ -82,6 +84,8 @@ class TestFusedFFNOp(OpTest):
 
         self.src = np.random.random((self.batch_size, self.query_length,
                                      self.d_model)).astype(self.dtype)
+        self.dout = np.random.random((self.batch_size, self.query_length,
+                                      self.d_model)).astype(self.dtype)
 
     def Base(self):
         paddle.disable_static()
@@ -92,12 +96,17 @@ class TestFusedFFNOp(OpTest):
             linear2_out = self.linear2(
                 self.dropout(self.activation(self.linear1(ln1_out))))
             dropout2_out = residual + self.dropout2(linear2_out)
+            paddle.autograd.backward([dropout2_out],
+                                     [paddle.to_tensor(self.dout)], True)
+            return dropout2_out, tensor_src.grad
         else:
             linear2_out = self.linear2(
                 self.dropout(self.activation(self.linear1(tensor_src))))
             dropout2_out = residual + self.dropout2(linear2_out)
             dropout2_out = self.norm2(dropout2_out)
-        return dropout2_out
+            paddle.autograd.backward([dropout2_out],
+                                     [paddle.to_tensor(self.dout)], True)
+            return dropout2_out, tensor_src.grad
 
     def FusedFFN(self):
         paddle.disable_static()
@@ -126,13 +135,19 @@ class TestFusedFFNOp(OpTest):
             0.0,
             activation=self.act_method,
             pre_layer_norm=self.pre_layer_norm)
-        return out
+        paddle.autograd.backward([out], [paddle.to_tensor(self.dout)])
+        return out, x.grad
 
-    def test_fused_ffn(self):
-        base_out = self.Base()
-        fused_out = self.FusedFFN()
+    def test_out_and_grad(self):
+        base_out, base_grad = self.Base()
+        fused_out, fused_grad = self.FusedFFN()
         np.testing.assert_allclose(
             base_out.numpy(), fused_out.numpy(), rtol=self.rtol, atol=self.atol)
+        np.testing.assert_allclose(
+            base_grad.numpy(),
+            fused_grad.numpy(),
+            rtol=self.rtol,
+            atol=self.atol)
 
 
 class TestFusedFFNOpFp16(TestFusedFFNOp):
@@ -145,10 +160,10 @@ class TestFusedFFNOpFp16(TestFusedFFNOp):
         self.atol = 1e-2
 
     def getShape(self):
-        self.batch_size = 8
-        self.query_length = 128
-        self.d_model = 512
-        self.dim_feedforward = 512
+        self.batch_size = 4
+        self.query_length = 32
+        self.d_model = 128
+        self.dim_feedforward = 256
 
 
 class TestFusedFFNOpFp64(TestFusedFFNOp):
@@ -263,7 +278,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
             real_res.append(fetch)
         self.assertTrue(
             np.allclose(
-                real_res[0], real_res[1], atol=1e-5),
+                real_res[0], real_res[1], atol=1e-3),
             "two value is check diff")
 
 
