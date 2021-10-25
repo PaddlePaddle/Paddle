@@ -1479,17 +1479,17 @@ class Layer(core.Layer):
                         param_applied.is_distributed = param.is_distributed
                     self._parameters[key] = param_applied
 
-                    if param.grad is not None:
-                        with no_grad():
-                            grad_applied = func(param._grad_ivar(), device,
-                                                dtype, blocking)
+                if param.grad is not None:
+                    with no_grad():
+                        grad_applied = func(param._grad_ivar(), device, dtype,
+                                            blocking)
 
-                            grad_applied.stop_gradient = param._grad_ivar(
-                            ).stop_gradient
-                            if hasattr(param._grad_ivar(), 'is_distributed'):
-                                grad_applied.is_distributed = param._grad_ivar(
-                                ).is_distributed
-                            self._parameters[key]._set_grad_ivar(grad_applied)
+                        grad_applied.stop_gradient = param._grad_ivar(
+                        ).stop_gradient
+                        if hasattr(param._grad_ivar(), 'is_distributed'):
+                            grad_applied.is_distributed = param._grad_ivar(
+                            ).is_distributed
+                        self._parameters[key]._set_grad_ivar(grad_applied)
 
             self._parameters_transform_map[id(param)] = [param_applied, key]
 
