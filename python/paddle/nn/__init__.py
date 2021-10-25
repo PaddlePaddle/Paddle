@@ -130,6 +130,8 @@ from .layer.transformer import TransformerDecoderLayer  # noqa: F401
 from .layer.transformer import TransformerDecoder  # noqa: F401
 from .layer.transformer import Transformer  # noqa: F401
 from .layer.fused_transformer import FusedTransformerEncoderLayer  # noqa: F401
+from .layer.fused_transformer import FusedFeedForward  # noqa: F401
+from .layer.fused_transformer import FusedMultiHeadAttention  # noqa: F401
 from .layer.distance import PairwiseDistance  # noqa: F401
 
 from .layer.vision import PixelShuffle  # noqa: F401
@@ -281,6 +283,8 @@ __all__ = [     #noqa
            'PReLU',
            'TransformerEncoderLayer',
            'FusedTransformerEncoderLayer',
+           'FusedFeedForward',
+           'FusedMultiHeadAttention',
            'AvgPool3D',
            'MaxPool2D',
            'MarginRankingLoss',

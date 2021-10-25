@@ -191,6 +191,24 @@ class FusedMultiHeadAttention(Layer):
 
 
 class FusedFeedForward(Layer):
+    """
+    Parameters:
+        d_model (int): The expected feature size in the input and output.
+        dim_feedforward (int): The hidden layer size.
+        dropout_rate (float, optional): The dropout probability used in pre-process
+            and post-precess. Default 0.1
+        activation (str, optional): The activation function. Default relu.
+        act_dropout_rate (float, optional): The dropout probability after activition.
+            If None, use the value of `dropout_rate`. Default None
+        normalize_before (bool, optional): Indicate whether to put layer normalization
+            into, preprocessing or postprocessing. Default False
+        weight_attr (ParamAttr, optional):
+        bias_attr (ParamAttr|bool, optional):
+    Examples:
+        .. code-block:: python
+
+    """
+
     def __init__(self,
                  d_model,
                  dim_feedforward,
@@ -264,7 +282,7 @@ class FusedFeedForward(Layer):
 
 class FusedTransformerEncoderLayer(Layer):
     """
-    TransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
+    FusedTransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
     attention and feedforward network. Before and after each sub-layer, pre-process
     and post-precess would be applied on the input and output accordingly. If
     `normalize_before` is True, pre-process is layer normalization and post-precess
@@ -275,14 +293,14 @@ class FusedTransformerEncoderLayer(Layer):
         d_model (int): The expected feature size in the input and output.
         nhead (int): The number of heads in multi-head attention(MHA).
         dim_feedforward (int): The hidden layer size in the feedforward network(FFN).
-        dropout (float, optional): The dropout probability used in pre-process
+        dropout_rate (float, optional): The dropout probability used in pre-process
             and post-precess of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
             network. Default relu.
-        attn_dropout (float, optional): The dropout probability used
+        attn_dropout_rate (float, optional): The dropout probability used
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
-        act_dropout (float, optional): The dropout probability used after FFN
+        act_dropout_rate (float, optional): The dropout probability used after FFN
             activition.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
@@ -307,7 +325,7 @@ class FusedTransformerEncoderLayer(Layer):
     Examples:
 
         .. code-block:: python
-	    
+
 	    # required: gpu
             import paddle
             from paddle.nn import TransformerEncoderLayer
