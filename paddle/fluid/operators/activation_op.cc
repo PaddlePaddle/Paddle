@@ -462,6 +462,11 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
         "Fused activation beta parameter type used in softplus OneDNN kernel.")
         .SetDefault(0.0f)
         .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_scale",
+        "Fused activation scale parameter type used in softplus OneDNN kernel.")
+        .SetDefault(1.0f)
+        .AsExtra();
     AddComment(R"DOC(
 :strong:`Softplus Activation Operator`
 

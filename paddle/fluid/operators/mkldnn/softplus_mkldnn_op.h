@@ -64,7 +64,8 @@ class SoftplusMKLDNNHandler
         algo_map.find(ctx.Attr<std::string>("fuse_activation_type"));
 
     if (fused_activation_type != algo_map.end()) {
-      post_ops.append_eltwise(1.0f, fused_activation_type->second,
+      scale_out = ctx.Attr<float>("fuse_activation_scale");  // for future int8
+      post_ops.append_eltwise(scale_out, fused_activation_type->second,
                               ctx.Attr<float>("fuse_activation_alpha"),
                               ctx.Attr<float>("fuse_activation_beta"));
     }
