@@ -98,6 +98,8 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
 endforeach()
 
 if(NOT WITH_GPU)
+
+    LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
 endif()
 
@@ -377,14 +379,14 @@ function(bash_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -419,14 +421,14 @@ function(parallel_bash_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
             bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
