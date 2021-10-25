@@ -1021,8 +1021,8 @@ def insert_communicate_op(orign_program,
 
     else:
         next_heter_worker_endpoints = config.get_next_stage_trainers()
-        if heter_worker_endpoint == "":
-            heter_worker_endpoint = []
+        #if next_heter_worker_endpoints == "":
+        #    next_heter_worker_endpoints = []
         previous_heter_worker_endpoints = config.get_previous_stage_trainers()
         entrance_var = block_var_detail[stage_id - 1]["backward"]["exit"]
         comm_info = get_communicate_var_info(orign_program, stage_id - 1,

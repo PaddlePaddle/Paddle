@@ -72,6 +72,7 @@ is_heter_worker = fleet.is_heter_worker
 util = UtilBase()
 barrier_worker = fleet.barrier_worker
 init_worker = fleet.init_worker
+init_heter_worker = fleet.init_heter_worker
 init_server = fleet.init_server
 run_server = fleet.run_server
 run_heter_worker = fleet.run_heter_worker

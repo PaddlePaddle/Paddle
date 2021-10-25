@@ -830,7 +830,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     )
             
             if next_heter_trainer_eplist == "":
-                assert training_role == "HETER_TRAINER", "training_role should be heter trainer"
+                assert training_role in ("HETER_TRAINER", "PSERVER"), "training_role should be heter trainer or pserver"
             else:
                 try:
                     self._next_heter_trainer_endpoints = next_heter_trainer_eplist.split(",")
