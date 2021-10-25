@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,24 @@
 
 from __future__ import print_function
 
+import sys
+sys.path.append("..")
 import unittest
 import numpy as np
-import paddle
+import paddle.fluid.core as core
 import paddle.fluid as fluid
+from op_test_xpu import OpTest, XPUOpTest
+import paddle
 from paddle.fluid import Program, program_guard
-from op_test import OpTest
 
 
-class TestClipOp(OpTest):
+class TestClipOp(XPUOpTest):
+    def set_xpu(self):
+        self.__class__.use_xpu = True
+        self.place = paddle.XPUPlace(0)
+
     def setUp(self):
+        self.set_xpu()
         self.max_relative_error = 0.006
 
         self.inputs = {}
@@ -43,7 +51,7 @@ class TestClipOp(OpTest):
         else:
             max_v = self.attrs['max']
 
-        input = np.random.random(self.shape).astype(self.dtype)
+        input = np.random.random(self.shape).astype("float32")
         input[np.abs(input - min_v) < self.max_relative_error] = 0.5
         input[np.abs(input - max_v) < self.max_relative_error] = 0.5
         self.inputs['X'] = input
@@ -51,26 +59,24 @@ class TestClipOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output_with_place(self.place)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out')
         paddle.disable_static()
 
     def initTestCase(self):
-        self.dtype = np.float32
         self.shape = (4, 10, 10)
         self.max = 0.8
         self.min = 0.3
-        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
-        self.inputs['Min'] = np.array([0.1]).astype(self.dtype)
+        self.inputs['Max'] = np.array([0.8]).astype('float32')
+        self.inputs['Min'] = np.array([0.1]).astype('float32')
 
 
 class TestCase1(TestClipOp):
     def initTestCase(self):
-        self.dtype = np.float32
         self.shape = (8, 16, 8)
         self.max = 0.7
         self.min = 0.0
@@ -78,7 +84,6 @@ class TestCase1(TestClipOp):
 
 class TestCase2(TestClipOp):
     def initTestCase(self):
-        self.dtype = np.float32
         self.shape = (8, 16)
         self.max = 1.0
         self.min = 0.0
@@ -86,7 +91,6 @@ class TestCase2(TestClipOp):
 
 class TestCase3(TestClipOp):
     def initTestCase(self):
-        self.dtype = np.float32
         self.shape = (4, 8, 16)
         self.max = 0.7
         self.min = 0.2
@@ -94,30 +98,18 @@ class TestCase3(TestClipOp):
 
 class TestCase4(TestClipOp):
     def initTestCase(self):
-        self.dtype = np.float32
         self.shape = (4, 8, 8)
         self.max = 0.7
         self.min = 0.2
-        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
-        self.inputs['Min'] = np.array([0.3]).astype(self.dtype)
+        self.inputs['Max'] = np.array([0.8]).astype('float32')
+        self.inputs['Min'] = np.array([0.3]).astype('float32')
 
 
 class TestCase5(TestClipOp):
     def initTestCase(self):
-        self.dtype = np.float32
         self.shape = (4, 8, 16)
         self.max = 0.5
         self.min = 0.5
-
-
-class TestCase6(TestClipOp):
-    def initTestCase(self):
-        self.dtype == np.float16
-        self.shape = (4, 8, 8)
-        self.max = 0.7
-        self.min = 0.2
-        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
-        self.inputs['Min'] = np.array([0.3]).astype(self.dtype)
 
 
 class TestClipOpError(unittest.TestCase):
@@ -151,7 +143,7 @@ class TestClipAPI(unittest.TestCase):
         min = fluid.data(name='min', shape=[1], dtype='float32')
         max = fluid.data(name='max', shape=[1], dtype='float32')
 
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        place = fluid.XPUPlace(0) if fluid.core.is_compiled_with_xpu(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
@@ -163,14 +155,8 @@ class TestClipAPI(unittest.TestCase):
         out_6 = self._executed_api(images, max=max)
         out_7 = self._executed_api(images, max=-1.)
         out_8 = self._executed_api(images)
-        out_9 = self._executed_api(
-            paddle.cast(images, 'float64'), min=0.2, max=0.9)
-        out_10 = self._executed_api(
-            paddle.cast(images * 10, 'int32'), min=2, max=8)
-        out_11 = self._executed_api(
-            paddle.cast(images * 10, 'int64'), min=2, max=8)
 
-        res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11 = exe.run(
+        res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
             fluid.default_main_program(),
             feed={
                 "image": data,
@@ -178,8 +164,7 @@ class TestClipAPI(unittest.TestCase):
                 "max": np.array([0.8]).astype('float32')
             },
             fetch_list=[
-                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8, out_9,
-                out_10, out_11
+                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8
             ])
 
         self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
@@ -190,17 +175,11 @@ class TestClipAPI(unittest.TestCase):
         self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
         self.assertTrue(np.allclose(res7, data.clip(max=-1)))
         self.assertTrue(np.allclose(res8, data))
-        self.assertTrue(
-            np.allclose(res9, data.astype(np.float64).clip(0.2, 0.9)))
-        self.assertTrue(
-            np.allclose(res10, (data * 10).astype(np.int32).clip(2, 8)))
-        self.assertTrue(
-            np.allclose(res11, (data * 10).astype(np.int64).clip(2, 8)))
         paddle.disable_static()
 
     def test_clip_dygraph(self):
         paddle.disable_static()
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        place = fluid.XPUPlace(0) if fluid.core.is_compiled_with_xpu(
         ) else fluid.CPUPlace()
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]
@@ -215,18 +194,9 @@ class TestClipAPI(unittest.TestCase):
         images = paddle.to_tensor(data, dtype='float32')
         out_3 = self._executed_api(images, min=v_min, max=v_max)
 
-        out_4 = self._executed_api(
-            paddle.cast(images * 10, 'int32'), min=2, max=8)
-        out_5 = self._executed_api(
-            paddle.cast(images * 10, 'int64'), min=2, max=8)
-
         self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
         self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
         self.assertTrue(np.allclose(out_3.numpy(), data.clip(0.2, 0.8)))
-        self.assertTrue(
-            np.allclose(out_4.numpy(), (data * 10).astype(np.int32).clip(2, 8)))
-        self.assertTrue(
-            np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
 
     def test_errors(self):
         paddle.enable_static()
