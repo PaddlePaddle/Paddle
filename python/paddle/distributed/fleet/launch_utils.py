@@ -1183,7 +1183,7 @@ class ParameterServerLauncher(object):
               proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
                 "PADDLE_PORT": cur_server.endpoint.split(":")[1],
                 "TRAINING_ROLE": "PSERVER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),

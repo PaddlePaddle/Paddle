@@ -531,7 +531,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._stage_id = 1
         self._stage_num = 1
         self._next_heter_trainer_endpoints = []
-        self._next_previous_traier_endpoints = []        
+        self._previous_heter_traier_endpoints = []        
         self._heter_trainer_endpoints = []
         self._heter_trainer_device = "CPU"
         self._is_heter_parameter_server_mode = False
@@ -806,6 +806,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER, but get {}, please check your environment.".
                 format(training_role))
 
+
         # For Heter Parameter Server env setting
         next_heter_trainer_eplist = os.getenv("PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST","")
         previous_heter_trainer_eplist = os.getenv(
@@ -813,45 +814,54 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         all_heter_trainer_eplist = os.getenv(
             "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST", "")
 
-        if next_heter_trainer_eplist != "":
-            try:
-                next_heter_trainer_eplist = os.environ[
-                    "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"].split(",")
-                self._next_heter_trainer_endpoints = next_heter_trainer_eplist
-            except:
-                raise ValueError(
-                    "Can not Find PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
-                )
+        if all_heter_trainer_eplist != "":
+            self._heter_trainer_endpoints = all_heter_trainer_eplist.split(",")
+            self._is_heter_parameter_server_mode = True
+            self._heter_trainers_num = len(self._heter_trainer_endpoints)
+             
             if previous_heter_trainer_eplist == "":
-                assert training_role == "TRAINER", "training_role should be trainer"
+                assert training_role in ("TRAINER", "PSERVER"), "training_role should be trainer or pserver"
             else:
                 try:
-                    previous_heter_trainer_eplist = os.environ[
-                        "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"].split(",")
-                    self._previous_heter_trainer_endpoints = previous_heter_trainer_eplist
+                    self._previous_heter_trainer_endpoints = previous_heter_trainer_eplist.split(",")
                 except:
                     raise ValueError(
                         "Can not Find PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
                     )
-            self._is_heter_parameter_server_mode = True
-            heter_trainers_num = len(all_heter_trainer_eplist.split(","))
-            self._heter_trainer_endpoints = all_heter_trainer_eplist.split(",")
-        else:
-            if previous_heter_trainer_eplist == "":
-                self._is_heter_parameter_server_mode = False
-                heter_trainers_num = 0
-            else:  ## for the last heter worker
+            
+            if next_heter_trainer_eplist == "":
+                assert training_role == "HETER_TRAINER", "training_role should be heter trainer"
+            else:
                 try:
-                    previous_heter_trainer_eplist = os.environ[
-                        "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"].split(",")
-                    self._previous_heter_trainer_endpoints = previous_heter_trainer_eplist
+                    self._next_heter_trainer_endpoints = next_heter_trainer_eplist.split(",")
                 except:
                     raise ValueError(
-                        "Can not Find PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
+                        "Can not Find PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
                     )
-                self._is_heter_parameter_server_mode = True
-                heter_trainers_num = len(all_heter_trainer_eplist.split(","))
-                self._heter_trainer_endpoints = all_heter_trainer_eplist.split(",")
+            
+            #self._is_heter_parameter_server_mode = True
+            #heter_trainers_num = len(all_heter_trainer_eplist.split(","))
+            #self._heter_trainer_endpoints = all_heter_trainer_eplist.split(",")
+        else:
+            self._is_heter_parameter_server_mode = False
+            self._heter_trainers_num = 0
+
+            #if previous_heter_trainer_eplist == "":
+            #    self._is_heter_parameter_server_mode = False
+            #    heter_trainers_num = 0
+            #else:  ## for the last heter worker
+            #    try:
+            #        previous_heter_trainer_eplist = os.environ[
+            #            "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"].split(",")
+            #        self._previous_heter_trainer_endpoints = previous_heter_trainer_eplist
+            #    except:
+            #        raise ValueError(
+            #            "Can not Find PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
+            #        )
+            #    self._is_heter_parameter_server_mode = True
+            #    heter_trainers_num = len(all_heter_trainer_eplist.split(","))
+            #    self._heter_trainer_endpoints = all_heter_trainer_eplist.split(",")
+
 
         if training_role == "TRAINER":
             role = Role.WORKER
@@ -864,7 +874,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             if self._is_heter_parameter_server_mode:
                 self._stage_id = os.getenv("STAGE_ID", None)
                 if self._stage_id == None:
-                  raise ValueError(
+                  raise ValueError( 
                     "Can not find STAGE_ID, please check your environment."
                   )
                 self._stage_id = int(self._stage_id)
