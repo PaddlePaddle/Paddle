@@ -12,6 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
+
+
+def list_to_ordered_dict(list_obj, ordered_dict=None):
+    if ordered_dict is None:
+        ordered_dict = OrderedDict()
+    else:
+        assert isinstance(ordered_dict, OrderedDict)
+    for obj in list_obj:
+        if obj not in ordered_dict:
+            ordered_dict[obj] = True
+    return ordered_dict
+
 
 # The inputs of a program are the variables
 # that first occur as the input of the op. 
@@ -30,10 +43,10 @@ def get_inputs_of_program(program):
 
 
 def get_outputs_of_program(program):
-    output_vars = []
+    output_vars = OrderedDict()
     for op in program.global_block().ops:
-        output_vars.extend(op.output_arg_names)
-    return list(set(output_vars))
+        list_to_ordered_dict(op.output_arg_names, output_vars)
+    return list(output_vars.keys())
 
 
 def prune_program(program, start_op_idx, end_op_idx):
@@ -105,16 +118,17 @@ def split_program(program, op_indices):
 
     num_split = len(splitted_programs)
     input_vars = [get_inputs_of_program(p) for p in splitted_programs]
-    output_vars = [set(get_outputs_of_program(p)) for p in splitted_programs]
-    valid_output_vars = [[] for _ in range(num_split)]
-    valid_output_vars[-1] = list(output_vars[-1])
+    output_vars = [
+        list_to_ordered_dict(get_outputs_of_program(p))
+        for p in splitted_programs
+    ]
+    valid_output_vars = [OrderedDict() for _ in range(num_split)]
+    valid_output_vars[-1] = output_vars[-1]
     for i in range(1, num_split):
         for in_var_name in input_vars[i]:
             for j in reversed(range(i)):
-                if in_var_name not in output_vars[j]:
-                    continue
-                valid_output_vars[j].append(in_var_name)
-    valid_output_vars = [list(set(item)) for item in valid_output_vars]
-    for item in valid_output_vars:
-        item.sort()
+                if in_var_name in output_vars[j]:
+                    valid_output_vars[j][in_var_name] = True
+                    break
+    valid_output_vars = [list(item.keys()) for item in valid_output_vars]
     return splitted_programs, input_vars, valid_output_vars
