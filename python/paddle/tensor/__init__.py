@@ -44,9 +44,11 @@ from .linalg import cross  # noqa: F401
 from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
+from .linalg import bincount  # noqa: F401
 from .linalg import mv  # noqa: F401
 from .linalg import eig  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
+from .linalg import qr  # noqa: F401
 from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401
@@ -235,8 +237,10 @@ tensor_method_func  = [ #noqa
            'cholesky',
            'bmm',
            'histogram',
+           'bincount',
            'mv',
            'matrix_power',
+           'qr',
            'eigvals',
            'abs',
            'acos',

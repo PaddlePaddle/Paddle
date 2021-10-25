@@ -68,7 +68,8 @@ class InterpreterCore {
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list);
 
   void RunInstructionAsync(size_t instr_id);
-  void RunNextInstruction(const Instruction& instr_id);
+  void RunNextInstructions(const Instruction& instr_id,
+                           std::queue<size_t>* reserved_next_ops);
   void AddFetch(const std::vector<std::string>& fetch_names);
 
   void BuildSkipShareLoDInfo();
@@ -94,6 +95,7 @@ class InterpreterCore {
   InterpreterProfiler dry_run_profiler_;
   StreamAnalyzer stream_analyzer_;
   EventManager event_manager_;
+  EventsWaiter main_thread_blocker_;
   interpretercore::AsyncWorkQueue async_work_queue_;
 
   InterpreterCoreGarbageCollector gc_;

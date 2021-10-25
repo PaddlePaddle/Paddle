@@ -13,11 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <codecvt>
+#include <locale>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -47,6 +53,14 @@ class PrintOptions {
  private:
   PrintOptions() {}
 };
+
+void TensorToStream(std::ostream& os, const Tensor& tensor,
+                    const platform::DeviceContext& dev_ctx);
+void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx);
+void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx,
+                      const size_t& seek, const std::vector<int64_t>& shape);
 
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
 // and dst_place are two different GPU, to ensure that the operation can
