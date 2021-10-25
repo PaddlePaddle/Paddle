@@ -27,16 +27,18 @@ logger = logging.getLogger(__name__)
 
 
 def set_cinn_flag(val):
+    cinn_compiled = False
     try:
         paddle.set_flags({'FLAGS_use_cinn': val})
+        cinn_compiled = True
     except ValueError:
         logger.warning("The used paddle is not compiled with CINN.")
+    return cinn_compiled
 
 
+@unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")
 class TestParallelExecutorRunCinn(unittest.TestCase):
     def test_run_from_cinn(self):
-        set_cinn_flag(False)
-
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
