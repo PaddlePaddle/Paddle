@@ -30,10 +30,10 @@ class TestFusedFFNOp(OpTest):
         self.layer_norm_dtype = "float32"
 
     def getShape(self):
-        self.batch_size = np.random.randint(1, 64)
-        self.query_length = np.random.randint(32, 256)
-        self.d_model = np.random.randint(32, 1024)
-        self.dim_feedforward = np.random.randint(32, 1024)
+        self.batch_size = np.random.randint(1, 32)
+        self.query_length = np.random.randint(32, 128)
+        self.d_model = np.random.randint(32, 512)
+        self.dim_feedforward = np.random.randint(32, 512)
 
     def getDiff(self):
         self.rtol = 1e-3
@@ -160,10 +160,10 @@ class TestFusedFFNOpFp16(TestFusedFFNOp):
         self.atol = 1e-2
 
     def getShape(self):
-        self.batch_size = 8
-        self.query_length = 128
-        self.d_model = 1024
-        self.dim_feedforward = 1024
+        self.batch_size = 4
+        self.query_length = 32
+        self.d_model = 128
+        self.dim_feedforward = 256
 
 
 class TestFusedFFNOpFp64(TestFusedFFNOp):
@@ -278,7 +278,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
             real_res.append(fetch)
         self.assertTrue(
             np.allclose(
-                real_res[0], real_res[1], atol=1e-5),
+                real_res[0], real_res[1], atol=1e-3),
             "two value is check diff")
 
 
