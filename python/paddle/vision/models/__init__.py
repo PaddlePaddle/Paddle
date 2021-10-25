@@ -78,4 +78,5 @@ __all__ = [ #noqa
     'shufflenetv2_x1_0',
     'shufflenetv2_x1_5',
     'shufflenetv2_x2_0',
+    'shufflenetv2_swish',
 ]

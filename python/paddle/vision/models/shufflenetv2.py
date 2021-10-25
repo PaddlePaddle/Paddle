@@ -162,14 +162,19 @@ class ShuffleNetV2(nn.Layer):
        scale (float): scale of shufflenetv2. Default: 1.0.
        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer
                            will not be defined. Default: 1000.
+
     Examples:
-       .. code-block:: python
+        .. code-block:: python
+            import paddle
+            from paddle.vision.models import ShuffleNetV2
 
-           from paddle.vision.models import ShuffleNetV2
+            ShuffleNetV2 = ShuffleNetV2(scale=1.0)
 
-           # build model
-           model = ShuffleNetV2(scale=1.0)
+            x = paddle.rand([1, 3, 224, 224])
+            out = ShuffleNetV2(x)
+            print(out.shape)
     """
+
 
     def __init__(self, scale=1.0, act="relu", num_classes=1000, with_pool=True):
         super(ShuffleNetV2, self).__init__()
@@ -266,6 +271,8 @@ def shufflenetv2_x0_25(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
+            import paddle
             from paddle.vision.models import shufflenetv2_x0_25
 
             # build model
@@ -273,6 +280,11 @@ def shufflenetv2_x0_25(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_25(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _shufflenetv2('shufflenetv2_x0.25', 0.25, pretrained, **kwargs)
 
@@ -285,6 +297,8 @@ def shufflenetv2_x0_33(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
+            import paddle
             from paddle.vision.models import shufflenetv2_x0_33
 
             # build model
@@ -292,6 +306,11 @@ def shufflenetv2_x0_33(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_33(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _shufflenetv2('shufflenetv2_x0.33', 0.33, pretrained, **kwargs)
 
@@ -304,13 +323,20 @@ def shufflenetv2_x0_5(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
-            from paddle.vision.models import shufflenetv2_x0_5
+
+            import paddle
+            from paddle.vision.models import shufflenetv2_x1_5
 
             # build model
             model = shufflenetv2_x0_5()
 
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_5(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _shufflenetv2('shufflenetv2_x0.5', 0.5, pretrained, **kwargs)
 
@@ -323,13 +349,20 @@ def shufflenetv2_x1_0(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
-            from paddle.vision.models import shufflenetv2_x1_0
+
+            import paddle
+            from paddle.vision.models import shufflenetv2_x1_5
 
             # build model
             model = shufflenetv2_x1_0()
 
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_0(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _shufflenetv2('shufflenetv2_x1.0', 1.0, pretrained, **kwargs)
 
@@ -342,6 +375,8 @@ def shufflenetv2_x1_5(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
+            import paddle
             from paddle.vision.models import shufflenetv2_x1_5
 
             # build model
@@ -349,6 +384,11 @@ def shufflenetv2_x1_5(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_5(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _shufflenetv2('shufflenetv2_x1.5', 1.5, pretrained, **kwargs)
 
@@ -361,6 +401,8 @@ def shufflenetv2_x2_0(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
+            import paddle
             from paddle.vision.models import shufflenetv2_x2_0
 
             # build model
@@ -368,6 +410,11 @@ def shufflenetv2_x2_0(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x2_0(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _shufflenetv2('shufflenetv2_x2.0', 2.0, pretrained, **kwargs)
 
@@ -382,6 +429,7 @@ def shufflenetv2_swish(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import shufflenet_v2_swish
 
             # build model
@@ -390,6 +438,10 @@ def shufflenetv2_swish(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_swish(pretrained=True)
 
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     model = _shufflenetv2("shufflenetv2_swish",
                           scale=1.0,
