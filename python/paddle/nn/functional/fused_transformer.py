@@ -239,10 +239,10 @@ def fused_multi_head_attention(x,
             It can be None when nothing wanted or needed to be prevented attention to. Default None.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention.
-            0 for no dropout. Default 0.
+            0 for no dropout. Default 0.5.
         attn_dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout in attention.
-            0 for no dropout. Default 0.
+            0 for no dropout. Default 0.5.
         ln_epsilon (float, optional): Small float value added to denominator of layer_norm
             to avoid dividing by zero. Default is 1e-5.
 
