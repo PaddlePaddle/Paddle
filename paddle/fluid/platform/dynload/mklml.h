@@ -67,6 +67,8 @@ extern void* mklml_dso_handle;
   __macro(cblas_zgemv);             \
   __macro(cblas_strsm);             \
   __macro(cblas_dtrsm);             \
+  __macro(cblas_ctrsm);             \
+  __macro(cblas_ztrsm);             \
   __macro(cblas_sgemm_alloc);       \
   __macro(cblas_dgemm_alloc);       \
   __macro(cblas_sgemm_pack);        \

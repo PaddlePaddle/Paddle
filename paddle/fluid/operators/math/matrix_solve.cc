@@ -34,6 +34,39 @@ class MatrixSolveFunctor<platform::CPUDeviceContext, T> {
 template class MatrixSolveFunctor<platform::CPUDeviceContext, float>;
 template class MatrixSolveFunctor<platform::CPUDeviceContext, double>;
 
+template <typename T>
+class TriangularSolveFunctor<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor* a, framework::Tensor* b, bool left,
+                  bool upper, bool transpose, bool unitriangular) {
+    CBLAS_SIDE side = left ? CblasLeft : CblasRight;
+    CBLAS_UPLO uplo = upper ? CblasUpper : CblasLower;
+    CBLAS_TRANSPOSE transA = transpose ? CblasNoTrans : CblasTrans;
+    CBLAS_DIAG diag = unitriangular ? CblasUnit : CblasNonUnit;
+
+    const T* a_data = a->data<T>();
+    T* b_data = b->mutable_data<T>(context.GetPlace());
+
+    int M = left ? a->dims()[-2] : b->dims()[-2];
+    int N = b->dims()[-1];
+    auto lda = left ? std::max(1, M) : std::max(1, N);
+    auto ldb = std::max(1, M);
+
+    int batch_size = 1;
+    auto& a_dim = a->dims();
+    for (int i = 0; i < a_dim.size() - 2; i++) {
+      batch_size *= a_dim[i];
+    }
+
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    for (auto i = 0; i < batch_size; i++) {
+      blas.TRSM(side, uplo, transA, diag, M, N, static_cast<T>(1.0),
+                a_data + i * M * M, lda, b_data + i * M * N, ldb);
+    }
+  }
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
