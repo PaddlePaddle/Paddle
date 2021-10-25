@@ -33,8 +33,25 @@ class AssignPosOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "cum_count");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    auto cum_count_dtype =
+        OperatorWithKernel::IndicateVarDataType(ctx, "cum_count");
+    auto eff_gates_len_dtype =
+        OperatorWithKernel::IndicateVarDataType(ctx, "eff_gates_len");
+    auto X_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    PADDLE_ENFORCE_EQ(
+        cum_count_dtype == eff_gates_len_dtype, 1,
+        platform::errors::InvalidArgument(
+            "The dtype of the cum_count and eff_gates_len should be same"));
+    PADDLE_ENFORCE_EQ(cum_count_dtype == X_dtype, 1,
+                      platform::errors::InvalidArgument(
+                          "The dtype of the cum_count and X should be same"));
+    // auto expert_count_data_dtype =
+    // static_cast<framework::proto::VarType::Type>(expert_count_dtype);
+    PADDLE_ENFORCE_EQ(cum_count_dtype == framework::proto::VarType::INT64, 1,
+                      platform::errors::InvalidArgument(
+                          "The dtype of the cum_count_dtype, eff_gates_len and "
+                          "X should be same as int64"));
+    return framework::OpKernelType(cum_count_dtype, ctx.device_context());
   }
 };
 

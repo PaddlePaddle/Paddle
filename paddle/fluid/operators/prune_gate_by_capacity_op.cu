@@ -85,14 +85,12 @@ class PruneGateByCapacityFunctor {
 template <typename Visitor>
 static void VisitDataType(framework::proto::VarType::Type type,
                           Visitor visitor) {
-  if (type == framework::proto::VarType::INT32) {
-    visitor.template apply<int>();
-  } else if (type == framework::proto::VarType::INT64) {
+  if (type == framework::proto::VarType::INT64) {
     visitor.template apply<int64_t>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The recieved values gate_id type %s can not meet input requirements. "
-        "Because the given gate_id data type of operators must be int32 or "
+        "Because the given gate_id data type of operators must be "
         "int64. Please input appropriate gate_id again! ",
         framework::DataTypeToString(type)));
   }
@@ -120,5 +118,4 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
 
 REGISTER_OP_CUDA_KERNEL(
     prune_gate_by_capacity,
-    ops::PruneGateByCapacityCUDAKernel<plat::CUDADeviceContext, int>,
     ops::PruneGateByCapacityCUDAKernel<plat::CUDADeviceContext, int64_t>);

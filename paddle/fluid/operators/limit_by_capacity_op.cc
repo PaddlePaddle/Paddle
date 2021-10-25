@@ -31,6 +31,28 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
     ctx->ShareDim("expert_count", "Out");
     ctx->ShareLoD("expert_count", "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // the dtype of the expert_count and capacity should be same as int64
+    auto expert_count_dtype =
+        OperatorWithKernel::IndicateVarDataType(ctx, "expert_count");
+    auto capacity_dtype =
+        OperatorWithKernel::IndicateVarDataType(ctx, "capacity");
+
+    PADDLE_ENFORCE_EQ(
+        expert_count_dtype == capacity_dtype, 1,
+        platform::errors::InvalidArgument(
+            "The dtype of the expert_count and capacity should be same"));
+    // auto expert_count_data_dtype =
+    // static_cast<framework::proto::VarType::Type>(expert_count_dtype);
+    PADDLE_ENFORCE_EQ(
+        expert_count_dtype == framework::proto::VarType::INT64, 1,
+        platform::errors::InvalidArgument("The dtype of the expert_count and "
+                                          "capacity should be same as int64"));
+    return framework::OpKernelType(expert_count_dtype, ctx.GetPlace());
+  }
 };
 
 class LimitByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
