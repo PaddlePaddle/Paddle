@@ -58,10 +58,6 @@ DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-
-
-class HeterRequestHandler;
-
 static void split(const std::string& str, char sep,
                   std::vector<std::string>* pieces) {
   pieces->clear();
@@ -173,90 +169,18 @@ class HeterService : public ::paddle::distributed::PsService {
   bool is_exit_ = false;
 };
 
-class HeterServer {
- public:
-  virtual ~HeterServer() {}
 
-  void Stop() {
-    VLOG(3) << "HeterServer Stop()";
-    std::unique_lock<std::mutex> lock(mutex_);
-    stoped_ = true;
-    cv_.notify_all();
-    server_.Stop(1000);
-    server_.Join();
-  }
+using SharedMiniScope = std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
+using SharedMicroScope = std::shared_ptr<std::unordered_map<int, std::shared_ptr<std::vector<::paddle::framework::Scope*>> > >;
 
-  bool IsExit() { return service_.IsExit(); }
-
-  HeterServer() {}
-
-  void RegisterServiceHandler(std::string message_name,
-                              HeterServiceHandler func);
-
-  void StartHeterService();
-
-  void SetEndPoint(std::string& endpoint);
-  void SetFanin(int& fan_in);
-
-  void SetRequestHandler(std::shared_ptr<HeterRequestHandler> request_handler) { 
-      request_handler_ = request_handler; 
-  }
-
-
-
-  using SharedMiniScope = std::shared_ptr<std::unordered_map<int, Scope*>>;
-  using SharedMicroScope = std::shared_ptr<std::unordered_map<int, std::shared_ptr<std::vector<Scope*>>> >;
-
-  void SetMiniBatchScopes(SharedMiniScope  mini_scopes) {
-      request_handler_->SetMiniScopes(mini_scopes);
-  }
-  void SetMicroBatchScopes(SharedMicroScope micro_scopes) {
-      request_handler_->SetMicroScopes(micro_scopes);
-  }
-
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<int, std::shared_ptr<
-                            ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>;
-
-  void SetTaskQueue(SharedTaskQueue task_queue) {
-      request_handler_->SetTaskQueue(task_queue);
-  }
-
-
-  // HeterWrapper singleton
-  static std::shared_ptr<HeterServer> GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new HeterServer());
-    }
-    return s_instance_;
-  }
-
-  void WaitServerReady();
-
- private:
-  static std::shared_ptr<HeterServer> s_instance_;
-  mutable std::mutex mutex_;
-  std::condition_variable cv_;
-  std::condition_variable condition_ready_;
-  bool stoped_ = false;
-  std::string endpoint_;
-
- protected:
-  brpc::Server server_;
-  HeterService service_;
-  std::shared_ptr<HeterRequestHandler> request_handler_;
-
-
-  DISABLE_COPY_AND_ASSIGN(HeterServer);
-  std::mutex mutex_ready_;
-
-  int ready_;
-};
+using SharedTaskQueue = std::shared_ptr<std::unordered_map<int, std::shared_ptr<
+                        ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>;
 
 class HeterRequestHandler {
  public:
   HeterRequestHandler()
       : dev_ctx_(nullptr),
-        executor_(nullptr),
+        //executor_(nullptr),
         scope_(nullptr),
         program_(nullptr) {}
 
@@ -284,8 +208,8 @@ class HeterRequestHandler {
 
   //void SetTrainers(int trainers) { trainers_ = trainers; }
   //void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
-  virtual void Start() {}
-  virtual void Process(int minibatch_idx) {}
+  //virtual void Start() {}
+  //virtual void Process(int minibatch_idx) {}
   //virtual void batch_finished(int minibatch_idx, int microbatch_idx) {}
 
   void SetGradToPreparedCtx(
@@ -420,8 +344,8 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
       task_queue_ = task_queue;    
   }
 
-  void SetTrainers(int trainers) { trainers_ = trainers; }
-  void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
+  //void SetTrainers(int trainers) { trainers_ = trainers; }
+  //void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
   
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
@@ -482,14 +406,14 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 						platform::errors::InvalidArgument(
 							"minibatch index should in current trainer"));
       
-      auto* micro_scope = (*((*micro_scopes_)[minibatch_index]))[microbatch_index]
+      auto* micro_scope = (*((*micro_scopes_)[minibatch_index]))[microbatch_index];
       //auto& mini_scope = scope_->KidScope(minibatch_index);
       //auto& micro_scope = (&mini_scope)->KidScope(microbatch_index);
 
       distributed::DeserializeFromMultiVarMsgAndIOBuf(
           *request, &request_io_buffer, *dev_ctx_, micro_scope);
       // blocking queue handles multi thread
-      task_queue_[minibatch_index]->Push(std::make_pair(message_name, microbatch_index));
+      (*task_queue_)[minibatch_index]->Push(std::make_pair(message_name, microbatch_index));
 
     auto response_var_nums = request->recv_var_names_size();
     std::vector<std::string> response_var_names(response_var_nums),
@@ -518,25 +442,100 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   //int trainer_id_;
 
 
-  std::unordered_map<int, std::unordered_map<int,int>> micro_cnt_;
+  //std::unordered_map<int, std::unordered_map<int,int>> micro_cnt_;
   //std::vector<int> done_;
 
   //std::mutex batch_finished_mutex;
   //std::condition_variable batch_finished_cond_var;
-  std::unordered_map<int, std::mutex> batch_finished_mutex;
-  std::unordered_map<int, std::condition_variable> batch_finished_cond_var;
+  //std::unordered_map<int, std::mutex> batch_finished_mutex;
+  //std::unordered_map<int, std::condition_variable> batch_finished_cond_var;
 
   bool is_first_stage_ = false;
   bool is_last_stage_ = false;
   //std::vector<bool> batch_finished_;
 
-  std::vector<std::shared_ptr<std::thread>> process_thread_;
+  //std::vector<std::shared_ptr<std::thread>> process_thread_;
   SharedTaskQueue task_queue_;
 
   //std::vector<std::shared_ptr<
   //    ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >
   //    task_queue_;
 };
+
+
+
+
+class HeterServer {
+ public:
+  virtual ~HeterServer() {}
+
+  void Stop() {
+    VLOG(3) << "HeterServer Stop()";
+    std::unique_lock<std::mutex> lock(mutex_);
+    stoped_ = true;
+    cv_.notify_all();
+    server_.Stop(1000);
+    server_.Join();
+  }
+
+  bool IsExit() { return service_.IsExit(); }
+
+  HeterServer() {}
+
+  void RegisterServiceHandler(std::string message_name,
+                              HeterServiceHandler func);
+
+  void StartHeterService();
+
+  void SetEndPoint(std::string& endpoint);
+  void SetFanin(int& fan_in);
+
+  void SetRequestHandler(std::shared_ptr<RequestSendAndRecvHandler> request_handler) { 
+      request_handler_ = request_handler; 
+  }
+
+  void SetMiniBatchScopes(SharedMiniScope  mini_scopes) {
+      request_handler_->SetMiniScopes(mini_scopes);
+  }
+  void SetMicroBatchScopes(SharedMicroScope micro_scopes) {
+      request_handler_->SetMicroScopes(micro_scopes);
+  }
+
+  void SetTaskQueue(SharedTaskQueue task_queue) {
+      request_handler_->SetTaskQueue(task_queue);
+  }
+
+
+  // HeterWrapper singleton
+  static std::shared_ptr<HeterServer> GetInstance() {
+    if (NULL == s_instance_) {
+      s_instance_.reset(new HeterServer());
+    }
+    return s_instance_;
+  }
+
+  void WaitServerReady();
+
+ private:
+  static std::shared_ptr<HeterServer> s_instance_;
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
+  std::condition_variable condition_ready_;
+  bool stoped_ = false;
+  std::string endpoint_;
+
+ protected:
+  brpc::Server server_;
+  HeterService service_;
+  //std::shared_ptr<HeterRequestHandler> request_handler_;
+  std::shared_ptr<RequestSendAndRecvHandler> request_handler_;
+
+  DISABLE_COPY_AND_ASSIGN(HeterServer);
+  std::mutex mutex_ready_;
+
+  int ready_;
+};
+
 
 }  // end namespace distributed
 }  // end namespace paddle

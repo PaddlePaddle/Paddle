@@ -630,9 +630,9 @@ class HeterSectionWorker : public DeviceWorker {
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
   void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
-  void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
-    microbatch_scopes_ = scope;
-  }
+  //void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
+  //  microbatch_scopes_ = scope;
+  //}
   std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
     return microbatch_scopes_;
   }
@@ -642,6 +642,7 @@ class HeterSectionWorker : public DeviceWorker {
   void SetTrainers(int trainers) { this->trainers_ = trainers; }
   void CreateMicrobatchScopes();
   void RunForward(int micro_id);
+  void RunBackward(int micro_id);
   void RunListen();
   void MiniBatchBarrier(const std::vector<int>& barrier_ids);
   //void TrainerBarrier();

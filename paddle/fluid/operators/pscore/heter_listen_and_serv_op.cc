@@ -50,11 +50,14 @@ HeterListenAndServOp::~HeterListenAndServOp() { Stop(); }
 void HeterListenAndServOp::Stop() {}
 
 void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
-                                        framework::ProgramDesc *program,
-                                        framework::Scope *recv_scope) const {
+                                        framework::ProgramDesc *program) const {
   VLOG(2) << "RunAsyncLoop";
+  
+  
   auto message_to_block_id_str =
       Attr<std::vector<std::string>>("message_to_block_id");
+  
+  
   DoubleFindMap<std::string, int32_t> message_to_block_id;
 
   auto append_block_maps = [](DoubleFindMap<std::string, int32_t> *out_map,
@@ -80,6 +83,8 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     append_block_maps(&message_to_block_id, message_and_id);
   }
 
+ 
+
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 1,
                     platform::errors::PreconditionNotMet(
@@ -90,7 +95,8 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
   }
-  auto optimize_prepared = executor->Prepare(*program, block_list);
+
+  //auto optimize_prepared = executor->Prepare(*program, block_list);
   // execute global block if needed, block id 1 in the program is global
   // block if it's not bind to a grad var for it's update.
   //if (block_list[0] == 1 &&
@@ -99,19 +105,21 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   //  executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
   //}
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      message_to_prepared_ctx;
-  for (size_t i = 0; i < block_list.size(); ++i) {
-    auto blkid = block_list[i];
-    auto it = message_to_block_id.find_value(blkid);
-    if (it != message_to_block_id.end()) {
-      message_to_prepared_ctx[it->first] = optimize_prepared[i];
-    }
-  }
+  //std::unordered_map<std::string,
+  //                   std::shared_ptr<framework::ExecutorPrepareContext>>
+  //    message_to_prepared_ctx;
+  //for (size_t i = 0; i < block_list.size(); ++i) {
+  //  auto blkid = block_list[i];
+  //  auto it = message_to_block_id.find_value(blkid);
+  //  if (it != message_to_block_id.end()) {
+  //    message_to_prepared_ctx[it->first] = optimize_prepared[i];
+  //  }
+  //}
 
-  request_send_and_recv_handler_->SetGradToPreparedCtx(
-      &message_to_prepared_ctx);
+  //request_send_and_recv_handler_->SetGradToPreparedCtx(
+  //    &message_to_prepared_ctx);
+
+   
 
   for (size_t i = 0; i < block_list.size(); ++i) {
     auto blkid = block_list[i];
@@ -193,12 +201,14 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   //}
 
   framework::Executor executor(dev_place);
-  sd::shared_ptr<paddle::distributed::HeterRequestHandler> request_send_and_recv_handler_;
+
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler());
+
   request_send_and_recv_handler_->SetScope(&scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
   request_send_and_recv_handler_->SetProgram(program);
+
   //request_send_and_recv_handler_->SetExecutor(&executor_pool);
   //request_send_and_recv_handler_->SetMicroNum(microbatch_per_minibatch);
   //request_send_and_recv_handler_->SetMiniNum(minibatch_num);
@@ -216,7 +226,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
 
-  RunAsyncLoop(&executor, program, &recv_scope);
+  RunAsyncLoop(&executor, program);
 
 
   VLOG(3) << "Wait for Server_thread_ stop";

@@ -94,7 +94,7 @@ class HeterClient {
       s_instance_.reset(new paddle::distributed::HeterClient());
       s_instance_->SetXpuList(endpoint);
       s_instance_->SetPreviousXpuList(previous_endpoint);
-      //s_instance_->SetTrainerID(trainer_id);
+      s_instance_->SetTrainerID(trainer_id);
       s_instance_->CreateClient2XpuConnection();
     }
     return s_instance_;
@@ -146,7 +146,7 @@ class HeterClient {
   std::vector<std::string> previous_xpu_list_;
 
   bool running_ = false;
-  //int trainer_id_;
+  int trainer_id_;
   bool do_server_profiler_ = false;
 };
 

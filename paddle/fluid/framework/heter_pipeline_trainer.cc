@@ -38,11 +38,14 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
     PADDLE_ENFORCE_EQ(thread_num_, readers.size(),
                     platform::errors::InvalidArgument(
                         "change Dataset thread_num is not supported"));
+
+    int cnt = -1;
     for (auto& worker_pair: workers_) {
+      cnt++;
       auto device_worker = worker_pair.second;
       auto this_worker =
         std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(device_worker);
-      this_worker->SetDataFeed(readers[i]);
+      this_worker->SetDataFeed(readers[cnt]);
       this_worker->SetReaderPlace(place_);
     }
   }
@@ -85,7 +88,7 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   int global_thread_num = cpu_trainer_num * thread_num_;
   int previous_trainers = 0;
   for (int i = 0; i < pipeline_stage_; i++) previous_trainers += trainers_[i];
-  int stage_trainer_id =  trainer_id_ - previous_trainers_; // trainer id in current stage
+  int stage_trainer_id =  trainer_id_ - previous_trainers; // trainer id in current stage
 
     int cnt = -1;
     for (int i = stage_trainer_id; i < global_thread_num; i += cur_stage_trainer_num) {
@@ -141,8 +144,8 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
                                            "root_scope_ can not be nullptr"));
     //initialize mini_scopes & micro_scopes
-    mini_scopes.reset(new MiniScope{});
-    micro_scopes.reset(new MicroScope{});
+    mini_scopes_.reset(new MiniScope{});
+    micro_scopes_.reset(new MicroScope{});
     task_queue_.reset(new TaskQueue{});
     for (auto& worker_pair: workers_) {
       auto worker_index = worker_pair.first;
@@ -158,7 +161,7 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       this_worker->CacheProgram(main_program);
       // generate mini_batch scope for every worker
       auto* minibatch_scope = &root_scope_->NewScope();
-      (*mini_scopes)[worker_index] = minibatch_scope;
+      (*mini_scopes_)[worker_index] = minibatch_scope;
       this_worker->SetMinibatchScope(minibatch_scope);
       // after set micro num & mini batch scope 
       this_worker->CreateMicrobatchScopes();

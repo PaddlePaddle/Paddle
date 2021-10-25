@@ -28,15 +28,15 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   program_.reset(
       new ProgramDesc(desc.section_param().section_config().program_desc()));
   bool is_first_stage = (pipeline_stage_ == 0);
-  bool is_last_stage = (pipelin_stage_ + 1 == num_pipeline_stages_);
+  bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
   if (is_first_stage) {
     for (auto &op_desc : program_->Block(0).AllOps()) {
-      auto op == std::move(OpRegistry::CreateOp(*op_desc));
+      auto op = std::move(OpRegistry::CreateOp(*op_desc));
       auto op_type = op->Type();
       if (listen_op_ == nullptr && op_type == "heter_listen_and_serv") {
          listen_op_ = std::move(op);
       } else {
-          forward_ops_.push_back(op);
+          forward_ops_.push_back(std::move(op));
       }
     }
     for (auto &op_desc : program_->Block(1).AllOps()) {
@@ -56,9 +56,9 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
                                             static_cast<int>(OpRole::kLoss))) ||
                                 (op_role == static_cast<int>(OpRole::kLRSched));
         if (is_forward_op) {
-            forward_ops_.push_back(op);
+            forward_ops_.push_back(std::move(op));
         } else {
-            backward_ops_.push_back(op);
+            backward_ops_.push_back(std::move(op));
         }
     }
   } else {
@@ -113,7 +113,7 @@ void HeterSectionWorker::RunBackward(int micro_id) {
     //if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
       VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
               << micro_id;
-      op->Run(*microbatch_scopes_[micro_id], place_);
+      op->Run(*((*microbatch_scopes_)[micro_id]), place_);
     //}
   }
 }
@@ -122,8 +122,12 @@ void HeterSectionWorker::MiniBatchBarrier(const std::vector<int>& barrier_ids) {
     // get micro id & deserialize data
     std::set<int> micro_ids;
     while(micro_ids.size() < barrier_ids.size()) {
-      auto task = thread_queue_.Pop();
-      micro_id = task.first;
+      auto task = (*thread_queue_).Pop();
+      auto message_name = task.first;
+      auto micro_id = task.second;
+	  PADDLE_ENFORCE_EQ(message_name.find("backward") != std::string::npos, true,
+                        platform::errors::InvalidArgument(
+				            "cpu trainers only receive backward data"));
 	  PADDLE_ENFORCE_EQ(micro_ids.find(micro_id) == micro_ids.end(), true,
                         platform::errors::InvalidArgument(
 				            "minibatch_scope_ can not be nullptr when create MicroBatch Scope"));
@@ -195,7 +199,7 @@ void HeterSectionWorker::RunForward(int micro_id) {
     //if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
       VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
               << micro_id;
-      op->Run(*microbatch_scopes_[micro_id], place_);
+      op->Run(*((*microbatch_scopes_)[micro_id]), place_);
     //}
   }
 }
@@ -204,7 +208,7 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
   const std::vector<std::string> &input_feed =
       device_reader_->GetUseSlotAlias();
   for (auto name : input_feed) {
-    device_reader_->AddFeedVar(microbatch_scopes_[micro_id]->FindVar(name),
+    device_reader_->AddFeedVar((*microbatch_scopes_)[micro_id]->FindVar(name),
                                name);
   }
 }
@@ -213,13 +217,17 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
 void HeterSectionWorker::CreateMicrobatchScopes() {
   PADDLE_ENFORCE_NOT_NULL(minibatch_scope_, platform::errors::InvalidArgument(
                                            "minibatch_scope_ can not be nullptr when create MicroBatch Scope"));
-  microbatch_scopes_.resize(num_microbatches_);
+
+
+  microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
+  (*microbatch_scopes_).resize(num_microbatches_);
+
   VLOG(3) << "Create microbatch scopes...";
   std::shared_ptr<framework::ProgramDesc> program;
   program.reset(new ProgramDesc(
       trainer_desc_.section_param().section_config().program_desc()));
   for (int j = 0; j < num_microbatches_; ++j) {
-    microbatch_scopes_[j] = &minibatch_scope_->NewScope();
+    (*microbatch_scopes_)[j] = &minibatch_scope_->NewScope();
     CopyParameters(j, *program, place_);
   }
 }
@@ -287,7 +295,7 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
       VLOG(5) << "Create persistable var: " << var->Name()
               << ", which pointer is " << ptr;
     } else if (!var->Persistable()) {
-      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+      auto* ptr = (*microbatch_scopes_)[microbatch_id]->Var(var->Name());
       VLOG(5) << "Create variable " << var->Name() << " for microbatch "
               << microbatch_id << ", which pointer is " << ptr;
       InitializeVariable(ptr, var->GetType());
@@ -309,13 +317,13 @@ void HeterSectionWorker::Run() {
     // backward
     MiniBatchBarrier(micro_ids);
   } else { // for heter worker
-      auto task = thread_queue_.Pop();
+      auto task = (*thread_queue_).Pop();
       auto message_name = task.first;
       auto micro_id = task.second;
       if (message_name.find("forward") != std::string::npos) {
           RunForward(micro_id);
       } else if (message_name.find("backward") != std::string::npos) {
-          RunBackward(micro_di);
+          RunBackward(micro_id);
       }
   }
 }
