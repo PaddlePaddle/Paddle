@@ -700,7 +700,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        assert self._role == Role.HETER_WORKER
         assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
         return self._heter_trainer_endpoints
 
