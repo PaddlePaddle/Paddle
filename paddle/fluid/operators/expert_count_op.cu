@@ -87,5 +87,4 @@ class ExpertCountOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(expert_count, ops::ExpertCountOpCUDAKernel<int>,
-                        ops::ExpertCountOpCUDAKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(expert_count, ops::ExpertCountOpCUDAKernel<int64_t>);

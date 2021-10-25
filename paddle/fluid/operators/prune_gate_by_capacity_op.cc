@@ -73,8 +73,19 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "GateIdx");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    auto gate_idx_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "GateIdx");
+    auto expert_count_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "ExpertCount");
+    PADDLE_ENFORCE_EQ(
+        gate_idx_data_type == expert_count_data_type, 1,
+        platform::errors::InvalidArgument(
+            "The dtype of the gate_idx and expert_count should be same"));
+    PADDLE_ENFORCE_EQ(gate_idx_data_type == framework::proto::VarType::INT64, 1,
+                      platform::errors::InvalidArgument(
+                          "The dtype of the gate_idx and expert_count should "
+                          "be same as int64"));
+    return framework::OpKernelType(gate_idx_data_type, ctx.device_context());
   }
 };
 

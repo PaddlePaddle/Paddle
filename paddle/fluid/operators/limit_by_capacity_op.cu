@@ -26,13 +26,14 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
-__global__ void limit_by_capacity_impl(const T* expc, int* cap, T* out,
+__global__ void limit_by_capacity_impl(const T* expc, T* cap, T* out,
                                        const int n_expert, const int n_worker) {
   int eid = blockIdx.y;
   int wid = blockIdx.x * blockDim.x + threadIdx.x;
   if (wid < n_worker) {
-    int proposal = expc[wid * n_expert + eid];
-    int cap_left = atomicSub(cap + eid, proposal);
+    auto proposal = expc[wid * n_expert + eid];
+    // int cap_left = atomicSub(cap + eid, proposal);
+    auto cap_left = paddle::platform::CudaAtomicAdd(cap + eid, proposal * (-1));
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
     } else if (cap_left >= 0) {
@@ -65,7 +66,7 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::Tensor capacity_copy;
     framework::TensorCopy(*capacity, place, dev_ctx, &capacity_copy);
-    int* cap_data = capacity_copy.mutable_data<int>(place);
+    T* cap_data = capacity_copy.mutable_data<T>(place);
 
     limit_by_capacity_impl<T><<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
         ec_data, cap_data, out_data, n_expert, n_worker);
@@ -79,5 +80,4 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(limit_by_capacity,
-                        ops::LimitByCapacityOpCUDAKernel<int>,
                         ops::LimitByCapacityOpCUDAKernel<int64_t>);
