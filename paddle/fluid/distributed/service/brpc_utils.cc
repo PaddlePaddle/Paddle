@@ -137,41 +137,11 @@ void SerializeSelectedRows(framework::Variable* var,
   auto* var_data = var_msg->mutable_data();
   var_data->clear();
 
-
   var_data->resize(rows->size() * sizeof(int64_t));
   char* data_ptr = const_cast<char*>(var_data->data());
 
-  if (platform::is_cpu_place(tensor->place())) {
- 
-    std::cout << "***DEBUG*** in cpu place" << std::endl;
+  memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));
 
-    memcpy(data_ptr, &(*rows)[0], rows->size() * sizeof(int64_t));
-  } else {
-#ifdef PADDLE_WITH_CUDA
-
-    memcpy(data_ptr, &(*rows)[0], rows->size() * sizeof(int64_t));
-    /*
-    std::cout << "***DEBUG*** in gpu place" << rows->size() << std::endl;
-    for(int t = 0; t < rows->size(); t++)
-        std::cout << t << " " << (&(*rows)[0])[t] << std::endl;
-    std::cout << "***DEBUG*** tensor place" << platform::is_gpu_place(tensor->place()) << std::endl;
-
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    std::cout << "***DEBUG*** after stream cast"  << rows->size()* sizeof(int64_t) << std::endl;
-
-    std::cout << "before copy address:" << var << std::endl;
-    memory::Copy(platform::CPUPlace(), data_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                 rows->data(), rows->size() * sizeof(int64_t), stream);
-
-    std::cout << "after copy address:"<< var << std::endl;
-
-    std::cout << "***DEBUG*** after copy" << std::endl;
-    */
-
-#endif
-  }
   var_msg->set_data_type(static_cast<VarMsg::Type>(tensor->type()));
   for (auto& dim : framework::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
