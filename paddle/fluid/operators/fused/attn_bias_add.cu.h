@@ -34,6 +34,7 @@ namespace cub = hipcub;
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
@@ -50,11 +51,6 @@ template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using ReduceParamType = typename CudnnDataType<T>::BatchNormParamType;
-
-template <typename T>
-struct AddFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a + b; }
-};
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>
