@@ -15,6 +15,7 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 
+from .activation import celu  # noqa: F401
 from .activation import elu  # noqa: F401
 from .activation import elu_  # noqa: F401
 from .activation import gelu  # noqa: F401
@@ -60,6 +61,7 @@ from .common import class_center_sample  # noqa: F401
 from .conv import conv1d  # noqa: F401
 from .conv import conv1d_transpose  # noqa: F401
 from .common import linear  # noqa: F401
+from .fused_transformer import fused_multi_head_attention  # noqa: F401
 from .conv import conv2d  # noqa: F401
 from .conv import conv2d_transpose  # noqa: F401
 from .conv import conv3d  # noqa: F401
@@ -109,10 +111,14 @@ from .vision import grid_sample  # noqa: F401
 from .vision import pixel_shuffle  # noqa: F401
 from .input import one_hot  # noqa: F401
 from .input import embedding  # noqa: F401
+from .fused_transformer import fused_feedforward  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
 
+from .sparse_attention import sparse_attention
+
 __all__ = [     #noqa
+           'celu',
            'conv1d',
            'conv1d_transpose',
            'conv2d',
@@ -207,4 +213,7 @@ __all__ = [     #noqa
            'layer_norm',
            'instance_norm',
            'class_center_sample',
+            'fused_feedforward',
+           'fused_multi_head_attention',
+           'sparse_attention',
 ]

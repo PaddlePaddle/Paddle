@@ -24,6 +24,8 @@ import paddle
 import operator
 import types
 
+AMP_LEVEL = core.AmpLevel
+
 __all__ = ['amp_guard', 'amp_decorate']
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -68,8 +70,8 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_BLACK_LIST = {' '}
-PURE_FP16_WHITE_LIST = {'lookup_table', 'lookup_table_v2'}
+PURE_FP16_WHITE_LIST = {' '}
+PURE_FP16_BLACK_LIST = {'lookup_table', 'lookup_table_v2'}
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -108,7 +110,7 @@ def _in_amp_guard():
     """
     tracer = _dygraph_tracer()
     if tracer:
-        if tracer._amp_level == 1:
+        if tracer._amp_level == core.AmpLevel.O1:
             return True
         else:
             return False
@@ -233,9 +235,9 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
-    if not (level in ['O1', 'O2']):
+    if not (level in ['O0', 'O1', 'O2']):
         raise ValueError(
-            "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
+            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16 train mode."
         )
 
     tracer = _dygraph_tracer()
@@ -251,20 +253,24 @@ def amp_guard(enable=True,
         enable = False
 
     if level == 'O1':
-        amp_level = 1
+        amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
         _black_list = BLACK_LIST
-    else:
-        amp_level = 2
+    elif level == 'O2':
+        amp_level = AMP_LEVEL.O2
         _white_list = PURE_FP16_WHITE_LIST
         _black_list = PURE_FP16_BLACK_LIST
+    elif level == 'O0':
+        amp_level = AMP_LEVEL.O0
+        _white_list = WHITE_LIST
+        _black_list = BLACK_LIST
 
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
                                                 custom_black_list, level)
 
     if not enable:
-        amp_level = 0
+        amp_level = AMP_LEVEL.O0
 
     if tracer:
         # enable auto_cast

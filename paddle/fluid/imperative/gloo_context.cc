@@ -18,6 +18,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -67,8 +68,36 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
                                             int ring_id, bool use_calc_stream) {
   // AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
-  auto src_tensor = src.Get<framework::LoDTensor>();
-  auto *dst_tensor = dst->GetMutable<framework::LoDTensor>();
+  if (src.IsType<framework::LoDTensor>()) {
+    if (!dst->IsType<framework::LoDTensor>()) {
+      dst->Clear();
+    }
+    AllReduce(src.Get<framework::LoDTensor>(),
+              dst->GetMutable<framework::LoDTensor>());
+  } else if (src.IsType<framework::SelectedRows>()) {
+    if (&src != dst) {
+      if (!dst->IsType<framework::SelectedRows>()) {
+        dst->Clear();
+      }
+      AllReduce(src.Get<framework::SelectedRows>(),
+                dst->GetMutable<framework::SelectedRows>());
+    } else {
+      // SelectedRows cannot be allreduce in-place
+      framework::Variable tmp_dst;
+      AllReduce(src.Get<framework::SelectedRows>(),
+                tmp_dst.GetMutable<framework::SelectedRows>());
+      *dst = std::move(tmp_dst);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unsupported variable type %s for imperative allreduce, only "
+        "LoDTensor and SelectedRows are supported.",
+        platform::demangle(framework::ToTypeName(src.Type()))));
+  }
+}
+
+void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
+                                    framework::Tensor *dst_tensor) {
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
   dst_tensor->Resize(src_tensor.dims());
   switch (src_tensor.type()) {
@@ -82,6 +111,88 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
     }
   }
   gloo_wrapper->Barrier();
+}
+
+#define GLOO_ALL_GATHER_CASE(type, T, gw)                         \
+  case type: {                                                    \
+    const auto *src_tensor_ptr = src_tensor.data<T>();            \
+    gw->AllGatherVector<T>(const_cast<T *>(src_tensor_ptr),       \
+                           reinterpret_cast<T *>(dst_tensor_ptr), \
+                           value_sendcount);                      \
+    break;                                                        \
+  }
+
+void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
+                                    framework::SelectedRows *dst) {
+  // auto ;
+  // int local_rank = strategy_.local_rank_;
+  int nranks = strategy_.nranks_;
+  VLOG(3) << "SelectedRows AllReduce start";
+  const auto &src_tensor = src.value();
+  const auto &place = src_tensor.place();
+  auto dtype = src_tensor.type();
+  // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
+  // but we can use other ways to implement is in the future
+  const auto &src_rows = src.rows();
+  auto gloo_wrapper = framework::GlooWrapper::GetInstance();
+  size_t local_row_num = src_rows.size();
+  std::vector<size_t> rows_num_vector =
+      gloo_wrapper->AllGather<size_t>(local_row_num);
+  const auto *cpu_rows_num_ptr = rows_num_vector.data();
+  auto rows_num = std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + nranks,
+                                  static_cast<int64_t>(0));
+  dst->set_height(src.height());
+  VLOG(3) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
+          << ", total rows number: " << rows_num
+          << ", height: " << src.height();
+  auto *dst_rows = dst->mutable_rows();
+  dst_rows->resize(rows_num);
+  auto *dst_rows_ptr = dst_rows->MutableData(place);
+  const int64_t *src_rows_ptr = src_rows.Data(place);
+
+  // VLOG(3) << "Selected Rows of src:" << string::join_strings(dst_rows, ',')
+
+  auto *dst_tensor = dst->mutable_value();
+  auto dims = src_tensor.dims();
+  dims[0] = rows_num;
+  auto feature_size = framework::product(dims) / dims[0];
+  dst_tensor->Resize(dims);
+  if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + nranks,
+                  [&](size_t row) { return row == cpu_rows_num_ptr[0]; })) {
+    // During sparse communication, the number of each card is same.
+    // Because gloo wrapper utility class currently don't support
+    // broadcast, so we only deal the-same case.
+    VLOG(3) << "Use the gloo all reduce to sync. SRC:" << src_tensor;
+    // framework::SerializeToStream(VLOG(4), src);
+    VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
+    auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
+    auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
+
+    gloo_wrapper->AllGatherVector<int64_t>(const_cast<int64_t *>(src_rows_ptr),
+                                           static_cast<int64_t *>(dst_rows_ptr),
+                                           rows_num_vector[0]);
+
+    switch (dtype) {
+      GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP32, float,
+                           gloo_wrapper);
+      GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP64, double,
+                           gloo_wrapper);
+      GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT32, int, gloo_wrapper);
+      GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT64, int64_t,
+                           gloo_wrapper);
+      default: {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid datatype for allreduce"));
+      }
+    }
+    VLOG(3) << "Selected Row DST:" << *dst_tensor;
+    VLOG(3) << "Selected Rows of DST:"
+            << string::join_strings(std::vector<int64_t>(*dst_rows), ',');
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The number of each card is not the same, gloo only support the-same"
+        "batch division"));
+  }
 }
 
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
