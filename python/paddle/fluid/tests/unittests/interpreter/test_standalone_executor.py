@@ -288,8 +288,7 @@ class TestException(unittest.TestCase):
         }, {
             'id': np.array([1, 2, 3, 4, 11]).astype(np.int64)
         }]
-        out = self.run_new_executor(feed)
-        return out
+        self.assertRaises(ValueError, self.run_new_executor, feed)
 
 
 if __name__ == "__main__":
