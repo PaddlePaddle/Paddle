@@ -1572,11 +1572,7 @@ class Layer(core.Layer):
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
-
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", category=UserWarning)
-                new_t = t._copy_to(device, blocking)
-
+            new_t = t._copy_to(device, blocking)
             if isinstance(t, framework.ParamBase):
                 if dtype is not None and dtype != t.dtype:
                     framework._dygraph_tracer().trace_op(
@@ -1593,7 +1589,10 @@ class Layer(core.Layer):
 
             return new_t
 
-        self._apply(transform, device, dtype, blocking)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            self._apply(transform, device, dtype, blocking)
+
         self._dtype = dtype
 
     # [aliases] Compatible with old method names
