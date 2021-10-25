@@ -1293,6 +1293,59 @@ def histogram(input, bins=100, min=0, max=0, name=None):
     return out
 
 
+def bincount(x, weights=None, minlength=0, name=None):
+    """
+    Computes frequency of each value in the input tensor. 
+
+    Args:
+        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
+        weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
+        minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor of frequency.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 1, 4, 5])
+            result1 = paddle.bincount(x)
+            print(result1) # [0, 2, 1, 0, 1, 1]
+
+            w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
+            result2 = paddle.bincount(x, weights=w)
+            print(result2) # [0., 2.19999981, 0.40000001, 0., 0.50000000, 0.50000000]
+    """
+    if x.dtype not in [paddle.int32, paddle.int64]:
+        raise TypeError("Elements in Input(x) should all be integers")
+
+    if in_dygraph_mode():
+        return _C_ops.bincount(x, weights, "minlength", minlength)
+
+    helper = LayerHelper('bincount', **locals())
+
+    check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
+
+    if weights is not None:
+        check_variable_and_dtype(weights, 'Weights',
+                                 ['int32', 'int64', 'float32', 'float64'],
+                                 'bincount')
+        out = helper.create_variable_for_type_inference(dtype=weights.dtype)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='bincount',
+        inputs={'X': x,
+                'Weights': weights},
+        outputs={'Out': out},
+        attrs={'minlength': minlength})
+    return out
+
+
 def mv(x, vec, name=None):
     """
     Performs a matrix-vector product of the matrix x and the vector vec.
