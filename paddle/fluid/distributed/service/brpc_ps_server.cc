@@ -308,7 +308,7 @@ int32_t BrpcPsService::push_sparse_param(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
-  uint32_t num = *(reinterpret_cast<uint32_t *>(request.params(0).c_str()));
+  uint32_t num = *(uint32_t *)(request.params(0).c_str());  // NOLINT
   /*
   Push Content:
   |---keysData---|---valuesData---|
@@ -342,7 +342,7 @@ int32_t BrpcPsService::pull_geo_param(Table *table,
                                      sizeof(uint32_t));
   cntl->response_attachment().append(reinterpret_cast<char *>(ids.data()),
                                      ids.size() * sizeof(uint64_t));
-  cntl->response_attachment().append(reinterpret_cast<char *> values.data(),
+  cntl->response_attachment().append(reinterpret_cast<char *>(values.data()),
                                      values.size() * sizeof(float));
   return 0;
 }
@@ -369,7 +369,7 @@ int32_t BrpcPsService::pull_sparse(Table *table,
     return 0;
   }
 
-  uint32_t num = *(reinterpret_cast<uint32_t *>(request.params(0).c_str()));
+  uint32_t num = *(uint32_t *)(request.params(0).c_str());  // NOLINT
   auto dim = table->value_accesor()->select_dim();
 
   thread_local std::string req_buffer;
@@ -409,7 +409,7 @@ int32_t BrpcPsService::push_sparse(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
-  uint32_t num = *(reinterpret_cast<uint32_t *>(request.params(0).c_str()));
+  uint32_t num = *(uint32_t *)(request.params(0).c_str());  // NOLINT
   /*
   Push Content:
   |---keysData---|---valuesData---|

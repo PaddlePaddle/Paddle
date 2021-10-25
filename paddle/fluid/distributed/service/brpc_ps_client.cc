@@ -1483,7 +1483,7 @@ int BrpcPsClient::push_sparse_async_shard_push(
   for (int i = 0; i < merged_kv_count; ++i) {
     const char *task_data_ptr = merged_value_list[i].data();
 
-    memcpy(push_data_ptr, reinterpret_cast<float *>(task_data_ptr),
+    memcpy(push_data_ptr, (float *)(task_data_ptr),  // NOLINT
            accessor->update_size());
     // zcb
     /*
