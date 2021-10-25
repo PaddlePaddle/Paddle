@@ -29,6 +29,7 @@ PT_DECLARE_MODULE(CreationCUDA);
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
+// TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, full_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pten::DenseTensor>(

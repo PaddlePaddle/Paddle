@@ -15,14 +15,14 @@
 #pragma once
 
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/scalar.h"
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/hapi/include/tensor.h"
 
 namespace paddle {
 namespace experimental {
 
 Tensor full_like(const Tensor& x,
-                 const pten::Scalar& value,
+                 const Scalar& value,
                  DataType dtype = DataType::UNDEFINED);
 
 Tensor ones_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);

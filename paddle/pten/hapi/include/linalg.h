@@ -21,10 +21,5 @@ namespace experimental {
 
 Tensor dot(const Tensor& x, const Tensor& y);
 
-Tensor matmul(const Tensor& x,
-              const Tensor& y,
-              bool transpose_x,
-              bool transpose_y);
-
 }  // namespace experimental
 }  // namespace paddle
