@@ -12,31 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include <algorithm>
+
 #include "paddle/fluid/framework/executor_gc_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace interpretercore {
 
-AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicDeps(
+AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
-  AtomicVectorSizeT working_dependecy_count(dependecy_count.size());
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    working_dependecy_count[i] =
-        std::make_unique<std::atomic<size_t>>(dependecy_count[i]);
+  if (atomic_deps_.size() != dependecy_count.size()) {
+    atomic_deps_.clear();
+    std::generate_n(std::back_inserter(atomic_deps_), dependecy_count.size(),
+                    [] { return std::make_unique<std::atomic<size_t>>(0); });
   }
-  return working_dependecy_count;
+
+  for (size_t i = 0; i < dependecy_count.size(); ++i) {
+    atomic_deps_[i]->store(dependecy_count[i]);
+  }
+  return atomic_deps_;
 }
 
-AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicVarRef(
+AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
-  AtomicVectorSizeT working_var_ref(vec_meta_info.size());
+  if (atomic_var_ref_.size() != vec_meta_info.size()) {
+    atomic_var_ref_.clear();
+    std::generate_n(std::back_inserter(atomic_var_ref_), vec_meta_info.size(),
+                    [] { return std::make_unique<std::atomic<size_t>>(0); });
+  }
 
   for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    working_var_ref[i] =
-        std::make_unique<std::atomic<size_t>>(vec_meta_info[i].var_ref_count_);
+    atomic_var_ref_[i]->store(vec_meta_info[i].var_ref_count_);
   }
-  return working_var_ref;
+  return atomic_var_ref_;
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -269,6 +278,7 @@ void build_op_func_list(const platform::Place& place,
 
     // step 3. Insert memcpy_op if needed
     VariableValueMap& ins_map_temp = runtime_context.inputs;
+    std::unordered_set<int> no_data_transform_index;
     for (auto& var_name_item : ins_map_temp) {
       for (size_t i = 0; i < var_name_item.second.size(); ++i) {
         auto var = var_name_item.second[i];
@@ -280,8 +290,14 @@ void build_op_func_list(const platform::Place& place,
             static_cast<const framework::OperatorWithKernel*>(op_base)
                 ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                       expected_kernel_key);
-        if (!platform::is_same_place(kernel_type_for_var.place_,
-                                     expected_kernel_key.place_)) {
+        if (platform::is_same_place(kernel_type_for_var.place_,
+                                    expected_kernel_key.place_)) {
+          // record no need data transformer input var_id
+          auto& var_name = inputs_names[var_name_item.first][i];
+          VLOG(3) << op->Type() << " found no data_transform var: " << var_name
+                  << " with id: " << var_scope->name2id[var_name];
+          no_data_transform_index.emplace(var_scope->name2id[var_name]);
+        } else {
           if (op_base->Type() == "fetch_v2") {
             op_base->SetAttr("deepcopy", false);
           }
@@ -376,6 +392,7 @@ void build_op_func_list(const platform::Place& place,
         }
       }
     }
+    op_func_node.no_data_transform_index = std::move(no_data_transform_index);
     // step 4. Run op kernel
     op_list->push_back(op_base);
     VLOG(3) << op_base->Type()

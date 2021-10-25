@@ -14,9 +14,153 @@
 
 import unittest
 import paddle
+import random
 import numpy as np
 import paddle.fluid as fluid
+from op_test import OpTest
 from functools import partial
+from paddle.framework import core
+
+
+def adamw_step(inputs, attributes):
+    param = inputs['Param']
+    grad = inputs['Grad']
+    moment1 = inputs['Moment1']
+    moment2 = inputs['Moment2']
+    lr = inputs['LearningRate']
+    beta1_pow = inputs['Beta1Pow']
+    beta2_pow = inputs['Beta2Pow']
+
+    epsilon = attributes['epsilon']
+
+    if 'lr_ratio' in attributes:
+        lr = lr * attributes['lr_ratio']
+
+    if attributes["with_decay"]:
+        coeff = attributes["coeff"]
+        decay = 1.0 - lr * coeff
+        param2 = param * decay
+        param = param2.copy()
+
+    if 'beta1' in attributes:
+        beta1 = attributes['beta1']
+    else:
+        beta1 = inputs['Beta1Tensor'][0]
+    if 'beta2' in attributes:
+        beta2 = attributes['beta2']
+    else:
+        beta2 = inputs['Beta2Tensor'][0]
+
+    moment1_out = beta1 * moment1 + (1 - beta1) * grad
+    moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
+    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
+    return param_out, moment1_out, moment2_out
+
+
+class TestAdamW(OpTest):
+    def setUp(self):
+        '''Test AdamW Op with supplied attributes
+        '''
+        self.op_type = "adamw"
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        # The second moment is positive
+        moment2 = np.random.random((102, 105)).astype("float32")
+
+        learning_rate = 0.004
+        beta1 = 0.78
+        beta2 = 0.836
+        epsilon = 1e-4
+        beta1_pow = beta1**10
+        beta2_pow = beta2**10
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Moment1': moment1,
+            'Moment2': moment2,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+        }
+
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            "coeff": 0.5,
+            "with_decay": True
+        }
+
+        param_out, moment1_out, \
+            moment2_out = adamw_step(self.inputs, self.attrs)
+
+        self.outputs = {
+            'Moment1Out': moment1_out,
+            'Moment2Out': moment2_out,
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestAdamW2(OpTest):
+    def setUp(self):
+        '''Test AdamW Op with supplied attributes
+        '''
+        self.op_type = "adamw"
+        param = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        grad = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        moment1 = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        # The second moment is positive
+        moment2 = np.random.random((2, 2)).astype("float32")
+
+        learning_rate = 0.004
+        beta1 = 0.78
+        beta2 = 0.836
+        epsilon = 1e-4
+        beta1_pow = beta1**10
+        beta2_pow = beta2**10
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Moment1': moment1,
+            'Moment2': moment2,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+        }
+
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            "lr_ratio": 0.1,
+            "coeff": 0.5,
+            "with_decay": True
+        }
+
+        param_out, moment1_out, moment2_out = adamw_step(self.inputs,
+                                                         self.attrs)
+
+        self.outputs = {
+            'Moment1Out': moment1_out,
+            'Moment2Out': moment2_out,
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 class TestAdamWOp(unittest.TestCase):
@@ -160,7 +304,14 @@ def simple_lr_setting(param, decay_rate, n_layers):
     return decay_rate**(n_layers + 2 - depth)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestAdamWOpLayerwiseLR(TestAdamWOp):
+    def setUp(self):
+        random.seed(2021)
+        np.random.seed(2021)
+        paddle.seed(2021)
+
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
@@ -181,17 +332,20 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             weight_decay=0.01,
             lr_ratio=simple_lr_fun)
 
-        for _ in range(2):
+        loss_ref = np.array(
+            [4.8383293, 3.0854003, 1.33299, -0.418993, -2.171043])
+        for i in range(5):
             a1 = linear1(a)
             out = linear2(a1)
+            out = paddle.mean(out)
             out.backward()
             adam.step()
             adam.clear_gradients()
+            np.testing.assert_allclose(out[0].numpy(), loss_ref[i], rtol=1e-6)
 
     def test_adamw_op(self):
         paddle.enable_static()
-        place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
-            else fluid.CPUPlace()
+        place = fluid.CUDAPlace(0)
         train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
@@ -223,7 +377,10 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
         exe = fluid.Executor(place)
         exe.run(startup)
-        for _ in range(2):
+
+        loss_ref = np.array(
+            [0.36120513, 0.2720821, 0.67208904, 0.14607805, 0.24098626])
+        for i in range(5):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')
             rets = exe.run(train_prog,
@@ -231,6 +388,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                  "y": outputs},
                            fetch_list=[avg_cost])
             assert rets[0] is not None
+            np.testing.assert_allclose(rets[0], loss_ref[i], rtol=1e-6)
 
         paddle.disable_static()
 

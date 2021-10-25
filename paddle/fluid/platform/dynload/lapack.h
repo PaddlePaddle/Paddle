@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <complex>
 #include <mutex>
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -26,6 +28,43 @@ extern "C" void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv,
                         int *info);
 extern "C" void sgetrf_(int *m, int *n, float *a, int *lda, int *ipiv,
                         int *info);
+
+// evd
+extern "C" void zheevd_(char *jobz, char *uplo, int *n, std::complex<double> *a,
+                        int *lda, double *w, std::complex<double> *work,
+                        int *lwork, double *rwork, int *lrwork, int *iwork,
+                        int *liwork, int *info);
+extern "C" void cheevd_(char *jobz, char *uplo, int *n, std::complex<float> *a,
+                        int *lda, float *w, std::complex<float> *work,
+                        int *lwork, float *rwork, int *lrwork, int *iwork,
+                        int *liwork, int *info);
+extern "C" void dsyevd_(char *jobz, char *uplo, int *n, double *a, int *lda,
+                        double *w, double *work, int *lwork, int *iwork,
+                        int *liwork, int *info);
+extern "C" void ssyevd_(char *jobz, char *uplo, int *n, float *a, int *lda,
+                        float *w, float *work, int *lwork, int *iwork,
+                        int *liwork, int *info);
+
+// geev
+extern "C" void dgeev_(char *jobvl, char *jobvr, int *n, double *a, int *lda,
+                       double *wr, double *wi, double *vl, int *ldvl,
+                       double *vr, int *ldvr, double *work, int *lwork,
+                       int *info);
+extern "C" void sgeev_(char *jobvl, char *jobvr, int *n, float *a, int *lda,
+                       float *wr, float *wi, float *vl, int *ldvl, float *vr,
+                       int *ldvr, float *work, int *lwork, int *info);
+extern "C" void zgeev_(char *jobvl, char *jobvr, int *n,
+                       std::complex<double> *a, int *lda,
+                       std::complex<double> *w, std::complex<double> *vl,
+                       int *ldvl, std::complex<double> *vr, int *ldvr,
+                       std::complex<double> *work, int *lwork, double *rwork,
+                       int *info);
+extern "C" void cgeev_(char *jobvl, char *jobvr, int *n, std::complex<float> *a,
+                       int *lda, std::complex<float> *w,
+                       std::complex<float> *vl, int *ldvl,
+                       std::complex<float> *vr, int *ldvr,
+                       std::complex<float> *work, int *lwork, float *rwork,
+                       int *info);
 
 namespace paddle {
 namespace platform {
@@ -58,7 +97,15 @@ extern void *lapack_dso_handle;
 
 #define LAPACK_ROUTINE_EACH(__macro) \
   __macro(dgetrf_);                  \
-  __macro(sgetrf_);
+  __macro(sgetrf_);                  \
+  __macro(zheevd_);                  \
+  __macro(cheevd_);                  \
+  __macro(dsyevd_);                  \
+  __macro(ssyevd_);                  \
+  __macro(dgeev_);                   \
+  __macro(sgeev_);                   \
+  __macro(zgeev_);                   \
+  __macro(cgeev_);
 
 LAPACK_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_LAPACK_WRAP);
 

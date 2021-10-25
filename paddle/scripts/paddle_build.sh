@@ -223,7 +223,7 @@ function cmake_base() {
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
-        -DLITE_GIT_TAG=_release/v2.10
+        -DLITE_GIT_TAG=release/v2.10
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
         -DWITH_ARM=${WITH_ARM:-OFF}
@@ -266,7 +266,7 @@ EOF
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
         -DWITH_GLOO=${gloo_flag} \
-        -DLITE_GIT_TAG=_release/v2.10 \
+        -DLITE_GIT_TAG=release/v2.10 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
@@ -1076,7 +1076,6 @@ function get_quickly_disable_ut() {
 
 function card_test() {
     set -m
-    echo "$2 bengingggggg!!!!!"
     case_count $1 $2
     ut_startTime_s=`date +%s` 
 
@@ -2389,6 +2388,21 @@ function find_temporary_files() {
     fi
 }
 
+function build_pr_and_develop() {
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
+    rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+    git checkout .
+    git checkout -b develop_base_pr upstream/$BRANCH
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+}
+
 
 function main() {
     local CMD=$1 
@@ -2397,6 +2411,9 @@ function main() {
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        ;;
+      build_pr_dev)
+        build_pr_and_develop 
         ;;
       build_and_check)
         set +e

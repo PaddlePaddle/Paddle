@@ -47,6 +47,18 @@ class MapMatmul2MulPass : public FusePassBase {
 };
 
 /*
+ * Map matmul_v2 to mul, the same as MapMatmul2MulPass.
+ */
+class MapMatmulv2ToMulPass : public FusePassBase {
+ public:
+  MapMatmulv2ToMulPass();
+  virtual ~MapMatmulv2ToMulPass() {}
+
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
+
+/*
  * Fuse squeeze2+matmul to mul, so the optimization can use fc_fuse_pass.
  * The squeeze2 op must satisfy the following conditions:
  * 1. the rank of input X is 4

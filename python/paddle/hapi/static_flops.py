@@ -176,6 +176,7 @@ def count_element_op(op):
 def _graph_flops(graph, detail=False):
     assert isinstance(graph, GraphWrapper)
     flops = 0
+    op_flops = 0
     table = Table(["OP Type", 'Param name', "Flops"])
     for op in graph.ops():
         param_name = ''
