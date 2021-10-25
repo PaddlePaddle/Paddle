@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid import core, dygraph_utils
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.fluid import core, dygraph_utils
 from paddle import _C_ops
 
 __all__ = []
