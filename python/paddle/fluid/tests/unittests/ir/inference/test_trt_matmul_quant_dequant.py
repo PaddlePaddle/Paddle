@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -246,8 +246,12 @@ class TensorRTMatMulQuantDequantDims4DynamicTest(QuantDequantTest):
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.dynamic_shape_params = TensorRTMatMulQuantDequantDims4DynamicTest.DynamicShapeParam(
             {
-                'data': [1, 28, 28]
-            }, {'data': [4, 28, 28]}, {'data': [1, 28, 28]}, False)
+                'data': [1, 28, 28],
+                'reshape2_0.tmp_0': [1, 1, 7, 7]
+            }, {'data': [4, 28, 28],
+                'reshape2_0.tmp_0': [4, 32, 7, 7]},
+            {'data': [3, 28, 28],
+             'reshape2_0.tmp_0': [3, 16, 7, 7]}, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
