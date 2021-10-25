@@ -102,7 +102,7 @@ void custom_softplus_eltwise_forward(const framework::ExecutionContext& ctx) {
 
   const float beta = ctx.Attr<float>("beta");
 
-  SoftplusMKLDNNHandler<T> handler(ctx, x, beta, mkldnn_engine, ctx.GetPlace());
+  SoftplusMKLDNNHandler<T> handler(ctx, x, beta, mkldnn_engine);
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
 
