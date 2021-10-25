@@ -104,8 +104,10 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
           scale.push_back(scale[0]);
         } else {  // v2
           std::vector<float> scale_attr = ctx.Attr<std::vector<float>>("scale");
-          scale.resize(3, scale_attr[0]);
-          std::copy(scale_attr.begin(), scale_attr.end(), scale.begin());
+          if (scale_attr.size() > 0) {
+            scale.resize(3, scale_attr[0]);
+            std::copy(scale_attr.begin(), scale_attr.end(), scale.begin());
+          }
         }
       }
       if (scale[0] > 0.0f && scale[1] > 0.0f && scale[2] > 0.0f) {

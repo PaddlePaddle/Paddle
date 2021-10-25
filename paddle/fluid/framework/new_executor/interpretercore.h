@@ -95,6 +95,7 @@ class InterpreterCore {
   InterpreterProfiler dry_run_profiler_;
   StreamAnalyzer stream_analyzer_;
   EventManager event_manager_;
+  EventsWaiter main_thread_blocker_;
   interpretercore::AsyncWorkQueue async_work_queue_;
 
   InterpreterCoreGarbageCollector gc_;
