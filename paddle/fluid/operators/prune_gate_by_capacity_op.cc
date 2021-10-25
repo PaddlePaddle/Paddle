@@ -78,10 +78,10 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     auto expert_count_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "ExpertCount");
     PADDLE_ENFORCE_EQ(
-        gate_idx_data_type == expert_count_data_type, 1,
+        gate_idx_data_type, expert_count_data_type,
         platform::errors::InvalidArgument(
             "The dtype of the gate_idx and expert_count should be same"));
-    PADDLE_ENFORCE_EQ(gate_idx_data_type == framework::proto::VarType::INT64, 1,
+    PADDLE_ENFORCE_EQ(gate_idx_data_type, framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the gate_idx and expert_count should "
                           "be same as int64"));

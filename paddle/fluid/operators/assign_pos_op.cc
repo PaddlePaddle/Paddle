@@ -35,19 +35,12 @@ class AssignPosOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto cum_count_dtype =
         OperatorWithKernel::IndicateVarDataType(ctx, "cum_count");
-    auto eff_gates_len_dtype =
-        OperatorWithKernel::IndicateVarDataType(ctx, "eff_gates_len");
     auto X_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    PADDLE_ENFORCE_EQ(
-        cum_count_dtype == eff_gates_len_dtype, 1,
-        platform::errors::InvalidArgument(
-            "The dtype of the cum_count and eff_gates_len should be same"));
-    PADDLE_ENFORCE_EQ(cum_count_dtype == X_dtype, 1,
+
+    PADDLE_ENFORCE_EQ(cum_count_dtype, X_dtype,
                       platform::errors::InvalidArgument(
                           "The dtype of the cum_count and X should be same"));
-    // auto expert_count_data_dtype =
-    // static_cast<framework::proto::VarType::Type>(expert_count_dtype);
-    PADDLE_ENFORCE_EQ(cum_count_dtype == framework::proto::VarType::INT64, 1,
+    PADDLE_ENFORCE_EQ(cum_count_dtype, framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the cum_count_dtype, eff_gates_len and "
                           "X should be same as int64"));
