@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from ...fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle import _C_ops
 
 __all__ = []
