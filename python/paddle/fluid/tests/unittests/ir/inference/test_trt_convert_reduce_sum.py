@@ -14,6 +14,7 @@
 
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
+import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -84,8 +85,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
 
                         yield program_config
 
-    def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
+    def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -117,7 +117,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), (1e-5, 1e-5)
@@ -125,8 +125,8 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), (1e-5, 1e-5)

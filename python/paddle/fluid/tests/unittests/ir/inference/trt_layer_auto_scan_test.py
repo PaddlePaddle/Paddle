@@ -81,7 +81,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
-        # config.disable_glog_info()
+        config.disable_glog_info()
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.trt_cache_dir)
         if use_trt:
@@ -276,11 +276,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         str(prog_config) + ' vs ' + self.inference_config_str(
                             pred_config) +
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
-                    status = False
+                    if not skip_flag:
+                        status = False
                     continue
 
                 self.success_log('RUN ' + str(prog_config) + ' vs ' +
                                  self.inference_config_str(pred_config))
 
-            # In the first step, we found the problem, and after the subsequent repairs, the assert assertion will be enabled
-            # self.assertTrue(status)
+        # self.assertTrue(status)
