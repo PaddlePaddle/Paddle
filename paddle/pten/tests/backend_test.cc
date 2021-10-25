@@ -15,3 +15,35 @@ limitations under the License. */
 #include "paddle/pten/common/backend.h"
 
 #include <gtest/gtest.h>
+#include <iostream>
+
+TEST(Backend, OStream) {
+  std::ostringstream oss;
+  oss << pten::Backend::UNDEFINED;
+  EXPECT_EQ(oss.str(), "Undefined");
+  oss.str("");
+  oss << pten::Backend::CPU;
+  EXPECT_EQ(oss.str(), "CPU");
+  oss.str("");
+  oss << pten::Backend::CUDA;
+  EXPECT_EQ(oss.str(), "CUDA");
+  oss.str("");
+  oss << pten::Backend::XPU;
+  EXPECT_EQ(oss.str(), "XPU");
+  oss.str("");
+  oss << pten::Backend::NPU;
+  EXPECT_EQ(oss.str(), "NPU");
+  oss.str("");
+  oss << pten::Backend::MKLDNN;
+  EXPECT_EQ(oss.str(), "MKLDNN");
+  oss.str("");
+  oss << pten::Backend::CUDNN;
+  EXPECT_EQ(oss.str(), "CUDNN");
+  oss.str("");
+  try {
+    oss << pten::Backend::NUM_BACKENDS;
+  } catch (paddle::platform::EnforceNotMet &exception) {
+    std::string ex_msg = exception.what();
+    EXPECT_TRUE(ex_msg.find("Invalid enum backend type") != std::string::npos);
+  }
+}

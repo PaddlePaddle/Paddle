@@ -37,8 +37,6 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, LoDTensor>(
 
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
-  } else {
-    VLOG(1) << "Old LoDTensor holder is nullptr.";
   }
   return tensor_impl;
 }
@@ -55,8 +53,6 @@ std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, Tensor>(
 
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
-  } else {
-    VLOG(1) << "Old Tensor holder is nullptr.";
   }
   return tensor_impl;
 }

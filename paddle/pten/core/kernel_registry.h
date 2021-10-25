@@ -107,22 +107,24 @@ struct KernelRegistrar {
                   KernelArgsDefFn args_def_fn,
                   KernelFn kernel_fn) {
     if (layout == DataLayout::ANY) {
-      for (DataLayout layout_iter = DataLayout::NHWC;
-           layout_iter != DataLayout::NUM_DATA_LAYOUTS;
+      for (size_t layout_iter = static_cast<size_t>(DataLayout::NHWC);
+           layout_iter != static_cast<size_t>(DataLayout::NUM_DATA_LAYOUTS);
            layout_iter++) {
-        for (DataType dtype = DataType::BOOL; dtype != DataType::NUM_DATA_TYPES;
+        for (size_t dtype = static_cast<size_t>(DataType::BOOL);
+             dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
              dtype++) {
           ConstructKernel(kernel_name_cstr,
                           backend,
-                          layout_iter,
-                          dtype,
+                          static_cast<DataLayout>(layout_iter),
+                          static_cast<DataType>(dtype),
                           args_parse_fn,
                           args_def_fn,
                           kernel_fn);
         }
       }
     } else {
-      for (DataType dtype = DataType::BOOL; dtype != DataType::NUM_DATA_TYPES;
+      for (size_t dtype = static_cast<size_t>(DataType::BOOL);
+           dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
            dtype++) {
         ConstructKernel(kernel_name_cstr,
                         backend,

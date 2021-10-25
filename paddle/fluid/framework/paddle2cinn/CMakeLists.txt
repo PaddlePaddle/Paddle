@@ -3,6 +3,11 @@ cc_library(cinn_compiled_object SRCS cinn_compiled_object.cc DEPS feed_fetch_met
 cc_library(cinn_runner SRCS cinn_runner.cc DEPS cinn_cache_key cinn_compiled_object feed_fetch_method graph lod_tensor scope)
 cc_library(build_cinn_pass SRCS build_cinn_pass.cc DEPS pass subgraph_detector)
 
+if (WITH_CINN)
+  cc_library(transform_desc SRCS transform_desc.cc DEPS proto_desc cinn)
+  cc_test(test_transform_desc SRCS transform_desc_test.cc DEPS transform_desc)
+endif()
+
 cc_test(cinn_cache_key_test SRCS cinn_cache_key_test.cc DEPS cinn_cache_key)
 cc_test(cinn_runner_test SRCS cinn_runner_test.cc DEPS cinn_runner proto_desc)
 cc_test(cinn_compiled_object_test SRCS cinn_compiled_object_test.cc DEPS cinn_compiled_object)
