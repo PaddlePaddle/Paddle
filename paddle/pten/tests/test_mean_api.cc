@@ -36,8 +36,7 @@ TEST(API, mean) {
       pten::TensorMeta(framework::make_ddim({3, 4}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
 
   float sum = 0.0;

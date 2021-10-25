@@ -64,8 +64,7 @@ TEST(PtenUtils, VarToPtenTensor) {
 TEST(PtenUtils, PtenTensorToFluidTensor) {
   pten::DenseTensor dense_tensor(
       pten::TensorMeta(paddle::framework::make_ddim({1, 1}), pten::Backend::CPU,
-                       pten::DataType::FLOAT32, pten::DataLayout::ANY),
-      pten::TensorStatus());
+                       pten::DataType::FLOAT32, pten::DataLayout::ANY));
   auto* data_ptr = dense_tensor.mutable_data<float>();
   data_ptr[0] = 0.5;
   // share allocation into fluid Tensor

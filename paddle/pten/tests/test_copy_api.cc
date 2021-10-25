@@ -34,16 +34,14 @@ TEST(API, copy) {
       pten::TensorMeta(framework::make_ddim({2, 3}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
   auto* dense_x_data = dense_src->mutable_data<float>();
 
   auto dense_dst = std::make_shared<pten::DenseTensor>(
       pten::TensorMeta(framework::make_ddim({2, 3}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
 
   for (size_t i = 0; i < 2; ++i) {
     for (size_t j = 0; j < 3; ++j) {

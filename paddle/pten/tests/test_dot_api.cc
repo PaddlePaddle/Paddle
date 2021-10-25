@@ -36,16 +36,14 @@ TEST(API, dot) {
       pten::TensorMeta(framework::make_ddim({3, 10}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
       pten::TensorMeta(framework::make_ddim({3, 10}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
   auto* dense_y_data = dense_y->mutable_data<float>();
 
   float sum[3] = {0.0, 0.0, 0.0};

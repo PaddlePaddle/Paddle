@@ -52,11 +52,6 @@ struct TensorStatus {
   TensorStatus& operator=(TensorStatus&&) = delete;
 
   TensorInplaceVersion inplace_version_counter{0};
-
-  /**
-   * For Scalar Tensor design
-   */
-  bool is_scalar{false};
 };
 
 }  // namespace pten

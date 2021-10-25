@@ -46,8 +46,7 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
 
   // 5. Prepare outputs
   Tensor out;
-  auto dense_out =
-      std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());
+  auto dense_out = std::make_shared<pten::DenseTensor>(out_meta);
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 

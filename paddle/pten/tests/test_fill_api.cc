@@ -36,8 +36,7 @@ TEST(API, full_like) {
       pten::TensorMeta(framework::make_ddim({3, 2}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
 
@@ -70,8 +69,7 @@ TEST(API, zeros_like) {
       pten::TensorMeta(framework::make_ddim({3, 2}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 1;
 
@@ -102,8 +100,7 @@ TEST(API, ones_like) {
       pten::TensorMeta(framework::make_ddim({3, 2}),
                        pten::Backend::CPU,
                        pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+                       pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
 

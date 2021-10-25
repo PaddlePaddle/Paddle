@@ -52,8 +52,6 @@ class DenseTensor : public TensorBase {
   // Not allowed to initialize a tensor without descriptive metadata
   DenseTensor() = delete;
 
-  // DenseTensor(const DenseTensor&) = delete;
-  // DenseTensor& operator=(const DenseTensor&) = delete;
   DenseTensor(DenseTensor&&) = delete;
   DenseTensor& operator=(DenseTensor&&) = delete;
 
@@ -63,11 +61,9 @@ class DenseTensor : public TensorBase {
    *
    * Note: Tensor objects lacking meta information are not allowed to exist.
    */
-  DenseTensor(const TensorMeta& meta, const TensorStatus& status)
-      : meta_(meta), status_(status) {}
+  explicit DenseTensor(const TensorMeta& meta) : meta_(meta) {}
 
-  DenseTensor(TensorMeta&& meta, TensorStatus&& status)
-      : meta_(std::move(meta)), status_(std::move(status)) {}
+  explicit DenseTensor(TensorMeta&& meta) : meta_(std::move(meta)) {}
 
   int64_t numel() const override { return meta_.numel; }
 

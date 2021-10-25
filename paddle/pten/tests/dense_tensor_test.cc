@@ -24,8 +24,7 @@ TEST(DenseTensor, Constructor) {
                                             pten::Backend::CPU,
                                             pten::DataType::FLOAT32,
                                             pten::DataLayout::NCHW,
-                                            0UL),
-                           pten::TensorStatus());
+                                            0UL));
   ASSERT_EQ(tensor.dims().size(), 2);
   ASSERT_EQ(tensor.backend(), pten::Backend::CPU);
   ASSERT_EQ(tensor.data_type(), pten::DataType::FLOAT32);
