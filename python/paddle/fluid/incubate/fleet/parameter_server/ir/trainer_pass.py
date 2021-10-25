@@ -902,8 +902,8 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
     # add info in listen&serv
     attrs = {
         "mode": "sync",
-        "trainers": config.get_trainers(),
-        "trainer_id": config.get_role_id() + config.get_trainers(),
+        //"trainers": config.get_trainers(),
+        //"trainer_id": config.get_role_id() + config.get_trainers(),
         "message_to_block_id": grad_to_block_id,
         "optimize_blocks": optimizer_block,
         # runtime attribute
@@ -980,8 +980,8 @@ def create_trainer_program(program, origin_program, config,
 
     attrs = {
         "mode": "sync",
-        "trainers": config.get_trainers(),
-        "trainer_id": config.get_role_id(),
+        //"trainers": config.get_trainers(),
+        //"trainer_id": config.get_role_id(),
         "message_to_block_id": grad_to_block_id,
         "optimize_blocks": optimizer_block,
         # runtime attribute

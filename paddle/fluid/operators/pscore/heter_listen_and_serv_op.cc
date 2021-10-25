@@ -130,7 +130,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   //       return request_send_and_recv_handler_->Handle(request, response, cntl);
   //     });
 
-  request_send_and_recv_handler_->Start();
+  //request_send_and_recv_handler_->Start();
 
   while (true) {
     if (rpc_service_->IsExit()) {
@@ -171,8 +171,8 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                         "RPC service has been created unexpectedly."));
 
   std::string endpoint = Attr<std::string>("endpoint");
-  int trainers = Attr<int>("trainers");
-  int trainer_id = Attr<int>("trainer_id");
+  //int trainers = Attr<int>("trainers");
+  //int trainer_id = Attr<int>("trainer_id");
   VLOG(4) << "pserver_id: " << pserver_id << ", end_point:" << endpoint;
 
   rpc_service_ = distributed::HeterServer::GetInstance();
@@ -202,8 +202,8 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   //request_send_and_recv_handler_->SetExecutor(&executor_pool);
   //request_send_and_recv_handler_->SetMicroNum(microbatch_per_minibatch);
   //request_send_and_recv_handler_->SetMiniNum(minibatch_num);
-  request_send_and_recv_handler_->SetTrainers(trainers);
-  request_send_and_recv_handler_->SetTrainerId(trainer_id);
+  //request_send_and_recv_handler_->SetTrainers(trainers);
+  //request_send_and_recv_handler_->SetTrainerId(trainer_id);
   
   rpc_service_->SetRequestHandler(request_send_and_recv_handler_);
 
@@ -240,9 +240,9 @@ class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("pserver_id",
                  "(int, default -1), the parameter server index id")
         .SetDefault(-1);
-    AddAttr<int>("trainer_id", "(int, default 0), the trainer index id")
-        .SetDefault(0);
-    AddAttr<int>("trainers", "(int, default 0), the trainer num").SetDefault(0);
+    //AddAttr<int>("trainer_id", "(int, default 0), the trainer index id")
+    //    .SetDefault(0);
+    //AddAttr<int>("trainers", "(int, default 0), the trainer num").SetDefault(0);
     AddAttr<std::vector<std::string>>(
         "message_to_block_id",
         "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "

@@ -332,36 +332,36 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   }
 
   virtual ~RequestSendAndRecvHandler() { 
-    for (int i = 0; i < this->num_minibatch_; i++) {
-      (process_thread_[i].get())->join(); 
-    }
+   // for (int i = 0; i < this->num_minibatch_; i++) {
+   //   (process_thread_[i].get())->join(); 
+   // }
   }
 
-  void Start() {
-    task_queue_.resize(this->num_minibatch_);
-    for (int i = 0; i < this->num_minibatch_; i++) {
-      task_queue_[i].reset(
-          new ::paddle::framework::BlockingQueue<std::pair<std::string, int>>());
-    } 
-    bool has_backward = false;
-    bool has_forward = false;
-    for (auto& mpair : *message_to_prepared_ctx_) {
-      if (mpair.first.find("forward") != mpair.first.npos) {
-        has_forward = true;
-      }
-      if (mpair.first.find("backward") != mpair.first.npos) {
-        has_backward = true;
-      }
-    }
-    if (!has_forward) is_first_stage_ = true;
-    if (!has_backward) is_last_stage_ = true;
-
-    process_thread_.resize(this->num_minibatch_);
-    for (int i = 0; i < this->num_minibatch_; i++) {
-      process_thread_[i].reset(
-          new std::thread(std::bind(&RequestSendAndRecvHandler::Process, this, i)));
-    }
-  }
+//  void Start() {
+//    task_queue_.resize(this->num_minibatch_);
+//    for (int i = 0; i < this->num_minibatch_; i++) {
+//      task_queue_[i].reset(
+//          new ::paddle::framework::BlockingQueue<std::pair<std::string, int>>());
+//    } 
+//    bool has_backward = false;
+//    bool has_forward = false;
+//    for (auto& mpair : *message_to_prepared_ctx_) {
+//      if (mpair.first.find("forward") != mpair.first.npos) {
+//        has_forward = true;
+//      }
+//      if (mpair.first.find("backward") != mpair.first.npos) {
+//        has_backward = true;
+//      }
+//    }
+//    if (!has_forward) is_first_stage_ = true;
+//    if (!has_backward) is_last_stage_ = true;
+//
+//    process_thread_.resize(this->num_minibatch_);
+//    for (int i = 0; i < this->num_minibatch_; i++) {
+//      process_thread_[i].reset(
+//          new std::thread(std::bind(&RequestSendAndRecvHandler::Process, this, i)));
+//    }
+//  }
 
   //void batch_finished(int minibatch_idx, int microbatch_idx) {
   //  std::cout <<  "waiting for micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
@@ -372,39 +372,40 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   //  std::cout <<  "micro finished " << minibatch_idx << " " << microbatch_idx << std::endl;
   //}
 
-  void Process(int minibatch_idx) {
-    while (true) {
-      if (task_queue_[minibatch_idx]->Size() > 0) {
-        auto task = task_queue_[minibatch_idx]->Pop();
-        auto message_name = task.first;
-        auto micro_id = task.second;
-        int minibatch_index = micro_id / num_microbatch_;
-        int microbatch_index = micro_id % num_microbatch_;
-        auto& mini_scope = scope_->KidScope(minibatch_index);
-        auto& micro_scope = (&mini_scope)->KidScope(microbatch_index);
-      
-        PADDLE_ENFORCE_EQ(minibatch_idx, minibatch_index,
-                        platform::errors::InvalidArgument(
-                            "minibatch_idx should match"));
-        if (is_first_stage_) {
-          micro_cnt_[minibatch_index][microbatch_index]++;
-          if (micro_cnt_[minibatch_index][microbatch_index] == 1) {
-            {
-            //std::unique_lock<std::mutex> lk(this->batch_finished_mutex[minibatch_idx]);
-            (*executor_)[minibatch_idx].RunPreparedContext(
-                (*message_to_prepared_ctx_)[message_name].get(), &micro_scope,
-                false);
-            }
-            this->batch_finished_cond_var[minibatch_idx].notify_all();
-          }
-        } else {
-        (*executor_)[minibatch_idx].RunPreparedContext(
-            (*message_to_prepared_ctx_)[message_name].get(), &micro_scope,
-            false);
-        }
-      }
-    }
-  }
+//  void Process(int minibatch_idx) {
+//    while (true) {
+//      if (task_queue_[minibatch_idx]->Size() > 0) {
+//        auto task = task_queue_[minibatch_idx]->Pop();
+//        auto message_name = task.first;
+//        auto micro_id = task.second;
+//        int minibatch_index = micro_id / num_microbatch_;
+//        int microbatch_index = micro_id % num_microbatch_;
+//        auto& mini_scope = scope_->KidScope(minibatch_index);
+//        auto& micro_scope = (&mini_scope)->KidScope(microbatch_index);
+//      
+//        PADDLE_ENFORCE_EQ(minibatch_idx, minibatch_index,
+//                        platform::errors::InvalidArgument(
+//                            "minibatch_idx should match"));
+//        if (is_first_stage_) {
+//          micro_cnt_[minibatch_index][microbatch_index]++;
+//          if (micro_cnt_[minibatch_index][microbatch_index] == 1) {
+//            {
+//            //std::unique_lock<std::mutex> lk(this->batch_finished_mutex[minibatch_idx]);
+//            (*executor_)[minibatch_idx].RunPreparedContext(
+//                (*message_to_prepared_ctx_)[message_name].get(), &micro_scope,
+//                false);
+//            }
+//            this->batch_finished_cond_var[minibatch_idx].notify_all();
+//          }
+//        } else {
+//        (*executor_)[minibatch_idx].RunPreparedContext(
+//            (*message_to_prepared_ctx_)[message_name].get(), &micro_scope,
+//            false);
+//        }
+//
+//    }
+//    }
+//  }
 
   void SetMiniScopes(SharedMiniScope mini_scopes) {
       mini_scopes_ = mini_scopes;
@@ -470,9 +471,9 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
       //PADDLE_ENFORCE_LT(micro_id, num_microbatch_ * num_minibatch_,
       //                  platform::errors::InvalidArgument(
       //                      "micro_id should less than num_microbatch_ * num_minibatch_."));
-
-      int minibatch_index = micro_id / num_microbatch_;
-      int microbatch_index = micro_id % num_microbatch_;
+      
+      int minibatch_index = micro_id / 10;
+      int microbatch_index = micro_id % 10;
       
       PADDLE_ENFORCE_EQ((*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
                         platform::errors::InvalidArgument(
@@ -513,8 +514,8 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   
   int num_microbatch_;
   int num_minibatch_;
-  int trainers_;
-  int trainer_id_;
+  //int trainers_;
+  //int trainer_id_;
 
 
   std::unordered_map<int, std::unordered_map<int,int>> micro_cnt_;

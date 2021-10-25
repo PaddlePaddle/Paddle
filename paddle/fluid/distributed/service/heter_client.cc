@@ -185,13 +185,15 @@ void HeterClient::SendAndRecvAsync(
     }
 
 
+
+    auto minibatch_id = micro_id / 10;
     // select channel according to micro id
     if (mode == "forward") {
-      int num = micro_id % xpu_channels_.size();
+      int num = minibatch_id % xpu_channels_.size();
       channel = xpu_channels_[num].get();
 
     } else if (mode == "backward") {
-      int num = micro_id % previous_xpu_channels_.size();
+      int num = minibatch_id % previous_xpu_channels_.size();
       channel = previous_xpu_channels_[num].get();
     }
     ::paddle::distributed::PsService_Stub stub(channel);

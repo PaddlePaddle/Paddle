@@ -31,10 +31,12 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   bool is_last_stage = (pipelin_stage_ + 1 == num_pipeline_stages_);
   if (is_first_stage) {
     for (auto &op_desc : program_->Block(0).AllOps()) {
-      if (listen_op_ == nullptr) {
-          listen_op_ == std::move(OpRegistry::CreateOp(*op_desc));
+      auto op == std::move(OpRegistry::CreateOp(*op_desc));
+      auto op_type = op->Type();
+      if (listen_op_ == nullptr && op_type == "heter_listen_and_serv") {
+         listen_op_ = std::move(op);
       } else {
-          forward_ops_.push_back(OpRegistry::CreateOp(*op_desc));
+          forward_ops_.push_back(op);
       }
     }
     for (auto &op_desc : program_->Block(1).AllOps()) {
@@ -141,18 +143,19 @@ void HeterSectionWorker::MiniBatchBarrier(const std::vector<int>& barrier_ids) {
 //}
 
 void HeterSectionWorker::RunListen() {
-  bool is_first_stage = (pipeline_stage_ == 0);
-  for (auto &op : ops_) {
-    auto op_type = op->Type();
-    if (op_type == "heter_listen_and_serv") {
-      if (is_first_stage) {
-        if (thread_id_ == 0)
-          op->Run(*root_scope_, place_);
-      } else { // for heter worker
-        op->Run(*root_scope_, place_);
-      }
-    }
-  }
+  //bool is_first_stage = (pipeline_stage_ == 0);
+  listen_op_->Run(*root_scope_, place_); 
+  //for (auto &op : ops_) {
+  //  auto op_type = op->Type();
+  //  if (op_type == "heter_listen_and_serv") {
+  //    if (is_first_stage) {
+  //      if (thread_id_ == 0)
+  //        op->Run(*root_scope_, place_);
+  //    } else { // for heter worker
+  //      op->Run(*root_scope_, place_);
+  //    }
+  //  }
+  //}
 }
 
 void HeterSectionWorker::RunForward(int micro_id) {
@@ -254,8 +257,8 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
   tensor->Resize(framework::make_ddim(dims));
   void* tensor_data =
       tensor->mutable_data(place, framework::proto::VarType::FP32);
-    
-  auto global_micro_id = thread_id_ * num_microbatches_ + microbatch_id; 
+  auto global_micro_id = thread_id_ * 10 + microbatch_id;    
+  //auto global_micro_id = thread_id_ * num_microbatches_ + microbatch_id; 
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
