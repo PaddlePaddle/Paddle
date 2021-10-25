@@ -1572,6 +1572,7 @@ class Layer(core.Layer):
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
+
             new_t = t._copy_to(device, blocking)
             if isinstance(t, framework.ParamBase):
                 if dtype is not None and dtype != t.dtype:
