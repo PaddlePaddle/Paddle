@@ -233,7 +233,6 @@ class DenseNet(nn.Layer):
             stride=2,
             pad=3,
             act='relu')
-
         self.pool2d_max = MaxPool2D(kernel_size=3, stride=2, padding=1)
         self.block_config = block_config
         self.dense_block_func_list = []
