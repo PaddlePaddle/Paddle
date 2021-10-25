@@ -244,7 +244,7 @@ class TensorRTMatMulQuantDequantDims4DynamicTest(QuantDequantTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulQuantDequantDims4DynamicTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
-        self.dynamic_shape_params = TensorRTMatMulQuantDequantDims4Test.DynamicShapeParam(
+        self.dynamic_shape_params = TensorRTMatMulQuantDequantDims4DynamicTest.DynamicShapeParam(
             {
                 'data': [1, 28, 28]
             }, {'data': [4, 28, 28]}, {'data': [1, 28, 28]}, False)
@@ -266,7 +266,7 @@ class TensorRTMatMulQuantDequantDims4DynamicTest(QuantDequantTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
-class TensorRTMatMulQuantDequantDims4TransposeXTest(
+class TensorRTMatMulQuantDequantDims4TransposeXDynamicTest(
         TensorRTMatMulQuantDequantDims4DynamicTest):
     def set_params(self):
         self.transpose_x = True
@@ -274,7 +274,7 @@ class TensorRTMatMulQuantDequantDims4TransposeXTest(
         self.alpha = 2.0
 
 
-class TensorRTMatMulQuantDequantDims4TransposeYTest(
+class TensorRTMatMulQuantDequantDims4TransposeYDynamicTest(
         TensorRTMatMulQuantDequantDims4DynamicTest):
     def set_params(self):
         self.transpose_x = False
@@ -282,7 +282,7 @@ class TensorRTMatMulQuantDequantDims4TransposeYTest(
         self.alpha = 2.5
 
 
-class TensorRTMatMulQuantDequantDims4TransposeXYTest(
+class TensorRTMatMulQuantDequantDims4TransposeXYDynamicTest(
         TensorRTMatMulQuantDequantDims4DynamicTest):
     def set_params(self):
         self.transpose_x = True
@@ -290,7 +290,7 @@ class TensorRTMatMulQuantDequantDims4TransposeXYTest(
         self.alpha = 9.3
 
 
-class TensorRTMatMulQuantDequantDims4ScaleTest(
+class TensorRTMatMulQuantDequantDims4ScaleDynamicTest(
         TensorRTMatMulQuantDequantDims4DynamicTest):
     def set_params(self):
         self.transpose_x = False
