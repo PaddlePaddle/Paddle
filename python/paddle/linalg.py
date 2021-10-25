@@ -24,6 +24,7 @@ from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import matrix_rank
 from .tensor.linalg import svd
 from .tensor.linalg import eigh  # noqa: F401
+from .tensor.linalg import eigvalsh
 from .tensor.linalg import det
 from .tensor.linalg import slogdet
 from .tensor.linalg import pinv
@@ -42,6 +43,7 @@ __all__ = [
     'det',
     'slogdet',
     'eigh',
+    'eigvalsh',
     'pinv',
     'solve'
 ]

@@ -51,6 +51,7 @@ from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401
 from .linalg import eigh  # noqa: F401
+from .linalg import eigvalsh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
 from .logic import equal  # noqa: F401
@@ -238,6 +239,7 @@ tensor_method_func  = [ #noqa
            'mv',
            'matrix_power',
            'eigvals',
+           'eigvalsh',
            'abs',
            'acos',
            'all',
