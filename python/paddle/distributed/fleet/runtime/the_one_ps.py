@@ -590,18 +590,17 @@ class TheOnePSRuntime(RuntimeBase):
         if launch_barrier and launch_barrier_flag:
             # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
-            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_heter_worker_endpoints(
-            ) != "":
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_next_trainers(
+            ) != []:
+                wait_server_ready(self.role_maker._get_next_trainers())
 
             if self.role_maker._is_heter_parameter_server_mode:
                 previous_trainers = []
-                if self.role_maker._get_previous_trainers() != "":
+                if self.role_maker._get_previous_trainers() != []:
                     previous_trainers = self.role_maker._get_previous_trainers()
-                heter_workers = []
-                if self.role_maker._get_heter_worker_endpoints() != "":
-                    heter_workers = self.role_maker._get_heter_worker_endpoints(
-                    )
+                next_trainers = []
+                if self.role_maker._get_next_trainers() != []:
+                    next_trainers = self.role_maker._get_next_trainers()
                 cur_endpoint = ""
                 if self.role_maker._is_worker():
                     cur_endpoint = self.role_maker._get_trainer_endpoint()
@@ -609,7 +608,7 @@ class TheOnePSRuntime(RuntimeBase):
                     cur_endpoint = self.role_maker._get_heter_worker_endpoint()
                 assert cur_endpoint != "", "cur_endpoint should not be null"
                 self._heter_client = HeterClient(
-                    heter_workers, previous_trainers, cur_endpoint,
+                    next_trainers, previous_trainers, cur_endpoint,
                     self.role_maker._role_id())
 
     def _push_sparse_param(self,
