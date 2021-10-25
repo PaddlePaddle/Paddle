@@ -202,7 +202,6 @@ int32_t CtrCommonAccessor::select(float** select_values, const float** values,
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
-    // float* value = const_cast<float*>(values[value_item]);
     const float* value = values[value_item];
     select_value[CtrCommonPullValue::embed_w_index()] =
         value[common_feature_value.embed_w_index()];
@@ -270,9 +269,6 @@ bool CtrCommonAccessor::create_value(int stage, const float* value) {
   if (stage == 0) {
     return true;
   } else if (stage == 1) {
-    // auto show = CtrCommonPushValue::show(const_cast<float*>(value));
-    // auto click = CtrCommonPushValue::click(const_cast<float*>(value));
-    // TODO(zhaocaibei123): less effective than const_cast because copy
     // operation
     auto show = CtrCommonPushValue::show_const(value);
     auto click = CtrCommonPushValue::click_const(value);
@@ -306,9 +302,6 @@ std::string CtrCommonAccessor::parse_to_string(const float* v, int param) {
        i < common_feature_value.embedx_w_index(); i++) {
     os << " " << v[i];
   }
-  // auto show = common_feature_value.show(const_cast<float*>(v));
-  // auto click = common_feature_value.click(const_cast<float*>(v));
-  // TODO(zhaocaibei123): less effective than const_cast because copy operation
   auto show = common_feature_value.show_const(v);
   auto click = common_feature_value.click_const(v);
   auto score = show_click_score(show, click);
