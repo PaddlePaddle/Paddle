@@ -192,11 +192,11 @@ class CompileTimeStrategy(object):
         except Exception:
             return self.role_maker.role_id()
 
-    #def get_trainers(self):
-    #    try:
-    #        return self.role_maker._worker_num()
-    #    except Exception:
-    #        return self.role_maker.worker_num()
+    def get_trainers(self):
+        try:
+            return self.role_maker._worker_num()
+        except Exception:
+            return self.role_maker.worker_num()
 
     def get_ps_endpoint(self):
         try:

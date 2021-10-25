@@ -1265,8 +1265,8 @@ class ParameterServerLauncher(object):
                 "PADDLE_STAGE_TRAINERS_NUM": str(self.stage_trainer_num),
                 "STAGE_ID": "1",
                 "STAGE_NUM": str(len(self.stage_heter_map)),
-                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": ""
-                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2]
+                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": "",
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2],
                 "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
                 "HETER_DEVICE_TYPE": self.stage_device_map[1],
                 "TRAINING_ROLE": "TRAINER",
