@@ -225,6 +225,7 @@ __all__ = [     #noqa
            'GRU',
            'dynamic_decode',
            'MultiHeadAttention',
+           'FusedMultiHeadAttention',
            'Maxout',
            'Softsign',
            'Transformer',

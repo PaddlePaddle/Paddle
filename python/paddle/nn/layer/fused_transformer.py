@@ -43,8 +43,8 @@ class FusedMultiHeadAttention(Layer):
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
             `embed_dim`. Default None.
-        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm 
-            or post_layer_norm architecture. Default False.
+        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm (True) 
+            or post_layer_norm architecture (False). Default False.
         need_weights (bool, optional): Indicate whether to return the attention
             weights. Now, only False is supported. Default False.
         weight_attr(ParamAttr, optional):  To specify the weight parameter property.
