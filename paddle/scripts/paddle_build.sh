@@ -2389,7 +2389,7 @@ function find_temporary_files() {
 }
 
 function trt_convert_test() {
-    set +x
+    set +e
     cd ${PADDLE_ROOT}
     result_num=0
     export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python
