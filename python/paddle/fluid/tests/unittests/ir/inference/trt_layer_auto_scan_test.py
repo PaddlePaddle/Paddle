@@ -122,7 +122,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 "Output has diff between GPU and TensorRT. ")
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
-        last_passed_program = 'transpose_flatten_concat_fuse_pass.pdmodel'
+        last_passed_program = os.path.join(
+            self.trt_cache_dir, 'transpose_flatten_concat_fuse_pass.pdmodel')
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)

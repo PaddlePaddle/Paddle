@@ -2404,6 +2404,8 @@ function trt_convert_test() {
     if [ "$result_num" != "0" ];then
         exit 11
     fi
+}
+
 function build_pr_and_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
