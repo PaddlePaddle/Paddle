@@ -2380,7 +2380,7 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
         out_var_names = set()
         in_var_names = set()
 
-        for op in true_block.ops:
+        for op in branch_block.ops:
             assert isinstance(op, Operator)
             for iname in op.input_names:
                 for in_var_name in op.input(iname):
@@ -2422,6 +2422,8 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
         output_vars.append(parent_block_var)
 
     step_scope = parent_block.create_var(type=core.VarDesc.VarType.STEP_SCOPES)
+    true_out_names = [var.name for var in true_output]
+    false_out_names = [var.name for var in false_output]
     if_op = parent_block.append_op(
         type='if',
         inputs={
@@ -2433,9 +2435,10 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
         attrs={
             'true_block': true_block,
             'false_block': false_block,
-            'TrueOut': [var.name for var in true_output],
-            'FalseOut': [var.name for var in false_output],
-            'is_scalar_condition': True
+            'true_outs': true_out_names,
+            'false_outs': false_out_names,
+            'is_scalar_condition': True,
+            'skip_eager_deletion_vars': true_out_names + false_out_names
         })
 
     return output_vars

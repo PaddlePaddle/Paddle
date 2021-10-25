@@ -986,7 +986,8 @@ def _get_sub_block_path(sub_block,
                         sub_block_op_desc,
                         no_grad_set,
                         op_path_dict,
-                        sub_block_target_names=None):
+                        sub_block_target_names=None,
+                        is_true_branch=False):
     """
     Get output vars in subblock which will be assigned to parent block.
     It is used to find the grad path in subblock.
@@ -1002,17 +1003,27 @@ def _get_sub_block_path(sub_block,
     Return:
         The forward op path of sub-block corresponding to backward op.
     """
+    # for block_attr_name in ['sub_block', 'true_block', 'false_block']:
+    #     if sub_block_op_desc.has_attr(block_attr_name):
+    #         assert sub_block.idx == sub_block_op_desc._block_attr_id(
+    #                 block_attr_name)
 
-    assert sub_block_op_desc.has_attr(
-        "sub_block") and sub_block.idx == sub_block_op_desc._block_attr_id(
-            "sub_block")
     assert isinstance(sub_block_target_names, (set, type(None)))
 
     if sub_block_target_names is None:
         sub_block_target_names = sub_block_op_desc.output_arg_names
 
     # TODO(huihuangzheng): add support for recurrent op.
-    if sub_block_op_desc.type in ["conditional_block", "while"]:
+    if sub_block_op_desc.type == 'if':
+        sub_outputs = [
+            sub_block._var_recursive(var) for var in sub_block_op_desc.attr(
+                'true_outs' if is_true_branch else 'false_outs')
+        ]
+        is_while = sub_block_op_desc.type in ["while"]
+        sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
+                                           no_grad_set, op_path_dict, is_while)
+        return sub_block_op_path
+    elif sub_block_op_desc.type in ["conditional_block", "while"]:
         # Step1: get the output vars in sub-block
         sub_outputs = [
             sub_block._var_recursive(var) for var in sub_block_target_names
@@ -1090,21 +1101,23 @@ def _append_backward_ops_(block,
     for op in reversed(ops):
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
-        if op.has_attr("sub_block"):
-            sub_block = program.block(op._block_attr_id("sub_block"))
-            grad_sub_block = program._create_block()
-            grad_sub_block._set_forward_block_idx(sub_block.idx)
-            # see follwing comments for why set None here.
-            pre_input_grad_names_set = copy.copy(input_grad_names_set)
-            input_grad_names_set = None
-            sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
-            _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
-                                  no_grad_dict, grad_to_var, callbacks,
-                                  input_grad_names_set, op_path_dict)
-            input_grad_names_set = pre_input_grad_names_set
+        for block_attr_name in ['sub_block', 'true_block', 'false_block']:
+            if op.has_attr(block_attr_name):
+                sub_block = program.block(op._block_attr_id(block_attr_name))
+                grad_sub_block = program._create_block()
+                grad_sub_block._set_forward_block_idx(sub_block.idx)
+                # see follwing comments for why set None here.
+                pre_input_grad_names_set = copy.copy(input_grad_names_set)
+                input_grad_names_set = None
+                sub_block_path = op_path_dict[op._block_attr_id(
+                    block_attr_name)]
+                _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
+                                      no_grad_dict, grad_to_var, callbacks,
+                                      input_grad_names_set, op_path_dict)
+                input_grad_names_set = pre_input_grad_names_set
 
-            program._rollback()
-            grad_sub_block_list.append(grad_sub_block.desc)
+                program._rollback()
+                grad_sub_block_list.append(grad_sub_block.desc)
 
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
@@ -1221,9 +1234,10 @@ def _find_parent_op_(sub_block):
         block_desc = program.block(block_id).desc
         for op_idx in six.moves.range(block_desc.op_size()):
             op = block_desc.op(op_idx)
-            if op.has_attr("sub_block") and op._block_attr_id(
-                    "sub_block") == sub_block_id:
-                return op
+            for block_attr_name in ['sub_block', 'true_block', 'false_block']:
+                if op.has_attr(block_attr_name) and op._block_attr_id(
+                        block_attr_name) == sub_block_id:
+                    return op
 
     # NOTE(paddle-dev): When optimizer is added in conditional block,
     # sub_block may not be found.
@@ -1264,9 +1278,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
 
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
-        if op_desc.has_attr("sub_block"):
-            sub_block = block.program.block(op_desc._block_attr_id("sub_block"))
-            _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
+        for block_attr_name in ['sub_block', 'true_block', 'false_block']:
+            if op_desc.has_attr(block_attr_name):
+                sub_block = block.program.block(
+                    op_desc._block_attr_id(block_attr_name))
+                _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
 
         grad_var_ins = [
             var for var in op_desc.input_arg_names() if _is_grad_var_(var)
@@ -1296,10 +1312,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             if grad_var_ins:
                 existing_grad_var_ins = [
                     var for var in grad_var_ins
-                    if block.desc.has_var_recursive(cpt.to_bytes(var)) or var in
-                    parent_op_vars
+                    if block.desc.has_var_recursive(cpt.to_bytes(var)) or
+                    var in parent_op_vars
                 ]
-                if not existing_grad_var_ins:
+                if not existing_grad_var_ins and parent_op.type() != 'if_grad':
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
                     in recurrent op. The input of this op does not even exist in 
@@ -1824,14 +1840,16 @@ def _find_op_path_(block,
                 relevant_op_flags[i] = False
 
     for i, op in reversed(list(enumerate(block.ops))):
-        if op.has_attr("sub_block"):
-            sub_block_id = op._block_attr_id("sub_block")
-            sub_block = block.program.block(sub_block_id)
-            sub_block_target_names = output_names & set(op.output_arg_names)
-            sub_block_path = _get_sub_block_path(sub_block, op,
-                                                 set(), op_path_dict,
-                                                 sub_block_target_names)
-            op_path_dict[sub_block_id] = sub_block_path
+        for block_attr_name in ['sub_block', 'true_block', 'false_block']:
+            if op.has_attr(block_attr_name):
+                sub_block_id = op._block_attr_id(block_attr_name)
+                sub_block = block.program.block(sub_block_id)
+                sub_block_target_names = output_names & set(op.output_arg_names)
+                sub_block_path = _get_sub_block_path(
+                    sub_block, op,
+                    set(), op_path_dict, sub_block_target_names,
+                    block_attr_name == 'true_block')
+                op_path_dict[sub_block_id] = sub_block_path
 
         if _some_in_set_(
                 op.desc.output_arg_names(),

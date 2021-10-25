@@ -25,8 +25,8 @@ const char IfBaseOp::kInputs[] = "Input";
 const char IfBaseOp::kOutputs[] = "Out";
 const char IfBaseOp::kCondition[] = "Cond";
 const char IfBaseOp::kScope[] = "Scope";
-const char IfBaseOp::kTrueOutVars[] = "TrueOut";
-const char IfBaseOp::kFalseOutVars[] = "FalseOut";
+const char IfBaseOp::kTrueOutVars[] = "true_outs";
+const char IfBaseOp::kFalseOutVars[] = "false_outs";
 const char IfBaseOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 
 class IfOp : public IfBaseOp {
@@ -71,7 +71,7 @@ class IfOp : public IfBaseOp {
         is_true_branch ? IfBaseOp::kTrueOutVars : IfBaseOp::kFalseOutVars;
     auto &inner_var_names = Attr<std::vector<std::string>>(out_branch_name);
     ShareInnerOutVarsIntoOuterScope(inner_var_names, out_var_names, &cur_scope,
-                                    &scope);
+                                    const_cast<framework::Scope *>(&scope));
   }
 };
 
@@ -95,14 +95,23 @@ class IfGradOp : public IfBaseOp {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     bool is_true_branch = IsTrueBranch(scope);
-    const auto &inputs = Inputs(IfBaseOp::kInputs);
-    const auto &outside_grads =
+    const auto &input_names = Inputs(IfBaseOp::kInputs);
+    const auto &outside_grad_names =
         Outputs(framework::GradVarName(IfBaseOp::kInputs));
 
-    std::vector<std::string> inside_grads;
-    inside_grads.reserve(inputs.size());
-    for (auto &in : inputs) {
-      inside_grads.emplace_back(framework::GradVarName(in));
+    // TODO(Aurelius84): Maybe we can use outside_grad_names directly?
+    std::vector<std::string> inside_grad_names;
+    inside_grad_names.reserve(outside_grad_names.size());
+    for (auto &name : input_names) {
+      inside_grad_names.emplace_back(framework::GradVarName(name));
+    }
+
+    std::string out_branch_name =
+        is_true_branch ? IfBaseOp::kTrueOutVars : IfBaseOp::kFalseOutVars;
+    auto &inner_var_names = Attr<std::vector<std::string>>(out_branch_name);
+    std::vector<std::string> branch_grad_names;
+    for (auto &name : inner_var_names) {
+      branch_grad_names.emplace_back(framework::GradVarName(name));
     }
 
     auto *scope_var = scope.FindVar(Input(IfBaseOp::kScope));
@@ -125,112 +134,34 @@ class IfGradOp : public IfBaseOp {
     VLOG(3) << "IfGrad block.idx = " << block->ID()
             << ", scope = " << &cur_scope;
 
+    // share Out@Grad into inside_grad_names
+    const auto &input_grad_names =
+        Inputs(framework::GradVarName(IfBaseOp::kOutputs));
+    ShareInnerOutVarsIntoOuterScope(input_grad_names, branch_grad_names, &scope,
+                                    &cur_scope);
+
     framework::Executor exec(dev_place);
     exec.Run(*block->Program(), &cur_scope, block->ID(), false, true,
-             inside_grads, /* force_disable_gc */ false,
+             inside_grad_names, /* force_disable_gc */ false,
              /* keep_kid_scopes */ false);
-    // TODO(Aurelius74): Using shareDataWith to avoid data copy.
-    AssignLocalGradientToParentScope(dev_place, cur_scope, scope, inside_grads,
-                                     outside_grads);
+
+    ShareInnerOutVarsIntoOuterScope({inside_grad_names[1]},
+                                    {outside_grad_names[1]}, &cur_scope,
+                                    const_cast<framework::Scope *>(&scope));
+    AssignZeroToOutsideTensor(dev_place, inside_grad_names[0], scope);
   }
 
  private:
-  void AssignLocalGradientToParentScope(
-      const platform::Place &place, const framework::Scope &cur_scope,
-      const framework::Scope &parent_scope,
-      const std::vector<std::string> &inside_grads,
-      const std::vector<std::string> &outside_grads) const {
-    for (size_t i = 0; i < outside_grads.size(); ++i) {
-      const std::string &outside_grad_name = outside_grads[i];
-      const std::string &inside_grad_name = inside_grads[i];
-      VLOG(4) << "inside_grad_name = " << inside_grad_name
-              << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *inside_var =
-          cur_scope.FindLocalVar(inside_grad_name);
-      if (inside_var == nullptr) {
-        continue;
-      }
-      framework::Variable *outside_var =
-          parent_scope.FindVar(outside_grad_name);
-      if (outside_var == nullptr) {
-        continue;
-      }
-      platform::DeviceContext *dev_ctx =
-          platform::DeviceContextPool::Instance().Get(place);
-      framework::VisitVarType(*inside_var,
-                              AssignFunctor(outside_var, *dev_ctx));
-    }
-  }
-
-  void AssignZeroToParentScope(
-      const platform::Place &place, const framework::Scope &scope,
-      const std::vector<std::string> &inputs,
-      const std::vector<std::string> &outside_grads) const {
-    for (size_t i = 0; i < outside_grads.size(); ++i) {
-      const std::string &outside_grad_name = outside_grads[i];
-      const std::string &input_name = inputs[i];
-      VLOG(4) << "input_name = " << input_name
-              << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *input_var = scope.FindVar(input_name);
-      if (input_var == nullptr) {
-        continue;
-      }
-      framework::Variable *outside_var = scope.FindVar(outside_grad_name);
-      if (outside_var == nullptr) {
-        continue;
-      }
-
-      if (input_var->IsType<framework::LoDTensor>()) {
-        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensor>(), true,
-                          platform::errors::InvalidArgument(
-                              "Type of outside_var %s is NOT LoDTensor, which "
-                              "doesn't match input_var %s.",
-                              outside_grad_name, input_name));
-        AssignZeroToOutsideTensor(
-            place, scope, input_var->Get<framework::LoDTensor>(),
-            outside_var->GetMutable<framework::LoDTensor>());
-      } else if (input_var->IsType<framework::LoDTensorArray>()) {
-        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Type of outside_var %s is NOT LoDTensorArray, "
-                              "which doesn't match input_var %s.",
-                              outside_grad_name, input_name));
-        const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
-        auto *outside_tensors =
-            outside_var->GetMutable<framework::LoDTensorArray>();
-        PADDLE_ENFORCE_EQ(input_tensors.size(), outside_tensors->size(),
-                          platform::errors::InvalidArgument(
-                              "LoDTensorArray outside_var %s doen't have same "
-                              "size as input_var %s.",
-                              outside_grad_name, input_name));
-        for (size_t j = 0; j < input_tensors.size(); ++j) {
-          AssignZeroToOutsideTensor(place, scope, input_tensors[j],
-                                    &((*outside_tensors)[j]));
-        }
-      } else {
-        // TODO(huihuangzheng): add support for SelectedRows
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "IfGradop doesn't support non-LoDTensor output "
-            "now."));
-      }
-    }
-  }
-
   void AssignZeroToOutsideTensor(const platform::Place &place,
-                                 const framework::Scope &cur_scope,
-                                 const framework::LoDTensor &input_tensor,
-                                 framework::LoDTensor *outside_tensor) const {
-    if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
-      return;
-    }
-    VLOG(4) << "Assigning zero to " << outside_tensor;
-    outside_tensor->Resize(input_tensor.dims());
-    outside_tensor->mutable_data(place, input_tensor.type());
+                                 const std::string &var_name,
+                                 const framework::Scope &outer_scope) const {
+    VLOG(4) << "Assigning zero to " << var_name;
+    auto *var = outer_scope.FindVar(var_name);
+    auto *outside_tensor = var->GetMutable<framework::LoDTensor>();
+    outside_tensor->mutable_data(place, outside_tensor->saved_type());
     const platform::DeviceContext *dev_ctx =
         platform::DeviceContextPool::Instance().Get(place);
     math::set_constant(*dev_ctx, outside_tensor, 0.0f);
-    outside_tensor->set_lod(input_tensor.lod());
   }
 };
 
@@ -264,9 +195,14 @@ class IfGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput(IfBaseOp::kScope, this->Output(IfBaseOp::kScope));
     grad_op->SetOutput(framework::GradVarName(IfBaseOp::kInputs),
                        this->InputGrad(IfBaseOp::kInputs, false));
-    grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
+    grad_op->SetBlockAttr("true_block", this->grad_block_[0]);
+    grad_op->SetBlockAttr("false_block", this->grad_block_[1]);
     grad_op->SetAttr("is_scalar_condition",
                      this->GetAttr("is_scalar_condition"));
+    grad_op->SetAttr(IfBaseOp::kTrueOutVars,
+                     this->GetAttr(IfBaseOp::kTrueOutVars));
+    grad_op->SetAttr(IfBaseOp::kFalseOutVars,
+                     this->GetAttr(IfBaseOp::kFalseOutVars));
   }
 };
 
