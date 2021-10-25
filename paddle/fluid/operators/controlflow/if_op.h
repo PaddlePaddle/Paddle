@@ -150,7 +150,7 @@ class IfBaseOp : public framework::OperatorBase {
       const std::vector<std::string> &inner_var_names,
       const std::vector<std::string> &out_var_names,
       const framework::Scope *local_scope,
-      const framework::Scope *outer_scope) const {
+      framework::Scope *outer_scope) const {
     auto num = inner_var_names.size();
     PADDLE_ENFORCE_EQ(out_var_names.size(), num,
                       platform::errors::PreconditionNotMet(
@@ -160,9 +160,13 @@ class IfBaseOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < num; ++i) {
       auto *inner_var = local_scope->FindVar(inner_var_names[i]);
-      auto *out_var = outer_scope->FindVar(out_var_names[i]);
+      auto *out_var = outer_scope->Var(out_var_names[i]);
+      VLOG(3) << "start share " << inner_var_names[i] << " -> "
+              << out_var_names[i];
       CheckVarStatus(inner_var, inner_var_names[i]);
-      CheckVarStatus(out_var, out_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          out_var, platform::errors::PreconditionNotMet(
+                       "%s shall not be nullptr.", out_var_names[i]));
 
       auto *lod_tensor = out_var->GetMutable<framework::LoDTensor>();
       lod_tensor->ShareDataWith(inner_var->Get<framework::LoDTensor>());
