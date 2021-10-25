@@ -147,7 +147,12 @@ DeformableConvPlugin::DeformableConvPlugin(const void* data, size_t length) {
   DeserializeValue(&data, &length, &output_dim_);
 }
 
-DeformableConvPlugin::~DeformableConvPlugin() {}
+DeformableConvPlugin::~DeformableConvPlugin() {
+  if (weights_.values) {
+    cudaFree(const_cast<void*>(weights_.values));
+    weights_.values = nullptr;
+  }
+}
 
 const char* DeformableConvPlugin::getPluginType() const TRT_NOEXCEPT {
   return "deformable_conv_plugin";
@@ -204,6 +209,9 @@ int DeformableConvPlugin::enqueue(int batch_size, const void* const* inputs,
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
+#else
+    VLOG(1) << "Current CUDA arch dose not support fp16, so deformable conv "
+               "trt plugin will do nothing while data type is fp16";
 #endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
