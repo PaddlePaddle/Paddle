@@ -60,6 +60,8 @@ class TestRandintLikeAPI(unittest.TestCase):
                 for dtype in self.dtype
             ]
             outs1 = exe.run(feed={'x_bool': self.x_bool}, fetch_list=outlist1)
+            for out, dtype in zip(outs1, self.dtype):
+                self.assertTrue(out.dtype, np.dtype(dtype))
 
             # x dtype is int32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist2 = [
@@ -68,6 +70,8 @@ class TestRandintLikeAPI(unittest.TestCase):
                 for dtype in self.dtype
             ]
             outs2 = exe.run(feed={'x_int32': self.x_int32}, fetch_list=outlist2)
+            for out, dtype in zip(outs2, self.dtype):
+                self.assertTrue(out.dtype, np.dtype(dtype))
 
             # x dtype is int64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist3 = [
@@ -76,6 +80,8 @@ class TestRandintLikeAPI(unittest.TestCase):
                 for dtype in self.dtype
             ]
             outs3 = exe.run(feed={'x_int64': self.x_int64}, fetch_list=outlist3)
+            for out, dtype in zip(outs3, self.dtype):
+                self.assertTrue(out.dtype, np.dtype(dtype))
 
             # x dtype is float16 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist4 = [
@@ -85,6 +91,8 @@ class TestRandintLikeAPI(unittest.TestCase):
             ]
             outs4 = exe.run(feed={'x_float16': self.x_float16},
                             fetch_list=outlist4)
+            for out, dtype in zip(outs4, self.dtype):
+                self.assertTrue(out.dtype, np.dtype(dtype))
 
             # x dtype is float32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist5 = [
@@ -94,6 +102,8 @@ class TestRandintLikeAPI(unittest.TestCase):
             ]
             outs5 = exe.run(feed={'x_float32': self.x_float32},
                             fetch_list=outlist5)
+            for out, dtype in zip(outs5, self.dtype):
+                self.assertTrue(out.dtype, np.dtype(dtype))
 
             # x dtype is float64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist6 = [
@@ -103,6 +113,8 @@ class TestRandintLikeAPI(unittest.TestCase):
             ]
             outs6 = exe.run(feed={'x_float64': self.x_float64},
                             fetch_list=outlist6)
+            for out, dtype in zip(outs6, self.dtype):
+                self.assertTrue(out.dtype, dtype)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -116,6 +128,7 @@ class TestRandintLikeAPI(unittest.TestCase):
             for dtype in self.dtype:
                 out = paddle.randint_like(
                     x_inputs, low=-100, high=100, dtype=dtype)
+                self.assertTrue(out.numpy().dtype, np.dtype(dtype))
         paddle.enable_static()
 
     def test_errors(self):
