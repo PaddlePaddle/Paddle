@@ -2394,6 +2394,7 @@ function trt_convert_test() {
     result_num=0
     export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python
     for file_name in `find python/ -name 'test_trt_convert*'`;do
+        echo "----- test trt ut: $file_name -----"
         python $file_name
         res=$?
         if [ "$res" != "0" ];then

@@ -764,17 +764,6 @@ std::string AnalysisConfig::Summary() {
       {"mkldnn_cache_capacity", std::to_string(mkldnn_cache_capacity_)});
   os.InsetDivider();
 
-  auto Precision2String =
-      [](paddle::AnalysisConfig::Precision prec) -> std::string {
-    if (prec == Precision::kFloat32)
-      return "fp32";
-    else if (prec == Precision::kHalf)
-      return "fp16";
-    else if (prec == Precision::kInt8)
-      return "int8";
-    else
-      return "None";
-  };
   // gpu info
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
@@ -787,6 +776,17 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
     if (use_tensorrt_) {
 #ifdef PADDLE_WITH_TENSORRT
+      auto Precision2String =
+          [](paddle::AnalysisConfig::Precision prec) -> std::string {
+        if (prec == Precision::kFloat32)
+          return "fp32";
+        else if (prec == Precision::kHalf)
+          return "fp16";
+        else if (prec == Precision::kInt8)
+          return "int8";
+        else
+          return "None";
+      };
       auto version2string =
           [](const std::tuple<int, int, int> &ver) -> std::string {
         std::ostringstream os;
