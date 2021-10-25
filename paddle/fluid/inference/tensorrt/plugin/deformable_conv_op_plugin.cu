@@ -210,8 +210,8 @@ int DeformableConvPlugin::enqueue(int batch_size, const void* const* inputs,
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
 #else
-    VLOG(1) << "Current CUDA arch dose not support fp16, so deformable conv "
-               "trt plugin will do nothing while data type is fp16";
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Current CUDA arch dose not support fp16. Please use fp32 instead."));
 #endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
