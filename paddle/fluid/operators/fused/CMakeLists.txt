@@ -83,6 +83,7 @@ if (WITH_GPU OR WITH_ROCM)
 
         op_library(fused_feedforward_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_feedforward);\n")
+
         # fused_attention_op
         op_library(fused_attention_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_attention);\n")

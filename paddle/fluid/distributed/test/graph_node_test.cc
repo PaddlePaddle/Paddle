@@ -138,6 +138,10 @@ void testSingleSampleNeighboor(
   for (auto g : s) {
     ASSERT_EQ(true, s1.find(g) != s1.end());
   }
+  vs.clear();
+  pull_status = worker_ptr_->batch_sample_neighboors(0, {96, 37}, 4, vs, 0);
+  pull_status.wait();
+  ASSERT_EQ(vs.size(), 2);
 }
 
 void testAddNode(
@@ -356,6 +360,7 @@ void RunServer() {
   pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
   LOG(INFO) << "first server, run start(ip,port)";
   pserver_ptr_->start(ip_, port_);
+  pserver_ptr_->build_peer2peer_connection(0);
   LOG(INFO) << "init first server Done";
 }
 
@@ -373,6 +378,7 @@ void RunServer2() {
   empty_vec2.push_back(empty_prog2);
   pserver_ptr2->configure(server_proto2, _ps_env2, 1, empty_vec2);
   pserver_ptr2->start(ip2, port2);
+  pserver_ptr2->build_peer2peer_connection(1);
 }
 
 void RunClient(

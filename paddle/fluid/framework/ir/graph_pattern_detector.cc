@@ -2697,16 +2697,18 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
   return matmul_out;
 }
 
-PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
+// shared function for matmul and matmul_v2
+PDNode *patterns::MatmulTransposeReshapePattern::operator()(
+    const std::string &op_name) {
   auto reshape_op =
       pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op(op_name);
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsInput()
-                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_op_output(op_name, "Out")
                         ->assert_is_op_input("transpose2", "X");
 
   auto transpose_out = pattern->NewNode(transpose_out_repr())
