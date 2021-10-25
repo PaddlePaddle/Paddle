@@ -187,9 +187,9 @@ class EagerTensor final {
   }
 
   /** Part 9: Get framework::Variable from EagerTensor **/
-  const paddle::framework::Variable& Var() const { return var_->Var(); }
+  const paddle::framework::Variable& Var() const { return var_; }
 
-  paddle::framework::Variable* MutableVar() { return var_->MutableVar(); }
+  paddle::framework::Variable* MutableVar() { return &var_; }
 
  private:
   std::shared_ptr<paddle::experimental::Tensor> tensor_ = nullptr;

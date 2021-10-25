@@ -84,7 +84,8 @@ TEST(Generated, Matmul_v2) {
   RetainGradForTensor(Y);
 
   auto output_tensor = matmul_v2_dygraph_function(
-      X, Y, false /*trans_x*/, false /*trans_y*/, false /*use_mkldnn*/,
+      X, Y, false /*trans_x*/, false /*trans_y*/, {} /**fused_reshape_Out**/,
+      {} /**fused_transpose_Out**/, false /*use_mkldnn*/,
       "float32" /*mkldnn_data_type*/, 0 /*op_role*/, {} /*op_role_var*/,
       "" /*op_namescope*/, {} /*op_callstack*/, "" /*op_device*/,
       false /*with_quant_attr*/, true /*trace_backward*/);

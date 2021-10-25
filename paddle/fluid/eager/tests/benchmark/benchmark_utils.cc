@@ -93,6 +93,7 @@ void benchmark_eager_intermediate_matmul_accuracy_check(
   for (size_t i = 0; i < max_num_runs; i++) {
     input_tensor0 = matmul_v2_dygraph_function(
         input_tensor0, Y, false /*trans_x*/, false /*trans_y*/,
+        {} /**fused_reshape_Out**/, {} /**fused_transpose_Out**/,
         false /*use_mkldnn*/, "float32" /*mkldnn_data_type*/, 0 /*op_role*/,
         {} /*op_role_var*/, "" /*op_namescope*/, {} /*op_callstack*/,
         "" /*op_device*/, false /*with_quant_attr*/, true /*trace_backward*/);
@@ -120,6 +121,7 @@ void benchmark_eager_intermediate_matmul(const egr::EagerTensor& X,
   for (size_t i = 0; i < max_num_benchmark_runs; i++) {
     input_tensor0 = matmul_v2_dygraph_function(
         input_tensor0, Y, false /*trans_x*/, false /*trans_y*/,
+        {} /**fused_reshape_Out**/, {} /**fused_transpose_Out**/,
         false /*use_mkldnn*/, "float32" /*mkldnn_data_type*/, 0 /*op_role*/,
         {} /*op_role_var*/, "" /*op_namescope*/, {} /*op_callstack*/,
         "" /*op_device*/, false /*with_quant_attr*/, true /*trace_backward*/);
