@@ -340,19 +340,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      for (auto& param_name : desc.Inputs()) {
-        for (auto& var_name : param_name.second) {
-          auto* var_desc = block->FindVar(var_name);
-          const auto shape = var_desc->GetShape();
-          if (shape.size() < 3) {
-            VLOG(3)
-                << "matmul op dims < 3 not supported in tensorrt, but got dims "
-                << shape.size() << ", so jump it.";
-            return false;
-          }
-        }
-      }
-
       // not support broadcast
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
@@ -369,6 +356,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           VLOG(3) << "matmul op not support broadcast, please check "
                      "inputs'shape[i]. ";
           return false;
+        }
+      }
+
+      for (auto& param_name : desc.Inputs()) {
+        for (auto& var_name : param_name.second) {
+          auto* var_desc = block->FindVar(var_name);
+          const auto shape = var_desc->GetShape();
+          if (shape.size() < 3) {
+            VLOG(3)
+                << "matmul op dims < 3 not supported in tensorrt, but got dims "
+                << shape.size() << ", so jump it.";
+            return false;
+          }
         }
       }
     }
