@@ -11,14 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import copy
 from paddle.nn import functional as F
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
 from paddle.framework import ParamAttr
 import paddle
-from paddle.nn.layer.transformer import _convert_attention_mask
+from paddle.nn.layer.transformer import _convert_attention_mask, _convert_param_attr_to_list
 from paddle.nn.initializer import Constant
 
 import collections
@@ -289,7 +287,7 @@ class FusedFeedForward(Layer):
             shape=[d_model], attr=None, is_bias=True)
 
     def forward(self, src, cache=None):
-        out = F.fused_feedforward(
+        out = incubate_f.fused_feedforward(
             src, self._linear1_weight, self._linear2_weight, self._linear1_bias,
             self._linear2_bias, self._ln1_scale, self._ln1_bias,
             self._ln2_scale, self._ln2_bias, self._dropout_rate,
