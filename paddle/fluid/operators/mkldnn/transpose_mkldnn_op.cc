@@ -29,14 +29,14 @@ class TransposeMKLDNNHandler {
  public:
   TransposeMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                          std::vector<int>& axis,      // NOLINT
-                         mkldnn::engine engine)
+                         dnnl::engine engine)
       : dims_(dims),
         axis_(axis),
         logical_axis_(dims.size(), 0),
         engine_(engine) {}
 
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const MKLDNNMemoryFormat& fmt, void* ptr) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const MKLDNNMemoryFormat& fmt,
+                                                 void* ptr) {
     // Make memory descriptor using input format, unless it
     // cannot be trusted (nchw) then make up memory fmt manually
     for (size_t i = 0; i < this->logical_axis_.size(); ++i) {
@@ -47,26 +47,26 @@ class TransposeMKLDNNHandler {
                       ? platform::MKLDNNMemDesc(
                             dims_, platform::MKLDNNGetDataType<T>(), fmt)
                       : Axis2MemoryDesc(dims_, logical_axis_);
-    return std::make_shared<mkldnn::memory>(src_md, engine_, ptr);
+    return std::make_shared<dnnl::memory>(src_md, engine_, ptr);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output,
-                                                   platform::Place place) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output,
+                                                 platform::Place place) {
     auto dst_md = Axis2MemoryDesc(dims_, axis_);
     auto dst_data = output->mutable_data<T>(place, dst_md.get_size());
-    return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
+    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
-  std::shared_ptr<mkldnn::reorder> AcquireTranspose(
-      std::shared_ptr<mkldnn::memory> dst_memory_p,
-      std::shared_ptr<mkldnn::memory> src_memory_p) {
-    return std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
+  std::shared_ptr<dnnl::reorder> AcquireTranspose(
+      std::shared_ptr<dnnl::memory> dst_memory_p,
+      std::shared_ptr<dnnl::memory> src_memory_p) {
+    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
   }
 
  protected:
-  mkldnn::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
-                                       std::vector<int>& axis          // NOLINT
-                                       ) {
+  dnnl::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
+                                     std::vector<int>& axis          // NOLINT
+                                     ) {
     size_t ndims = axis.size();
 
     std::vector<int64_t> strides(ndims);
@@ -75,8 +75,8 @@ class TransposeMKLDNNHandler {
       strides[axis[i]] = total_stride;
       total_stride *= nchw_tz[axis[i]];
     }
-    mkldnn::memory::desc mem_d(nchw_tz, platform::MKLDNNGetDataType<T>(),
-                               strides);
+    dnnl::memory::desc mem_d(nchw_tz, platform::MKLDNNGetDataType<T>(),
+                             strides);
 
     return mem_d;
   }
@@ -85,7 +85,7 @@ class TransposeMKLDNNHandler {
   std::vector<int64_t> dims_;
   std::vector<int> axis_;
   std::vector<int> logical_axis_;
-  mkldnn::engine engine_;
+  dnnl::engine engine_;
 };
 
 template <typename T>
