@@ -179,8 +179,6 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     VLOG(2) << "micro steps fw_step:" << fw_step;
   }
 
-  // VLOG(0) << "startup_steps:" << startup_steps;
-
   // 1f1b phase
   while (fw_step < num_microbatches_) {
     RunForward(fw_step, gc, unused_vars_);
