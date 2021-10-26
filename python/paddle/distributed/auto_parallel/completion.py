@@ -829,12 +829,12 @@ def complete_update_annotation(auto_parallel_main_prog, dist_context):
                 op_attr.set_input_dims_mapping(grad_var.name, ref_dims_mapping)
                 op_attr.set_input_dims_mapping(param.name, ref_dims_mapping)
                 op_attr.set_output_dims_mapping(param.name, ref_dims_mapping)
-                op_attr.set_input_dims_mapping('LearningRate', [-1])
-                op_attr.set_output_dims_mapping('LearningRate', [-1])
+                learning_var = vars[op.input("LearningRate")[0]]
+                op_attr.set_input_dims_mapping(learning_var.name, [-1])
+                op_attr.set_output_dims_mapping(learning_var.name, [-1])
 
                 if not learning_rate_completed:
                     learning_rate_completed = True
-                    learning_var = vars[op.input("LearningRate")[0]]
                     var_dist_attr = TensorDistributedAttribute(learning_var,
                                                                dist_context)
                     var_dist_attr.set_process_mesh(ref_process_mesh)
