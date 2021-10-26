@@ -1477,6 +1477,7 @@ class Layer(core.Layer):
                     param_applied.stop_gradient = param.stop_gradient
                     if hasattr(param_applied, 'is_distributed'):
                         param_applied.is_distributed = param.is_distributed
+                    param_applied.name = param.name + param_applied.name
                     self._parameters[key] = param_applied
 
                 if param.grad is not None:
