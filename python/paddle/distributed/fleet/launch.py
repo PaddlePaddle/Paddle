@@ -584,9 +584,10 @@ def launch():
 
     if args.backend == 'auto':
         distribute_mode = which_distributed_mode(args)
-        assert args.backend in [
-            'gloo', 'nccl', 'bkcl', 'unknown'
-        ]  # which_distributed_mode must modify args.backend
+        if distribute_mode == DistributeMode.COLLECTIVE:
+            assert args.backend in [
+                'gloo', 'nccl', 'bkcl', 'unknown'
+            ]  # if COLLECTIVE, then which_distributed_mode must modify args.backend
     else:
         assert args.run_mode == 'collective' or args.run_mode == None, "When backend is not 'auto', run mode must be collective"
         check_backend(args.backend)
@@ -594,14 +595,14 @@ def launch():
 
     block_windows_and_macos(
         args.backend)  # raise error when using gloo on windows or macos
-    if args.backend == 'gloo':
-        logger.warning("launch start with CPUONLY mode")
 
     if enable_elastic(args, distribute_mode):
         launch_elastic(args, distribute_mode)
         return
 
     if distribute_mode == DistributeMode.COLLECTIVE:
+        if args.backend == 'gloo':
+            logger.warning("launch start with CPUONLY mode")
         launch_collective(args)
     else:
         launch_ps(args, distribute_mode)
