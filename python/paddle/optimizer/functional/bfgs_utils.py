@@ -30,6 +30,22 @@ def matnorm(x):
 def any_active(state):
     return paddle.any(state == 0)
 
+def any_active_with_predicates(state, *predicates):
+    r"""Tests whether there's any active state also satisfies all the
+    predicates.
+    
+    Args:
+        state (Tensor): the search state of dtype int8. For each element, 0 
+            represents active state.
+        predicates (List[Tensor]): a list of boolean typed tensors of the
+            same shape with `state`.
+    
+    Returns:
+        A scalar boolean tensor. True if any element in `state` is active and
+        the corresponding predicate values are all True. Otherwise False.
+    """
+    return paddle.any(paddle.logical_and(active_state(state), *predicates))
+
 def active_state(state):
     return state == 0
 
@@ -38,6 +54,24 @@ def converged_state(state):
 
 def failed_state(state):
     return state == 2
+
+def make_const(tensor_like, value, dtype=None):
+    r"""Makes a tensor filled with specified constant value.
+    
+    Args:
+        tensor_like (Tensor): uses this tensor's shape and dtype to build
+            the output tensor.
+        value (float|boolean|int): fills the output tensor with this value.
+        dtype (Optional): specifies as the output tensor's dtype. Default is
+            None, in which case the output uses `tensor_like`'s dtype.
+    
+    Returns:
+        The generated tensor with constant value `value` with the desired 
+        dtype. 
+    """
+    if dtype is None:
+        dtype = tensor_like.dtype
+    return paddle.to_tensor(value, dtype).broadcast_to(tensor_like.shape)
 
 def make_state(tensor_like, value='active'):
     r"""Makes BFGS state tensor. Default is all zeros.
@@ -64,9 +98,7 @@ def make_state(tensor_like, value='active'):
     return state
 
 def update_state(input_state, predicate, new_state)
-    r"""Change some BFGS states to new specified state.
-    
-    Updates the state on the locations where the old value is 0 and 
+    r"""Updates the state on the locations where the old value is 0 and 
     corresponding predicate is True.
 
     Args:

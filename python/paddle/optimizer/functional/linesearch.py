@@ -15,8 +15,8 @@
 import paddle
 from ...autograd import vjp
 from .bfgs import SearchState
-from .bfgs_utils import as_float_tensor, make_state, update_state
-from .bfgs_utils import vnorm_inf, vnorm_p
+from .bfgs_utils import as_float_tensor, make_state, update_state, 
+from .bfgs_utils import vnorm_inf, vnorm_p, any_predicates
 from .bfgs_utils import any_active, active_state, converged_state, failed_state
 
 _hz_params = {
@@ -38,7 +38,7 @@ def initial(state, params):
     r"""Generates initial step size.
     
     Args:
-        k (int): the iteration number.
+        state (Tensor): the search state tensor.
         params(Dict): the control parameters used in the HagerZhang method.
 
     Returns:
@@ -75,21 +75,97 @@ def initial(state, params):
     
     return c
 
-def bracket(state, phi, c, params):
-    r"""Generates opposite slope interval."""
-
-    # B0. c_-1 = c
-    #
-    # B1. If phi'(c) >= 0, then return [c_-1, c]
-    #
-    # B2. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
-    #     then return Bisect([0, c])
-    #
-    # B3. Otherwise, c_-1 = c, c = rho * c, goto B1
-
-    prev_c = c
-
+def bracket(state, phi, c, params, max_iters):
+    r"""Generates opposite slope interval.
+        
+    Args:
+        state (Tensor): the search state tensor.
+        phi (Callable): the restricted function on the search line.
+        c (Tensor): the initial step sizes.
+        params (Dict): the control parameters used in the HagerZhang method.
+        max_iters (int): the maximum iterations.
     
+    Returns:
+        [a, b]: left ends and right ends of the result intervels.
+    """
+
+    # B0. Initialize j = 0, c_0 = c
+    #
+    # B1. If phi'(c_j) >= 0, then return [c_j-1, c_j]
+    #
+    # B2. If phi'(c_j) < 0 and phi(c_j) > phi(0) + epsilon_k,
+    #     then return Bisect([0, c_j])
+    #
+    # B3. Otherwise, c_j = c, c_j+1 = rho * c, j = j + 1, goto B1
+    eps, rho = params['eps'], params['rho']
+    epsilon_k = eps * state.Ck
+
+    # f0 = phi(0)
+    f0 = state.fk
+
+    # The following loop repeatedly applies B3 if condition allows
+    iters = 0
+    expanding = True
+    prev_c = make_const(c, .0)
+    # f = phi(c), g = phi'(c)
+    f, g = vjp(phi, c)
+    
+    while expanding and iters < max_iters:
+        # Generates the B3 condition in a boolean tensor.
+        B3_cond = paddle.logical_and(g < .0, f <= f0 + epsilon_k)
+
+        # Sets [prev_c, c] to [c, rho*c] if B3 is true.
+        prev_c = paddle.where(B3_cond, c, prev_c)
+        c = paddle.where(B3_cond, rho*c, c)
+
+        # Calculates function values and gradients for the new step size.
+        f, g = vjp(phi, c)
+
+        expanding = any_active_with_predicates(state.state, B3_cond)
+        iters += 1
+    
+    # (TODO) Line search stops on the still expanding step sizes and exceeding 
+    # maximum iterations.
+    
+    # Narrows down the interval by recursively bisecting it. 
+    a, b = bisect(state, phi, make_const(c, .0), c, params)
+
+    # Condition B1, that is, the rising right end
+    B1_cond = g >= .0
+    
+    # Condition B2, that is, 
+    B2_cond = paddle.logical_and(g < .0, f > f0 + epsilon_k)
+
+    # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
+    a = paddle.where(B2_cond, a, prev_c)
+
+    # Sets [_, b] to [_, c] if B1 holds, [_, b] if B2 holds
+    b = paddle.where(B2_cond, b, c)
+
+    # Invalidates the state in case neither B1 nor B2 holds.
+    failed = paddle.logical_not(paddle.logical_or(B1_cond, B2_cond))
+    state.state = update_state(state.state, failed, 'failed')
+
+    return [a, b]
+
+def bisect(state, phi, a, b, params):
+    r"""Bisects to locate opposite slope interval.
+    
+    Args:
+        state (Tensor): the search state tensor.
+        phi (Callable): the restricted function on the search line.
+        a (Tensor): holds the left ends of the intervals.
+        b (Tensor): holds the right ends of the intervals.
+        params(Dict): the control parameters used in the HagerZhang method.
+    
+    Returns:
+        [a, b]: left ends and right ends of the result intervels.   
+    """
+    # a. Let d = (1 - theta)*a + theta*b, if phi'(d) >= 0, then return [a, d]
+
+    # b. If phi'(d) < 0 and phi(d) > phi(0) + epsilon_k, then Bisect([a, d])
+
+    # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
 
 def hz_linesearch(state,
                   func,
@@ -311,9 +387,8 @@ def hz_linesearch(state,
     c = initial(state, params)
 
     # Generates the opposite slope interval
-    a, b = bracket(state, phi, c, params)
+    a, b = bracket(state, phi, c, params, max_iters=max_iters)
 
-    brackets(select, phi, phi0,  params=params)
 
     return 
 

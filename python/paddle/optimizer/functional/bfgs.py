@@ -75,6 +75,7 @@ class SearchState(object):
         self.Hk = Hk
         self.k = k
         self.ak = ak
+        self.Ck = fk
         self.nf = nf
         self.ng = ng
         self.state = make_state(fk)
