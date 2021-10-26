@@ -376,6 +376,7 @@ def which_distributed_mode(args):
         args.backend = 'bkcl'
         accelerators = fluid.core.get_xpu_device_count()
     else:
+        args.backend = 'gloo'
         accelerators = 0
 
     if len(has_ps_args) > 0:
@@ -400,7 +401,6 @@ def which_distributed_mode(args):
 But found args.servers not empty, default use ps mode")
                 return DistributeMode.PS
             else:
-                args.backend = "gloo"
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
