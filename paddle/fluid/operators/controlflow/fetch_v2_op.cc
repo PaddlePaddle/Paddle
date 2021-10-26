@@ -188,8 +188,11 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
-                               ops::FetchV2Kernel, int, ops::FetchV2Kernel,
-                               int64_t, ops::FetchV2Kernel, bool,
-                               ops::FetchV2Kernel, plat::float16,
-                               ops::FetchV2Kernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(
+    fetch_v2, float, ops::FetchV2Kernel, double, ops::FetchV2Kernel, int8_t,
+    ops::FetchV2Kernel, uint8_t, ops::FetchV2Kernel, int, ops::FetchV2Kernel,
+    int64_t, ops::FetchV2Kernel, bool, ops::FetchV2Kernel,
+    paddle::platform::bfloat16, ops::FetchV2Kernel,
+    paddle::platform::complex<float>, ops::FetchV2Kernel,
+    paddle::platform::complex<double>, ops::FetchV2Kernel, plat::float16,
+    ops::FetchV2Kernel, int16_t, ops::FetchV2Kernel);
