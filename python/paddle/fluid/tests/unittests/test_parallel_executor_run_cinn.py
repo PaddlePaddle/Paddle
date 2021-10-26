@@ -95,7 +95,7 @@ class TestAddReluAccuracy(unittest.TestCase):
             loss = paddle.mean(loss)
             sgd = paddle.optimizer.SGD(learning_rate=0.001)
             sgd.minimize(loss)
-        return x, y, z, loss
+        return loss
 
     def Run(self, place, iters, feed, use_cinn=False):
         set_cinn_flag(use_cinn)
@@ -103,7 +103,7 @@ class TestAddReluAccuracy(unittest.TestCase):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
 
-        x, y, z, loss = self.BuildProgram(main_program, startup_program)
+        loss = self.BuildProgram(main_program, startup_program)
         exe = paddle.static.Executor(place)
 
         parallel_exec = paddle.static.CompiledProgram(
@@ -131,8 +131,8 @@ class TestAddReluAccuracy(unittest.TestCase):
         loss_t = self.Run(place, loop_num, feed, use_cinn=True)
         loss_f = self.Run(place, loop_num, feed, use_cinn=False)
 
-        max_err = np.max(np.fabs(np.asarray(loss_t) - np.asarray(loss_f)))
-        self.assertLessEqual(max_err, 1e-5)
+        for i in range(len(loss_f)):
+            self.assertTrue(np.allclose(loss_t[i], loss_f[i], atol=1e-5))
 
 
 @unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")
@@ -164,7 +164,7 @@ class TestResnet50Accuracy(unittest.TestCase):
             loss = paddle.mean(loss)
             adam = paddle.optimizer.Adam(learning_rate=0.001)
             adam.minimize(loss)
-        return image, label, loss
+        return loss
 
     def Run(self, place, iters, feed, use_cinn=False):
         set_cinn_flag(use_cinn)
@@ -172,7 +172,7 @@ class TestResnet50Accuracy(unittest.TestCase):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
 
-        x, y, loss = self.BuildProgram(main_program, startup_program)
+        loss = self.BuildProgram(main_program, startup_program)
         exe = paddle.static.Executor(place)
 
         parallel_exec = paddle.static.CompiledProgram(
@@ -200,8 +200,8 @@ class TestResnet50Accuracy(unittest.TestCase):
         loss_t = self.Run(place, loop_num, feed, use_cinn=True)
         loss_f = self.Run(place, loop_num, feed, use_cinn=False)
 
-        max_err = np.max(np.fabs(np.asarray(loss_t) - np.asarray(loss_f)))
-        self.assertLessEqual(max_err, 1e-5)
+        for i in range(len(loss_f)):
+            self.assertTrue(np.allclose(loss_t[i], loss_f[i], atol=1e-5))
 
 
 if __name__ == '__main__':
