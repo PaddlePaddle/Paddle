@@ -643,8 +643,14 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
         # complete the initial grad loss op
         if idx == first_backward_op_idx:
             assert ops[idx].type == "fill_constant"
-            assert len(ops[idx].input_arg_names) == 0, "first backward op should has only ONE output, but got [{}]".format(len(ops[idx].input_arg_names))
-            assert len(ops[idx].output_arg_names) == 1, "first backward op should has only ONE output, but got [{}]".format(len(ops[idx].output_arg_names))
+            assert len(
+                ops[idx].input_arg_names
+            ) == 0, "first backward op should has only ONE output, but got [{}]".format(
+                len(ops[idx].input_arg_names))
+            assert len(
+                ops[idx].output_arg_names
+            ) == 1, "first backward op should has only ONE output, but got [{}]".format(
+                len(ops[idx].output_arg_names))
 
             grad_var = vars[ops[idx].output_arg_names[0]]
             forward_var_name = _get_forward_varname_from_grad_varname(
@@ -684,38 +690,58 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             grad_op_attr = OperatorDistributedAttribute(grad_op, dist_context)
             grad_op_attr.set_process_mesh(forward_op_attr.get_process_mesh())
 
-
             # var 
-            for output_name in grad_op.decs.output_names:
-                assert len(grad_op.decs.output(output_name)) in [0,1]
-                input_name = _get_forward_varname_from_grad_varname(output_name) 
-                assert input_name in grad_op.decs.input_names, "var [{}] in op [{}]'s output but coulf not find [{}] in its input".format(output_name, grad_op.type, input_name)
-                if len(grad_op.decs.output(output_name)) == 1:
-                    assert len(grad_op.decs.input(input_name)) == 1
-                    input_var = vars[grad_op.decs.input(input_name)[0]]
-                    input_var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(input_var)
-                    assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(input_var.name)
+            for output_name in grad_op.desc.output_names():
+                assert len(grad_op.desc.output(output_name)) in [0, 1]
+                # if grad_op.type == "cast":
+                #     input_name = "X"
+                # else:
+                if _is_grad_var_name(output_name):
+                    input_name = _get_forward_varname_from_grad_varname(
+                        output_name)
+                else:
+                    assert grad_op.type in [
+                        "cast", "c_identity", "c_allreduce_sum"
+                    ]
+                    input_name = "X"
+                assert input_name in forward_op.desc.input_names(
+                ), "var [{}] in op [{}]'s output but coulf not find [{}] in its forward op".format(
+                    output_name, grad_op.type, input_name)
+                if len(grad_op.desc.output(output_name)) == 1:
+                    assert len(forward_op.desc.input(input_name)) == 1
+                    input_var = vars[forward_op.desc.input(input_name)[0]]
+                    input_var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                        input_var)
+                    assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(
+                        input_var.name)
                     ref_dims_mapping = input_var_dist_attr.get_dims_mapping()
                     ref_process_mesh = input_var_dist_attr.get_process_mesh()
 
                     # tensor dist attr
-                    output_var = vars[grad_op.decs.output(output_name)[0]]
-                    output_var_attr = TensorDistributedAttribute(output_var, dist_context) 
+                    output_var = vars[grad_op.desc.output(output_name)[0]]
+                    output_var_attr = TensorDistributedAttribute(output_var,
+                                                                 dist_context)
                     output_var_attr.set_dims_mapping(ref_dims_mapping)
                     output_var_attr.set_process_mesh(ref_process_mesh)
-                    dist_context.set_tensor_distributed_attr_for_program(output_var, output_var_attr)
+                    dist_context.set_tensor_distributed_attr_for_program(
+                        output_var, output_var_attr)
 
                     # op dist attr
-                    grad_op_attr.set_output_dims_mapping(output_var.name, ref_dims_mapping)
+                    grad_op_attr.set_output_dims_mapping(output_var.name,
+                                                         ref_dims_mapping)
 
             for input_name in grad_op.input_arg_names:
                 input_var = vars[input_name]
-                input_var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(input_var)
-                assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(input_var.name)
+                input_var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                    input_var)
+                assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(
+                    input_var.name)
                 ref_dims_mapping = input_var_dist_attr.get_dims_mapping()
-                assert ref_dims_mapping is not None, "[{}] 's dims mapping is NONE".format(input_var.name)
-                grad_op_attr.set_input_dims_mapping(input_name, ref_dims_mapping)
-                
+                assert ref_dims_mapping is not None, "[{}] 's dims mapping is NONE".format(
+                    input_var.name)
+                grad_op_attr.set_input_dims_mapping(input_name,
+                                                    ref_dims_mapping)
+
             dist_context.set_op_distributed_attr_for_program(grad_op,
                                                              grad_op_attr)
 
@@ -751,7 +777,8 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
                 grad_op_attr.set_input_dims_mapping(
                     var_name, ref_forward_var_dims_mapping)
 
-            grad_op_attr.set_output_dims_mapping(grad_op.output_arg_names[0], ref_forward_var_dims_mapping)
+            grad_op_attr.set_output_dims_mapping(grad_op.output_arg_names[0],
+                                                 ref_forward_var_dims_mapping)
             dist_context.set_op_distributed_attr_for_program(grad_op,
                                                              grad_op_attr)
 
@@ -764,28 +791,86 @@ def complete_update_annotation(auto_parallel_main_prog, dist_context):
 
     ops = list(auto_parallel_main_prog.global_block().ops)
     vars = auto_parallel_main_prog.global_block().vars
+    learning_rate_completed = False
 
     for idx in range(len(ops)):
 
         # complete the annotation of the optimizer op.
         # TODO to add attribute for moment var
-        if int(ops[idx].attr('op_role')) == int(OpRole.Optimize):
-            if "Grad" in ops[idx].input_names and "Param" in ops[
-                    idx].input_names:
-                assert len(ops[idx].input(
+        op = ops[idx]
+        if int(op.attr('op_role')) == int(OpRole.Optimize):
+
+            if "Grad" in op.input_names and "Param" in ops[idx].input_names:
+                assert len(op.input(
                     "Param")) == 1, "Only support one-to-one now."
-                assert len(ops[idx].input(
+                assert len(op.input(
                     "Grad")) == 1, "Only support one-to-one now."
-                param = vars[ops[idx].input("Param")[0]]
-                grad_var = vars[ops[idx].input("Grad")[0]]
-                process_mesh = dist_context.get_tensor_distributed_attr_for_program(
+                param = vars[op.input("Param")[0]]
+                grad_var = vars[op.input("Grad")[0]]
+
+                param_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                    param)
+                grad_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                    grad_var)
+
+                assert param_dist_attr is not None
+                assert grad_dist_attr is not None
+                assert param_dist_attr.get_dims_mapping(
+                ) == grad_dist_attr.get_dims_mapping()
+
+                ref_process_mesh = dist_context.get_tensor_distributed_attr_for_program(
                     param).get_process_mesh()
-                dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                assert ref_process_mesh is not None
+                ref_dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
                     param).get_dims_mapping()
-                op_attr = OperatorDistributedAttribute(ops[idx], dist_context)
-                op_attr.set_process_mesh(process_mesh)
-                op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
-                op_attr.set_input_dims_mapping(param.name, dims_mapping)
-                dist_context.set_op_distributed_attr_for_program(ops[idx],
-                                                                 op_attr)
+                assert ref_dims_mapping is not None
+                op_attr = OperatorDistributedAttribute(op, dist_context)
+                op_attr.set_process_mesh(ref_process_mesh)
+                op_attr.set_input_dims_mapping(grad_var.name, ref_dims_mapping)
+                op_attr.set_input_dims_mapping(param.name, ref_dims_mapping)
+                op_attr.set_output_dims_mapping(param.name, ref_dims_mapping)
+                op_attr.set_input_dims_mapping('LearningRate', [-1])
+                op_attr.set_output_dims_mapping('LearningRate', [-1])
+
+                if not learning_rate_completed:
+                    learning_rate_completed = True
+                    learning_var = vars[op.input("LearningRate")[0]]
+                    var_dist_attr = TensorDistributedAttribute(learning_var,
+                                                               dist_context)
+                    var_dist_attr.set_process_mesh(ref_process_mesh)
+                    var_dist_attr.set_dims_mapping([-1])
+                    dist_context.set_tensor_distributed_attr_for_program(
+                        learning_var, var_dist_attr)
+
+                for input_name in op.desc.input_names():
+
+                    if input_name in [
+                            'Param', 'Grad', 'LearningRate', "SkipUpdate",
+                            "Beta1Tensor", "Beta2Tensor", "EpsilonTensor",
+                            "MasterParam"
+                    ]:
+                        continue
+
+                    assert len(op.desc.input(input_name)) == 1
+                    input_var = vars[op.desc.input(input_name)[0]]
+                    input_var_attr = TensorDistributedAttribute(input_var,
+                                                                dist_context)
+
+                    if "Beta1Pow" in input_name or "Beta2Pow" in input_name:
+                        input_var_attr.set_dims_mapping([-1])
+                        op_attr.set_input_dims_mapping(input_var.name, [-1])
+                        op_attr.set_output_dims_mapping(input_var.name, [-1])
+                    else:
+                        assert "Moment" in input_name
+                        input_var_attr.set_dims_mapping(ref_dims_mapping)
+                        op_attr.set_input_dims_mapping(input_var.name,
+                                                       ref_dims_mapping)
+                        op_attr.set_output_dims_mapping(input_var.name,
+                                                        ref_dims_mapping)
+
+                    input_var_attr.set_process_mesh(ref_process_mesh)
+                    dist_context.set_tensor_distributed_attr_for_program(
+                        input_var, input_var_attr)
+
+                dist_context.set_op_distributed_attr_for_program(op, op_attr)
                 continue
