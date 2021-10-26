@@ -10,6 +10,7 @@ nv_library(tensorrt_plugin
            roi_align_op_plugin.cu
            gather_nd_op_plugin.cu
            mish_op_plugin.cu
+           pool3d_op_plugin.cu
            matmul_op_int8_plugin.cu
            DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
 
