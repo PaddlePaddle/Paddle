@@ -247,9 +247,9 @@ class TensorRTMatMulQuantDequantDims4DynamicTest(QuantDequantTest):
         self.dynamic_shape_params = TensorRTMatMulQuantDequantDims4DynamicTest.DynamicShapeParam(
             {
                 'data': [1, 28, 28],
-                'reshape2_0.tmp_0': [1, 1, 7, 7]
+                'reshape2_0.tmp_0': [1, 16, 7, 7]
             }, {'data': [4, 28, 28],
-                'reshape2_0.tmp_0': [4, 32, 7, 7]},
+                'reshape2_0.tmp_0': [4, 16, 7, 7]},
             {'data': [3, 28, 28],
              'reshape2_0.tmp_0': [3, 16, 7, 7]}, False)
         self.activation_quantize_type = 'moving_average_abs_max'
