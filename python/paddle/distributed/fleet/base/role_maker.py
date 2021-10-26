@@ -531,7 +531,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._stage_id = 1
         self._stage_num = 1
         self._next_heter_trainer_endpoints = []
-        self._previous_heter_traier_endpoints = []        
+        self._previous_heter_trainer_endpoints = []        
         self._heter_trainer_endpoints = []
         self._heter_trainer_device = "CPU"
         self._is_heter_parameter_server_mode = False
