@@ -445,18 +445,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
-    if (ctx.HasInput("DDX") == false) {
-      OP_INOUT_CHECK(ctx.HasInput("DDY"), "Input", "DDY",
-                     "ElementwiseOpTripleGrad");
-      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDY");
-    } else if (ctx.HasInput("DDY") == false) {
-      OP_INOUT_CHECK(ctx.HasInput("DDX"), "Input", "DDX",
-                     "ElementwiseOpTripleGrad");
-      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
-    } else {
-      input_data_type =
-          OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "DDX", "DDY");
-    }
+    input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "D_DDOut");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
