@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import copy
-from .. import functional as F
+from paddle.nn import functional as F
+from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
-from ...framework import ParamAttr
+from paddle.framework import ParamAttr
 import paddle
-from paddle.nn.layer.transformer import _convert_attention_mask, _convert_param_attr_to_list
-from ..initializer import Constant
+from paddle.nn.layer.transformer import _convert_attention_mask
+from paddle.nn.initializer import Constant
 
 import collections
 
@@ -35,16 +36,16 @@ class FusedMultiHeadAttention(Layer):
         num_heads (int): The number of heads in multi-head attention.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention.
-            0 for no dropout. Default 0.
+            0 for no dropout. Default 0.5.
         attn_dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout in attention.
-            0 for no dropout. Default 0.
+            0 for no dropout. Default 0.5.
         kdim (int, optional): The feature size in key. If None, assumed equal to
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
             `embed_dim`. Default None.
-        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm
-            or post_layer_norm architecture. Default False.
+        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm (True)
+            or post_layer_norm architecture (False). Default False.
         need_weights (bool, optional): Indicate whether to return the attention
             weights. Now, only False is supported. Default False.
         weight_attr(ParamAttr, optional):  To specify the weight parameter property.
@@ -61,7 +62,7 @@ class FusedMultiHeadAttention(Layer):
             query = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, num_heads, query_len, query_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.nn.FusedMultiHeadAttention(128, 2)
+            multi_head_attn = paddle.incubate.nn.FusedMultiHeadAttention(128, 2)
             output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
     """
 
@@ -171,7 +172,7 @@ class FusedMultiHeadAttention(Layer):
 
         assert cache == None, "Only support cache is None now."
 
-        out = F.fused_multi_head_attention(
+        out = incubate_f.fused_multi_head_attention(
             x=query,
             qkv_weight=self.qkv_weight,
             linear_weight=self.linear_weight,

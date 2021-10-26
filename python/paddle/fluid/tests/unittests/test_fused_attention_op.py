@@ -18,6 +18,7 @@ import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+import paddle.incubate.nn.functional as incubate_f
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 from paddle.nn.layer.transformer import _convert_attention_mask
@@ -33,6 +34,7 @@ class TestFusedAttentionOp(OpTest):
         self.generate_input_data()
         paddle.set_default_dtype(self.x_type)
         self.__class__.op_type = "fused_attention"
+        # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = True
         self.q_proj = Linear(
             self.embed_dim,
@@ -193,7 +195,7 @@ class TestFusedAttentionOp(OpTest):
 
         if attn_mask is not None:
             attn_mask = _convert_attention_mask(attn_mask, x.dtype)
-        final_out = F.fused_multi_head_attention(
+        final_out = incubate_f.fused_multi_head_attention(
             x, qkv_weight_tensor, out_linear_weight, self.pre_layer_norm,
             ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon, qkv_bias_tensor,
             out_linear_bias, attn_mask, self.dropout_prob,
