@@ -98,7 +98,6 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
 endforeach()
 
 if(NOT WITH_GPU)
-
     LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
 endif()
