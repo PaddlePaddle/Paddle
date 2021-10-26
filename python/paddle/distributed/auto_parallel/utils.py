@@ -399,7 +399,7 @@ def save_static_checkpoint(program,
     Returns:
         None
 
-    Examples:
+    Example:
         >>> output_dir = os.path.join(args.output_dir, "step_%d" % step)
         >>> os.makedirs(output_dir, exist_ok=True)
         >>> save_static_checkpoint(program, output_dir)
@@ -433,12 +433,13 @@ def load_static_checkpoint(ckpt_dir, program=None, dist_attr_dir=None):
     Args:
         ckpt_dir(str|List[str]): The list of the checkpoint files in order of rank id.
         program(Program, optional): The program to be update with ckpt_dir. Default: None.
-        dist_attr_dir(str|List[str], optional): The list of the distributed attribute file in order of rank id. Default: None.
-    
-    Returns:
-        None or addition_info which user saved additional information in last train.
+        dist_attr_dir(str|List[str], optional): The list of the distributed attribute file \
+            in order of rank id. Default: None.
 
-    Examples:
+    Returns:
+        None or addition_info which user saved in last train.
+
+    Example:
         >>> exe.run(startup_program)
         >>> ckpt_dir = ['./output/step_10/model_state_rank0.pdmodel', 
         ...             './output/step_10/model_state_rank1.pdmodel',]
@@ -449,7 +450,7 @@ def load_static_checkpoint(ckpt_dir, program=None, dist_attr_dir=None):
 
     if ckpt_dir and dist_attr_dir:
         raise NotImplementedError(
-            "Merge&slice parameter with dist_attr does not implement")
+            "Merge&Slice parameter with dist_attr does not implement")
 
     elif ckpt_dir:
         assert len(ckpt_dir) == paddle.distributed.get_world_size(), \
