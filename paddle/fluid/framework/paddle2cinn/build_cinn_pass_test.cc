@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
@@ -83,6 +84,18 @@ inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
   return true;
 }
 
+// Get compilation_key values
+std::vector<std::string> GetCompilationKeys(const Graph& graph) {
+  std::vector<std::string> compilation_keys;
+  for (auto& node : graph.Nodes()) {
+    if (node->IsOp() && node->Name() == kCinnLaunchOp) {
+      compilation_keys.emplace_back(
+          BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)));
+    }
+  }
+  return compilation_keys;
+}
+
 std::unique_ptr<Graph> BuildNoCinnSubgraph() {
   ProgramDesc prog;
   auto g = std::make_unique<Graph>(prog);
@@ -133,17 +146,14 @@ TEST(BuildCinnPassTest, NoCinnSubgraph) {
 
   auto pass =
       paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
-  std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
-  pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
-                                                         &cinn_subgraphs);
   pass->Apply(g.get());
 
   // After search, origin graph should no change
   ASSERT_EQ(previous_nodes, g->Nodes());
   ASSERT_TRUE(CheckGraphIndependence(g->Nodes()));
 
-  // After search, there should one cinn subgraph
-  ASSERT_TRUE(cinn_subgraphs.empty());
+  // After search, there should be no cinn subgraph
+  ASSERT_TRUE(GetCompilationKeys(*g).empty());
 }
 
 std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
@@ -212,9 +222,6 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
 
   auto pass =
       paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
-  std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
-  pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
-                                                         &cinn_subgraphs);
   pass->Apply(g.get());
 
   // After search, the graph should as following
@@ -250,10 +257,12 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   //               | --> mul --> v3 --
   //          v2 --                   | --> add --> v5 --> relu --> v6
   //                    feed --> v4 --
-  ASSERT_EQ(cinn_subgraphs.size(), static_cast<size_t>(1));
-  const auto& subgraph = cinn_subgraphs.back();
+  auto compilation_keys = GetCompilationKeys(*g);
+  ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(1));
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
 
-  const auto& subnodes = subgraph->Nodes();
+  const auto& subnodes = subgraph.Nodes();
   ASSERT_EQ(subnodes.size(), static_cast<size_t>(11));
   ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
@@ -338,9 +347,6 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
 
   auto pass =
       paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
-  std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
-  pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
-                                                         &cinn_subgraphs);
   pass->Apply(g.get());
 
   // After search, the graph should as following
@@ -366,10 +372,12 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   // feed --> v1 --
   //               | --> mul --> v3 --> relu --> v4
   //          v2 --
-  ASSERT_EQ(cinn_subgraphs.size(), static_cast<size_t>(1));
-  const auto& subgraph = cinn_subgraphs.back();
+  auto compilation_keys = GetCompilationKeys(*g);
+  ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(1));
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
 
-  const auto& subnodes = subgraph->Nodes();
+  const auto& subnodes = subgraph.Nodes();
   ASSERT_EQ(subnodes.size(), static_cast<size_t>(7));
   ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
@@ -450,9 +458,6 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
 
   auto pass =
       paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
-  std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
-  pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
-                                                         &cinn_subgraphs);
   pass->Apply(g.get());
 
   // After search, the graph should as following
@@ -478,7 +483,8 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
 
   // After search, there should has two cinn subgraphs,
   // and each of subgraphs just has one node.
-  ASSERT_EQ(cinn_subgraphs.size(), static_cast<size_t>(2));
+  auto compilation_keys = GetCompilationKeys(*g);
+  ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(2));
 
   // subgraph1:
   // feed --> v4 --> relu --> v5
@@ -486,12 +492,13 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   // feed --> v1 --
   //               | --> mul --> v3
   //          v2 --
-  const auto& subgraph1 = cinn_subgraphs[0];
-  const auto& subnodes1 = subgraph1->Nodes();
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  const auto& subgraph1 = cinn_compiler->FindGraph(compilation_keys[0]);
+  const auto& subnodes1 = subgraph1.Nodes();
   ASSERT_TRUE(CheckGraphIndependence(subnodes1));
 
-  const auto& subgraph2 = cinn_subgraphs[1];
-  const auto& subnodes2 = subgraph2->Nodes();
+  const auto& subgraph2 = cinn_compiler->FindGraph(compilation_keys[1]);
+  const auto& subnodes2 = subgraph2.Nodes();
   ASSERT_TRUE(CheckGraphIndependence(subnodes2));
 
   if (CheckNodeExisted(subnodes1, "relu")) {
