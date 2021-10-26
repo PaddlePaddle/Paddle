@@ -24,6 +24,17 @@ namespace imperative {
 
 class VarBase;
 
+AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
+    : tracer_(tracer) {
+  pre_amp_level_ = tracer_->GetAmpLevel();
+
+  if (pre_amp_level_ != level) {
+    tracer_->SetAmpLevel(level);
+  }
+}
+
+AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
+
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
       block_ops_(new std::unordered_set<std::string>()),
@@ -117,7 +128,7 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
   imperative::NameVarBaseMap outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(tracer, 0);
+    AutoCastGuard guard(tracer, AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 

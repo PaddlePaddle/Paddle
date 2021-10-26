@@ -24,6 +24,8 @@ import paddle
 import operator
 import types
 
+AMP_LEVEL = core.AmpLevel
+
 __all__ = ['amp_guard', 'amp_decorate']
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -108,7 +110,7 @@ def _in_amp_guard():
     """
     tracer = _dygraph_tracer()
     if tracer:
-        if tracer._amp_level == 1:
+        if tracer._amp_level == core.AmpLevel.O1:
             return True
         else:
             return False
@@ -251,11 +253,11 @@ def amp_guard(enable=True,
         enable = False
 
     if level == 'O1':
-        amp_level = 1
+        amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
         _black_list = BLACK_LIST
     else:
-        amp_level = 2
+        amp_level = AMP_LEVEL.O2
         _white_list = PURE_FP16_WHITE_LIST
         _black_list = PURE_FP16_BLACK_LIST
 
@@ -264,7 +266,7 @@ def amp_guard(enable=True,
                                                 custom_black_list, level)
 
     if not enable:
-        amp_level = 0
+        amp_level = AMP_LEVEL.O0
 
     if tracer:
         # enable auto_cast
