@@ -202,6 +202,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::string(argument->xpu_autotune_file()));
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
+      pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",

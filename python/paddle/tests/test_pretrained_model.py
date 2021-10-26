@@ -54,7 +54,7 @@ class TestPretrainedModel(unittest.TestCase):
     def test_models(self):
         arches = [
             'mobilenet_v1', 'mobilenet_v2', 'resnet18', 'vgg16', 'alexnet',
-            'resnext50_32x4d'
+            'resnext50_32x4d', 'inception_v3'
         ]
         for arch in arches:
             self.infer(arch)

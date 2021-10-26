@@ -235,9 +235,9 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
-    if not (level in ['O1', 'O2']):
+    if not (level in ['O0', 'O1', 'O2']):
         raise ValueError(
-            "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
+            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16 train mode."
         )
 
     tracer = _dygraph_tracer()
@@ -256,10 +256,14 @@ def amp_guard(enable=True,
         amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
         _black_list = BLACK_LIST
-    else:
+    elif level == 'O2':
         amp_level = AMP_LEVEL.O2
         _white_list = PURE_FP16_WHITE_LIST
         _black_list = PURE_FP16_BLACK_LIST
+    elif level == 'O0':
+        amp_level = AMP_LEVEL.O0
+        _white_list = WHITE_LIST
+        _black_list = BLACK_LIST
 
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
