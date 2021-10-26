@@ -1585,7 +1585,10 @@ class Layer(core.Layer):
 
             return new_t
 
-        self._apply(transform, device, dtype, blocking)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            self._apply(transform, device, dtype, blocking)
+
         self._dtype = dtype
 
     # [aliases] Compatible with old method names
