@@ -148,10 +148,8 @@ TEST(CostModelTest, TestProfileMeasure_Graph) {
   ir::Graph graph(program);
   CostData cost_data =
       cost_model.ProfileMeasureGraph(&graph, empty_program, "cpu", {"time"});
-  double op0_time_ms = cost_data.GetOpTimeMs(7);   // Node id is 7
-  double op1_time_ms = cost_data.GetOpTimeMs(11);  // Node id is 11
-  VLOG(3) << "op0_time_ms:" << op0_time_ms;
-  VLOG(3) << "op1_time_ms:" << op1_time_ms;
+  double op0_time_ms = cost_data.GetOpTimeMs(7);   // Op node id is 7
+  double op1_time_ms = cost_data.GetOpTimeMs(11);  // Op node id is 11
   EXPECT_GT(op0_time_ms, 0);
   EXPECT_GT(op1_time_ms, 0);
   EXPECT_GT(cost_data.GetWholeTimeMs(), op0_time_ms + op1_time_ms);
