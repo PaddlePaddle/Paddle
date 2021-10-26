@@ -27,46 +27,59 @@ class TrtConvertLeakyReluTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 3, 64, 64]).astype(np.float32)
+        def generate_input1(shape):
+            return np.random.random(shape).astype(np.float32)
 
-        for alpha in [0.02, 1.0, 100.0, -1.0, 0.0]:
-            for X_scale in [1.0, 100.0, 0.01, -0.1, 0.0]:
-                dics = [{
-                    "alpha": alpha,
-                    "use_mkldnn": True,
-                    "enable_int8": True,
-                    "X_scale": X_scale
-                }]
+        for batch in [1, 2]:
+            for shape in [[batch, 64], [batch, 32, 64], [batch, 8, 32, 32]]:
+                self.input_dim = len(shape)
+                for alpha in [0.02, 1.0, 100.0, -1.0, 0.0]:
+                    dics = [{"alpha": alpha}]
+                    ops_config = [{
+                        "op_type": "leaky_relu",
+                        "op_inputs": {
+                            "X": ["input_data"],
+                        },
+                        "op_outputs": {
+                            "Out": ["y_data"],
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data": TensorConfig(data_gen=partial(
+                                generate_input1, shape))
+                        },
+                        outputs=["y_data"])
 
-                ops_config = [{
-                    "op_type": "leaky_relu",
-                    "op_inputs": {
-                        "X": ["input_data"],
-                    },
-                    "op_outputs": {
-                        "Out": ["y_data"],
-                    },
-                    "op_attrs": dics[0]
-                }]
-                ops = self.generate_op_config(ops_config)
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data":
-                        TensorConfig(data_gen=partial(generate_input1, dics))
-                    },
-                    outputs=["y_data"])
-
-                yield program_config
+                    yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [4, 3, 64, 64]}
+            if self.input_dim == 2:
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
+                self.dynamic_shape.max_input_shape = {"input_data": [64, 128]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
+            elif self.input_dim == 3:
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [64, 128, 256]
+                }
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16, 64]}
+            elif self.input_dim == 4:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 8, 8, 4]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [64, 64, 128, 128]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [2, 16, 64, 32]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
