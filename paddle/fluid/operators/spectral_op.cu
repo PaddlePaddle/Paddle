@@ -68,9 +68,8 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
 }
 
 #if defined(PADDLE_WITH_CUDA)
-CuFFTConfig create_cufft_config(const framework::Tensor& input,
-                                const framework::Tensor& output,
-                                int signal_ndim) {
+FFTConfigKey create_fft_configkey(const framework::Tensor& input,
+                             const framework::Tensor& output, int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -85,11 +84,10 @@ CuFFTConfig create_cufft_config(const framework::Tensor& input,
     auto out_size = output.dims()[i];
     signal_size[i] = std::max(in_size, out_size);
   }
-  PlanKey key(framework::vectorize(input.dims()),
-              framework::vectorize(output.dims()), signal_size, fft_type,
-              value_type);
-
-  return CuFFTConfig(key);
+  FFTConfigKey key(framework::vectorize(input.dims()),
+                   framework::vectorize(output.dims()), signal_size, fft_type,
+                   value_type);
+  return key;
 }
 
 // Execute a pre-planned transform
@@ -136,9 +134,8 @@ void exec_cufft_plan(const DeviceContext& ctx, const CuFFTConfig& config,
 
 #elif defined(PADDLE_WITH_HIP)
 
-HIPFFTConfig create_hipfft_config(const framework::Tensor& input,
-                                  const framework::Tensor& output,
-                                  int signal_ndim) {
+FFTConfigKey create_fft_configkey(const framework::Tensor& input,
+                             const framework::Tensor& output, int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -153,11 +150,10 @@ HIPFFTConfig create_hipfft_config(const framework::Tensor& input,
     auto out_size = output.dims()[i];
     signal_size[i] = std::max(in_size, out_size);
   }
-  PlanKey key(framework::vectorize(input.dims()),
-              framework::vectorize(output.dims()), signal_size, fft_type,
-              value_type);
-
-  return HIPFFTConfig(key);
+  FFTConfigKey key(framework::vectorize(input.dims()),
+                   framework::vectorize(output.dims()), signal_size, fft_type,
+                   value_type);
+  return key;
 }
 
 // Execute a pre-planned transform
@@ -308,34 +304,58 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   collapsed_output.Resize(framework::make_ddim(collapsed_output_shape));
   collapsed_output.mutable_data<To>(tensor_place);
 
+FFTConfig* config = nullptr;
+
 #if defined(PADDLE_WITH_CUDA)
+  std::unique_ptr<FFTConfig> config_ = nullptr;
   // create plan
-  CuFFTConfig config =
-      create_cufft_config(collapsed_input, collapsed_output, signal_ndim);
+  FFTConfigKey key =
+      create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
+  if (CUFFT_VERSION < 10200) {
+    const int64_t device_id = static_cast<int64_t>(
+      reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
+          ->GetDeviceId());
+    FFTConfigCache& plan_cache = get_fft_plan_cache(device_id);
+    std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
+    guard.lock();
+    config = &(plan_cache.lookup(key));
+  } else {
+    config_ = std::make_unique<FFTConfig>(key);
+    config = config_.get();
+  }
+  
   // prepare cufft for execution
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      platform::dynload::cufftSetStream(config.plan(), ctx.stream()));
+      platform::dynload::cufftSetStream(config->plan(), ctx.stream()));
   framework::Tensor workspace_tensor;
-  workspace_tensor.mutable_data<To>(tensor_place, config.workspace_size());
+  workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftSetWorkArea(
-      config.plan(), workspace_tensor.data<To>()));
+      config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
-  exec_cufft_plan<DeviceContext, Ti, To>(ctx, config, &collapsed_input,
+  exec_cufft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,
                                          &collapsed_output, forward);
 
 #elif defined(PADDLE_WITH_HIP)
   // create plan
-  HIPFFTConfig config =
-      create_hipfft_config(collapsed_input, collapsed_output, signal_ndim);
+  FFTConfigKey key =
+      create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
+  const int64_t device_id = static_cast<int64_t>(
+      reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
+          ->GetDeviceId());
+  FFTConfigCache& plan_cache = get_fft_plan_cache(device_id);
+  std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
+  guard.lock();
+  config = &(plan_cache.lookup(key));
+
   // prepare cufft for execution
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      platform::dynload::hipfftSetStream(config.plan(), ctx.stream()));
+      platform::dynload::hipfftSetStream(config->plan(), ctx.stream()));
   framework::Tensor workspace_tensor;
-  workspace_tensor.mutable_data<To>(tensor_place, config.workspace_size());
+  workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftSetWorkArea(
-      config.plan(), workspace_tensor.data<To>()));
+      config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
-  exec_hipfft_plan<DeviceContext, Ti, To>(ctx, config, &collapsed_input,
+  exec_hipfft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,
                                           &collapsed_output, forward);
 #endif
 
