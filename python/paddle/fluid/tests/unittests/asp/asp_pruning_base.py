@@ -85,5 +85,5 @@ class TestASPHelperPruningBase(unittest.TestCase):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
                 self.assertTrue(
-                    sparsity.check_sparsity(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
                         mat.T, func_name=check_func_name, n=2, m=4))

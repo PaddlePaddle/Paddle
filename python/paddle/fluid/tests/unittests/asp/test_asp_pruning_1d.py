@@ -25,12 +25,14 @@ paddle.enable_static()
 
 class TestASPHelperPruning1D(TestASPHelperPruningBase):
     def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(sparsity.MaskAlgo.MASK_1D,
-                                        sparsity.CheckMethod.CHECK_1D)
+        self.run_inference_pruning_test(
+            sparsity.MaskAlgo.MASK_1D,
+            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
 
     def test_1D_training_pruning(self):
-        self.run_training_pruning_test(sparsity.MaskAlgo.MASK_1D,
-                                       sparsity.CheckMethod.CHECK_1D)
+        self.run_training_pruning_test(
+            sparsity.MaskAlgo.MASK_1D,
+            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
 
 
 if __name__ == '__main__':

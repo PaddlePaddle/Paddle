@@ -25,12 +25,14 @@ paddle.enable_static()
 
 class TestASPHelperPruning2DGreedy(TestASPHelperPruningBase):
     def test_2D_greedy_inference_pruning(self):
-        self.run_inference_pruning_test(sparsity.MaskAlgo.MASK_2D_GREEDY,
-                                        sparsity.CheckMethod.CHECK_2D)
+        self.run_inference_pruning_test(
+            sparsity.MaskAlgo.MASK_2D_GREEDY,
+            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
 
     def test_2D_greedy_training_pruning(self):
-        self.run_training_pruning_test(sparsity.MaskAlgo.MASK_2D_GREEDY,
-                                       sparsity.CheckMethod.CHECK_2D)
+        self.run_training_pruning_test(
+            sparsity.MaskAlgo.MASK_2D_GREEDY,
+            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
 
 
 if __name__ == '__main__':

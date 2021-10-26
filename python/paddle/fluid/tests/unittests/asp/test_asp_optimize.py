@@ -139,7 +139,9 @@ class TestASPHelper(unittest.TestCase):
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
-                self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
+                self.assertTrue(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
+                        mat.T, n=2, m=4))
 
     def test_asp_training_with_amp(self):
         if core.is_compiled_with_cuda():
@@ -165,7 +167,9 @@ class TestASPHelper(unittest.TestCase):
                 if ASPHelper._is_supported_layer(self.main_program, param.name):
                     mat = np.array(fluid.global_scope().find_var(param.name)
                                    .get_tensor())
-                    self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(
+                            mat.T, n=2, m=4))
 
     def __get_param_names(self, params):
         param_names = []
