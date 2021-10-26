@@ -64,7 +64,8 @@ class CheckMethod(Enum):
             .. code-block:: python
 
             import numpy as np
-            from paddle.static.sparsity import MaskAlgo, CheckMethod
+            from paddle.static.sparsity import MaskAlgo
+            from paddle.fluid.contrib.sparsity import CheckMethod
 
             CheckMethod.get_checking_method(MaskAlgo.MASK_1D)
             # CheckMethod.CHECK_1D
@@ -151,7 +152,7 @@ def check_mask_1d(mat, n, m):
         .. code-block:: python
 
           import numpy as np
-          import paddle.static.sparsity as sparsity
+          import paddle.fluid.contrib.sparsity as sparsity
 
           x = np.array([[0, 1, 3, 0],
                         [1, 0, 0, 1]])
@@ -195,7 +196,7 @@ def get_mask_1d(mat, n, m):
         .. code-block:: python
 
           import numpy as np
-          import paddle.static.sparsity as sparsity
+          import paddle.fluid.contrib.sparsity as sparsity
 
           mat = np.array([[0, 1, 5, 4],
                           [2, 7, 3, 6]])
@@ -279,7 +280,7 @@ def check_mask_2d(mat, n, m):
         .. code-block:: python
 
           import numpy as np
-          import paddle.static.sparsity as sparsity
+          import paddle.fluid.contrib.sparsity as sparsity
 
           x = np.array([[0, 8, 9, 0],
                         [9, 0, 0, 10],
@@ -329,7 +330,7 @@ def get_mask_2d_greedy(mat, n, m):
         .. code-block:: python
 
           import numpy as np
-          import paddle.static.sparsity as sparsity
+          import paddle.fluid.contrib.sparsity as sparsity
 
           mat = np.array([[9, 8, 3, 7],
                           [9, 2, 1, 10],
@@ -439,7 +440,7 @@ def get_mask_2d_best(mat, n, m):
         .. code-block:: python
 
           import numpy as np
-          import paddle.static.sparsity as sparsity
+          import paddle.fluid.contrib.sparsity as sparsity
 
           mat = np.array([[2, 8, 9, 9],
                           [9, 1, 3, 9],
@@ -487,7 +488,7 @@ def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
         .. code-block:: python
 
           import numpy as np
-          import paddle.static.sparsity as sparsity
+          import paddle.fluid.contrib.sparsity as sparsity
 
           tensor = np.array([[2, 8, 9, 9],
                              [9, 1, 3, 9],
@@ -549,7 +550,7 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
         .. code-block:: python
 
           import numpy as np
-          import paddle.static.sparsity as sparsity
+          import paddle.fluid.contrib.sparsity as sparsity
 
           tensor = np.array([[2, 8, 9, 9],
                              [9, 1, 3, 9],

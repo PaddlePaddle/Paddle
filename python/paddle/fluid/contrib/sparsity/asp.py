@@ -74,8 +74,8 @@ def decorate(optimizer):
             with paddle.static.program_guard(main_program, startup_program):
                 input_data = paddle.static.data(name='data', shape=[None, 128])
                 label = paddle.static.data(name='label', shape=[None, 10])
-                hidden = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None)
-                prob = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
+                hidden = paddle.static.nn.fc(x=input_data, num_flatten_dims=-1, size=32, activation=None)
+                prob = paddle.static.nn.fc(x=hidden, num_flatten_dims=-1, size=10, activation=None)
                 loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
                 optimizer = paddle.optimizer.SGD(learning_rate=0.1)
@@ -134,9 +134,9 @@ def prune_model(place,
             with paddle.static.program_guard(main_program, startup_program):
                 input_data = paddle.static.data(name='data', shape=[None, 128])
                 label = paddle.static.data(name='label', shape=[None, 10])
-                hidden = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None, name="need_sparse_fc")
-                hidden = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=32, act=None, name="need_dense_fc")
-                prob = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
+                hidden = paddle.static.nn.fc(x=input_data, num_flatten_dims=-1, size=32, activation=None, name="need_sparse_fc")
+                hidden = paddle.static.nn.fc(x=hidden, num_flatten_dims=-1, size=32, activation=None, name="need_dense_fc")
+                prob = paddle.static.nn.fc(x=hidden, num_flatten_dims=-1, size=10, activation=None)
                 loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
                 # Setup exluded layers out from ASP workflow.
@@ -349,7 +349,7 @@ class ASPHelper(object):
 
               with paddle.static.program_guard(main_program, startup_program):
                   input_data = paddle.static.data(name='data', shape=[None, 128])
-                  fc = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None)
+                  fc = paddle.static.nn.fc(x=input_data, num_flatten_dims=-1, size=32, activation=None)
 
               for param in main_program.global_block().all_parameters():
                   ASPHelper._is_supported_layer(main_program, param.name)
