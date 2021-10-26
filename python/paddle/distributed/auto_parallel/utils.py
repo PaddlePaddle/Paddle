@@ -413,7 +413,7 @@ def save_static_checkpoint(program,
         None
 
     Examples:
-        >>> output_dir = os.path.join(args.output_dir, "step_%d" % eval_step)
+        >>> output_dir = os.path.join(args.output_dir, "step_%d" % step)
         >>> os.makedirs(output_dir, exist_ok=True)
         >>> save_static_checkpoint(program, output_dir)
     """
