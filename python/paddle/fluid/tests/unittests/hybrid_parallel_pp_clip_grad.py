@@ -12,29 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
 from __future__ import print_function
 
+import paddle
 import unittest
-import paddle.fluid as fluid
-
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from hybrid_parallel_pp_alexnet import TestDistPPTraning
 
 
-class TestHybridParallel(TestMultipleGpus):
-    def test_hybrid_parallel_mp_random(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
-
-    def test_hybrid_parallel_mp_model(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
-
-    def test_hybrid_parallel_mp_amp(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_amp.py')
-
-    def test_hybrid_parallel_mp_fp16(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_fp16.py')
-
-    def test_hybrid_parallel_mp_clip_grad(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
+class TestPPClipGrad(TestDistPPTraning):
+    def build_optimizer(self, model):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(0.5)
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
+                                         grad_clip=grad_clip,
+                                         parameters=model.parameters())
+        return scheduler, optimizer
 
 
 if __name__ == "__main__":
