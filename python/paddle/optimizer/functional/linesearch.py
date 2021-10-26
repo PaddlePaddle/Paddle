@@ -189,8 +189,13 @@ def bisect(state, phi, a, b, params, max_iters):
 
         iters += 1
 
-    raise RuntimeError('[HagerZhang] Bisects fails to locate '
-                       'opposite slope interval')
+    # Invalidates the state if a condition does not hold.
+    failed = g < .0
+    state.state = update_state(state.state, failed, 'failed')
+
+def secant2(state, phi, a, b, params, max_iters):
+
+
 
 def hz_linesearch(state,
                   func,
@@ -363,31 +368,6 @@ def hz_linesearch(state,
 
         return func(x + a*p)
 
-    def bracket(ls_active, b, phi, phi0):
-        r'''
-        Find an interval satisfying the opposite slope condition.
-        Args:
-            ls_active (Tensor): boolean typed tensor of shape [...] indicating
-                which part of the input to work on 
-            b (Tensor): float typed tensor setting the right ends of the 
-                intervals
-        '''
-        
-        expansion = params['rho']
-        eps = params['eps']
-        
-        # b maintains the current right end of the interval
-        
-        while True:
-            phi_j, phiprime_j = vjp(phi, b)
-            
-            rising, falling = phiprime_j >= .0, phiprime_j < .0
-            
-            ceiling = phi_j > phi0 + eps 
-
-            # Stop 
-            b = ifelse_select(phiprime_j >= 0, b, expansion * b)
-
     # For each line search, the input location, function value, gradients and
     # the approximate inverse hessian are already present in the state date
     # struture. No need to recompute.
@@ -414,6 +394,8 @@ def hz_linesearch(state,
     # Generates the opposite slope interval
     a, b = bracket(state, phi, c, params, max_iters=max_iters)
 
+    # Applies secant2 to the located opposite slope interval
+    a, b = secant2(state, phi, a, b, params, max_iters=max_iters)
 
     return 
 
