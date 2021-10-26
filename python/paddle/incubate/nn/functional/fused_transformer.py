@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle import _C_ops
 
 __all__ = []
@@ -90,7 +90,7 @@ def fused_feedforward(x,
             x = paddle.to_tensor(x_data)
             linear1_weight = paddle.to_tensor(linear1_weight_data)
             linear2_weight = paddle.to_tensor(linear2_weight_data)
-            out = paddle.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
+            out = paddle.incubate.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
             print(out.numpy().shape)
             # (1, 8, 8)
     """
@@ -244,7 +244,7 @@ def fused_multi_head_attention(x,
 
             # required: gpu
             import paddle
-            import paddle.nn.functional as F
+            import paddle.incubate.nn.functional as F
 
             # input: [batch_size, seq_len, embed_dim]
             x = paddle.rand(shape=(2, 4, 128), dtype="float32")
