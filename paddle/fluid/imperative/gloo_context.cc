@@ -53,15 +53,13 @@ void GLOOParallelContext::InitWithRingID(int ring_id) {
       platform::errors::OutOfRange("Still not implement InitWithRingID"));
 }
 
-#define GLOO_CASE(type, T, gw)                                        \
-  case type: {                                                        \
-    VLOG(4) << "Use the gloo all reduce to sync. SRC:" << src_tensor; \
-    std::vector<T> send_vector##T;                                    \
-    framework::TensorToVector<T>(src_tensor, &send_vector##T);        \
-    auto recv_vector##T = gw->AllReduce<T>(send_vector##T);           \
-    framework::TensorFromVector<T>(recv_vector##T, dst_tensor);       \
-    VLOG(4) << "DST:" << *dst_tensor;                                 \
-    break;                                                            \
+#define GLOO_CASE(type, T, gw)                                  \
+  case type: {                                                  \
+    std::vector<T> send_vector##T;                              \
+    framework::TensorToVector<T>(src_tensor, &send_vector##T);  \
+    auto recv_vector##T = gw->AllReduce<T>(send_vector##T);     \
+    framework::TensorFromVector<T>(recv_vector##T, dst_tensor); \
+    break;                                                      \
   }
 
 void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
@@ -118,7 +116,7 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
     const auto *src_tensor_ptr = src_tensor.data<T>();            \
     gw->AllGatherVector<T>(const_cast<T *>(src_tensor_ptr),       \
                            reinterpret_cast<T *>(dst_tensor_ptr), \
-                           value_sendcount);                      \
+                           element_nums);                         \
     break;                                                        \
   }
 
@@ -150,48 +148,31 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
   auto *dst_rows_ptr = dst_rows->MutableData(place);
   const int64_t *src_rows_ptr = src_rows.Data(place);
 
-  // VLOG(3) << "Selected Rows of src:" << string::join_strings(dst_rows, ',')
-
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
   auto feature_size = framework::product(dims) / dims[0];
   dst_tensor->Resize(dims);
-  if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + nranks,
-                  [&](size_t row) { return row == cpu_rows_num_ptr[0]; })) {
-    // During sparse communication, the number of each card is same.
-    // Because gloo wrapper utility class currently don't support
-    // broadcast, so we only deal the-same case.
-    VLOG(3) << "Use the gloo all reduce to sync. SRC:" << src_tensor;
-    // framework::SerializeToStream(VLOG(4), src);
-    VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
-    auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
-    auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
 
-    gloo_wrapper->AllGatherVector<int64_t>(const_cast<int64_t *>(src_rows_ptr),
-                                           static_cast<int64_t *>(dst_rows_ptr),
-                                           rows_num_vector[0]);
+  std::vector<size_t> element_nums = rows_num_vector;
+  std::for_each(element_nums.begin(), element_nums.end(),
+                [feature_size](size_t &x) { x = x * feature_size; });
 
-    switch (dtype) {
-      GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP32, float,
-                           gloo_wrapper);
-      GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP64, double,
-                           gloo_wrapper);
-      GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT32, int, gloo_wrapper);
-      GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT64, int64_t,
-                           gloo_wrapper);
-      default: {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid datatype for allreduce"));
-      }
+  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
+  gloo_wrapper->AllGatherVector<int64_t>(const_cast<int64_t *>(src_rows_ptr),
+                                         static_cast<int64_t *>(dst_rows_ptr),
+                                         rows_num_vector);
+
+  switch (dtype) {
+    GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP32, float, gloo_wrapper);
+    GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP64, double, gloo_wrapper);
+    GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT32, int, gloo_wrapper);
+    GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT64, int64_t,
+                         gloo_wrapper);
+    default: {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("Invalid datatype for allreduce"));
     }
-    VLOG(3) << "Selected Row DST:" << *dst_tensor;
-    VLOG(3) << "Selected Rows of DST:"
-            << string::join_strings(std::vector<int64_t>(*dst_rows), ',');
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "The number of each card is not the same, gloo only support the-same"
-        "batch division"));
   }
 }
 

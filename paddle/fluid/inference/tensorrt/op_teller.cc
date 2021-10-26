@@ -142,7 +142,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "conv3d",
                                              "conv3d_transpose",
                                              "mish",
-                                             "nearest_interp_v2"};
+                                             "nearest_interp_v2",
+                                             "pool3d"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -339,6 +340,26 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
+
+      // not support broadcast
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+      const auto x_shape = x_var_desc->GetShape();
+      const auto y_shape = y_var_desc->GetShape();
+      if (x_shape.size() != y_shape.size()) {
+        VLOG(3)
+            << "matmul op not support broadcast, please check inputs'shape. ";
+        return false;
+      }
+      uint64_t dims = 2;
+      for (size_t i = 0; i < x_shape.size() - dims; ++i) {
+        if (x_shape[i] != y_shape[i] && (x_shape[i] == 1 || y_shape[i] == 1)) {
+          VLOG(3) << "matmul op not support broadcast, please check "
+                     "inputs'shape[i]. ";
+          return false;
+        }
+      }
+
       for (auto& param_name : desc.Inputs()) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
@@ -1329,6 +1350,47 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "fc") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+
+      // y'shapes == 2
+      auto fc_inputs = desc.Inputs();
+      std::string fc_y = "";
+      if (fc_inputs.find("Y") != fc_inputs.end()) {
+        fc_y = "Y";
+      } else if (fc_inputs.find("W") != fc_inputs.end()) {
+        fc_y = "W";
+      } else {
+        VLOG(3) << " input_y(fc_op) must be Y or W ";
+        return false;
+      }
+
+      //  There is currently no input: Y(weight) more than two dimensions
+      /*
+      auto* y_var_desc = block->FindVar(desc.Input(fc_y)[0]);
+      const auto y_shape = y_var_desc->GetShape();
+      if (y_shape.size() != 2) {
+        VLOG(3)
+            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes = "
+            << y_shape.size();
+        return false;
+      }
+      // y_num_col_dims ==1
+      if (desc.HasAttr("y_num_col_dims")) {
+        int y_num_col_dims =
+            BOOST_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
+        if (y_num_col_dims != 1) {
+          VLOG(3) << " fc_op'y_num_col_dims must be 1, but y_num_col_dims = "
+                  << y_num_col_dims;
+          return false;
+        }
+      }
+      */
       int x_num_col_dims =
           desc.HasAttr("x_num_col_dims")
               ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
@@ -1336,8 +1398,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
                      : 1);
       if (x_num_col_dims < 1) {
-        VLOG(3) << "converter expects x_num_col_dims >= 1, "
-                   "but x_num_col_dims = %d.";
+        VLOG(3) << "fc_op expects x_num_col_dims >= 1, "
+                   "but x_num_col_dims = "
+                << x_num_col_dims;
         return false;
       }
     }

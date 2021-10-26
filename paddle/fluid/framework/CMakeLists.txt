@@ -26,7 +26,9 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
-add_subdirectory(paddle2cinn)
+if (WITH_CINN)
+  add_subdirectory(paddle2cinn)
+endif()
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -355,7 +357,7 @@ target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_h
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
         graph build_strategy bind_threaded_ssa_graph_executor collective_helper
-        fast_threaded_ssa_graph_executor variable_helper cinn_runner)
+        fast_threaded_ssa_graph_executor variable_helper)
 
 cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
 if(WITH_PSCORE)
