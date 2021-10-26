@@ -31,7 +31,6 @@ import json
 
 import paddle
 import paddle.fluid as fluid
-import paddle.distributed.fleet.cloud_utils as cloud_utils
 from distutils.util import strtobool
 import paddle.utils.cpp_extension.extension_utils as utils
 logger = logging.getLogger("root")

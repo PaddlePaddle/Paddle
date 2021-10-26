@@ -287,15 +287,15 @@ def launch_collective(args):
     start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
+    # lazy launch for auto-parallel
+    if args.enable_auto_mapping == True:
+        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
     # for ascend
-    if device_mode == DeviceMode.ASCEND_NPU:
+    elif device_mode == DeviceMode.ASCEND_NPU:
         cluster, pod = ascend_utils.get_cloud_cluster(
             rank_table_file=os.getenv("RANK_TABLE_FILE", None),
             device_mode=device_mode,
             start_port=start_port)
-    # lazy launch for auto-parallel
-    elif args.enable_auto_mapping == True:
-        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
     elif cloud_utils.use_paddlecloud() and trainers_num != 1:
         cluster, pod = cloud_utils.get_cloud_cluster(
             args.ips, device_mode, devices_per_proc, start_port)
