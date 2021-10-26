@@ -134,14 +134,14 @@ def prune_model(place,
             with paddle.static.program_guard(main_program, startup_program):
                 input_data = paddle.static.data(name='data', shape=[None, 128])
                 label = paddle.static.data(name='label', shape=[None, 10])
-                hidden = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None, name="need_sparse")
-                hidden = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=32, act=None, name="need_dense")
+                hidden = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None, name="need_sparse_fc")
+                hidden = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=32, act=None, name="need_dense_fc")
                 prob = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
                 loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
                 # Setup exluded layers out from ASP workflow.
                 # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
-                sparsity.set_excluded_layers(main_program, ["need_dense"])
+                sparsity.set_excluded_layers(main_program, ["need_dense_fc"])
 
                 optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 optimizer = paddle.static.amp.decorator.decorate(optimizer )
