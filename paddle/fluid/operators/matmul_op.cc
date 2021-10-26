@@ -369,12 +369,12 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
     if (it_zero != shape.end()) {
       for (uint64_t i = 0; i < shape.size(); i++) {
         if (shape[i] == 0) {
-          PADDLE_ENFORCE_LE(i, dim.size(),
+          PADDLE_ENFORCE_LT(i, dim.size(),
                             platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_Out ",
-                                "should be less equal than output dim size, ",
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
                                 "but the index is %d and output dim size is %d",
-                                i, dim.size()));
+                                input_name, i, dim.size()));
           shape[i] = dim.at(i);
         }
       }

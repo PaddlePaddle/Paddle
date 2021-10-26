@@ -249,13 +249,13 @@ class MatMulMKLDNNHandler
       if (it_zero != shape.end()) {
         for (uint64_t i = 0; i < shape.size(); i++) {
           if (shape[i] == 0) {
-            PADDLE_ENFORCE_LE(
+            PADDLE_ENFORCE_LT(
                 i, input_dims.size(),
                 paddle::platform::errors::InvalidArgument(
-                    "The index of 0 in fused_reshape_Out ",
-                    "should be less equal than output dim size, ",
-                    "but the index is %d and output dim size is %d", i,
-                    input_dims.size()));
+                    "The index of 0 in fused_reshape_%s ",
+                    "should be less than output dim size, ",
+                    "but the index is %d and output dim size is %d", input_name,
+                    i, input_dims.size()));
             shape[i] = input_dims.at(i);
           }
         }
