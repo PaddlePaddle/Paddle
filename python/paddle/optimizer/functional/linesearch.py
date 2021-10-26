@@ -128,12 +128,12 @@ def bracket(state, phi, c, params, max_iters):
     # maximum iterations.
     
     # Narrows down the interval by recursively bisecting it. 
-    a, b = bisect(state, phi, make_const(c, .0), c, params)
+    a, b = bisect(state, phi, make_const(c, .0), c, params, max_iters)
 
     # Condition B1, that is, the rising right end
     B1_cond = g >= .0
     
-    # Condition B2, that is, 
+    # Condition B2, that is, the hoisted falling right end  
     B2_cond = paddle.logical_and(g < .0, f > f0 + epsilon_k)
 
     # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
@@ -148,7 +148,7 @@ def bracket(state, phi, c, params, max_iters):
 
     return [a, b]
 
-def bisect(state, phi, a, b, params):
+def bisect(state, phi, a, b, params, max_iters):
     r"""Bisects to locate opposite slope interval.
     
     Args:
@@ -161,11 +161,36 @@ def bisect(state, phi, a, b, params):
     Returns:
         [a, b]: left ends and right ends of the result intervels.   
     """
+    theta, eps = params['theta'], params['eps']
+    epsilon_k = eps * state.Ck
+
+    f0 = state.fk
+
     # a. Let d = (1 - theta)*a + theta*b, if phi'(d) >= 0, then return [a, d]
-
+    #
     # b. If phi'(d) < 0 and phi(d) > phi(0) + epsilon_k, then Bisect([a, d])
-
+    #
     # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
+    iters = 0
+
+    while iters < max_iters:
+        d = (1 - theta) * a + theta * b
+        f, g = vjp(phi, d)
+        
+        # Updates the interval ends
+        c_cond = paddle.logical_and(g < .0, f <= f0 + epsilon_k)
+        a = paddle.where(c_cond, d, a)
+        b = paddle.where(c_cond, b, d)
+
+        # If a condition is not all true then continue
+        a_cond = g >= .0
+        if all_active_with_predicates(state.state, a_cond):
+            return [a, b]
+
+        iters += 1
+
+    raise RuntimeError('[HagerZhang] Bisects fails to locate '
+                       'opposite slope interval')
 
 def hz_linesearch(state,
                   func,

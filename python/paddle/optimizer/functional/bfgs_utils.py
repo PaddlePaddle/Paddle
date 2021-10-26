@@ -30,6 +30,23 @@ def matnorm(x):
 def any_active(state):
     return paddle.any(state == 0)
 
+def all_active_with_predicates(state, *predicates):
+    r"""Tests whether all active states also satisfie the predicates.
+    
+    Args:
+        state (Tensor): the search state of dtype int8. For each element, 0 
+            represents active state.
+        predicates (List[Tensor]): a list of boolean typed tensors of the
+            same shape with `state`.
+    
+    Returns:
+        A scalar boolean tensor. True if the predicates are true for every
+        active state. Otherwise False.
+    """
+    p = paddle.logical_and(*predicates) if len(predicates) > 1 else predicates
+    negate_state = paddle.logical_not(active_state(state))
+    return paddle.all(paddle.logical_or(negate_state, p))
+
 def any_active_with_predicates(state, *predicates):
     r"""Tests whether there's any active state also satisfies all the
     predicates.
