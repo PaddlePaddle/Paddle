@@ -432,7 +432,8 @@ def save_static_checkpoint(program,
         print("Successfully saving model to {}".format(output_dir))
 
         if dist_attr_dir:
-            save_distributed_attribute(program, dist_attr_dir)
+            raise NotImplementedError(
+                "Save distributed attribute does not implement")
     else:
         # TODO: integrate param before save
         raise NotImplementedError("Integrating parameter does not implement")
