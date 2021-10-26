@@ -93,6 +93,14 @@ __global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
   }
 }
 
+__global__ void fill_dvals(char* d_shard_vals, char* d_vals, T* idx,
+                           size_t len, int size_val_type) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    (VarType*)(d_vals + idx[i] * size_val_type = (VarType*)(d_shard_vals + i * size_val_type);
+  }
+}
+
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
     size_t capacity, std::shared_ptr<HeterPsResource> resource) {
@@ -356,7 +364,54 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
     tables_[num]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
         reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
-        streams[cur_stream]);
+        streams[cur_stream], mem_pool_);
+    cur_stream += 1;
+    cur_len += tmp_len;
+  }
+
+  for (int i = 0; i < stream_num; ++i) {
+    cudaStreamSynchronize(streams[i]);
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(streams[i]));
+  }
+}
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
+                                                     HBMMemoryPool* hbm_mem_pool,
+                                                     size_t len,
+                                                     int mf_dim,
+                                                     size_t chunk_size,
+                                                     int stream_num) {
+  if (len <= 0) {
+    return;
+  }
+  int dev_id = resource_->dev_id(num);
+  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  platform::CUDADeviceGuard guard(dev_id);
+
+  // use hbm pool
+  std::vector<std::shared_ptr<memory::Allocation>> d_key_bufs;
+
+  gpuStream_t streams[stream_num];
+  for (int i = 0; i < stream_num; ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&(streams[i])));
+    auto d_k_buf = memory::AllocShared(place, chunk_size * sizeof(KeyType));
+    d_key_bufs.push_back(d_k_buf);
+  }
+
+  int cur_len = 0;
+  int cur_stream = 0;
+
+  while (cur_len < len) {
+    cur_stream = cur_stream % stream_num;
+    int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(d_key_bufs[cur_stream]->ptr(), h_keys + cur_len,
+                        sizeof(KeyType) * tmp_len, cudaMemcpyHostToDevice,
+                        streams[cur_stream]));
+    tables_[num]->insert(
+        reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()), tmp_len,
+        streams[cur_stream], hbm_mem_pool, cur_len);
     cur_stream += 1;
     cur_len += tmp_len;
   }
@@ -430,6 +485,7 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
   auto d_merge_keys = memory::AllocShared(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
 
+  size_grad_val_type_ = sizeof(GradType) + sizeof(float) * max_mf_dim_;
   auto d_merge_grads = memory::AllocShared(place, len * sizeof(GradType));
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
@@ -509,7 +565,7 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                                                         KeyType* d_keys,
-                                                        ValType* d_vals,
+                                                        char* d_vals,
                                                         size_t len) {
   if (len == 0) {
     return;
@@ -613,8 +669,14 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     cudaStreamSynchronize(node.out_stream);
   }
 
-  fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, d_vals,
+  if (!multi_mf_dim_){
+    fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, d_vals,
                                                     d_idx_ptr, len);
+  } else {
+    fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals->ptr(), d_vals,
+                                                    d_idx_ptr, len, size_val_type);
+  }
+  
   cudaStreamSynchronize(stream);
 }
 
@@ -622,8 +684,8 @@ template <typename KeyType, typename ValType, typename GradType>
 template <typename Sgd>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
                                                         KeyType* d_keys,
-                                                        GradType* d_grads,
-                                                        size_t len, Sgd& sgd) {
+                                                        char* d_grads,
+                                                        size_t len, Sgd& sgd, HBMMemoryPool* grad_pool= NULL) {
   if (len == 0) {
     return;
   }
@@ -650,7 +712,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
 
   auto d_shard_keys = memory::AllocShared(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
-  auto d_shard_grads = memory::AllocShared(place, len * sizeof(GradType));
+  size_grad_val_type_ = sizeof(GradType) + sizeof(float) * max_mf_dim_;
+  auto d_shard_grads = memory::AllocShared(place, len * size_grad_val_type_);
   GradType* d_shard_grads_ptr =
       reinterpret_cast<GradType*>(d_shard_grads->ptr());
 

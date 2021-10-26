@@ -173,13 +173,42 @@ __global__ void PushCopyWithPool(FeaturePushValue* dest, float** src, int64_t* l
   }
 }
 
+__global__ void PushCopyWithPool(FeaturePushValue* dest, float** src, int64_t* len,
+                         int slot_num, int total_len, int bs,
+                         int* slot_vector, int max_val_size, HBMMemoryPool* pool) {
+  CUDA_KERNEL_LOOP(i, total_len) {
+    int low = 0;
+    int high = slot_num - 1;
+    while (low < high) {
+      int mid = (low + high) / 2;
+      if (i < len[mid])
+        high = mid;
+      else
+        low = mid + 1;
+    }
+    int x = low;
+    int y = i - (x ? len[low - 1] : 0);
+    (dest + i)->slot = slot_vector[x];
+    int mf_dim = slot_vector[x + slot_num];
+
+    (dest + i)->mf_g = (float*)pool.mem_address(i);
+    for (int j = 0; j < mf_dim; j++) {
+      (dest + i)->mf_g[j] = *(src[x] + y * (mf_dim + 2) + 3 + j) * -1. * bs;
+    }
+    (dest + i)->show = *(src[x] + y * (mf_dim + 2));
+    (dest + i)->clk = *(src[x] + y * (mf_dim + 2) + 1);
+    (dest + i)->lr_g = *(src[x] + y * (mf_dim + 2) + 2) * -1. * bs;
+  }
+}
+
 void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                                uint64_t** gpu_keys,
                                const std::vector<float*>& values,
-                               const FeatureValue* total_values_gpu,
+                               const char* total_values_gpu,
                                const int64_t* gpu_len, const int slot_num,
                                const int hidden_size,
-                               const int64_t total_length) {
+                               const int64_t total_length,
+                               const int max_val_size) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
@@ -217,7 +246,7 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
 
 void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const std::vector<const float*>& grad_values,
-                               FeaturePushValue* total_grad_values_gpu,
+                               char* total_grad_values_gpu,
                                const std::vector<int64_t>& slot_lengths,
                                const int hidden_size,
                                const int64_t total_length,
