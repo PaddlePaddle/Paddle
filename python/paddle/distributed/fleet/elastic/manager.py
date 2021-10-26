@@ -124,7 +124,7 @@ class ElasticManager(object):
         self.trainers = os.getenv('PADDLE_TRAINERS', '')
         self.lastest_trainers = self.trainers
         logger.info(
-            f"=======>trainers={self.trainers}, lastest_trainers={self.lastest_trainers}"
+            f"trainers={self.trainers}, lastest_trainers={self.lastest_trainers}"
         )
 
         # auto correct the value of elastic_level
@@ -300,11 +300,15 @@ class ElasticManager(object):
 
         return int(self.etcd.get(self.prefix)[0]) == 1
 
-    def _match(self):
+    def _match(self, host_list: list=None):
 
-        self.hosts = [
-            six.ensure_str(i[0]) for i in self.etcd.get_prefix(self.node_prefix)
-        ]
+        if host_list:
+            self.hosts = host_list
+        else:
+            self.hosts = [
+                six.ensure_str(i[0])
+                for i in self.etcd.get_prefix(self.node_prefix)
+            ]
 
         if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
             if len(self.hosts) == self.np:
@@ -320,6 +324,9 @@ class ElasticManager(object):
             if hosts_num >= self.min_np and hosts_num <= self.max_np:
                 interval_time = time.time() - self.elastic_startup_time
                 if interval_time <= ELASTIC_TIMEOUT:
+                    print(
+                        f"current interval_time={interval_time} hosts_num={hosts_num} reached the min_np={self.min_np}, ELASTIC_TIMEOUT={ELASTIC_TIMEOUT}"
+                    )
                     logger.info(
                         f"current interval_time={interval_time} hosts_num={hosts_num} reached the min_np={self.min_np}, wait for timeout"
                     )
@@ -370,8 +377,8 @@ class ElasticManager(object):
                     if curr_host not in trainers:
                         trainers.append(curr_host)
                 if rank < 0:
-                    os.environ['PADDLE_TRAINER_ID'] = '{}'.format(trainers[
-                        self.host])
+                    os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+                        trainers.index(self.host))
                 hosts = ','.join(trainers)
                 self.args.ips = hosts
                 os.environ['PADDLE_TRAINERS'] = hosts
@@ -382,10 +389,10 @@ class ElasticManager(object):
                     f"elastic scale down, hosts={self.hosts}, trainers={trainers}"
                 )
 
-                # If the shrink node is from the start of the rank, you need to minimize the movement of the rank
+                # If the shrink node is from the first of the rank list, you need to minimize the movement of the rank
                 # eg: 
                 #   the source trainers is:10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3
-                #   10.10.10.0 is deleted
+                #   10.10.10.0 is removed
                 #   the new trainers is:10.10.10.3,10.10.10.1,10.10.10.2
                 #   In this case, the rank of 10.10.10.1 and 10.10.10.2 remains unchanged, while the rank of 10.10.10.3 is set to rank0
                 hosts_dict = dict()
