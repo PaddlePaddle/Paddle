@@ -29,6 +29,51 @@ static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
+/*
+    This function is to be called with one block per each column
+*/
+template <typename T>
+__global__ void column_reduce(const T* matrix, T* result, int m /* lines */,
+                              int n /* columns*/) {
+  // https://stackoverflow.com/questions/27570552/templated-cuda-kernel-with-dynamic-shared-memory
+  extern __shared__ unsigned char my_smem[];
+  T* sdata = reinterpret_cast<T*>(my_smem);
+
+  // normal tid
+  int tid = threadIdx.x + threadIdx.y * blockDim.x;
+
+  // transposed tid for shared memory
+  int new_tid = threadIdx.y + threadIdx.x * blockDim.y;
+
+  // true x value in the matrix
+  int real_x = threadIdx.x + blockDim.x * blockIdx.x;
+
+  int i = real_x + n * threadIdx.y;
+  const int it = n * blockDim.y;
+  int offset = it;
+  T accumulator = static_cast<T>(0);
+
+  if (threadIdx.y < m && real_x < n) {
+    // store all the values from this column in a warped way
+    accumulator = matrix[i];
+    while (i + offset < n * m) {
+      accumulator += matrix[i + offset];
+      offset += it;
+    }
+  }
+
+  // save column reduction data in a transposed way
+  sdata[new_tid] = accumulator;
+  __syncthreads();
+
+  for (size_t t = 16; t > 0; t >>= 1) {
+    if (tid < 32 * 32 - 16) sdata[tid] += sdata[tid + t];
+    __syncthreads();
+  }
+
+  if (threadIdx.y == 0 && real_x < n) result[real_x] = sdata[new_tid];
+}
+
 template <typename T>
 __global__ void add_bias_kernel(T* data, const T* bias,
                                 const int64_t batch_size, const int out_feat) {
@@ -81,7 +126,8 @@ class ParallelLinearCUDAKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* w = ctx.Input<Tensor>("W");
     auto* bias = ctx.Input<Tensor>("Bias");
-    auto* gpu_expert_count = ctx.Input<Tensor>("Expert_Count");
+    // auto* gpu_expert_count = ctx.Input<Tensor>("Expert_Count");
+    auto expert_count = ctx.Attr<std::vector<int>>("expert_count");
 
     auto* output = ctx.Output<framework::LoDTensor>("Out");
 
@@ -105,16 +151,16 @@ class ParallelLinearCUDAKernel : public framework::OpKernel<T> {
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
 
     // initialize
-    auto out_eigen = framework::EigenVector<T>::Flatten(*output);
-    auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
-    out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
+    // auto out_eigen = framework::EigenVector<T>::Flatten(*output);
+    // auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
+    //  .eigen_device();
+    // out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
 
     // ugly code to get expert_count in cpu
-    std::vector<int64_t> expert_count;
-    framework::TensorToVector(*gpu_expert_count, ctx.device_context(),
-                              &expert_count);
-    dev_ctx.Wait();
+    // std::vector<int64_t> expert_count;
+    // framework::TensorToVector(*gpu_expert_count, ctx.device_context(),
+    // &expert_count);
+    // dev_ctx.Wait();
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     for (int64_t i = 0, ptr = 0; i < num_expert; ++i) {
@@ -145,7 +191,10 @@ class ParallelLinearGradOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* w = ctx.Input<Tensor>("W");
-    auto* gpu_expert_count = ctx.Input<Tensor>("Expert_Count");
+
+    // auto* gpu_expert_count = ctx.Input<Tensor>("Expert_Count");
+    auto expert_count = ctx.Attr<std::vector<int>>("expert_count");
+
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -186,12 +235,16 @@ class ParallelLinearGradOpCUDAKernel : public framework::OpKernel<T> {
     T* db_data = db->data<T>();
 
     // ugly code to get expert_count in cpu
-    std::vector<int64_t> expert_count;
-    framework::TensorToVector(*gpu_expert_count, ctx.device_context(),
-                              &expert_count);
-    dev_ctx.Wait();
+    // std::vector<int64_t> expert_count;
+    // framework::TensorToVector(*gpu_expert_count, ctx.device_context(),
+    // &expert_count);
+    // dev_ctx.Wait();
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+
+    // bias
+    dim3 block_threads(32, 32);
+    dim3 grid_threads(out_feat / 32 + (out_feat % 32 ? 1 : 0), 1);
 
     for (int64_t i = 0, ptr = 0; i < num_expert; ++i) {
       if (expert_count[i] == 0) {
@@ -211,9 +264,15 @@ class ParallelLinearGradOpCUDAKernel : public framework::OpKernel<T> {
                 dw_data + i * in_feat * out_feat);
 
       // TODO(shenliang03): need use reduce_sum to optimize performance
-      add_bias_grad<T>(ctx.cuda_device_context().stream(),
-                       dout_data + ptr * out_feat, db_data + i * out_feat,
-                       expert_count[i], out_feat);
+      // add_bias_grad<T>(ctx.cuda_device_context().stream(),
+      //                  dout_data + ptr * out_feat, db_data + i * out_feat,
+      //                  expert_count[i], out_feat);
+
+      column_reduce<<<grid_threads, block_threads, sizeof(T) * 1024,
+                      ctx.cuda_device_context().stream()>>>(
+          dout_data + ptr * out_feat, db_data + i * out_feat, expert_count[i],
+          out_feat);
+
       ptr += expert_count[i];
     }
   }

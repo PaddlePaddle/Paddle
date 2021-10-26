@@ -197,15 +197,21 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plf = paddle::platform;
+
 REGISTER_OP_CUDA_KERNEL(
     index_select,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext,
+                               plf::float16>,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, double>,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, int>,
     ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     index_select_grad,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::IndexSelectCUDAKernel<paddle::platform::CUDADeviceContext,
+                               plf::float16>,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, double>,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, int>,
     ops::IndexSelectGradCUDAKernel<paddle::platform::CUDADeviceContext,
