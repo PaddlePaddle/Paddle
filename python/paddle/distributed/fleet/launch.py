@@ -293,7 +293,7 @@ def launch_collective(args):
 
     start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
-        start_port = os.environ.get('FLAGS_START_PORT')
+        start_port = int(os.environ.get('FLAGS_START_PORT'))
     # lazy launch for auto-parallel
     if args.enable_auto_mapping == True:
         cluster, pod = get_mapped_cluster_from_args(args, device_mode)
