@@ -75,6 +75,9 @@ class HeterContext {
 
     device_values_.resize(device_num);
     device_keys_.resize(device_num);
+
+    device_dim_keys_.resize(device_num);
+    device_dim_ptr_.resize(device_num);
     mutex_.resize(device_num);
     for (size_t i = 0; i < mutex_.size(); ++i) {
       mutex_[i] = new std::mutex();
@@ -93,6 +96,18 @@ class HeterContext {
     }
     for (size_t i = 0; i < device_keys_.size(); ++i) {
       device_keys_[i].clear();
+    }
+    for (size_t i = 0; i < device_dim_keys_.size(); i++) {
+      for (size_t j = 0; j < device_dim_keys_[i].size(); j++) {
+        device_dim_keys_[i][j].clear();
+      }
+      device_dim_keys_[i].clear();
+    }
+    for (size_t i = 0; i < device_dim_ptr_.size(); i++) {
+      for (size_t j = 0; j < device_dim_ptr_[i].size(); j++) {
+        device_dim_ptr_[i][j].clear();
+      }
+      device_dim_ptr_[i].clear();
     }
   }
   void batch_add_keys(

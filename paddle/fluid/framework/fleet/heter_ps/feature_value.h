@@ -45,7 +45,7 @@ struct FeatureValue {
     return out;
   }
 };
-
+/*
 struct FeaturePushValue {
   float show;
   float clk;
@@ -68,6 +68,31 @@ struct FeaturePushValue {
     return out;
   }
 };
+*/
+
+struct FeaturePushValue {
+  float show;
+  float clk;
+  int slot;
+  float lr_g;
+  int mf_dim;
+  uint64_t mf_g;
+
+  __device__ __forceinline__ FeaturePushValue
+  operator+(const FeaturePushValue& a) const {
+    FeaturePushValue out;
+    out.slot = a.slot;
+    out.mf_dim = a.mf_dim;
+    out.show = a.show + show;
+    out.clk = a.clk + clk;
+    out.lr_g = a.lr_g + lr_g;
+    for (int i = 0; i < out.mf_dim; ++i) {
+      ((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)mf_g)[i];
+    }
+    return out;
+  }
+};
+
 
 }  // end namespace framework
 }  // end namespace paddle

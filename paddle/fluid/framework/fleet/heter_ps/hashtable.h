@@ -27,6 +27,8 @@ limitations under the License. */
 #include "thrust/pair.h"
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.cuh"
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/type_defs.h"
 
@@ -53,12 +55,12 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
               gpuStream_t stream);
-  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
-              gpuStream_t stream, HBMMemoryPool<KeyType>* pool=NULL);
+  void insert(const KeyType* d_keys, size_t len, HBMMemoryPool* pool, size_t start_index,
+            gpuStream_t stream);
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            gpuStream_t stream);
-  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
-           gpuStream_t stream, HBMMemoryPool<KeyType>* pool=NULL);
+  void get(const KeyType* d_keys, char* d_vals, size_t len,
+           gpuStream_t stream);
   void show();
   void dump_to_cpu(int devid, cudaStream_t stream);
 
@@ -66,15 +68,28 @@ class HashTable {
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
               Sgd sgd, gpuStream_t stream);
 
-  int size() { return container_->size(); }
+  int size() { 
+    if (!use_ptr_val_) {
+      return container_->size();
+    } else {
+      return ptr_container_->size();
+    }
+  }
+
+  void set_use_ptr_val (bool use_ptr_val) {use_ptr_val_ = use_ptr_val;}
+
+  bool use_ptr_val() {return use_ptr_val_;}
 
   std::unique_ptr<RWLock> rwlock_{nullptr};
 
  private:
   TableContainer<KeyType, ValType>* container_;
+  TableContainer<KeyType, uint64_t>* ptr_container_;
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
+  bool use_ptr_val_ = false;
+  size_t max_mf_dim_;
 };
 }  // end namespace framework
 }  // end namespace paddle

@@ -42,6 +42,7 @@ __global__ void insert_kernel(Table* table,
   }
 }
 
+
 template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
@@ -58,19 +59,6 @@ __global__ void insert_kernel(Table* table,
   }
 }
 
-template <typename Table>
-__global__ void search_kernel(Table* table,
-                              const typename Table::key_type* const keys,
-                              typename Table::mapped_type* const vals,
-                              size_t len, int size_val_type) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    auto it = table->find(keys[i]);
-    if (it != table->end()) {
-      (Table::mapped_type*)(vals + i * size_val_type) = *(it->second);
-    }
-  }
-}
 
 template <typename Table>
 __global__ void search_kernel(Table* table,
@@ -82,6 +70,20 @@ __global__ void search_kernel(Table* table,
     auto it = table->find(keys[i]);
     if (it != table->end()) {
       vals[i] = it->second;
+    }
+  }
+}
+
+template <typename Table>
+__global__ void dy_mf_search_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              char* const vals,
+                              size_t len, int size_val_type) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      *(FeatureValue*)(vals + i * size_val_type)= *(FeatureValue*)(it->second);
     }
   }
 }
@@ -99,10 +101,30 @@ __global__ void update_kernel(Table* table,
     }
   }
 }
+/*
+template <typename Table, typename GradType, typename Sgd>
+__global__ void update_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              const GradType* const grads, size_t len,
+                              Sgd sgd) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      sgd.update_value((it.getter())->second, grads[i]);
+    }
+  }
+}
+*/
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
-  container_ = new TableContainer<KeyType, ValType>(capacity);
+  if (!use_ptr_val_) {
+    container_ = new TableContainer<KeyType, ValType>(capacity);
+  } else {
+    ptr_container_ = new TableContainer<KeyType, uint64_t>(capacity);
+  }
+  
   rwlock_.reset(new RWLock);
 }
 
@@ -123,19 +145,25 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+
   search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
-                                                       d_vals, len);
+                                                      d_vals, len);
+  
+  
 }
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-                                      size_t len, gpuStream_t stream, int size_val_type) {
+                                      size_t len, gpuStream_t stream) {
   if (len == 0) {
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
-                                                       d_vals, len, size_val_type);
+  
+  dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(ptr_container_, d_keys,
+                                                      d_vals, len, max_mf_dim_);
+  
+  
 }
 
 template <typename KeyType, typename ValType>
@@ -151,19 +179,18 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 }
 
 template <typename KeyType, typename ValType>
-void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
-                                         gpuStream_t stream, HBMMemoryPool* pool, int start_index) {
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len, HBMMemoryPool* pool, size_t start_index,
+            gpuStream_t stream) {
   if (len == 0) {
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   if (pool == NULL) {
     return;
-  
-  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(continer_, d_keys, len, pool, start_index);
-  
-  
+  }
+  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(ptr_container_, d_keys, len, pool, start_index);
 }
+
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
@@ -218,8 +245,14 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
+  if (!use_ptr_val_) {
+    update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_grads, len, sgd);
+  } else {
+    update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(ptr_container_, d_keys,
+                                                       d_grads, len, sgd);
+  }
+  
 }
 
 }  // end namespace framework

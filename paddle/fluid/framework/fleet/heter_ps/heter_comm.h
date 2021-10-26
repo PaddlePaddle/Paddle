@@ -19,6 +19,7 @@ limitations under the License. */
 #include "hashtable.h"
 #include "heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.cuh"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
@@ -40,7 +41,8 @@ struct CustomGradMerger {
     out.clk = a.clk + b.clk;
     out.lr_g = a.lr_g + b.lr_g;
     for (int i = 0; i < MF_DIM; ++i) {
-      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
+      //out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
+      ((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; // for local test
     }
     return out;
   }
@@ -58,15 +60,17 @@ class HeterComm {
                             int* left, int* right, int gpu_num);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
                   int& uniq_len);
-  void pull_sparse(int num, KeyType* d_keys, char* d_vals, size_t len);
+  void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
                 size_t chunk_size, int stream_num);
+  void build_ps(int num, KeyType* h_keys, HBMMemoryPool* pool, size_t len,
+               size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);
 
   template <typename Sgd>
-  void push_sparse(int num, KeyType* d_keys, char* d_grads, size_t len,
+  void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len,
                    Sgd& sgd);
 
   template <typename Sgd>
@@ -91,25 +95,6 @@ class HeterComm {
     nccl_inner_comms_ = inner_comms;
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
-  }
-
-  void set_multi_dim(const std::unordered_map<int, int>& dim_index_map) {
-    dim_index_map_ = dim_index_map;
-    int table_num = tables_.size();
-    hbm_pools_.resize(table_num);
-    mem_pools_.resize(table_num);
-    batch_grad_pools_.resize(table_num);
-    int pool_num = dim_index_map.size;
-    for (auot& hp : hbm_pools) {
-      hp.resize(pool_num);
-    }
-    for (auot& mp : mem_pools) {
-      mp.resize(pool_num);
-    }
-    for (auto& p : dim_index_map_) {
-      max_mf_dim_ = max(max_mf_dim_, p.first);
-    }
-    multi_mf_dim_ = 1;
   }
 
   bool need_transfer(int send_id, int receive_id) {
@@ -192,9 +177,11 @@ class HeterComm {
 
  private:
   using Table = HashTable<KeyType, ValType>;
+  using PtrTable = HashTable<KeyType, uint64_t>;
   int block_size_{256};
   float load_factor_{0.75};
   std::vector<Table*> tables_;
+  std::vector<PtrTable*> ptr_tables_;
   std::shared_ptr<HeterPsResource> resource_;
   CustomGradMerger merger_;
   int topo_aware_{1};
@@ -205,10 +192,8 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
-  std::unordered_map<int, int> dim_index_map_;
   int multi_mf_dim_{0};
-  int max_mf_dim{0};
-  std::vector<HBMMemoryPool*> batch_grad_pools_;
+  int max_mf_dim_;
 };
 
 }  // end namespace framework

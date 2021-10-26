@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.cuh"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -72,16 +73,23 @@ class PSGPUWrapper {
                 int total_len);
   void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
                    const std::vector<float*>& values,
-                   const char* total_values_gpu, const int64_t* gpu_len,
+                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
                    const int slot_num, const int hidden_size,
                    const int64_t total_length);
 
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
-                   char* total_grad_values_gpu,
+                   FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
+  
+  void CopyForPush(const paddle::platform::Place& place,
+                   const std::vector<const float*>& grad_values,
+                   FeaturePushValue* total_grad_values_gpu,
+                   const std::vector<int64_t>& slot_lengths,
+                  const int64_t total_length,
+                   const int batch_size, HBMMemoryPool* pool);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -113,18 +121,23 @@ class PSGPUWrapper {
 
   void SetDynamicMFLength(const std::unordered_map<int, int> slot_dim_map) {
     slot_dim_map_ = slot_dim_map;
+    size_t num_of_dim = slot_dim_map_.size();
     std::unordered_set<int> dims_set;
     for (auto& it : slot_dim_map_) {
-      dims_set.insert(it->second);
+      dims_set.insert(it.second);
     }
-    index_dim_vec_.resize(dims_set.size());
+    index_dim_vec_.resize(num_of_dim);
     index_dim_vec_.assign(dims_set.begin(), dims_set.end());
     std::sort(index_dim_vec_.begin(), index_dim_vec_.end());
-    size_t dims_num = index_dim_vec_.size();
-    for (size_t i = 0; i < index_dim_vec_.size() : i++) {
-      dim_index_map_[dim] = i;
+    for (size_t i = 0; i < num_of_dim; i++) {
+      dim_index_map_[index_dim_vec_[i]] = i;
     }
-    multi_mf_dim_ = (dim_index_map_.size() > 1) ? 1 : 0;
+    for (size_t i = 0; i < mem_pools_.size(); i++) {
+      mem_pools_[i].resize(num_of_dim);
+      hbm_pools_[i].resize(num_of_dim);
+    }
+    max_mf_dim_ = index_dim_vec_.back();
+    multi_mf_dim_ = (dim_index_map_.size() > 1) ? dim_index_map_.size() : 0;
 
   }
 
@@ -135,6 +148,8 @@ class PSGPUWrapper {
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
+      hbm_pools_.resize(resource_->total_gpu());
+      mem_pools_.resize(resource_->total_gpu());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -281,7 +296,7 @@ class PSGPUWrapper {
     slot_vector_ = slot_vector;
   }
 
-  void SetSlotVector(const std::vector<int>& slot_vector, const std::vector<int>& mf_dim_vector) {
+  void SetSlotDimVector(const std::vector<int>& slot_vector, const std::vector<int>& mf_dim_vector) {
     slot_vector_ = slot_vector;
     slot_vector_.insert(slot_vector_.end(), mf_dim_vector.begin(), mf_dim_vector.end());
     
@@ -320,8 +335,9 @@ class PSGPUWrapper {
   std::unordered_map<int, int> dim_index_map_;
   std::vector<int> index_dim_vec_;
   int multi_mf_dim_{0};
+  int max_mf_dim_;
   std::vector<HBMMemoryPool*> batch_grad_pool_;
-  std::vector<std::vector<HBMMemoryPool*>> hbm_pools_ // in multi mfdim, one table need hbm pools of totol dims number 
+  std::vector<std::vector<HBMMemoryPool*>> hbm_pools_;// in multi mfdim, one table need hbm pools of totol dims number 
   std::vector<std::vector<MemoryPool*>> mem_pools_;
 
   std::shared_ptr<

@@ -34,7 +34,7 @@ HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource) {
 
 HeterPs::~HeterPs() {}
 
-void HeterPs::pull_sparse(int num, FeatureKey* d_keys, char* d_vals,
+void HeterPs::pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
                           size_t len) {
   comm_->pull_sparse(num, d_keys, d_vals, len);
 }
@@ -42,6 +42,11 @@ void HeterPs::pull_sparse(int num, FeatureKey* d_keys, char* d_vals,
 void HeterPs::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
                        size_t len, size_t chunk_size, int stream_num) {
   comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
+}
+
+void HeterPs::build_ps(int num, FeatureKey* h_keys, HBMMemoryPool* pool,
+                       size_t len, size_t chunk_size, int stream_num) {
+  comm_->build_ps(num, h_keys, pool, len, chunk_size, stream_num);
 }
 
 int HeterPs::get_index_by_devid(int devid) {
@@ -53,7 +58,7 @@ void HeterPs::end_pass() { comm_->end_pass(); }
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num, FeatureKey* d_keys,
-                          char* d_grads, size_t len) {
+                          FeaturePushValue* d_grads, size_t len) {
   comm_->push_sparse(num, d_keys, d_grads, len, opt_);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
@@ -62,10 +67,6 @@ void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                                      const std::vector<ncclComm_t>& inter_comms,
                                      int comm_size) {
   comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
-}
-
-void HeterPs::set_mutli_dim(const std::unordered_map<int, int>& dim_index_map) {
-  comm_->set_mutli_dim(dim_index_map);
 }
 
 }  // end namespace framework
