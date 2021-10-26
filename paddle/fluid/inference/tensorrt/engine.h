@@ -116,6 +116,17 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
             input, ShapeStr(shape)));
       }
       return nvinfer1::Dims2(shape[1], shape[2]);
+    } else if (shape.size() == 2UL) {
+      if (shape[1] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
+      nvinfer1::Dims dims;
+      dims.nbDims = 1;
+      dims.d[0] = shape[1];
+      return dims;
     }
     return nvinfer1::Dims3(shape[1], 1, 1);
   } else {
