@@ -183,7 +183,12 @@ REGISTER_OP_VERSION(roll)
                      "(std::vector<int64_t>) Axis along which to roll. "
                      "It must have the same size with shifts, or size = 0.",
                      std::vector<int64_t>())
-            .DeleteAttr(
-                "dims",
-                "(std::vector<int64_t>) Dims along which to roll. "
-                "It must have the same size with shifts, or size = 0."));
+            .DeleteAttr("dims",
+                        "(std::vector<int64_t>) Dims along which to roll. "
+                        "It must have the same size with shifts, or size = 0."))
+    .AddCheckpoint(
+        R"ROC(Upgrade roll add a dispensable input "ShiftsTensor".)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "ShiftsTensor",
+            "The number of places by which the elements of"
+            "the tensor are shifted."));
