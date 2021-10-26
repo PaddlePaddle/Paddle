@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/warpctc_op.h"
 
 namespace ops = paddle::operators;
+// register forward and backward of CUDA OP must in same *.cu file.
+// Eigen can be used on GPU device, but must be in *.cu file not *.cu.cc file.
+// *.cu.cc also using GCC compiler. *.cu using NVCC compiler
 REGISTER_OP_CUDA_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, float>,
     ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, double>);
