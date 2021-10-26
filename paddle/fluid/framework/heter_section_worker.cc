@@ -378,7 +378,7 @@ void HeterSectionWorker::TrainFiles() {
   if (is_first_stage) {
     device_reader_->Start();
   }
-  while (true && !epoch_finish_) {
+  while (!epoch_finish_) {
     Run();
     dev_ctx_->Wait();
   }

@@ -191,7 +191,7 @@ void HeterPipelineTrainer::Run() {
   
 
   // main training logic
-  VLOG(3) << "HeterPipelineTrainer threads size:" << threads_.size();
+  //VLOG(3) << "HeterPipelineTrainer threads size:" << threads_.size();
   if (pipeline_stage_ == 0) { // for cpu trainer
     //for (int thidx = 0; thidx < thread_num_; ++thidx) {
     //    threads_.push_back(
