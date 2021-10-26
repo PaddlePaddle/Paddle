@@ -60,6 +60,7 @@ class NodeVarType(object):
 
     Annotation_map = {
         "Tensor": TENSOR,
+        "paddle.Tensor": TENSOR,
         "int": INT,
         "float": FLOAT,
         "bool": BOOLEAN,
@@ -94,16 +95,9 @@ class NodeVarType(object):
 
     @staticmethod
     def type_from_annotation(annotation):
-        annotation_str = ast_to_source_code(annotation)
-
-        # annotation.id?
-        # if annotation.id in NodeVarType.Annotation_map:
-        #     return NodeVarType.Annotation_map[annotation.id]
-
-        # 这样会不会有问题，比如指定的类型为 :int_shape
-        for pattern, var_type in NodeVarType.Annotation_map.items():
-            if pattern in annotation_str:
-                return var_type
+        annotation_str = ast_to_source_code(annotation).strip()
+        if annotation_str in NodeVarType.Annotation_map:
+            return NodeVarType.Annotation_map[annotation_str]
 
         # raise warning if not found
         warn("Currently we don't support annotation: %s" % annotation_str)
