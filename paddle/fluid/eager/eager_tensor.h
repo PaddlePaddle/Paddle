@@ -14,6 +14,7 @@
 
 #pragma once
 #include <Python.h>
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/pten/hapi/all.h"
 
@@ -187,9 +188,83 @@ class EagerTensor final {
   }
 
   /** Part 9: Get framework::Variable from EagerTensor **/
-  const paddle::framework::Variable& Var() const { return var_; }
+  const paddle::framework::Variable& Var() const { var_; }
 
   paddle::framework::Variable* MutableVar() { return &var_; }
+
+  /** Part 10: Sync paddle::framework::Variable with pten::Tensor **/
+  void SyncToVar(const paddle::framework::proto::VarType& type) {
+    // Synchronize allocation only once.
+    if (!var_.IsInitialized()) {
+      // TODO(jiabin): Support selected rows later.
+      PADDLE_ENFORCE(
+          this->initialized(),
+          paddle::platform::errors::Fatal("Can not Sync EagerTensor %s whose "
+                                          "pten::Tensor is not initialized!" %
+                                          name()));
+      if ((paddle::framework::proto::VarType::LOD_TENSOR == type) ||
+          (paddle::framework::proto::VarType::TENSOR == type)) {
+        auto* framework_tensor =
+            var_.GetMutable<paddle::framework::LoDTensor>();
+        framework_tensor->Resize(tensor_->shape());
+        framework_tensor->set_layout(
+            pten::TransToFluidDataLayout(tensor.layout()));
+        // Contruct framework::Tensor from egr::EagerTensor
+        if (auto tensor_dense =
+                std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl())) {
+          paddle::framework::ShareTensorImpl<pten::DenseTensor>(
+              tensor_dense.get(), framework_tensor);
+
+        } else {
+          PADDLE_THROW(paddle::platform::errors::Fatal(
+              "Unrecognized egr::EagerTensor type, only "
+              "DenseTensor is supported for now."));
+        }
+      }
+    }
+  }
+
+ private:
+  template <typename LEGACY_TYPE, typename TYPE>
+  void SetImplWithLegacyTensor() {
+    pten::TensorMeta meta;
+    const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
+    meta.dims = framework_tensor.dims();
+    meta.backend = pten::TransToPtenBackend(framework_tensor.place());
+    meta.type = pten::TransToPtenDataType(framework_tensor.type());
+    meta.layout = pten::TransToPtenDataLayout(framework_tensor.layout());
+    allocation = framework_tensor.Holder();
+    auto impl_tensor =
+        std::make_shared<TYPE>(std::move(tensor_meta), pten::TensorStatus());
+    impl_tensor->ShareAllocation(allocation);
+    this->set_impl(impl_tensor);
+  }
+
+ public:
+  /** Part 11: Sync paddle::framework::Variable with pten::Tensor **/
+  void SyncToTensor() {
+    // Synchronize allocation only once.
+    if (!this->initialized()) {
+      // TODO(jiabin): Support selected rows later.
+      PADDLE_ENFORCE(var_.IsInitialized(),
+                     paddle::platform::errors::Fatal(
+                         "Can not Sync EagerTensor %s whose "
+                         "paddle::framework::Variable is not initialized!" %
+                         name()));
+      std::shared_ptr<paddle::memory::allocation::Allocation> allocation;
+      if (var_.IsType<paddle::framework::LoDTensor>()) {
+        SetImplWithLegacyTensor<paddle::framework::LoDTensor,
+                                pten::DenseTensor>();
+      } else if (var_.IsType<paddle::framework::Tensor>()) {
+        SetImplWithLegacyTensor<paddle::framework::Tensor, pten::DenseTensor>();
+      } else {
+        PADDLE_THROW(
+            paddle::platform::errors::Fatal("Unable to fetch underlying tensor "
+                                            "from VarBase, only LoDTensor and "
+                                            "Tensor are supported for now"));
+      }
+    }
+  }
 
  private:
   std::shared_ptr<paddle::experimental::Tensor> tensor_ = nullptr;

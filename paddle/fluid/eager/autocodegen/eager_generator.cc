@@ -736,26 +736,25 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   kernel_function(vector<Tensor>& X, Tensor& Y, float attr0, int attr1, size_t
   Out0Num, size_t Out1Num) {
 
-        const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();
-
         // Forward Function Body
         // According to fwd_inputs_name_pos_map
-        std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins =
-                { {"X" , TensorsToVarBases(X)}, { "Y" , TensorsToVarBases(Y)} };
+        std::map<std::string, std::vector<std::shared_ptr<EagerTensor>>> ins =
+                { {"X" , SyncToVars(X)}, { "Y" , SyncToVars(Y)} };
 
-        std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = {
-  {"Out0" , ConstructDuplicableOutput(Out0Num)}, {"Out1" ,
-   ConstructDuplicableOutput(Out1Num)} };
+        std::map<std::string, std::vector<std::shared_ptr<EagerTensor>>> outs =
+  {
+          {"Out0" , ConstructDuplicableOutput(Out0Num)}, {"Out1"
+  ,ConstructDuplicableOutput(Out1Num)} };
 
         // According to op_proto->attrs()
         framework::AttributeMap attrs = { {"attr0", attr0},  ... };
-        tracer->TraceOp("op_type", ins, outs, attrs, tracer->ExpectedPlace(),
-  false, {});
+        RunOp("op_type", ins, outs, attrs,
+  Controller.Instance().GetExpectedPlace(),false, {});
 
         // According to fwd_outputs_names
-        vector<Tensor> Out0 = VarBasesToTensors(outs["Out0"]);
-        Tensor Out1 = VarBaseToTensor(outs["Out1"])[0];
-        vector<Tensor> Out2 = VarBasesToTensors(outs["Out2"]);
+        std::vector<egr::EagerTensor> Out0 = GetOutputs(outs["Out0"]);
+        egr::EagerTensor Out1 = GetOutputs(outs["Out1"][0]);
+        std::vector<egr::EagerTensor> Out2 = GetOutputs(outs["Out2"]);
 
         // Grad Node Generation Codes
         ...
@@ -771,11 +770,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   /* ------ Dygraph forward function generation ------ */
   // [Generation] Get Tracer
-  std::string tracer_str =
-      "  const std::shared_ptr<paddle::imperative::Tracer>& tracer = "
-      "paddle::imperative::GetCurrentTracer();\n";
   generated_function_body += "  // Dygraph Forward Pass\n";
-  generated_function_body += tracer_str;
   generated_function_body += "\n";
 
   // [Generation] Get Ins Map
@@ -794,7 +789,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
     }
-    const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", TensorsToVarBases(%s) },";
+    const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", SyncToVars(%s) },";
     ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE,
                                                 input_name, input_name);
   }
@@ -810,7 +805,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   const char* FWD_INS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<paddle::imperative::VarBase>>> ins = { "
+      "std::vector<std::shared_ptr<egr::EagerTensor>>> ins = { "
       "%s };\n";
   std::string ins_map_str =
       paddle::string::Sprintf(FWD_INS_MAP_TEMPLATE, ins_contents_str);
@@ -866,7 +861,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   const char* FWD_OUTS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<paddle::imperative::VarBase>>> outs = { "
+      "std::vector<std::shared_ptr<EagerTensor>>> outs = { "
       "%s };\n";
   std::string outs_map_str =
       paddle::string::Sprintf(FWD_OUTS_MAP_TEMPLATE, outs_contents_str);
@@ -875,8 +870,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   // [Generation] Get TraceOp
   const char* FWD_TRACE_OP_TEMPLATE =
-      "  tracer->TraceOp(\"%s\", ins, outs, attrs, "
-      "tracer->ExpectedPlace(), false, {});\n";
+      "  RunOp(\"%s\", ins, outs, attrs, "
+      "Controller::Instance().GetExpectedPlace(), false, {});\n";
   std::string trace_op_str =
       paddle::string::Sprintf(FWD_TRACE_OP_TEMPLATE, op_proto.type());
   generated_function_body += trace_op_str;
@@ -894,14 +889,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if (output.duplicable()) {
       const char* FWD_OUT_TENSORS_TEMPLATE =
           "  std::vector<egr::EagerTensor> %s = "
-          "VarBasesToTensors(outs[\"%s\"]);\n";
+          "GetOutputs(outs[\"%s\"]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
                                                output_name, output_name);
       return_types[return_position] = "std::vector<egr::EagerTensor>";
     } else {
       const char* FWD_OUT_TENSOR_TEMPLATE =
           "  egr::EagerTensor %s = "
-          "VarBasesToTensors(outs[\"%s\"])[0];\n";
+          "GetOutput(outs[\"%s\"])[0];\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                output_name, output_name);
       return_types[return_position] = "egr::EagerTensor";

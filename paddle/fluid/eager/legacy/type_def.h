@@ -18,5 +18,6 @@
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 namespace egr {
-using NameTensorMap = std::map<std::string, std::vector<egr::EagerTensor>>;
+using NameTensorMap =
+    std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>;
 }  // namespace egr
