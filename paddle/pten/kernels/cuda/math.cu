@@ -30,6 +30,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 
 namespace pten {
 
@@ -75,16 +76,21 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
       nullptr, temp_storage_bytes, trans_x, out_data, size_prob, stream);
   PADDLE_ENFORCE_CUDA_SUCCESS(err);
 
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      dev_ctx.GetPlace());
   pten::DenseTensor tmp(
-      TensorMeta(paddle::framework::make_ddim(
-                     {static_cast<int64_t>(temp_storage_bytes)}),
-                 pten::TransToPtenBackend(dev_ctx.GetPlace()),
-                 x.data_type(),
-                 x.layout()),
-      TensorStatus());
-  auto* temp_storage = tmp.mutable_data<uint8_t>();
-  err = cub::DeviceReduce::Sum(
-      temp_storage, temp_storage_bytes, trans_x, out_data, size_prob, stream);
+      alloc,
+      DenseTensorMeta(x.data_type(),
+                      paddle::framework::make_ddim(
+                          {static_cast<int64_t>(temp_storage_bytes)}),
+                      x.layout()));
+  void* temp_storage = tmp.mutable_data<T>();
+  err = cub::DeviceReduce::Sum(static_cast<uint8_t*>(temp_storage),
+                               temp_storage_bytes,
+                               trans_x,
+                               out_data,
+                               size_prob,
+                               stream);
   PADDLE_ENFORCE_CUDA_SUCCESS(err);
 }
 

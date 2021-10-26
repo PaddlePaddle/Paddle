@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 
 PT_DECLARE_MODULE(LinalgCPU);
 
@@ -32,20 +33,20 @@ using DDim = paddle::framework::DDim;
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, dot) {
   // 1. create tensor
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 10}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 10}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data = dense_y->mutable_data<float>();
 
   float sum[3] = {0.0, 0.0, 0.0};

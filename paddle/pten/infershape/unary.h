@@ -21,21 +21,24 @@ namespace pten {
 
 // Common InferShape Functions for unary operators, The format like:
 //
-//   1. TensorMeta [OpName]InferShape(const TensorMeta& x_meta, ...) {}
-//   2. std::pair<TensorMeta, TensorMeta> [OpName]InferShape(const TensorMeta&
+//   1. DenseTensorMeta [OpName]InferShape(const DenseTensorMeta& x_meta, ...)
+//   {}
+//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferShape(const
+//   DenseTensorMeta&
 //   x_meta, ...) {}
-//   3. std::tuple<TensorMeta, TensorMeta, TensorMeta> [OpName]InferShape(const
-//   TensorMeta& x_meta, ...)
+//   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
+//   [OpName]InferShape(const
+//   DenseTensorMeta& x_meta, ...)
 //  NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-TensorMeta UnchangedInferShape(const TensorMeta& x_meta);
+DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta);
 
-TensorMeta ReductionInferShape(const TensorMeta& x_meta);
+DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta);
 
-TensorMeta FlattenInferShape(const TensorMeta& x_meta,
-                             int start_axis,
-                             int stop_axis);
+DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
+                                  int start_axis,
+                                  int stop_axis);
 
 }  // namespace pten

@@ -27,7 +27,6 @@ void Copy(const CUDAContext& dev_ctx,
   auto* dst_ptr = dst->mutable_data();
   const auto& src_place = src.place();
   const auto& dst_place = dst->place();
-  src.CheckMemorySize();
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -39,7 +38,7 @@ void Copy(const CUDAContext& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
   dst->Resize(src.dims());
-  dst->mutable_meta()->layout = src.meta().layout;
+  CHECK(dst->layout() == src.layout());
   auto size = src.numel() * paddle::framework::SizeOfType(
                                 TransToProtoVarType(src.data_type()));
 

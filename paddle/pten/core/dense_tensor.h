@@ -14,137 +14,159 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-
+#include "paddle/pten/core/allocator.h"
+#include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
-#include "paddle/pten/core/tensor_status.h"
-
-namespace paddle {
-namespace memory {
-namespace allocation {
-class Allocation;
-}
-}
-}
 
 namespace pten {
 
-using DataType = paddle::experimental::DataType;
-
-/**
- * The implementation of general Tensor (For CPU, CUDA, HIP, etc.), similar
- * to the Tensor in fluid, contains a pointer to Allocation and a series of
- * descriptive metadata and status required by Tensor.
- *
- * DenseTensor is still a base class, it may have inherited classes.
- *
- * The memory layout of these inherited classes is consistent with the
- * basic DenseTensor, except that a small number of members are added to
- * further specialize the description of the tensor.
- *
- * If the memory layout is different, it cannot be described based on the
- * general Allocation, and it needs to be directly inherited from
- * TensorBase.
- */
-class DenseTensor : public TensorBase {
+/// \brief The Dense tensor store values in a contiguous sequential block
+/// of memory where all values are represented. Tensors or multi-dimensional
+/// arrays are used in math operators.
+/// During the entire life cycle of a DenseTensor, its device type and key
+/// metadata are set unchanged.
+class DenseTensor : public TensorBase,
+                    public TypeInfoTraits<TensorBase, DenseTensor> {
  public:
-  // Not allowed to initialize a tensor without descriptive metadata
-  DenseTensor() = delete;
+  /// \brief Construct a dense tensor and allocate space.
+  /// \param a The allocator used to allocate space.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(const std::shared_ptr<Allocator>& a, const DenseTensorMeta& meta);
 
-  // DenseTensor(const DenseTensor&) = delete;
-  // DenseTensor& operator=(const DenseTensor&) = delete;
-  DenseTensor(DenseTensor&&) = delete;
-  DenseTensor& operator=(DenseTensor&&) = delete;
+  /// \brief Construct a dense tensor and allocate space.
+  /// \param a The allocator used to allocate space.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(const std::shared_ptr<Allocator>& a, DenseTensorMeta&& meta);
 
-  /**
-   * If we still malloc memory by mutable_data,
-   * the DenseTensor doesn't need complicated constructor.
-   *
-   * Note: Tensor objects lacking meta information are not allowed to exist.
-   */
-  DenseTensor(const TensorMeta& meta, const TensorStatus& status)
-      : meta_(meta), status_(status) {}
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage> storage, const DenseTensorMeta& meta);
 
-  DenseTensor(TensorMeta&& meta, TensorStatus&& status)
-      : meta_(std::move(meta)), status_(std::move(status)) {}
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
 
-  int64_t numel() const override { return meta_.numel; }
+  /// \brief Because dense tensor is a kind of container, we give a default
+  /// constructor to use for stl container. But the dense tensor created with
+  /// the default constructor is not practical.
+  DenseTensor() = default;
 
-  const paddle::framework::DDim& dims() const override { return meta_.dims; }
+  /// \brief Because dense tensor is a resource handle, we provide a default
+  /// move constructor to support move semantics.
+  DenseTensor(DenseTensor&& other) = default;
 
-  DataType data_type() const override { return meta_.type; }
+  /// \brief We do not recommend deep copy of dense tensor because of its
+  /// efficiency and complexity across devices. The operation is disabled here.
+  DenseTensor(const DenseTensor& other) = delete;
 
-  DataLayout layout() const override { return meta_.layout; }
+  /// \brief Destroy the tensor object and release exclusive resources.
+  virtual ~DenseTensor() = default;
 
-  const paddle::platform::Place& place() const override;
+ public:
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
+  static const char* name() { return "DenseTensor"; }
 
-  Backend backend() const override { return meta_.backend; }
+  /// \brief Returns the number of elements contained in tensor.
+  /// \return The number of elements contained in tensor.
+  int64_t numel() const;
 
-  bool valid() const override { return allocation_ != nullptr; }
+  /// \brief Returns the dims of the tensor.
+  /// \return The dims of the tensor.
+  const DDim& dims() const noexcept { return meta_.dims; }
 
-  bool initialized() const override { return allocation_ != nullptr; }
-
-  /* member methods */
-
-  const std::shared_ptr<paddle::memory::allocation::Allocation>& allocation()
-      const {
-    return allocation_;
+  /// \brief Returns the lod of the tensor.
+  /// \return The lod of the tensor.
+  const std::vector<std::vector<size_t>>& lod() const noexcept {
+    return meta_.lod;
   }
 
-  const TensorMeta& meta() const { return meta_; }
+  /// \brief Set the lod of the tensor.
+  void set_lod(const std::vector<std::vector<size_t>>& lod) { meta_.lod = lod; }
 
-  TensorMeta* mutable_meta() { return &meta_; }
+  /// \brief Returns the data type of the tensor.
+  /// \return The data type of the tensor.
+  DataType data_type() const noexcept { return meta_.type; }
 
-  /* Data Access Methods */
+  /// \brief Returns the data layout of the tensor.
+  /// \return The data layout of the tensor.
+  DataLayout layout() const noexcept { return meta_.layout; }
 
+  /// \brief Returns the data place of the tensor.
+  /// \return The data place of the tensor.
+  const Place& place() const { return storage_->place(); }
+
+  /// \brief Returns the meta information of the tensor.
+  /// \return The meta information of the tensor.
+  const DenseTensorMeta& meta() const noexcept { return meta_; }
+
+  /// \brief Test whether the metadata is valid.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept { return meta_.valid(); }
+
+  /// \brief Test whether the storage is allocated.
+  /// return Whether the storage is allocated.
+  bool initialized() const { return storage_->data(); }
+
+  /// \brief Check if storage is shared with other objects.
+  /// \return Whether the storage is shared with other objects.
+  bool IsSharedWith(const DenseTensor& b) const;
+
+  /// \brief Change the dims information in the metadata, and the corresponding
+  /// memory allocation will occur when the `mutable_data` is called.
+  /// \param dims The new dims of the dense tensor.
+  void Resize(const DDim& dims) noexcept { meta_.dims = dims; }
+
+  /// \brief Returns the actual storage size occupied by tensor, may be larger
+  /// than its shape dims.
+  /// \return The actual storage size occupied by tensor.
+  size_t memory_size() const { return storage_->size(); }
+
+  /// \brief Check that the storage area is large enough to hold the data of the
+  /// metadata size, and throw an exception if the conditions are not met.
+  void check_memory_size() const;
+
+  /// \brief Release the storage area for other purposes. Because of the
+  /// destruction of encapsulation, we do not support two dense tensors directly
+  /// sharing the same intrusive pointer.
+  /// \return The rvalue of instrusize pointer releated to the released storage.
+  intrusive_ptr<Storage> release() { return std::move(storage_); }
+
+  /// \brief Get the mutable data pointer value of type T.
+  /// Memory allocation may occur when calling this interface:
+  /// 1. When the storage size is not enough to meet the current shape of the
+  /// data.
+  /// \return The mutable data pointer value of type T.
+  template <typename T>
+  T* mutable_data();
+
+  /// \brief Get the mutable data pointer value of raw type.
+  /// Memory allocation may occur when calling this interface:
+  /// 1. When the storage size is not enough to meet the current shape of the
+  /// data.
+  /// 2. When more request_bytes parameters are used to reserve the data
+  /// storage.
+  /// param request_bytes The bytes to reserve the data storage.
+  /// \return The mutable data pointer value of type T.
+  void* mutable_data(size_t request_bytes = 0);
+
+  /// \brief Get the const data pointer value of type T.
+  /// \return The const data pointer value of type T.
+  template <typename T>
+  const T* data() const;
+
+  /// \brief Get the const data pointer value of raw type.
+  /// \return The const data pointer value of raw type.
   const void* data() const;
 
-  void* mutable_data();
-
-  template <typename T>
-  const T* data() const {
-    static_assert(std::is_pod<T>::value || std::is_same<T, void>::value,
-                  "T must be POD when call Tensor.data<T>().");
-    return reinterpret_cast<const T*>(data());
-  }
-
-  // NOTE: mutable_data does not hold arguments. Before calling mutable_data,
-  // please make sure that Tensor has maintained
-  // the correct meta and status.
-  //
-  // TODO(chenweihang): We need to be able to specify the allocator when
-  // mutable_data, or directly remove the mutable_data method.
-  // DenseTensor cannot actively apply for memory. Its memory application is
-  // handled by the DeviceContext->AllocateTensorData interface.
-  // I prefer the latter
-  template <typename T>
-  T* mutable_data() {
-    static_assert(std::is_pod<T>::value,
-                  "T must be POD when call Tensor.mutable_data<T>().");
-    return reinterpret_cast<T*>(mutable_data());
-  }
-
-  // For non-API and non-member interfaces, we still follow the C++ code style?
-
-  void Resize(const DDim& dims) { meta_.dims = dims; }
-
-  void ShareAllocation(const std::shared_ptr<
-                       paddle::memory::allocation::Allocation>& allocation);
-
-  paddle::platform::Place GetPlaceByBackend() const;
-
-  size_t MemorySize() const;
-
-  void CheckMemorySize() const;
-
  private:
-  // The actual Tensor storage holder
-  std::shared_ptr<paddle::memory::allocation::Allocation> allocation_;
-  // The Tensor meta data
-  TensorMeta meta_;
-  // The Tensor status data
-  TensorStatus status_;
+  DenseTensorMeta meta_;
+  intrusive_ptr<Storage> storage_;
 };
 
 }  // namespace pten

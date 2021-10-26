@@ -16,13 +16,13 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/api/include/linalg.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -244,12 +244,9 @@ class DotKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
     out->mutable_data<T>(x->place());
 
-    auto pt_x =
-        framework::MakeTensorImpl<pten::DenseTensor>(*x, x->place(), x->type());
-    auto pt_y =
-        framework::MakeTensorImpl<pten::DenseTensor>(*y, y->place(), y->type());
-    auto pt_out = framework::MakeTensorImpl<pten::DenseTensor>(*out, x->place(),
-                                                               x->type());
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
     pten::Dot<T>(dev_ctx, *pt_x.get(), *pt_y.get(), pt_out.get());
