@@ -162,27 +162,28 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
             "It is not support that global_pooling is true for trt now.")
 
-    def teller3(program_config, predictor_config):
-        if self.dynamic_shape.min_input_shape == {} and program_config.ops[
-                0].attrs['ceil_mode'] == True:
-            return True
-        return False
+        def teller3(program_config, predictor_config):
+            if self.dynamic_shape.min_input_shape == {} and program_config.ops[
+                    0].attrs['ceil_mode'] == True:
+                return True
+            return False
 
-    self.add_skip_case(
-        teller3, SkipReasons.TRT_NOT_IMPLEMENTED,
-        "It is not support that ceil_mode is true in static mode for trt now.")
+        self.add_skip_case(
+            teller3, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "It is not support that ceil_mode is true in static mode for trt now."
+        )
 
-    def teller4(program_config, predictor_config):
-        if self.dynamic_shape.min_input_shape != {} and (
-                program_config.ops[0].attrs['strides'] == [1, 2] or
-                program_config.ops[0].attrs['strides'] == [2, 2]):
-            return True
-        return False
+        def teller4(program_config, predictor_config):
+            if self.dynamic_shape.min_input_shape != {} and (
+                    program_config.ops[0].attrs['strides'] == [1, 2] or
+                    program_config.ops[0].attrs['strides'] == [2, 2]):
+                return True
+            return False
 
-    self.add_skip_case(
-        teller4, SkipReasons.TRT_NOT_IMPLEMENTED,
-        "It is not support that strides is not equal [1, 1] in dynamic mode for trt now."
-    )
+        self.add_skip_case(
+            teller4, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "It is not support that strides is not equal [1, 1] in dynamic mode for trt now."
+        )
 
     def test(self):
         self.add_skip_trt_case()
