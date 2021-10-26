@@ -81,10 +81,8 @@ if (WITH_GPU OR WITH_ROCM)
         nv_test(test_fused_dropout_act_bias SRCS fused_dropout_act_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
         nv_test(test_fused_layernorm_residual_dropout_bias SRCS fused_layernorm_residual_dropout_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
 
-
         op_library(fused_feedforward_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_feedforward);\n")
-
         # fused_attention_op
         op_library(fused_attention_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_attention);\n")

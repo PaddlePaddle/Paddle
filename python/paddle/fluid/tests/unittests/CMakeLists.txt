@@ -98,7 +98,6 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
 endforeach()
 
 if(NOT WITH_GPU)
-
     LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
 endif()
@@ -214,6 +213,7 @@ if (NOT WITH_GLOO)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_unused_variables_gloo)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_over_height_gloo)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_diff_length_gloo)
 endif()
 
 if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
