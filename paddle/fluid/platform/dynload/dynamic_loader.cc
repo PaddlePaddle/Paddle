@@ -26,10 +26,11 @@ DEFINE_string(cudnn_dir, "",
               "/usr/local/cudnn/lib. If empty [default], dlopen "
               "will search cudnn from LD_LIBRARY_PATH");
 
-DEFINE_string(cuda_dir, "",
-              "Specify path for loading cuda library, such as libcublas, "
-              "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
-              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+DEFINE_string(
+    cuda_dir, "",
+    "Specify path for loading cuda library, such as libcublas, libcublasLt "
+    "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+    "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libnccl.so. "
@@ -304,6 +305,15 @@ void* GetCublasDsoHandle() {
 #endif
 }
 
+void* GetCublasLtDsoHandle() {
+// APIs available after CUDA 10.1
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10100
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
+#else
+  return nullptr;
+#endif
+}
+
 void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   std::string mac_warn_meg(
@@ -355,16 +365,6 @@ void* GetCurandDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
 }
-
-#ifdef PADDLE_WITH_HIP
-void* GetROCFFTDsoHandle() {
-#if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
-#else
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
-#endif
-}
-#endif
 
 void* GetNvjpegDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
