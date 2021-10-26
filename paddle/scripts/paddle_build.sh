@@ -2415,6 +2415,9 @@ function main() {
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
+      build_pr_dev)
+        build_pr_and_develop 
+        ;;
       build_and_check)
         set +e
         check_style_info=$(check_style)
