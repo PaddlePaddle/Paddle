@@ -15,6 +15,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/npu_info.h"
 
@@ -22,7 +23,6 @@ int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
-  std::string gflags_env;
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
@@ -38,35 +38,23 @@ int main(int argc, char** argv) {
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
-  envs.push_back("fraction_of_gpu_memory_to_use");
-  envs.push_back("initial_gpu_memory_in_mb");
-  envs.push_back("reallocate_gpu_memory_in_mb");
-  envs.push_back("allocator_strategy");
-  envs.push_back("selected_gpus");
-#elif __clang__
-  envs.push_back("use_mkldnn");
-  envs.push_back("initial_cpu_memory_in_mb");
-  envs.push_back("allocator_strategy");
-
-  undefok.push_back("use_mkldnn");
-  undefok.push_back("initial_cpu_memory_in_mb");
-#else
-  envs.push_back("use_pinned_memory");
-  envs.push_back("use_mkldnn");
-  envs.push_back("initial_cpu_memory_in_mb");
-  envs.push_back("allocator_strategy");
-
-  undefok.push_back("use_pinned_memory");
-  undefok.push_back("use_mkldnn");
-  undefok.push_back("initial_cpu_memory_in_mb");
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-  envs.push_back("selected_npus");
-  envs.push_back("npu_config_path");
-#endif
+  const auto& flag_map = paddle::platform::GetExportedFlagInfoMap();
+  for (const auto& pair : flag_map) {
+    const std::string& name = pair.second.name;
+    // NOTE(zhiqiu): some names may not linked in some tests, so add to
+    // `undefok`.
+    // One way to handle that is to check each flag item by item, and put it in
+    // `envs` or `undefok`;
+    // another way is to add all flags to `envs` and `undeok`, basically it is
+    // not a good design,
+    // but it can simplify the procedure of creating new flag and seems no side
+    // effects.
+    // see details: https://gflags.github.io/gflags/#special
+    if (pair.second.is_writable) {  // means public
+      envs.push_back(name);
+      undefok.push_back(name);
+    }
+  }
 
   char* env_str = nullptr;
   if (envs.size() > 0) {
@@ -103,9 +91,7 @@ int main(int argc, char** argv) {
 #ifdef PADDLE_WITH_ASCEND_CL
   paddle::platform::AclInstance::Instance().Finalize();
 #endif
-
   if (env_str) free(env_str);
   if (undefok_str) free(undefok_str);
-
   return ret;
 }

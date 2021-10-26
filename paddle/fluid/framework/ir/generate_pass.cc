@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
@@ -20,6 +21,16 @@ namespace ir {
 
 void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
   const proto::BlockDesc& block = pass_desc.pattern().blocks(0);
+  for (const proto::VarDesc& var : block.vars()) {
+    PDNode* var_pdnode = pattern->NewNode(var.name())->AsInput();
+    var_pdnode->assert_is_var();
+    var_pdnode->assert_more([&](Node* x) {
+      if (VarDesc(var).GetShape() == x->Var()->GetShape()) {
+        return true;
+      }
+      return false;
+    });
+  }
   // Traverse all operators to create subgraph.
   for (int index = 0; index < block.ops_size(); ++index) {
     const proto::OpDesc& op = block.ops(index);
@@ -30,15 +41,32 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
         pattern->NewNode(std::to_string(index))->assert_is_op(op.type());
     // Create PDNodes for inputs of current operator.
     for (const proto::OpDesc::Var& var : op.inputs()) {
-      for (const std::string& argument : var.arguments()) {
+      for (int n = 0; n < var.arguments_size(); ++n) {
+        const std::string& argument = var.arguments(n);
         // The input may be the output of other operator.
         PDNode* var_pdnode = pattern->RetrieveNode(argument);
         if (nullptr == var_pdnode) {
           var_pdnode = pattern->NewNode(argument)->AsInput();
+          var_pdnode->assert_is_var();
         } else if (var_pdnode->IsOutput()) {
           var_pdnode->AsIntermediate();
         }
-        var_pdnode->assert_is_op_input(op.type());
+        var_pdnode->assert_more([&](Node* x) {
+          for (auto* out : x->outputs) {
+            if (out->IsOp() && out->Op()->Type() == op.type()) {
+              const auto& inputs = out->Op()->Inputs();
+              const auto& iter = inputs.find(var.parameter());
+              if (inputs.end() != iter) {
+                if (iter->second.end() != std::find(iter->second.begin(),
+                                                    iter->second.end(),
+                                                    x->Name())) {
+                  return true;
+                }
+              }
+            }
+          }
+          return false;
+        });
         pattern->AddEdge(var_pdnode, op_pdnode);
       }
     }
@@ -49,6 +77,24 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
         PDNode* var_pdnode = pattern->RetrieveNode(argument);
         if (nullptr == var_pdnode) {
           var_pdnode = pattern->NewNode(argument)->AsOutput();
+          var_pdnode->assert_is_var();
+          var_pdnode->assert_more([&](Node* x) {
+            for (Node* input : x->inputs) {
+              if (input && input->IsOp() && input->Op() &&
+                  input->Op()->Type() == op.type()) {
+                const auto& outputs = input->Op()->Outputs();
+                const auto& iter = outputs.find(var.parameter());
+                if (outputs.end() != iter) {
+                  if (iter->second.end() != std::find(iter->second.begin(),
+                                                      iter->second.end(),
+                                                      x->Name())) {
+                    return true;
+                  }
+                }
+              }
+            }
+            return false;
+          });
         } else if (var_pdnode->IsInput()) {
           var_pdnode->AsIntermediate();
         }
@@ -72,17 +118,63 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
   }
 }
 
+// There are some duplicate patterns.
+bool IsDuplicatePattern(const GraphPatternDetector::subgraph_t& subgraph,
+                        Graph* graph) {
+  for (auto iter : subgraph) {
+    if (nullptr == graph->RetrieveNode(iter.second->id())) {
+      VLOG(3) << "Node [" << iter.second->Name()
+              << "] of subgraph has been removed. So skip this optimize.";
+      return true;
+    }
+  }
+  return false;
+}
+
+GraphPatternDetector::handle_t GetGenerateDelete(
+    const PDPattern& pattern, const proto::PassDesc& pass_desc) {
+  GraphPatternDetector::handle_t handler = [&](
+      const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+    if (IsDuplicatePattern(subgraph, graph)) {
+      return;
+    }
+    // `var_node_maps` record the mapping of variable to the pattern subgraph.
+    std::map<std::string, Node*> var_node_maps;
+    for (const proto::PassDesc::VarMap& var_map : pass_desc.var_maps()) {
+      Node* node = subgraph.at(pattern.RetrieveNode(var_map.pattern_var()));
+      const auto& iter = var_node_maps.find(var_map.replace_var());
+      if (var_node_maps.end() == iter) {
+        // first node is input
+        var_node_maps.insert({var_map.replace_var(), node});
+      } else {
+        // output node
+        for (Node* s_node : node->outputs) {
+          iter->second->outputs.push_back(s_node);
+          std::replace(s_node->inputs.begin(), s_node->inputs.end(), node,
+                       iter->second);
+          s_node->Op()->RenameInput(node->Name(), iter->second->Name());
+        }
+      }
+    }
+    // Remove nodes that are intermediate.
+    std::unordered_set<const Node*> remove_nodes;
+    for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
+      remove_nodes.emplace(subgraph.at(pdnode.get()));
+    }
+    for (auto iter : var_node_maps) {
+      remove_nodes.erase(iter.second);
+    }
+    GraphSafeRemoveNodes(graph, remove_nodes);
+  };
+  return handler;
+}
+
 GraphPatternDetector::handle_t GetGenerateRewrite(
     const PDPattern& pattern, const proto::PassDesc& pass_desc) {
   GraphPatternDetector::handle_t handler = [&](
-      const GraphPatternDetector::subgraph_t subgraph, Graph* graph) {
-    // There are some duplicate patterns.
-    for (auto iter : subgraph) {
-      if (nullptr == graph->RetrieveNode(iter.second->id())) {
-        VLOG(3) << "Node [" << iter.second->Name()
-                << "] of subgraph has been removed. So skip this optimize.";
-        return;
-      }
+      const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+    if (IsDuplicatePattern(subgraph, graph)) {
+      return;
     }
     const proto::BlockDesc& block = pass_desc.replace().blocks(0);
     // `var_node_maps` record the mapping of variable to the pattern subgraph.
@@ -174,7 +266,11 @@ void GeneratePass::ApplyImpl(Graph* graph) const {
   for (const proto::PassDesc& pass_desc : multi_pass_desc_.pass_descs()) {
     GraphPatternDetector detector;
     InitGeneratePattern(pass_desc, detector.mutable_pattern());
-    detector(graph, GetGenerateRewrite(detector.pattern(), pass_desc));
+    if (pass_desc.replace().blocks(0).ops_size() == 0) {
+      detector(graph, GetGenerateDelete(detector.pattern(), pass_desc));
+    } else {
+      detector(graph, GetGenerateRewrite(detector.pattern(), pass_desc));
+    }
     // The rewrited graph needs to be verified. Current Pass should be skipped
     // if validation failed. Rewrite based on the original graph cannot
     // implement rollback operation.
@@ -222,6 +318,115 @@ void GeneratePass::VerifyDesc() const {
 bool GeneratePass::VerifyGraph(const Graph& graph) {
   // Return true temporarily.
   return true;
+}
+
+namespace generate_pass {
+
+VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
+VarHelper::VarHelper(const std::string& name, Type type)
+    : name_(name), type_(type) {}
+
+OpHelper::OpHelper(const char* type, SubgraphHelper* subgraph_helper)
+    : type_(type), subgraph_helper_(subgraph_helper) {
+  op_desc_ = subgraph_helper_->ProgramDesc()->mutable_blocks(0)->add_ops();
+  op_desc_->set_type(type_);
+}
+
+OpHelper::Arguments::Arguments(const char* parameter,
+                               const VarHelper& var_helper)
+    : parameter_(parameter) {
+  var_helpers_.push_back(var_helper);
+}
+
+OpHelper::Arguments::Arguments(const char* parameter,
+                               std::initializer_list<VarHelper> var_helpers)
+    : parameter_(parameter), var_helpers_(var_helpers) {}
+
+OpHelper& OpHelper::operator()(const Arguments& input) {
+  proto::OpDesc::Var* var = op_desc_->add_inputs();
+  var->set_parameter(input.parameter_);
+  for (const VarHelper& var_helper : input.var_helpers_) {
+    var->add_arguments()->assign(var_helper.name_);
+    if (VarHelper::Type::kInput == var_helper.type_) {
+      subgraph_helper_->AddInputVar(var_helper.name_);
+    }
+  }
+  return *this;
+}
+
+OpHelper& OpHelper::operator()(std::initializer_list<Arguments> inputs) {
+  for (const auto& input : inputs) {
+    operator()(input);
+  }
+  return *this;
+}
+
+VarHelper OpHelper::Out(const char* name) {
+  std::string argument = patterns::UniqueKey(type_);
+  proto::OpDesc::Var* var = op_desc_->add_outputs();
+  var->set_parameter(name);
+  var->add_arguments()->assign(argument);
+  return VarHelper(argument, VarHelper::Type::kOutput);
+}
+
+proto::ProgramDesc* SubgraphHelper::ProgramDesc() { return &program_desc_; }
+
+const proto::ProgramDesc& SubgraphHelper::ProgramDesc() const {
+  return program_desc_;
+}
+
+const std::vector<std::string>& SubgraphHelper::InputVars() const {
+  return input_vars_;
+}
+
+const std::vector<std::string>& SubgraphHelper::OutputVars() const {
+  return output_vars_;
+}
+
+void SubgraphHelper::AddInputVar(const std::string& name) {
+  auto iter = std::find(input_vars_.begin(), input_vars_.end(), name);
+  if (input_vars_.end() == iter) {
+    input_vars_.push_back(name);
+  }
+}
+
+void SubgraphHelper::AddOutputVars(const VarHelper& var_helper) {
+  output_vars_.push_back(var_helper.name_);
+}
+
+}  // namespace generate_pass
+
+PassPairs::PassPairs(const SubgraphType& pattern, const SubgraphType& replace) {
+  AddPassDesc(pattern, replace);
+}
+
+void PassPairs::AddPassDesc(const SubgraphType& pattern,
+                            const SubgraphType& replace) {
+  proto::PassDesc* pass_desc = multi_pass_desc_.add_pass_descs();
+  pass_desc->mutable_pattern()->CopyFrom(pattern.ProgramDesc());
+  pass_desc->mutable_replace()->CopyFrom(replace.ProgramDesc());
+  PADDLE_ENFORCE_EQ(pattern.InputVars().size(), replace.InputVars().size(),
+                    platform::errors::InvalidArgument(
+                        "Size of lambda expression arguments is not equal "
+                        "between pattern/replace subgraph."));
+  for (size_t i = 0; i < pattern.InputVars().size(); i++) {
+    proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+    var_map->set_pattern_var(pattern.InputVars()[i]);
+    var_map->set_replace_var(replace.InputVars()[i]);
+  }
+  PADDLE_ENFORCE_EQ(pattern.OutputVars().size(), replace.OutputVars().size(),
+                    platform::errors::InvalidArgument(
+                        "Size of lambda expression returns is not equal "
+                        "between pattern/replace subgraph."));
+  for (size_t i = 0; i < pattern.OutputVars().size(); i++) {
+    proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+    var_map->set_pattern_var(pattern.OutputVars()[i]);
+    var_map->set_replace_var(replace.OutputVars()[i]);
+  }
+}
+
+const proto::MultiPassDesc& PassPairs::MultiPassDesc() const {
+  return multi_pass_desc_;
 }
 
 }  // namespace ir
