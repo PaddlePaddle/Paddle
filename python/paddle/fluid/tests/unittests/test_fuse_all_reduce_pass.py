@@ -83,7 +83,7 @@ class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
             use_device,
             init_feed_dict=init_data,
             optimizer=self.optimizer,
-            fuse_all_optimizer_ops=True)
+            fuse_all_optimizer_ops=False)
 
     def test_simple_fc_with_fuse_all_reduce(self):
         self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CUDA)
