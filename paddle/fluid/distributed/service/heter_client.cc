@@ -134,7 +134,6 @@ void HeterClient::SendAndRecvAsync(
           << message_name_val;
   brpc::Channel* channel = nullptr;
 
-
     distributed::MultiVarMsg request;
     OnHeterRpcDone* closure = new OnHeterRpcDone([p_ctx, p_scope](void* done) {
       auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
@@ -184,8 +183,6 @@ void HeterClient::SendAndRecvAsync(
       micro_id = static_cast<int>(data[0]);
     }
 
-
-
     auto minibatch_id = micro_id / 10;
     // select channel according to micro id
     if (mode == "forward") {
@@ -199,7 +196,6 @@ void HeterClient::SendAndRecvAsync(
     ::paddle::distributed::PsService_Stub stub(channel);
     stub.SendAndRecvVariable(&closure->cntl, &request, &closure->response,
                              closure);
-
 }
 
 std::future<int32_t> HeterClient::SendCmd(
