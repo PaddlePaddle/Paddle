@@ -19,6 +19,36 @@
 namespace paddle {
 namespace operators {
 
+static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
+                                      std::string input_name) {
+  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
+  auto axis =
+      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
+  auto dim = ctx.GetInputDim(input_name);
+  if (!shape.empty() && !axis.empty()) {
+    PADDLE_ENFORCE_GE(
+        shape.size(), 2,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_LE(
+        shape.size(), 4,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_EQ(
+        shape.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
+            "must be equal.",
+            input_name, input_name));
+    dim = dim.reshape(shape).transpose(axis);
+  }
+  return dim;
+}
+
 class MatMulV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -30,9 +60,9 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
     std::vector<int64_t> dims_x =
-        paddle::framework::vectorize(ctx->GetInputDim("X"));
+        paddle::framework::vectorize(GetDimForInput(*ctx, "X"));
     std::vector<int64_t> dims_y =
-        paddle::framework::vectorize(ctx->GetInputDim("Y"));
+        paddle::framework::vectorize(GetDimForInput(*ctx, "Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(ndims_x, 0,
@@ -214,6 +244,22 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16"})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_X",
+                              R"DOC(Shape of fused reshape of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_Y",
+                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_X",
+                              R"DOC(Axis of fused transpose of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_Y",
+                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
+        .SetDefault({})
         .AsExtra();
     AddComment(
         R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 

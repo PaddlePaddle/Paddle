@@ -324,8 +324,8 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
-framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
-                               std::string input_name) {
+static framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
+                                      std::string input_name) {
   auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
   auto axis =
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
