@@ -29,7 +29,11 @@ from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
     TestMatMulOpTransposeReshapeOtherDimFloat,
     TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException,
     TestMatMulOpTransposeReshapeTransposeRankNotSupportedException,
-    TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException)
+    TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException,
+    TestReshapeTransposeMatMulOp, TestReshapeTransposeMatMulOp4DXFloat,
+    TestReshapeTransposeMatMulOp4DYFloat, TestReshapeTransposeMatMulOp4DXYFloat,
+    TestReshapeTransposeMatMulOp2DXFloat, TestReshapeTransposeMatMulOp2DYFloat,
+    TestReshapeTransposeMatMulOp3DXFloat, TestReshapeTransposeMatMulOp3DYFloat)
 
 
 def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
@@ -432,6 +436,61 @@ class TestMatMulV2OpTransposeReshapeTransposeRankNotSupportedException(
         TestMatMulOpTransposeReshapeTransposeRankNotSupportedException):
     def set_op_type(self):
         self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpReshapeTranspose(TestReshapeTransposeMatMulOp):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
+
+
+class TestMatMulV2OpReshapeTranspose4DXFloat(
+        TestReshapeTransposeMatMulOp4DXFloat):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
+
+
+class TestMatMulV2OpReshapeTranspose4DYFloat(
+        TestReshapeTransposeMatMulOp4DYFloat):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
+
+
+class TestMatMulV2OpReshapeTranspose4DXYFloat(
+        TestReshapeTransposeMatMulOp4DXYFloat):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
+
+
+class TestMatMulV2OpReshapeTranspose2DXFloat(
+        TestReshapeTransposeMatMulOp2DXFloat):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
+
+
+class TestMatMulV2OpReshapeTranspose2DYFloat(
+        TestReshapeTransposeMatMulOp2DYFloat):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
+
+
+class TestMatMulV2OpReshapeTranspose3DXFloat(
+        TestReshapeTransposeMatMulOp3DXFloat):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
+
+
+class TestMatMulV2OpReshapeTranspose3DYFloat(
+        TestReshapeTransposeMatMulOp3DYFloat):
+    def set_op_type_and_transpose_y_name(self):
+        self.op_type = "matmul_v2"
+        self.transpose_y_name = "trans_y"
 
 
 if __name__ == "__main__":

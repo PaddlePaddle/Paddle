@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,27 +16,23 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 /*
- * Fuse Reshape->Transpose->MatMul when MatMul uses mkldnn.
+ * Fuse Reshape->Transpose->MatMulV2 when MatMulV2 uses mkldnn.
  */
 
-class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
+class ReshapeTransposeMatmulV2MkldnnFusePass
+    : public ReshapeTransposeMatmulMkldnnFusePass {
  public:
-  ReshapeTransposeMatmulMkldnnFusePass();
-  virtual ~ReshapeTransposeMatmulMkldnnFusePass() {}
+  ReshapeTransposeMatmulV2MkldnnFusePass();
+  virtual ~ReshapeTransposeMatmulV2MkldnnFusePass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-  const std::string name_scope_{"reshape_transpose_matmul_fuse"};
-
-  void Fuse(Graph* graph, bool with_reshape_xshape,
-            bool with_transpose_xshape) const;
-  std::string op_name_;
+  const std::string name_scope_{"reshape_transpose_matmul_v2_fuse"};
 };
 }  // namespace ir
 }  // namespace framework

@@ -252,7 +252,7 @@ class TestDnnlMatMulOpInt8ForceFP32BasicScales(TestDnnlMatMulOp):
 
 
 @skip_check_grad_ci(reason="DNNL's MatMul doesn't implement grad kernel.")
-class TestMatMulOpReshapeTranspose(OpTest):
+class TestReshapeTransposeMatMulOp(OpTest):
     def init_data_type(self):
         self.data_type_ = 'float32'
 
@@ -267,10 +267,12 @@ class TestMatMulOpReshapeTranspose(OpTest):
         self.fused_reshape_Y = []
         self.fused_transpose_Y = []
 
-    def setUp(self):
-        # Set max isa, otherwise fails on SKX and earlier
-        os.environ["DNNL_MAX_CPU_ISA"] = "AVX"
+    def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul"
+        self.transpose_y_name = "transpose_Y"
+
+    def setUp(self):
+        self.set_op_type_and_transpose_y_name()
         self._cpu_only = True
         self.use_mkldnn = True
         self.transpose_y = True
@@ -280,7 +282,7 @@ class TestMatMulOpReshapeTranspose(OpTest):
         self.inputs = {'X': self.x, 'Y': self.y}
         self.attrs = {
             'use_mkldnn': self.use_mkldnn,
-            'transpose_Y': self.transpose_y
+            self.transpose_y_name: self.transpose_y
         }
         if len(self.fused_transpose_X) > 0:
             self.attrs['fused_transpose_X'] = self.fused_transpose_X
@@ -297,7 +299,7 @@ class TestMatMulOpReshapeTranspose(OpTest):
         self.check_output()
 
 
-class TestMatMulOpReshapeTranspose4DXFloat(TestMatMulOpReshapeTranspose):
+class TestReshapeTransposeMatMulOp4DXFloat(TestReshapeTransposeMatMulOp):
     def generate_data(self):
         self.x = np.random.random([2, 128, 768]).astype("float32")
         self.y = np.random.random([2, 128, 768]).astype("float32").reshape(
@@ -311,12 +313,12 @@ class TestMatMulOpReshapeTranspose4DXFloat(TestMatMulOpReshapeTranspose):
             self.y.transpose([0, 1, 3, 2]))
 
 
-class TestMatMulOpReshapeTranspose4DXInt8(TestMatMulOpReshapeTranspose4DXFloat):
+class TestReshapeTransposeMatMulOp4DXInt8(TestReshapeTransposeMatMulOp4DXFloat):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
-class TestMatMulOpReshapeTranspose4DYFloat(TestMatMulOpReshapeTranspose):
+class TestReshapeTransposeMatMulOp4DYFloat(TestReshapeTransposeMatMulOp):
     def generate_data(self):
         self.x = np.random.random([2, 128, 768]).astype("float32").reshape(
             [2, 128, 12, 64]).transpose([0, 2, 1, 3])
@@ -329,12 +331,12 @@ class TestMatMulOpReshapeTranspose4DYFloat(TestMatMulOpReshapeTranspose):
             self.x, self.y.reshape([2, 128, 12, 64]).transpose([0, 2, 3, 1]))
 
 
-class TestMatMulOpReshapeTranspose4DYInt8(TestMatMulOpReshapeTranspose4DYFloat):
+class TestReshapeTransposeMatMulOp4DYInt8(TestReshapeTransposeMatMulOp4DYFloat):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
-class TestMatMulOpReshapeTranspose4DXYFloat(TestMatMulOpReshapeTranspose):
+class TestReshapeTransposeMatMulOp4DXYFloat(TestReshapeTransposeMatMulOp):
     def generate_data(self):
         self.x = np.random.random([2, 128, 768]).astype("float32")
         self.y = np.random.random([2, 128, 768]).astype("float32")
@@ -347,13 +349,13 @@ class TestMatMulOpReshapeTranspose4DXYFloat(TestMatMulOpReshapeTranspose):
             self.y.reshape([2, 128, 12, 64]).transpose([0, 2, 3, 1]))
 
 
-class TestMatMulOpReshapeTranspose4DXYInt8(
-        TestMatMulOpReshapeTranspose4DXYFloat):
+class TestReshapeTransposeMatMulOp4DXYInt8(
+        TestReshapeTransposeMatMulOp4DXYFloat):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
-class TestMatMulOpReshapeTranspose2DXFloat(TestMatMulOpReshapeTranspose):
+class TestReshapeTransposeMatMulOp2DXFloat(TestReshapeTransposeMatMulOp):
     def generate_data(self):
         self.x = np.random.random([2, 5, 10]).astype("float32")
         self.y = np.random.random([2, 5, 10]).astype("float32").reshape(
@@ -367,12 +369,12 @@ class TestMatMulOpReshapeTranspose2DXFloat(TestMatMulOpReshapeTranspose):
             self.y.transpose([1, 0]))
 
 
-class TestMatMulOpReshapeTranspose2DXInt8(TestMatMulOpReshapeTranspose2DXFloat):
+class TestReshapeTransposeMatMulOp2DXInt8(TestReshapeTransposeMatMulOp2DXFloat):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
-class TestMatMulOpReshapeTranspose2DYFloat(TestMatMulOpReshapeTranspose):
+class TestReshapeTransposeMatMulOp2DYFloat(TestReshapeTransposeMatMulOp):
     def generate_data(self):
         self.x = np.random.random([2, 5, 10]).astype("float32").reshape(
             [10, 10]).transpose([1, 0])
@@ -384,12 +386,12 @@ class TestMatMulOpReshapeTranspose2DYFloat(TestMatMulOpReshapeTranspose):
         self.out = np.matmul(self.x, self.y.reshape([10, 10]))
 
 
-class TestMatMulOpReshapeTranspose2DYInt8(TestMatMulOpReshapeTranspose2DYFloat):
+class TestReshapeTransposeMatMulOp2DYInt8(TestReshapeTransposeMatMulOp2DYFloat):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
-class TestMatMulOpReshapeTranspose3DXFloat(TestMatMulOpReshapeTranspose):
+class TestReshapeTransposeMatMulOp3DXFloat(TestReshapeTransposeMatMulOp):
     def generate_data(self):
         self.x = np.random.random([2, 2, 5, 5]).astype("float32")
         self.y = np.random.random([2, 2, 5, 5]).astype("float32").reshape(
@@ -403,12 +405,12 @@ class TestMatMulOpReshapeTranspose3DXFloat(TestMatMulOpReshapeTranspose):
             self.y.transpose(0, 2, 1))
 
 
-class TestMatMulOpReshapeTranspose3DXInt8(TestMatMulOpReshapeTranspose3DXFloat):
+class TestReshapeTransposeMatMulOp3DXInt8(TestReshapeTransposeMatMulOp3DXFloat):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
-class TestMatMulOpReshapeTranspose3DYFloat(TestMatMulOpReshapeTranspose):
+class TestReshapeTransposeMatMulOp3DYFloat(TestReshapeTransposeMatMulOp):
     def generate_data(self):
         self.x = np.random.random([2, 2, 5, 5]).astype(self.data_type_).reshape(
             [2, 10, 5]).transpose([0, 2, 1])
@@ -420,7 +422,7 @@ class TestMatMulOpReshapeTranspose3DYFloat(TestMatMulOpReshapeTranspose):
         self.out = np.matmul(self.x, self.y.reshape([2, 10, 5]))
 
 
-class TestMatMulOpReshapeTranspose3DYInt8(TestMatMulOpReshapeTranspose3DYFloat):
+class TestReshapeTransposeMatMulOp3DYInt8(TestReshapeTransposeMatMulOp3DYFloat):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
