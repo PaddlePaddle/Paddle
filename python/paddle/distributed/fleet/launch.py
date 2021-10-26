@@ -242,7 +242,7 @@ def launch_collective(args):
 
     start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
-        start_port = os.environ.get('FLAGS_START_PORT')
+        start_port = int(os.environ.get('FLAGS_START_PORT'))
     if cloud_utils.use_paddlecloud() and trainers_num != 1:
         cluster, pod = cloud_utils.get_cloud_cluster(
             args.ips, device_mode, devices_per_proc, start_port)
