@@ -181,6 +181,12 @@ class HIPFFTHandle {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftCreate(&handle_));
   }
 
+  HIPFFTHandle(const HIPFFTHandle& other) = delete;
+  HIPFFTHandle& operator=(const HIPFFTHandle& other) = delete;
+
+  HIPFFTHandle(HIPFFTHandle&& other) = delete;
+  HIPFFTHandle& operator=(HIPFFTHandle&& other) = delete;
+
   ::hipfftHandle& get() { return handle_; }
   const ::hipfftHandle& get() const { return handle_; }
 

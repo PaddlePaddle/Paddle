@@ -69,7 +69,8 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
 
 #if defined(PADDLE_WITH_CUDA)
 FFTConfigKey create_fft_configkey(const framework::Tensor& input,
-                             const framework::Tensor& output, int signal_ndim) {
+                                  const framework::Tensor& output,
+                                  int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -135,7 +136,8 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
 #elif defined(PADDLE_WITH_HIP)
 
 FFTConfigKey create_fft_configkey(const framework::Tensor& input,
-                             const framework::Tensor& output, int signal_ndim) {
+                                  const framework::Tensor& output,
+                                  int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -304,7 +306,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   collapsed_output.Resize(framework::make_ddim(collapsed_output_shape));
   collapsed_output.mutable_data<To>(tensor_place);
 
-FFTConfig* config = nullptr;
+  FFTConfig* config = nullptr;
 
 #if defined(PADDLE_WITH_CUDA)
   std::unique_ptr<FFTConfig> config_ = nullptr;
@@ -313,8 +315,8 @@ FFTConfig* config = nullptr;
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
   if (CUFFT_VERSION < 10200) {
     const int64_t device_id = static_cast<int64_t>(
-      reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
-          ->GetDeviceId());
+        reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
+            ->GetDeviceId());
     FFTConfigCache& plan_cache = get_fft_plan_cache(device_id);
     std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
     guard.lock();
@@ -323,7 +325,7 @@ FFTConfig* config = nullptr;
     config_ = std::make_unique<FFTConfig>(key);
     config = config_.get();
   }
-  
+
   // prepare cufft for execution
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cufftSetStream(config->plan(), ctx.stream()));
