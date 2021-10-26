@@ -160,6 +160,9 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   VLOG(3) << "startup_steps:" << startup_steps
           << ", num_stages: " << num_pipeline_stages_
           << ", stage:" << pipeline_stage_;
+  if (num_microbatches_ == 1) {
+    startup_steps = 0;
+  }
   PADDLE_ENFORCE_GT(
       num_microbatches_, startup_steps,
       platform::errors::InvalidArgument(
@@ -175,6 +178,8 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     fw_step += 1;
     VLOG(2) << "micro steps fw_step:" << fw_step;
   }
+
+  // VLOG(0) << "startup_steps:" << startup_steps;
 
   // 1f1b phase
   while (fw_step < num_microbatches_) {
@@ -203,6 +208,10 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
   VLOG(2) << "run update";
   RunUpdate(gc, unused_vars_);
+
+  if (reserve_bw_send_step < 0) {
+    reserve_bw_send_step = 0;
+  }
 
   if (gc) {
     // NOTE(wangxi): program must add sync backward send comm at update
