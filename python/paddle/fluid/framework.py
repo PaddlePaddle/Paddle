@@ -979,6 +979,10 @@ class Variable(object):
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if dtype == core.VarDesc.VarType.STRINGS:
+            type = core.VarDesc.VarType.STRINGS
+            lod_level = None
+
         self.belong_to_optimizer = belong_to_optimizer
 
         self.error_clip = error_clip
@@ -6097,7 +6101,7 @@ class ParamBase(core.VarBase):
 
         self.need_clip = kwargs.get('need_clip', True)
 
-        self.is_distributed = False
+        self.is_distributed = kwargs.get('is_distributed', False)
         # self.block = default_main_program().global_block()
 
     @property

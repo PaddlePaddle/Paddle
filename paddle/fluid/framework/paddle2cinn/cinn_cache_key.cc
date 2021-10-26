@@ -28,32 +28,38 @@ namespace paddle2cinn {
 
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
-    const std::map<std::string, const LoDTensor*>& feed_tensors) {
-  this->SetKey(graph, feed_tensors);
+    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const std::string& arch_str) {
+  this->SetKey(graph, input_tensors, arch_str);
 }
 
 CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
-                           const std::map<std::string, DDim>& feed_shapes) {
-  this->SetKey(graph, feed_shapes);
+                           const std::map<std::string, DDim>& input_shapes,
+                           const std::string& arch_str) {
+  this->SetKey(graph, input_shapes, arch_str);
 }
 
 void CinnCacheKey::SetKey(
     const ir::Graph& graph,
-    const std::map<std::string, const LoDTensor*>& feed_tensors) {
+    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const std::string& arch_str) {
   ProgramDesc program;
   GraphToProgram(graph, &program);
   program.Proto()->SerializeToString(&graph_serialize_str_);
-  for (const auto& name_tensor : feed_tensors) {
-    feed_shapes_[name_tensor.first] = name_tensor.second->dims();
+  for (const auto& name_tensor : input_tensors) {
+    input_shapes_[name_tensor.first] = name_tensor.second->dims();
   }
+  arch_str_ = arch_str;
 }
 
 void CinnCacheKey::SetKey(const ir::Graph& graph,
-                          const std::map<std::string, DDim>& feed_shapes) {
+                          const std::map<std::string, DDim>& input_shapes,
+                          const std::string& arch_str) {
   ProgramDesc program;
   GraphToProgram(graph, &program);
   program.Proto()->SerializeToString(&graph_serialize_str_);
-  feed_shapes_ = feed_shapes;
+  input_shapes_ = input_shapes;
+  arch_str_ = arch_str;
 }
 
 bool CinnCacheKey::operator!=(const CinnCacheKey& other) const {
@@ -62,7 +68,7 @@ bool CinnCacheKey::operator!=(const CinnCacheKey& other) const {
 
 bool CinnCacheKey::operator==(const CinnCacheKey& other) const {
   return graph_serialize_str_ == other.graph_serialize_str_ &&
-         feed_shapes_ == other.feed_shapes_;
+         input_shapes_ == other.input_shapes_ && arch_str_ == other.arch_str_;
 }
 
 size_t CinnCacheKey::Hash::hash_combine(size_t seed, size_t value) {
@@ -73,12 +79,13 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
   std::size_t ret = 0;
 
   std::hash<std::string> string_hasher;
-  for (const auto& name_shape : key.feed_shapes_) {
+  for (const auto& name_shape : key.input_shapes_) {
     ret = hash_combine(ret, string_hasher(name_shape.first));
     ret = hash_combine(ret, string_hasher(name_shape.second.to_str()));
   }
 
   ret = hash_combine(ret, string_hasher(key.graph_serialize_str_));
+  ret = hash_combine(ret, string_hasher(key.arch_str_));
   return ret;
 }
 

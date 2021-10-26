@@ -22,6 +22,7 @@ import subprocess
 import tempfile
 import shutil
 from contextlib import closing
+import multiprocessing
 import socket
 import warnings
 import six
@@ -32,6 +33,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 from distutils.util import strtobool
+import paddle.utils.cpp_extension.extension_utils as utils
 logger = logging.getLogger("root")
 logger.propagate = False
 
@@ -672,29 +674,31 @@ def get_xpus(xpus):
     return res_xpus
 
 
-def get_device_mode():
+def get_device_mode(backend):
     if fluid.core.is_compiled_with_npu() and \
             fluid.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
-    if fluid.core.is_compiled_with_cuda() and \
+    if backend == 'nccl' and \
             fluid.core.get_cuda_device_count() > 0:
         print("launch train in GPU mode!")
         return DeviceMode.GPU
 
-    if fluid.core.is_compiled_with_xpu() and fluid.core.get_xpu_device_count(
-    ) > 0:
+    if backend == 'bkcl' and fluid.core.get_xpu_device_count() > 0:
         print("launch train in XPU mode")
         return DeviceMode.XPU
 
-    print("launch train in CPU mode")
-    return DeviceMode.CPU
+    if backend == 'gloo':
+        print("launch train in CPU mode")
+        return DeviceMode.CPU
+
+    raise RuntimeError("Don't supported devices")
 
 
 def get_device_proc_info(args):
     # device_mode
-    device_mode = get_device_mode()
+    device_mode = get_device_mode(args.backend)
 
     # devices
     devices_per_proc = []
@@ -725,6 +729,9 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = xpus
     elif device_mode == DeviceMode.CPU:
+        if hasattr(args, "paddle_cpuonly") and args.nproc_per_node is None:
+            #NOTE (xiongkun03) set it to cpu core number
+            args.nproc_per_node = multiprocessing.cpu_count()
         if args.nproc_per_node is None:
             devices_per_proc = [0]
         else:
@@ -1331,3 +1338,45 @@ class ParameterServerLauncher(object):
             tp.cmd = cmd
 
             self.procs["heter_worker"].append(tp)
+
+
+def check_backend(backend):
+    if backend not in ['nccl', 'gloo', 'bkcl', 'auto']:
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'auto', but got %s"
+            % backend)
+
+    if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with cuda but you assign 'nccl' as backend."
+        )
+
+    if backend == 'bkcl' and not fluid.core.is_compiled_with_xpu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+
+def block_windows_and_macos(backend):
+    if backend != 'gloo': return
+    if utils.OS_NAME.startswith('darwin'):  # MACOS , block
+        raise ValueError(
+            "You are going to using gloo on macos, but currently is not supported"
+        )
+    if utils.IS_WINDOWS:  # MACOS , block
+        raise ValueError(
+            "You are going to using gloo on windows, but currently is not supported"
+        )
+
+
+def get_backend_by_compile_flag():
+    if fluid.core.is_compiled_with_cuda():
+        return 'nccl'
+
+    if fluid.core.is_compiled_with_xpu():
+        return 'bkcl'
+
+    return 'gloo'
