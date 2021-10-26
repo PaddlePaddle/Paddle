@@ -22,6 +22,7 @@ namespace paddle {
 namespace framework {
 
 constexpr const char* kQueueEmptyEvent = "QueueEmpty";
+
 class EventsWaiter;
 
 struct WorkQueueOptions {

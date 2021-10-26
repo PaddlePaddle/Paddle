@@ -23,6 +23,8 @@
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
 
+constexpr const char* kExceptionCaught = "ExceptionCaught";
+
 namespace paddle {
 namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
@@ -41,6 +43,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   is_build_ = false;
 
   feed_names_ = feed_names;
+
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(
+      kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
 
   // Step1: add feedop and fetchop to main_program
   AddFetch(fetch_names);
@@ -360,6 +365,8 @@ void InterpreterCore::ExecuteInstructionList(
   async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
   op_run_number_ = 0;
 
+  exception_holder_.Clear();
+
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       async_work_queue_.AddTask(vec_instr[i].type_,
@@ -369,6 +376,11 @@ void InterpreterCore::ExecuteInstructionList(
 
   auto event_id = main_thread_blocker_.WaitEvent();
   VLOG(3) << "event_id " << event_id;
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(4) << "Exception caught " << exception_holder_.Type();
+    exception_holder_.ReThrow();
+  }
 
   PADDLE_ENFORCE_EQ(
       op_run_number_.load(), vec_instr.size(),
@@ -441,11 +453,34 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     instr_id = ready_ops.front();
     ready_ops.pop();
     auto& instr_node = vec_instruction_[instr_id];
-    platform::RecordEvent instruction_event(
-        instr_node.kernel_func_.operator_base_->Type());
+    auto* op = instr_node.kernel_func_.operator_base_;
+    platform::RecordEvent instruction_event(op->Type());
     event_manager_.WaitEvent(instr_node, place_);
 
-    RunInstruction(instr_node);
+    try {
+      RunInstruction(instr_node);
+    } catch (platform::EnforceNotMet& ex) {
+      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+      exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+    } catch (platform::EOFException&) {
+      exception_holder_.Catch(std::current_exception());
+    } catch (std::exception& ex) {
+      LOG(WARNING) << op->Type() << " raises an exception "
+                   << platform::demangle(typeid(ex).name()) << ", "
+                   << ex.what();
+      exception_holder_.Catch(std::current_exception());
+    } catch (...) {
+      LOG(WARNING) << op->Type() << " raises an unknown exception";
+      exception_holder_.Catch(std::current_exception());
+    }
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      if (exception_notifier_ != nullptr) {
+        exception_notifier_->NotifyEvent();
+      }
+      return;
+    }
 
     event_manager_.RecordEvent(instr_node, place_);
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
