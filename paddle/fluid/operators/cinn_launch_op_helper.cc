@@ -98,11 +98,13 @@ void InitializeOutputVar(const Scope& scope, const platform::Place& place,
                                             pd_name));
     auto* paddle_tensor = var_ptr->GetMutable<LoDTensor>();
     if (!paddle_tensor->IsInitialized()) {
-      paddle_tensor->Resize(framework::make_ddim(cinn_tensor->shape().data()));
-      // TODO(CtfGo): support mutable corresponding c++ type
-      //              with the compilation type
-      paddle_tensor->mutable_data<float>(place);
-      VLOG(2) << "Variable(%s) is initialized using compilation result";
+      // TODO(CtfGo): support mutable corresponding c++ type with the
+      // compilation type
+      paddle_tensor->mutable_data<float>(
+          framework::make_ddim(cinn_tensor->shape().data()), place);
+      VLOG(2) << "Variable(" << pd_name
+              << ") is initialized using compilation result, type:"
+              << paddle_tensor->type() << ", dims:" << paddle_tensor->dims();
     }
   }
 }

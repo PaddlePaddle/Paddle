@@ -25,7 +25,7 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using Name2ConstTensor = std::unordered_map<std::string, const LoDTensor*>;
+using Name2ConstTensor = std::map<std::string, const LoDTensor*>;
 using Variable = framework::Variable;
 using Scope = framework::Scope;
 

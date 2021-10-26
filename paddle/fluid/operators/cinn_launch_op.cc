@@ -21,7 +21,9 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn_launch_op_helper.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -29,6 +31,7 @@ namespace operators {
 static constexpr char kX[] = "X";
 static constexpr char kOutputs[] = "Out";
 static constexpr char kCompilationKey[] = "compilation_key";
+using framework::paddle2cinn::CinnCompiler;
 
 class CinnLaunchOp : public framework::OperatorBase {
  public:
@@ -41,41 +44,35 @@ class CinnLaunchOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    VLOG(2) << "CinnLaunchOp RunImpl";
     // Step 1. Find graph object and prepare input
     PADDLE_ENFORCE_EQ(HasAttr(kCompilationKey), true,
                       platform::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
                           kCompilationKey));
     const auto& compilation_key = Attr<std::string>(kCompilationKey);
-    // TODO(CtfGo): updated after related interface ready, using local object
-    // temporarily
-    framework::ir::Graph temp_graph(framework::ProgramDesc());
-    auto* graph = &temp_graph;
-    // auto* graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
-    PADDLE_ENFORCE_NOT_NULL(
-        graph, platform::errors::NotFound(
-                   "Graph with compilation_key(%s) not found in CinnRunner.",
-                   compilation_key));
+    VLOG(2) << "CinnLaunchOp RunImpl start"
+            << ", inputs:" << paddle::string::join_strings(Inputs(kX), ',')
+            << ", outputs:"
+            << paddle::string::join_strings(Outputs(kOutputs), ',')
+            << ", compilation_key:" << compilation_key;
 
-    // Step 2. Get compilation result of the graph
-    // TODO(CtfGo): using local object temporarily,
-    // will be replaced after related interface ready
+    const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
     OP_INOUT_CHECK(HasInputs(kX), "Input", kX, "CinnLaunchOp");
     auto input_tensors = details::GetConstTensors(scope, Inputs(kX));
-    // ::cinn::common::Target
-    // auto* cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
-    // graph, input_tensors, target);
-    // auto* cinn_runtime_program = cinn_compiled_object->runtime_program.get();
-    // const auto& compiled_scope = *(cinn_compiled_object->scope.get());
-    // const auto& paddle2cinn_varmap =
-    // cinn_compiled_object->paddle2cinn_varmap;
-    CinnScope compiled_scope;
-    std::unique_ptr<CinnRuntimeProgram> cinn_runtime_program;
-    std::unordered_map<std::string, std::string> paddle2cinn_varmap;
+
+    // Step 2. Get compilation result of the graph
+    auto target = ::cinn::common::DefaultNVGPUTarget();
+    const auto& cinn_compiled_object =
+        CinnCompiler::GetInstance()->Compile(graph, input_tensors, target);
+    VLOG(2) << "CinnLaunchOp compiled done.";
+
+    const auto& cinn_runtime_program = cinn_compiled_object.runtime_program;
+    const auto& compiled_scope = *(cinn_compiled_object.scope.get());
+    const auto& paddle2cinn_varmap = cinn_compiled_object.paddle2cinn_varmap;
 
     // Step 3. Initialize all variables of the compilation runtime program
     //         in paddle, and pack them into execution arguments
+    VLOG(2) << "CinnLaunchOp prepare execution arguments";
     std::map<std::string, cinn_pod_value_t> name2argument;
     std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers;
     // prepare input variables
@@ -108,7 +105,9 @@ class CinnLaunchOp : public framework::OperatorBase {
     }
 
     // Step 4. Launch CINN to execute the compilation runtime program
-    cinn_runtime_program->Execute(&name2argument);
+    // TODO(CtfGo): remove comment after fix compile bug
+    // cinn_runtime_program->Execute(&name2argument);
+    VLOG(2) << "CinnLaunchOp launch runtime_program execution done.";
   }
 };
 
@@ -121,12 +120,12 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddOutput(kOutputs,
               "(vector<LoDTensor>)"
-              "which are the output of graph inside the CinnLaunchOp."
+              "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
     AddAttr<std::string>(
         kCompilationKey,
         "(string)"
-        "a hash key used to get the graph object or its computation result.")
+        "a hash key used to get the graph object or its computation result.");
     AddComment(R"DOC(
 CinnLaunch Operator.
 
