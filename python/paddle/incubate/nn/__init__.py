@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .layer.fused_transformer import FusedMultiHeadAttention  # noqa: F401 
+from .layer.fused_transformer import FusedMultiHeadAttention  # noqa: F401
+from .layer.fused_transformer import FusedFeedForward  # noqa: F401
+from .layer.fused_transformer import FusedTransformerEncoderLayer  # noqa: F401
 
 __all__ = [  #noqa
     'FusedMultiHeadAttention',
+    'FusedFeedForward',
+    'FusedTransformerEncoderLayer',
+
 ]
