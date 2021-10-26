@@ -31,11 +31,13 @@ using platform::DeviceContext;
 template <typename T, typename IndexT = int>
 __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
                                  T* output, size_t index_size,
-                                 size_t slice_size) {
+                                 size_t slice_size, size_t params_dim_0) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
+    PADDLE_ENFORCE(gather_i < params_dim_0,
+                   "The Input(Index) of gather op is out of range.");
     int64_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
   }
@@ -108,7 +110,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   GatherCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, p_index, p_output, index_size, slice_size, src_dims[0]);
 }
 
 template <typename DeviceContext, typename T, typename IndexT = int>
