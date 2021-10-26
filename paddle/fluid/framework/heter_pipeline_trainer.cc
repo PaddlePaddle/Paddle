@@ -166,6 +166,7 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       // after set micro num & mini batch scope 
       this_worker->CreateMicrobatchScopes();
       (*micro_scopes_)[worker_index] = this_worker->GetMicrobatchScopes();
+      (*task_queue_)[worker_index] = this_worker->GetThreadQueue();
     }
 }
 

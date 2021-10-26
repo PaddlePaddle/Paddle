@@ -25,10 +25,14 @@ uint64_t HeterSectionWorker::batch_id_(0);
 void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   trainer_desc_ = desc;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  VLOG(3) << "**DEBUG in heter section worker initialize before program rest";
   program_.reset(
-      new ProgramDesc(desc.section_param().section_config().program_desc()));
+      new ProgramDesc(desc.heter_section_param().section_config().program_desc()));
+  thread_queue_.reset(
+      new ::paddle::framework::BlockingQueue<std::pair<std::string, int>>());
   bool is_first_stage = (pipeline_stage_ == 0);
   bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
+
   if (is_first_stage) {
     for (auto &op_desc : program_->Block(0).AllOps()) {
       auto op = std::move(OpRegistry::CreateOp(*op_desc));
@@ -45,7 +49,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   } else if (is_last_stage) {
     for (auto &op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-          listen_op_ == std::move(OpRegistry::CreateOp(*op_desc));
+          listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
       }
     }
     for (auto &op_desc : program_->Block(1).AllOps()) {
@@ -55,6 +59,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
                                 (op_role == (static_cast<int>(OpRole::kForward) |
                                             static_cast<int>(OpRole::kLoss))) ||
                                 (op_role == static_cast<int>(OpRole::kLRSched));
+        VLOG(3) << "***DEBUG in last stage*** " << op->Type();
         if (is_forward_op) {
             forward_ops_.push_back(std::move(op));
         } else {
@@ -64,7 +69,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   } else {
     for (auto &op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-          listen_op_ == std::move(OpRegistry::CreateOp(*op_desc));
+          listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
       }
     }
     for (auto &op_desc : program_->Block(1).AllOps()) {
@@ -216,16 +221,14 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
 
 void HeterSectionWorker::CreateMicrobatchScopes() {
   PADDLE_ENFORCE_NOT_NULL(minibatch_scope_, platform::errors::InvalidArgument(
-                                           "minibatch_scope_ can not be nullptr when create MicroBatch Scope"));
-
+                                           "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
 
   microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
   (*microbatch_scopes_).resize(num_microbatches_);
-
   VLOG(3) << "Create microbatch scopes...";
   std::shared_ptr<framework::ProgramDesc> program;
   program.reset(new ProgramDesc(
-      trainer_desc_.section_param().section_config().program_desc()));
+      trainer_desc_.heter_section_param().section_config().program_desc()));
   for (int j = 0; j < num_microbatches_; ++j) {
     (*microbatch_scopes_)[j] = &minibatch_scope_->NewScope();
     CopyParameters(j, *program, place_);
@@ -305,6 +308,7 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 
 void HeterSectionWorker::Run() {
   bool is_first_stage = (pipeline_stage_ == 0);
+  bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
   if (is_first_stage) { // for cpu trainer
     // forward
     std::vector<int> micro_ids;
@@ -317,14 +321,26 @@ void HeterSectionWorker::Run() {
     // backward
     MiniBatchBarrier(micro_ids);
   } else { // for heter worker
-      auto task = (*thread_queue_).Pop();
-      auto message_name = task.first;
-      auto micro_id = task.second;
-      if (message_name.find("forward") != std::string::npos) {
-          RunForward(micro_id);
-      } else if (message_name.find("backward") != std::string::npos) {
-          RunBackward(micro_id);
+      int cnt = 0;
+      int target_ = -1;
+      if (is_last_stage) {
+        target_ = num_microbatches_;
+      } else {
+        target_ = 2 * num_microbatches_;
+      } 
+      while(cnt < target_) {
+        auto task = (*thread_queue_).Pop();
+        auto message_name = task.first;
+        auto micro_id = task.second;
+
+        if (message_name.find("forward") != std::string::npos) {
+            RunForward(micro_id);
+        } else if (message_name.find("backward") != std::string::npos) {
+            RunBackward(micro_id);
+        }
+        cnt++;
       }
+
   }
 }
 
