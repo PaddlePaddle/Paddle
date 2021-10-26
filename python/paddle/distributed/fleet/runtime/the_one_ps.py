@@ -608,8 +608,7 @@ class TheOnePSRuntime(RuntimeBase):
                     cur_endpoint = self.role_maker._get_heter_worker_endpoint()
                 assert cur_endpoint != "", "cur_endpoint should not be null"
                 self._heter_client = HeterClient(
-                    next_trainers, previous_trainers,
-                    self.role_maker._role_id())
+                    next_trainers, previous_trainers, self.role_maker._role_id())
 
     def _push_sparse_param(self,
                            var_name,
