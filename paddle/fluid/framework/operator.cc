@@ -1763,14 +1763,12 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  if (KernelSignatureMap::Instance().Has(Type())) {
-    return *(KernelSignatureMap::Instance().GetNullable(Type()));
-  } else {
+  if (!KernelSignatureMap::Instance().Has(Type())) {
     KernelArgsNameMakerByOpProto maker(Info().proto_);
-    auto signature = std::move(maker.GetKernelSignature());
-    KernelSignatureMap::Instance().Insert(Type(), signature);
-    return signature;
+    KernelSignatureMap::Instance().Emplace(
+        Type(), std::move(maker.GetKernelSignature()));
   }
+  return KernelSignatureMap::Instance().Get(Type());
 }
 
 pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(

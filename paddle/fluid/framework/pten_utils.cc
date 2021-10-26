@@ -59,11 +59,6 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
-KernelSignatureMap& KernelSignatureMap::Instance() {
-  static KernelSignatureMap g_kernel_signature_map;
-  return g_kernel_signature_map;
-}
-
 const paddle::SmallVector<std::string>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {

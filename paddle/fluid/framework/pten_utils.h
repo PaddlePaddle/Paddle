@@ -44,7 +44,10 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
 // TODO(chenweihang): we can generate this map by proto info in compile time
 class KernelSignatureMap {
  public:
-  static KernelSignatureMap& Instance();
+  static KernelSignatureMap& Instance() {
+    static KernelSignatureMap g_kernel_signature_map;
+    return g_kernel_signature_map;
+  }
 
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();
@@ -56,6 +59,12 @@ class KernelSignatureMap {
     }
   }
 
+  void Emplace(const std::string& op_type, KernelSignature&& signature) {
+    if (!Has(op_type)) {
+      map_.emplace(op_type, signature);
+    }
+  }
+
   const KernelSignature* GetNullable(const std::string& op_type) const {
     auto it = map_.find(op_type);
     if (it == map_.end()) {
@@ -63,6 +72,15 @@ class KernelSignatureMap {
     } else {
       return &it->second;
     }
+  }
+
+  const KernelSignature& Get(const std::string& op_type) const {
+    auto it = map_.find(op_type);
+    PADDLE_ENFORCE_NE(
+        it, map_.end(),
+        platform::errors::NotFound(
+            "Operator `%s`'s kernel signature is not registered.", op_type));
+    return it->second;
   }
 
  private:
