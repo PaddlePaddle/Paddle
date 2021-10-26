@@ -53,8 +53,11 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
         ) else paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.debug_graphviz_path = "/work/model_struct/dotfiles/viz"
         compiled_program = paddle.static.CompiledProgram(
-            main_program).with_data_parallel(loss_name=loss.name)
+            main_program,
+            build_strategy).with_data_parallel(loss_name=loss.name)
 
         batch_size = 16
         x = np.random.random(size=(batch_size, 1)).astype('float32')

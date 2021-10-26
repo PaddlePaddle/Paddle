@@ -51,17 +51,28 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       : ir::PassBuilder(), strategy_(strategy) {
     ResolveOptionConfliction();
 
-    AppendPrintGraphPass("graph_viz_pass", "_original_graph");
+    AppendPrintGraphPass("graph_viz_pass", "_original_graph.dot");
+
+#ifdef PADDLE_WITH_CINN
+    if (FLAGS_use_cinn) {
+      // Note: This pass is used to enable cinn.
+      AppendPass("build_cinn_pass");
+      AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph.dot");
+    }
+#endif
+
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
-    AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
+    AppendPrintGraphPass("graph_viz_pass", "_fused_graph.dot");
 
     AppendAddReaderDependencyPass();
     AppendMultiDevPass();
+    AppendPrintGraphPass("graph_viz_pass", "_multi_dev_graph.dot");
     AppendMultiGraphOptPasses();
+    AppendPrintGraphPass("graph_viz_pass", "_multi_opt_graph.dot");
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
@@ -73,13 +84,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "modify_op_lock_and_record_event_pass");
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
-
-#ifdef PADDLE_WITH_CINN
-    if (FLAGS_use_cinn) {
-      // Note: This pass is used to enable cinn.
-      AppendPass("build_cinn_pass");
-    }
-#endif
 
     SetCollectiveContext();
   }
