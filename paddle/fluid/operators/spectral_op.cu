@@ -69,7 +69,8 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
 
 #if defined(PADDLE_WITH_CUDA)
 FFTConfigKey create_fft_configkey(const framework::Tensor& input,
-                             const framework::Tensor& output, int signal_ndim) {
+                                  const framework::Tensor& output,
+                                  int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -91,7 +92,7 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
 }
 
 // Execute a pre-planned transform
-static void exec_cufft_plan_raw(const CuFFTConfig& config, void* in_data,
+static void exec_cufft_plan_raw(const FFTConfig& config, void* in_data,
                                 void* out_data, bool forward) {
   auto& plan = config.plan();
 
@@ -100,7 +101,7 @@ static void exec_cufft_plan_raw(const CuFFTConfig& config, void* in_data,
 }
 
 template <typename DeviceContext, typename Ti, typename To>
-void exec_cufft_plan(const DeviceContext& ctx, const CuFFTConfig& config,
+void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
                      framework::Tensor* input, framework::Tensor* output,
                      bool forward) {
   // execute transform plan
@@ -135,7 +136,8 @@ void exec_cufft_plan(const DeviceContext& ctx, const CuFFTConfig& config,
 #elif defined(PADDLE_WITH_HIP)
 
 FFTConfigKey create_fft_configkey(const framework::Tensor& input,
-                             const framework::Tensor& output, int signal_ndim) {
+                                  const framework::Tensor& output,
+                                  int signal_ndim) {
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::IsComplexType(input.type())
                               ? framework::ToRealType(input.type())
@@ -157,7 +159,7 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
 }
 
 // Execute a pre-planned transform
-static void exec_hipfft_plan_raw(const HIPFFTConfig& config, void* in_data,
+static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
                                  void* out_data, bool forward) {
   auto& plan = config.plan();
 
@@ -212,7 +214,7 @@ static void exec_hipfft_plan_raw(const HIPFFTConfig& config, void* in_data,
 }
 
 template <typename DeviceContext, typename Ti, typename To>
-void exec_hipfft_plan(const DeviceContext& ctx, const HIPFFTConfig& config,
+void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
                       framework::Tensor* input, framework::Tensor* output,
                       bool forward) {
   auto fft_type = config.transform_type();
@@ -304,7 +306,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   collapsed_output.Resize(framework::make_ddim(collapsed_output_shape));
   collapsed_output.mutable_data<To>(tensor_place);
 
-FFTConfig* config = nullptr;
+  FFTConfig* config = nullptr;
 
 #if defined(PADDLE_WITH_CUDA)
   std::unique_ptr<FFTConfig> config_ = nullptr;
@@ -313,8 +315,8 @@ FFTConfig* config = nullptr;
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
   if (CUFFT_VERSION < 10200) {
     const int64_t device_id = static_cast<int64_t>(
-      reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
-          ->GetDeviceId());
+        reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
+            ->GetDeviceId());
     FFTConfigCache& plan_cache = get_fft_plan_cache(device_id);
     std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
     guard.lock();
@@ -323,7 +325,6 @@ FFTConfig* config = nullptr;
     config_ = std::make_unique<FFTConfig>(key);
     config = config_.get();
   }
-  
   // prepare cufft for execution
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cufftSetStream(config->plan(), ctx.stream()));
@@ -378,10 +379,10 @@ FFTConfig* config = nullptr;
 
 // Use the optimized path to perform single R2C or C2R if transformation dim is
 // supported by cuFFT
-bool use_optimized_cufft_path(const std::vector<int64_t>& axes) {
+bool use_optimized_fft_path(const std::vector<int64_t>& axes) {
   // For performance reason, when axes starts with (0, 1), do not use the
   // optimized path.
-  if (axes.size() > kMaxCUFFTNdim ||
+  if (axes.size() > kMaxFFTNdim ||
       (axes.size() >= 2 && axes[0] == 0 && axes[1] == 1)) {
     return false;
   } else {
@@ -411,7 +412,7 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
 
     while (true) {
       max_dims =
-          std::min(static_cast<size_t>(kMaxCUFFTNdim), working_axes.size());
+          std::min(static_cast<size_t>(kMaxFFTNdim), working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
       exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, p_working_tensor,
@@ -438,7 +439,7 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
     std::vector<int64_t> in_dims = framework::vectorize(X->dims());
     std::vector<int64_t> out_dims = framework::vectorize(out->dims());
 
-    if (use_optimized_cufft_path(axes)) {
+    if (use_optimized_fft_path(axes)) {
       framework::Tensor x_copy(X->type());
       x_copy.mutable_data<Ti>(X->dims(), ctx.GetPlace());
       framework::TensorCopy(*X, ctx.GetPlace(), &x_copy);
