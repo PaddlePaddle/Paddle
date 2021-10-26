@@ -339,12 +339,21 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 or accessor == "DownpourDoubleUnitAccessor" \
                 or accessor == "DownpourUnitAccessor":
             if st.get("sparse_embedx_dim") is not None \
+                    and strategy.get("use_cvm") == True \
                     and st["sparse_embedx_dim"] != emb_to_size[table_name] - 3:
                 raise ValueError("fleet config sparse_embedx_dim=%s not"
                                  " equal to embedding dim - 3 = %s" %
                                  (st["sparse_embedx_dim"],
                                   emb_to_size[table_name] - 3))
-            if st.get("sparse_embedx_dim") is None:
+            if st.get("sparse_embedx_dim") is not None \
+                    and strategy.get("use_cvm") == False \
+                    and st["sparse_embedx_dim"] != emb_to_size[table_name] - 1:
+                raise ValueError("fleet config sparse_embedx_dim=%s not"
+                                 " equal to embedding dim - 1 = %s" %
+                                 (st["sparse_embedx_dim"],
+                                  emb_to_size[table_name] - 1))
+            if st.get("sparse_embedx_dim") is None \
+                    and strategy.get("use_cvm") == True:
                 logger.warning(
                     "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
                     "with same sparse table name is not set in config_fleet.py. "
@@ -352,6 +361,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     format(table_name, emb_to_size[table_name], emb_to_size[
                         table_name]))
                 st["sparse_embedx_dim"] = emb_to_size[table_name] - 3
+            if st.get("sparse_embedx_dim") is None \
+                    and strategy.get("use_cvm") == False:
+                logger.warning(
+                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    "with same sparse table name is not set in config_fleet.py. "
+                    "Hence automatically set sparse_embedx_dim = {} - 1.".
+                    format(table_name, emb_to_size[table_name], emb_to_size[
+                        table_name]))
+                st["sparse_embedx_dim"] = emb_to_size[table_name] - 1
         elif accessor == "DownpourSparseValueAccessor":
             if st.get("sparse_embedx_dim") is not None \
                     and st["sparse_embedx_dim"] != emb_to_size[table_name]:
