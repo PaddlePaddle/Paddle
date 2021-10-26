@@ -51,13 +51,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       : ir::PassBuilder(), strategy_(strategy) {
     ResolveOptionConfliction();
 
-    AppendPrintGraphPass("graph_viz_pass", "_original_graph.dot");
+    AppendPrintGraphPass("graph_viz_pass", "_original_graph");
 
 #ifdef PADDLE_WITH_CINN
     if (FLAGS_use_cinn) {
       // Note: This pass is used to enable cinn.
       AppendPass("build_cinn_pass");
-      AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph.dot");
+      AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
     }
 #endif
 
@@ -66,13 +66,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
-    AppendPrintGraphPass("graph_viz_pass", "_fused_graph.dot");
+    AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
     AppendAddReaderDependencyPass();
     AppendMultiDevPass();
-    AppendPrintGraphPass("graph_viz_pass", "_multi_dev_graph.dot");
     AppendMultiGraphOptPasses();
-    AppendPrintGraphPass("graph_viz_pass", "_multi_opt_graph.dot");
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
