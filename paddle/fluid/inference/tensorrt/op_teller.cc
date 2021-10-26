@@ -173,27 +173,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "activation op does not support input's dim is 2 in "
+                   "tensorrt static shape, the output shape has diff.";
+        return false;
+      }
     }
 
     if (op_type == "pool2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-      if (paddings.size() > 2) return false;
-      if (desc.HasAttr("exclusive")) {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
-          std::vector<int> ksize =
-              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
-          for (size_t i = 0; i < ksize.size(); i++) {
-            if (ksize[i] <= paddings[i]) {
-              VLOG(3) << "the padding size should be less than the filter size "
-                         "for exclusive-counting pooling.";
-              return false;
-            }
-          }
-        }
-      }
-      if (desc.HasAttr("ceil_mode")) {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("ceil_mode"))) return false;
+      if (paddings.size() > 2) {
+        return false;
       }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "TRT Pool2d expect 1 input, but got "
@@ -215,18 +207,32 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                   << pool_type << " pool type.";
           return false;
         }
+        if (pool_type == "avg") {
+          if (desc.HasAttr("global_pooling")) {
+            if (!BOOST_GET_CONST(bool, desc.GetAttr("global_pooling"))) {
+              if (desc.HasAttr("exclusive")) {
+                if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
+                  std::vector<int> ksize =
+                      BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
+                  for (size_t i = 0; i < ksize.size(); i++) {
+                    if (ksize[i] <= paddings[i]) {
+                      VLOG(3) << "the padding size should be less than the "
+                                 "filter size "
+                                 "for exclusive-counting pooling.";
+                      return false;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
         op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
-      // conv2d and conv2d_transpose need padding check
-      if (paddings.size() > 2 && op_type != "conv2d_fusion") return false;
-
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
                 << desc.Input("Input").size() << " input.";
@@ -237,6 +243,36 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "TRT Conv2d expect 1 filter, but got "
                 << desc.Input("Filter").size() << " filter.";
         return false;
+      }
+
+      if (desc.HasAttr("padding_algorithm")) {
+        auto padding_algorithm =
+            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+        if (padding_algorithm == "VALID") {
+          return false;
+        }
+        if (padding_algorithm == "SAME") {
+          if (desc.HasAttr("dilations")) {
+            const std::vector<int> dilations =
+                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+            if (dilations[0] != 1 || dilations[1] != 1) {
+              VLOG(3) << "In Same mode, Dilations must be (1, 1) for "
+                         "tensorRT, but given ("
+                      << dilations[0] << ", " << dilations[1] << ")";
+              return false;
+            }
+          }
+        }
+      }
+
+      if (use_no_calib_int8) {
+        if (desc.HasAttr("padding_algorithm")) {
+          auto padding_algorithm =
+              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+          if (padding_algorithm == "SAME") {
+            return false;
+          }
+        }
       }
 
       if (desc.HasAttr("enable_int8")) {
@@ -315,6 +351,24 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
+    if (op_type == "softmax") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "softmax op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
+        return false;
+      }
+    }
     if (op_type == "group_norm") {
       if (!with_dynamic_shape) return false;
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
@@ -326,19 +380,34 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
         return false;
+      }
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      if (with_dynamic_shape) {
+        if (axis < 0) return false;
       } else {
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (with_dynamic_shape) {
-          if (axis < 0) return false;
-        } else {
-          if (axis <= 0) return false;
+        if (axis <= 0) return false;
+      }
+      auto concat_inputs = desc.Inputs();
+      if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
+        if (desc.Input("AxisTensor").size() >= 1) {
+          return false;
         }
-        auto concat_inputs = desc.Inputs();
-        if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
-          if (desc.Input("AxisTensor").size() >= 1) {
-            return false;
-          }
-        }
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "concat op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
+        return false;
       }
     }
     if (op_type == "transpose2" || op_type == "transpose") {
@@ -629,6 +698,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Y").size() << ".";
         return false;
       }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "batch_norm op does not support input's dim is 2 in "
+                   "tensorrt static shape, the output shape has diff.";
+        return false;
+      }
     }
 
     if (op_type == "split") {
@@ -714,6 +799,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       if (output_lengths.size() != output_num) {
         VLOG(3) << "The output_length should be equal to the output size.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "split op does not support input's dim is 2 in tensorrt "
+                   "static shape. The output shape has diff.";
         return false;
       }
     }
@@ -868,6 +959,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "gelu op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "gelu op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
+        return false;
+      }
     }
 
     if (op_type == "layer_norm") {
@@ -983,7 +1080,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
-        VLOG(3) << "dropout op does not support input's dim is 1 in tensorrt.";
+        VLOG(3) << "scale op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "scale op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
         return false;
       }
     }
@@ -1001,6 +1104,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
         VLOG(3) << "swish op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "swish op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
         return false;
       }
     }
@@ -1046,6 +1155,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
+
+#if IS_TRT_VERSION_LT(7000)
+      if (!with_dynamic_shape) {
+        // TODO(inference): fix trt6 static plugin error.
+        VLOG(3) << "prelu static plugin in trt6 has bug.";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "roi_align") {
@@ -1172,6 +1289,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
         VLOG(3) << "clip op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+      // TODO(inference): fix
+      if (x_shape.size() == 2 && !with_dynamic_shape) {
+        VLOG(3) << "clip op does not support input's dim is 2 in tensorrt "
+                   "static shape, the output shape has diff.";
         return false;
       }
     }

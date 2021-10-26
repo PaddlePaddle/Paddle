@@ -197,6 +197,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                     config.thread_per_block.x * vec_size) +
                    1) *
                   vec_size;
+
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
 

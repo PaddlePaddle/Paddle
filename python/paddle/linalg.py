@@ -23,6 +23,7 @@ from .tensor.linalg import eigvals  # noqa: F401
 from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import matrix_rank
 from .tensor.linalg import svd
+from .tensor.linalg import qr
 from .tensor.linalg import eigh  # noqa: F401
 from .tensor.linalg import eigvalsh
 from .tensor.linalg import det
@@ -39,6 +40,7 @@ __all__ = [
     'multi_dot',
     'matrix_rank',
     'svd',
+    'qr',
     'matrix_power',
     'det',
     'slogdet',
