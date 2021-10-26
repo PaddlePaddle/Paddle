@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pten/api/include/infershape.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 #include "paddle/pten/kernels/cpu/creation.h"
 #include "paddle/pten/kernels/cuda/creation.h"
 
@@ -25,7 +26,10 @@ DenseTensor FillAnyLike(const ContextT& dev_ctx,
                         const DenseTensor& x,
                         const Scalar& val) {
   auto out_meta = UnchangedInferShape(x.meta());
-  pten::DenseTensor dense_out(out_meta, pten::TensorStatus());
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
   FillAnyLike<T>(dev_ctx, x, val, &dense_out);
   return dense_out;
 }

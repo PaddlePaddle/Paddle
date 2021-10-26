@@ -72,11 +72,12 @@ TEST(API, mean) {
 
 TEST(DEV_API, mean) {
   // 1. create tensor
-  pten::DenseTensor dense_x(pten::TensorMeta(framework::make_ddim({3, 4}),
-                                             pten::Backend::CPU,
-                                             pten::DataType::FLOAT32,
-                                             pten::DataLayout::NCHW),
-                            pten::TensorStatus());
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  pten::DenseTensor dense_x(alloc,
+                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                                  framework::make_ddim({3, 4}),
+                                                  pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x.mutable_data<float>();
 
   float sum = 0.0;
@@ -94,7 +95,6 @@ TEST(DEV_API, mean) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
   ASSERT_EQ(out.numel(), 1);
-  ASSERT_EQ(out.meta().backend, pten::Backend::CPU);
   ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 

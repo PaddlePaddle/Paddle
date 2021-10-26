@@ -75,11 +75,13 @@ TEST(API, flatten) {
 
 TEST(DEV_API, flatten) {
   // 1. create tensor
-  pten::DenseTensor dense_x(pten::TensorMeta(framework::make_ddim({3, 2, 2, 3}),
-                                             pten::Backend::CPU,
-                                             pten::DataType::FLOAT32,
-                                             pten::DataLayout::NCHW),
-                            pten::TensorStatus());
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  pten::DenseTensor dense_x(
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 2, 2, 3}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x.mutable_data<float>();
 
   for (int i = 0; i < dense_x.numel(); i++) {
