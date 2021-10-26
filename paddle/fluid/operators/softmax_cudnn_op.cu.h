@@ -165,10 +165,10 @@ struct UnaryLogFunctor {
 };
 
 template <typename Tx, typename Ty>
-struct DataTransformFunctor {
-  HOSTDEVICE inline DataTransformFunctor() {}
+struct DataTransFunctor {
+  HOSTDEVICE inline DataTransFunctor() {}
 
-  HOSTDEVICE explicit inline DataTransformFunctor(int n) {}
+  HOSTDEVICE explicit inline DataTransFunctor(int n) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return x == -std::numeric_limits<Tx>::infinity()
@@ -178,10 +178,10 @@ struct DataTransformFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct UnaryDivideFunctor {
-  HOSTDEVICE inline UnaryDivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
+struct UnaryDivFunctor {
+  HOSTDEVICE inline UnaryDivFunctor() { n_inv = static_cast<Tx>(1.0f); }
 
-  HOSTDEVICE explicit inline UnaryDivideFunctor(Tx n) : n_inv((Tx)(1.0 / n)) {}
+  HOSTDEVICE explicit inline UnaryDivFunctor(Tx n) : n_inv((Tx)(1.0 / n)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x * n_inv);
@@ -213,8 +213,10 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
   constexpr int kIterationsV =
       (kIterations >= kVSize) ? (kIterations / kVSize) : 1;
   constexpr int kBatchSize = (kDimCeil <= 32) ? 2 : 1;
-
   int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  constexpr int kStep = kBatchSize * kIterationsV * kVSize;
+  constexpr int kVIteration = kIterationsV * kVSize;
+  constexpr AccT kLowInf = -std::numeric_limits<AccT>::infinity();
 
   // max index to read
   int idx_max_v[kBatchSize];
@@ -226,86 +228,56 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
 
   // read data from global memory
   AccT srcdata[kBatchSize][kIterationsV][kVSize];
-
-  kps::Init<AccT, kBatchSize * kIterationsV * kVSize>(
-      &srcdata[0][0][0], -std::numeric_limits<AccT>::infinity());
-
+  kps::Init<AccT, kStep>(&srcdata[0][0][0], kLowInf);
   T src_tmp[kBatchSize][kIterationsV][kVSize];
-  kps::Init<T, kBatchSize * kIterationsV * kVSize>(
-      &src_tmp[0][0][0], -std::numeric_limits<T>::infinity());
-
+  kps::Init<T, kStep>(&src_tmp[0][0][0], -std::numeric_limits<T>::infinity());
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
-    if (kVSize == 1) {
-      const T* src_ptr =
-          reinterpret_cast<const T*>(&src[(first_batch + i) * stride]);
-      kps::ReadData<T, AccT, kIterationsV, 1, 1, true>(
-          &srcdata[i][0][0], &src_ptr[0], idx_max_v[i], 0, kWarpSize, 1);
-    } else {
-      const VecT* src_v =
-          reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
-      VecT* reg_v = reinterpret_cast<VecT*>(&src_tmp[i][0][0]);
-      kps::ReadData<VecT, VecT, kIterationsV, 1, 1, true>(
-          &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize / kVSize, 1);
-      // change T to AccT
-      kps::ElementwiseUnary<T, AccT, kIterationsV * kVSize, 1, 1,
-                            DataTransformFunctor<T, AccT>>(
-          &srcdata[i][0][0], &src_tmp[i][0][0],
-          DataTransformFunctor<T, AccT>());
-    }
+    int ptr = (first_batch + i) * stride;
+    const VecT* src_v = reinterpret_cast<const VecT*>(&src[ptr]);
+    VecT* reg_v = reinterpret_cast<VecT*>(&src_tmp[i][0][0]);
+    kps::ReadData<VecT, VecT, kIterationsV, 1, 1, true>(
+        &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize, 1);
+    kps::ElementwiseUnary<T, AccT, kVIteration, 1, 1,
+                          DataTransFunctor<T, AccT>>(
+        &srcdata[i][0][0], &src_tmp[i][0][0], DataTransFunctor<T, AccT>());
   }
 
   // compute max
   AccT max_value[kBatchSize];
-  kps::Init<AccT, kBatchSize>(&max_value[0],
-                              -std::numeric_limits<AccT>::infinity());
-  kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1,
-              ReduceMaxFunctor<AccT>, kps::details::ReduceMode::kLocalMode>(
+  kps::Init<AccT, kBatchSize>(&max_value[0], kLowInf);
+  kps::Reduce<AccT, kVIteration, kBatchSize, 1, ReduceMaxFunctor<AccT>,
+              kps::details::ReduceMode::kLocalMode>(
       &max_value[0], &srcdata[0][0][0], ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
 
   // compute sum
   AccT sum[kBatchSize] = {0};
   for (int i = 0; i < kBatchSize; ++i) {
-    kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                          ExpSubFunctor<AccT>>(
+    kps::ElementwiseUnary<AccT, AccT, kVIteration, 1, 1, ExpSubFunctor<AccT>>(
         &srcdata[i][0][0], &srcdata[i][0][0],
         ExpSubFunctor<AccT>(max_value[i]));
   }
-  kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1, kps::AddFunctor<AccT>,
+  kps::Reduce<AccT, kVIteration, kBatchSize, 1, kps::AddFunctor<AccT>,
               kps::details::ReduceMode::kLocalMode>(
       &sum[0], &srcdata[0][0][0], kps::AddFunctor<AccT>(), true);
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
-  // write result to register
-  AccT out[kBatchSize][kIterationsV][kVSize];
-  for (int i = 0; i < kBatchSize; ++i) {
-    kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                          UnaryDivideFunctor<AccT>>(
-        &out[i][0][0], &srcdata[i][0][0], UnaryDivideFunctor<AccT>(sum[i]));
-  }
-
   // write result to global memory
+  AccT out[kBatchSize][kIterationsV][kVSize];
   T out_tmp[kBatchSize][kIterationsV][kVSize];
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
-    if (kVSize == 1) {
-      T* softmax_ptr =
-          reinterpret_cast<T*>(&softmax[(first_batch + i) * stride]);
-      kps::WriteData<AccT, T, kIterationsV, 1, 1, true>(
-          &softmax_ptr[0], &out[i][0][0], idx_max_v[i], 0, kWarpSize, 1);
-    } else {
-      // change AccT to T
-      kps::ElementwiseUnary<AccT, T, kIterationsV * kVSize, 1, 1,
-                            DataTransformFunctor<AccT, T>>(
-          &out_tmp[i][0][0], &out[i][0][0], DataTransformFunctor<AccT, T>());
-
-      VecT* softmax_v =
-          reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
-      VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
-      kps::WriteData<VecT, VecT, kIterationsV, 1, 1, true>(
-          &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize / kVSize, 1);
-    }
+    kps::ElementwiseUnary<AccT, AccT, kVIteration, 1, 1, UnaryDivFunctor<AccT>>(
+        &out[i][0][0], &srcdata[i][0][0], UnaryDivFunctor<AccT>(sum[i]));
+    kps::ElementwiseUnary<AccT, T, kVIteration, 1, 1,
+                          DataTransFunctor<AccT, T>>(
+        &out_tmp[i][0][0], &out[i][0][0], DataTransFunctor<AccT, T>());
+    int softmax_ptr = (first_batch + i) * stride;
+    VecT* softmax_v = reinterpret_cast<VecT*>(&softmax[softmax_ptr]);
+    VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
+    kps::WriteData<VecT, VecT, kIterationsV, 1, 1, true>(
+        &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
   }
 }
 
@@ -331,97 +303,82 @@ __global__ void WarpSoftmaxBackward(T* dst, const T* grad, const T* src,
   constexpr int kIterationsV =
       (kIterations >= kVSize) ? (kIterations / kVSize) : 1;
   int element_count_v = element_count / kVSize;
-
   int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
-  int local_batches = batch_size - first_batch;
-  if (local_batches > kBatchSize) {
-    local_batches = kBatchSize;
+  int local_batches = min(batch_size - first_batch, kBatchSize);
+
+  // max index to read
+  int idx_max_v[kBatchSize];
+#pragma unroll
+  for (int i = 0; i < kBatchSize; i++) {
+    int idx_max = ((i + first_batch) < batch_size) ? element_count : 0;
+    idx_max_v[i] = idx_max / kVSize;
   }
 
   // read data from global memory
   VecT src_reg[kBatchSize][kIterationsV];
   VecT grad_reg[kBatchSize][kIterationsV];
-
   VecT k_value;
   for (int s = 0; s < kVSize; s++) {
     reinterpret_cast<T*>(&k_value)[s] = 0.0;
   }
   kps::Init<VecT, kBatchSize * kIterationsV>(&src_reg[0][0], k_value);
   kps::Init<VecT, kBatchSize * kIterationsV>(&grad_reg[0][0], k_value);
-
-// read
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
-    if (i < local_batches) {
-      const VecT* src_v =
-          reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
-      const VecT* grad_v =
-          reinterpret_cast<const VecT*>(&grad[(first_batch + i) * stride]);
-      kps::ReadData<VecT, VecT, kIterationsV, 1, 1, true>(
-          &src_reg[i][0], &src_v[0], stride / kVSize, 0, kWarpSize / kVSize, 1);
-      kps::ReadData<VecT, VecT, kIterationsV, 1, 1, true>(
-          &grad_reg[i][0], &grad_v[0], stride / kVSize, 0, kWarpSize / kVSize,
-          1);
-    }
+    int flag = i < local_batches ? 1 : 0;
+    int ptr = (first_batch + i) * stride;
+    const VecT* src_v = reinterpret_cast<const VecT*>(&src[ptr]);
+    const VecT* grad_v = reinterpret_cast<const VecT*>(&grad[ptr]);
+    kps::ReadData<VecT, VecT, kIterationsV, 1, 1, true>(
+        &src_reg[i][0], &src_v[0], idx_max_v[i], 0, kWarpSize, flag);
+    kps::ReadData<VecT, VecT, kIterationsV, 1, 1, true>(
+        &grad_reg[i][0], &grad_v[0], idx_max_v[i], 0, kWarpSize, flag);
   }
 
   // change T to AccT
   AccT src_tmp[kBatchSize][kIterationsV][kVSize];
   AccT grad_tmp[kBatchSize][kIterationsV][kVSize];
-#pragma unroll
-  for (int i = 0; i < kBatchSize; ++i) {
-    const T* src_ptr = reinterpret_cast<const T*>(&src_reg[i][0]);
-    const T* grad_ptr = reinterpret_cast<const T*>(&grad_reg[i][0]);
-    kps::ElementwiseUnary<T, AccT, kIterationsV * kVSize, 1, 1,
-                          DataTransformFunctor<T, AccT>>(
-        &src_tmp[i][0][0], &src_ptr[0], DataTransformFunctor<T, AccT>());
-    kps::ElementwiseUnary<T, AccT, kIterationsV * kVSize, 1, 1,
-                          DataTransformFunctor<T, AccT>>(
-        &grad_tmp[i][0][0], &grad_ptr[0], DataTransformFunctor<T, AccT>());
-  }
+  const T* src_ptr = reinterpret_cast<const T*>(&src_reg[0][0]);
+  const T* grad_ptr = reinterpret_cast<const T*>(&grad_reg[0][0]);
+  constexpr int kStep = kBatchSize * kIterationsV * kVSize;
+  constexpr int kVIteration = kIterationsV * kVSize;
+  kps::ElementwiseUnary<T, AccT, kStep, 1, 1, DataTransFunctor<T, AccT>>(
+      &src_tmp[0][0][0], &src_ptr[0], DataTransFunctor<T, AccT>());
+  kps::ElementwiseUnary<T, AccT, kStep, 1, 1, DataTransFunctor<T, AccT>>(
+      &grad_tmp[0][0][0], &grad_ptr[0], DataTransFunctor<T, AccT>());
 
   // compute sum
   AccT sum[kBatchSize]{0.0};
   AccT sum_tmp[kBatchSize][kIterationsV][kVSize];
-  for (int i = 0; i < kBatchSize; ++i) {
-    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-    kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                           kps::MulFunctor<AccT>>(
-        &sum_tmp[i][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
-  }
-  kps::Reduce<AccT, kIterationsV * kVSize, kBatchSize, 1, kps::AddFunctor<AccT>,
+  AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
+  AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
+  kps::ElementwiseBinary<AccT, AccT, kStep, 1, 1, kps::MulFunctor<AccT>>(
+      &sum_tmp[0][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
+  kps::Reduce<AccT, kVIteration, kBatchSize, 1, kps::AddFunctor<AccT>,
               kps::details::ReduceMode::kLocalMode>(
       &sum[0], &sum_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
-
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
-  // write
+  // write result to global memory
   AccT out[kBatchSize][kIterationsV][kVSize];
-  for (int i = 0; i < kBatchSize; ++i) {
-    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-    kps::ElementwiseUnary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                          UnarySubFunctor<AccT>>(&out[i][0][0], &gradptr[0],
-                                                 UnarySubFunctor<AccT>(sum[i]));
-    kps::ElementwiseBinary<AccT, AccT, kIterationsV * kVSize, 1, 1,
-                           kps::MulFunctor<AccT>>(
-        &out[i][0][0], &srcptr[0], &out[i][0][0], kps::MulFunctor<AccT>());
-  }
-
   T out_tmp[kBatchSize][kIterationsV][kVSize];
-  kps::ElementwiseUnary<AccT, T, kBatchSize * kIterationsV * kVSize, 1, 1,
-                        DataTransformFunctor<AccT, T>>(
-      &out_tmp[0][0][0], &out[0][0][0], DataTransformFunctor<AccT, T>());
-
-// write
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
     if (i >= local_batches) break;
+    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
+    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
+    kps::ElementwiseUnary<AccT, AccT, kVIteration, 1, 1, UnarySubFunctor<AccT>>(
+        &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
+    kps::ElementwiseBinary<AccT, AccT, kVIteration, 1, 1,
+                           kps::MulFunctor<AccT>>(
+        &out[i][0][0], &srcptr[0], &out[i][0][0], kps::MulFunctor<AccT>());
+    kps::ElementwiseUnary<AccT, T, kVIteration, 1, 1,
+                          DataTransFunctor<AccT, T>>(
+        &out_tmp[i][0][0], &out[i][0][0], DataTransFunctor<AccT, T>());
     VecT* dst_v = reinterpret_cast<VecT*>(&dst[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
     kps::WriteData<VecT, VecT, kIterationsV, 1, 1, true>(
-        &dst_v[0], &reg_v[0], stride / kVSize, 0, kWarpSize / kVSize, 1);
+        &dst_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
   }
 }
 
