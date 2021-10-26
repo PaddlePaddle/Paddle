@@ -56,7 +56,10 @@ CLANG_LINK_FLAGS = [
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']
 
-COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
+if core.is_compiled_with_rocm():
+    COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
+else:
+    COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_HIP', '-DEIGEN_USE_GPU']
 
 GCC_MINI_VERSION = (5, 4, 0)
 MSVC_MINI_VERSION = (19, 0, 24215)
@@ -319,10 +322,16 @@ def prepare_unix_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + [
-        '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
-        '-DNVCC'
-    ] + cflags + get_cuda_arch_flags(cflags)
+    if core.is_compiled_with_rocm():
+        cflags = COMMON_NVCC_FLAGS + [
+            '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
+            '-DNVCC'
+        ] + cflags + get_cuda_arch_flags(cflags)
+    else:
+        cflags = COMMON_NVCC_FLAGS + [
+            '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
+            '-DHIPCC'
+        ] + cflags + get_cuda_arch_flags(cflags)
 
     return cflags
 
@@ -331,7 +340,12 @@ def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(cflags)
+    if core.is_compiled_with_rocm():
+        cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(
+            cflags)
+    else:
+        cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(
+            cflags)
 
     return cflags
 

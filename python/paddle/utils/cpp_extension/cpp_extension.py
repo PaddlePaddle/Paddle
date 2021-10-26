@@ -436,7 +436,10 @@ class BuildExtension(build_ext, object):
                 add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
                 # Append this macor only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
-                    cflags.append('-DPADDLE_WITH_CUDA')
+                    if core.is_compiled_with_rocm():
+                        cflags.append('-DPADDLE_WITH_HIP')
+                    else:
+                        cflags.append('-DPADDLE_WITH_CUDA')
 
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=True)
@@ -513,7 +516,10 @@ class BuildExtension(build_ext, object):
                     cmd += cflags
                 # Append this macor only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
-                    cmd.append('-DPADDLE_WITH_CUDA')
+                    if core.is_compiled_with_rocm():
+                        cflags.append('-DPADDLE_WITH_HIP')
+                    else:
+                        cflags.append('-DPADDLE_WITH_CUDA')
 
                 return original_spawn(cmd)
 
