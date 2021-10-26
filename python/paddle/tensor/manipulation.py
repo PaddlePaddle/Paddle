@@ -696,15 +696,24 @@ def roll(x, shifts, axis=None, name=None):
 
     helper = LayerHelper("roll", **locals())
     check_type(axis, 'axis', (list, tuple), 'roll')
-    check_type(shifts, 'shifts', (list, tuple), 'roll')
+
     out = helper.create_variable_for_type_inference(x.dtype)
 
-    helper.append_op(
-        type='roll',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'axis': axis,
-               'shifts': shifts})
+    if isinstance(shifts, Variable):
+        helper.append_op(
+            type='roll',
+            inputs={'X': x,
+                    "ShiftsTensor": shifts},
+            outputs={'Out': out},
+            attrs={'axis': axis})
+    else:
+        check_type(shifts, 'shifts', (list, tuple), 'roll')
+        helper.append_op(
+            type='roll',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'axis': axis,
+                   'shifts': shifts})
     return out
 
 
