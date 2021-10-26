@@ -26,6 +26,7 @@ class EagerScaleTestCase(unittest.TestCase):
             paddle.set_device("cpu")
             arr = np.ones([4, 16, 16, 32]).astype('float32')
             tensor = paddle.to_tensor(arr, 'float32', core.CPUPlace())
+            print(tensor)
             tensor = core.eager.scale(tensor, 2.0, 0.9, True, False)
             for i in range(0, 100):
                 tensor = core.eager.scale(tensor, 2.0, 0.9, True, False)
