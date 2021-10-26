@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
+import paddle
 import threading
-import paddle.fluid.core as core
 import numpy as np
+
+import warnings
+import paddle.fluid.core as core
+from paddle.fluid.io import is_parameter, is_belong_to_optimizer
+from paddle.framework.io import _to_LodTensor
 
 
 def is_valid_list_index(list, index):
@@ -342,93 +348,123 @@ def make_data_unshard(dist_main_prog, dist_startup_prog):
             dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
 
 
-def check_append_sd(append_sd):
+def _check_addition_info(addition_info):
     """
-    check validity of additional state_dict
+    Validity check of additional information
     """
-    if append_sd is None:
-        return append_sd
-    elif not isinstance(append_sd, dict):
-        raise TypeError("The type of append_sd should be dict, but got {}".
-                        format(str(type(append_sd))))
+    if addition_info is None:
+        return addition_info
+    elif not isinstance(addition_info, dict):
+        raise TypeError("The type of addition_info should be dict, but got {}".
+                        format(str(type(addition_info))))
     else:
-        return append_sd
+        return addition_info
 
 
-def check_ckpt_dir(ckpt_dir):
+def _check_valid_dir(file_dir):
     """
-    check validity of ckpt_dir
+    Validity check of input directory
     """
-    if isinstance(ckpt_dir, list):
-        if len(ckpt_dir) != paddle.distributed.get_world_size():
-            raise ValueError(
-                "The number of ckpt_dir must equal to the number of ranks.")
-        if not all(isinstance(file, str) for file in ckpt_dir):
-            raise ValueError("The type of each ckpr_dir should be str.")
-        if not all(os.path.exists(file) for file in ckpt_dir):
-            raise ValueError("The ckpt_dir's file does not exist.")
-        return ckpt_dir
+    if file_dir is None:
+        return file_dir
+    elif isinstance(file_dir, str):
+        return [file_dir]
+    elif isinstance(file_dir, list):
+        if not all(isinstance(file, str) for file in file_dir):
+            raise ValueError("The type of each directory should be str.")
+        if not all(os.path.exists(file) for file in file_dir):
+            raise ValueError("The directory's file does not exist.")
+        return file_dir
     else:
-        raise TypeError("The type of ckpt_dir should be list, but got {}.".
-                        format(str(type(ckpt_dir))))
+        raise TypeError("The type of directory should be list, but got {}.".
+                        format(str(type(file_dir))))
 
 
 def save_static_checkpoint(program,
                            output_dir,
                            is_integrated=False,
-                           append_sd=None):
+                           addition_info=None,
+                           dist_attr_dir=None):
     """ 
-    Save model param, opt and addition information of each rank.
+    Save model parameter state, optimzer state, distributed attribute and 
+    additional information of each rank.
 
     Args:
         program(Program): The program to be saved.
         output_dir(str): The path of the checkpoint file to be saved.
         is_integrated(bool, optional): Whether to integrate param before save. Default: False.
-        append_sd(dict, optional): Additional information. Default: None.
+        addition_info(dict, optional): Additional information. Default: None.
+        dist_attr_dir(str, optional): The path of distributed attribute file to be saved. Default: None
+
+    Returns:
+        None
+
+    Examples:
+        >>> output_dir = os.path.join(args.output_dir, "step_%d" % eval_step)
+        >>> os.makedirs(output_dir, exist_ok=True)
+        >>> save_static_checkpoint(program, output_dir)
     """
     if not is_integrated:
         rank = paddle.distributed.get_rank()
         ckpt_file_name = os.path.join(output_dir,
                                       "model_state_rank{}.pdmodel".format(rank))
 
-        # state_dict of param and opt
         state_dict = {
-            "param": program.state_dict("param"),
-            "opt": program.state_dict("opt")
+            "model": program.state_dict(),
+            "ranks": paddle.distributed.get_world_size()
         }
-
-        if check_append_sd(append_sd):
-            state_dict["append_sd"] = append_sd
-
+        if _check_addition_info(addition_info):
+            state_dict["addition_info"] = addition_info
         paddle.save(state_dict, ckpt_file_name)
         print("Successfully saving model to {}".format(output_dir))
+
+        if dist_attr_dir:
+            save_distributed_attribute(program, dist_attr_dir)
     else:
         # TODO: integrate param before save
-        raise NotImplementedError("Integrating param is not implemented")
+        raise NotImplementedError("Integrating parameter does not implement")
 
 
-def load_static_checkpoint(ckpt_dir, program=None, dist_attr_file=None):
+def load_static_checkpoint(ckpt_dir, program=None, dist_attr_dir=None):
     """ 
-    load model param and opt and others
+    Load param, opt, distributed attribute and addition_info of model.
 
     Args:
-        ckpt_dir(List[str]): The list of the checkpoint files in order of rank id.
+        ckpt_dir(str|List[str]): The list of the checkpoint files in order of rank id.
         program(Program, optional): The program to be update with ckpt_dir. Default: None.
-        dist_attr_file(str, optional): Distributed attribution file of all parameters. Default: None.
+        dist_attr_dir(str|List[str], optional): The list of the distributed attribute file in order of rank id. Default: None.
+    
+    Returns:
+        None or addition_info which user saved additional information in last train.
+
+    Examples:
+        >>> exe.run(startup_program)
+        >>> ckpt_dir = ['./output/step_10/model_state_rank0.pdmodel', 
+        ...             './output/step_10/model_state_rank1.pdmodel',]
+        >>> load_static_checkpoint(ckpt_dir, main_program)
     """
-    ckpt_dir = check_ckpt_dir(ckpt_dir)
+    ckpt_dir = _check_valid_dir(ckpt_dir)
+    dist_attr_dir = _check_valid_dir(dist_attr_dir)
 
-    # load state_dict of current rank
-    rank = paddle.distributed.get_rank()
-    state_dict = paddle.load(ckpt_dir[rank])
+    if ckpt_dir and dist_attr_dir:
+        raise NotImplementedError(
+            "Merge&slice parameter with dist_attr does not implement")
 
-    # TODO: merge and split param before load into program with dist_attr_file
-    # load param and opt value into program's var
+    elif ckpt_dir:
+        assert len(ckpt_dir) == paddle.distributed.get_world_size(), \
+            "The number of ckpt_dir must equal to the number of ranks"
+        rank = paddle.distributed.get_rank()
+        state_dict_info = paddle.load(ckpt_dir[rank])
+        state_dict = state_dict_info["model"]
+    else:
+        raise ValueError("'ckpt_dir' can not be None.")
+
     if program:
-        program.set_state_dict(state_dict["param"])
-        program.set_state_dict(state_dict["opt"])
+        program.set_state_dict(state_dict)
+    else:
+        warnings.warn("'Program' is None, parameters will not be loaded.")
 
-    if "append_sd" not in state_dict.keys():
+    if "addition_info" not in state_dict_info:
         return
 
-    return state_dict["append_sd"]
+    return state_dict_info["addition_info"]
