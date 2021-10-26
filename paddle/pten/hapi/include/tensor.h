@@ -223,9 +223,6 @@ class Tensor final {
   /* Part 8: Auto generated Tensor methods */
   // ...
 
-  std::string Name() const { return name_; }
-  void SetName(const std::string& name) { name_ = name; }
-
  private:
   /**
    * [ Why use abstract TensorImpl interface here? ]

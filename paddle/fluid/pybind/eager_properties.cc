@@ -49,12 +49,12 @@ extern PyTypeObject* pEagerTensorType;
 
 PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
                                            void* closure) {
-  return ToPyObject(self->eagertensor.Name());
+  return ToPyObject(self->eagertensor.name());
 }
 
 int eager_tensor_properties_set_name(EagerTensorObject* self, PyObject* value,
                                      void* closure) {
-  self->eagertensor.SetName(CastPyArg2AttrString(value, 0));
+  self->eagertensor.set_name(CastPyArg2AttrString(value, 0));
   return 0;
 }
 
@@ -97,6 +97,14 @@ PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
   return ToPyObject(value);
 }
 
+PyObject* eager_tensor_properties_get_place(EagerTensorObject* self,
+                                            void* closure) {
+  auto place = self->eagertensor.place();
+  auto obj = ::pybind11::cast(place);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* eager_tensor_properties_get_place_str(EagerTensorObject* self,
                                                 void* closure) {
   std::stringstream ostr;
@@ -121,8 +129,8 @@ struct PyGetSetDef variable_properties[] = {
     // {"is_leaf", (getter)eager_tensor_properties_get_is_leaf, nullptr,
     // nullptr,
     //  nullptr},
-    // {"place", (getter)eager_tensor_properties_get_place, nullptr, nullptr,
-    //  nullptr},
+    {"place", (getter)eager_tensor_properties_get_place, nullptr, nullptr,
+     nullptr},
     {"_place_str", (getter)eager_tensor_properties_get_place_str, nullptr,
      nullptr, nullptr},
     {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
