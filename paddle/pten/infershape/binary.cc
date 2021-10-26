@@ -17,7 +17,8 @@ limitations under the License. */
 
 namespace pten {
 
-TensorMeta DotInferShape(const TensorMeta& x_meta, const TensorMeta& y_meta) {
+DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
+                              const DenseTensorMeta& y_meta) {
   auto x_dims = x_meta.dims;
   auto x_rank = static_cast<size_t>(x_dims.size());
   PADDLE_ENFORCE_EQ(true,
@@ -54,8 +55,7 @@ TensorMeta DotInferShape(const TensorMeta& x_meta, const TensorMeta& y_meta) {
                         y_dims.to_str()));
 
   x_dims[x_dims.size() - 1] = 1;
-  TensorMeta return_meta(
-      x_dims, x_meta.backend, x_meta.type, x_meta.layout, x_meta.offset);
+  DenseTensorMeta return_meta(x_meta.type, x_dims, x_meta.layout);
   return return_meta;
 }
 

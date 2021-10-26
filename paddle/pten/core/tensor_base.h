@@ -61,8 +61,6 @@ class TensorBase {
   /// return Whether the storage is allocated.
   virtual bool initialized() const = 0;
 
-  virtual paddle::experimental::Backend backend() const { return {}; }
-
   /// \brief Return the type information of the derived class to support
   /// safely downcast in non-rtti environment.
   /// return The type information of the derived class.

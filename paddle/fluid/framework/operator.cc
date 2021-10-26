@@ -1819,10 +1819,10 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
 
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
-      auto pt_in = framework::InputVariableToPtenTensor(*var, in_def);
-      tmp_inputs.emplace_back(pt_in);
+      tmp_inputs.emplace_back(
+          experimental::MakePtenTensorBaseFromVar(*var, in_def));
     }
-    op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
+    op_kernel_ctx.EmplaceBackInputs(std::move(tmp_inputs));
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -1831,10 +1831,10 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
 
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
-      auto pt_out = framework::OutputVariableToPtenTensor(var, out_def);
-      tmp_outputs.emplace_back(pt_out);
+      tmp_outputs.emplace_back(
+          experimental::MakePtenTensorBaseFromVar(var, out_def));
     }
-    op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
+    op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {

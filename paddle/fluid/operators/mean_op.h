@@ -20,6 +20,7 @@ limitations under the License. */
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/api/include/math.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -61,10 +62,8 @@ class MeanKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.device_context<DeviceContext>();
     out->mutable_data<T>(x->place());
 
-    auto pt_x =
-        framework::MakeTensorImpl<pten::DenseTensor>(*x, x->place(), x->type());
-    auto pt_out = framework::MakeTensorImpl<pten::DenseTensor>(*out, x->place(),
-                                                               x->type());
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
     VLOG(1) << "chenweihang: call original mean kernel compute.";

@@ -13,114 +13,126 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/convert_utils.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace pten {
 
-using CPUPlace = paddle::platform::CPUPlace;
-using CUDAPlace = paddle::platform::CUDAPlace;
-using CUDAPinnedPlace = paddle::platform::CUDAPinnedPlace;
-using XPUPlace = paddle::platform::XPUPlace;
-using NPUPlace = paddle::platform::NPUPlace;
-using NPUPinnedPlace = paddle::platform::NPUPinnedPlace;
+DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
+                         const DenseTensorMeta& meta)
+    : meta_(meta),
+      storage_(
+          make_intrusive<TensorStorage>(a, SizeOf(data_type()) * numel())) {}
 
-const paddle::platform::Place& DenseTensor::place() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      allocation_,
-      paddle::platform::errors::PreconditionNotMet(
-          "Tensor not initialized yet when Tensor::place() is called."));
-  return allocation_->place();
-}
+DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
+                         DenseTensorMeta&& meta)
+    : meta_(std::move(meta)),
+      storage_(
+          make_intrusive<TensorStorage>(a, SizeOf(data_type()) * numel())) {}
 
-//----------------------------------------------------------------
-// Inner methods
+DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
+                         const DenseTensorMeta& meta)
+    : meta_(meta), storage_(std::move(storage)) {}
 
-void DenseTensor::ShareAllocation(
-    const std::shared_ptr<paddle::memory::allocation::Allocation>& allocation) {
-  // This operation can be very slow!
-  // std::shared_ptr reference count is atomic. increasing or decreasing
-  // the reference count requires atomic increment or decrement.
-  // This is hundred times slower than non-atomic increment/decrement
-  allocation_ = allocation;
-}
+DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
+    : meta_(std::move(meta)), storage_(std::move(storage)) {}
 
-// TODO(chenweihang): Add other place branchs
-paddle::platform::Place DenseTensor::GetPlaceByBackend() const {
-  switch (meta_.backend) {
-    case Backend::CPU:
-      return CPUPlace();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case Backend::CUDA:
-      return CUDAPlace(paddle::platform::GetCurrentDeviceId());
-#endif
-    default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Unsupported Tensor backend."));
+int64_t DenseTensor::numel() const {
+  if (meta_.is_scalar) {
+    return 1;
   }
+  return product(meta_.dims);
 }
 
-size_t DenseTensor::MemorySize() const {
-  return allocation_ == nullptr ? 0UL : allocation_->size() - meta_.offset;
+bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
+  return storage_.get() == b.storage_.get() && storage_.get() != nullptr;
 }
 
-void DenseTensor::CheckMemorySize() const {
-  PADDLE_ENFORCE_NOT_NULL(allocation_,
-                          paddle::platform::errors::PreconditionNotMet(
-                              "Tensor holds no memory. "
-                              "Call Tensor::mutable_data firstly."));
-  size_t size_of_type =
-      paddle::framework::SizeOfType(TransToProtoVarType(meta_.type));
-  PADDLE_ENFORCE_LE(
-      numel() * size_of_type,
-      MemorySize(),
+void* DenseTensor::mutable_data(size_t request_bytes) {
+  PADDLE_ENFORCE(
+      valid(),
       paddle::platform::errors::PreconditionNotMet(
-          "Tensor's dimension is out of bound."
-          "Tensor's dimension must be equal or less than the size of its "
-          "memory."
-          "But received  Tensor's dimension is d%, memory's size is %d.",
-          numel() * size_of_type,
-          MemorySize()));
+          "The meta data must be valid when call the mutable data function."));
+  PADDLE_ENFORCE_NOT_NULL(
+      storage_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the mutable data function."));
+  size_t bytes = numel() * SizeOf(data_type());
+  if (request_bytes) {
+    PADDLE_ENFORCE_GE(request_bytes,
+                      bytes,
+                      paddle::platform::errors::InvalidArgument(
+                          "The reserved size %d should be enough to meet the "
+                          "volume required by metadata %d.",
+                          request_bytes,
+                          bytes));
+    bytes = request_bytes;
+  }
+  if (storage_->size() < bytes) {
+    storage_->Realloc(bytes);
+  }
+  return storage_->data();
+}
+
+template <typename T>
+T* DenseTensor::mutable_data() {
+  PADDLE_ENFORCE(
+      (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      paddle::platform::errors::PreconditionNotMet(
+          "The type of data (%d) we are trying to retrieve does not match the "
+          "type of data currently contained in the container (%d).",
+          static_cast<int>(paddle::experimental::CppTypeToDataType<T>::Type()),
+          static_cast<int>(data_type())));
+  return static_cast<T*>(mutable_data());
+}
+
+template <typename T>
+const T* DenseTensor::data() const {
+  PADDLE_ENFORCE(
+      (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      paddle::platform::errors::PreconditionNotMet(
+          "The type of data we are trying to retrieve does not match the "
+          "type of data currently contained in the container."));
+  return static_cast<const T*>(data());
 }
 
 const void* DenseTensor::data() const {
-  CheckMemorySize();
-  return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_.offset);
+  PADDLE_ENFORCE_NOT_NULL(
+      storage_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the mutable data function."));
+  return storage_->data();
 }
 
-void* DenseTensor::mutable_data() {
-  PADDLE_ENFORCE_GE(
-      numel(),
-      0,
-      paddle::platform::errors::PreconditionNotMet(
-          "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(),
-          "] now"));
-  size_t size =
-      numel() * paddle::framework::SizeOfType(TransToProtoVarType(meta_.type));
-  auto place = GetPlaceByBackend();
-  if (allocation_ == nullptr) {
-    allocation_.reset();
-    allocation_ = paddle::memory::AllocShared(place, size);
-  } else {
-    if (!(allocation_->place() == place) ||
-        allocation_->size() < size + meta_.offset) {
-      allocation_.reset();
-      allocation_ = paddle::memory::AllocShared(place, size);
-    } else {
-      // do nothing
-    }
-  }
-  return reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_.offset);
+void DenseTensor::check_memory_size() const {
+  size_t bytes = numel() * SizeOf(data_type());
+  PADDLE_ENFORCE_GE(memory_size(),
+                    bytes,
+                    paddle::platform::errors::InvalidArgument(
+                        "The memory size %d should be enough to meet the "
+                        "volume required by metadata %d.",
+                        memory_size(),
+                        bytes));
 }
+
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \
+  template dtype* DenseTensor::mutable_data(); \
+  template const dtype* DenseTensor::data() const;
+
+DATA_MEMBER_FUNC_INSTANTIATION(bool);
+DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
+DATA_MEMBER_FUNC_INSTANTIATION(uint8_t);
+DATA_MEMBER_FUNC_INSTANTIATION(int16_t);
+DATA_MEMBER_FUNC_INSTANTIATION(uint16_t);
+DATA_MEMBER_FUNC_INSTANTIATION(int32_t);
+DATA_MEMBER_FUNC_INSTANTIATION(uint32_t);
+DATA_MEMBER_FUNC_INSTANTIATION(int64_t);
+DATA_MEMBER_FUNC_INSTANTIATION(uint64_t);
+DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::bfloat16);
+DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::float16);
+DATA_MEMBER_FUNC_INSTANTIATION(float);
+DATA_MEMBER_FUNC_INSTANTIATION(double);
+DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64);
+DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128);
+
+#undef DATA_MEMBER_FUNC_INSTANTIATION
 
 }  // namespace pten

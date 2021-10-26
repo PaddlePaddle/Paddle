@@ -293,11 +293,10 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
       const auto& variable = var->Var();
-
-      auto pt_in = framework::InputVariableToPtenTensor(variable, in_def);
-      tmp_inputs.emplace_back(pt_in);
+      tmp_inputs.emplace_back(
+          experimental::MakePtenTensorBaseFromVar(variable, in_def));
     }
-    op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
+    op_kernel_ctx.EmplaceBackInputs(std::move(tmp_inputs));
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -307,11 +306,10 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto* variable = var->MutableVar();
-
-      auto pt_out = framework::OutputVariableToPtenTensor(variable, out_def);
-      tmp_outputs.emplace_back(pt_out);
+      tmp_outputs.emplace_back(
+          experimental::MakePtenTensorBaseFromVar(variable, out_def));
     }
-    op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
+    op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {

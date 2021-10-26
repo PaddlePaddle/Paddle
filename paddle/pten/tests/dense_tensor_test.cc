@@ -18,16 +18,3 @@ limitations under the License. */
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
-
-TEST(DenseTensor, Constructor) {
-  pten::DenseTensor tensor(pten::TensorMeta(framework::make_ddim({5, 10}),
-                                            pten::Backend::CPU,
-                                            pten::DataType::FLOAT32,
-                                            pten::DataLayout::NCHW,
-                                            0UL),
-                           pten::TensorStatus());
-  ASSERT_EQ(tensor.dims().size(), 2);
-  ASSERT_EQ(tensor.backend(), pten::Backend::CPU);
-  ASSERT_EQ(tensor.data_type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(tensor.layout(), pten::DataLayout::NCHW);
-}

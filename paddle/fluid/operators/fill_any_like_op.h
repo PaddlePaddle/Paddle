@@ -62,10 +62,8 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
         std::isnan(value), false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
-    auto pt_x = framework::MakeTensorImpl<pten::DenseTensor>(*in, in->place(),
-                                                             in->type());
-    auto pt_out = framework::MakeTensorImpl<pten::DenseTensor>(
-        *out, out->place(), out->type());
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     const auto& dev_ctx = context.template device_context<DeviceContext>();
     // call new kernel
