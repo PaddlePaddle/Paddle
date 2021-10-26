@@ -256,6 +256,9 @@ void HogwildWorker::TrainFiles() {
     paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
   }
 #endif
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
+  }
 }
 
 void HogwildWorker::PrintFetchVars() {
