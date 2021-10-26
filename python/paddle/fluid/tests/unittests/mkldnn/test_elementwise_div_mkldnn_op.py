@@ -134,23 +134,24 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
-                                   "Out",
-                                   user_defined_grads=[
-                                       np.divide(self.x, self.y),
-                                       np.divide((np.multiply(-self.x, self.x)),
-                                                 np.multiply(self.y, self.y))
-                                   ],
-                                   user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X", "Y"],
+            "Out",
+            user_defined_grads=[
+                np.divide(self.x, self.y), np.divide(
+                    (np.multiply(-self.x, self.x)), np.multiply(self.y, self.y))
+            ],
+            user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ignore_x(self):
-        self.check_grad_with_place(core.CPUPlace(), ["Y"],
-                                   "Out",
-                                   user_defined_grads=[
-                                       np.divide((np.multiply(-self.x, self.y)),
-                                                 np.multiply(self.y, self.y))
-                                   ],
-                                   user_defined_grad_outputs=[self.y_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(), ["Y"],
+            "Out",
+            user_defined_grads=[
+                np.divide((np.multiply(-self.x, self.y)),
+                          np.multiply(self.y, self.y))
+            ],
+            user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
