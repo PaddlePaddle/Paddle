@@ -90,6 +90,10 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
 
+if(NOT WITH_GPU)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
+endif()
+
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
     LIST(REMOVE_ITEM TEST_OPS test_c_concat)
