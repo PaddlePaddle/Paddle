@@ -67,7 +67,6 @@ class CuFFTHandle {
  public:
   CuFFTHandle() {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftCreate(&handle_));
-    std::cout << "Constructed Handle " << handle_ << std::endl;
   }
 
   CuFFTHandle(const CuFFTHandle& other) = delete;
@@ -80,7 +79,6 @@ class CuFFTHandle {
   const ::cufftHandle& get() const { return handle_; }
 
   ~CuFFTHandle() {
-    std::cout << "Destructing Handle " << handle_ << std::endl;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftDestroy(handle_));
   }
 };
