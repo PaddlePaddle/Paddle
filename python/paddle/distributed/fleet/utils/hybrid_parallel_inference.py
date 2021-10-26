@@ -841,7 +841,7 @@ class HybridParallelInferenceHelper(object):
 
         # step3: add send/recv for the result of pipeline parallel
         self._insert_sendrecv_ops_for_results_pipeline_parallel(
-            main_block, fetch_var_names, self._stage)
+            main_block, fetch_var_names_for_pp, self._stage)
 
         # step4: split programs
         self._split_program(self._startup_program, self._stage, 0)
