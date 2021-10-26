@@ -1036,6 +1036,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Y").size();
         return false;
       }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() != 4) {
+        VLOG(3) << "The instance_norm op only support 4-dimensional input in "
+                   "tensorrt.";
+        return false;
+      }
     }
 
     if (op_type == "leaky_relu") {
