@@ -144,7 +144,7 @@ def prune_model(place,
                 sparsity.set_excluded_layers(main_program, ["need_dense_fc"])
 
                 optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-                optimizer = paddle.static.amp.decorator.decorate(optimizer )
+                optimizer = paddle.static.amp.decorate(optimizer )
                 # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
                 # will insert necessary masking operations for ASP workflow.
                 optimizer = sparsity.decorate(optimizer)
