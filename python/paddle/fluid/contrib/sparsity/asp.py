@@ -19,10 +19,9 @@ Functions for Auto SParsity (ASP) training and inference.
 import copy
 import numpy as np
 import paddle
-from paddle.fluid import framework, global_scope, program_guard, layers
+from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.contrib import sparsity
-from paddle.fluid import core
 
 __all__ = [
     'decorate', 'prune_model', 'set_excluded_layers', 'reset_excluded_layers'
@@ -65,22 +64,21 @@ def decorate(optimizer):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             from paddle.static import sparsity
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
             paddle.enable_static()
 
-            with fluid.program_guard(main_program, startup_program):
-                input_data = fluid.layers.data(name='data', shape=[None, 128])
-                label = fluid.layers.data(name='label', shape=[None, 10])
-                hidden = fluid.layers.fc(input=input_data, num_flatten_dims=-1, size=32, act=None)
-                prob = fluid.layers.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
-                loss = fluid.layers.mean(fluid.layers.square_error_cost(prob, label))
+            with paddle.static.program_guard(main_program, startup_program):
+                input_data = paddle.static.data(name='data', shape=[None, 128])
+                label = paddle.static.data(name='label', shape=[None, 10])
+                hidden = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None)
+                prob = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
+                loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 optimizer = sparsity.decorate(optimizer)
                 # if do sparse training with Fleet, please replace above decorate with:
                 # strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -114,7 +112,7 @@ def prune_model(place,
     inference only. To obtain OptimizerWithSparsityGuarantee, please see `sparsity.decoreate()`.
 
     Args:
-        place (fluid.CPUPlace()|fluid.CUDAPlace(N)): Device place for pruned parameter and mask Variables, and N means the GPU's id. It should be the same as created instance of Executor.
+        place (paddle.CPUPlace()|paddle.CUDAPlace(N)): Device place for pruned parameter and mask Variables, and N means the GPU's id. It should be the same as created instance of Executor.
         main_program (Program, optional): Program with model definition and its parameters. Default is `paddle.static.default_main_program()
         n (int): n of `n:m` sparse pattern.
         m (int): m of `n:m` sparse pattern.
@@ -126,37 +124,36 @@ def prune_model(place,
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.core as core
             from paddle.static import sparsity
 
             paddle.enable_static()
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
-            with fluid.program_guard(main_program, startup_program):
-                input_data = fluid.layers.data(name='data', shape=[None, 128])
-                label = fluid.layers.data(name='label', shape=[None, 10])
-                hidden = fluid.layers.fc(input=input_data, num_flatten_dims=-1, size=32, act=None, name="need_sparse")
-                hidden = fluid.layers.fc(input=hidden, num_flatten_dims=-1, size=32, act=None, name="need_dense")
-                prob = fluid.layers.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
-                loss = fluid.layers.mean(fluid.layers.square_error_cost(prob, label))
+            with paddle.static.program_guard(main_program, startup_program):
+                input_data = paddle.static.data(name='data', shape=[None, 128])
+                label = paddle.static.data(name='label', shape=[None, 10])
+                hidden = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None, name="need_sparse")
+                hidden = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=32, act=None, name="need_dense")
+                prob = paddle.static.nn.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
+                loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
                 # Setup exluded layers out from ASP workflow.
                 # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
                 sparsity.set_excluded_layers(main_program, ["need_dense"])
 
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                optimizer = fluid.contrib.mixed_precision.decorator.decorate(optimizer )
+                optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+                optimizer = paddle.static.amp.decorator.decorate(optimizer )
                 # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
                 # will insert necessary masking operations for ASP workflow.
                 optimizer = sparsity.decorate(optimizer)
                 optimizer.minimize(loss, startup_program)
 
-            place = paddle.CPUPlace()
+            device = paddle.device.get_device()
+            place  = paddle.set_device(device)
 
-            exe = fluid.Executor(place)
+            exe = paddle.static.Executor(place)
             exe.run(startup_program)
 
             # Must call `exe.run(startup_program)` first before calling `sparsity.prune_model`
@@ -345,15 +342,14 @@ class ASPHelper(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
               from paddle.static.sparsity.asp import ASPHelper
 
-              main_program = fluid.Program()
-              startup_program = fluid.Program()
+              main_program = paddle.static.Program()
+              startup_program = paddle.static.Program()
 
-              with fluid.program_guard(main_program, startup_program):
-                  input_data = fluid.layers.data(name='data', shape=[None, 128])
-                  fc = fluid.layers.fc(input=input_data, num_flatten_dims=-1, size=32, act=None)
+              with paddle.static.program_guard(main_program, startup_program):
+                  input_data = paddle.static.data(name='data', shape=[None, 128])
+                  fc = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, act=None)
 
               for param in main_program.global_block().all_parameters():
                   ASPHelper._is_supported_layer(main_program, param.name)
