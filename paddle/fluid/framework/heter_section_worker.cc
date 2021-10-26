@@ -25,7 +25,6 @@ uint64_t HeterSectionWorker::batch_id_(0);
 void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   trainer_desc_ = desc;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
-  VLOG(3) << "**DEBUG in heter section worker initialize before program rest";
   program_.reset(
       new ProgramDesc(desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
@@ -59,7 +58,6 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
                                 (op_role == (static_cast<int>(OpRole::kForward) |
                                             static_cast<int>(OpRole::kLoss))) ||
                                 (op_role == static_cast<int>(OpRole::kLRSched));
-        VLOG(3) << "***DEBUG in last stage*** " << op->Type();
         if (is_forward_op) {
             forward_ops_.push_back(std::move(op));
         } else {
