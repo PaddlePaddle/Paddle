@@ -26,24 +26,28 @@ namespace paddle2cinn {
 
 // Class to store the keys for compiling CINN.
 //
-// CINN cannot handle changable shape now, so CinnRunner keeps a cache mapping
+// CINN cannot handle changable shape now, so CinnCompiler keeps a cache mapping
 // from CinnCacheKey to CinnCompiledObject.
 //
-// The CinnCacheKey contains a graph serialized string and the feeded tensor
+// The CinnCacheKey contains a graph serialized string and the input tensor
 // shapes.
 class CinnCacheKey {
  public:
   CinnCacheKey(const ir::Graph& graph,
-               const std::map<std::string, const LoDTensor*>& feed_tensors);
+               const std::map<std::string, const LoDTensor*>& input_tensors,
+               const std::string& arch_str);
   CinnCacheKey(const ir::Graph& graph,
-               const std::map<std::string, DDim>& feed_shapes);
+               const std::map<std::string, DDim>& input_shapes,
+               const std::string& arch_str);
 
   ~CinnCacheKey() {}
 
   void SetKey(const ir::Graph& graph,
-              const std::map<std::string, const LoDTensor*>& feed_tensors);
+              const std::map<std::string, const LoDTensor*>& input_tensors,
+              const std::string& arch_str);
   void SetKey(const ir::Graph& graph,
-              const std::map<std::string, DDim>& feed_shapes);
+              const std::map<std::string, DDim>& input_shapes,
+              const std::string& arch_str);
 
   bool operator==(const CinnCacheKey& other) const;
   bool operator!=(const CinnCacheKey& other) const;
@@ -55,7 +59,8 @@ class CinnCacheKey {
 
  private:
   std::string graph_serialize_str_;
-  std::map<std::string, DDim> feed_shapes_;
+  std::map<std::string, DDim> input_shapes_;
+  std::string arch_str_;
 };
 
 }  // namespace paddle2cinn

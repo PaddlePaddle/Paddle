@@ -39,6 +39,9 @@ struct EngineConfig {
   std::vector<std::string> neglected_passes;
   lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
   bool model_from_memory{true};
+  // TODO(wilber): now only works for xpu, lite gpu can support device_id or
+  // not?
+  int device_id = 0;
 
   // for xpu
   size_t xpu_l3_workspace_size;
