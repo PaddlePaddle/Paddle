@@ -1,3 +1,5 @@
+# pten basic functions called by kernels
+add_subdirectory(functions)
 # pten kernels for diff device
 add_subdirectory(cpu)
 if(WITH_GPU OR WITH_ROCM)

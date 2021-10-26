@@ -26,7 +26,8 @@ void Flatten(const CUDAContext& dev_ctx,
              DenseTensor* out) {
   auto out_dims = out->dims();
   pten::Copy(dev_ctx, x, out);
-  out->Resize(out_dims);
+  out->set_lod(out_meta.lod);
+  out->Resize(out_meta.dims);
 }
 
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
@@ -46,8 +47,8 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->mutable_meta()->dims = paddle::framework::make_ddim(xshape_dims);
-  xshape->mutable_meta()->lod = x.meta().lod;
+  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
+  xshape->set_lod(x.lod());
 }
 
 }  // namespace pten

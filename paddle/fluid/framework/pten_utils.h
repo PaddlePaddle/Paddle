@@ -25,40 +25,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/include/core.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace paddle {
 namespace framework {
-
-/* tensor translate */
-
-template <typename PtenTensorImplT, typename VariableT>
-std::shared_ptr<PtenTensorImplT> MakeTensorImpl(
-    const VariableT& tensor, pten::Backend backend,
-    paddle::experimental::DataType dtype,
-    paddle::experimental::DataLayout layout);
-
-template <typename PtenTensorImplT>
-std::shared_ptr<PtenTensorImplT> MakeTensorImpl(const LoDTensor& tensor,
-                                                const platform::Place& place,
-                                                proto::VarType::Type type);
-
-template <typename PtenTensorImplT>
-std::shared_ptr<PtenTensorImplT> MakeTensorImpl(const Tensor& tensor,
-                                                const platform::Place& place,
-                                                proto::VarType::Type type);
-
-template <typename PtenTensorImplT>
-void ShareTensorImpl(PtenTensorImplT* tensor_impl, LoDTensor* out);
-
-template <typename PtenTensorImplT>
-void ShareTensorImpl(PtenTensorImplT* tensor_impl, Tensor* out);
-
-std::shared_ptr<pten::TensorBase> InputVariableToPtenTensor(
-    const framework::Variable& variable, const pten::TensorArgDef& arg_def);
-std::shared_ptr<pten::TensorBase> OutputVariableToPtenTensor(
-    framework::Variable* variable, const pten::TensorArgDef& arg_def);
 
 /* Kernel Key translate */
 

@@ -54,6 +54,7 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::UINT8:
     case DataType::INT8:
       return 1;
+    case DataType::BFLOAT16:
     case DataType::FLOAT16:
     case DataType::INT16:
     case DataType::UINT16:
@@ -65,11 +66,11 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::FLOAT64:
     case DataType::INT64:
     case DataType::UINT64:
-      return 8;
-    case DataType::UNDEFINED:
-    case DataType::BFLOAT16:
     case DataType::COMPLEX64:
+      return 8;
     case DataType::COMPLEX128:
+      return 16;
+    case DataType::UNDEFINED:
     case DataType::NUM_DATA_TYPES:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type %d is not supported by tensor.",
@@ -138,11 +139,20 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
     case DataType::INT16:
       os << "int16";
       break;
+    case DataType::UINT16:
+      os << "uint16";
+      break;
     case DataType::INT32:
       os << "int32";
       break;
+    case DataType::UINT32:
+      os << "uint32";
+      break;
     case DataType::INT64:
       os << "int64";
+      break;
+    case DataType::UINT64:
+      os << "uint64";
       break;
     case DataType::BFLOAT16:
       os << "bfloat16";

@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 
 #include "paddle/pten/api/include/creation.h"
 
@@ -34,12 +35,14 @@ using DDim = paddle::framework::DDim;
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, full_like) {
   // 1. create tensor
+  // 1. create tensor
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 2}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 2}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 0;
 
@@ -68,12 +71,13 @@ TEST(API, full_like) {
 
 TEST(API, zeros_like) {
   // 1. create tensor
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 2}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({3, 2}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
   dense_x_data[0] = 1;
 
@@ -100,13 +104,14 @@ TEST(API, zeros_like) {
 
 TEST(API, ones_like) {
   // 1. create tensor
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(framework::make_ddim({3, 2}),
-                       pten::Backend::CPU,
-                       pten::DataType::FLOAT32,
-                       pten::DataLayout::NCHW),
-      pten::TensorStatus());
-  auto* dense_x_data = dense_x->mutable_data<float>();
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::INT32,
+                            framework::make_ddim({3, 2}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data = dense_x->mutable_data<int32_t>();
   dense_x_data[0] = 0;
 
   paddle::experimental::Tensor x(dense_x);
@@ -124,7 +129,7 @@ TEST(API, ones_like) {
   ASSERT_EQ(out.initialized(), true);
 
   auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
-  auto* actual_result = dense_out->data<float>();
+  auto* actual_result = dense_out->data<int32_t>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_EQ(actual_result[i], 1);
   }

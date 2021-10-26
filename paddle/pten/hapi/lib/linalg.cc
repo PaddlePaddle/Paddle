@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/hapi/lib/kernel_dispatch.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 #include "paddle/pten/infershape/binary.h"
 
 namespace paddle {
@@ -52,8 +53,9 @@ Tensor dot(const Tensor& x, const Tensor& y) {
 
   // 5. Prepare outputs
   Tensor out;
-  auto dense_out =
-      std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());
+  const auto allocator = std::make_shared<DefaultAllocator>(
+      pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 
