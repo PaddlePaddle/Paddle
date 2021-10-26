@@ -14,15 +14,7 @@
 # limitations under the License.
 
 from ...fluid.contrib.sparsity import calculate_density  #noqa: F401
-from ...fluid.contrib.sparsity import check_mask_1d  #noqa: F401
-from ...fluid.contrib.sparsity import get_mask_1d  #noqa: F401
-from ...fluid.contrib.sparsity import check_mask_2d  #noqa: F401
-from ...fluid.contrib.sparsity import get_mask_2d_greedy  #noqa: F401
-from ...fluid.contrib.sparsity import get_mask_2d_best  #noqa: F401
-from ...fluid.contrib.sparsity import create_mask  #noqa: F401
-from ...fluid.contrib.sparsity import check_sparsity  #noqa: F401
 from ...fluid.contrib.sparsity import MaskAlgo  #noqa: F401
-from ...fluid.contrib.sparsity import CheckMethod  #noqa: F401
 from ...fluid.contrib.sparsity import decorate  #noqa: F401
 from ...fluid.contrib.sparsity import prune_model  #noqa: F401
 from ...fluid.contrib.sparsity import set_excluded_layers  #noqa: F401
