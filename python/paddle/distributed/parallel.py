@@ -58,8 +58,10 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
-    if backend in ['auto', 'nccl', 'bkcl', 'hccl'] and (core.is_compiled_with_cuda() or
-                                                core.is_compiled_with_xpu() or core.is_compiled_with_npu()):
+    if backend in ['auto', 'nccl', 'bkcl', 'hccl'] and (
+            core.is_compiled_with_cuda() or core.is_compiled_with_xpu() or
+            core.is_compiled_with_npu()):
+
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:

@@ -119,6 +119,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/npu_profiler.h"
 #endif
@@ -2443,6 +2444,8 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
   m.def("npu_finalize", []() {
+    platform::HCCLCommContext::Instance().ReleaseHCCLComms();
+
     auto &pool = platform::DeviceContextPool::Instance();
     auto devices = platform::GetSelectedNPUDevices();
     for (size_t i = 0; i < devices.size(); ++i) {
