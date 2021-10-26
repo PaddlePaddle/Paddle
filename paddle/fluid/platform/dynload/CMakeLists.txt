@@ -7,7 +7,7 @@ if (NOT WITH_NV_JETSON)
 endif()
 
 if (WITH_ROCM)
-  list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc)
+  list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
 endif()
 
 # There is no macOS version of NCCL.

@@ -54,6 +54,35 @@ inline Node* GetNode(const std::unordered_set<Node*>& nodes,
       [&op_name](const Node* node) { return node->Name() == op_name; });
 }
 
+inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
+  auto check_node_ok = [&nodes](Node* n1, Node* n2) -> bool {
+    if (n1->IsOp() && !n2->IsVar()) {
+      return false;
+    }
+    if (n1->IsVar() && !n2->IsOp()) {
+      return false;
+    }
+    if (nodes.count(n2) == 0) {
+      return false;
+    }
+    return true;
+  };
+
+  for (auto node : nodes) {
+    for (auto in : node->inputs) {
+      if (!check_node_ok(node, in)) {
+        return false;
+      }
+    }
+    for (auto out : node->outputs) {
+      if (!check_node_ok(node, out)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 std::unique_ptr<Graph> BuildNoCinnSubgraph() {
   ProgramDesc prog;
   auto g = std::make_unique<Graph>(prog);
@@ -67,6 +96,8 @@ std::unique_ptr<Graph> BuildNoCinnSubgraph() {
 
   VarDesc var1("var1");
   VarDesc var2("var2");
+  var2.SetPersistable(true);
+  var2.SetIsParameter(true);
   VarDesc var3("var3");
   VarDesc var4("var4");
 
@@ -109,6 +140,7 @@ TEST(BuildCinnPassTest, NoCinnSubgraph) {
 
   // After search, origin graph should no change
   ASSERT_EQ(previous_nodes, g->Nodes());
+  ASSERT_TRUE(CheckGraphIndependence(g->Nodes()));
 
   // After search, there should one cinn subgraph
   ASSERT_TRUE(cinn_subgraphs.empty());
@@ -119,11 +151,8 @@ std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
   auto g = std::make_unique<Graph>(prog);
 
   // v1 --
-  //      |
   //      | --> mul --> v3 --
-  //      |                  |
   // v2 --                   | --> add --> v5 --> relu --> v6
-  //                         |
   //                    v4 --
 
   OpDesc add_op;
@@ -135,6 +164,8 @@ std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
 
   VarDesc var1("var1");
   VarDesc var2("var2");
+  var2.SetPersistable(true);
+  var2.SetIsParameter(true);
   VarDesc var3("var3");
   VarDesc var4("var4");
   VarDesc var5("var5");
@@ -192,6 +223,7 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   // v4 --|
   const auto& nodes = g->Nodes();
   ASSERT_EQ(nodes.size(), static_cast<size_t>(5));
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
 
   // A new op named kCinnLaunchOp should be added
   ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
@@ -214,16 +246,34 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   ASSERT_FALSE(CheckNodeExisted(nodes, "relu"));
 
   // After search, there should has just one cinn subgraph
-  // mul --> v3 --> add --> v5 --> relu
+  // feed --> v1 --
+  //               | --> mul --> v3 --
+  //          v2 --                   | --> add --> v5 --> relu --> v6
+  //                    feed --> v4 --
   ASSERT_EQ(cinn_subgraphs.size(), static_cast<size_t>(1));
   const auto& subgraph = cinn_subgraphs.back();
 
   const auto& subnodes = subgraph->Nodes();
-  ASSERT_EQ(subnodes.size(), static_cast<size_t>(5));
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(11));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
   ASSERT_TRUE(CheckNodeExisted(subnodes, "mul"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "add"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "relu"));
+  ASSERT_EQ(CountNode(subnodes, "feed"), 2);
+
+  // No-parameter input should has feed op
+  auto new_v1 = GetNode(subnodes, "var1");
+  ASSERT_EQ(new_v1->inputs.size(), static_cast<size_t>(1));
+  ASSERT_EQ(new_v1->outputs.size(), static_cast<size_t>(1));
+  ASSERT_EQ(new_v1->inputs[0]->Name(), "feed");
+  ASSERT_EQ(new_v1->outputs[0]->Name(), "mul");
+
+  // Parameter input should not has feed op
+  auto new_v2 = GetNode(subnodes, "var2");
+  ASSERT_TRUE(new_v2->inputs.empty());
+  ASSERT_EQ(new_v2->outputs.size(), static_cast<size_t>(1));
+  ASSERT_EQ(new_v2->outputs[0]->Name(), "mul");
 }
 
 std::unique_ptr<Graph> BuildGraphWithOneCinnSubgraph() {
@@ -231,9 +281,7 @@ std::unique_ptr<Graph> BuildGraphWithOneCinnSubgraph() {
   auto g = std::make_unique<Graph>(prog);
 
   // fake1 --> v1 --
-  //                |
   //                | --> mul --> v3 --> relu --> v4 --> fake2
-  //                |
   //           v2 --
 
   OpDesc fake1_op;
@@ -247,6 +295,8 @@ std::unique_ptr<Graph> BuildGraphWithOneCinnSubgraph() {
 
   VarDesc var1("var1");
   VarDesc var2("var2");
+  var2.SetPersistable(true);
+  var2.SetIsParameter(true);
   VarDesc var3("var3");
   VarDesc var4("var4");
 
@@ -299,6 +349,7 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   //           v2 --
   const auto& nodes = g->Nodes();
   ASSERT_EQ(nodes.size(), static_cast<size_t>(6));
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
 
   // A new op named kCinnLaunchOp should be added
   ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
@@ -312,15 +363,19 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   ASSERT_TRUE(CheckNodeExisted(nodes, "fake2"));
 
   // After search, there should has just one cinn subgraph
-  // mul --> v3 --> relu
+  // feed --> v1 --
+  //               | --> mul --> v3 --> relu --> v4
+  //          v2 --
   ASSERT_EQ(cinn_subgraphs.size(), static_cast<size_t>(1));
   const auto& subgraph = cinn_subgraphs.back();
 
   const auto& subnodes = subgraph->Nodes();
-  ASSERT_EQ(subnodes.size(), static_cast<size_t>(3));
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(7));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
   ASSERT_TRUE(CheckNodeExisted(subnodes, "mul"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "relu"));
+  ASSERT_EQ(CountNode(subnodes, "feed"), 1);
 }
 
 std::unique_ptr<Graph> BuildGraphWithMultiCinnSubgraph() {
@@ -328,9 +383,7 @@ std::unique_ptr<Graph> BuildGraphWithMultiCinnSubgraph() {
   auto g = std::make_unique<Graph>(prog);
 
   // fake1 --> v1 --
-  //                |
   //                | --> mul --> v3 --> fake2 --> v4 --> relu --> v5 --> fake3
-  //                |
   //           v2 --
 
   OpDesc fake1_op;
@@ -346,6 +399,8 @@ std::unique_ptr<Graph> BuildGraphWithMultiCinnSubgraph() {
 
   VarDesc var1("var1");
   VarDesc var2("var2");
+  var2.SetPersistable(true);
+  var2.SetIsParameter(true);
   VarDesc var3("var3");
   VarDesc var4("var4");
   VarDesc var5("var5");
@@ -406,6 +461,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   //          v2 -
   const auto& nodes = g->Nodes();
   ASSERT_EQ(nodes.size(), static_cast<size_t>(10));
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
 
   // A new op named kCinnLaunchOp should be added
   ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
@@ -424,15 +480,27 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   // and each of subgraphs just has one node.
   ASSERT_EQ(cinn_subgraphs.size(), static_cast<size_t>(2));
 
-  // subgraph1: relu
+  // subgraph1:
+  // feed --> v4 --> relu --> v5
+  // subgraph2:
+  // feed --> v1 --
+  //               | --> mul --> v3
+  //          v2 --
   const auto& subgraph1 = cinn_subgraphs[0];
   const auto& subnodes1 = subgraph1->Nodes();
-  ASSERT_EQ(subnodes1.size(), static_cast<size_t>(1));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes1));
 
-  // subgraph2: mul
   const auto& subgraph2 = cinn_subgraphs[1];
   const auto& subnodes2 = subgraph2->Nodes();
-  ASSERT_EQ(subnodes2.size(), static_cast<size_t>(1));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes2));
+
+  if (CheckNodeExisted(subnodes1, "relu")) {
+    ASSERT_EQ(subnodes1.size(), static_cast<size_t>(4));
+    ASSERT_EQ(subnodes2.size(), static_cast<size_t>(5));
+  } else {
+    ASSERT_EQ(subnodes2.size(), static_cast<size_t>(4));
+    ASSERT_EQ(subnodes1.size(), static_cast<size_t>(5));
+  }
 }
 
 }  // namespace paddle2cinn
