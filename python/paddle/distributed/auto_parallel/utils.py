@@ -19,6 +19,7 @@ import numpy as np
 import os
 import paddle
 import warnings
+import logging
 import paddle.fluid.core as core
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.framework.io import _to_LodTensor
@@ -365,39 +366,45 @@ def _check_addition_info(addition_info):
     """
     Validity check of additional information
     """
-    if addition_info is None:
+    if not addition_info:
         return addition_info
     elif not isinstance(addition_info, dict):
-        raise TypeError("The type of addition_info should be dict, but got {}".
-                        format(str(type(addition_info))))
+        raise TypeError(
+            "The type of addition_info should be 'dict', but got {}".format(
+                str(type(addition_info))))
     else:
         return addition_info
 
 
-def _check_valid_dir(file_dir):
+def _check_valid_path(file_path):
     """
-    Validity check of input directory
+    Validity check of input file path
     """
-    if file_dir is None:
-        return file_dir
-    elif isinstance(file_dir, str):
-        return [file_dir]
-    elif isinstance(file_dir, list):
-        if not all(isinstance(file, str) for file in file_dir):
-            raise ValueError("The type of each directory should be str.")
-        if not all(os.path.exists(file) for file in file_dir):
-            raise ValueError("The directory's file does not exist.")
-        return file_dir
+    if not file_path:
+        return file_path
+    elif isinstance(file_path, str):
+        if os.path.exists(file_path):
+            raise ValueError("The file_path '{}' does not exist.".format(
+                file_path))
+        else:
+            return [file_path]
+    elif isinstance(file_path, list):
+        if not all(isinstance(file, str) for file in file_path):
+            raise ValueError("The type of each file_path should be str.")
+        if not all(os.path.exists(file) for file in file_path):
+            raise ValueError("The file_path's file does not exist.")
+        return file_path
     else:
-        raise TypeError("The type of directory should be list, but got {}.".
-                        format(str(type(file_dir))))
+        raise TypeError(
+            "The type of file_path should be 'str' or 'list', but got '{}'.".
+            format(str(type(file_path))))
 
 
-def save_static_checkpoint(program,
-                           output_dir,
-                           is_integrated=False,
-                           addition_info=None,
-                           dist_attr_dir=None):
+def save_distributed_checkpoint(program,
+                                output_dir,
+                                is_integrated=False,
+                                addition_info=None,
+                                dist_attr_dir=None):
     """ 
     Save model parameter state, optimzer state, distributed attribute and 
     additional information of each rank.
@@ -412,10 +419,12 @@ def save_static_checkpoint(program,
     Returns:
         None
 
-    Example:
-        >>> output_dir = os.path.join(args.output_dir, "step_%d" % step)
-        >>> os.makedirs(output_dir, exist_ok=True)
-        >>> save_static_checkpoint(program, output_dir)
+    Examples:
+        .. code-block:: python
+
+            output_dir = os.path.join(args.output_dir, "step_%d" % step)
+            os.makedirs(output_dir, exist_ok=True)
+            save_distributed_checkpoint(program, output_dir)
     """
     if not is_integrated:
         rank = paddle.distributed.get_rank()
@@ -428,55 +437,60 @@ def save_static_checkpoint(program,
         }
         if _check_addition_info(addition_info):
             state_dict["addition_info"] = addition_info
+
         paddle.save(state_dict, ckpt_file_name)
-        print("Successfully saving model to {}".format(output_dir))
+        logging.info("Already save model to {}".format(output_dir))
 
         if dist_attr_dir:
             raise NotImplementedError(
-                "Save distributed attribute does not implement")
+                "Save distributed attribute has not been implemented.")
     else:
         # TODO: integrate param before save
-        raise NotImplementedError("Integrating parameter does not implement")
+        raise NotImplementedError(
+            "Integrating parameter has not been implemented.")
 
 
-def load_static_checkpoint(ckpt_dir, program=None, dist_attr_dir=None):
+def load_distributed_checkpoint(checkpoint_path,
+                                program=None,
+                                dist_attr_path=None):
     """ 
-    Load param, opt, distributed attribute and addition_info of model.
+    Load parameter, optimizer, distributed attribute and addition_info of model.
 
     Args:
-        ckpt_dir(str|List[str]): The list of the checkpoint files in order of rank id.
-        program(Program, optional): The program to be update with ckpt_dir. Default: None.
-        dist_attr_dir(str|List[str], optional): The list of the distributed attribute file \
-            in order of rank id. Default: None.
+        checkpoint_path(str|list[str]): checkpoint_path's type can be 'str' or 'list', \
+            which must be in order of rank id when type is 'list'.
+        program(Program, optional): The program to be updated with checkpoint_path. Default: None.
+        dist_attr_path(str|list[str], optional): dist_attr_path's type can be 'str' or 'list', \
+            which must be in order of rank id when type is 'list'. Default: None.
 
     Returns:
         None or addition_info which user saved in last train.
 
-    Example:
-        >>> exe.run(startup_program)
-        >>> ckpt_dir = ['./output/step_10/model_state_rank0.pdmodel', 
-        ...             './output/step_10/model_state_rank1.pdmodel',]
-        >>> load_static_checkpoint(ckpt_dir, main_program)
+    Examples:
+        .. code-block:: python
+
+            exe.run(startup_program)
+            ckpt_path = ['./output/step_10/model_state_rank0.pdmodel', 
+                         './output/step_10/model_state_rank1.pdmodel']
+            load_distributed_checkpoint(ckpt_path, main_program)
     """
-    ckpt_dir = _check_valid_dir(ckpt_dir)
-    dist_attr_dir = _check_valid_dir(dist_attr_dir)
+    checkpoint_path = _check_valid_path(checkpoint_path)
+    dist_attr_path = _check_valid_path(dist_attr_path)
 
-    if ckpt_dir and dist_attr_dir:
+    if checkpoint_path and dist_attr_path:
         raise NotImplementedError(
-            "Merge&Slice parameter with dist_attr does not implement")
+            "Merge&Slice parameter with dist_attr has not been implemented.")
 
-    elif ckpt_dir:
-        assert len(ckpt_dir) == paddle.distributed.get_world_size(), \
-            "The number of ckpt_dir must equal to the number of ranks"
+    elif checkpoint_path:
+        assert len(checkpoint_path) == paddle.distributed.get_world_size(), \
+            "The number of checkpoint_path must equal to the number of ranks"
         rank = paddle.distributed.get_rank()
-        state_dict_info = paddle.load(ckpt_dir[rank])
+        state_dict_info = paddle.load(checkpoint_path[rank])
         state_dict = state_dict_info["model"]
     else:
-        raise ValueError("'ckpt_dir' can not be None.")
+        raise ValueError("'checkpoint_path' can not be None.")
 
-    if program:
-        program.set_state_dict(state_dict)
-    else:
+    program.set_state_dict(state_dict) if program else \
         warnings.warn("'Program' is None, parameters will not be loaded.")
 
     if "addition_info" not in state_dict_info:
