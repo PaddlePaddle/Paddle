@@ -1477,7 +1477,13 @@ class Layer(core.Layer):
                     param_applied.stop_gradient = param.stop_gradient
                     if hasattr(param_applied, 'is_distributed'):
                         param_applied.is_distributed = param.is_distributed
-                    param_applied.name = param.name + param_applied.name
+                    param_applied.name = param.name + ".to"
+                    if device is not None:
+                        param_applied.name = param_applied.name + "_" + self._device_to_str(
+                            device)
+                    if dtype is not None:
+                        param_applied.name = param_applied.name + "_" + paddle.fluid.data_feeder.convert_dtype(
+                            dtype)
                     self._parameters[key] = param_applied
 
                 if param.grad is not None:
@@ -1597,3 +1603,13 @@ class Layer(core.Layer):
     # [aliases] Compatible with old method names
     set_dict = set_state_dict
     load_dict = set_state_dict
+
+    def _device_to_str(self, device):
+        if isinstance(device, core.CPUPlace):
+            return 'cpu'
+        elif isinstance(device, (core.CUDAPlace, core.CUDAPinnedPlace)):
+            return 'cuda'
+        elif isinstance(device, core.XPUPlace):
+            return 'xpu'
+        else:
+            return device
