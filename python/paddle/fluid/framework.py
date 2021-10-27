@@ -1310,10 +1310,6 @@ class Variable(object):
 
         from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        # var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-        #     self)
-        # if var_dist_attr is not None:
-        #     var_str += "{}".format(var_dist_attr)
         dist_tensor = dist_context.get_dist_tensor_for_program(self)
         if dist_tensor is not None:
             var_str += ", {name} = {value}".format(
@@ -2534,9 +2530,6 @@ class Operator(object):
 
         from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        # op_dist_attr = dist_context.get_op_dist_attr_for_program(self)
-        # if op_dist_attr is not None:
-        #     op_str += "{}".format(op_dist_attr)
         dist_op = dist_context.get_dist_op_for_program(self)
         if dist_op is not None:
             attrs_str += ", {name} = {value}".format(
