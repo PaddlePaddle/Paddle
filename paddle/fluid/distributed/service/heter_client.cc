@@ -184,6 +184,10 @@ void HeterClient::SendAndRecvAsync(
     }
 
     auto minibatch_id = micro_id / 10;
+    VLOG(3) << "****DEBUG****" << minibatch_id;
+
+
+
     // select channel according to micro id
     if (mode == "forward") {
       int num = minibatch_id % xpu_channels_.size();

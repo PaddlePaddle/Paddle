@@ -330,15 +330,21 @@ void HeterSectionWorker::Run() {
         auto task = (*thread_queue_).Pop();
         auto message_name = task.first;
         auto micro_id = task.second;
-
-        if (message_name.find("forward") != std::string::npos) {
-            RunForward(micro_id);
-        } else if (message_name.find("backward") != std::string::npos) {
-            RunBackward(micro_id);
+        if (is_last_stage) {
+          PADDLE_ENFORCE_EQ(message_name.find("forward") != std::string::npos, 1,
+                    platform::errors::InvalidArgument(
+                        "last stage only receive forward data"));
+              RunForward(micro_id);
+              RunBackward(micro_id);
+        } else {
+          if (message_name.find("forward") != std::string::npos) {
+              RunForward(micro_id);
+          } else if (message_name.find("backward") != std::string::npos) {
+              RunBackward(micro_id);
+          }
+          cnt++;
         }
-        cnt++;
       }
-
   }
 }
 
