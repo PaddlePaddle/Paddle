@@ -102,6 +102,4 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    do_test(tempfile.mkdtemp(prefix="dots_"))
-    set_cinn_flag(False)
-    # unittest.main()
+    unittest.main()
