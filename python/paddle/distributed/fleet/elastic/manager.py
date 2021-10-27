@@ -165,10 +165,7 @@ class ElasticManager(object):
         else:
             self.enable = True
 
-        try:
-            import etcd3  # type: ignore[import]
-        except ModuleNotFoundError:
-            pass
+        import etcd3
 
         srv, port = server.split(':')
         self.etcd = etcd3.client(host=srv, port=port)
