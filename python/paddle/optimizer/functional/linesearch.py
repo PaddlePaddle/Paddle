@@ -83,7 +83,7 @@ def bracket(state, phi, c, params, max_iters):
         phi (Callable): the restricted function on the search line.
         c (Tensor): the initial step sizes.
         params (Dict): the control parameters used in the HagerZhang method.
-        max_iters (int): the maximum iterations.
+        max_iters (int): the number controls the maximum number of iterations.
     
     Returns:
         [a, b]: left ends and right ends of the result intervels.
@@ -157,7 +157,8 @@ def bisect(state, phi, a, b, params, max_iters):
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
         params(Dict): the control parameters used in the HagerZhang method.
-    
+        max_iters (int): the number controls the maximum number of iterations.
+
     Returns:
         [a, b]: left ends and right ends of the result intervels.   
     """
@@ -193,9 +194,100 @@ def bisect(state, phi, a, b, params, max_iters):
     failed = g < .0
     state.state = update_state(state.state, failed, 'failed')
 
+def secant(state, phi, a, b):
+    r"""Implements the secant function, a sub-procedure in secant2.
+
+    Args:
+        state (Tensor): the search state tensor.
+        phi (Callable): the restricted function on the search line.
+        a (Tensor): holds the left ends of the intervals.
+        b (Tensor): holds the right ends of the intervals.
+
+    Returns:
+        [a, b]: left ends and right ends of the result intervels. 
+    """
+    #                 a * phi'(b) - b * phi'(a)
+    # secant(a, b) = ---------------------------
+    #                   phi'(b)  - phi'(a)
+    
+    fa, ga = vjp(phi, a)
+    fb, gb = vjp(phi, b)
+
+    return (a * gb - b * ga) / (gb - ga)
+
 def secant2(state, phi, a, b, params, max_iters):
+    r"""Implements the secant2 procedure in the Hager-Zhang method.
 
+    Args:
+        state (Tensor): the search state tensor.
+        phi (Callable): the restricted function on the search line.
+        a (Tensor): holds the left ends of the intervals.
+        b (Tensor): holds the right ends of the intervals.
+        params(Dict): the control parameters used in the HagerZhang method.
+        max_iters (int): the number controls the maximum number of iterations.
 
+    Returns:
+        [a, b]: left ends and right ends of the result intervels. 
+    """
+    # This step uses a function called secant which generates a new point
+    # from two existing points using the slopes at the two points.
+    #
+    # S1. Let c = secant(a, b) and [A, B] = update(a, b, c)
+    #
+    # S2. If c = B, then let c = secant(b, B), [a, b] = update(A, B, c)
+    #
+    # S3. If c = A, then let c = secant(a, A), [a, b] = update(A, B, c)
+    #
+    # S3. Otherwise, [a, b] = [A, B]
+    
+
+def update(state, phi, a, b, c, params, max_iters):
+    r"""Performs the update procedure in the Hager-Zhang method.
+
+    Args:
+        state (Tensor): the search state tensor.
+        phi (Callable): the restricted function on the search line.
+        a (Tensor): holds the left ends of the intervals.
+        b (Tensor): holds the right ends of the intervals.
+        c (Tensor): holds the new step sizes.
+        params (Dict): the control parameters.
+
+    Returns:
+        [a, b]: left ends and right ends of the result intervels. 
+    """
+    eps = params['eps']
+    f0 = state.fk
+    epsilon_k = eps * state.Ck
+
+    # U0. If c is outside of (a, b), then return [a, b]
+    #
+    # U1. If phi'(c) >= 0, then return [a, c]
+    #
+    # U2. If phi'(c) < 0 and phi(c) <= phi(0) + epsilon_k, return [c, b]
+    #
+    # U3. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
+    #     return Bisect([a, c])
+    f, g = vjp(phi, c)
+
+    # Bisects [a, c] for the U3 condition
+    A, B = bisect(state, phi, a, c, params, max_iters)
+
+    # Step 1: branches between U2 and U3 
+    U23_cond = f <= f0 + epsilon_k
+    A = paddle.where(U2_cond, c, A)
+    B = paddle.where(U2_cond, b, B)
+
+    # Step 2: updates for true U1
+    U1_cond = g >= .0
+    A = paddle.where(U1_cond, a, A)
+    B = paddle.where(U1_cond, c, B)
+
+    # Step 3: in case c is not in [a, b], keeps [a, b]
+    U0_cond = (c > a) == (c > b)
+    A = paddle.where(U0_cond, a, A)
+    B = paddle.where(U0_cond, b, B)
+
+    return [A, B]
 
 def hz_linesearch(state,
                   func,
