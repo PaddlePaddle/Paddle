@@ -1482,7 +1482,7 @@ class Layer(core.Layer):
                         param_applied.name = param_applied.name + "_" + self._device_to_str(
                             device)
                     if dtype is not None:
-                        param_applied.name = param_applied.name + "_" + paddle.fluid.data_feeder.convert_dtype(
+                        param_applied.name = param_applied.name + "_" + self._dtype_to_str(
                             dtype)
                     self._parameters[key] = param_applied
 
@@ -1613,3 +1613,9 @@ class Layer(core.Layer):
             return 'xpu'
         else:
             return device
+
+    def _dtype_to_str(self, dtype):
+        if isinstance(dtype, core.VarDesc.VarType):
+            return paddle.fluid.data_feeder.convert_dtype(dtype)
+        else:
+            return dtype
