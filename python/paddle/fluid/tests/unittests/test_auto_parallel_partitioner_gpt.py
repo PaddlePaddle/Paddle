@@ -55,6 +55,35 @@ def check_tensor_split(prog1, varnames1, prog2, varnames2, axis, nsplit):
     return True
 
 
+def is_valid_completed_program(dist_context, program):
+
+    # TODO (ZJ-LIANG) should check all block
+    ops = program.global_block().ops
+    vars_ = program.list_vars()
+    for op in ops:
+        op_dist_attrs = dist_context.get_op_distributed_attr_for_program(op)
+        if op_dist_attrs == None:
+            return False
+
+        if op_dist_attrs.get_process_mesh == None:
+            return False
+
+        if None in op_dist_attrs._dims_mapping.values():
+            return False
+
+    for var in vars_:
+        var_dist_attrs = dist_context.get_tensor_distributed_attr_for_program(
+            var)
+        if var_dist_attrs == None:
+            return False
+        elif var_dist_attrs.get_process_mesh == None:
+            return False
+        elif var_dist_attrs.get_dims_mapping == None:
+            return False
+
+    return True
+
+
 class MultiHeadAttention(nn.Layer):
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -873,6 +902,9 @@ class TestGPTPartitioner(unittest.TestCase):
 
         self.assertTrue(all_params == data_parallel_allreduce_vars)
         self.assertTrue(allreduce_grads == tensor_parallel_allreduce_vars)
+
+        self.assertTrue(
+            is_valid_completed_program(dist_context, auto_parallel_main_prog))
 
 
 if __name__ == "__main__":
