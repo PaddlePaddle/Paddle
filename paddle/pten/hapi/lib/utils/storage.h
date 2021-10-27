@@ -47,10 +47,14 @@ class ExternalStorage : public pten::Storage {
 class SharedStorage : public pten::Storage {
  public:
   explicit SharedStorage(
-      const std::shared_ptr<paddle::memory::Allocation>& allocation)
+      const std::shared_ptr<paddle::memory::Allocation>& allocation,
+      size_t offset)
       : allocation_(allocation) {
     CHECK(allocation);
-    data_ = pten::Allocation(allocation->ptr(), allocation->place());
+    data_ = pten::Allocation(
+        reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(allocation->ptr()) +
+                                offset),
+        allocation->place());
     size_ = allocation->size();
   }
 
