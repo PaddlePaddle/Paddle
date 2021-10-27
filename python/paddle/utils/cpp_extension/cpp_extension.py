@@ -401,10 +401,8 @@ class BuildExtension(build_ext, object):
             # with dict type is dangerous.
             src = os.path.abspath(src)
             cflags = copy.deepcopy(extra_postargs)
-            print("0------------ cflags=", cflags)
             try:
                 original_compiler = self.compiler.compiler_so
-                print("original_compiler=", original_compiler)
                 # nvcc or hipcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
@@ -412,7 +410,6 @@ class BuildExtension(build_ext, object):
                             please use `export ROCM_PATH= XXX` to specify it."
 
                         hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
-                        print("hipcc_cmd=", hipcc_cmd)
                         self.compiler.set_executable('compiler_so', hipcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
@@ -439,7 +436,6 @@ class BuildExtension(build_ext, object):
                     cflags.append(
                         '-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP')
 
-                print("2------------ cflags=", cflags)
                 # NOTE(Aurelius84): Since Paddle 2.0, we require gcc version > 5.x,
                 # so we add this flag to ensure the symbol names from user compiled
                 # shared library have same ABI suffix with core_(no)avx.so.
