@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
@@ -26,6 +27,7 @@
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -97,6 +99,8 @@ class InterpreterCore {
   EventManager event_manager_;
   EventsWaiter main_thread_blocker_;
   interpretercore::AsyncWorkQueue async_work_queue_;
+  details::ExceptionHolder exception_holder_;
+  std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
 
   InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;

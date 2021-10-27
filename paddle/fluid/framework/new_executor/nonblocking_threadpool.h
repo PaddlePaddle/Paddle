@@ -173,6 +173,12 @@ class ThreadPoolTempl {
     ec_.Notify(true);
   }
 
+  void WaitThreadsExit() {
+    for (size_t i = 0; i < thread_data_.size(); ++i) {
+      thread_data_[i].thread->WaitExit();
+    }
+  }
+
   size_t NumThreads() const { return num_threads_; }
 
   int CurrentThreadId() const {

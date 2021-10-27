@@ -717,9 +717,6 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             # var 
             for output_name in grad_op.desc.output_names():
                 assert len(grad_op.desc.output(output_name)) in [0, 1]
-                # if grad_op.type == "cast":
-                #     input_name = "X"
-                # else:
                 if _is_grad_var_name(output_name):
                     input_name = _get_forward_varname_from_grad_varname(
                         output_name)
