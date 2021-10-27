@@ -719,8 +719,9 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             # op dist attr
             forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
                 forward_op)
+            forward_op_process_mesh = forward_op_dist_attr.process_mesh
             grad_op_dist_attr = OperatorDistributedAttribute()
-            grad_op_dist_attr.process_mesh = forward_op_dist_attr.process_mesh
+            grad_op_dist_attr.process_mesh = forward_op_process_mesh
 
             # var 
             for output_name in grad_op.desc.output_names():
@@ -747,13 +748,12 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
                     assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(
                         input_var.name)
                     ref_dims_mapping = input_var_dist_attr.dims_mapping
-                    ref_process_mesh = input_var_dist_attr.process_mesh
 
                     # tensor dist attr
                     output_var = vars[grad_op.desc.output(output_name)[0]]
                     output_var_dist_attr = TensorDistributedAttribute()
                     output_var_dist_attr.dims_mapping = ref_dims_mapping
-                    output_var_dist_attr.process_mesh = ref_process_mesh
+                    output_var_dist_attr.process_mesh = forward_op_process_mesh
                     dist_context.set_tensor_dist_attr_for_program(
                         output_var, output_var_dist_attr)
 
