@@ -239,7 +239,84 @@ def secant2(state, phi, a, b, params, max_iters):
     # S3. If c = A, then let c = secant(a, A), [a, b] = update(A, B, c)
     #
     # S3. Otherwise, [a, b] = [A, B]
+    c = secant(a, b)
+    A, B = update(a, b, c)
     
+    # Boolean tensor each element of which holds the S2 condition 
+    S2_cond = c == B
+    
+    # Boolean tensor each element of which holds the S3 condition 
+    S3_cond = c == A
+
+    # Generates secant's input in S2 and S3
+    l = paddle.where(S2_cond, b, A)
+    r = B
+
+    l = paddle.where(S3_cond, a, l)
+    r = paddle.where(S3_cond, A, r)
+
+    # Outputs of S2 and S3
+    a, b = update(A, B, c)
+
+    # If S2 or S3, returns [a, b], otherwise returns [A, B]
+    S2_or_S3 = paddle.logical_or(B2_cond, B3_cond)
+    a = paddle.where(S2_or_S3, a, A)
+    b = paddle.where(S3_or_S3, b, B)
+
+    return [a, b]   
+
+def stopping_condition(state, phi, c, phiprime_0,
+                       phi_c=None, phiprime_c=None, params=None):
+    r"""Tests T1/T2 condition in the Hager-Zhang paper.
+    
+    Args:
+        state (Tensor): the search state tensor.
+        phi (Callable): the restricted function on the search line.
+        c (Tensor): the step size tensor.
+        phiprime_0 (Tensor): the derivative of `phi` at 0.
+        phi_c (Tensor, optional): the value of `phi(c)`. Default is None.
+        phiprime_c (Tensor, optional): the derivative of `phi` at `c`.
+            Default is None.
+        params (Dict, optional): the control parameters. Default is None.
+
+    Returns:
+        A boolean tensor holding the evaluated stopping condition for each
+        function instance.
+    """
+    if params is None:
+        params = _hz_params
+    delta, sigma, eps = params['delta'], params['sigma'], params['eps']
+    epsilon_k = eps * state.Ck
+
+    phi_0 = state.fk
+
+    if phi_c is None or phiprime_c is None:
+       phi_c, phiprime_c = vjp(phi, c)
+    
+    # T1 (Wolfe). 
+    #   T1.1            phi(c) - phi(0) <= c * phi'(0)
+    #   T1.2            phi'(c) >= sigma * phi'(0)
+    #
+    # T2 (Approximate Wolfe).
+    #   T2.1            phi'(c) <= (2*sigma - 1) * phi'(0)
+    #   T2.2            (T1.2)
+    #   T2.3            phi(c) - phi(0) <= epsilon_k
+
+    phi_dy = phi_c - phi_0
+    T11_cond = phi_dy <= c * phiprime_0 
+    T12_cond = phiprime_c >= sigma * phiprime_0    
+    
+    wolfe_cond = paddle.logical_and(T11_cond, T12_cond)
+
+    T21_cond = phiprime_c <= (2*sigma - 1) * phiprime_0 
+    T22_cond = T12_cond
+    T23_cond = phi_dy <= epsilon_k
+
+    approx_wolfe_cond = paddle.logical_and(T21_cond, T22_cond, T23_cond)
+    
+    stopping = paddle.logical_or(wolfe_cond, approx_wolfe_cond)
+
+    return stopping
 
 def update(state, phi, a, b, c, params, max_iters):
     r"""Performs the update procedure in the Hager-Zhang method.
@@ -480,16 +557,38 @@ def hz_linesearch(state,
     invalid_input = paddle.logical_or(paddle.isinf(fk), deriv >= .0)
     state.state = update_state(state.state, invalid_input, 'failed')
 
+    # L0. c = initial(k), [a0, b0] = bracket(c), and j = 0
+    #
+    # L1. [a, b] = secant2(aj, bj)
+    #
+    # L2. If b - a > gamma * (bj - aj), 
+    #     then c = (a + b)/2 and [a, b] = update(a, b, c)
+    #
+    # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
+
     # Generates initial step size
     c = initial(state, params)
 
     # Generates the opposite slope interval
-    a, b = bracket(state, phi, c, params, max_iters=max_iters)
+    a_j, b_j = bracket(state, phi, c, params, max_iters=max_iters)
 
-    # Applies secant2 to the located opposite slope interval
-    a, b = secant2(state, phi, a, b, params, max_iters=max_iters)
+    iters = 0
+    while iters < max_iters:
+        # Applies secant2 to the located opposite slope interval
+        a, b = secant2(state, phi, a_j, b_j, params, max_iters=max_iters)
 
-    return 
+        # If interval shrinks above threshold, then applies bisections 
+        # repeatedly.
+        L2_cond = (b - a) > gamma * (b_j - a_j)
 
-def wolfe12():
-    
+        c = 0.5 * (a + b)
+        A, B = update(a, b, c)        
+        a = paddle.where(L2_cond, A, a)
+        b = paddle.where(L2_cond, B, b)
+
+        # Goes to next iteration
+        a_j, b_j = a, b
+        iters += 1
+
+    return
+
