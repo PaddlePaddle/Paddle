@@ -257,23 +257,28 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
   }
 };
 
-template <typename T, int VecSize, int Rank, bool IsBoundary = false>
+template <typename T, int VecSize, int Rank, bool IsBroadcast,
+          bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
     T *dst, const T *__restrict__ src, uint32_t block_offset,
     const kps::details::BroadcastConfig<Rank> &config, int numel, int num,
     bool need_broadcast) {
   // numel : whole num of output
   // num: how many data will be deal with in this time
-  if (need_broadcast) {
-    kps::ReadDataBc<T, VecSize, 1, 1, Rank, IsBoundary>(dst, src, block_offset,
-                                                        config, numel);
-  } else {
+  if (!IsBroadcast) {
     kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num);
+  } else {
+    if (IsBroadcast && need_broadcast) {
+      kps::ReadDataBc<T, VecSize, 1, 1, Rank, IsBoundary>(
+          dst, src, block_offset, config, numel);
+    } else {
+      kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num);
+    }
   }
 }
 
 template <typename InT, typename OutT, typename Functor, int VecSize, int Arity,
-          int Rank, bool IsBoundary = false>
+          int Rank, bool IsBroadcast, bool IsBoundary = false>
 __device__ void ElementwiseKernelImpl(
     const framework::Array<const InT *__restrict__, Arity> &ins, OutT *out,
     const framework::Array<bool, Arity> &use_broadcast, uint32_t numel,
@@ -287,9 +292,9 @@ __device__ void ElementwiseKernelImpl(
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
-    LoadData<InT, VecSize, Rank, IsBoundary>(args[i], ins[i], block_offset,
-                                             configs[i], numel, num,
-                                             use_broadcast[i]);
+    LoadData<InT, VecSize, Rank, IsBroadcast, IsBoundary>(
+        args[i], ins[i], block_offset, configs[i], numel, num,
+        use_broadcast[i]);
   }
 
   const bool kCallElementwiseAny =
@@ -302,39 +307,30 @@ __device__ void ElementwiseKernelImpl(
 }
 
 template <typename InT, typename OutT, typename Functor, int VecSize, int Arity,
-          int Rank>
+          int Rank, bool IsBroadcast>
 __global__ void ElementwiseKernel(
     framework::Array<const InT *__restrict__, Arity> ins, OutT *out,
     framework::Array<bool, Arity> use_broadcast, uint32_t numel,
     framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_tid, Functor func) {
-#ifdef PADDLE_WITH_XPU
-  int data_offset = VecSize * cluster_id() * core_num();
-  int stride = cluster_num() * core_num() * VecSize;
+  int main_offset = main_tid * BLOCK_NUM_X * VecSize;
+  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
+  int stride = BLOCK_NUM_X * GRID_NUN_X * VecSize;
   for (int offset = data_offset; offset < numel; offset += stride) {
-    if (offset + core_num() * VecSize < numel) {
-      ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, false>(
-          ins, out, use_broadcast, numel, configs, offset, func);
+    if (offset < main_offset) {
+      ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank,
+                            IsBroadcast, false>(ins, out, use_broadcast, numel,
+                                                configs, offset, func);
     } else {
-      ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, true>(
-          ins, out, use_broadcast, numel, configs, offset, func);
+      ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank,
+                            IsBroadcast, true>(ins, out, use_broadcast, numel,
+                                               configs, offset, func);
     }
   }
-#else
-  int block_offset = VecSize * blockIdx.x * blockDim.x;
-  if (blockIdx.x < main_tid) {
-    // data offset of this block
-    ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, false>(
-        ins, out, use_broadcast, numel, configs, block_offset, func);
-  } else {  // reminder
-    ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, true>(
-        ins, out, use_broadcast, numel, configs, block_offset, func);
-  }
-#endif
 }
 
 template <typename InT, typename OutT, typename Functor, int VecSize, int Arity,
-          int Rank>
+          int Rank, bool IsBroadcast>
 void LaunchKernel(const platform::CUDADeviceContext &ctx,
                   const std::vector<const framework::Tensor *> &ins,
                   framework::Tensor *out, Functor func,
@@ -362,21 +358,21 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   int cluster_num = 8;
   int blocks = 64;
   int main_tid = numel / (VecSize * blocks);
-  ElementwiseKernel<InT, OutT, Functor, VecSize, Arity,
-                    Rank><<<cluster_num, blocks, stream>>>(
+  ElementwiseKernel<InT, OutT, Functor, VecSize, Arity, Rank,
+                    IsBroadcast><<<cluster_num, blocks, stream>>>(
       ins_data, out_data, use_broadcast, numel, configs, main_tid, func);
 #else
   const int threads = GetThreadsConfig(ctx, numel, VecSize);
   int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
   int main_tid = numel / (VecSize * threads);
-  ElementwiseKernel<InT, OutT, Functor, VecSize, Arity,
-                    Rank><<<blocks, threads, 0, stream>>>(
+  ElementwiseKernel<InT, OutT, Functor, VecSize, Arity, Rank,
+                    IsBroadcast><<<blocks, threads, 0, stream>>>(
       ins_data, out_data, use_broadcast, numel, configs, main_tid, func);
 #endif
 }
 
 template <typename InT, typename OutT, typename Functor, int Arity,
-          int Rank = 1>
+          int Rank = 1, bool IsBroadcast = true>
 void LaunchElementwiseKernel(const platform::CUDADeviceContext &ctx,
                              const std::vector<const framework::Tensor *> &ins,
                              framework::Tensor *out, Functor func,
@@ -393,17 +389,17 @@ void LaunchElementwiseKernel(const platform::CUDADeviceContext &ctx,
 
   switch (vec_size) {
     case 4: {
-      LaunchKernel<InT, OutT, Functor, 4, Arity, Rank>(
+      LaunchKernel<InT, OutT, Functor, 4, Arity, Rank, IsBroadcast>(
           ctx, ins, out, func, merge_dims, use_broadcast);
       break;
     }
     case 2: {
-      LaunchKernel<InT, OutT, Functor, 2, Arity, Rank>(
+      LaunchKernel<InT, OutT, Functor, 2, Arity, Rank, IsBroadcast>(
           ctx, ins, out, func, merge_dims, use_broadcast);
       break;
     }
     case 1: {
-      LaunchKernel<InT, OutT, Functor, 1, Arity, Rank>(
+      LaunchKernel<InT, OutT, Functor, 1, Arity, Rank, IsBroadcast>(
           ctx, ins, out, func, merge_dims, use_broadcast);
       break;
     }
@@ -436,7 +432,7 @@ void LaunchSameDimsElementwiseCudaKernel(
     use_broadcast[i] = false;
   }
 
-  LaunchElementwiseKernel<InT, OutT, Functor, kArity>(
+  LaunchElementwiseKernel<InT, OutT, Functor, kArity, false>(
       ctx, ins, out, func, merge_dims, use_broadcast);
 }
 

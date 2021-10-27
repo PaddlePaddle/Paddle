@@ -16,9 +16,15 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives_xpu2.h"
 #include "paddle/fluid/operators/kernel_primitives/datamover_primitives_xpu2.h"
+#define BLOCK_ID_X cluster_id()
+#define BLOCK_NUM_X core_num()
+#define GRID_NUN_X cluster_num()
 #else
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
 #include "paddle/fluid/operators/kernel_primitives/datamover_primitives.h"
+#define BLOCK_ID_X blockIdx.x
+#define GRID_NUN_X gridDim.x
+#define BLOCK_NUM_X blockDim.x
 #endif
 #include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
