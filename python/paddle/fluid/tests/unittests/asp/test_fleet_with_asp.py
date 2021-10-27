@@ -82,7 +82,9 @@ class TestFleetWithASP(unittest.TestCase):
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
-                self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
+                self.assertTrue(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
+                        mat.T, n=2, m=4))
 
 
 if __name__ == "__main__":
