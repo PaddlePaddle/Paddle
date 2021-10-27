@@ -188,7 +188,8 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
-    export FLAGS_fraction_of_gpu_memory_to_use=0.92
+    export FLAGS_fraction_of_gpu_memory_to_use=0.0
+    export FLAGS_allocator_strategy=auto_growth
     export CUDA_VISIBLE_DEVICES=0
 
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
