@@ -144,7 +144,7 @@ result_var_type6 = {
 }
 
 
-def func_to_test7(a: int, b: float, c: paddle.Tensor, d: float = 'diff'):
+def func_to_test7(a: int, b: float, c: paddle.Tensor, d: float='diff'):
     a = True
 
 
@@ -154,7 +154,6 @@ result_var_type7 = {
     'c': {NodeVarType.TENSOR},
     'd': {NodeVarType.STRING}
 }
-
 
 test_funcs = [
     func_to_test1, func_to_test2, func_to_test3, func_to_test4, func_to_test5,
