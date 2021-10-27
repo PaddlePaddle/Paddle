@@ -58,7 +58,8 @@ def func_to_test3():
     i = False
     j = None + 1
     k: float = 1.0
-    l: paddle.Tensor = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [1, 2]))
+    l: paddle.Tensor = fluid.dygraph.to_variable(
+        np.random.uniform(0.1, 1, [1, 2]))
 
 
 result_var_type3 = {
