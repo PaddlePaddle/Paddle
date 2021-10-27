@@ -25,26 +25,15 @@ from paddle.distributed.fleet.elastic.manager import ELASTIC_TIMEOUT
 
 class TestElasticManager(unittest.TestCase):
     def setUp(self):
-        parser = argparse.ArgumentParser(description='Elastic Command')
-        parser.add_argument(
-            "--elastic_server",
-            type=str,
-            default="127.0.0.1:2379",
-            help="etcd server host:port")
-        parser.add_argument(
-            "--job_id",
-            type=str,
-            default="test_job_id_123",
-            help="job unique id")
-        parser.add_argument(
-            "--np",
-            type=str,
-            default="2:4",
-            help="job pod/node number, need to be 'MIN' or 'MIN:MAX' format")
-        parser.add_argument("--host", type=str, default=None, help="host")
-        parser.add_argument("--scale", type=int, default=None, help="scale")
-        parser.add_argument("--force", type=str, default=None, help="force")
-        self.args = parser.parse_args()
+        class Argument:
+            elastic_server = "127.0.0.1:2379"
+            job_id = "test_job_id_123"
+            np = "2:4"
+            host = None
+            scale = None
+            force = None
+
+        self.args = Argument()
 
     def test_match(self):
         elastic = ElasticManager(self.args)
