@@ -331,7 +331,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
         return False
     dist_op = dist_context.get_dist_op_for_graph(op_node)
     op_dist_attr = dist_op.dist_attr
-    # print("########### enter", op_desc.type(), op_dist_attr)
     if fwd:
         for tensor_node in op_node.inputs:
             if tensor_node.var() is not None:
@@ -356,7 +355,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
         # Find the most compatible implemenetations from the distributed operator
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), dist_op, fwd=True)
-        # print("########### before", op_desc.type(), op_dist_impl_idx, op_dist_attr)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(dist_op)
             if dim_changed:
@@ -365,7 +363,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
             if op_dist_impl.is_compatible(dist_op):
                 op_dist_attr.impl_type = op_desc.type()
                 op_dist_attr.impl_idx = op_dist_impl_idx
-            # print("########### end0", op_desc.type(), op_dist_impl_idx, op_dist_attr)
         elif is_elementwise_like_op(op_desc.type()):
             dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                 dist_context, op_node)
@@ -373,7 +370,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
                 changed = True
             op_dist_attr.impl_type = "element-wise"
             op_dist_attr.impl_idx = -1
-            # print("########### end1", op_desc.type(), op_dist_impl_idx, op_dist_attr)
         else:
             dim_changed = update_op_dims_mapping_by_default_dist_impl(
                 dist_context, op_node)
@@ -381,7 +377,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
                 changed = True
             op_dist_attr.impl_type = "default"
             op_dist_attr.impl_idx = -2
-            # print("########### end2", op_desc.type(), op_dist_impl_idx, op_dist_attr)
     else:
         for tensor_node in op_node.outputs:
             if tensor_node.var() is not None:
@@ -406,7 +401,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
         # Find the most compatible implemenetations from the distributed operator
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), dist_op, fwd=False)
-        # print("########### before", op_desc.type(), op_dist_impl_idx, op_dist_attr)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(dist_op)
             if dim_changed:
@@ -415,7 +409,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
             if op_dist_impl.is_compatible(dist_op):
                 op_dist_attr.impl_type = op_desc.type()
                 op_dist_attr.impl_idx = op_dist_impl_idx
-            # print("########### end0", op_desc.type(), op_dist_impl_idx, op_dist_attr)
         elif is_elementwise_like_op(op_desc.type()):
             dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                 dist_context, op_node)
@@ -423,7 +416,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
                 changed = True
             op_dist_attr.impl_type = "element-wise"
             op_dist_attr.impl_idx = -1
-            # print("########### end1", op_desc.type(), op_dist_impl_idx, op_dist_attr)
         else:
             dim_changed = update_op_dims_mapping_by_default_dist_impl(
                 dist_context, op_node)
@@ -431,7 +423,6 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
                 changed = True
             op_dist_attr.impl_type = "default"
             op_dist_attr.impl_idx = -2
-            # print("########### end2", op_desc.type(), op_dist_impl_idx, op_dist_attr)
     return changed
 
 
