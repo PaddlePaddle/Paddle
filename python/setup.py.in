@@ -150,6 +150,15 @@ def cudnn():
     return cudnn_version
 '''
     commit = git_commit()
+
+    dirname = os.path.dirname(filename)
+
+    try:
+        os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     with open(filename, 'w') as f:
         f.write(cnt % {
             'major': get_major(),
@@ -163,8 +172,6 @@ def cudnn():
             'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
 
-if not os.path.exists('@PADDLE_BINARY_DIR@/python/paddle/version/'):
-    os.mkdir('@PADDLE_BINARY_DIR@/python/paddle/version/')
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 
 def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
