@@ -18,11 +18,29 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+    def is_paddings_valid(self, program_config: ProgramConfig) -> bool:
+        exclusive = program_config.ops[0].attrs['exclusive']
+        paddings = program_config.ops[0].attrs['paddings']
+        ksize = program_config.ops[0].attrs['ksize']
+        pooling_type = program_config.ops[0].attrs['pooling_type']
+        global_pooling = program_config.ops[0].attrs['global_pooling']
+        if global_pooling == False:
+            if pooling_type == 'avg':
+                for index in range(len(ksize)):
+                    if ksize[index] <= paddings[index]:
+                        return False
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if program_config.ops[0].attrs['pooling_type'] == 'avg':
+                return False
         return True
+
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return self.is_paddings_valid(program_config)
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
@@ -33,17 +51,16 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
-        for strides in [[1, 1], [2, 2], [1, 2]]:
-            for paddings in [[0, 2], [0, 3], [1, 2, 3, 4]]:
+        for strides in [[1, 1], [1, 2], [2, 2]]:
+            for paddings in [[0, 2], [0, 3], [0, 1, 2, 3]]:
                 for pooling_type in ['max', 'avg']:
                     for padding_algotithm in ['EXPLICIT', 'SAME', 'VAILD']:
                         for ksize in [[2, 3], [3, 3]]:
                             for data_format in ['NCHW']:
                                 for global_pooling in [True, False]:
-                                    for exclusive in [True, False]:
+                                    for exclusive in [False, True]:
                                         for adaptive in [True, False]:
-                                            for ceil_mode in [True, False]:
-                                                self.paddings = paddings
+                                            for ceil_mode in [False, True]:
 
                                                 dics = [{
                                                     "pooling_type":
@@ -102,9 +119,6 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.paddings == [0, 3] or attrs[0][
-                    'global_pooling'] == True or attrs[0]['ceil_mode'] == True:
-                return 0, 3
             return 1, 2
 
         attrs = [
@@ -138,6 +152,38 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
                            "4-dims paddings are not support for trt now.")
+
+        def teller2(program_config, predictor_config):
+            if program_config.ops[0].attrs['global_pooling'] == True:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "It is not support that global_pooling is true for trt now.")
+
+        def teller3(program_config, predictor_config):
+            if self.dynamic_shape.min_input_shape == {} and program_config.ops[
+                    0].attrs['ceil_mode'] == True:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller3, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "It is not support that ceil_mode is true in static mode for trt now."
+        )
+
+        def teller4(program_config, predictor_config):
+            if self.dynamic_shape.min_input_shape != {} and (
+                    program_config.ops[0].attrs['strides'] == [1, 2] or
+                    program_config.ops[0].attrs['strides'] == [2, 2]):
+                return True
+            return False
+
+        self.add_skip_case(
+            teller4, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "It is not support that strides is not equal [1, 1] in dynamic mode for trt now."
+        )
 
     def test(self):
         self.add_skip_trt_case()

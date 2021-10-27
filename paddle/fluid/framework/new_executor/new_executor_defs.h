@@ -477,15 +477,10 @@ struct VariableScope {
   std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
-struct EventRun {
-  explicit EventRun(size_t op_id) : op_id_(op_id) {}
-  size_t op_id_;
-};
 struct NextInstruction {
   std::vector<size_t> direct_run_;
-  std::vector<EventRun> event_wait_run_;
-  std::vector<EventRun> synchronize_run_;
-  std::vector<size_t> all_next_ops_;
+  std::vector<size_t> event_wait_run_;
+  std::vector<size_t> synchronize_run_;
 };
 
 struct EventInter {
@@ -516,6 +511,8 @@ struct Instruction {
   std::map<std::string, std::vector<int>> input_index_;
   std::map<std::string, std::vector<int>> output_index_;
 
+  std::unordered_set<int> no_data_transform_index_;
+
   std::vector<size_t> gc_check_var_list;
   NextInstruction next_instruction_;
 
@@ -532,6 +529,7 @@ struct OpFuncNode {
   // int unsed;
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
+  std::unordered_set<int> no_data_transform_index;
 
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
