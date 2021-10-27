@@ -1009,10 +1009,11 @@ class TestRfftFreq(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize((TEST_CASE_NAME, 'x', 'axes', 'dtype'), [
-    ('test_1d', np.random.randn(10), (0, ), 'float64'),
-    ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
-])
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes', 'dtype'),
+    [('test_1d', np.random.randn(10), (0, ), 'float64'),
+     ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
+     ('test_2d_with_all_axes', np.random.randn(10, 10), None, 'float64')])
 class TestFftShift(unittest.TestCase):
     def test_fftshift(self):
         """Test fftshift with norm condition
@@ -1030,6 +1031,7 @@ class TestFftShift(unittest.TestCase):
 @parameterize((TEST_CASE_NAME, 'x', 'axes'), [
     ('test_1d', np.random.randn(10), (0, ), 'float64'),
     ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
+    ('test_2d_with_all_axes', np.random.randn(10, 10), None, 'float64'),
 ])
 class TestIfftShift(unittest.TestCase):
     def test_ifftshift(self):
