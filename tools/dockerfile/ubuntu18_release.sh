@@ -118,9 +118,9 @@ function install_gcc(){
 
 function make_dockerfile(){
   if [[ ${WITH_GPU} == "ON" ]]; then
-      sed "s#<baseimg>#nvidia/cuda:${docker_name}#g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+      sed "s#<baseimg>#nvidia/cuda:${docker_name}#g" tools/dockerfile/Dockerfile.release18 >Dockerfile.tmp
   else
-      sed "s#<baseimg>#${docker_name}#g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+      sed "s#<baseimg>#${docker_name}#g" tools/dockerfile/Dockerfile.release18 >Dockerfile.tmp
   fi
 }
 
