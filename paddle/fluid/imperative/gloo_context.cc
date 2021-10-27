@@ -37,7 +37,11 @@ void GLOOParallelContext::Init() {
   gloo_wrapper->SetSize(strategy_.nranks_);
   gloo_wrapper->SetRank(strategy_.local_rank_);
   gloo_wrapper->SetPrefix("");
-  gloo_wrapper->SetIface("lo");
+  auto *env_ifname = std::getenv("PADDLE_GLOO_IFNAME");
+  if (env_ifname == nullptr) {
+    PADDLE_THROW(platform::errors::Unavailable("Gloo ifname was not set."));
+  }
+  gloo_wrapper->SetIface(std::string(env_ifname));
   auto addr = paddle::string::Split(strategy_.trainer_endpoints_[0], ':');
   VLOG(4) << "Server is" << strategy_.trainer_endpoints_[0];
   std::string host = addr[0];

@@ -283,6 +283,8 @@ def launch_collective(args):
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_IFNAME"] = str(
+        os.getenv("PADDLE_GLOO_IFNAME", "lo"))
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
 
     procs = start_local_trainers(

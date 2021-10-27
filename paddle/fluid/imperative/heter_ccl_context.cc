@@ -63,24 +63,24 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   node_strategy_.current_endpoint_ = strategy_.current_endpoint_;
 
   // for single node (same ip)
-  // if (strategy_.local_rank_ < 2) {
-  //   node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[0]);
-  //   node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[1]);
-  // } else {
-  //   node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[2]);
-  //   node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[3]);
-  // }
-
-  // for multi node with different ips
-  std::vector<std::string> global_eps = strategy_.trainer_endpoints_;
-  std::string curr_ep = strategy_.current_endpoint_;
-  std::string curr_ep_ip = curr_ep.substr(0, curr_ep.find(':'));
-  for (auto ep : global_eps) {
-    std::string ip = ep.substr(0, ep.find(':'));
-    if (ip == curr_ep_ip) {
-      node_strategy_.trainer_endpoints_.push_back(ep);
-    }
+  if (strategy_.local_rank_ < 2) {
+    node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[0]);
+    node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[1]);
+  } else {
+    node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[2]);
+    node_strategy_.trainer_endpoints_.push_back(strategy_.trainer_endpoints_[3]);
   }
+
+  // // for multi node with different ips
+  // std::vector<std::string> global_eps = strategy_.trainer_endpoints_;
+  // std::string curr_ep = strategy_.current_endpoint_;
+  // std::string curr_ep_ip = curr_ep.substr(0, curr_ep.find(':'));
+  // for (auto ep : global_eps) {
+  //   std::string ip = ep.substr(0, ep.find(':'));
+  //   if (ip == curr_ep_ip) {
+  //     node_strategy_.trainer_endpoints_.push_back(ep);
+  //   }
+  // }
 
 #ifdef PADDLE_WITH_NCCL
   node_place_ = platform::CUDAPlace(device_id);
