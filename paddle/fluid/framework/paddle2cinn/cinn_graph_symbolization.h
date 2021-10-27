@@ -102,6 +102,9 @@ class CinnGraphSymbolization {
   // transform all paddle var desc in feed list into cinn_var_descs_
   FeedInfoMap GetFeedInfoMapFromInput() const;
 
+  // get the topological sort of the graph_
+  std::vector<ir::Node*> TopologicalSort() const;
+
   // transform all paddle op desc in graph into cinn op desc
   std::vector<std::unique_ptr<CinnOpDesc>> TransformAllGraphOpToCinn() const;
 

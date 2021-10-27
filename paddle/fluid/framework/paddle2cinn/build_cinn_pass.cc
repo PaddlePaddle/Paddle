@@ -63,6 +63,7 @@ int ExtractOpRole(const GraphNodeSet& cluster) {
 void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
                      const GraphNodeSet& cluster,
                      const std::unordered_map<Node*, Node*>& old_op2new_op,
+                     const std::unordered_map<Node*, Node*>& old_var2new_var,
                      Graph* graph) {
   for (auto* old_var : feed_vars) {
     // create feed op
@@ -71,18 +72,16 @@ void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
     desc.SetOutput("Out", {old_var->Name()});
     auto op = graph->CreateOpNode(&desc);
 
-    // create new feed var node (SSAGraph)
-    auto var = graph->CreateVarNode(old_var->Var());
+    // get new feed var node
+    auto* var = old_var2new_var.at(old_var);
 
     // link feed op and feed var
-    op->outputs = {var};
-    var->inputs = {op};
+    IR_NODE_LINK_TO(op, var);
 
     // link feed var to cluster op
     for (auto* old_op : old_var->outputs) {
       if (cluster.count(old_op)) {
-        var->outputs.emplace_back(old_op2new_op.at(old_op));
-        old_op2new_op.at(old_op)->inputs.emplace_back(var);
+        IR_NODE_LINK_TO(var, old_op2new_op.at(old_op));
       }
       // Do not need relink old op or old var here, they will be
       // fixed in RemoveSubGraphFromGraph, here we just deal with
@@ -97,14 +96,14 @@ void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
 void AddParamVar(const std::unordered_set<Node*>& param_vars,
                  const GraphNodeSet& cluster,
                  const std::unordered_map<Node*, Node*>& old_op2new_op,
+                 const std::unordered_map<Node*, Node*>& old_var2new_var,
                  Graph* graph) {
   for (auto* old_var : param_vars) {
-    auto var = graph->CreateVarNode(old_var->Var());
+    auto* var = old_var2new_var.at(old_var);
 
     for (auto* old_op : old_var->outputs) {
       if (cluster.count(old_op)) {
-        var->outputs.emplace_back(old_op2new_op.at(old_op));
-        old_op2new_op.at(old_op)->inputs.emplace_back(var);
+        IR_NODE_LINK_TO(var, old_op2new_op.at(old_op));
       }
     }
   }
@@ -115,14 +114,14 @@ void AddParamVar(const std::unordered_set<Node*>& param_vars,
 void AddOutputVar(const std::unordered_set<Node*>& output_vars,
                   const GraphNodeSet& cluster,
                   const std::unordered_map<Node*, Node*>& old_op2new_op,
+                  const std::unordered_map<Node*, Node*>& old_var2new_var,
                   Graph* graph) {
   for (auto* old_var : output_vars) {
-    auto var = graph->CreateVarNode(old_var->Var());
+    auto* var = old_var2new_var.at(old_var);
 
     for (auto* old_op : old_var->inputs) {
       if (cluster.count(old_op)) {
-        var->inputs.emplace_back(old_op2new_op.at(old_op));
-        old_op2new_op.at(old_op)->outputs.emplace_back(var);
+        IR_NODE_LINK_TO(old_op2new_op.at(old_op), var);
       }
     }
   }
@@ -154,6 +153,18 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
     old_var2new_var[var] = sub_node;
   }
+  for (auto* var : cluster_inputs) {
+    if (var->Var()) {
+      auto* sub_node = subgraph->CreateVarNode(var->Var());
+      old_var2new_var[var] = sub_node;
+    }
+  }
+  for (auto* var : cluster_outputs) {
+    if (var->Var()) {
+      auto* sub_node = subgraph->CreateVarNode(var->Var());
+      old_var2new_var[var] = sub_node;
+    }
+  }
 
   std::unordered_set<Node*> need_feed_vars;
   std::unordered_set<Node *> param_vars, output_vars;
@@ -162,8 +173,10 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   // out-graph.
   for (auto* op : cluster) {
     for (auto* var : op->inputs) {
-      if (cluster_internals.count(var)) {
-        old_op2new_op[op]->inputs.emplace_back(old_var2new_var[var]);
+      // one output var maybe an input of the cluster
+      if (cluster_internals.count(var) ||
+          (cluster_outputs.count(var) && old_var2new_var.count(var))) {
+        IR_NODE_LINK_TO(old_var2new_var.at(var), old_op2new_op.at(op));
       } else if (cluster_inputs.count(var) && var->Var() != nullptr) {
         if (var->Var()->IsParameter()) {
           // Parameters have been preserved in scope, compared to feed var,
@@ -180,7 +193,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
     for (auto* var : op->outputs) {
       if (cluster_internals.count(var)) {
-        old_op2new_op[op]->outputs.emplace_back(old_var2new_var[var]);
+        IR_NODE_LINK_TO(old_op2new_op.at(op), old_var2new_var.at(var));
       } else if (cluster_outputs.count(var) && var->Var() != nullptr) {
         // Create new output var node to guarantee the independency of
         // subgraph. In other words, the subgraph has no connection with
@@ -190,22 +203,12 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
   }
 
-  AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, subgraph.get());
-  AddParamVar(param_vars, cluster, old_op2new_op, subgraph.get());
-  AddOutputVar(output_vars, cluster, old_op2new_op, subgraph.get());
-
-  for (auto* var : cluster_internals) {
-    for (auto* op : var->inputs) {
-      if (cluster.count(op)) {
-        old_var2new_var[var]->inputs.emplace_back(old_op2new_op[op]);
-      }
-    }
-    for (auto* op : var->outputs) {
-      if (cluster.count(op)) {
-        old_var2new_var[var]->outputs.emplace_back(old_op2new_op[op]);
-      }
-    }
-  }
+  AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, old_var2new_var,
+                  subgraph.get());
+  AddParamVar(param_vars, cluster, old_op2new_op, old_var2new_var,
+              subgraph.get());
+  AddOutputVar(output_vars, cluster, old_op2new_op, old_var2new_var,
+               subgraph.get());
 
   return subgraph;
 }
