@@ -27,6 +27,7 @@ limitations under the License. */
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/allgather.h>
+#include <gloo/allgatherv.h>
 #include <gloo/allreduce.h>
 #include <gloo/barrier.h>
 #include <gloo/rendezvous/context.h>
@@ -238,10 +239,25 @@ class GlooWrapper {
     return ret;
   }
 
-  // TODO(xiongkun03): support all gather array of
+  // NOTE(@xiongkun03): support all gather array of
   //                   numbers with different length
-  //                   can use AllgathervOptions, may be work in different
-  //                   occasion. Need some survey.
+  //                   if the third argument is int, use allgather,
+  //                   if it is vector, use AllgathervOptions,
+  //                   which works in different length occasion.
+  template <typename T>
+  void AllGatherVector(T* input_ptr, T* output_ptr,
+                       std::vector<size_t>& element_nums) {  // NOLINT
+    CHECK_EQ(is_initialized_, true);
+#ifdef PADDLE_WITH_GLOO
+    gloo::AllgathervOptions opts(context_);
+    opts.setInput(input_ptr, element_nums[rank_]);
+    opts.setOutput(output_ptr, element_nums);
+    gloo::allgatherv(opts);
+#else
+    LOG(WARNING) << "AllGather does nothing when WITH_GLOO=OFF";
+#endif
+  }
+
   template <typename T>
   void AllGatherVector(T* input_ptr, T* output_ptr,
                        size_t element_num) {  // NOLINT

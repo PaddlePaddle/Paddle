@@ -665,10 +665,10 @@ class BinaryMKLDNNHandler
 
     auto attributes =
         CreateAttributes(algo, scale_x, scale_y, scale_z, post_ops);
+
     this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                             dst_md);
   }
-
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
