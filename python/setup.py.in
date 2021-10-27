@@ -108,10 +108,15 @@ def show():
     Returns:
         If paddle package is not tagged, the commit-id of paddle will be output.
         Otherwise, the following information will be output.
+
         full_version: version of paddle
+
         major: the major version of paddle
+
         minor: the minor version of paddle
+
         patch: the patch level version of paddle
+        
         rc: whether it's rc version
     
     Examples:
