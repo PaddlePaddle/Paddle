@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/utils/small_vector.h"
@@ -160,7 +159,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
     VLOG(1) << framework::KernelSignatureToString(pt_kernel_signature);
 
-    auto pt_kernel_name = pten::KernelName(pt_kernel_signature.first);
+    auto pt_kernel_name = pten::KernelName(pt_kernel_signature.name);
     auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
     auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
@@ -261,9 +260,9 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
   // 5. kernel input is not DenseTensor
   pten::KernelContext op_kernel_ctx(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature.second);
-  auto& attr_names = std::get<1>(pt_kernel_signature.second);
-  auto& output_names = std::get<2>(pt_kernel_signature.second);
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& attr_names = std::get<1>(pt_kernel_signature.args);
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
 
   auto& input_defs = pt_kernel.args_def().input_defs();
   auto& output_defs = pt_kernel.args_def().output_defs();
@@ -321,7 +320,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
-            pten::Scalar(BOOST_GET_CONST(float, attr)));
+            std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "

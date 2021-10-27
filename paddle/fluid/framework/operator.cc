@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -1278,7 +1277,7 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
+  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->name);
   auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(
       new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
@@ -1764,6 +1763,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
   if (!KernelSignatureMap::Instance().Has(Type())) {
+    // TODO(chenweihang): we can generate this map by proto info in compile time
     KernelArgsNameMakerByOpProto maker(Info().proto_);
     KernelSignatureMap::Instance().Emplace(
         Type(), std::move(maker.GetKernelSignature()));
@@ -1782,9 +1782,9 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
   // 5. kernel input is not DenseTensor
   pten::KernelContext op_kernel_ctx(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature_->second);
-  auto& attr_names = std::get<1>(pt_kernel_signature_->second);
-  auto& output_names = std::get<2>(pt_kernel_signature_->second);
+  auto& input_names = std::get<0>(pt_kernel_signature_->args);
+  auto& attr_names = std::get<1>(pt_kernel_signature_->args);
+  auto& output_names = std::get<2>(pt_kernel_signature_->args);
 
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
@@ -1843,7 +1843,7 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
-            pten::Scalar(BOOST_GET_CONST(float, attr)));
+            std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "

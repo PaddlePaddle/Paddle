@@ -50,11 +50,8 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
-    return std::make_pair(
-        "fill_any_like",
-        std::make_tuple(paddle::SmallVector<std::string>({"X"}),
-                        paddle::SmallVector<std::string>({"value"}),
-                        paddle::SmallVector<std::string>({"Out"})));
+    return framework::KernelSignature("fill_any_like", {"X"}, {"value"},
+                                      {"Out"});
   }
 };
 

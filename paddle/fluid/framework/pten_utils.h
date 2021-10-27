@@ -41,6 +41,24 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
 
 /* Kernel Args parse */
 
+struct KernelSignature {
+  std::string name;
+  KernelArgsTuple args;
+
+  KernelSignature() = default;
+  KernelSignature(std::string&& kernel_name,
+                  paddle::SmallVector<std::string>&& inputs,
+                  paddle::SmallVector<std::string>&& attrs,
+                  paddle::SmallVector<std::string>&& outputs)
+      : name(std::move(kernel_name)),
+        args(std::make_tuple(inputs, attrs, outputs)) {}
+  KernelSignature(const std::string& kernel_name,
+                  const paddle::SmallVector<std::string>& inputs,
+                  const paddle::SmallVector<std::string>& attrs,
+                  const paddle::SmallVector<std::string>& outputs)
+      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+};
+
 // TODO(chenweihang): we can generate this map by proto info in compile time
 class KernelSignatureMap {
  public:
@@ -53,24 +71,9 @@ class KernelSignatureMap {
     return map_.find(op_type) != map_.end();
   }
 
-  void Insert(const std::string& op_type, const KernelSignature& signature) {
-    if (!Has(op_type)) {
-      map_.insert({op_type, signature});
-    }
-  }
-
   void Emplace(const std::string& op_type, KernelSignature&& signature) {
     if (!Has(op_type)) {
       map_.emplace(op_type, signature);
-    }
-  }
-
-  const KernelSignature* GetNullable(const std::string& op_type) const {
-    auto it = map_.find(op_type);
-    if (it == map_.end()) {
-      return nullptr;
-    } else {
-      return &it->second;
     }
   }
 

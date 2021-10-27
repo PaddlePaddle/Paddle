@@ -88,9 +88,6 @@ using InferInplaceOpFN = std::function<InplacePair(bool /*use_cuda*/)>;
 using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
                                    paddle::SmallVector<std::string>,
                                    paddle::SmallVector<std::string>>;
-// TODD(yuanrisheng): impl implicit overload signature, use KernelArgsTuple
-// directly
-using KernelSignature = std::pair<std::string, KernelArgsTuple>;
 
 }  // namespace framework
 }  // namespace paddle
