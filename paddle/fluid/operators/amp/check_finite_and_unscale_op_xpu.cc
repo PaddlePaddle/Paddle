@@ -74,21 +74,22 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
             platform::errors::External("XPU API(logical_not) return wrong "
                                        "value[%d %s]",
                                        r, XPUAPIErrorMsg[r]));
-        r = xpu::isnan(dev_ctx.x_context(),
-                       reinterpret_cast<const XPUTyp*>(x->data<T>()),
-                       is_nan.data<bool>(), x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(isnan) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
-        r = xpu::logical_or(dev_ctx.x_context(), is_finite.data<bool>(),
-                            is_nan.data<bool>(), is_finite.data<bool>(),
-                            x->numel());
-        PADDLE_ENFORCE_EQ(
-            r, XPU_SUCCESS,
-            platform::errors::External("XPU API(logical_or) return wrong "
-                                       "value[%d %s]",
-                                       r, XPUAPIErrorMsg[r]));
+        // r = xpu::isnan(dev_ctx.x_context(),
+        //                reinterpret_cast<const XPUTyp*>(x->data<T>()),
+        //                is_nan.data<bool>(), x->numel());
+        // PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
+        //                                       "XPU API(isnan) return wrong "
+        //                                       "value[%d %s]",
+        //                                       r, XPUAPIErrorMsg[r]));
+        // r = xpu::logical_or(dev_ctx.x_context(), is_finite.data<bool>(),
+        //                     is_nan.data<bool>(), is_finite.data<bool>(),
+        //                     x->numel());
+        // PADDLE_ENFORCE_EQ(
+        //     r, XPU_SUCCESS,
+        //     platform::errors::External("XPU API(logical_or) return wrong "
+        //                                "value[%d %s]",
+        //                                r, XPUAPIErrorMsg[r]));
+
         r = xpu::any(dev_ctx.x_context(), is_finite.data<bool>(),
                      found_inf_data, x->numel());
         PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(

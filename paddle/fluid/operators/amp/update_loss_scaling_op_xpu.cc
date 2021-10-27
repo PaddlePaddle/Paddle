@@ -113,14 +113,21 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
     } else {
       cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
     }
+    // std::cout << "cpu_pre_loss_scaling_data = " << cpu_pre_loss_scaling_data
+    // << std::endl;
 
     int cpu_good_out_data = 0;
     int cpu_bad_out_data = 0;
-    MPDType cpu_updated_loss_scaling_data;
+    MPDType cpu_updated_loss_scaling_data = cpu_pre_loss_scaling_data;
 
+    // std::cout << "cpu_found_inf_data  = " << cpu_found_inf_data << std::endl;
     if (cpu_found_inf_data) {
       cpu_good_out_data = 0;
       cpu_bad_out_data = cpu_bad_in_data + 1;
+      // std::cout << "decr_ratio  = " << decr_ratio << std::endl;
+      // std::cout << "decr_every_n_nan_or_inf  = " << decr_every_n_nan_or_inf
+      // << std::endl;
+      // std::cout << "cpu_bad_out_data  = " << cpu_bad_out_data << std::endl;
       if (cpu_bad_out_data == decr_every_n_nan_or_inf) {
         MPDType new_loss_scaling = cpu_pre_loss_scaling_data * decr_ratio;
         cpu_updated_loss_scaling_data =
@@ -132,6 +139,9 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
     } else {
       cpu_bad_out_data = 0;
       cpu_good_out_data = cpu_good_in_data + 1;
+      // std::cout << "incr_every_n_steps  = " << incr_every_n_steps <<
+      // std::endl;
+      // std::cout << "cpu_good_out_data  = " << cpu_good_out_data << std::endl;
       if (cpu_good_out_data == incr_every_n_steps) {
         MPDType new_loss_scaling = cpu_pre_loss_scaling_data * incr_ratio;
         cpu_updated_loss_scaling_data = (std::isfinite(new_loss_scaling))
@@ -140,7 +150,8 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
         cpu_good_out_data = 0;
       }
     }
-
+    // std::cout << "cpu_updated_loss_scaling_data = " <<
+    // cpu_updated_loss_scaling_data << std::endl;
     // copy to host
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
                  bad_out_data, platform::CPUPlace(), &cpu_bad_out_data,
