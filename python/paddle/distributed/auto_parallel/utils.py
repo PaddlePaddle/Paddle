@@ -15,6 +15,7 @@
 import threading
 import paddle.fluid.core as core
 import numpy as np
+from .interface import _g_process_mesh_map
 
 
 def is_valid_list_index(list, index):
@@ -171,7 +172,9 @@ def _get_comm_group(processes, shape, axis, rank):
     """
 
     # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
-    #  tricks to support processes mesh when it is not start with 0 or continuous
+    # tricks to support processes mesh when it is not start with 0 or continuous
+    assert rank in processes, "rank [{}] is NOT in processes group {}".format(
+        rank, processes)
     rank_relatvie = processes.index(rank)
     coordinate = _linear_idx2coordinate(shape, rank_relatvie)
     coordinates_in_group = [coordinate[:] for i in range(shape[axis])]
@@ -187,6 +190,25 @@ def _get_comm_group(processes, shape, axis, rank):
     ranks_in_group = [processes[idx] for idx in ranks_in_group_relative]
 
     return sorted(ranks_in_group)
+
+
+def _get_idx_in_axis(processes, shape, axis, rank):
+    """
+    Given a rank and the processes mesh the rank belongs to,  
+    compute the index of the rank in given axis.
+
+    Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
+    the index of rank 22 are:
+    in axis 0: 1
+    in axis 1: 1
+    in axis 2: 2
+    """
+
+    # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
+    #  tricks to support processes mesh when it is not start with 0 or continuous
+    rank_relatvie = processes.index(rank)
+    coordinate = _linear_idx2coordinate(shape, rank_relatvie)
+    return coordinate[axis]
 
 
 def _coordinate2linear_idx(mesh_shape, coordinate):
@@ -277,6 +299,27 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
 
     # row major order
     return coordinate
+
+
+def _get_corresponding_rank(target_mesh, rank):
+
+    # TODO(JZ-LIANG) a hack method to support varying mesh in Pipeline parallelism case.
+    # we assume that all mesh are evenly divide from a parent mesh and should have same size.
+    # to revise this in future.
+
+    coordinate = None
+    for key, mesh in _g_process_mesh_map.items():
+        if key == 0:
+            continue
+        if rank in mesh.process_group and mesh.topology == target_mesh.topology:
+            coordinate = _linear_idx2coordinate(mesh.topology,
+                                                mesh.process_group.index(rank))
+            break
+
+    assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
+        rank)
+    return target_mesh.process_group[_coordinate2linear_idx(mesh.topology,
+                                                            coordinate)]
 
 
 def _get_unshard_dist_shape(var, dist_attr):
