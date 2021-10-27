@@ -424,12 +424,12 @@ class FusedTransformerEncoderLayer(Layer):
                 only used for inference and should be None for training. Default
                 None.
         Returns:
-            Tensor|tuple: It is a tensor that has the same shape and data type \
-                as `enc_input`, representing the output of Transformer encoder \
-                layer. Or a tuple if `cache` is not None, except for encoder \
-                layer output, the tuple includes the new cache which is same \
-                as input `cache` argument but `incremental_cache` has an \
-                incremental length. See `MultiHeadAttention.gen_cache` and \
+            Tensor|tuple: It is a tensor that has the same shape and data type
+                as `enc_input`, representing the output of Transformer encoder
+                layer. Or a tuple if `cache` is not None, except for encoder
+                layer output, the tuple includes the new cache which is same
+                as input `cache` argument but `incremental_cache` has an
+                incremental length. See `MultiHeadAttention.gen_cache` and
                 `MultiHeadAttention.forward` for more details.
         """
         src_mask = _convert_attention_mask(src_mask, src.dtype)
