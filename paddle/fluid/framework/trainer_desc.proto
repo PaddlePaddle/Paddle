@@ -64,7 +64,6 @@ message TrainerDesc {
   optional bool scale_sparse_gradient_with_batch_size = 34 [ default = true ];
 
   repeated int32 trainers = 35;
-  //optional int32 trainers = 35;
   optional int32 trainer_id = 36;
 
   // device worker parameters

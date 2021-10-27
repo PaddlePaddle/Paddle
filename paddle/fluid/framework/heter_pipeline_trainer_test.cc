@@ -30,9 +30,14 @@ TEST(HeterPipelineTrainerTest, test1) {
   t.set_class_name("HeterPipelineTrainer");
   t.set_device_worker_name("HeterSectionWorker");
   t.set_thread_num(1);
-  auto* m = t.mutable_heter_section_param() 
-  //auto* m = t.mutable_downpour_param()->add_program_config();
-  //m->set_program_id("123");
+  t.set_trainer_id(0);
+  t.add_trainers(1);
+  t.add_trainers(1);
+
+  auto* heter_section_param = t.mutable_heter_section_param();
+  heter_section_param->set_num_pipeline_stages(2);
+  heter_section_param->set_pipeline_stage(0);
+  heter_section_param->set_num_microbatches(1024);
   std::string str;
   str += "name: \"MultiSlotDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
   str += "slots {\nname: \"words\"\ntype: \"uint64\"\nis_dense: false\n";
