@@ -300,6 +300,8 @@ package_dir={
     'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
 }
 
+data_files=[('static_cost_model', ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json'])]
+
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
@@ -563,9 +565,11 @@ with redirect_stdout():
         ext_modules=ext_modules,
         package_data=package_data,
         package_dir=package_dir,
+        data_files=data_files,
         scripts=paddle_bins,
         distclass=BinaryDistribution,
         headers=headers,
+        include_package_date=True,
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
