@@ -58,7 +58,7 @@ def get_cuda_version():
     if '@WITH_GPU@' == 'ON':
         return '@CUDA_VERSION@'
     else:
-        return 'False'
+        return 'OFF'
 
 def get_cudnn_version():
     if '@WITH_GPU@' == 'ON':
@@ -71,7 +71,20 @@ def get_cudnn_version():
                     temp_cudnn_version += '.@CUDNN_PATCHLEVEL_VERSION@'
         return temp_cudnn_version
     else:
-        return 'False'
+        return 'OFF'
+
+def get_nccl_version():
+    if '@WITH_GPU@' != 'ON' or '@WIN32@' == 'ON' or '@WITH_NCCL@' != 'ON':
+        return 'OFF'
+    else:
+        temp_nccl_version = ''
+        if '@NCCL_MAJOR_VERSION@':
+            temp_nccl_version += '@NCCL_MAJOR_VERSION@'
+            if '@NCCL_MINOR_VERSION@':
+                temp_nccl_version += '.@NCCL_MINOR_VERSION@'
+                if '@NCCL_PATCH_VERSION@':
+                    temp_nccl_version += '.@NCCL_PATCH_VERSION@'
+        return temp_nccl_version
 
 def is_taged():
     try:
@@ -96,11 +109,13 @@ patch           = '%(patch)s'
 rc              = '%(rc)d'
 cuda_version    = '%(cuda)s'
 cudnn_version   = '%(cudnn)s'
+nccl_version    = '%(nccl)s'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
 with_mkl        = '%(with_mkl)s'
+with_tensorrt   = '%(with_tensorrt)s'
 
-__all__ = ['cuda', 'cudnn']
+__all__ = ['mkl', 'tensorrt', 'cuda', 'cudnn', 'nccl']
 
 def show():
     if istaged:
@@ -114,6 +129,9 @@ def show():
 
 def mkl():
     return with_mkl
+
+def tensorrt():
+    return with_tensorrt
 
 def cuda():
     """Get cuda version of paddle package.
@@ -148,6 +166,9 @@ def cudnn():
 
     """
     return cudnn_version
+
+def nccl():
+    return nccl_version
 '''
     commit = git_commit()
 
@@ -168,9 +189,11 @@ def cudnn():
             'version': '${PADDLE_VERSION}',
             'cuda': get_cuda_version(),
             'cudnn': get_cudnn_version(),
+            'nccl': get_nccl_version(),
             'commit': commit,
             'istaged': is_taged(),
-            'with_mkl': '@WITH_MKL@'})
+            'with_mkl': '@WITH_MKL@',
+            'with_tensorrt': '@WITH_TENSORRT@'})
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 
