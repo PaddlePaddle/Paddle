@@ -106,7 +106,6 @@ template <typename DeviceContext, typename T>
 class TriangularSolveKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(0) << "forward start";
     const auto* x = ctx.Input<framework::Tensor>("X");
     const auto* y = ctx.Input<framework::Tensor>("Y");
     auto* out = ctx.Output<framework::Tensor>("Out");
@@ -118,7 +117,6 @@ class TriangularSolveKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<DeviceContext>();
     triangular_solve<DeviceContext, T>(dev_ctx, *x, *y, out, upper, transpose,
                                        unitriangular);
-    VLOG(0) << "forward end";
   }
 };
 
@@ -126,7 +124,6 @@ template <typename DeviceContext, typename T>
 class TriangularSolveGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(0) << "backward start";
     const auto* x = ctx.Input<framework::Tensor>("X");
     const auto* y = ctx.Input<framework::Tensor>("Y");
     const auto* out = ctx.Input<framework::Tensor>("Out");
@@ -223,7 +220,6 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
         dx->Resize(x->dims());
       }
     }
-    VLOG(0) << "backward end";
   }
 };
 

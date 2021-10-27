@@ -762,7 +762,7 @@ void Blas<platform::CUDADeviceContext>::BatchedTRSM(
   rocblas_diagonal cuDiag =
       (diag == CblasUnit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
 
-  context_.CublasCall([&](cublasHandle_t handle) {
+  context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::TRSM_BATCH(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M,
                           &alpha, A, lda, B, ldb, batch_size);
   });
