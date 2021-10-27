@@ -361,6 +361,14 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     platform::RecordEvent compute_event("Compute");
     instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
   }
+
+  // for debug nan/inf
+  if (FLAGS_check_nan_inf) {
+    VLOG(4) << "Check nan/inf";
+    framework::details::CheckOpHasNanOrInf(
+        *instr_node.kernel_func_.operator_base_, *global_scope_,
+        instr_node.dev_ctx_->GetPlace());
+  }
 }
 
 void InterpreterCore::ExecuteInstructionList(
@@ -484,11 +492,6 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
         exception_notifier_->NotifyEvent();
       }
       return;
-    }
-
-    if (FLAGS_check_nan_inf) {
-      framework::details::CheckOpHasNanOrInf(*op, *global_scope_,
-                                             instr_node.dev_ctx_->GetPlace());
     }
 
     event_manager_.RecordEvent(instr_node, place_);
