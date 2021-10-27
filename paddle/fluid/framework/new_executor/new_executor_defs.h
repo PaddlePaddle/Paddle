@@ -471,9 +471,51 @@ struct VariableMetaInfo {
   paddle::framework::VarDesc* vardesc_;
 };
 
-struct VariableScope {
-  std::vector<Variable*> var_list;
-  std::map<std::string, int> name2id;
+// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
+class VariableScope : public ScopeBase {
+ public:
+  Variable* FindVar(const std::string& name) const {
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      PADDLE_ENFORCE_LE(it->second, var_list_.size(),
+                        platform::errors::NotFound(
+                            "The id(%d) of variable(%s) should not be larger "
+                            "than the size of variable list(%d).",
+                            it->second, name, var_list_.size()));
+      return var_list_[it->second];
+    }
+    return nullptr;
+  }
+
+  // Get variable id by name, return -1 if not found
+  int GetIdByName(const std::string& name) const {
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      return it->second;
+    }
+    return -1;
+  }
+
+  // Get variable name by id, return "" if not found
+  std::string GetNameById(int id) const {
+    // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
+    // vec_meta_info_[id] may be nullptr,
+    // typically when the target variable is not existed in the original program
+    // desc, but created by interpretercore.
+    // For example, created and used by d2h_copy or h2d_copy operator.
+    auto it =
+        std::find_if(name2id_.begin(), name2id_.end(),
+                     [id](const auto& pair) { return pair.second == id; });
+    if (it != name2id_.end()) {
+      return it->first;
+    }
+    return "";
+  }
+
+  // TODO(zhiqiu): make these member private
+ public:
+  std::vector<Variable*> var_list_;
+  std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 };
 

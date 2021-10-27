@@ -1172,7 +1172,7 @@ class Executor(object):
 
                 x = numpy.random.random(size=(10, 1)).astype('float32')
                 loss_val, array_val = exe.run(feed={'X': x},
-                                              fetch_list=[loss.name, array.name])
+                                            fetch_list=[loss.name, array.name])
                 print(array_val)
                 # [array([0.02153828], dtype=float32)]
 

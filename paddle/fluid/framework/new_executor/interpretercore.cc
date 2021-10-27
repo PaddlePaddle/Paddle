@@ -17,11 +17,14 @@
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
+
+DECLARE_bool(check_nan_inf);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 
@@ -79,10 +82,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<framework::Tensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
-      auto it = global_scope_->name2id.find(feed_names_[i]);
-      assert(it != global_scope_->name2id.end());
+      auto it = global_scope_->name2id_.find(feed_names_[i]);
+      assert(it != global_scope_->name2id_.end());
 
-      auto feed_tensor = global_scope_->var_list[it->second]
+      auto feed_tensor = global_scope_->var_list_[it->second]
                              ->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
     }
@@ -103,16 +106,16 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   // return Fetch Tensors
-  return *(global_scope_->var_list[global_scope_->name2id["fetch_vars"]]
+  return *(global_scope_->var_list_[global_scope_->name2id_["fetch_vars"]]
                ->GetMutable<framework::FetchList>());
 }
 
 void InterpreterCore::Convert() {
-  input_var2op_info_.resize(global_scope_->var_list.size());
+  input_var2op_info_.resize(global_scope_->var_list_.size());
 
   vec_instruction_.reserve(vec_func_list_.size());
   dependecy_count_.resize(vec_func_list_.size());
-  vec_meta_info_.resize(global_scope_->var_list.size());
+  vec_meta_info_.resize(global_scope_->var_list_.size());
   for (size_t i = 0; i < vec_func_list_.size(); ++i) {
     Instruction temp_inst;
     auto* op_base = op_list_[i];
@@ -249,19 +252,20 @@ void InterpreterCore::BuildInplace() {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = vec_instruction_[i].output_index_.find(pair.second);
           if (iterout != vec_instruction_[i].output_index_.end()) {
-            auto invar = global_scope_->var_list[iter->second[0]];
-            auto outvar = global_scope_->var_list[iterout->second[0]];
+            auto invar = global_scope_->var_list_[iter->second[0]];
+            auto outvar = global_scope_->var_list_[iterout->second[0]];
             if (invar && outvar) {
               vec_instruction_[i].vec_inplace_in_to_out_.emplace_back(invar,
                                                                       outvar);
+              VLOG(4) << iter->second[0];
+              VLOG(4) << global_scope_->vec_meta_info_.size();
+              VLOG(4)
+                  << vec_instruction_[i].kernel_func_.operator_base_->Type();
               VLOG(3) << "inplace "
                       << vec_instruction_[i].kernel_func_.operator_base_->Type()
-                      << " "
-                      << global_scope_->vec_meta_info_[iter->second[0]]
-                             .vardesc_->Name()
+                      << " " << global_scope_->GetNameById(iter->second[0])
                       << " -> "
-                      << global_scope_->vec_meta_info_[iterout->second[0]]
-                             .vardesc_->Name()
+                      << global_scope_->GetNameById(iterout->second[0])
                       << std::endl;
             }
           }
@@ -282,7 +286,7 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
 
     input_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      input_vars.emplace_back(var_scope.var_list[id]);
+      input_vars.emplace_back(var_scope.var_list_[id]);
     }
     ins_map.emplace(var_name_item.first, std::move(input_vars));
   }
@@ -293,7 +297,7 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
 
     out_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      out_vars.emplace_back(var_scope.var_list[id]);
+      out_vars.emplace_back(var_scope.var_list_[id]);
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
@@ -482,6 +486,11 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
       return;
     }
 
+    if (FLAGS_check_nan_inf) {
+      framework::details::CheckOpHasNanOrInf(*op, *global_scope_,
+                                             instr_node.dev_ctx_->GetPlace());
+    }
+
     event_manager_.RecordEvent(instr_node, place_);
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
@@ -502,11 +511,11 @@ void InterpreterCore::CheckGC(size_t instr_id,
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
     if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
-      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+      gc_.Add(var_scope.var_list_[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
     } else if (is_ready &&
                var_scope.vec_meta_info_[var_id].vardesc_ == nullptr) {
-      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+      gc_.Add(var_scope.var_list_[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
     }
   }
@@ -516,10 +525,10 @@ void InterpreterCore::DryRunPrepare(
     const std::vector<framework::Tensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
-      auto it = global_scope_->name2id.find(feed_names_[i]);
-      assert(it != global_scope_->name2id.end());
+      auto it = global_scope_->name2id_.find(feed_names_[i]);
+      assert(it != global_scope_->name2id_.end());
 
-      auto feed_tensor = global_scope_->var_list[it->second]
+      auto feed_tensor = global_scope_->var_list_[it->second]
                              ->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
     }

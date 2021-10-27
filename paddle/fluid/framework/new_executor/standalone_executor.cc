@@ -33,14 +33,16 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     auto name_list = outer_scope_->LocalVarNames();
     for (auto name : name_list) {
       auto v = outer_scope_->Var(name);
-      if (global_scope_.name2id.find(name) == global_scope_.name2id.end()) {
-        global_scope_.name2id[name] = global_scope_.var_list.size();
-        global_scope_.var_list.push_back(v);
+      if (global_scope_.name2id_.find(name) == global_scope_.name2id_.end()) {
+        global_scope_.name2id_[name] = global_scope_.var_list_.size();
+        global_scope_.var_list_.push_back(v);
 
         VariableMetaInfo info;
         info.var_ref_count_ = 0;
         info.vardesc_ = nullptr;
         global_scope_.vec_meta_info_.push_back(info);
+        VLOG(4) << "add " << name
+                << " to global_scope with id=" << global_scope_.name2id_[name];
       }
     }
   }
@@ -80,16 +82,18 @@ void StandaloneExecutor::BuildVariableOuterScope(
       continue;
     }
 
-    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
-      var_scope->name2id[var->Name()] = var_scope->var_list.size();
+    if (var_scope->name2id_.find(var->Name()) == var_scope->name2id_.end()) {
+      var_scope->name2id_[var->Name()] = var_scope->var_list_.size();
       auto v = outer_scope->Var(var->Name());
       InitializeVariable(v, var->GetType());
-      var_scope->var_list.push_back(v);
+      var_scope->var_list_.push_back(v);
 
       VariableMetaInfo info;
       info.var_ref_count_ = 0;
       info.vardesc_ = var;
       var_scope->vec_meta_info_.push_back(info);
+      VLOG(4) << "add " << var->Name() << " to global_scope with id="
+              << var_scope->name2id_[var->Name()];
     }
   }
 }

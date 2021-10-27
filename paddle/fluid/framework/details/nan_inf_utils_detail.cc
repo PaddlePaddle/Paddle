@@ -407,7 +407,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const std::string& var_name,
                          const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
@@ -523,7 +523,7 @@ void PrintNPUOpValueInfo(const framework::OperatorBase& op,
 }
 
 static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
-                                  const framework::Scope& scope,
+                                  const framework::ScopeBase& scope,
                                   const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -558,7 +558,7 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
 #endif
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::Scope& exec_scope,
+                        const framework::ScopeBase& exec_scope,
                         const platform::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 

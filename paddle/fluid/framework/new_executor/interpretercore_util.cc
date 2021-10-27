@@ -137,18 +137,20 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
       continue;
     }
 
-    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
-      var_scope->name2id[var->Name()] = var_scope->var_list.size();
+    if (var_scope->name2id_.find(var->Name()) == var_scope->name2id_.end()) {
+      var_scope->name2id_[var->Name()] = var_scope->var_list_.size();
       auto v = new Variable();
       InitializeVariable(v, var->GetType());
-      var_scope->var_list.push_back(v);
+      var_scope->var_list_.push_back(v);
 
       VariableMetaInfo info;
       info.var_ref_count_ = 0;
       info.vardesc_ = var;
       var_scope->vec_meta_info_.push_back(info);
+      VLOG(4) << "add " << var->Name() << " to global_scope with id="
+              << var_scope->name2id_[var->Name()];
     } else {
-      auto var_id = var_scope->name2id[var->Name()];
+      auto var_id = var_scope->name2id_[var->Name()];
       if (nullptr == var_scope->vec_meta_info_[var_id].vardesc_) {
         VLOG(3) << "update var:" << var->Name() << " desc from nullptr into "
                 << var;
@@ -204,10 +206,11 @@ void build_op_func_list(const platform::Place& place,
       std::vector<int> vec_ids;
       input_vars.reserve(var_name_item.second.size());
       for (auto& var_name : var_name_item.second) {
-        auto it = var_scope->name2id.find(var_name);
-        assert(it != var_scope->name2id.end());
-        input_vars.push_back(var_scope->var_list[it->second]);
+        auto it = var_scope->name2id_.find(var_name);
+        assert(it != var_scope->name2id_.end());
+        input_vars.push_back(var_scope->var_list_[it->second]);
         vec_ids.push_back(it->second);
+        VLOG(4) << var_name_item.first << " " << var_name << " " << it->second;
       }
       ins_map[var_name_item.first] = input_vars;
       ins_name2id[var_name_item.first] = vec_ids;
@@ -220,9 +223,9 @@ void build_op_func_list(const platform::Place& place,
       std::vector<int> vec_ids;
       output_vars.reserve(var_name_item.second.size());
       for (auto& var_name : var_name_item.second) {
-        auto it = var_scope->name2id.find(var_name);
-        assert(it != var_scope->name2id.end());
-        output_vars.push_back(var_scope->var_list[it->second]);
+        auto it = var_scope->name2id_.find(var_name);
+        assert(it != var_scope->name2id_.end());
+        output_vars.push_back(var_scope->var_list_[it->second]);
         vec_ids.push_back(it->second);
       }
       outs_map[var_name_item.first] = output_vars;
@@ -295,8 +298,8 @@ void build_op_func_list(const platform::Place& place,
           // record no need data transformer input var_id
           auto& var_name = inputs_names[var_name_item.first][i];
           VLOG(3) << op->Type() << " found no data_transform var: " << var_name
-                  << " with id: " << var_scope->name2id[var_name];
-          no_data_transform_index.emplace(var_scope->name2id[var_name]);
+                  << " with id: " << var_scope->name2id_[var_name];
+          no_data_transform_index.emplace(var_scope->name2id_[var_name]);
         } else {
           if (op_base->Type() == "fetch_v2") {
             op_base->SetAttr("deepcopy", false);
@@ -305,16 +308,18 @@ void build_op_func_list(const platform::Place& place,
           // 1. add var in scope
           // 2. add copy op
           std::string new_var_name =
-              "temp_1" + std::to_string(var_scope->var_list.size() + 1);
+              "temp_1" + std::to_string(var_scope->var_list_.size() + 1);
           auto v = new Variable();
           v->GetMutable<LoDTensor>();
-          var_scope->name2id[new_var_name] = var_scope->var_list.size();
-          var_scope->var_list.push_back(v);
+          var_scope->name2id_[new_var_name] = var_scope->var_list_.size();
+          var_scope->var_list_.push_back(v);
 
           VariableMetaInfo info;
           info.var_ref_count_ = 0;
           info.vardesc_ = nullptr;
           var_scope->vec_meta_info_.push_back(info);
+          VLOG(4) << "add " << new_var_name << " to global_scope with id="
+                  << var_scope->name2id_[new_var_name];
 
           VariableNameMap copy_in_map;
           auto x_iter = inputs_names.find(var_name_item.first);
@@ -330,10 +335,10 @@ void build_op_func_list(const platform::Place& place,
           std::map<std::string, std::vector<int>> copy_ins_name2id;
           copy_ins_name2id["X"] = ins_name2id[var_name_item.first];
           std::map<std::string, std::vector<int>> copy_out_name2id;
-          copy_out_name2id["Out"] = {var_scope->name2id[new_var_name]};
+          copy_out_name2id["Out"] = {var_scope->name2id_[new_var_name]};
 
           op_func_node.input_index[var_name_item.first][i] =
-              var_scope->name2id[new_var_name];
+              var_scope->name2id_[new_var_name];
 
           VariableValueMap copy_ins_value_map;
           copy_ins_value_map["X"] = {var};
@@ -436,9 +441,9 @@ void build_op_func_list(const platform::Place& place,
         new std::deque<std::shared_ptr<memory::Allocation>>();
 
     for (auto& var_name : delete_vars) {
-      auto it = var_scope->name2id.find(var_name);
-      assert(it != var_scope->name2id.end());
-      auto* var = var_scope->var_list[it->second];
+      auto it = var_scope->name2id_.find(var_name);
+      assert(it != var_scope->name2id_.end());
+      auto* var = var_scope->var_list_[it->second];
       if (var == nullptr) {
         continue;
       }
