@@ -18,6 +18,7 @@ import unittest
 
 import paddle
 import paddle.fluid.core as core
+from paddle.cost_model import CostModel
 
 paddle.enable_static()
 
@@ -50,6 +51,18 @@ class TestCostModel(unittest.TestCase):
         self.assertGreater(mean_op_time, 0)
         self.assertGreaterEqual(cost_data.get_whole_time_ms(),
                                 fc_op_time + mean_op_time)
+
+    def test_static_op_benchmark_cost_model(self):
+        op_name = "abs"
+        cost_model = CostModel()
+        # init static data
+        cost_model.static_cost_data()
+        op_name = "abs"
+        abs_op_time = cost_model.get_static_op_time(op_name)
+        self.assertGreater(abs_op_time, 0)
+        conv2d_op_time = cost_model.get_static_op_time("conv2d")
+        self.assertGreater(conv2d_op_time, 0)
+        print("in test cost model, abs_op_time:", abs_op_time)
 
 
 if __name__ == '__main__':
