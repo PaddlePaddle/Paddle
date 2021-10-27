@@ -54,7 +54,10 @@ class FusedMultiHeadAttention(Layer):
             If it is set to False, this layer will not have trainable bias parameter.
             See usage for details in :code:`ParamAttr` .
     Examples:
+
         .. code-block:: python
+
+            # required: gpu
             import paddle
             # input: [batch_size, sequence_length, embed_dim]
             query = paddle.rand((2, 4, 128))
