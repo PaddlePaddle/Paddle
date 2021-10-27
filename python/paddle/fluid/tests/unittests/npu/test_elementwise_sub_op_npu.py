@@ -95,6 +95,11 @@ class TestElementwiseSubOpInt32(TestElementwiseSubOp):
         self.dtype = np.int32
 
 
+class TestElementwiseSubOpInt64(TestElementwiseSubOp):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 class TestSubtractAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):

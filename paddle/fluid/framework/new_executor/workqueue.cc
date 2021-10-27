@@ -49,6 +49,11 @@ class WorkQueueImpl : public WorkQueue {
     queue_->AddTask(std::move(fn));
   }
 
+  void Cancel() override {
+    queue_->Cancel();
+    queue_->WaitThreadsExit();
+  }
+
   size_t NumThreads() const override { return queue_->NumThreads(); }
 
  private:
@@ -68,6 +73,8 @@ class WorkQueueGroupImpl : public WorkQueueGroup {
   size_t QueueNumThreads(size_t queue_idx) const override;
 
   size_t QueueGroupNumThreads() const override;
+
+  void Cancel() override;
 
  private:
   std::vector<NonblockingThreadPool*> queues_;
@@ -134,6 +141,15 @@ size_t WorkQueueGroupImpl::QueueGroupNumThreads() const {
     total_num += queue->NumThreads();
   }
   return total_num;
+}
+
+void WorkQueueGroupImpl::Cancel() {
+  for (auto queue : queues_) {
+    queue->Cancel();
+  }
+  for (auto queue : queues_) {
+    queue->WaitThreadsExit();
+  }
 }
 
 }  // namespace
