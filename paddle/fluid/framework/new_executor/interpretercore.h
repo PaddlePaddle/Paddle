@@ -46,9 +46,9 @@ class InterpreterCore {
                   const std::vector<std::string>& fetch_names);
 
   paddle::framework::FetchList Run(
-      const std::vector<framework::Tensor>& feed_tensors);
+      const std::vector<framework::LoDTensor>& feed_tensors);
 
-  const CostInfo& DryRun(const std::vector<framework::Tensor>& feed_tensors);
+  const CostInfo& DryRun(const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
   void Convert();
@@ -65,7 +65,7 @@ class InterpreterCore {
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
-  void DryRunPrepare(const std::vector<framework::Tensor>& feed_tensors);
+  void DryRunPrepare(const std::vector<framework::LoDTensor>& feed_tensors);
 
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list);
 

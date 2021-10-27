@@ -2038,7 +2038,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2058,10 +2058,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](StandaloneExecutor &self,
-              const std::unordered_map<std::string, framework::Tensor>
+              const std::unordered_map<std::string, framework::LoDTensor>
                   &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2079,7 +2079,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
