@@ -31,7 +31,11 @@ using paddle::framework::GradVarName;
 using paddle::framework::DDim;
 
 static DDim GetDimForInput(const ExecutionContext& ctx,
-                           std::string input_name) {
+                           const char input_letter) {
+  PADDLE_ENFORCE((input_letter == 'X' || input_letter == 'Y'),
+                 paddle::platform::errors::InvalidArgument(
+                     "Input name should be a single character 'X' or 'Y'."));
+  std::string input_name{input_letter};
   auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.Input<Tensor>(input_name)->dims();
@@ -59,70 +63,28 @@ static DDim GetDimForInput(const ExecutionContext& ctx,
   return dim;
 }
 
-// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
-// original x_dim is returned.
-static paddle::framework::DDim RowMatrixDimsFromVector(
-    const paddle::framework::DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
-}
-
-// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
-// original y_dim is returned.
-static paddle::framework::DDim ColumnMatrixDimsFromVector(
-    const paddle::framework::DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
-}
-
-std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
-                               const std::vector<int>& axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(in_rank, axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank, axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
 std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
-                                     std::string input_name) {
-  PADDLE_ENFORCE_EQ(
-      input_name.size(), 1,
-      paddle::platform::errors::InvalidArgument(
-          "Input name should be single character uppercase string X or Y"));
+                                     const char input_letter) {
+  PADDLE_ENFORCE((input_letter == 'X' || input_letter == 'Y'),
+                 paddle::platform::errors::InvalidArgument(
+                     "Input name should be a single character 'X' or 'Y'."));
+  std::string input_name{input_letter};
   auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-  auto input_dims = ctx.Input<Tensor>(input_name)->dims();
+  auto input_dims = ctx.Input<Tensor>(std::string{input_name})->dims();
   auto new_dims = input_dims;
   if (!shape.empty() && !axis.empty()) {
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
-  auto& MatrixDimsFromVector =
-      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  input_name[0] = std::tolower(input_name[0]);
+  auto& MatrixDimsFromVector = input_letter == 'X'
+                                   ? paddle::operators::RowMatrixFromVector
+                                   : paddle::operators::ColumnMatrixFromVector;
   paddle::operators::math::MatDescriptor mat_dim =
       paddle::operators::math::CreateMatrixDescriptor(
           MatrixDimsFromVector(new_dims), 0,
-          ctx.Attr<bool>(std::string("trans_") + input_name));
+          ctx.Attr<bool>(std::string("trans_") +
+                         static_cast<char>(std::tolower(input_letter))));
 
   std::vector<int64_t> strides;
   if (!shape.empty()) {
@@ -132,7 +94,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
       strides.insert(strides.begin(),
                      strides.front() * static_cast<int64_t>(shape2[i]));
     }
-    strides = Transpose(strides, axis);
+    strides = paddle::operators::Transpose(strides, axis);
     if (shape.size() == 2)
       strides.insert(strides.begin(),
                      static_cast<int64_t>(shape[0] * shape[1]));
@@ -151,8 +113,8 @@ class MatMulV2MKLDNNHandler
                         const std::vector<int64_t>& x_org_dims, bool trans_x,
                         const std::vector<int64_t>& y_org_dims, bool trans_y,
                         bool is_output_fused,
-                        const std::vector<int64_t>& strides_x,
-                        const std::vector<int64_t>& strides_y)
+                        const std::vector<int64_t>& x_strides_override,
+                        const std::vector<int64_t>& y_strides_override)
       : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
                                                                    cpu_place) {
     // M X K * K X N
@@ -179,8 +141,8 @@ class MatMulV2MKLDNNHandler
     y_strides.reserve(x_dims.size());
     out_strides.reserve(x_dims.size());
 
-    if (!strides_x.empty()) {
-      x_strides = strides_x;
+    if (!x_strides_override.empty()) {
+      x_strides = x_strides_override;
     } else {
       if (!trans_x) {
         x_strides.insert(x_strides.end(), {M * K, K, 1});
@@ -189,8 +151,8 @@ class MatMulV2MKLDNNHandler
       }
     }
 
-    if (!strides_y.empty()) {
-      y_strides = strides_y;
+    if (!y_strides_override.empty()) {
+      y_strides = y_strides_override;
     } else {
       if (!trans_y) {
         y_strides.insert(y_strides.end(), {N * K, N, 1});
@@ -205,10 +167,10 @@ class MatMulV2MKLDNNHandler
 
     for (int i = x_dims.size() - 4; i >= 0; --i) {
       out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-      if (strides_x.empty()) {
+      if (x_strides_override.empty()) {
         x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
       }
-      if (strides_y.empty()) {
+      if (y_strides_override.empty()) {
         y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
       }
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
@@ -265,12 +227,11 @@ class MatMulV2MKLDNNKernel
                      const Tensor* y, std::vector<int64_t>& y_dims,
                      bool trans_y, Tensor* out, std::vector<int64_t>& out_dims,
                      int execution_number = 0) const {
-    std::vector<int64_t> strides_x, strides_y;
-    strides_x = GetInputStrides(ctx, "X");
-    strides_y = GetInputStrides(ctx, "Y");
-    MatMulV2MKLDNNHandler<T> handler(onednn_engine, ctx.GetPlace(), x_dims,
-                                     trans_x, y_dims, trans_y,
-                                     IsOutputFused(ctx), strides_x, strides_y);
+    std::vector<int64_t> x_strides_override = GetInputStrides(ctx, 'X');
+    std::vector<int64_t> y_strides_override = GetInputStrides(ctx, 'Y');
+    MatMulV2MKLDNNHandler<T> handler(
+        onednn_engine, ctx.GetPlace(), x_dims, trans_x, y_dims, trans_y,
+        IsOutputFused(ctx), x_strides_override, y_strides_override);
 
     const auto src_memory_p = handler.AcquireSrcMemory(x);
     const auto weights_memory_p = handler.AcquireWeightsMemory(y);
@@ -354,8 +315,8 @@ class MatMulV2MKLDNNKernel
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
-    auto x_dims = vectorize(GetDimForInput(ctx, "X"));
-    auto y_dims = vectorize(GetDimForInput(ctx, "Y"));
+    auto x_dims = vectorize(GetDimForInput(ctx, 'X'));
+    auto y_dims = vectorize(GetDimForInput(ctx, 'Y'));
     auto out_dims = vectorize(out->dims());
 
     int ndims = std::max(x_dims.size(), y_dims.size());

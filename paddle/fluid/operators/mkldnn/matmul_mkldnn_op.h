@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -23,6 +25,19 @@ namespace operators {
 using platform::MKLDNNDeviceContext;
 using framework::ExecutionContext;
 using Tensor = framework::Tensor;
+
+// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+// original x_dim is returned.
+paddle::framework::DDim RowMatrixFromVector(
+    const paddle::framework::DDim& x_dim);
+
+// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
+// original y_dim is returned.
+paddle::framework::DDim ColumnMatrixFromVector(
+    const paddle::framework::DDim& y_dim);
+
+std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
+                               const std::vector<int>& axis);
 
 template <typename T>
 class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {

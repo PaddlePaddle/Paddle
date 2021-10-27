@@ -20,11 +20,21 @@ namespace paddle {
 namespace operators {
 
 static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
-                                      std::string input_name) {
+                                      const char input_letter) {
+  PADDLE_ENFORCE((input_letter == 'X' || input_letter == 'Y'),
+                 paddle::platform::errors::InvalidArgument(
+                     "Input name should be a single character 'X' or 'Y'."));
+  std::string input_name{input_letter};
   auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
   auto axis =
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.GetInputDim(input_name);
+
+  PADDLE_ENFORCE_GT(dim.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
         shape.size(), 2,
@@ -60,9 +70,9 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
     std::vector<int64_t> dims_x =
-        paddle::framework::vectorize(GetDimForInput(*ctx, "X"));
+        paddle::framework::vectorize(GetDimForInput(*ctx, 'X'));
     std::vector<int64_t> dims_y =
-        paddle::framework::vectorize(GetDimForInput(*ctx, "Y"));
+        paddle::framework::vectorize(GetDimForInput(*ctx, 'Y'));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(ndims_x, 0,

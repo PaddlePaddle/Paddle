@@ -325,7 +325,11 @@ class MatMulGradKernel : public framework::OpKernel<T> {
 };
 
 static framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
-                                      std::string input_name) {
+                                      const char input_letter) {
+  PADDLE_ENFORCE((input_letter == 'X' || input_letter == 'Y'),
+                 paddle::platform::errors::InvalidArgument(
+                     "Input name should be a single character 'X' or 'Y'."));
+  std::string input_name{input_letter};
   auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
   auto axis =
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
@@ -546,8 +550,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
-    auto dim_x = GetDimForInput(*context, "X");
-    auto dim_y = GetDimForInput(*context, "Y");
+    auto dim_x = GetDimForInput(*context, 'X');
+    auto dim_y = GetDimForInput(*context, 'Y');
     auto mat_dim_x =
         math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
                                      context->Attrs().Get<bool>("transpose_X"));
