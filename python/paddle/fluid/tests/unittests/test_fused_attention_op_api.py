@@ -107,7 +107,7 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
 
     q = qkv[0:1, ::]
     q = q.reshape(batch_size, num_head, seq_len, head_dim)
-    k = qkv[1:2, ::]  #[1, batch_size, num_head, seq_len, head_dim] 
+    k = qkv[1:2, ::]  #[1, batch_size, num_head, seq_len, head_dim]
     k = k.reshape(batch_size, num_head, seq_len, head_dim)
     v = qkv[2::]
     v = v.reshape(batch_size, num_head, seq_len, head_dim)
