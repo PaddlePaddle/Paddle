@@ -18,7 +18,7 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest, _set_use_system_allocator
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -62,9 +62,6 @@ class TestArgsortOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
-
-    def init_kernel_type(self):
-        self.use_mkldnn = False
 
     def init_inputshape(self):
         self.input_shape = (2, 2, 2, 3, 3)
@@ -158,7 +155,8 @@ class TestArgsortOpAxis0NPUFP32(TestArgsortOp):
         self.__class__.use_npu = True
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ["X"], "Out")
+        self.check_grad_with_place(
+            self.place, ["X"], "Out", max_relative_error=0.03)
 
 
 class TestArgsortOpAxis1NPUFP32(TestArgsortOpAxis0NPUFP32):
