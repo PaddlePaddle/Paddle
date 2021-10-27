@@ -120,7 +120,8 @@ class ProcessMesh(object):
         return len(self._topology)
 
     def __eq__(self, other):
-        assert other and isinstance(other, ProcessMesh)
+        if not isinstance(other, ProcessMesh):
+            return False
         if self.topology != other.topology or self.processes != other.processes:
             return False
         return True

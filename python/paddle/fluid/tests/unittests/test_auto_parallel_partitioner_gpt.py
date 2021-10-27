@@ -67,8 +67,12 @@ def is_valid_completed_program(dist_context, program):
         if op_dist_attrs.process_mesh == None:
             return False
 
-        if None in op_dist_attrs._dims_mapping.values():
-            return False
+        for tensor_dist_attr in op_dist_attrs.inputs_dist_attrs.values():
+            if None == tensor_dist_attr.dims_mapping:
+                return False
+        for tensor_dist_attr in op_dist_attrs.outputs_dist_attrs.values():
+            if None == tensor_dist_attr.dims_mapping:
+                return False
 
     for var in vars_:
         var_dist_attrs = dist_context.get_tensor_dist_attr_for_program(var)
@@ -76,7 +80,7 @@ def is_valid_completed_program(dist_context, program):
             return False
         elif var_dist_attrs.process_mesh == None:
             return False
-        elif var_dist_attrs.get_dims_mapping == None:
+        elif var_dist_attrs.dims_mapping == None:
             return False
 
     return True

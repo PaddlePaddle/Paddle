@@ -168,7 +168,7 @@ class TestMLPReshard(unittest.TestCase):
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
-        print_program_with_dist_attr(dist_main_prog, dist_context)
+        # print_program_with_dist_attr(dist_main_prog, dist_context)
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 
