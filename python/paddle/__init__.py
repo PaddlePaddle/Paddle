@@ -101,6 +101,7 @@ from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
+from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
 from .tensor.logic import is_empty  # noqa: F401
