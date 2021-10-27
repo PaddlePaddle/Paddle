@@ -14,10 +14,31 @@
 
 #include "paddle/fluid/operators/cinn_launch_op_helper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 namespace details {
+
+using LoDTensor = framework::LoDTensor;
+using Scope = framework::Scope;
+using Name2ConstTensor = std::map<std::string, const LoDTensor*>;
+
+using CinnTensor = cinn::hlir::framework::Tensor;
+using CinnScope = cinn::hlir::framework::Scope;
+using Name2CinnTensor = std::unordered_map<std::string, CinnTensor>;
+
+const cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return cinn::common::DefaultHostTarget();
+  } else if (platform::is_gpu_place(place)) {
+    return cinn::common::DefaultNVGPUTarget();
+  }
+
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "CINN is not supported on current place:%s", place));
+  return cinn::common::UnkTarget();
+}
 
 Name2ConstTensor GetConstTensors(
     const Scope& scope, const std::vector<std::string>& variable_names) {
@@ -161,11 +182,10 @@ void InitializeTempVar(const std::vector<std::string>& variable_names,
     auto* var_ptr = temp_scope->Var(var_name);
     auto* paddle_tensor = var_ptr->GetMutable<LoDTensor>();
     auto compiled_ddim = framework::make_ddim(cinn_tensor->shape().data());
-    paddle_tensor->Resize(compiled_ddim);
     // TODO(CtfGo): support mutable corresponding c++ type with the compilation
     // type
-    paddle_tensor->mutable_data<float>(place);
-    VLOG(2) << "Add temporary variable(%s), dimension is [%s]." << var_name
+    paddle_tensor->mutable_data<float>(compiled_ddim, place);
+    VLOG(2) << "Add temporary variable(" << var_name << "), dimension is [%s]"
             << compiled_ddim;
   }
 }

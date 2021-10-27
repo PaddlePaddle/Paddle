@@ -23,7 +23,21 @@ namespace paddle {
 namespace operators {
 namespace details {
 
+using LoDTensor = framework::LoDTensor;
+using Scope = framework::Scope;
+
 using CinnShape = cinn::hlir::framework::Shape;
+using CinnTensor = cinn::hlir::framework::Tensor;
+using CinnScope = cinn::hlir::framework::Scope;
+
+TEST(CinnLaunchOpHelperTest, TestPlaceToCinnTarget) {
+  ASSERT_EQ(PlaceToCinnTarget(platform::CPUPlace()),
+            cinn::common::DefaultHostTarget());
+  ASSERT_EQ(PlaceToCinnTarget(platform::CUDAPlace(0)),
+            cinn::common::DefaultNVGPUTarget());
+  ASSERT_THROW(PlaceToCinnTarget(platform::XPUPlace()),
+               paddle::platform::EnforceNotMet);
+}
 
 TEST(CinnLaunchOpHelperTest, TestGetConstTensors) {
   // build test data

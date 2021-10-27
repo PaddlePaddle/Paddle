@@ -12,11 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdlib.h>
+#include <random>
+#include <string>
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/init.h"
 
 USE_NO_KERNEL_OP(cinn_launch);
 USE_OP(elementwise_add);
@@ -24,6 +30,7 @@ USE_OP(elementwise_add);
 namespace paddle {
 namespace operators {
 
+using framework::LoDTensor;
 using framework::ir::Graph;
 using framework::ir::Node;
 using framework::paddle2cinn::CinnCompiler;
@@ -70,61 +77,95 @@ std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
   return g;
 }
 
+void CreateInputVariablesWithRandomData(
+    const std::vector<std::string>& variable_names,
+    const framework::DDim& common_ddim, framework::Scope* scope) {
+  std::random_device seed;
+  std::default_random_engine engine(seed());
+  std::uniform_real_distribution<float> dist(0.f, 2.f);
+
+  for (const auto& var_name : variable_names) {
+    auto* tensor = scope->Var(var_name)->GetMutable<LoDTensor>();
+    auto* data = tensor->mutable_data<float>(common_ddim, platform::CPUPlace());
+    for (auto i = 0; i < tensor->numel(); ++i) {
+      data[i] = dist(engine);
+    }
+  }
+}
+
+void CopyInputDataToPlace(const framework::Scope& scope,
+                          const platform::Place& dst_place,
+                          framework::Scope* dst_scope) {
+  for (const auto& var_name : scope.LocalVarNames()) {
+    const auto& src_tensor = scope.GetVar(var_name)->Get<LoDTensor>();
+    auto* dst_tensor = dst_scope->Var(var_name)->GetMutable<LoDTensor>();
+    TensorCopySync(src_tensor, dst_place, dst_tensor);
+  }
+}
+
 TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
-  auto place = platform::CPUPlace();
-  framework::Scope scope;
-
-  // Step 1: Prepare test data
-  const auto dimension_len = 5;
-  const auto common_ddim = framework::make_ddim({dimension_len});
-  auto* x_var = scope.Var("test_x");
-  auto* x_tensor = x_var->GetMutable<framework::LoDTensor>();
-  auto* x_data = x_tensor->mutable_data<float>(common_ddim, place);
-  for (auto i = 0; i < dimension_len; ++i) {
-    x_data[i] = i;
-  }
-
-  auto* y_var = scope.Var("test_y");
-  auto* y_tensor = y_var->GetMutable<framework::LoDTensor>();
-  auto* y_data = y_tensor->mutable_data<float>(common_ddim, place);
-  for (auto i = 0; i < dimension_len; ++i) {
-    y_data[i] = 2 * i;
-  }
-
-  auto* test_out_var = scope.Var("test_out");
-  test_out_var->GetMutable<framework::LoDTensor>();
-  auto* expected_out_var = scope.Var("expected_out");
-  expected_out_var->GetMutable<framework::LoDTensor>();
-
-  // Step 2: Cache test graph into CinnCompiler
+  paddle::framework::InitDevices();
+  // cache test graph into CinnCompiler
+  const auto& test_out_name = "test_out";
+  const auto& expected_out_name = "expected_out";
   auto compilation_key = CinnCompiler::GetInstance()->AddGraph(
-      CreateOnlyElementwiseAddGraph("test_x", "test_y", "test_out"));
-  // Step 3: Create cinn_launch_op and elementwise_add op, then run ops
+      CreateOnlyElementwiseAddGraph("test_x", "test_y", test_out_name));
+
+  // create cinn_launch_op and elementwise_add op
   auto cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
-      "cinn_launch", {{"X", {"test_x", "test_y"}}}, {{"Out", {"test_out"}}},
+      "cinn_launch", {{"X", {"test_x", "test_y"}}}, {{"Out", {test_out_name}}},
       {{"compilation_key", compilation_key}});
   auto elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
       "elementwise_add", {{"X", {"test_x"}}, {"Y", {"test_y"}}},
-      {{"Out", {"expected_out"}}}, {{}});
+      {{"Out", {expected_out_name}}}, {{}});
 
-  cinn_launch_op->Run(scope, place);
-  elementwise_add_op->Run(scope, place);
+  // prepare input data
+  framework::Scope init_scope;
+  CreateInputVariablesWithRandomData({"test_x", "test_y"}, {10, 20},
+                                     &init_scope);
 
-  // Step 4. Compare computation results.
-  const auto& test_out_tensor = test_out_var->Get<framework::LoDTensor>();
-  const auto& expected_out_tensor =
-      expected_out_var->Get<framework::LoDTensor>();
-  ASSERT_TRUE(test_out_tensor.IsInitialized());
-  ASSERT_TRUE(expected_out_tensor.IsInitialized());
-  ASSERT_EQ(test_out_tensor.dims(), common_ddim);
-  ASSERT_EQ(test_out_tensor.dims(), expected_out_tensor.dims());
-  // TODO(CtfGo): remove comment to check accuracy
-  // const auto* test_out_data = test_out_tensor.data<float>();
-  // const auto* excepted_out_data = expected_out_tensor.data<float>();
-  // for (auto i = 0; i < dimension_len; ++i) {
-  //   EXPECT_FLOAT_EQ(test_out_data[i], excepted_out_data[i]);
-  //   EXPECT_FLOAT_EQ(test_out_data[i], i * 3);
-  // }
+  // Run ops and check the computation results
+  auto run_and_check_fn = [&](const platform::Place& place) {
+    framework::Scope scope;
+    CopyInputDataToPlace(init_scope, place, &scope);
+    scope.Var(test_out_name)->GetMutable<LoDTensor>();
+    scope.Var(expected_out_name)->GetMutable<LoDTensor>();
+
+    cinn_launch_op->Run(scope, place);
+    elementwise_add_op->Run(scope, place);
+
+    LoDTensor test_out, expected_out;
+    if (platform::is_cpu_place(place)) {
+      test_out.ShareDataWith(scope.Var(test_out_name)->Get<LoDTensor>());
+      expected_out.ShareDataWith(
+          scope.Var(expected_out_name)->Get<LoDTensor>());
+    } else {
+      TensorCopySync(scope.Var(test_out_name)->Get<LoDTensor>(),
+                     platform::CPUPlace(), &test_out);
+      TensorCopySync(scope.Var(expected_out_name)->Get<LoDTensor>(),
+                     platform::CPUPlace(), &expected_out);
+    }
+
+    ASSERT_TRUE(test_out.IsInitialized());
+    ASSERT_TRUE(expected_out.IsInitialized());
+    ASSERT_EQ(test_out.dims(), expected_out.dims());
+    const auto* test_data = test_out.data<float>();
+    const auto* excepted_data = expected_out.data<float>();
+    for (auto i = 0; i < expected_out.numel(); ++i) {
+      EXPECT_FLOAT_EQ(test_data[i], excepted_data[i]);
+    }
+  };
+
+  LOG(INFO) << "Check compute result on cpu";
+  // TODO(CtfGo): remove these environment variables
+  // restrict after cinn fix muti-thread bug on cpu
+  putenv("OMP_NUM_THREADS=1");
+  putenv("MKL_NUM_THREADS=1");
+  run_and_check_fn(platform::CPUPlace());
+
+  // gpu
+  LOG(INFO) << "Check compute result on gpu";
+  run_and_check_fn(platform::CUDAPlace(0));
 }
 
 }  // namespace operators

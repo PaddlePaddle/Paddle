@@ -31,6 +31,11 @@ namespace operators {
 static constexpr char kX[] = "X";
 static constexpr char kOutputs[] = "Out";
 static constexpr char kCompilationKey[] = "compilation_key";
+
+using LoDTensor = framework::LoDTensor;
+using Name2ConstTensor = std::map<std::string, const LoDTensor*>;
+using CinnTensor = cinn::hlir::framework::Tensor;
+using Name2CinnTensor = std::unordered_map<std::string, CinnTensor>;
 using framework::paddle2cinn::CinnCompiler;
 
 class CinnLaunchOp : public framework::OperatorBase {
@@ -50,21 +55,18 @@ class CinnLaunchOp : public framework::OperatorBase {
                           "No Attribute(%s) found for CinnLaunchOp operator.",
                           kCompilationKey));
     const auto& compilation_key = Attr<std::string>(kCompilationKey);
-    VLOG(2) << "CinnLaunchOp RunImpl start"
-            << ", inputs:" << paddle::string::join_strings(Inputs(kX), ',')
-            << ", outputs:"
-            << paddle::string::join_strings(Outputs(kOutputs), ',')
-            << ", compilation_key:" << compilation_key;
+    VLOG(2) << "CinnLaunchOp compilation_key:" << compilation_key;
 
     const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
     OP_INOUT_CHECK(HasInputs(kX), "Input", kX, "CinnLaunchOp");
-    auto input_tensors = details::GetConstTensors(scope, Inputs(kX));
+    Name2ConstTensor input_tensors =
+        details::GetConstTensors(scope, Inputs(kX));
 
     // Step 2. Get compilation result of the graph
-    auto target = ::cinn::common::DefaultNVGPUTarget();
+    auto target = details::PlaceToCinnTarget(place);
     const auto& cinn_compiled_object =
         CinnCompiler::GetInstance()->Compile(graph, input_tensors, target);
-    VLOG(2) << "CinnLaunchOp compiled done.";
+    VLOG(2) << "CinnLaunchOp compile graph done on " << place;
 
     const auto& cinn_runtime_program = cinn_compiled_object.runtime_program;
     const auto& compiled_scope = *(cinn_compiled_object.scope.get());
@@ -76,17 +78,18 @@ class CinnLaunchOp : public framework::OperatorBase {
     std::map<std::string, cinn_pod_value_t> name2argument;
     std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers;
     // prepare input variables
-    auto input_compiled_tensors = details::GetCompiledTensors(
+    Name2CinnTensor input_compiled_tensors = details::GetCompiledTensors(
         Inputs(kX), compiled_scope, paddle2cinn_varmap);
     details::CheckTensorEquivalent(input_tensors, input_compiled_tensors);
     details::AppendExecutionArguments(scope, Inputs(kX), paddle2cinn_varmap,
                                       &name2argument, &hold_buffers);
 
     // prepare output variables
-    auto output_tensors = details::GetConstTensors(scope, Outputs(kOutputs));
-    auto output_compiled_tensors = details::GetCompiledTensors(
+    Name2CinnTensor output_compiled_tensors = details::GetCompiledTensors(
         Outputs(kOutputs), compiled_scope, paddle2cinn_varmap);
     details::InitializeOutputVar(scope, place, output_compiled_tensors);
+    Name2ConstTensor output_tensors =
+        details::GetConstTensors(scope, Outputs(kOutputs));
     details::CheckTensorEquivalent(output_tensors, output_compiled_tensors);
     details::AppendExecutionArguments(scope, Outputs(kOutputs),
                                       paddle2cinn_varmap, &name2argument,
@@ -105,8 +108,7 @@ class CinnLaunchOp : public framework::OperatorBase {
     }
 
     // Step 4. Launch CINN to execute the compilation runtime program
-    // TODO(CtfGo): remove comment after fix compile bug
-    // cinn_runtime_program->Execute(&name2argument);
+    cinn_runtime_program->Execute(&name2argument);
     VLOG(2) << "CinnLaunchOp launch runtime_program execution done.";
   }
 };
@@ -135,7 +137,7 @@ to compile a graph and execute the compiled object.
 Both input and output of this operator are a set of variables
 which are input and output of the graph respectively that will be
 compiled and executed in this operator.
-In addition, there is a attribute named 'compilation_key' should be
+In addition, there is an attribute named 'compilation_key' should be
 set necessarily to get corresponding ir::Graph object of the graph
 or its computation result.
 
