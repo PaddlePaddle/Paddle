@@ -56,15 +56,15 @@ inline void DealCeilMode(const nvinfer1::Dims &input_shape,
       1;
 
   if (floor_d_output_size != ceil_d_output_size) {
-    post_pad->c() = strides[0] - 1;
+    post_pad->d[0] = strides[0] - 1;
   }
 
   if (floor_h_output_size != ceil_h_output_size) {
-    post_pad->h() = strides[1] - 1;
+    post_pad->d[1] = strides[1] - 1;
   }
 
   if (floor_w_output_size != ceil_w_output_size) {
-    post_pad->w() = strides[2] - 1;
+    post_pad->d[2] = strides[2] - 1;
   }
 }
 
