@@ -191,7 +191,7 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
     name2var[item.first] = std::move(vars);
     name2id[item.first] = std::move(ids);
   }
-  return {name2var, name2id};
+  return std::make_tuple(name2var, name2id);
 }
 
 void apply_device_guard(const OperatorBase* op_base,
