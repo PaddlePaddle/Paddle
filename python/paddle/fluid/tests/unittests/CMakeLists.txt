@@ -32,6 +32,7 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_pipeline_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_tensor_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
+list(APPEND DIST_TEST_OPS test_auto_parallel_parallelizer)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mp_layers)
 list(APPEND DIST_TEST_OPS test_hybrid_parallel_inference_helper)
 list(APPEND DIST_TEST_OPS test_parallel_class_center_sample)
@@ -91,9 +92,16 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
+
+if(NOT WITH_GPU)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
+endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
@@ -198,8 +206,15 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
+LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo) # NOTE: @xiongkun03, cpu is too slow, fix it in next PR
+
 if (NOT WITH_GLOO)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
+
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_unused_variables_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_over_height_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_diff_length_gloo)
 endif()
 
 if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
@@ -220,6 +235,7 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_pipeline_parallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_tensor_parallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
+    list(REMOVE_ITEM TEST_OPS test_auto_parallel_parallelizer)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mp_layers)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
     LIST(REMOVE_ITEM TEST_OPS test_mixed_precision)
@@ -234,6 +250,7 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial)
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp)
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp)
+    LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model)
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard)
 elseif(WITH_GPU)
     if (${CUDNN_VERSION} VERSION_LESS 7100)
@@ -363,14 +380,14 @@ function(bash_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -405,14 +422,14 @@ function(parallel_bash_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
             bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -485,6 +502,10 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
+endif()
+
+if (NOT WITH_GLOO)
+    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 endif()
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
@@ -608,6 +629,7 @@ if(WITH_DISTRIBUTE)
             py_test_modules(test_auto_parallel_reshard_serial MODULES test_auto_parallel_reshard_serial ENVS ${dist_ENVS})
             py_test_modules(test_auto_parallel_reshard_mppp MODULES test_auto_parallel_reshard_mppp ENVS ${dist_ENVS})
             py_test_modules(test_auto_parallel_reshard_dpmppp MODULES test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
+            py_test_modules(test_auto_parallel_cost_model MODULES test_auto_parallel_cost_model ENVS ${dist_ENVS})
         endif(NOT WIN32)
     endif(NOT APPLE)
     if(WITH_DGC)
@@ -649,6 +671,9 @@ if(WITH_DISTRIBUTE)
         endforeach(TEST_OP)
         # solve it later.
         bash_test_modules(test_fleet_launch_ps START_BASH test_fleet_launch_ps.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
+        if (WITH_GLOO)
+            bash_test_modules(test_cpuonly_launch START_BASH test_cpuonly_launch.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
+        endif()
         bash_test_modules(test_new_group START_BASH test_new_group.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}+20" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
     endif(NOT APPLE)
 endif()
@@ -841,7 +866,7 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT 
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fetch_unmerged PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 120)
+set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 150)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
@@ -999,6 +1024,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
     set_tests_properties(test_parallel_dygraph_pipeline_parallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT 200)
     set_tests_properties(test_parallel_dygraph_sharding_parallel PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT 120)
     set_tests_properties(test_hybrid_parallel_inference_helper PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_class_center_sample PROPERTIES TIMEOUT 120)
@@ -1064,3 +1090,8 @@ set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_tensordot PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
+if (WITH_GLOO)
+    set_tests_properties(test_parallel_dygraph_unused_variables_gloo PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_parallel_dygraph_sparse_embedding_gloo PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height_gloo PROPERTIES TIMEOUT 120)
+endif()

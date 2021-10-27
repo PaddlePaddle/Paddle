@@ -28,9 +28,12 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
-from .squeezenet import SqueezeNet  # noqa: F401
-from .squeezenet import squeezenet1_0  # noqa: F401
-from .squeezenet import squeezenet1_1  # noqa: F401
+from .densenet import DenseNet  # noqa: F401
+from .densenet import densenet121  # noqa: F401
+from .densenet import densenet161  # noqa: F401
+from .densenet import densenet169  # noqa: F401
+from .densenet import densenet201  # noqa: F401
+from .densenet import densenet264  # noqa: F401
 from .alexnet import AlexNet  # noqa: F401
 from .alexnet import alexnet  # noqa: F401
 from .resnext import ResNeXt  # noqa: F401
@@ -40,6 +43,11 @@ from .resnext import resnext101_32x4d  # noqa: F401
 from .resnext import resnext101_64x4d  # noqa: F401
 from .resnext import resnext152_32x4d  # noqa: F401
 from .resnext import resnext152_64x4d  # noqa: F401
+from .inceptionv3 import InceptionV3  # noqa: F401
+from .inceptionv3 import inception_v3  # noqa: F401
+from .squeezenet import SqueezeNet  # noqa: F401
+from .squeezenet import squeezenet1_0  # noqa: F401
+from .squeezenet import squeezenet1_1  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -58,9 +66,12 @@ __all__ = [ #noqa
     'MobileNetV2',
     'mobilenet_v2',
     'LeNet',
-    'SqueezeNet',
-    'squeezenet1_0',
-    'squeezenet1_1',
+    'DenseNet',
+    'densenet121',
+    'densenet161',
+    'densenet169',
+    'densenet201',
+    'densenet264',
     'AlexNet',
     'alexnet',
     'ResNeXt',
@@ -69,5 +80,10 @@ __all__ = [ #noqa
     'resnext101_32x4d',
     'resnext101_64x4d',
     'resnext152_32x4d',
-    'resnext152_64x4d'
+    'resnext152_64x4d',
+    'InceptionV3',
+    'inception_v3',
+    'SqueezeNet',
+    'squeezenet1_0',
+    'squeezenet1_1',
 ]
