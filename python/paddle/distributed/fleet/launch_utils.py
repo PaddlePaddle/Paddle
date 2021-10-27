@@ -671,6 +671,35 @@ def get_xpus(xpus):
     return res_xpus
 
 
+def get_npus(npus):
+    if npus is None:
+        npus_num = fluid.core.get_npu_device_count()
+        res_npus = [str(x) for x in range(0, npus_num)]
+    else:
+        npu_visible_devices = os.getenv("NPU_VISIBLE_DEVICES")
+        if npu_visible_devices is None or npu_visible_devices == "":
+            res_npus = [x.strip() for x in npus.split(',')]
+        else:
+            # change npus into relative values
+            # e.g. NPU_VISIBLE_DEVICES=4,5,6,7; args.npus=4,5,6,7;
+            # therefore npus=0,1,2,3
+            npu_visible_devices_list = npu_visible_devices.split(',')
+            for x in npus.split(','):
+                assert x in npu_visible_devices_list, "Can't find "\
+                    "your npus %s in NPU_VISIBLE_DEVICES[%s]."\
+                    % (x, npu_visible_devices)
+            res_npus = [
+                npu_visible_devices_list.index(x.strip())
+                for x in npus.split(',')
+            ]
+            logger.info("Change selected_npus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "NPU_VISIBLE_DEVICES:{}".format(
+                            npus, res_npus, npu_visible_devices_list))
+
+    return res_npus
+
+
 def get_device_mode(backend):
     if backend == 'heter':
         if fluid.core.is_compiled_with_cuda() and \
@@ -724,7 +753,17 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.ASCEND_NPU:
-        devices_per_proc = None
+        npus = get_npus(args.npus)
+        if args.nproc_per_node is not None:
+            assert (len(npus) % int(args.nproc_per_node)) ==0, \
+                "npus' number:{} mod args.nproc_per_node:{} must == 0".format(len(npus), args.nproc_per_node)
+
+            n = int(len(npus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                npus[i:i + n] for i in six.moves.range(0, len(npus), n)
+            ]
+        else:
+            devices_per_proc = npus
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:

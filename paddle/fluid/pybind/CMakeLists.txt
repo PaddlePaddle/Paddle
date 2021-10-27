@@ -32,6 +32,11 @@ if (WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
 endif()
 
+if (WITH_ASCEND_CL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+  set(PYBIND_DEPS ${PYBIND_DEPS} hccl_context)
+endif()
+
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
@@ -120,6 +125,10 @@ if(WITH_PYTHON)
   if(WITH_XPU_BKCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
   endif(WITH_XPU_BKCL)
+
+  if(WITH_ASCEND_CL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
+  endif(WITH_ASCEND_CL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})

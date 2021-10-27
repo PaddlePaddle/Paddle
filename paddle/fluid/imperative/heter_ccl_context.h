@@ -19,16 +19,14 @@
 
 #ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/imperative/nccl_context.h"
-#include "paddle/fluid/platform/cuda_resource_pool.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
-// to be added
+// TODO(liubo48)
 #ifdef PADDLE_WITH_BKCL
 #endif
 
-// to be added
 #ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/imperative/hccl_context.h"
 #endif
 
 #include "paddle/fluid/imperative/gloo_context.h"

@@ -144,6 +144,16 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
 
+    if fluid.core.is_compiled_with_npu():
+        base_group.add_argument(
+            "--npus",
+            type=str,
+            default=None,
+            help="It's for xpu training. For example: "
+            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
+        )
+        base_group.add_argument("--selected_npus", dest="npus")
+
     base_group.add_argument(
         "training_script",
         type=str,
@@ -267,10 +277,13 @@ def launch_collective(args):
         logger.debug("get cluster from cloud:{}".format(cluster))
     elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(
-            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-            device_mode=device_mode,
-            start_port=start_port)
+        # cluster, pod = ascend_utils.get_cloud_cluster(
+        #     rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+        #     device_mode=device_mode,
+        #     start_port=start_port)
+        # NOTE(liubo48): local test, not use cloud cluster for ascend now
+        cluster, pod = get_cluster_from_args(args, device_mode,
+                                             devices_per_proc)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,
@@ -285,6 +298,7 @@ def launch_collective(args):
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
     global_envs["PADDLE_GLOO_IFNAME"] = str(
         os.getenv("PADDLE_GLOO_IFNAME", "lo"))
+    global_envs["HCCL_WHITELIST_DISABLE"] = "1"
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
 
     procs = start_local_trainers(

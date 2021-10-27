@@ -264,18 +264,24 @@ def new_group(ranks=None, backend=None):
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy,
                                          place).init_with_ring_id(ring_id)
+            elif core.is_compiled_with_npu():
+                place = core.NPUPlace(genv.device_id)
+                core.HCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
             else:
-                assert False, ("no cuda device found")
+                assert False, ("no cuda or npu device found")
         else:
             return gp
 
-    # TODO(shenliang03): This is a temporary solution to solve the problem of 
-    # hang caused by cross-creation of new_group
-    tmp = paddle.to_tensor(
-        [1], dtype="int32") if in_dygraph_mode() else fill_constant(
-            [0], dtype="int32", value="1")
-    paddle.distributed.all_reduce(tmp, use_calc_stream=True)
-    paddle.distributed.wait(tmp)
+    if core.is_compiled_with_cuda():
+        # TODO(shenliang03): This is a temporary solution to solve the problem of
+        # hang caused by cross-creation of new_group
+        tmp = paddle.to_tensor(
+            [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+                [0], dtype="int32", value="1")
+        paddle.distributed.all_reduce(tmp, use_calc_stream=True)
+        paddle.distributed.wait(tmp)
+
     return gp
 
 

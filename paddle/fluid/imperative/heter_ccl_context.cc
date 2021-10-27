@@ -17,8 +17,6 @@
 // NCCL first
 #ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/imperative/all_reduce.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #endif
 
 // TODO(liubo48)
@@ -29,6 +27,8 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #endif
 
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -141,6 +141,7 @@ void HeterParallelContext::InitWithRingID(int ring_id) {
 void HeterParallelContext::AllReduceByStream(
     const framework::Variable &src, framework::Variable *dst, int ring_id,
     bool use_calc_stream) {
+#ifdef PADDLE_WITH_NCCL
   // step 1: call reduce within node
   heter_parallel_ctx_->InterReduce(src, dst, 0);
   heter_parallel_ctx_->WaitComm(0);
@@ -186,6 +187,7 @@ void HeterParallelContext::AllReduceByStream(
   // step 3: call broadcast within node
   heter_parallel_ctx_->InterBroadCast(dst, 0);
   heter_parallel_ctx_->WaitComm(0);
+#endif
 }
 
 void HeterParallelContext::InterReduce(
@@ -202,26 +204,7 @@ void HeterParallelContext::InterBroadCast(framework::Variable * src,
 
 paddle::platform::DeviceContext *HeterParallelContext::GetDeviceContext(
     int ring_id) {
-#ifdef PADDLE_WITH_NCCL
-  return static_cast<platform::DeviceContext *>(
-      platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context());
-#endif
-#ifdef PADDLE_WITH_XPU_BKCL
-  return static_cast<platform::DeviceContext *>(
-      platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context());
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  return static_cast<platform::DeviceContext *>(
-      platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context());
-#endif
-  // TODO(liubo48): not suport device context.
-  return static_cast<platform::DeviceContext *>(nullptr);
+  return heter_parallel_ctx_->GetDeviceContext(ring_id);
 }
 
 void HeterParallelContext::WaitCompute(int ring_id) {
