@@ -92,7 +92,7 @@ class Layer(core.Layer):
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
                 Default: "float32"
-    
+
     Returns:
         None
     """
@@ -275,7 +275,7 @@ class Layer(core.Layer):
 
         It should have the following form, `input` and `output` of the `hook` is `input` and `output` of the `Layer` respectively.
         User can use forward post-hook to change the output of the Layer or perform information statistics tasks on the Layer.
- 
+
         hook(Layer, input, output) -> None or modified output
 
         Parameters:
@@ -321,9 +321,9 @@ class Layer(core.Layer):
 
     def register_forward_pre_hook(self, hook):
         """Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
-        
+
         It should have the following form, `input` of the `hook` is `input` of the `Layer`,
-        hook can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if 
+        hook can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if
         a single value is returned(unless that value is already a tuple).
         User can use forward pre-hook to change the input of the Layer or perform information statistics tasks on the Layer.
 
@@ -379,7 +379,7 @@ class Layer(core.Layer):
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
-        
+
         Parameters:
             shape(list): Shape of the parameter.
             attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
@@ -450,13 +450,13 @@ class Layer(core.Layer):
                                 out_features):
                         super(MyLinear, self).__init__()
                         self.linear = paddle.nn.Linear( 10, 10)
-                            
+
                         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
-                    
+
                     def forward(self, input):
                         out = self.linear(input)
                         paddle.assign( out, self.back_var)
-                        
+
                         return out
 
         """
@@ -500,13 +500,13 @@ class Layer(core.Layer):
                                 out_features):
                         super(MyLinear, self).__init__()
                         self.linear = paddle.nn.Linear( 10, 10)
-                            
+
                         self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
-                    
+
                     def forward(self, input):
                         out = self.linear(input)
                         paddle.assign( out, self.back_var)
-                        
+
                         return out
 
         """
@@ -726,7 +726,7 @@ class Layer(core.Layer):
 
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -853,10 +853,10 @@ class Layer(core.Layer):
     def clear_gradients(self):
         """
         Clear the gradients of all parameters for this layer.
-        
+
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -898,8 +898,8 @@ class Layer(core.Layer):
                 with program_desc_tracing_guard(False):
                     self._build_once(*inputs, **kwargs)
 
-                    # TODO(liuyuhui) Only xpu broadcast parameters here. 
-                    # The other device is to call _sync_params_buffers in DataParallel 
+                    # TODO(liuyuhui) Only xpu broadcast parameters here.
+                    # The other device is to call _sync_params_buffers in DataParallel
                     # to realize the parameter synchronization among multiply cards.
                     if parallel_helper._is_data_parallel_mode(
                     ) and paddle.is_compiled_with_xpu():
@@ -941,7 +941,7 @@ class Layer(core.Layer):
             sublayer(Layer): an instance of Layer.
         Returns:
             Layer: the sublayer passed in.
-        
+
         Examples:
             .. code-block:: python
 
@@ -1164,7 +1164,7 @@ class Layer(core.Layer):
                         self._non_persistable_buffer_names_set.add(name)
                     _buffers[name] = value
                 elif _buffers is not None and name in _buffers:
-                    # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in 
+                    # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
                     if type(value) == framework.Variable:
@@ -1323,7 +1323,7 @@ class Layer(core.Layer):
         Parameters:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            
+
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
 
@@ -1354,7 +1354,7 @@ class Layer(core.Layer):
         Parameters:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            
+
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
 
@@ -1382,7 +1382,7 @@ class Layer(core.Layer):
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
             None
@@ -1484,21 +1484,22 @@ class Layer(core.Layer):
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
 
         Parameters:
-            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored. 
-            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
-            index of the GPUs or XPUs. Default: None. 
-            
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
+            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
+            index of the GPUs or XPUs. Default: None.
+
             dtype(str|core.VarDesc.VarType|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
 
-            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be 
+            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-            
+
         Returns:
-            None
+            self
 
         Examples:
             .. code-block:: python
 
+                # required: gpu
                 import paddle
 
                 linear=paddle.nn.Linear(2, 2)
@@ -1524,12 +1525,12 @@ class Layer(core.Layer):
                 #Tensor(shape=[2, 2], dtype=float64, place=CUDAPinnedPlace, stop_gradient=False,
                 #       [[-0.04989364, -0.56889004],
                 #        [ 0.33960250,  0.96878713]])
-    
+
 
         '''
 
         if device is None and dtype is None and blocking is None:
-            return
+            return self
 
         if device is not None:
             if isinstance(device, str):
@@ -1604,6 +1605,7 @@ class Layer(core.Layer):
             self._apply(transform, device, dtype, blocking)
 
         self._dtype = dtype
+        return self
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict
