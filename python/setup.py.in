@@ -100,9 +100,37 @@ istaged         = %(istaged)s
 commit          = '%(commit)s'
 with_mkl        = '%(with_mkl)s'
 
-__all__ = ['cuda', 'cudnn']
+__all__ = ['cuda', 'cudnn', 'show']
 
 def show():
+    """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
+    
+    Returns:
+        If paddle package is not tagged, the commit-id of paddle will be output.
+        Otherwise, the following information will be output.
+        full_version: version of paddle
+        major: the major version of paddle
+        minor: the minor version of paddle
+        patch: the patch level version of paddle
+        rc: whether it's rc version
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # Case 1: paddle is tagged with 2.2.0
+            paddle.version.show()
+            # full_version: 2.2.0
+            # major: 2
+            # minor: 2
+            # patch: 0
+            # rc: 0
+
+            # Case 2: paddle is not tagged
+            paddle.version.show()
+            # commit: cfa357e984bfd2ffa16820e354020529df434f7d
+    """
     if istaged:
         print('full_version:', full_version)
         print('major:', major)
