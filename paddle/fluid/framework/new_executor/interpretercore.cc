@@ -23,6 +23,8 @@
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
 
+constexpr const char* kExceptionCaught = "ExceptionCaught";
+
 namespace paddle {
 namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
@@ -37,10 +39,13 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       main_program_(main_prog),
       global_scope_(global_scope),
       stream_analyzer_(place),
-      async_work_queue_(kHostNumThreads) {
+      async_work_queue_(kHostNumThreads, &main_thread_blocker_) {
   is_build_ = false;
 
   feed_names_ = feed_names;
+
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(
+      kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
 
   // Step1: add feedop and fetchop to main_program
   AddFetch(fetch_names);
@@ -118,6 +123,8 @@ void InterpreterCore::Convert() {
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
     temp_inst.type_ = vec_func_list_[i].type_;
+    temp_inst.no_data_transform_index_ =
+        vec_func_list_[i].no_data_transform_index;
 
     OpInOutInfo info;
 
@@ -358,6 +365,8 @@ void InterpreterCore::ExecuteInstructionList(
   async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
   op_run_number_ = 0;
 
+  exception_holder_.Clear();
+
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       async_work_queue_.AddTask(vec_instr[i].type_,
@@ -365,7 +374,13 @@ void InterpreterCore::ExecuteInstructionList(
     }
   }
 
-  async_work_queue_.WaitEmpty();
+  auto event_id = main_thread_blocker_.WaitEvent();
+  VLOG(3) << "event_id " << event_id;
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(4) << "Exception caught " << exception_holder_.Type();
+    exception_holder_.ReThrow();
+  }
 
   PADDLE_ENFORCE_EQ(
       op_run_number_.load(), vec_instr.size(),
@@ -374,7 +389,8 @@ void InterpreterCore::ExecuteInstructionList(
           vec_instr.size(), op_run_number_.load()));
 }
 
-void InterpreterCore::RunNextInstruction(const Instruction& instr) {
+void InterpreterCore::RunNextInstructions(
+    const Instruction& instr, std::queue<size_t>* reserved_next_ops) {
   auto& next_instr = instr.next_instruction_;
   auto& atomic_deps = async_work_queue_.AtomicDeps();
   auto IsReady = [&](size_t next_id) {
@@ -393,12 +409,12 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
     // keep all async_ops running in current thread
     for (auto next_id : next_instr.direct_run_) {
       if (IsReady(next_id)) {
-        RunInstructionAsync(next_id);
+        reserved_next_ops->push(next_id);
       }
     }
     for (auto next_id : next_instr.event_wait_run_) {
       if (IsReady(next_id)) {
-        RunInstructionAsync(next_id);
+        reserved_next_ops->push(next_id);
       }
     }
   } else {
@@ -426,25 +442,54 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
-    if (first_op != 0) RunInstructionAsync(first_op);
+    if (first_op != 0) reserved_next_ops->push(first_op);
   }
 }
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
-  auto& instr_node = vec_instruction_[instr_id];
-  platform::RecordEvent instruction_event(
-      instr_node.kernel_func_.operator_base_->Type());
-  event_manager_.WaitEvent(instr_node, place_);
+  std::queue<size_t> ready_ops;
+  ready_ops.push(instr_id);
+  while (!ready_ops.empty()) {
+    instr_id = ready_ops.front();
+    ready_ops.pop();
+    auto& instr_node = vec_instruction_[instr_id];
+    auto* op = instr_node.kernel_func_.operator_base_;
+    platform::RecordEvent instruction_event(op->Type());
+    event_manager_.WaitEvent(instr_node, place_);
 
-  RunInstruction(instr_node);
+    try {
+      RunInstruction(instr_node);
+    } catch (platform::EnforceNotMet& ex) {
+      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+      exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+    } catch (platform::EOFException&) {
+      exception_holder_.Catch(std::current_exception());
+    } catch (std::exception& ex) {
+      LOG(WARNING) << op->Type() << " raises an exception "
+                   << platform::demangle(typeid(ex).name()) << ", "
+                   << ex.what();
+      exception_holder_.Catch(std::current_exception());
+    } catch (...) {
+      LOG(WARNING) << op->Type() << " raises an unknown exception";
+      exception_holder_.Catch(std::current_exception());
+    }
 
-  event_manager_.RecordEvent(instr_node, place_);
-  op_run_number_.fetch_add(1, std::memory_order_relaxed);
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      if (exception_notifier_ != nullptr) {
+        exception_notifier_->NotifyEvent();
+      }
+      return;
+    }
 
-  // GC infomation
-  CheckGC(instr_id, instr_node.gc_check_var_list);
+    event_manager_.RecordEvent(instr_node, place_);
+    op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
-  RunNextInstruction(instr_node);
+    // GC infomation
+    CheckGC(instr_id, instr_node.gc_check_var_list);
+
+    RunNextInstructions(instr_node, &ready_ops);
+  }
 }
 
 void InterpreterCore::CheckGC(size_t instr_id,

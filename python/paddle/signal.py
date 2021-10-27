@@ -16,16 +16,14 @@ from typing import Optional
 
 import paddle
 
-from .attribute import is_complex, is_floating_point
+from .tensor.attribute import is_complex, is_floating_point
 from .fft import fft_r2c, fft_c2r, fft_c2c
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
-from .. import _C_ops
+from .fluid.data_feeder import check_variable_and_dtype
+from .fluid.framework import in_dygraph_mode
+from .fluid.layer_helper import LayerHelper
+from . import _C_ops
 
 __all__ = [
-    'frame',
-    'overlap_add',
     'stft',
     'istft',
 ]
@@ -56,7 +54,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
     .. code-block:: python
 
         import paddle
-        from paddle.tensor.signal import frame
+        from paddle.signal import frame
         
         # 1D
         x = paddle.arange(8)
@@ -177,7 +175,7 @@ def overlap_add(x, hop_length, axis=-1, name=None):
     .. code-block:: python
 
         import paddle
-        from paddle.tensor.signal import overlap_add
+        from paddle.signal import overlap_add
         
         # 2D
         x0 = paddle.arange(16).reshape([8, 2])
@@ -291,11 +289,11 @@ def stft(x,
             real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`(
             `onesided` is `False`)
     
-    Exampels:
+    Examples:
         .. code-block:: python
     
             import paddle
-            from paddle.tensor.signal import stft
+            from paddle.signal import stft
     
             # real-valued input
             x = paddle.randn([8, 48000], dtype=paddle.float64)
@@ -415,7 +413,7 @@ def istft(x,
     - :math:`N`: Value of `n_fft`.
     - :math:`H`: Value of `hop_length`.
 
-    Result of `istft` expected to be the inverse of `paddle.tensor.signal.stft`, but it is
+    Result of `istft` expected to be the inverse of `paddle.signal.stft`, but it is
         not guaranteed to reconstruct a exactly realizible time-domain signal from a STFT
         complex tensor which has been modified (via masking or otherwise). Therefore, `istft`
         gives the [Griffin-Lim optimal estimate](https://ieeexplore.ieee.org/document/1164317)
@@ -454,12 +452,12 @@ def istft(x,
         A tensor of least squares estimation of the reconstructed signal(s) with shape
             `[..., seq_length]`
 
-    Exampels:
+    Examples:
         .. code-block:: python
 
             import numpy as np
             import paddle
-            from paddle.tensor.signal import stft, istft
+            from paddle.signal import stft, istft
 
             paddle.seed(0)
 

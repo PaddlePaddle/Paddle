@@ -1409,13 +1409,22 @@ class Layer(core.Layer):
             if state is None:
                 raise ValueError("{} is not found in the provided dict.".format(
                     key))
-            state_shape = state.shape() if inspect.ismethod(
-                state.shape) else state.shape
-            if list(state_shape) != list(param.shape):
-                raise ValueError(
-                    "{} receives a shape {}, but the expected shape is {}.".
-                    format(key, list(state_shape), list(param.shape)))
-            return param, state
+            if (isinstance(state, dict) or isinstance(state, list)):
+                if (len(state) != len(param)):
+                    raise ValueError("{} receieves the length of {}, "
+                                     "but the expected shape is {}".format(
+                                         key, len(state), len(param)))
+                else:
+                    return param, state
+            else:
+                state_shape = state.shape() if inspect.ismethod(
+                    state.shape) else state.shape
+
+                if list(state_shape) != list(param.shape):
+                    raise ValueError(
+                        "{} receives a shape {}, but the expected shape is {}.".
+                        format(key, list(state_shape), list(param.shape)))
+                return param, state
 
         matched_param_state = []
         for key, param in self.state_dict().items():
@@ -1581,7 +1590,10 @@ class Layer(core.Layer):
 
             return new_t
 
-        self._apply(transform, device, dtype, blocking)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            self._apply(transform, device, dtype, blocking)
+
         self._dtype = dtype
 
     # [aliases] Compatible with old method names
