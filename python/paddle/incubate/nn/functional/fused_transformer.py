@@ -218,7 +218,7 @@ def fused_multi_head_attention(x,
             `[batch\_size, sequence\_len, embed\_dim]`.
         qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
-        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture 
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
 	    (False). Default False.
         pre_ln_scale (Tensor, optional): The weight tensor of pre layernorm. Default None.
         pre_ln_bias (Tensor, optional): The bias tensor of pre layernorm. Default None.
@@ -229,12 +229,12 @@ def fused_multi_head_attention(x,
         qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
-        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to 
- 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor 
-            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the 
-            data type is bool, the unwanted positions have `False` values and the others have `True` values. 
-            When the data type is int, the unwanted positions have 0 values and the others have 1 values. 
-            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values. 
+        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
+ 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
+            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
+            data type is bool, the unwanted positions have `False` values and the others have `True` values.
+            When the data type is int, the unwanted positions have 0 values and the others have 1 values.
+            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values.
             It can be None when nothing wanted or needed to be prevented attention to. Default None.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention.
