@@ -248,5 +248,48 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
             del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
 
 
+class TestException(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+
+    def build_program(self):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            w = paddle.rand([10, 20])
+            ids = paddle.static.data(name="id", shape=[5], dtype='int64')
+            emb = paddle.nn.functional.embedding(
+                x=ids, weight=w, sparse=False, name="embedding")
+
+        return main_program, startup_program, emb
+
+    def _run(self, feeds):
+        paddle.seed(2020)
+
+        main_program, startup_program, fetch_vars = self.build_program()
+
+        exe = paddle.static.Executor(self.place)
+        exe.run(startup_program)
+
+        for feed in feeds:
+            out = exe.run(main_program, feed=feed, fetch_list=fetch_vars)
+
+        return out
+
+    def run_new_executor(self, feed):
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+        out = self._run(feed)
+        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+        return out
+
+    def test_exception(self):
+        feed = [{
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64)
+        }, {
+            'id': np.array([1, 2, 3, 4, 11]).astype(np.int64)
+        }]
+        self.assertRaises(ValueError, self.run_new_executor, feed)
+
+
 if __name__ == "__main__":
     unittest.main()

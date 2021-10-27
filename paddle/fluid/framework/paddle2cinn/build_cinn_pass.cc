@@ -114,7 +114,8 @@ void AddOutputVar(const std::unordered_set<Node*>& output_vars,
 // var node are from internal nodes
 std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
                                          const GraphNodeSet& cluster_internals,
-                                         const GraphNodeSet& cluster_inputs) {
+                                         const GraphNodeSet& cluster_inputs,
+                                         const GraphNodeSet& cluster_outputs) {
   // Graph's constructor must has one parameter, and in our code,
   // the ProgramDesc is useless, so here we pass a temporary object.
   auto subgraph = std::make_unique<Graph>(framework::ProgramDesc());
@@ -127,7 +128,12 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 
   std::unordered_map<Node*, Node*> old_var2new_var;
   for (auto* var : cluster_internals) {
-    auto sub_node = subgraph->CreateVarNode(var->Var());
+    Node* sub_node;
+    if (var->Var() == nullptr) {
+      sub_node = subgraph->CreateEmptyNode(var->Name(), var->NodeType());
+    } else {
+      sub_node = subgraph->CreateVarNode(var->Var());
+    }
     old_var2new_var[var] = sub_node;
   }
 
@@ -140,7 +146,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     for (auto* var : op->inputs) {
       if (cluster_internals.count(var)) {
         old_op2new_op[op]->inputs.emplace_back(old_var2new_var[var]);
-      } else if (cluster_inputs.count(var)) {
+      } else if (cluster_inputs.count(var) && var->Var() != nullptr) {
         if (var->Var()->IsParameter()) {
           // Parameters have been preserved in scope, compared to feed var,
           // param just need add new var and don't need add feed op.
@@ -157,7 +163,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     for (auto* var : op->outputs) {
       if (cluster_internals.count(var)) {
         old_op2new_op[op]->outputs.emplace_back(old_var2new_var[var]);
-      } else {
+      } else if (cluster_outputs.count(var) && var->Var() != nullptr) {
         // Create new output var node to guarantee the independency of
         // subgraph. In other words, the subgraph has no connection with
         // other graph, even the input graph.
@@ -239,14 +245,20 @@ Node* AddSpecialOpToGraph(const GraphNodeSet& cluster_inputs,
   framework::OpDesc special_op_desc;
   special_op_desc.SetType(kCinnLaunchOp);
   std::vector<std::string> input_names;
-  std::transform(cluster_inputs.begin(), cluster_inputs.end(),
-                 std::back_inserter(input_names),
-                 [](Node* n) { return n->Name(); });
+  std::for_each(cluster_inputs.begin(), cluster_inputs.end(),
+                [&input_names](Node* n) {
+                  if (n->Var() != nullptr) {
+                    input_names.emplace_back(n->Name());
+                  }
+                });
   special_op_desc.SetInput("X", input_names);
   std::vector<std::string> output_names;
-  std::transform(cluster_outputs.begin(), cluster_outputs.end(),
-                 std::back_inserter(output_names),
-                 [](Node* n) { return n->Name(); });
+  std::for_each(cluster_outputs.begin(), cluster_outputs.end(),
+                [&output_names](Node* n) {
+                  if (n->Var() != nullptr) {
+                    output_names.emplace_back(n->Name());
+                  }
+                });
   special_op_desc.SetOutput("Out", output_names);
   special_op_desc.SetAttr(kCompilationKey, compilation_key);
   special_op_desc.Flush();
@@ -362,8 +374,8 @@ void SearchAllSubgraphs(Graph* graph) {
                             &cluster_internals);
     // Create a new subgraph according to the found cluster and
     // save it in CinnCompiler
-    std::string compilation_key = cinn_compiler->AddGraph(
-        CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs));
+    std::string compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
+        cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
     // Replace the found cluster to a new special op node
     ReplaceSubGraphWithSpecialOpNode(cluster_set, cluster_inputs,
                                      cluster_outputs, cluster_internals,

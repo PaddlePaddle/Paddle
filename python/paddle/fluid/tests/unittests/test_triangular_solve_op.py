@@ -26,9 +26,8 @@ from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
-import torch
 
-
+# 2D + 2D , test 'upper'
 class TestTriangularSolveOp(OpTest):
     """
     case 1
@@ -69,6 +68,7 @@ class TestTriangularSolveOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
+# 2D(broadcast) + 3D, test 'transpose'
 class TestTriangularSolveOp2(TestTriangularSolveOp):
     """
     case 2
@@ -88,6 +88,7 @@ class TestTriangularSolveOp2(TestTriangularSolveOp):
         self.output = np.linalg.solve(x, y)
 
 
+# 3D(broadcast) + 3D
 class TestTriangularSolveOp3(TestTriangularSolveOp):
     """
     case 3
@@ -107,6 +108,7 @@ class TestTriangularSolveOp3(TestTriangularSolveOp):
         self.output = np.linalg.solve(x, y)
 
 
+# 3D + 3D(broadcast), test 'transpose'
 class TestTriangularSolveOp4(TestTriangularSolveOp):
     """
     case 4
@@ -126,6 +128,7 @@ class TestTriangularSolveOp4(TestTriangularSolveOp):
         self.output = np.linalg.solve(x, y)
 
 
+# 2D + 2D , test 'unitriangular' specially
 class TestTriangularSolveOp5(TestTriangularSolveOp):
     """
     case 5
@@ -162,6 +165,7 @@ class TestTriangularSolveOp5(TestTriangularSolveOp):
             user_defined_grad_outputs=[grad_out])
 
 
+# 4D(broadcast) + 4D(broadcast)
 class TestTriangularSolveOp6(TestTriangularSolveOp):
     """
     case 6
@@ -181,6 +185,7 @@ class TestTriangularSolveOp6(TestTriangularSolveOp):
         self.output = np.linalg.solve(x, y)
 
 
+# 3D(broadcast) + 4D(broadcast), test 'upper'
 class TestTriangularSolveOp7(TestTriangularSolveOp):
     """
     case 7
@@ -200,6 +205,7 @@ class TestTriangularSolveOp7(TestTriangularSolveOp):
         self.output = np.linalg.solve(x, y)
 
 
+# 3D(broadcast) + 5D
 class TestTriangularSolveOp8(TestTriangularSolveOp):
     """
     case 8
@@ -219,6 +225,7 @@ class TestTriangularSolveOp8(TestTriangularSolveOp):
         self.output = np.linalg.solve(x, y)
 
 
+# 5D + 4D(broadcast)
 class TestTriangularSolveOp9(TestTriangularSolveOp):
     """
     case 9

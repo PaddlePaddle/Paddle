@@ -52,6 +52,7 @@ from .linalg import qr  # noqa: F401
 from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401
+from .linalg import eigvalsh  # noqa: F401
 from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
@@ -221,8 +222,6 @@ from .array import array_write  # noqa: F401
 from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
-from . import fft
-from . import signal
 
 #this list used in math_op_patch.py for _binary_creator_
 tensor_method_func  = [ #noqa
@@ -242,6 +241,7 @@ tensor_method_func  = [ #noqa
            'matrix_power',
            'qr',
            'eigvals',
+           'eigvalsh',
            'abs',
            'acos',
            'all',

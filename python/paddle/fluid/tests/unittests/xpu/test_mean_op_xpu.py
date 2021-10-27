@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import sys
 sys.path.append("..")
+from op_test_xpu import XPUOpTest
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
@@ -27,22 +28,27 @@ from paddle.fluid import Program, program_guard
 np.random.seed(10)
 
 
-class TestMeanOp(OpTest):
+class TestMeanOp(XPUOpTest):
     def setUp(self):
         self.op_type = "mean"
-        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
-        self.outputs = {'Out': np.mean(self.inputs["X"])}
+        self.outputs = {'Out': np.mean(self.inputs["X"]).astype(np.float16)}
 
     def init_dtype_type(self):
-        pass
+        self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place, atol=2e-3)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out')
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestMeanOpError(unittest.TestCase):
@@ -75,6 +81,24 @@ class TestXPUMeanOp(TestMeanOp):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(place, ['X'], 'Out')
+
+
+class TestXPUMeanOpFp16(TestMeanOp):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
+
+    def test_checkout_grad(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=1.e1)
 
 
 if __name__ == "__main__":
