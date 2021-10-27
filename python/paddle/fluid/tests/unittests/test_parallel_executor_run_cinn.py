@@ -41,34 +41,44 @@ def set_cinn_flag(val):
 
 def reader(limit):
     for _ in range(limit):
-        yield np.random.random(size=(16, 1)).astype('float32')
+        yield np.random.random([1, 28]).astype('float32'), \
+            np.random.randint(0, 2, size=[1]).astype('int64')
 
 
-def rand_data(loop_num=10):
+def rand_data(img, label, loop_num=10):
     feed = []
     data = reader(loop_num)
     for i in range(loop_num):
-        x = next(data)
-        feed.append({'x': x})
+        d, l = next(data)
+        feed.append({img: d, label: l})
     return feed
 
 
 def build_program(main_program, startup_program):
     with paddle.static.program_guard(main_program, startup_program):
-        x = paddle.static.data(name='x', shape=[None, 1], dtype='float32')
+        img = paddle.static.data(name='img', shape=[1, 28], dtype='float32')
+        param = paddle.create_parameter(
+            name="bias",
+            shape=[1, 28],
+            dtype="float32",
+            attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(
+                np.random.rand(1, 28).astype(np.float32))))
+        label = paddle.static.data(name="label", shape=[1], dtype='int64')
 
-        prediction = paddle.static.nn.fc(x, 2)
+        hidden = paddle.add(img, param)
+        prediction = paddle.nn.functional.relu(hidden)
 
-        loss = paddle.mean(prediction)
-        adam = paddle.optimizer.Adam()
-        adam.minimize(loss)
-    return prediction, loss
+        loss = paddle.nn.functional.cross_entropy(input=prediction, label=label)
+        avg_loss = paddle.mean(loss)
+        adam = paddle.optimizer.Adam(learning_rate=0.001)
+        adam.minimize(avg_loss)
+    return img, label, avg_loss
 
 
 def do_test(dot_save_dir):
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
-    prediction, loss = build_program(main_program, startup_program)
+    img, label, loss = build_program(main_program, startup_program)
 
     place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
     ) else paddle.CPUPlace()
@@ -80,12 +90,14 @@ def do_test(dot_save_dir):
     compiled_program = paddle.static.CompiledProgram(
         main_program, build_strategy).with_data_parallel(loss_name=loss.name)
 
-    feed = rand_data(10)
-    for step in range(10):
+    iters = 10
+    feed = rand_data(img.name, label.name, iters)
+    for step in range(iters):
         loss_v = exe.run(compiled_program,
                          feed=feed[step],
-                         fetch_list=[loss.name],
+                         fetch_list=[loss],
                          return_merged=False)
+        logger.info("loss value = {}".format(loss_v))
 
 
 @unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")

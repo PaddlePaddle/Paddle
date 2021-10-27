@@ -147,6 +147,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   for (auto* var : cluster_internals) {
     Node* sub_node;
     if (var->Var() == nullptr) {
+      // TODO(wzzju): If this case occurs, there maybe bugs when using CINN.
       sub_node = subgraph->CreateEmptyNode(var->Name(), var->NodeType());
     } else {
       sub_node = subgraph->CreateVarNode(var->Var());

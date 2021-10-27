@@ -88,25 +88,27 @@ CinnGraphSymbolization::GetGraphInputParameterNames() const {
 // Transform paddle scope to cinn, note that we only preserve the graph’s
 // input parameter variable and ignore others.
 std::shared_ptr<::cinn::hlir::framework::Scope>
-CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) const {
+CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
   auto cinn_scope = ::cinn::hlir::framework::Scope::Create();
 
   // get the graph's input parameter variable name list
   auto parameter_names = GetGraphInputParameterNames();
 
   for (const auto& param_name : parameter_names) {
-    VLOG(4) << "add param var [" << param_name << "] info scope";
     // if cannot find var in graph input, skip.
     // scope accepte the CINN format name, so here we need transform
     // paddle format name to CINN format.
-    auto* cinn_var = cinn_scope->Var<CinnTensor>(
-        ::cinn::utils::TransValidVarName(param_name));
+    auto valid_name = ::cinn::utils::TransValidVarName(param_name);
+    auto* cinn_var = cinn_scope->Var<CinnTensor>(valid_name);
 
     auto& cinn_tensor = absl::get<CinnTensor>(*cinn_var);
     // here we only need preserve dtype and shape, do not need preserve data
     auto feed_info = feed_map.at(param_name);
     cinn_tensor->set_type(feed_info.type);
     cinn_tensor->Resize(::cinn::hlir::framework::Shape(feed_info.shape));
+    VLOG(4) << "add paddle param var [" << param_name
+            << "] info cinn scope var[" << valid_name << "]";
+    var_model_to_program_map_[param_name] = valid_name;
   }
 
   return cinn_scope;

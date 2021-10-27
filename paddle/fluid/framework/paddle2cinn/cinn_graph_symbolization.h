@@ -118,7 +118,7 @@ class CinnGraphSymbolization {
 
   // create cinn scope and add parameter's feed info into scope
   std::shared_ptr<::cinn::hlir::framework::Scope> CreateCinnScope(
-      const FeedInfoMap& feed_map) const;
+      const FeedInfoMap& feed_map);
 
   // get the graph op's input persistable var name set
   std::unordered_set<std::string> GetGraphInputParameterNames() const;
