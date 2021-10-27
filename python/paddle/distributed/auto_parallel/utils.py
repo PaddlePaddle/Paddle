@@ -388,20 +388,20 @@ def _check_valid_path(file_path):
 
 
 def save_distributed_checkpoint(program,
-                                output_dir,
+                                checkpoint_path,
                                 is_integrated=False,
                                 addition_info=None,
-                                dist_attr_dir=None):
+                                dist_attr_path=None):
     """ 
     Save model parameter state, optimzer state, distributed attribute and 
     additional information of each rank.
 
     Args:
         program(Program): The program to be saved.
-        output_dir(str): The path of the checkpoint file to be saved.
+        checkpoint_path(str): The path of the checkpoint file to be saved.
         is_integrated(bool, optional): Whether to integrate param before save. Default: False.
         addition_info(dict, optional): Additional information. Default: None.
-        dist_attr_dir(str, optional): The path of distributed attribute file to be saved. Default: None
+        dist_attr_path(str, optional): The path of distributed attribute file to be saved. Default: None
 
     Returns:
         None
@@ -409,13 +409,13 @@ def save_distributed_checkpoint(program,
     Examples:
         .. code-block:: python
 
-            output_dir = os.path.join(args.output_dir, "step_%d" % step)
-            os.makedirs(output_dir, exist_ok=True)
-            save_distributed_checkpoint(program, output_dir)
+            ckpt_path = os.path.join(args.output_dir, "step_%d" % step)
+            os.makedirs(ckpt_path, exist_ok=True)
+            save_distributed_checkpoint(program, ckpt_path)
     """
     if not is_integrated:
         rank = paddle.distributed.get_rank()
-        ckpt_file_name = os.path.join(output_dir,
+        ckpt_file_name = os.path.join(checkpoint_path,
                                       "model_state_rank{}.pdmodel".format(rank))
 
         state_dict = {
@@ -426,9 +426,9 @@ def save_distributed_checkpoint(program,
             state_dict["addition_info"] = addition_info
 
         paddle.save(state_dict, ckpt_file_name)
-        logging.info("Already save model to {}".format(output_dir))
+        logging.info("Already save model to {}".format(checkpoint_path))
 
-        if dist_attr_dir:
+        if dist_attr_path:
             raise NotImplementedError(
                 "Save distributed attribute has not been implemented.")
     else:
