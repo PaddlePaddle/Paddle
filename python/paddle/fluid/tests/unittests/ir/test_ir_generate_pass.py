@@ -165,6 +165,32 @@ def generate_layer_norm_fuse_pass():
     return pattern, replace
 
 
+@ir.RegisterPass
+def unimplemented_operand_exception():
+    def pattern(x, y):
+        return ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+
+    def replace(x, y):
+        out = ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+        out.SetAttr("axis", x.Attr("shape") - 1)
+        return out
+
+    return pattern, replace
+
+
+@ir.RegisterPass
+def unimplemented_operation_exception():
+    def pattern(x, y):
+        return ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+
+    def replace(x, y):
+        out = ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+        out.SetAttr("axis", x.Attr("shape").Size() + 1)
+        return out
+
+    return pattern, replace
+
+
 def get_multi_pass_desc_from_str(s):
     multi_pass_desc = ir.pass_desc_pb2.MultiPassDesc()
     multi_pass_desc.ParseFromString(s)
@@ -184,6 +210,20 @@ class TestGeneratePass(unittest.TestCase):
 
     def test_has_attr(self):
         self.assertFalse(hasattr(ir.PassDesc.OP, '__name__'))
+
+    def test_exception(self):
+        paddle.enable_static()
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [10, 10], "float32")
+            y = paddle.static.data("y", [10, 10], "float32")
+            paddle.add(x, y)
+        graph = core.Graph(program.desc)
+        with self.assertRaises(NotImplementedError):
+            core.get_pass("unimplemented_operand_exception").apply(graph)
+        with self.assertRaises(NotImplementedError):
+            core.get_pass("unimplemented_operation_exception").apply(graph)
 
     def test_generate_fc_fuse(self):
         def _check_fc_fuse_pass(pass_desc, with_relu):

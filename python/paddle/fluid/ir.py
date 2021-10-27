@@ -146,7 +146,7 @@ class RegisterPassHelper(object):
                     PassDesc.VarHelper(arg_name, input_spec.shape,
                                        input_spec.dtype))
             elif isinstance(input_spec, paddle.ParamAttr):
-                args.append(PassDesc.VarHelper(arg_name))
+                args.append(paddle.ParamAttr(arg_name))
             else:
                 args.append(PassDesc.VarHelper(arg_name, [-1]))
         return args
@@ -200,10 +200,44 @@ class RegisterPassHelper(object):
         self._prune_program_desc(ops)
         return vars, program.current_block().ops
 
+    def _convert_vars_to_pass_desc(self, patterns, replaces, desc):
+        for (pattern, replace) in zip(patterns, replaces):
+            # Convert maps of inputs and outputs.
+            var_map = desc.var_maps.add()
+            var_map.pattern_var = pattern.name
+            var_map.replace_var = replace.name
+            conditions = desc.var_attr_conditions
+            # Convert shape condition.
+            if pattern.name in self._input_specs:
+                condition = conditions.add()
+                pattern.Attr("shape")._to_pass_desc_attr(condition.attr)
+                condition.condition_value.name = ""
+                condition.condition_value.type = framework_pb2.AttrType.LONGS
+                condition.condition_value.longs.extend(pattern.shape)
+                condition.type = pass_desc_pb2.PassDesc.ConditionType.kEQ
+            # Convert attr conditions.
+            if PassDesc.VarHelper == pattern.__class__:
+                for attr in pattern._attrs.values():
+                    if attr._condition is not None:
+                        conditions.append(attr._condition)
+                    conditions.extend(
+                        [e._condition for e in attr._elements if e._condition])
+
+    def _convert_ops_to_pass_desc(self, patterns, replaces, desc):
+        for replace in replaces:
+            if isinstance(replace, PassDesc.OpHelper):
+                for attr in replace._attrs.values():
+                    # Convert attr maps.
+                    mapped = attr._mapped
+                    if inspect.isfunction(mapped):
+                        mapped = mapped(patterns)
+                    attr_map = desc.op_attr_maps.add()
+                    mapped._to_pass_desc_attr(attr_map.pattern_attr)
+                    attr._to_pass_desc_attr(attr_map.replace_attr)
+                    if mapped._operation is not None:
+                        attr_map.operation.CopyFrom(mapped._operation)
+
     def SerializeMultiPassDesc(self):
-        """
-        `get_pass` will execute this method, so self._pass_pairs is dynamic.
-        """
         switch_static_mode = paddle.in_dynamic_mode()
         if switch_static_mode:
             paddle.enable_static()
@@ -213,50 +247,14 @@ class RegisterPassHelper(object):
         # Here need to add cache in the future. 
         for (pattern, replace) in self._pass_pairs:
             pass_desc = multi_pass_desc.pass_descs.add()
-            # 1. Convert ProgramDescs of pattern and replace subgraphs.
+            # Convert ProgramDescs of pattern and replace subgraphs.
             pattern_vars, pattern_ops = self._func_to_program_desc(
                 pattern, pass_desc.pattern)
             replace_vars, replace_ops = self._func_to_program_desc(
                 replace, pass_desc.replace)
-            for (pattern_var, replace_var) in zip(pattern_vars, replace_vars):
-                # 2. Convert VarMaps of inputs and outputs.
-                var_map = pass_desc.var_maps.add()
-                var_map.pattern_var = pattern_var.name
-                var_map.replace_var = replace_var.name
-                # 3. Convert attr maps of vars.
-                # 4. Convert attr conditions of vars.
-                if pattern_var.name in self._input_specs and pattern_var.shape != (
-                        -1, ):
-                    condition = pass_desc.var_attr_conditions.add()
-                    attr = pattern_var.Attr("shape")
-                    attr._to_pass_desc_attr(condition.attr)
-                    condition.condition_value.name = ""
-                    condition.condition_value.type = framework_pb2.AttrType.LONGS
-                    condition.condition_value.longs.extend(pattern_var.shape)
-                    condition.type = pass_desc_pb2.PassDesc.ConditionType.kEQ
-                if PassDesc.VarHelper != pattern_var.__class__:
-                    continue
-                for name, attr in pattern_var._attrs.items():
-                    if attr._condition is not None:
-                        pass_desc.var_attr_conditions.append(attr._condition)
-                    pass_desc.var_attr_conditions.extend(
-                        [e._condition for e in attr._elements if e._condition])
-            # 5. Convert attr maps of ops.
-            for op in replace_ops:
-                if not isinstance(op, PassDesc.OpHelper):
-                    continue
-                for name, attr in op._attrs.items():
-                    mapped = attr._mapped
-                    if mapped is None:
-                        continue
-                    if inspect.isfunction(mapped):
-                        mapped = mapped(pattern_ops)
-                    attr_map = pass_desc.op_attr_maps.add()
-                    mapped._to_pass_desc_attr(attr_map.pattern_attr)
-                    attr._to_pass_desc_attr(attr_map.replace_attr)
-                    if mapped._operation is not None:
-                        attr_map.operation.CopyFrom(mapped._operation)
-            # 6. Convert attr conditions of ops.
+            self._convert_vars_to_pass_desc(pattern_vars, replace_vars,
+                                            pass_desc)
+            self._convert_ops_to_pass_desc(pattern_ops, replace_ops, pass_desc)
         if switch_static_mode:
             paddle.disable_static()
         return multi_pass_desc.SerializeToString()
@@ -264,16 +262,6 @@ class RegisterPassHelper(object):
 
 class PassDesc(object):
     class AttrHelper(object):
-        """
-        name: attr name
-        index:
-          - op: mapping index of pattern/replace op
-          - var: one value of seq
-
-        Q1: used in pattern or replace?
-        Q2: record op or var?
-        """
-
         def __init__(self, obj, name, element_index=None):
             self._obj = obj
             self._name = name
@@ -294,11 +282,9 @@ class PassDesc(object):
             if isinstance(self._obj, PassDesc.VarHelper):
                 pass_desc_attr.role = pass_desc_pb2.PassDesc.RoleType.kVariable
                 pass_desc_attr.var_name = self._obj.name
-            elif isinstance(self._obj, PassDesc.OpHelper):
+            else:
                 pass_desc_attr.role = pass_desc_pb2.PassDesc.RoleType.kOperator
                 pass_desc_attr.op_index = self._obj._index
-            else:
-                raise ValueError("")
             pass_desc_attr.name = self._name
             if self._operation_type is not None:
                 pass_desc_attr.operation = self._operation_type
@@ -307,23 +293,12 @@ class PassDesc(object):
 
         def _to_op_desc_attr(self, value, op_desc_attr):
             op_desc_attr.name = ""
-            if isinstance(value, (list, tuple)):
-                if all(map(lambda x: isinstance(x, int), value)):
-                    op_desc_attr.type = framework_pb2.AttrType.INTS
-                    op_desc_attr.ints.extend(value)
-                else:
-                    raise NotImplementedError("")
-            elif isinstance(value, bool):
-                op_desc_attr.type = framework_pb2.AttrType.BOOLEAN
-                op_desc_attr.b = value
-            elif isinstance(value, int):
+            if isinstance(value, int):
                 op_desc_attr.type = framework_pb2.AttrType.INT
                 op_desc_attr.i = value
             else:
-                raise NotImplementedError("")
+                raise NotImplementedError("Unimplemented transform operation.")
 
-        # operator
-        #   return new attr with some info
         def _clone_with_operation(self, type, value=None):
             attr = PassDesc.AttrHelper(self._obj, self._name,
                                        self._element_index)
@@ -345,12 +320,14 @@ class PassDesc(object):
             return self._clone_with_operation(
                 pass_desc_pb2.PassDesc.OperationType.kSub, value)
 
+        def __add__(self, value):
+            return self._clone_with_operation(
+                pass_desc_pb2.PassDesc.OperationType.kAdd, value)
+
         def Size(self):
             return self._clone_with_operation(
                 pass_desc_pb2.PassDesc.OperationType.kSize)
 
-        # logic
-        #   record info in current attr
         def _set_with_condition(self, type, value):
             condition = pass_desc_pb2.PassDesc.AttrCondition()
             self._to_pass_desc_attr(condition.attr)
@@ -365,27 +342,25 @@ class PassDesc(object):
             self._set_with_condition(pass_desc_pb2.PassDesc.ConditionType.kEQ,
                                      value)
 
-        # mapping
         def MappedPattern(self, var=None, op=None, index=0, name=None):
             if all([var, op]):
-                raise ValueError("Only mapped var or op.")
+                raise ValueError("Only mapped one of which var or op.")
 
             def mapped_var(pattern_ops):
-                for op in pattern_ops:
-                    pass
+                raise NotImplementedError(
+                    "Mapping to variable is not implemented.")
 
             def mapped_op(pattern_ops):
                 ops = [o for o in pattern_ops if o._type == op]
                 if len(ops) <= index:
-                    raise ValueError("")
+                    raise ValueError(
+                        "Index '{}' of operator '{}' is incorrect.".format(
+                            index, op))
                 return PassDesc.AttrHelper(ops[index], name)
 
             self._mapped = mapped_op if var is None else mapped_var
 
     class VarHelper(paddle.static.Variable):
-        """
-        """
-
         def __init__(self, *args, **kwargs):
             block = paddle.static.default_main_program().current_block()
             self._var = paddle.static.data(*args, **kwargs)

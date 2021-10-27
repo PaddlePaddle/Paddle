@@ -26,8 +26,7 @@ class operation_visitor : public boost::static_visitor<Attribute> {
 
   template <typename T1, typename T2>
   Attribute operator()(const T1& attr, const T2& operation) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Unimplemented for operation."));
+    PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
   }
 
   template <typename T,
@@ -41,7 +40,7 @@ class operation_visitor : public boost::static_visitor<Attribute> {
 
       default:
         PADDLE_THROW(
-            platform::errors::Unimplemented("Unimplemented for operation."));
+            platform::errors::Unimplemented("Unimplemented operation type."));
     }
   }
 
@@ -51,9 +50,6 @@ class operation_visitor : public boost::static_visitor<Attribute> {
 
 Attribute GetVarAttrValue(const VarDesc* desc,
                           const proto::PassDesc::Attr& attr) {
-  if (attr.role() != proto::PassDesc_RoleType_kVariable) {
-    return boost::blank();
-  }
   if ("shape" == attr.name()) {
     std::vector<int64_t> shape = desc->GetShape();
     if (attr.has_operation()) {
@@ -166,17 +162,15 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
     if (condition.has_condition_value()) {
       PDNode* pdnode = pattern->RetrieveNode(condition.attr().var_name());
       pdnode->assert_more([&](Node* x) {
-        Attribute node_attr = GetVarAttrValue(x->Var(), condition.attr());
-        if (condition.has_operation() && condition.operation().has_value()) {
-          // boost::apply_visitor(AttrOperationWithValue(condition.operation().value()),
-          // node_attr);
-          PADDLE_THROW(
-              platform::errors::Unimplemented("Unimplemented for operation."));
-        }
-        if (condition.type() == proto::PassDesc_ConditionType_kEQ) {
-          return node_attr == GetAttrValue(condition.condition_value());
-        } else {
-          return false;
+        Attribute attr = GetVarAttrValue(x->Var(), condition.attr());
+        switch (condition.type()) {
+          case proto::PassDesc_ConditionType_kEQ: {
+            return attr == GetAttrValue(condition.condition_value());
+          }
+
+          default:
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "Unimplemented condition type."));
         }
       });
     }
@@ -254,12 +248,6 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
           condition_attr = GetVarAttrValue(condition_node->Var(),
                                            condition.condition_attr());
         } else {
-          PADDLE_THROW(
-              platform::errors::Unimplemented("Unimplemented for operation."));
-        }
-        if (condition.has_operation() && condition.operation().has_value()) {
-          // boost::apply_visitor(AttrOperationWithValue(condition.operation().value()),
-          // node_attr);
           PADDLE_THROW(
               platform::errors::Unimplemented("Unimplemented for operation."));
         }
@@ -345,8 +333,6 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
           }
           if (attr_map.has_operation()) {
             Attribute operation = GetAttrValue(attr_map.operation().value());
-            // PADDLE_THROW(platform::errors::Unimplemented("Unimplemented for
-            // operation."));
             attr = boost::apply_visitor(
                 operation_visitor(attr_map.operation().type()), attr,
                 operation);
