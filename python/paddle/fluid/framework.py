@@ -4473,7 +4473,10 @@ class Program(object):
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
-
+        
+        # assigned if this program has been parsed by a heter pipeline optimizer
+        self._heter_pipeline_opt = None
+        
         # appending gradients times
         self._appending_grad_times = 0
 

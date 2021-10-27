@@ -38,7 +38,6 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
     PADDLE_ENFORCE_EQ(thread_num_, readers.size(),
                     platform::errors::InvalidArgument(
                         "change Dataset thread_num is not supported"));
-
     int cnt = -1;
     for (auto& worker_pair: workers_) {
       cnt++;
@@ -53,16 +52,13 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
 
 void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                       Dataset* dataset) {
-
   thread_num_ = trainer_desc.thread_num();
   ParseDumpConfig(trainer_desc);
-
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {
     need_merge_var_names_.push_back(
         trainer_desc.downpour_param().stat_var_names(i));
   }
-
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -70,7 +66,6 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   // change thread num to readers num
   thread_num_ = readers.size();
   VLOG(3) << "worker thread num: " << thread_num_;
-
   const auto& heter_section_params = trainer_desc.heter_section_param();
   num_pipeline_stages_ = heter_section_params.num_pipeline_stages();
   pipeline_stage_ = heter_section_params.pipeline_stage();
@@ -82,14 +77,12 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     auto trainer_num = trainer_desc.trainers(i);
     trainers_.push_back(trainer_num);
   }
-  
   int cpu_trainer_num = trainers_[0];
   int cur_stage_trainer_num = trainers_[pipeline_stage_];
   int global_thread_num = cpu_trainer_num * thread_num_;
   int previous_trainers = 0;
   for (int i = 0; i < pipeline_stage_; i++) previous_trainers += trainers_[i];
   int stage_trainer_id =  trainer_id_ - previous_trainers; // trainer id in current stage
-
     int cnt = -1;
     for (int i = stage_trainer_id; i < global_thread_num; i += cur_stage_trainer_num) {
       cnt++;
@@ -113,7 +106,6 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
       //this_worker->SetTrainers(trainers_);
       //this_worker->SetThreadNum(thread_num_);
     }
-
   // set debug here
   SetDebug(trainer_desc.debug());
 }
@@ -182,14 +174,11 @@ void HeterPipelineTrainer::Run() {
         break;
     }
   }
-
   auto heter_server = paddle::distributed::HeterServer::GetInstance();
   heter_server->WaitServerReady();
   heter_server->SetMiniBatchScopes(mini_scopes_);
   heter_server->SetMicroBatchScopes(micro_scopes_);
   heter_server->SetTaskQueue(task_queue_);
-  
-
   // main training logic
   //VLOG(3) << "HeterPipelineTrainer threads size:" << threads_.size();
   if (pipeline_stage_ == 0) { // for cpu trainer
