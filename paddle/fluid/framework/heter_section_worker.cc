@@ -319,14 +319,17 @@ void HeterSectionWorker::Run() {
     // backward
     MiniBatchBarrier(micro_ids);
   } else { // for heter worker
-      int cnt = 0;
-      int target_ = -1;
-      if (is_last_stage) {
-        target_ = num_microbatches_;
-      } else {
-        target_ = 2 * num_microbatches_;
-      } 
-      while(cnt < target_) {
+
+      //int cnt = 0;
+      //int target_ = -1;
+      //if (is_last_stage) {
+      //  target_ = num_microbatches_;
+      //} else {
+      //  target_ = 2 * num_microbatches_;
+      //} 
+
+
+      while(true) {
         auto task = (*thread_queue_).Pop();
         auto message_name = task.first;
         auto micro_id = task.second;
@@ -342,9 +345,11 @@ void HeterSectionWorker::Run() {
           } else if (message_name.find("backward") != std::string::npos) {
               RunBackward(micro_id);
           }
-          cnt++;
+          //cnt++;
         }
       }
+
+
   }
 }
 
