@@ -73,7 +73,7 @@ class SoftplusActivationLeakyReluOneDNNFusePassTest(
         self.fuse_activation_alpha = 0.3
 
 
-class SoftplusActivationLeakyReluOneDNNFusePassTest(
+class SoftplusActivationSwishOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
     def set_params(self):
         self.fuse_activation = fluid.layers.swish
