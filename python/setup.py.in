@@ -151,10 +151,6 @@ def cudnn():
 '''
     commit = git_commit()
 
-    #if os.name == 'nt':
-    #    # fix the path separator under windows
-    #    filename = filename.replace('/', '\\')
-
     dirname = os.path.dirname(filename)
 
     try:
