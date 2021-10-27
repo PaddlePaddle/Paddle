@@ -17,9 +17,10 @@ import paddle
 
 
 class TestCPUVersion(unittest.TestCase):
-    if not paddle.is_compiled_with_cuda():
-        self.assertEqual(paddle.version.cuda(), 'False')
-        self.assertEqual(paddle.version.cudnn(), 'False')
+    def test_cuda_cudnn_version_in_cpu_package(self):
+        if not paddle.is_compiled_with_cuda():
+            self.assertEqual(paddle.version.cuda(), 'False')
+            self.assertEqual(paddle.version.cudnn(), 'False')
 
 
 if __name__ == '__main__':
