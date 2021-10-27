@@ -15,7 +15,7 @@
 import paddle
 from ...autograd import vjp
 from .bfgs import SearchState
-from .bfgs_utils import as_float_tensor, make_state, update_state, 
+from .bfgs_utils import make_state, update_state, 
 from .bfgs_utils import vnorm_inf, vnorm_p, any_predicates
 from .bfgs_utils import any_active, active_state, converged_state, failed_state
 
@@ -197,6 +197,9 @@ def bisect(state, phi, a, b, params, max_iters):
 def secant(state, phi, a, b):
     r"""Implements the secant function, a sub-procedure in secant2.
 
+    The output value is the weighted average of the input values, where
+    the weights are given by the slopes of `phi` at the inputs values. 
+
     Args:
         state (Tensor): the search state tensor.
         phi (Callable): the restricted function on the search line.
@@ -213,7 +216,11 @@ def secant(state, phi, a, b):
     fa, ga = vjp(phi, a)
     fb, gb = vjp(phi, b)
 
-    return (a * gb - b * ga) / (gb - ga)
+    c = (a * gb - b * ga) / (gb - ga)
+    # (TODO) Handles divide by zero
+    # if paddle.any(paddle.isinf(c)):
+    #     c = paddle.where(paddle.isinf(c), paddle.zeros_like(c), c)
+    return c
 
 def secant2(state, phi, a, b, params, max_iters):
     r"""Implements the secant2 procedure in the Hager-Zhang method.
@@ -240,6 +247,7 @@ def secant2(state, phi, a, b, params, max_iters):
     #
     # S3. Otherwise, [a, b] = [A, B]
     c = secant(a, b)
+
     A, B = update(a, b, c)
     
     # Boolean tensor each element of which holds the S2 condition 
@@ -566,11 +574,14 @@ def hz_linesearch(state,
     #
     # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
 
-    # Generates initial step size
+    # Generates initial step sizes
     c = initial(state, params)
 
     # Generates the opposite slope interval
     a_j, b_j = bracket(state, phi, c, params, max_iters=max_iters)
+
+    ls_found = make_const(c, False, dtype='bool')
+    ls_stepsize = c
 
     iters = 0
     while iters < max_iters:
@@ -582,6 +593,16 @@ def hz_linesearch(state,
         L2_cond = (b - a) > gamma * (b_j - a_j)
 
         c = 0.5 * (a + b)
+        
+        # Halts the line search if the stopping conditions are all satisfied.
+        stopped = stopping_condition(state, phi, c, deriv)
+        new_stopped = paddle.logical_and(logical_not(ls_found), stopped)
+        ls_stepsize = paddle.where(new_stopped, c, ls_stepsize)
+        ls_found = paddle.logical_or(ls_found, stopped)
+
+        if all_active_with_predicates(state.state, ls_found):
+            break
+
         A, B = update(a, b, c)        
         a = paddle.where(L2_cond, A, a)
         b = paddle.where(L2_cond, B, b)
@@ -590,5 +611,7 @@ def hz_linesearch(state,
         a_j, b_j = a, b
         iters += 1
 
+    # Generates the next iterates given the line search step sizes.
+    
     return
 

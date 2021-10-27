@@ -31,7 +31,7 @@ def any_active(state):
     return paddle.any(state == 0)
 
 def all_active_with_predicates(state, *predicates):
-    r"""Tests whether all active states also satisfie the predicates.
+    r"""Tests whether all active states also satisfies the predicates.
     
     Args:
         state (Tensor): the search state of dtype int8. For each element, 0 

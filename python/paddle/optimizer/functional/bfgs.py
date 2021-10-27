@@ -79,8 +79,7 @@ class SearchState(object):
         self.nf = nf
         self.ng = ng
         self.state = make_state(fk)
-        self._StateConverged = make_state(fk, 'converged')
-        self._StateFailed = make_state(fk, 'failed')
+
 
 def iterates(func,
              x0, 
@@ -153,11 +152,11 @@ def iterates(func,
 
     while any_active(state.state) and state.k < iters:
         # Performs line search and updates the state 
-        linesearch(state,
-                   func, 
-                   gtol=gtol,
-                   xtol=xtol,
-                   max_iters=ls_iters)
+        linesearch_next(state,
+                        func, 
+                        gtol=gtol,
+                        xtol=xtol,
+                        max_iters=ls_iters)
         
         # Calculates the gradient norms
         gnorm = vnorm_inf(state.gk)
