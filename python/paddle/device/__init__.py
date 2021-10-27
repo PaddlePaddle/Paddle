@@ -77,6 +77,7 @@ def XPUPlace(dev_id):
 
     Examples:
         .. code-block:: python
+
             # required: xpu
             
             import paddle
