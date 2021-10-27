@@ -24,11 +24,12 @@ import collections
 
 class FusedMultiHeadAttention(Layer):
     """
-   Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
     Please refer to `Attention Is All You Need <https://arxiv.org/pdf/1706.03762.pdf>`_
     for more details.
+
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
         num_heads (int): The number of heads in multi-head attention.
@@ -48,11 +49,12 @@ class FusedMultiHeadAttention(Layer):
             weights. Now, only False is supported. Default False.
         weight_attr(ParamAttr, optional):  To specify the weight parameter property.
             Default: None, which means the default weight parameter property is used.
-            See usage for details in :code:`ParamAttr` .
+            See usage for details in :code:`ParamAttr`.
         bias_attr (ParamAttr|bool, optional): To specify the bias parameter property.
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
-            See usage for details in :code:`ParamAttr` .
+            See usage for details in :code:`ParamAttr`.
+
     Examples:
 
         .. code-block:: python
@@ -139,6 +141,7 @@ class FusedMultiHeadAttention(Layer):
         """
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
+
         Parameters:
             query (Tensor): The queries for multi-head attention. It is a
                 tensor with shape `[batch_size, query_length, embed_dim]`. The
@@ -163,6 +166,7 @@ class FusedMultiHeadAttention(Layer):
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 Now, only None is supported. Default None.
+
         Returns:
             Tensor|tuple: It is a tensor that has the same shape and data type \
                 as `query`, representing attention output.
