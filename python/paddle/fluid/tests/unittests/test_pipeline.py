@@ -48,6 +48,15 @@ class TestPipeline(TestDistBase):
                 log_name=flag_name,
                 need_envs=self.need_envs())
 
+    def test_dist_train_1f1b_1microbatch(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "pipeline_mnist_1f1b_1microbatch.py",
+                delta=1e0,
+                check_error_log=True,
+                log_name=flag_name,
+                need_envs=self.need_envs())
+
     def test_dist_train_multi_device(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
