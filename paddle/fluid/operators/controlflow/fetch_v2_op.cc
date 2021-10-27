@@ -128,7 +128,9 @@ class FetchV2Kernel {
     if (fetch_var->IsType<framework::LoDTensor>()) {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
       auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item.place()), true,
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item.place()) ||
+                            platform::is_cuda_pinned_place(src_item.place()),
+                        true,
                         platform::errors::InvalidArgument(
                             "Tensor's place of input(X) must be CPUPlace."));
       if (deepcopy) {

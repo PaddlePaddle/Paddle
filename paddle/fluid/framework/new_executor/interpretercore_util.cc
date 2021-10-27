@@ -282,7 +282,7 @@ void build_op_func_list(const platform::Place& place,
     for (auto& var_name_item : ins_map_temp) {
       for (size_t i = 0; i < var_name_item.second.size(); ++i) {
         auto var = var_name_item.second[i];
-        auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
+        auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
         if (!tensor_in->IsInitialized()) {
           continue;
         }
@@ -291,7 +291,9 @@ void build_op_func_list(const platform::Place& place,
                 ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                       expected_kernel_key);
         if (platform::is_same_place(kernel_type_for_var.place_,
-                                    expected_kernel_key.place_)) {
+                                    expected_kernel_key.place_) ||
+            (is_cuda_pinned_place(kernel_type_for_var.place_) &&
+             is_cpu_place(expected_kernel_key.place_))) {
           // record no need data transformer input var_id
           auto& var_name = inputs_names[var_name_item.first][i];
           VLOG(3) << op->Type() << " found no data_transform var: " << var_name
