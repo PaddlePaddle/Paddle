@@ -26,15 +26,15 @@ class TestASPUtils(unittest.TestCase):
     def test_get_check_method(self):
         self.assertEqual(
             paddle.fluid.contrib.sparsity.CheckMethod.get_checking_method(
-                sparsity.MaskAlgo.MASK_1D),
+                paddle.fluid.contrib.sparsity.MaskAlgo.MASK_1D),
             paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
         self.assertEqual(
             paddle.fluid.contrib.sparsity.CheckMethod.get_checking_method(
-                sparsity.MaskAlgo.MASK_2D_GREEDY),
+                paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_GREEDY),
             paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
         self.assertEqual(
             paddle.fluid.contrib.sparsity.CheckMethod.get_checking_method(
-                sparsity.MaskAlgo.MASK_2D_BEST),
+                paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_BEST),
             paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
 
     def test_density(self):
@@ -187,7 +187,10 @@ class TestASPUtils(unittest.TestCase):
 
     def __test_1D_2D_sparse_mask_generation_methods(self, x):
         mask = paddle.fluid.contrib.sparsity.create_mask(
-            x, func_name=sparsity.MaskAlgo.MASK_1D, n=2, m=4)
+            x,
+            func_name=paddle.fluid.contrib.sparsity.MaskAlgo.MASK_1D,
+            n=2,
+            m=4)
         self.assertTrue(
             paddle.fluid.contrib.sparsity.check_sparsity(
                 mask,
@@ -195,7 +198,10 @@ class TestASPUtils(unittest.TestCase):
                 n=2,
                 m=4))
         mask = paddle.fluid.contrib.sparsity.create_mask(
-            x, func_name=sparsity.MaskAlgo.MASK_2D_GREEDY, n=2, m=4)
+            x,
+            func_name=paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_GREEDY,
+            n=2,
+            m=4)
         self.assertTrue(
             paddle.fluid.contrib.sparsity.check_sparsity(
                 mask,
@@ -203,7 +209,10 @@ class TestASPUtils(unittest.TestCase):
                 n=2,
                 m=4))
         mask = paddle.fluid.contrib.sparsity.create_mask(
-            x, func_name=sparsity.MaskAlgo.MASK_2D_BEST, n=2, m=4)
+            x,
+            func_name=paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_BEST,
+            n=2,
+            m=4)
         self.assertTrue(
             paddle.fluid.contrib.sparsity.check_sparsity(
                 mask,

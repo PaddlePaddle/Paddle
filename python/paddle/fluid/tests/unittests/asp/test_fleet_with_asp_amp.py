@@ -76,7 +76,7 @@ class TestFleetWithASP(unittest.TestCase):
 
         optimizer.amp_init(place)
 
-        sparsity.prune_model(place, train_prog)
+        sparsity.prune_model(train_prog)
 
         data = (np.random.randn(64, 32), np.random.randint(2, size=(64, 1)))
         exe.run(train_prog, feed=feeder.feed([data]))
@@ -116,7 +116,7 @@ class TestFleetWithASP(unittest.TestCase):
 
         optimizer.amp_init(place)
 
-        sparsity.prune_model(place, train_prog)
+        sparsity.prune_model(train_prog)
 
         data = (np.random.randn(64, 32), np.random.randint(2, size=(64, 1)))
         exe.run(train_prog, feed=feeder.feed([data]))

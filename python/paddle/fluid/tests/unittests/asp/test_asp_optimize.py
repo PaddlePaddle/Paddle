@@ -129,7 +129,7 @@ class TestASPHelper(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[self.img, self.label], place=place)
 
         exe.run(self.startup_program)
-        sparsity.prune_model(place, self.main_program)
+        sparsity.prune_model(self.main_program)
 
         data = (np.random.randn(64, 3, 32, 32), np.random.randint(
             10, size=(64, 1)))
@@ -157,7 +157,7 @@ class TestASPHelper(unittest.TestCase):
                 feed_list=[self.img, self.label], place=place)
 
             exe.run(self.startup_program)
-            sparsity.prune_model(place, self.main_program)
+            sparsity.prune_model(self.main_program)
 
             data = (np.random.randn(64, 3, 32, 32), np.random.randint(
                 10, size=(64, 1)))

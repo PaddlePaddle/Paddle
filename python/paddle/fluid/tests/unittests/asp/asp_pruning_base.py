@@ -76,10 +76,7 @@ class TestASPHelperPruningBase(unittest.TestCase):
                                check_func_name, with_mask):
         exe.run(self.startup_program)
         sparsity.prune_model(
-            place,
-            self.main_program,
-            func_name=mask_func_name,
-            with_mask=with_mask)
+            self.main_program, func_name=mask_func_name, with_mask=with_mask)
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
