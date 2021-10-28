@@ -61,36 +61,6 @@ __global__ void insert_kernel(Table* table,
 
 
 template <typename Table>
-__global__ void insert_kernel(Table* table,
-                              const typename Table::key_type* const keys,
-                              size_t len, HBMMemoryPool* pool, int start_index) {
-  ReplaceOp<typename Table::mapped_type> op;
-  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
-
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    kv.first = keys[i];
-    kv.second = (uint64_t)pool->mem_address(start_index + i);
-    auto it = table->insert(kv, op);
-    assert(it != table->end() && "error: insert fails: table is full");
-  }
-}
-
-template <typename Table>
-__global__ void search_kernel(Table* table,
-                              const typename Table::key_type* const keys,
-                              typename Table::mapped_type* const vals,
-                              size_t len, int size_val_type) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    auto it = table->find(keys[i]);
-    if (it != table->end()) {
-      (Table::mapped_type*)(vals + i * size_val_type) = *(it->second);
-    }
-  }
-}
-
-template <typename Table>
 __global__ void search_kernel(Table* table,
                               const typename Table::key_type* const keys,
                               typename Table::mapped_type* const vals,
@@ -194,17 +164,6 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
                                                       d_vals, len, max_mf_dim_);
   
   
-}
-
-template <typename KeyType, typename ValType>
-void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-                                      size_t len, gpuStream_t stream, int size_val_type) {
-  if (len == 0) {
-    return;
-  }
-  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
-                                                       d_vals, len, size_val_type);
 }
 
 template <typename KeyType, typename ValType>

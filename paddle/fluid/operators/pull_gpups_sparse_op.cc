@@ -29,7 +29,7 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
         ctx->Outputs("Out").size(), 1UL,
         platform::errors::InvalidArgument(
             "Outputs(Out) of PullGpuPSSparseOp should not be empty."));
-    auto embedding_size_vec = ctx->Attrs().Get<std::vector<int>>("embedding_size"));
+    auto embedding_size_vec = ctx->Attrs().Get<std::vector<int>>("size");
     PADDLE_ENFORCE_EQ(ctx->Inputs("Ids").size(), embedding_size_vec.size(),
                         platform::errors::InvalidArgument(
                             "The ids size: %lu must be equal to the length of embedding size: %lu.", ctx->Inputs("Ids").size(), embedding_size_vec.size()));
@@ -74,7 +74,7 @@ class PullGpuPSSparseOpMaker : public framework::OpProtoAndCheckerMaker {
              "The last dimension size must be 1.")
         .AsDuplicable();
     AddOutput("Out", "The lookup results tensors.").AsDuplicable();
-    AddAttr<std::vector<int>>("embedding_size", "(vector<int>, the embedding size of corresponding slot").SetDefault(std::vector<int>());
+    AddAttr<std::vector<int>>("size", "(vector<int>, the embedding size of corresponding slot").SetDefault(std::vector<int>());
     AddComment(R"DOC(
 Pull GpuPS Sparse Operator.
 

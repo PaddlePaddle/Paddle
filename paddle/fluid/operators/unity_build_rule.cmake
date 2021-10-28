@@ -207,7 +207,8 @@ register_unity_group(cc
     pull_box_extended_sparse_op.cc
     pull_box_sparse_op.cc
     pull_sparse_op.cc
-    pull_sparse_v2_op.cc)
+    pull_sparse_v2_op.cc
+    pull_gpups_sparse_op.cc)
 register_unity_group(cc
     push_dense_op.cc
     quantize_op.cc
@@ -480,7 +481,8 @@ register_unity_group(cu
     prelu_op.cu
     prroi_pool_op.cu
     pull_box_extended_sparse_op.cu
-    pull_box_sparse_op.cu)
+    pull_box_sparse_op.cu
+    pull_gpups_sparse_op.cu)
 register_unity_group(cu
     randint_op.cu
     random_crop_op.cu

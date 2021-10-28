@@ -31,7 +31,7 @@ class HeterPs : public HeterPsBase {
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
 
-  virtual void pull_sparse(int num, FeatureKey* d_keys, char* d_vals,
+  virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
                            size_t len) override;
   virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
                         size_t len, size_t chunk_size, int stream_num) override;
@@ -40,12 +40,11 @@ class HeterPs : public HeterPsBase {
   virtual void set_nccl_comm_and_size(
       const std::vector<ncclComm_t>& inner_comms,
       const std::vector<ncclComm_t>& inter_comms, int comm_size) override;
-  virtual void set_mutli_dim(const std::unordered_map<int, int>& dim_index_map) override;
   virtual void end_pass() override;
   virtual int get_index_by_devid(int devid) override;
   virtual void show_one_table(int gpu_num) override;
   virtual void push_sparse(int num, FeatureKey* d_keys,
-                           char* d_grads, size_t len) override;
+                           FeaturePushValue* d_grads, size_t len) override;
 
  private:
   std::shared_ptr<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>> comm_;
