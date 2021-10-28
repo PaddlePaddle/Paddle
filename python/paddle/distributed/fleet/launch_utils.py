@@ -832,192 +832,172 @@ class ParameterServerLauncher(object):
         self.get_role_endpoints(args)
 
     def get_role_endpoints(self, args):
-
-        if args.heter_config:
-
-            yaml_helper = yaml_reader.YamlHelper()
-            config = yaml_helper.load_yaml(args.heter_config)
-            print("heterPS fleet config----------")
-            print(config)
-            print("heterPS fleet config----------")
-            ## servers
-            server_endpoints_str = config['running_config']['server']
-            assert server_endpoints_str != "", "The setting of Parameter-Server must has servers."
-
-            server_endpoints_ips = [
-                x.strip().split(":")[0] for x in server_endpoints_str.split(",")
-            ]
-            self.server_num = len(server_endpoints_ips)
-            server_endpoints_len = [
-                len(x.strip().split(":"))
-                for x in server_endpoints_str.split(",")
-            ]
-
-            if 1 in server_endpoints_len:
-                # if no port value in server_endpoints, will set default port values.
-                server_endpoints_port = get_ports(self.server_num, 0)
-                server_endpoints = []
-                for i in range(self.server_num):
-                    server_endpoints.append(":".join((server_endpoints_ips[
-                        i], str(server_endpoints_port[i]))))
-                self.server_endpoints = ",".join(server_endpoints)
+        if args.server_num:
+            self.server_num = args.server_num
+            if args.servers:
+                assert len(
+                    args.servers.split(",")
+                ) == self.server_num, "The server_num and servers doesn't match. Expect servers endpoints num epual to server_num, but received servers enpoint num: {} and server_num {}".format(
+                    len(args.servers.split(",")), self.server_num)
+                self.server_endpoints = args.servers
             else:
-                self.server_endpoints = server_endpoints_str
+                ports = get_ports(self.server_num, 0)
+                self.server_endpoints = ",".join(
+                    ["127.0.0.1:" + str(x) for x in ports])
+        else:
+            assert args.servers != "", "The setting of Parameter-Server must has server_num or servers."
+            self.server_endpoints = args.servers
+            self.server_num = len(self.server_endpoints.split(","))
 
-            ## workers, include cpu worker & heter worker
-            ## every worker has next stage's corresponding endpoints 
-            worker_config = config['running_config']['worker']
-            assert worker_config != "", "The setting of Parameter-Server must has workers."
-            self.stage_num = len(worker_config)
-            for i in range(0, self.stage_num, 1):
-                heter_device_type = worker_config['stage' + str(i + 1)][
-                    'device_type']
-                if i + 1 not in self.stage_device_map:
-                    self.stage_device_map[i + 1] = heter_device_type
-                ip_port_list = worker_config['stage' + str(i + 1)]['ips']
-                if i == 0:  # worker_endpoints
-                    worker_endpoints_ips = [
-                        x.strip().split(":")[0] for x in ip_port_list.split(",")
-                    ]
-                    self.worker_num = len(worker_endpoints_ips)
-                    self.stage_trainer_num.append(self.worker_num)
-                    worker_endpoints_len = [
-                        len(x.strip().split(":"))
-                        for x in ip_port_list.split(",")
-                    ]
+        # get worker envs
+        if args.worker_num:
+            self.worker_num = args.worker_num
+            if args.workers:
+                assert len(
+                    args.workers.split(",")
+                ) == self.worker_num, "The worker_num and workers doesn't match. Expect workers endpoints num epual to worker_num, but received workers enpoint num: {} and worker_num {}".format(
+                    len(args.workers.split(",")), self.worker_num)
 
-                    if 1 in worker_endpoints_len:
+                self.worker_endpoints = args.workers
+            else:
+                ports = get_ports(self.worker_num, self.server_num)
+                self.worker_endpoints = ",".join(
+                    ["127.0.0.1:" + str(x) for x in ports])
+        else:
+            assert args.workers != "", "The setting of Parameter-Server must has worker_num or workers."
+            worker_endpoints_ips = [
+                x.strip().split(":")[0] for x in args.workers.split(",")
+            ]
+            self.worker_num = len(worker_endpoints_ips)
+            worker_endpoints_len = [
+                len(x.strip().split(":")) for x in args.workers.split(",")
+            ]
 
-                        # if no port value in worker_endpoints, will set default port values.
-                        worker_endpoints_port = get_ports(self.worker_num,
-                                                          self.server_num)
+            if 1 in worker_endpoints_len:
+                # if no port value in worker_endpoints, will set default port values.
+                start_port = 6170
+                worker_endpoints_port = range(
+                    start_port + self.server_num,
+                    start_port + self.server_num + self.worker_num, 1)
+                # create endpoints str
+                worker_endpoints = []
+                for i in range(self.worker_num):
+                    worker_endpoints.append(":".join((worker_endpoints_ips[
+                        i], str(worker_endpoints_port[i]))))
+                self.worker_endpoints = ",".join(worker_endpoints)
+            else:
+                self.worker_endpoints = args.workers
 
-                        #start_port = 6170
-                        #worker_endpoints_port = range(
-                        #     start_port + self.server_num,
-                        #     start_port + self.server_num + self.worker_num, 1)
-                        # create endpoints str
+        # get heter worker envs
+        if self.distribute_mode == DistributeMode.PS_HETER:
+            assert args.heter_devices != "", "The setting of Parameter-Server heter mode must has heter_devices."
+            self.stage_device_map[1] = "cpu" #  for cpu trainer
+            heter_devices_list = args.heter_devices.split(";")
+            for i in range(len(heter_devices_list)):
+                self.stage_device_map[i + 2] = heter_devices_list[i]
+                    
+            self.stage_heter_map[1] = self.worker_endpoints
+            if args.heter_worker_num:
+                self.stage_heter_trainer_num = args.heter_worker_num.split(",")
+                self.stage_heter_trainer_num = [int(trainer_num) for trainer_num in self.stage_heter_trainer_num]
+                    
+                if args.heter_workers:
+                    assert len(
+                        args.heter_workers.split(";")
+                    ) == len(self.stage_heter_trainer_num), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num epual to heter_worker_num stage, but received heter_workers enpoint stage num: {} and heter_worker_num stage {}".format(
+                        len(args.heter_workers.split(";")),
+                        len(self.stage_heter_trainer_num))
+                    heter_worker_endpoints_list = args.heter_workers.split(";")
+                    self.heter_worker_endpoints = ""
+                    for i in range(len(self.stage_heter_trainer_num)):
+                        if self.heter_worker_endpoints != "":
+                            self.heter_worker_endpoints += ","
+                        heter_worker_endpoints = heter_worker_endpoints_list[i].split(",")
+                        assert len(heter_worker_endpoints) == self.stage_heter_trainer_num[i], "The heter trainer num in stage {} is not equal in args.heter_worker_num and args.heter_workers".format(i)
+                            
+                        heter_worker_endpoints_ips = [
+                            x.strip().split(":")[0] for x in heter_worker_endpoints
+                        ]
+                        heter_worker_endpoints_len = [
+                            len(x.strip().split(":")) for x in heter_worker_endpoints
+                        ]
 
-                        worker_endpoints = []
-                        for j in range(self.worker_num):
-                            worker_endpoints.append(":".join((
-                                worker_endpoints_ips[j], str(
-                                    worker_endpoints_port[j]))))
-                        self.worker_endpoints = ",".join(worker_endpoints)
-                    else:
-                        self.worker_endpoints = ip_port_list
-                    self.stage_heter_map[i + 1] = self.worker_endpoints
-                else:  ## for heter worker
+                        if 1 in heter_worker_endpoints_len:
+                            # if no port value in heter_worker_endpoint, will set default port values.
+                            heter_worker_endpoints_port = get_ports(
+                                len(heter_worker_endpoints_ips), self.worker_num +
+                                    self.server_num + self.heter_worker_num)
+                            new_heter_worker_endpoints = []
+                            for j in range(len(heter_worker_endpoints_ips)):
+                                new_heter_worker_endpoints.append(":".join((
+                                    heter_worker_endpoints_ips[j], str(
+                                        heter_worker_endpoints_port[j]))))
+                            ip_port_list = ",".join(new_heter_worker_endpoints)
+                        else:
+                            ip_port_list = ",".join(heter_worker_endpoints)
+
+                        self.stage_heter_map[i + 2] = ip_port_list
+                        self.stage_list.extend([i + 2] *
+                                       len(ip_port_list.split(',')))
+
+                        self.heter_worker_num += self.stage_heter_trainer_num[i]
+                        self.heter_worker_endpoints += ip_port_list
+                else:
+                    for i in range(len(self.stage_heter_trainer_num)):
+                        heter_trainer_num = self.stage_heter_trainer_num[i]
+                        ports = get_ports(heter_trainer_num,
+                                          self.server_num + self.worker_num + self.heter_worker_num)
+                        ip_port_list = ",".join(
+                            ["127.0.0.1:" + str(x) for x in ports])
+                        self.stage_heter_map[i + 2] = ip_port_list
+                        self.stage_list.extend([i + 2] *
+                                       len(ip_port_list.split(',')))
+                        self.heter_worker_num += heter_trainer_num
+                        if self.heter_worker_endpoints != "":
+                            self.heter_worker_endpoints += ","
+                        self.heter_worker_endpoints += ip_port_list
+            else:
+                assert args.heter_workers != "", "The setting of Parameter-Server heter mode must has heter_worker_num or heter_workers."
+                self.stage_heter_trainer_num = []
+                heter_worker_endpoints_list = args.heter_workers.split(";")
+                self.heter_worker_endpoints = ""
+                for i in range(len(heter_worker_endpoints_list)):
+                    if self.heter_worker_endpoints != "":
+                        self.heter_worker_endpoints += ","
+                    heter_worker_endpoints = heter_worker_endpoints_list[i].split(",")
+                    self.stage_heter_trainer_num.append(len(heter_worker_endpoints))
                     heter_worker_endpoints_ips = [
-                        x.strip().split(":")[0] for x in ip_port_list.split(",")
+                        x.strip().split(":")[0] for x in heter_worker_endpoints
                     ]
                     heter_worker_endpoints_len = [
-                        len(x.strip().split(":"))
-                        for x in ip_port_list.split(",")
+                        len(x.strip().split(":")) for x in heter_worker_endpoints
                     ]
-
                     if 1 in heter_worker_endpoints_len:
-                        # if no port value in worker_endpoints, will set default port values.
+                        # if no port value in heter_worker_endpoint, will set default port values.
                         heter_worker_endpoints_port = get_ports(
                             len(heter_worker_endpoints_ips), self.worker_num +
-                            self.server_num + self.heter_worker_num)
-                        heter_worker_endpoints = []
+                                self.server_num + self.heter_worker_num)
+                                
+                        new_heter_worker_endpoints = []
                         for j in range(len(heter_worker_endpoints_ips)):
-                            heter_worker_endpoints.append(":".join((
+                            new_heter_worker_endpoints.append(":".join((
                                 heter_worker_endpoints_ips[j], str(
                                     heter_worker_endpoints_port[j]))))
+                        ip_port_list = ",".join(new_heter_worker_endpoints)
+                    else:
                         ip_port_list = ",".join(heter_worker_endpoints)
 
-                    self.stage_heter_map[i + 1] = ip_port_list
-                    self.stage_list.extend([i + 1] *
-                                           len(ip_port_list.split(',')))
+                    self.stage_heter_map[i + 2] = ip_port_list
+                    self.stage_list.extend([i + 2] *
+                                   len(ip_port_list.split(',')))
+
+                    self.heter_worker_num += self.stage_heter_trainer_num[-1]
                     if self.heter_worker_endpoints != "":
                         self.heter_worker_endpoints += ","
                     self.heter_worker_endpoints += ip_port_list
-                    self.heter_worker_num += len(ip_port_list.split(","))
-                    self.stage_trainer_num.append(len(ip_port_list.split(",")))
-            if self.heter_worker_endpoints == "":
-                self.distribute_mode = DistributeMode.PS
-                # get server envs
-        else:
-            if args.server_num:
-                self.server_num = args.server_num
-                if args.servers:
-                    assert len(
-                        args.servers.split(",")
-                    ) == self.server_num, "The server_num and servers doesn't match. Expect servers endpoints num epual to server_num, but received servers enpoint num: {} and server_num {}".format(
-                        len(args.servers.split(",")), self.server_num)
-                    self.server_endpoints = args.servers
-                else:
-                    ports = get_ports(self.server_num, 0)
-                    self.server_endpoints = ",".join(
-                        ["127.0.0.1:" + str(x) for x in ports])
-            else:
-                assert args.servers != "", "The setting of Parameter-Server must has server_num or servers."
-                self.server_endpoints = args.servers
-                self.server_num = len(self.server_endpoints.split(","))
 
-            # get worker envs
-            if args.worker_num:
-                self.worker_num = args.worker_num
-                if args.workers:
-                    assert len(
-                        args.workers.split(",")
-                    ) == self.worker_num, "The worker_num and workers doesn't match. Expect workers endpoints num epual to worker_num, but received workers enpoint num: {} and worker_num {}".format(
-                        len(args.workers.split(",")), self.worker_num)
-
-                    self.worker_endpoints = args.workers
-                else:
-                    ports = get_ports(self.worker_num, self.server_num)
-                    self.worker_endpoints = ",".join(
-                        ["127.0.0.1:" + str(x) for x in ports])
-            else:
-                assert args.workers != "", "The setting of Parameter-Server must has worker_num or workers."
-                worker_endpoints_ips = [
-                    x.strip().split(":")[0] for x in args.workers.split(",")
-                ]
-                self.worker_num = len(worker_endpoints_ips)
-                worker_endpoints_len = [
-                    len(x.strip().split(":")) for x in args.workers.split(",")
-                ]
-
-                if 1 in worker_endpoints_len:
-                    # if no port value in worker_endpoints, will set default port values.
-                    start_port = 6170
-                    worker_endpoints_port = range(
-                        start_port + self.server_num,
-                        start_port + self.server_num + self.worker_num, 1)
-                    # create endpoints str
-                    worker_endpoints = []
-                    for i in range(self.worker_num):
-                        worker_endpoints.append(":".join((worker_endpoints_ips[
-                            i], str(worker_endpoints_port[i]))))
-                    self.worker_endpoints = ",".join(worker_endpoints)
-                else:
-                    self.worker_endpoints = args.workers
-
-            # get heter worker envs
-            if self.distribute_mode == DistributeMode.PS_HETER:
-                if args.heter_worker_num:
-                    self.heter_worker_num = args.heter_worker_num
-                    if args.heter_workers:
-                        assert len(
-                            args.heter_workers.split(",")
-                        ) == self.heter_worker_num, "The heter_worker_num and heter_workers doesn't match. Expect heter_workers endpoints num epual to heter_worker_num, but received heter_workers enpoint num: {} and heter_worker_num {}".format(
-                            len(args.heter_workers.split(",")),
-                            self.heter_worker_num)
-                        self.heter_worker_endpoints = args.heter_workers
-                    else:
-                        ports = get_ports(self.heter_worker_num,
-                                          self.server_num + self.worker_num)
-                        self.heter_worker_endpoints = ",".join(
-                            ["127.0.0.1:" + str(x) for x in ports])
-                else:
-                    assert args.heter_workers != "", "The setting of Parameter-Server heter mode must has heter_worker_num or heter_workers."
-                    self.heter_worker_endpoints = args.heter_workers
-                    self.heter_worker_num = len(
-                        self.heter_worker_endpoints.split(","))
-                
+            self.stage_trainer_num = [self.worker_num] + self.stage_heter_trainer_num                  
+            self.stage_num = len(self.stage_trainer_num)
 
         # get http_port
         if args.http_port:
@@ -1264,7 +1244,7 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "PADDLE_STAGE_TRAINERS_NUM": str(self.stage_trainer_num),
                 "STAGE_ID": "1",
-                "STAGE_NUM": str(len(self.stage_heter_map)),
+                "STAGE_NUM": str(self.stage_num),
                 "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": "",
                 "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2],
                 "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,

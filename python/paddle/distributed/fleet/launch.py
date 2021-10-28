@@ -169,13 +169,16 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="",
         help="User defined heter workers ip:port")
+    ps_group.add_argument(
+        "--heter_devices",
+        type=str,
+        default="",
+        help="User defined heter devices")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument(
         "--heter_worker_num", type=int, help="number of heter_workers")
-    ps_group.add_argument(
-        "--heter_config", type=str, help="yaml config file for heterPS mode")
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
     # parameter elastic mode
@@ -330,11 +333,11 @@ def which_distributed_mode(args):
 
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
-        '--workers', '--heter_workers', '--heter_config', '--http_port'
+        '--workers', '--heter_workers', '--heter_devices', '--http_port'
     ]
     collective_args = ['--ips']
 
-    ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_config"]
+    ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_devices"]
 
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
