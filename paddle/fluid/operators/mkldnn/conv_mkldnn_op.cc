@@ -405,10 +405,22 @@ class ConvMKLDNNHandlerT
   }
 
   std::tuple<float, std::vector<float>> get_int8_bias_scales(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx,
+      const platform::MKLDNNDeviceContext& dev_ctx,
+      const std::string& key) const {
     const auto* filter = ctx.Input<Tensor>("Filter");
     const auto& weights_tz = framework::vectorize(filter->dims());
     const int groups = std::max(ctx.Attr<int>("groups"), 1);
+
+    // Get scales int8 bias key
+    const std::string key_bs = key + "@bs";
+
+    // Scales for int8 bias are to be cached to avoid
+    // computing them each iteration
+    auto bias_scale_tuple =
+        std::static_pointer_cast<std::tuple<float, std::vector<float> > >(dev_ctx.GetBlob(key_bs));
+    if (bias_scale_tuple)
+      return bias_scale_tuple;
 
     const auto& scale_weights_data =
         ctx.Attr<std::vector<float>>("Scale_weights");
@@ -422,12 +434,14 @@ class ConvMKLDNNHandlerT
             : 1;
     std::vector<float> scale_bias_data(count);
 
-#pragma omp parallel for if (count > 50)
     for (int i = 0; i < count; i++) {
       scale_bias_data[i] = scale_in_data * scale_weights_data[i];
     }
 
-    return std::make_tuple(mask_reorder, scale_bias_data);
+    auto bias_scale_tuple = std::make_shared<std::tuple<float, std::vector<float> >(mask_reorder, scale_bias_data);
+    dev_ctx.SetBlob(key_bs, bias_scale_tuple);
+
+    return bias_scale_tuple;
   }
 
   mkldnn::primitive_attr CreatePostOps(
@@ -636,7 +650,7 @@ class ConvMKLDNNHandlerT
     float mask_reorder;
     std::vector<float> scale_bias_data;
     if (platform::is_int8<T>()) {
-       std::tie(mask_reorder, scale_bias_data) = handler.get_int8_bias_scales(ctx);
+       std::tie(mask_reorder, scale_bias_data) = *(handler.get_int8_bias_scales(ctx, key)); //TODO make nicer
     } else {
       mask_reorder =0;
       scale_data = {1.0f};
@@ -857,7 +871,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     if (bias) {
 
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-          dev_ctx, key, bias, scale_bias_data, mask_reorder);
+          dev_ctx, key, bias);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 
