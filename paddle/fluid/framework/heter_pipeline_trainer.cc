@@ -147,7 +147,6 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         this_worker->SetReaderPlace(place);
       }
       this_worker->SetRootScope(root_scope_);
-      this_worker->CacheProgram(main_program);
       // generate mini_batch scope for every worker
       auto* minibatch_scope = &root_scope_->NewScope();
       (*mini_scopes_)[worker_index] = minibatch_scope;
