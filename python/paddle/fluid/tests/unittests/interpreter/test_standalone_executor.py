@@ -15,7 +15,6 @@
 import os
 import sys
 import unittest
-os.environ[str("FLAGS_check_nan_inf")] = str("1")
 import paddle
 from paddle.fluid import core
 from paddle.fluid.core import StandaloneExecutor
