@@ -205,6 +205,9 @@ def prune_model(main_program=None,
                 optimizer = sparsity.decorate(optimizer)
                 optimizer.minimize(loss, startup_program)
 
+            device = paddle.device.get_device()
+            place = paddle.set_device(device)
+
             exe = paddle.static.Executor(place)
             exe.run(startup_program)
 
