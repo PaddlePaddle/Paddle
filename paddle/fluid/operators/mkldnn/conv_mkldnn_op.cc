@@ -404,7 +404,7 @@ class ConvMKLDNNHandlerT
     return std::make_tuple(sum_scale, output_shift_scale);
   }
 
-  std::tuple<float, std::vector<float>> get_int8_bias_scales(
+  std::shared_ptr<std::tuple<float, std::vector<float>>> get_int8_bias_scales(
       const framework::ExecutionContext& ctx,
       const platform::MKLDNNDeviceContext& dev_ctx,
       const std::string& key) const {
@@ -647,19 +647,12 @@ class ConvMKLDNNHandlerT
         MKLDNNMemoryFormat::x);
       
     // Get Bias scales for int8
-    float mask_reorder;
-    std::vector<float> scale_bias_data;
-    if (platform::is_int8<T>()) {
-       std::tie(mask_reorder, scale_bias_data) = *(handler.get_int8_bias_scales(ctx, key)); //TODO make nicer
-    } else {
-      mask_reorder =0;
-      scale_data = {1.0f};
-    }
+    auto p_tupple = platform::is_int8<T>() ?  (handler.get_int8_bias_scales(ctx, key)) : std::make_shared<(std::make_tuple(0.0f, {1.0f}));
 
     return this->AcquireMemoryWithReorder(
         dev_ctx, user_bias_md, this->fwd_pd_->bias_desc(),
         platform::to_void_cast<K>(bias_data), key, "@bias_mem_p", is_test_, {},
-        scale_data, mask);
+        p_tuplamoja->scale_data, mask);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireResidualMemory(
