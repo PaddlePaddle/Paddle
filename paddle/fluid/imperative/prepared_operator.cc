@@ -289,27 +289,35 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
-
-    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
-    for (auto var : ins_vector) {
-      const auto& variable = var->Var();
-      tmp_inputs.emplace_back(
-          experimental::MakePtenTensorBaseFromVar(variable, in_def));
+    if (ins_vector.size() == 1UL) {
+      op_kernel_ctx.EmplaceBackInput(experimental::MakePtenTensorBaseFromVar(
+          ins_vector[0]->Var(), in_def));
+    } else {
+      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
+      for (const auto& var : ins_vector) {
+        const auto& variable = var->Var();
+        tmp_inputs.emplace_back(
+            experimental::MakePtenTensorBaseFromVar(variable, in_def));
+      }
+      op_kernel_ctx.EmplaceBackInputs(std::move(tmp_inputs));
     }
-    op_kernel_ctx.EmplaceBackInputs(std::move(tmp_inputs));
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
-
-    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
-    for (auto var : outs_vector) {
-      auto* variable = var->MutableVar();
-      tmp_outputs.emplace_back(
-          experimental::MakePtenTensorBaseFromVar(variable, out_def));
+    if (outs_vector.size() == 1UL) {
+      op_kernel_ctx.EmplaceBackOutput(experimental::MakePtenTensorBaseFromVar(
+          outs_vector[0]->MutableVar(), out_def));
+    } else {
+      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
+      for (auto& var : outs_vector) {
+        auto* variable = var->MutableVar();
+        tmp_outputs.emplace_back(
+            experimental::MakePtenTensorBaseFromVar(variable, out_def));
+      }
+      op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
     }
-    op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {

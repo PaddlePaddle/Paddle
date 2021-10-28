@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <iterator>
 #include <utility>
 
 #include "paddle/pten/core/tensor_base.h"
@@ -59,14 +60,13 @@ class KernelContext {
   }
 
   void EmplaceBackInputs(
-      const paddle::SmallVector<std::shared_ptr<TensorBase>>& inputs) {
-    int index = inputs_.size();
-    for (auto in : inputs) {
-      inputs_.emplace_back(std::move(in));
-    }
+      paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
     // Record the start and end index of the input
     input_range_.emplace_back(
         std::pair<int, int>(index, index + inputs.size()));
+    inputs_.insert(inputs_.end(),
+                   std::make_move_iterator(inputs.begin()),
+                   std::make_move_iterator(inputs.end()));
   }
 
   void EmplaceBackOutput(std::shared_ptr<TensorBase> output) {
@@ -77,14 +77,13 @@ class KernelContext {
   }
 
   void EmplaceBackOutputs(
-      const paddle::SmallVector<std::shared_ptr<TensorBase>>& outputs) {
-    int index = outputs_.size();
-    for (auto out : outputs) {
-      outputs_.emplace_back(std::move(out));
-    }
+      paddle::SmallVector<std::shared_ptr<TensorBase>> outputs) {
     // Record the start and end index of the input
     output_range_.emplace_back(
         std::pair<int, int>(index, index + outputs.size()));
+    outputs_.insert(outputs_.end(),
+                    std::make_move_iterator(outputs.begin()),
+                    std::make_move_iterator(outputs.end()));
   }
 
   void EmplaceBackAttr(paddle::any attr) {
