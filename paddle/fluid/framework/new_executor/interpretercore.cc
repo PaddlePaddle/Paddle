@@ -79,11 +79,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<framework::LoDTensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
-      auto it = global_scope_->name2id.find(feed_names_[i]);
-      assert(it != global_scope_->name2id.end());
+      auto* feed_var = global_scope_->Var(feed_names_[i]);
 
-      auto feed_tensor = global_scope_->var_list[it->second]
-                             ->GetMutable<framework::LoDTensor>();
+      auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
     }
@@ -94,7 +92,7 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                              global_scope_);
     FeedInput();
     paddle::framework::interpretercore::build_op_func_list(
-        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
+        place_, main_program_, &vec_func_list_, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();
@@ -104,42 +102,39 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   // return Fetch Tensors
-  return *(global_scope_->var_list[global_scope_->name2id["fetch_vars"]]
-               ->GetMutable<framework::FetchList>());
+  auto* fetch_var = global_scope_->Var("fetch_vars");
+  return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
 void InterpreterCore::Convert() {
-  input_var2op_info_.resize(global_scope_->var_list.size());
+  auto var_nums = global_scope_->VarSize();
+  input_var2op_info_.resize(var_nums);
+  vec_meta_info_.resize(var_nums);
 
-  vec_instruction_.reserve(vec_func_list_.size());
-  dependecy_count_.resize(vec_func_list_.size());
-  vec_meta_info_.resize(global_scope_->var_list.size());
-  for (size_t i = 0; i < vec_func_list_.size(); ++i) {
-    Instruction temp_inst;
-    auto* op_base = op_list_[i];
-    temp_inst.dev_ctx_ =
-        stream_analyzer_.ParseDeviceContext(vec_func_list_[i], *op_base);
-    temp_inst.kernel_func_.compute_func_ = vec_func_list_[i].kernel_func_;
-    temp_inst.kernel_func_.operator_base_ = op_base;
-    temp_inst.input_index_ = vec_func_list_[i].input_index;
-    temp_inst.output_index_ = vec_func_list_[i].output_index;
-    temp_inst.type_ = vec_func_list_[i].type_;
-    temp_inst.no_data_transform_index_ =
-        vec_func_list_[i].no_data_transform_index;
+  auto op_nums = vec_func_list_.size();
+  vec_instruction_.reserve(op_nums);
+  dependecy_count_.resize(op_nums);
+
+  for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
+    auto& op_func_node = vec_func_list_[op_idx];
+    auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
+
+    vec_instruction_.emplace_back(op_idx, op_func_node, *dev_ctx_);
+    auto& instr = vec_instruction_.back();
 
     OpInOutInfo info;
-
     std::vector<size_t> gc_check_input_list;
-    for (auto& item : vec_func_list_[i].input_index) {
+
+    for (auto& item : op_func_node.input_index) {
       for (auto id : item.second) {
-        input_var2op_info_[id].push_back(i);
+        input_var2op_info_.at(id).push_back(op_idx);
         // var can be gc-ed
         if (!info.IsBuilt()) {
-          info.Build(op_list_[i]);
+          info.Build(op_func_node.operator_base_);
         }
-        if (global_scope_->vec_meta_info_[id].vardesc_) {
-          if (info.IsInArgBufferNeeded(
-                  global_scope_->vec_meta_info_[id].vardesc_->Name())) {
+        auto* var_desc = global_scope_->VarDesc(id);
+        if (var_desc) {
+          if (info.IsInArgBufferNeeded(var_desc->Name())) {
             gc_check_input_list.push_back(id);
           }
         } else {
@@ -151,22 +146,20 @@ void InterpreterCore::Convert() {
     auto last =
         std::unique(gc_check_input_list.begin(), gc_check_input_list.end());
     gc_check_input_list.erase(last, gc_check_input_list.end());
+
     for (auto var_id : gc_check_input_list) {
       vec_meta_info_[var_id].var_ref_count_++;
+      instr.AddGCCheckVar(var_id);
     }
-
-    temp_inst.gc_check_var_list.swap(gc_check_input_list);
-
-    vec_instruction_.push_back(temp_inst);
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     // checkout ouput
-    for (auto& item : vec_instruction_[i].output_index_) {
+    for (auto& item : vec_instruction_[i].Outputs()) {
       for (auto id : item.second) {
-        if (input_var2op_info_[id].size() == 0) {
+        if (input_var2op_info_.at(id).size() == 0) {
           // output var not be used by any kernel
-          vec_instruction_[i].gc_check_var_list.push_back(id);
+          vec_instruction_[i].AddGCCheckVar(id);
           vec_meta_info_[id].var_ref_count_++;
         }
       }
@@ -175,7 +168,7 @@ void InterpreterCore::Convert() {
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     std::vector<size_t> vec_temp;
-    for (auto& item : vec_instruction_[i].output_index_) {
+    for (auto& item : vec_instruction_[i].Outputs()) {
       for (auto id : item.second) {
         vec_temp =
             interpretercore::merge_vector(vec_temp, input_var2op_info_[id]);
@@ -206,7 +199,7 @@ void InterpreterCore::Convert() {
   BuildSkipShareLoDInfo();
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
+    gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 
@@ -216,15 +209,14 @@ void InterpreterCore::Convert() {
 }
 
 bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
-  if (!global_scope_->vec_meta_info_[var_index].vardesc_) {
-    return input_var2op_info_[var_index].size() == 1;
+  if (!global_scope_->VarDesc(var_index)) {
+    return input_var2op_info_.at(var_index).size() == 1;
   } else {
     int is_input_cnt = 0;
-    for (auto inst_id : input_var2op_info_[var_index]) {
+    for (auto inst_id : input_var2op_info_.at(var_index)) {
       OpInOutInfo info;
-      info.Build(vec_instruction_[inst_id].kernel_func_.operator_base_);
-      if (info.IsInArgBufferNeeded(
-              global_scope_->vec_meta_info_[var_index].vardesc_->Name())) {
+      info.Build(vec_instruction_.at(inst_id).OpBase());
+      if (info.IsInArgBufferNeeded(global_scope_->VarDesc(var_index)->Name())) {
         is_input_cnt++;
       }
     }
@@ -234,35 +226,31 @@ bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
 
 void InterpreterCore::BuildInplace() {
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    if (!vec_instruction_[i]
-             .kernel_func_.operator_base_->Info()
-             .infer_inplace_) {
+    auto& instr = vec_instruction_[i];
+    auto* op_base = instr.OpBase();
+    if (!op_base->Info().infer_inplace_) {
       continue;
     }
 
-    auto in_to_outs =
-        vec_instruction_[i].kernel_func_.operator_base_->Info().infer_inplace_(
-            platform::is_gpu_place(vec_instruction_[i].dev_ctx_->GetPlace()));
+    auto in_to_outs = op_base->Info().infer_inplace_(
+        platform::is_gpu_place(instr.DeviceContext().GetPlace()));
 
+    auto& inputs = instr.Inputs();
+    auto& outputs = instr.Outputs();
     for (auto& pair : in_to_outs) {
-      auto iter = vec_instruction_[i].input_index_.find(pair.first);
-      if (iter != vec_instruction_[i].input_index_.end()) {
+      auto iter = inputs.find(pair.first);
+      if (iter != inputs.end()) {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
-          auto iterout = vec_instruction_[i].output_index_.find(pair.second);
-          if (iterout != vec_instruction_[i].output_index_.end()) {
-            auto invar = global_scope_->var_list[iter->second[0]];
-            auto outvar = global_scope_->var_list[iterout->second[0]];
+          auto iterout = outputs.find(pair.second);
+          if (iterout != outputs.end()) {
+            auto invar = global_scope_->Var(iter->second[0]);
+            auto outvar = global_scope_->Var(iterout->second[0]);
             if (invar && outvar) {
-              vec_instruction_[i].vec_inplace_in_to_out_.emplace_back(invar,
-                                                                      outvar);
-              VLOG(3) << "inplace "
-                      << vec_instruction_[i].kernel_func_.operator_base_->Type()
-                      << " "
-                      << global_scope_->vec_meta_info_[iter->second[0]]
-                             .vardesc_->Name()
+              instr.AddInplace(invar, outvar);
+              VLOG(3) << "inplace " << op_base->Type() << " "
+                      << global_scope_->VarDesc(iter->second[0])->Name()
                       << " -> "
-                      << global_scope_->vec_meta_info_[iterout->second[0]]
-                             .vardesc_->Name()
+                      << global_scope_->VarDesc(iterout->second[0])->Name()
                       << std::endl;
             }
           }
@@ -275,48 +263,35 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::BuildAndCacheInstructionCtx(
     Instruction* instr_node, const VariableScope& var_scope,
     const platform::Place& place) {
-  auto op_base = instr_node->kernel_func_.operator_base_;
-
   VariableValueMap ins_map;
-  for (auto& var_name_item : instr_node->input_index_) {
+  for (auto& var_name_item : instr_node->Inputs()) {
     std::vector<Variable*> input_vars;
 
     input_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      input_vars.emplace_back(var_scope.var_list[id]);
+      input_vars.emplace_back(var_scope.Var(id));
     }
     ins_map.emplace(var_name_item.first, std::move(input_vars));
   }
 
   VariableValueMap outs_map;
-  for (auto& var_name_item : instr_node->output_index_) {
+  for (auto& var_name_item : instr_node->Outputs()) {
     std::vector<Variable*> out_vars;
 
     out_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      out_vars.emplace_back(var_scope.var_list[id]);
+      out_vars.emplace_back(var_scope.Var(id));
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
-
-  instr_node->runtime_ctx_.reset(new RuntimeContext({}, {}));
-  instr_node->runtime_ctx_->inputs.swap(ins_map);
-  instr_node->runtime_ctx_->outputs.swap(outs_map);
-
-  instr_node->infershape_ctx_.reset(new InterpretercoreInferShapeContext(
-      *op_base, *instr_node->runtime_ctx_.get()));
-
-  auto* dev_ctx = instr_node->dev_ctx_;
-  Scope scope;
-
-  instr_node->execution_ctx_.reset(new ExecutionContext(
-      *op_base, scope, *dev_ctx, *instr_node->runtime_ctx_.get()));
+  // set runtime_ctx and infershape_ctx_
+  instr_node->ResetContext(ins_map, outs_map);
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     bool can_skip_lod = true;
-    for (auto& input : vec_instruction_[i].runtime_ctx_.get()->inputs) {
+    for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
         if (var->IsType<LoDTensor>()) {
           if (var->Get<LoDTensor>().lod().size() != 0) {
@@ -329,23 +304,21 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
         }
       }
     }
-    vec_instruction_[i].infershape_ctx_.get()->SetSkipLoD(can_skip_lod);
+    vec_instruction_[i].InnerInferShapeContext()->SetSkipLoD(can_skip_lod);
   }
 }
 
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
-  VLOG(3) << "RunInstruction:  "
-          << instr_node.kernel_func_.operator_base_->Type();
+  VLOG(3) << "RunInstruction:  " << instr_node.OpBase()->Type();
 
   {
     platform::RecordEvent infershape_event("InferShape");
-    static_cast<const framework::OperatorWithKernel*>(
-        instr_node.kernel_func_.operator_base_)
-        ->InferShape(instr_node.infershape_ctx_.get());
+    static_cast<const framework::OperatorWithKernel*>(instr_node.OpBase())
+        ->InferShape(instr_node.InnerInferShapeContext().get());
   }
 
   if (FLAGS_new_executor_use_inplace) {
-    for (auto& pair : instr_node.vec_inplace_in_to_out_) {
+    for (auto& pair : instr_node.InplaceInfo()) {
       const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
           paddle::framework::details::GetMutableTensorFromVar(pair.second);
@@ -356,7 +329,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
   {
     platform::RecordEvent compute_event("Compute");
-    instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
+    instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
   }
 }
 
@@ -370,7 +343,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_.AddTask(vec_instr[i].type_,
+      async_work_queue_.AddTask(vec_instr.at(i).KernelType(),
                                 [&, i] { RunInstructionAsync(i); });
     }
   }
@@ -392,43 +365,43 @@ void InterpreterCore::ExecuteInstructionList(
 
 void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops) {
-  auto& next_instr = instr.next_instruction_;
+  auto& next_instr = instr.NextInstructions();
   auto& atomic_deps = async_work_queue_.AtomicDeps();
   auto IsReady = [&](size_t next_id) {
     return atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
   };
 
-  if (instr.type_ == OpFuncType::kQueueAsync) {
+  if (instr.KernelType() == OpFuncType::kQueueAsync) {
     // move all sync_ops into other threads
-    for (auto next_id : next_instr.synchronize_run_) {
+    for (auto next_id : next_instr.SyncRunIds()) {
       if (IsReady(next_id)) {
         async_work_queue_.AddTask(
-            vec_instruction_[next_id].type_,
+            vec_instruction_[next_id].KernelType(),
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
     // keep all async_ops running in current thread
-    for (auto next_id : next_instr.direct_run_) {
+    for (auto next_id : next_instr.DirectRunIds()) {
       if (IsReady(next_id)) {
         reserved_next_ops->push(next_id);
       }
     }
-    for (auto next_id : next_instr.event_wait_run_) {
+    for (auto next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
         reserved_next_ops->push(next_id);
       }
     }
   } else {
     // move async_ops into async_thread
-    for (auto next_id : next_instr.event_wait_run_) {
+    for (auto next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
         async_work_queue_.AddTask(
-            vec_instruction_[next_id].type_,
+            vec_instruction_[next_id].KernelType(),
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
     auto direct_run_ops = interpretercore::merge_vector(
-        next_instr.synchronize_run_, next_instr.direct_run_);
+        next_instr.SyncRunIds(), next_instr.DirectRunIds());
     size_t first_op = 0;
     for (auto next_id : direct_run_ops) {
       if (IsReady(next_id)) {
@@ -439,7 +412,7 @@ void InterpreterCore::RunNextInstructions(
         }
         // move rest ops into other threads
         async_work_queue_.AddTask(
-            vec_instruction_[next_id].type_,
+            vec_instruction_[next_id].KernelType(),
             [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
@@ -453,8 +426,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   while (!ready_ops.empty()) {
     instr_id = ready_ops.front();
     ready_ops.pop();
-    auto& instr_node = vec_instruction_[instr_id];
-    auto* op = instr_node.kernel_func_.operator_base_;
+    auto& instr_node = vec_instruction_.at(instr_id);
+    auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(op->Type());
     event_manager_.WaitEvent(instr_node, place_);
 
@@ -487,28 +460,27 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
     // GC infomation
-    CheckGC(instr_id, instr_node.gc_check_var_list);
+    CheckGC(instr_node);
 
     RunNextInstructions(instr_node, &ready_ops);
   }
 }
 
-void InterpreterCore::CheckGC(size_t instr_id,
-                              const std::vector<size_t>& gc_check_list) {
+void InterpreterCore::CheckGC(const Instruction& instr) {
+  size_t instr_id = instr.Id();
   auto& var_scope = *global_scope_;
   auto& atomic_var_ref = async_work_queue_.AtomicVarRef();
 
-  for (auto var_id : gc_check_list) {
+  for (auto var_id : instr.GCCheckVars()) {
     bool is_ready =
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
-    if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
-        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
-      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
-              vec_instruction_[instr_id].dev_ctx_);
-    } else if (is_ready &&
-               var_scope.vec_meta_info_[var_id].vardesc_ == nullptr) {
-      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
-              vec_instruction_[instr_id].dev_ctx_);
+    if (is_ready && var_scope.VarDesc(var_id) &&
+        !var_scope.VarDesc(var_id)->Persistable()) {
+      gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
+              &instr.DeviceContext());
+    } else if (is_ready && var_scope.VarDesc(var_id) == nullptr) {
+      gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
+              &instr.DeviceContext());
     }
   }
 }
@@ -517,11 +489,11 @@ void InterpreterCore::DryRunPrepare(
     const std::vector<framework::LoDTensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
-      auto it = global_scope_->name2id.find(feed_names_[i]);
-      assert(it != global_scope_->name2id.end());
+      auto* feed_var = global_scope_->FindVar(feed_names_[i]);
+      PADDLE_ENFORCE_NOT_NULL(feed_var, platform::errors::NotFound(
+                                            "feed_var shall not be nullptr."));
 
-      auto feed_tensor = global_scope_->var_list[it->second]
-                             ->GetMutable<framework::LoDTensor>();
+      auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
     }
@@ -532,7 +504,7 @@ void InterpreterCore::DryRunPrepare(
                                                              global_scope_);
     FeedInput();
     paddle::framework::interpretercore::build_op_func_list(
-        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
+        place_, main_program_, &vec_func_list_, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();

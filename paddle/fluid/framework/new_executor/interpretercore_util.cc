@@ -19,6 +19,7 @@
 namespace paddle {
 namespace framework {
 namespace interpretercore {
+using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
@@ -132,43 +133,29 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope) {
   auto& global_block = pdesc.Block(0);
 
-  for (auto& var : global_block.AllVars()) {
-    if (var->Name() == framework::kEmptyVarName) {
+  for (auto& var_desc : global_block.AllVars()) {
+    auto var_name = var_desc->Name();
+    if (var_name == framework::kEmptyVarName) {
       continue;
     }
 
-    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
-      var_scope->name2id[var->Name()] = var_scope->var_list.size();
-      auto v = new Variable();
-      InitializeVariable(v, var->GetType());
-      var_scope->var_list.push_back(v);
-
-      VariableMetaInfo info;
-      info.var_ref_count_ = 0;
-      info.vardesc_ = var;
-      var_scope->vec_meta_info_.push_back(info);
+    if (nullptr == var_scope->FindVar(var_name)) {
+      var_scope->AddVar(var_desc->Name(), var_desc);
     } else {
-      auto var_id = var_scope->name2id[var->Name()];
-      if (nullptr == var_scope->vec_meta_info_[var_id].vardesc_) {
-        VLOG(3) << "update var:" << var->Name() << " desc from nullptr into "
-                << var;
-        var_scope->vec_meta_info_[var_id].vardesc_ = var;
+      auto* var_desc = var_scope->VarDesc(var_name);
+      if (nullptr == var_desc) {
+        VLOG(3) << "update var:" << var_name << " desc from nullptr into "
+                << var_desc;
+        var_scope->VarMetaInfo(var_name).vardesc_ = var_desc;
       }
     }
   }
 }
 
-void build_op_func_list(const platform::Place& place,
-                        const framework::ProgramDesc& pdesc,
-                        std::vector<OperatorBase*>* op_list,
-                        std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope) {
-  auto& global_block = pdesc.Block(0);
-  auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-
+std::vector<OperatorBase*> create_all_ops(const framework::BlockDesc& block) {
   std::vector<OperatorBase*> ops;
-  for (auto& op : global_block.AllOps()) {
-    VLOG(3) << "Build OpFuncNode from : " << op->Type();
+  for (auto& op : block.AllOps()) {
+    VLOG(3) << "CreateOp from : " << op->Type();
 
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
@@ -179,64 +166,96 @@ void build_op_func_list(const platform::Place& place,
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&op_attr_map);
     }
-    // step 1. Prepare VariableValueMap of input/output
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
     ops.push_back(op_base);
   }
+  return ops;
+}
 
+std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
+    const VariableNameMap& var_name_map, VariableScope* var_scope) {
+  VariableValueMap name2var;
+  VariableIdMap name2id;
+  for (auto& item : var_name_map) {
+    std::vector<Variable*> vars;
+    std::vector<int> ids;
+    vars.reserve(item.second.size());
+
+    for (auto& var_name : item.second) {
+      auto var_id = var_scope->VarId(var_name);
+      auto* in_var = var_scope->Var(var_id);
+      vars.push_back(in_var);
+      ids.push_back(var_id);
+    }
+    name2var[item.first] = std::move(vars);
+    name2id[item.first] = std::move(ids);
+  }
+  return std::make_tuple(name2var, name2id);
+}
+
+void apply_device_guard(const OperatorBase* op_base,
+                        const platform::Place& place,
+                        OpKernelType* expected_kernel_key) {
+  bool need_change_place =
+      (op_base->HasAttr("op_device") &&
+       (op_base->Attr<std::string>("op_device").length() > 0));
+  if (need_change_place) {
+    auto& op_device = op_base->Attr<std::string>("op_device");
+    if (op_device == "cpu" || platform::is_cpu_place(place)) {
+      VLOG(3) << "Switch into CPUPlace by device_guard.";
+      expected_kernel_key->place_ = platform::CPUPlace();
+    } else if (op_device.find("gpu") != std::string::npos &&
+               platform::is_gpu_place(place)) {
+      VLOG(3) << "Switch into " << place << " by device_guard.";
+      expected_kernel_key->place_ = place;
+    } else {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unsupported current place %s", op_device));
+    }
+  }
+}
+
+void build_op_func_list(const platform::Place& place,
+                        const framework::ProgramDesc& pdesc,
+                        std::vector<OpFuncNode>* vec_func_list,
+                        VariableScope* var_scope) {
+  auto& global_block = pdesc.Block(0);
+  auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
+
+  // Step 1: create all ops for global block.
+  auto ops = create_all_ops(global_block);
   auto unused_var_map = get_unused_vars(global_block, ops);
 
   size_t ops_index = 0;
   for (auto& op : global_block.AllOps()) {
-    VLOG(3) << op->Type();
-    // << op->Type() << endl;
+    VLOG(3) << "Build OpFuncNode from : " << op->Type();
 
     auto op_base = ops[ops_index++];
-
     auto inputs_names = op->Inputs();
     auto outputs_names = op->Outputs();
 
     VariableValueMap ins_map;
-    std::map<std::string, std::vector<int>> ins_name2id;
-    for (auto& var_name_item : inputs_names) {
-      std::vector<Variable*> input_vars;
-      std::vector<int> vec_ids;
-      input_vars.reserve(var_name_item.second.size());
-      for (auto& var_name : var_name_item.second) {
-        auto it = var_scope->name2id.find(var_name);
-        assert(it != var_scope->name2id.end());
-        input_vars.push_back(var_scope->var_list[it->second]);
-        vec_ids.push_back(it->second);
-      }
-      ins_map[var_name_item.first] = input_vars;
-      ins_name2id[var_name_item.first] = vec_ids;
-    }
+    VariableIdMap ins_name2id;
+    std::tie(ins_map, ins_name2id) =
+        build_variable_map(inputs_names, var_scope);
 
     VariableValueMap outs_map;
-    std::map<std::string, std::vector<int>> outs_name2id;
-    for (auto& var_name_item : outputs_names) {
-      std::vector<Variable*> output_vars;
-      std::vector<int> vec_ids;
-      output_vars.reserve(var_name_item.second.size());
-      for (auto& var_name : var_name_item.second) {
-        auto it = var_scope->name2id.find(var_name);
-        assert(it != var_scope->name2id.end());
-        output_vars.push_back(var_scope->var_list[it->second]);
-        vec_ids.push_back(it->second);
-      }
-      outs_map[var_name_item.first] = output_vars;
-      outs_name2id[var_name_item.first] = vec_ids;
-    }
+    VariableIdMap outs_name2id;
+    std::tie(outs_map, outs_name2id) =
+        build_variable_map(outputs_names, var_scope);
 
+    // step 2: build OpFuncNode
     OpFuncNode op_func_node;
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
-    // step 2: construct RuntimeContext and analysis KernelType
+    // construct RuntimeContext and analysis KernelType
     RuntimeContext runtime_context({}, {});
     runtime_context.inputs.swap(ins_map);
     runtime_context.outputs.swap(outs_map);
     InterpretercoreInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+    // TODO(Aurelius84): In case of control flow ops, they are NOT inheritted
+    // from OperatorWithKernel.
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
     auto kernels_iter = all_op_kernels.find(op->Type());
@@ -256,32 +275,18 @@ void build_op_func_list(const platform::Place& place,
             ->GetExpectedKernelType(
                 ExecutionContext(*op_base, scope, *dev_ctx, runtime_context));
 
-    // consider device_guard context
-    bool need_change_place =
-        (op_base->HasAttr("op_device") &&
-         (op_base->Attr<std::string>("op_device").length() > 0));
-    if (need_change_place) {
-      auto& op_device = op_base->Attr<std::string>("op_device");
-      if (op_device == "cpu" || platform::is_cpu_place(place)) {
-        VLOG(3) << "Switch into CPUPlace by device_guard.";
-        expected_kernel_key.place_ = platform::CPUPlace();
-      } else if (op_device.find("gpu") != std::string::npos &&
-                 platform::is_gpu_place(place)) {
-        VLOG(3) << "Switch into " << place << " by device_guard.";
-        expected_kernel_key.place_ = place;
-      } else {
-        PADDLE_THROW(
-            platform::errors::Fatal("Unsupported current place %s", op_device));
-      }
-    }
+    // consider device_guard()
+    apply_device_guard(op_base, place, &expected_kernel_key);
     VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
 
     // step 3. Insert memcpy_op if needed
     VariableValueMap& ins_map_temp = runtime_context.inputs;
     std::unordered_set<int> no_data_transform_index;
+
     for (auto& var_name_item : ins_map_temp) {
       for (size_t i = 0; i < var_name_item.second.size(); ++i) {
         auto var = var_name_item.second[i];
+        auto& var_name = inputs_names[var_name_item.first].at(i);
         auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
         if (!tensor_in->IsInitialized()) {
           continue;
@@ -295,32 +300,19 @@ void build_op_func_list(const platform::Place& place,
             (is_cuda_pinned_place(kernel_type_for_var.place_) &&
              is_cpu_place(expected_kernel_key.place_))) {
           // record no need data transformer input var_id
-          auto& var_name = inputs_names[var_name_item.first][i];
           VLOG(3) << op->Type() << " found no data_transform var: " << var_name
-                  << " with id: " << var_scope->name2id[var_name];
-          no_data_transform_index.emplace(var_scope->name2id[var_name]);
+                  << " with id: " << var_name;
+          no_data_transform_index.emplace(var_scope->VarId(var_name));
         } else {
           if (op_base->Type() == "fetch_v2") {
             op_base->SetAttr("deepcopy", false);
           }
-          // need trans place
-          // 1. add var in scope
-          // 2. add copy op
           std::string new_var_name =
-              "temp_1" + std::to_string(var_scope->var_list.size() + 1);
-          auto v = new Variable();
-          v->GetMutable<LoDTensor>();
-          var_scope->name2id[new_var_name] = var_scope->var_list.size();
-          var_scope->var_list.push_back(v);
-
-          VariableMetaInfo info;
-          info.var_ref_count_ = 0;
-          info.vardesc_ = nullptr;
-          var_scope->vec_meta_info_.push_back(info);
+              var_name + "_copy_" + std::to_string(var_scope->VarSize() + 1);
+          var_scope->AddVar(new_var_name, nullptr);
 
           VariableNameMap copy_in_map;
-          auto x_iter = inputs_names.find(var_name_item.first);
-          copy_in_map["X"] = {x_iter->second[i]};
+          copy_in_map["X"] = {var_name};
           VariableNameMap copy_out_map;
           copy_out_map["Out"] = {new_var_name};
           AttributeMap attr_map;
@@ -330,23 +322,23 @@ void build_op_func_list(const platform::Place& place,
                   : is_gpu_place(expected_kernel_key.place_) ? 1 : -1;
 
           std::map<std::string, std::vector<int>> copy_ins_name2id;
-          copy_ins_name2id["X"] = ins_name2id[var_name_item.first];
+          copy_ins_name2id["X"] = ins_name2id.at(var_name_item.first);
           std::map<std::string, std::vector<int>> copy_out_name2id;
-          copy_out_name2id["Out"] = {var_scope->name2id[new_var_name]};
+          copy_out_name2id["Out"] = {var_scope->VarId(new_var_name)};
 
           op_func_node.input_index[var_name_item.first][i] =
-              var_scope->name2id[new_var_name];
+              var_scope->VarId(new_var_name);
 
           VariableValueMap copy_ins_value_map;
           copy_ins_value_map["X"] = {var};
           VariableValueMap copy_outs_value_map;
-          copy_outs_value_map["Out"] = {v};
+          copy_outs_value_map["Out"] = {var_scope->Var(new_var_name)};
 
           // memcpy_d2h, memcpy_h2d
           auto memcpy_op_type = get_memcpy_type(kernel_type_for_var.place_,
                                                 expected_kernel_key.place_);
           VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).",
-                                     memcpy_op_type, x_iter->second[i],
+                                     memcpy_op_type, var_name,
                                      kernel_type_for_var.place_, new_var_name,
                                      expected_kernel_key.place_);
           auto& copy_info = OpInfoMap::Instance().Get(memcpy_op_type);
@@ -387,16 +379,16 @@ void build_op_func_list(const platform::Place& place,
           // as kQueueSync and execute them in thread pool.
           copy_op_func_node.type_ = OpFuncType::kQueueSync;
           copy_op_func_node.dev_ctx_ = dev_ctx;
-          op_list->push_back(copy_op);
+          copy_op_func_node.operator_base_ = copy_op;
           vec_func_list->push_back(copy_op_func_node);
 
-          var_name_item.second[i] = v;
+          var_name_item.second[i] = var_scope->Var(new_var_name);
         }
       }
     }
     op_func_node.no_data_transform_index = std::move(no_data_transform_index);
     // step 4. Run op kernel
-    op_list->push_back(op_base);
+    op_func_node.operator_base_ = op_base;
     VLOG(3) << op_base->Type()
             << " : expected_kernel_key : " << expected_kernel_key;
 
@@ -438,9 +430,7 @@ void build_op_func_list(const platform::Place& place,
         new std::deque<std::shared_ptr<memory::Allocation>>();
 
     for (auto& var_name : delete_vars) {
-      auto it = var_scope->name2id.find(var_name);
-      assert(it != var_scope->name2id.end());
-      auto* var = var_scope->var_list[it->second];
+      auto* var = var_scope->FindVar(var_name);
       if (var == nullptr) {
         continue;
       }
