@@ -26,6 +26,7 @@ limitations under the License. */
 #include <unordered_set>  // NOLINT
 #include <utility>        // NOLINT
 #include <vector>
+#include <chrono>
 
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -212,6 +213,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  bool scale_sparse_gradient_with_batch_size_;
   TrainerDesc trainer_desc_;
 
   // dump params or grads for debug
@@ -453,7 +455,6 @@ class PSGPUWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
   virtual void CacheProgram(const ProgramDesc& main_program) {
@@ -466,7 +467,6 @@ class PSGPUWorker : public HogwildWorker {
 
  protected:
   void PushGradients();
-  void DumpParam();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
@@ -474,18 +474,12 @@ class PSGPUWorker : public HogwildWorker {
  private:
   int mpi_rank_;
   std::mutex mutex_;
-  std::vector<std::string> send_var_list_;
   int worker_num_;
   ProgramDesc program_;
   HeterObjectPool<HeterTask> object_pool_;
-  bool need_dump_param_;
-  std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
-  bool need_dump_field_;
   bool dump_slot_;
   bool need_to_push_sparse_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
   // just save the value in param_ for easy access
@@ -600,6 +594,10 @@ class SectionWorker : public DeviceWorker {
   std::vector<std::string> backward_send_vars_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::vector<OperatorBase*> forward_and_lr_ops_;
+  std::vector<OperatorBase*> forward_ops_;
+  std::vector<OperatorBase*> backward_ops_;
+  std::vector<OperatorBase*> optimizer_ops_;
   std::shared_ptr<framework::ProgramDesc> program_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
@@ -609,5 +607,73 @@ class SectionWorker : public DeviceWorker {
 };
 #endif
 
+class HeterSectionWorker : public DeviceWorker {
+ public:
+  HeterSectionWorker() {}
+  ~HeterSectionWorker() override {}
+
+  void Initialize(const TrainerDesc& desc) override;
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+
+  void TrainFiles() override;
+  void TrainFilesWithProfiler() override{};
+
+  void BindingDataFeedMemory() override {}
+  void BindingDataFeedMemory(int micro_id);
+  void PrintFetchVars() override {}
+  const platform::Place& place() const { return place_; }
+
+  void SetDeviceIndex(int tid) override {}
+  void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
+  void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
+  void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
+  std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
+    return microbatch_scopes_;
+  }
+  using SHARED_THREAD_QUEUE = std::shared_ptr<::paddle::framework::BlockingQueue<std::pair<std::string, int>>>;
+
+  SHARED_THREAD_QUEUE GetThreadQueue() {
+      return thread_queue_;
+  }
+  void CopyParameters(int microbatch_id, const ProgramDesc& program, const platform::Place& place);
+  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
+  void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
+  void SetTrainers(int trainers) { this->trainers_ = trainers; }
+  void CreateMicrobatchScopes();
+  void RunForward(int micro_id);
+  void RunBackward(int micro_id);
+  void RunListen();
+  void MiniBatchBarrier(const std::vector<int>& barrier_ids);
+  void Run();
+
+ protected:
+  int trainer_id_;
+  int trainers_;
+  int thread_num_;
+  int thread_id_;
+  int num_microbatches_;
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  bool epoch_finish_;
+
+  std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
+  const Scope* minibatch_scope_;
+
+  std::unique_ptr<OperatorBase> listen_op_{nullptr};
+  std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
+  std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
+
+  std::shared_ptr<framework::ProgramDesc> program_;
+  
+  std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> 
+      thread_queue_;
+
+  static uint64_t batch_id_;
+  uint64_t total_ins_num_ = 0;
+  platform::DeviceContext* dev_ctx_ = nullptr;
+};
 }  // namespace framework
 }  // namespace paddle

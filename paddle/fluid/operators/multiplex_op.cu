@@ -29,6 +29,14 @@ class MultiplexGPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
+    for (size_t i = 0; i < ins.size(); ++i) {
+      PADDLE_ENFORCE_GT(
+          ins[i]->numel(), 0,
+          platform::errors::OutOfRange(
+              "indexing will be out of bounds with size 0 for the %d-th input.",
+              i));
+    }
+
     auto rows = ins[0]->dims()[0];
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu

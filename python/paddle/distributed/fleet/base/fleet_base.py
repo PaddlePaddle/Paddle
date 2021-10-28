@@ -17,8 +17,9 @@ import copy
 import warnings
 import paddle
 import os
+from types import MethodType
 import numpy as np
-from paddle.fluid.framework import dygraph_only
+from paddle.fluid.framework import dygraph_only, _global_flags
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
@@ -27,14 +28,44 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.ir import apply_build_strategy
 from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
 from ..meta_optimizers import HybridParallelOptimizer
-from ..meta_optimizers import HybridParallelGradScaler
+from paddle import _C_ops
+from paddle.fluid import core
+from paddle.fluid.dygraph import to_variable
 
 __all__ = []
+
+
+def apply_ir_passes(main_program, startup_program, config):
+    build_strategy = config._user_defined_strategy.build_strategy._copy()
+    if not _global_flags()['FLAGS_apply_pass_to_program']:
+        return build_strategy
+
+    pipeline_opt = getattr(main_program, "_pipeline_opt", {})
+    if pipeline_opt:
+        main_program = pipeline_opt["section_program"]
+        startup_program = startup_program._pipeline_opt["startup_program"]
+
+    pass_attrs = {"use_cuda": config._is_collective}
+    fuse_all_reduce = config._user_defined_strategy.fuse_all_reduce_ops
+    if fuse_all_reduce and build_strategy.fuse_all_optimizer_ops:
+        # FIXME(zjl): currently, fuse_all_optimizer_ops
+        # have conflict with fuse_all_reduce_ops because 
+        # RawProgramOptimizer also inserts coalesce_tensor 
+        # into program. These two procedures may conflict  
+        # in which vars are to be fused. 
+        warnings.warn(
+            'Currently, the fuse_all_optimizer_ops pass has conflict with fuse_all_reduce_ops pass. Disable the fuse_all_optimizer_ops pass temporarily.'
+        )
+        build_strategy.fuse_all_optimizer_ops = False
+
+    return apply_build_strategy(main_program, startup_program, build_strategy,
+                                pass_attrs)
 
 
 def _inited_runtime_handler_(func):
@@ -532,8 +563,25 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker._is_server(
-        ) or self._role_maker._is_heter_worker()
+        return self._role_maker._is_server()
+
+    def is_heter_worker(self):
+        """
+        Check whether the node is an instance of heter worker.
+
+        Returns:
+            bool: True if this is a node of heter worker,
+                  False if not.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.is_heter_worker()
+        """ 
+        return self._role_maker._is_heter_worker()
 
     def barrier_worker(self):
         """
@@ -568,6 +616,30 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def init_heter_worker(self):
+        """
+        init_heter_worker executor to initialize startup program,
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.init_heter_worker()
+
+        """
+        self._runtime_handle._init_heter_worker()
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -618,6 +690,31 @@ class Fleet(object):
         """
         self._runtime_handle.load_model(path, mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def run_heter_worker(self, dataset):
+        """
+        run_heter_worker will run heter worker main program with executor.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+                dataset = "" 
+                if fleet.is_heter_worker():
+                    fleet.run_heter_worker(dataset)
+
+        """
+        self._runtime_handle._run_heter_worker(dataset)
+    
     @is_non_distributed_check
     @inited_runtime_handler
     def run_server(self):
@@ -912,6 +1009,14 @@ class Fleet(object):
             distributed_model = ShardingParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
         elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+
+            # NOTE (JZ-LIANG) init parameters broadcast within sharding group
+            # normally it should be done inside DataParallel
+            if self.sharding_degree > 1:
+                from paddle.distributed.fleet.utils.hybrid_parallel_util import broadcast_mp_parameters, broadcast_sharding_parameters
+                assert self.sharding_degree == self._hcg.get_sharding_parallel_world_size(
+                )
+                broadcast_sharding_parameters(model, self._hcg)
             distributed_model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
@@ -1380,6 +1485,15 @@ class Fleet(object):
         context["origin_startup_program"] = startup_program
         context["role_maker"] = self._role_maker
 
+        # Use the auto-parallel's routines instead
+        if self._user_defined_strategy.semi_auto:
+            from ...auto_parallel.parallelizer import AutoParallelizer
+            auto_parallelizer = AutoParallelizer(self)
+            optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
+                loss, startup_program, parameter_list, no_grad_set)
+
+            return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
+
         # compile time
         distributed_optimizer_list = \
             MetaOptimizerFactory()._get_valid_meta_optimizers(
@@ -1475,6 +1589,8 @@ class Fleet(object):
             # i.e. users can not modify current computation graph anymore
             context["graph_optimize_ops"] = optimize_ops
             context["graph_optimize_grads"] = params_grads
+        else:
+            apply_ir_passes(loss.block.program, startup_program, self)
 
         program = paddle.static.default_main_program()
         opt_info = {}
@@ -1494,4 +1610,62 @@ class Fleet(object):
 
     @dygraph_only
     def distributed_scaler(self, scaler):
-        return HybridParallelGradScaler(scaler, self._hcg)
+        def unscale_method(self, optimizer):
+            if not self._enable:
+                return
+            if getattr(optimizer, '_param_groups', None) and isinstance(
+                    optimizer._param_groups[0], dict):
+                param_grads = []
+                param_grads_fp16 = []
+                param_grads_fp32 = []
+                for group in optimizer._param_groups:
+                    for param in group['params']:
+                        if param._grad_ivar() is not None:
+                            param_grads.append(param._grad_ivar())
+                            if param._grad_ivar(
+                            ).dtype == core.VarDesc.VarType.FP16:
+                                param_grads_fp16.append(param._grad_ivar())
+                            else:
+                                param_grads_fp32.append(param._grad_ivar())
+            else:
+                param_grads = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if param._grad_ivar() is not None
+                ]
+                param_grads_fp16 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP16)
+                ]
+                param_grads_fp32 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP32)
+                ]
+            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
+            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+            if len(param_grads_fp16):
+                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                                param_grads_fp16,
+                                                temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                                param_grads_fp32,
+                                                temp_found_inf_fp32)
+
+            self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
+            is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
+
+            # TODO(shenliang03) Since dp allreduce in the optimizer is 
+            # after the gradscaler, check_finite needs to synchronize global 
+            # information. In the future, we should use check_group to speed.
+            paddle.distributed.all_reduce(
+                is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
+            self._found_inf = is_found_inf.numpy()[0]
+
+        # Only tensor_parallel and pipeline_parallel need to modify scaler
+        if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
+                                             ParallelMode.PIPELINE_PARALLEL):
+            scaler._unscale = MethodType(unscale_method, scaler)
+
+        return scaler

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/communicator.h"
-
 #include <google/protobuf/text_format.h>
 
 #include "gflags/gflags.h"
@@ -43,7 +42,7 @@ void Communicator::init_gflag(const std::string &gflags) {
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
-    flags.push_back("-bthread_concurrency=40");
+    flags.push_back("-bthread_concurrency=200");
     flags.push_back("-socket_max_unwritten_bytes=2048000000");
     flags.push_back("-max_connection_pool_size=1950");
   }
@@ -283,6 +282,18 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
     push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
   }
 
+  // TODO(wangguanqun): padding_idx is not ignored, this is a bug.
+  // if padding_idx == padding in datareader, the server will core.
+  /*
+  for (size_t i = 0; i < tensor->rows().size(); ++i) {
+    uint64_t real_id = static_cast<uint64_t>(tensor->rows()[i]);
+    if (real_id != 0) {
+      sparse_push_keys.push_back(real_id);
+      push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
+    }
+  }
+  */
+
   ++_async_call_num;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [this, request_call_num](void *done) {
@@ -349,7 +360,20 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
               << " from 0' trainer done";
     }
   }
+  // for debug
+  std::this_thread::sleep_for(std::chrono::milliseconds(100 + trainer_id_* 10));
   BarrierWithTable(1);
+  return;
+}
+
+void Communicator::PullDense(const RecvCtxMap &recv_varname_to_ctx) {
+  for (auto &iter : recv_varname_to_ctx) {
+    auto &table_id = iter.first;
+    auto &varnames = iter.second;
+    RpcRecvDense(varnames, table_id, recv_scope_);
+    VLOG(1) << "pull dense param to table " << table_id
+            << " from 0' trainer done";
+  }
   return;
 }
 

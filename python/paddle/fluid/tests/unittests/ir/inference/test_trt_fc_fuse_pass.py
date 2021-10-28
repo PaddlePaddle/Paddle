@@ -17,9 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+from quant_dequant_test import QuantDequantTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import PassVersionChecker
 
 
 class FCFusePassTRTTest(InferencePassTest):

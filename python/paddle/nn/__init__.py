@@ -25,6 +25,7 @@ from .clip import ClipGradByNorm  # noqa: F401
 from .clip import ClipGradByValue  # noqa: F401
 from .decode import BeamSearchDecoder  # noqa: F401
 from .decode import dynamic_decode  # noqa: F401
+from .layer.activation import CELU  # noqa: F401
 from .layer.activation import ELU  # noqa: F401
 from .layer.activation import GELU  # noqa: F401
 from .layer.activation import Tanh  # noqa: F401
@@ -73,6 +74,7 @@ from .layer.pooling import AvgPool3D  # noqa: F401
 from .layer.pooling import MaxPool1D  # noqa: F401
 from .layer.pooling import MaxPool2D  # noqa: F401
 from .layer.pooling import MaxPool3D  # noqa: F401
+from .layer.pooling import MaxUnPool2D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool1D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool2D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401
@@ -184,6 +186,7 @@ def weight_norm(*args):
 
 __all__ = [     #noqa
            'BatchNorm',
+           'CELU',
            'GroupNorm',
            'LayerNorm',
            'SpectralNorm',

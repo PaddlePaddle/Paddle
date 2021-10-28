@@ -46,6 +46,7 @@ class GraphShard {
     }
     return res;
   }
+
   GraphNode *add_graph_node(uint64_t id);
   FeatureNode *add_feature_node(uint64_t id);
   Node *find_node(uint64_t id);
@@ -93,6 +94,7 @@ class GraphTable : public SparseTable {
 
   int32_t remove_graph_node(std::vector<uint64_t> &id_list);
 
+  int32_t get_server_index_by_id(uint64_t id);
   Node *find_node(uint64_t id);
 
   virtual int32_t pull_sparse(float *values,
@@ -122,9 +124,16 @@ class GraphTable : public SparseTable {
                                 const std::vector<std::string> &feature_names,
                                 std::vector<std::vector<std::string>> &res);
 
+  virtual int32_t set_node_feat(
+      const std::vector<uint64_t> &node_ids,
+      const std::vector<std::string> &feature_names,
+      const std::vector<std::vector<std::string>> &res);
+
+  size_t get_server_num() { return server_num; }
+
  protected:
   std::vector<GraphShard> shards;
-  size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
+  size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   const int task_pool_size_ = 24;
   const int random_sample_nodes_ranges = 3;
 

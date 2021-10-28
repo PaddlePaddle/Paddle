@@ -51,7 +51,12 @@ FCFusePass::FCFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumGE(1)
+      .IsNumMatch<int>([](int axis) -> bool {
+        if (axis == -1 || axis >= 1) {
+          return true;
+        }
+        return false;
+      })
       .End();
 
   AddOpCompat(OpCompat("relu"))
@@ -135,7 +140,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     }
 
     // Create an FC Node.
-    OpDesc desc;
+    OpDesc desc(mul->Op()->Block());
     desc.SetType("fc");
 
     // Set inputs of fc

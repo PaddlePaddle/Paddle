@@ -292,5 +292,187 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     input1, result_data, rtol=1e-05, atol=1e-05))
+        elif col_type == "global_gather":
+            in_feat = 2
+            n_expert = 2
+            world_size = 2
+            tot_expert = n_expert * world_size
+
+            np.random.seed(pid0)
+            local_expert_count1 = np.random.randint(
+                1, 4, size=tot_expert).astype("int")
+            expert_ptr1 = np.ones(tot_expert, dtype=np.int32)
+            expert_ptr1[0] = 0
+            for i in range(1, tot_expert):
+                expert_ptr1[i] = expert_ptr1[i - 1] + local_expert_count1[i - 1]
+
+            np.random.seed(pid1)
+            local_expert_count2 = np.random.randint(
+                1, 4, size=tot_expert).astype("int")
+            expert_ptr2 = np.ones(tot_expert, dtype=np.int32)
+            expert_ptr2[0] = 0
+            for i in range(1, tot_expert):
+                expert_ptr2[i] = expert_ptr2[i - 1] + local_expert_count2[i - 1]
+
+            global_expert_count1 = np.zeros(tot_expert).astype("int")
+            global_expert_count2 = np.zeros(tot_expert).astype("int")
+            global_expert_count1[0:n_expert] = local_expert_count1[0:n_expert]
+            global_expert_count1[n_expert:] = local_expert_count2[0:n_expert]
+            global_expert_count2[0:n_expert] = local_expert_count1[n_expert:]
+            global_expert_count2[n_expert:] = local_expert_count2[n_expert:]
+
+            np.random.seed(pid0)
+            fwd_expert_count = sum(global_expert_count1).astype("int")
+            local_input_buf1 = np.random.rand(fwd_expert_count,
+                                              in_feat).astype("float32")
+            np.random.seed(pid1)
+            fwd_expert_count = sum(global_expert_count2).astype("int")
+            local_input_buf2 = np.random.rand(fwd_expert_count,
+                                              in_feat).astype("float32")
+            output1 = [[], [], [], []]
+            output2 = [[], [], [], []]
+            send_ptr1 = 0
+            send_ptr2 = 0
+
+            for i in range(n_expert):
+                for j in range(world_size):
+                    idx = j * n_expert + i
+                    if j == 0:
+                        output1_part1 = local_input_buf1[send_ptr1: \
+                            send_ptr1 + global_expert_count1[idx], :]
+                        output1_part2 = local_input_buf2[send_ptr2: \
+                            send_ptr2 + global_expert_count2[idx], :]
+                        output1[i].extend(output1_part1)
+                        output1[i + n_expert].extend(output1_part2)
+                    else:
+                        output2_part1 = local_input_buf1[send_ptr1: \
+                            send_ptr1 + global_expert_count1[idx]]
+                        output2_part2 = local_input_buf2[send_ptr2: \
+                            send_ptr2 + global_expert_count2[idx]]
+                        output2[i].extend(output2_part1)
+                        output2[i + n_expert].extend(output2_part2)
+                    send_ptr1 = send_ptr1 + global_expert_count1[idx]
+                    send_ptr2 = send_ptr2 + global_expert_count2[idx]
+            result1 = []
+            result2 = []
+            for i in range(tot_expert):
+                for arr in output1[i]:
+                    if arr == []:
+                        continue
+                    result1.append(arr)
+            for i in range(tot_expert):
+                for arr in output2[i]:
+                    if arr == []:
+                        continue
+                    result2.append(arr)
+            if result1 == []:
+                output1 = np.array([])
+            else:
+                output1 = np.concatenate(
+                    result1, axis=0).reshape(
+                        sum(local_expert_count1), in_feat)
+            if result2 == []:
+                output2 = np.array([])
+            else:
+                output2 = np.concatenate(
+                    result2, axis=0).reshape(
+                        sum(local_expert_count2), in_feat)
+
+            if tr0_out[0] is None or tr0_out[0].shape[0] == 0:
+                tr0_out[0] = np.array([])
+
+            if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
+                tr1_out[0] = np.array([])
+
+            self.assertTrue(
+                np.allclose(
+                    tr0_out[0], output1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out[0], output2, rtol=1e-05, atol=1e-05))
+            if static_mode == 0:
+                self.assertTrue(
+                    np.allclose(
+                        tr0_out[1],
+                        2 * local_input_buf1,
+                        rtol=1e-05,
+                        atol=1e-05))
+                self.assertTrue(
+                    np.allclose(
+                        tr1_out[1],
+                        2 * local_input_buf2,
+                        rtol=1e-05,
+                        atol=1e-05))
+
+        elif col_type == "global_scatter":
+            np.random.seed(pid0)
+            local_expert_count1 = np.random.randint(1, 4, size=4).astype("int")
+            fwd_expert_count = sum(local_expert_count1)
+            local_input_buf1 = np.random.rand(fwd_expert_count,
+                                              2).astype("float32")
+            expert_ptr1 = np.ones(4, dtype=np.int32)
+            expert_ptr1[0] = 0
+            for i in range(1, 4):
+                expert_ptr1[i] = expert_ptr1[i - 1] + local_expert_count1[i - 1]
+            np.random.seed(pid1)
+            local_expert_count2 = np.random.randint(1, 4, size=4).astype("int")
+            fwd_expert_count = sum(local_expert_count2)
+            local_input_buf2 = np.random.rand(fwd_expert_count,
+                                              2).astype("float32")
+            expert_ptr2 = np.ones(4, dtype=np.int32)
+            expert_ptr2[0] = 0
+            for i in range(1, 4):
+                expert_ptr2[i] = expert_ptr2[i - 1] + local_expert_count2[i - 1]
+
+            output1 = []
+            output2 = []
+            for i in range(2):
+                for j in range(2):
+                    idx = j * 2 + i
+                    if j == 0:
+                        # send data to 0 card
+                        output1.append(local_input_buf1[expert_ptr1[idx]: \
+                            expert_ptr1[idx]+local_expert_count1[idx]])
+                        output1.append(local_input_buf2[expert_ptr2[idx]:\
+                            expert_ptr2[idx]+local_expert_count2[idx]])
+                    else:
+                        output2.append(local_input_buf1[expert_ptr1[idx]: \
+                            expert_ptr1[idx]+local_expert_count1[idx]])
+                        output2.append(local_input_buf2[expert_ptr2[idx]:\
+                            expert_ptr2[idx]+local_expert_count2[idx]])
+            if output1 == []:
+                output1 = np.array([])
+            else:
+                output1 = np.concatenate(output1)
+            if output2 == []:
+                output2 = np.array([])
+            else:
+                output2 = np.concatenate(output2)
+
+            if tr0_out[0] is None or tr0_out[0].shape[0] == 0:
+                tr0_out[0] = np.array([])
+
+            if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
+                tr1_out[0] = np.array([])
+
+            self.assertTrue(
+                np.allclose(
+                    tr0_out[0], output1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out[0], output2, rtol=1e-05, atol=1e-05))
+            if static_mode == 0:
+                self.assertTrue(
+                    np.allclose(
+                        tr0_out[1],
+                        2 * local_input_buf1,
+                        rtol=1e-05,
+                        atol=1e-05))
+                self.assertTrue(
+                    np.allclose(
+                        tr1_out[1],
+                        2 * local_input_buf2,
+                        rtol=1e-05,
+                        atol=1e-05))
         else:
             pass

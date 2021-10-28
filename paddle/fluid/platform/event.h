@@ -140,9 +140,9 @@ class CudaEvent {
 
   ~CudaEvent() {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event_));
+    hipEventDestroy(event_);
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
+    cudaEventDestroy(event_);
 #endif
   }
 
@@ -194,31 +194,6 @@ class CudaEvent {
   gpuEvent_t event_;
 #endif
 };
-
-static unsigned int get_cuda_flags(bool enable_timing, bool blocking,
-                                   bool interprocess) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#ifdef PADDLE_WITH_HIP
-  unsigned int flags =
-      (blocking ? hipEventBlockingSync : hipEventDefault) |
-      (enable_timing ? hipEventDefault : hipEventDisableTiming) |
-      (interprocess ? hipEventInterprocess : hipEventDefault);
-  return flags;
-#else
-  unsigned int flags =
-      (blocking ? cudaEventBlockingSync : cudaEventDefault) |
-      (enable_timing ? cudaEventDefault : cudaEventDisableTiming) |
-      (interprocess ? cudaEventInterprocess : cudaEventDefault);
-  return flags;
-#endif
-
-#else
-  PADDLE_THROW(platform::errors::Unavailable(
-      "Paddle is not compiled with CUDA. Cannot get the cuda event flags."));
-  return 0;
-#endif
-}
 
 }  // namespace platform
 }  // namespace paddle

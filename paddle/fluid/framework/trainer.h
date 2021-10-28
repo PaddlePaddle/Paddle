@@ -72,6 +72,7 @@ class TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id) = 0;
   virtual void InitDumpEnv() = 0;
   virtual void DumpWork(int tid);
+  virtual void ResetDataset(Dataset* dataset_ptr) { dataset_ptr_ = dataset_ptr; }
 
  protected:
   virtual std::string GetDumpPath(int tid) = 0;
@@ -258,13 +259,13 @@ class PSGPUTrainer : public TrainerBase {
   virtual void Run();
   virtual void Finalize();
   virtual void RegisterHeterCallback();
-  virtual void DumpWork(int tid);
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual std::string GetDumpPath(int tid) { return ""; }
-  virtual void InitDumpEnv() {}
+  virtual std::string GetDumpPath(int tid);
+  virtual void InitDumpEnv() override;
+  virtual void MergeDenseParam();
 
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
@@ -274,6 +275,7 @@ class PSGPUTrainer : public TrainerBase {
   DownpourWorkerParameter param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::string> need_merge_var_names_;
+  std::vector<std::string> trainable_param_;
   float scale_datanorm_;
   paddle::platform::Place place_;
   ProgramDesc program_;
@@ -284,6 +286,9 @@ class PSGPUTrainer : public TrainerBase {
   std::vector<std::thread> threads_;
   int use_ps_gpu_;
   int thread_num_;
+  int mpi_rank_;
+  int mpi_size_;
+  int dump_file_num_;
 };
 #endif
 
@@ -320,6 +325,54 @@ class PipelineTrainer : public TrainerBase {
                       const platform::Place& place);
 };
 #endif
+
+class HeterPipelineTrainer : public TrainerBase {
+ public:
+  HeterPipelineTrainer() {}
+  virtual ~HeterPipelineTrainer() {}
+  void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
+  void InitTrainerEnv(const ProgramDesc& main_program,
+                      const platform::Place& place) override;
+  void InitOtherEnv(const ProgramDesc& main_program) override;
+  void Run() override;
+  void Finalize() override;
+  virtual Scope* GetWorkerScope(int thread_id) override;
+  void InitDumpEnv() override;
+  virtual std::string GetDumpPath(int tid) override;
+  void ResetDataset(Dataset* dataset_ptr) override;
+
+ protected:
+  int trainer_id_; // stage_trainer_id
+  std::vector<int> trainers_;  //  std::vector<int> trainers
+  int thread_num_;
+  std::vector<std::thread> threads_;
+
+  std::vector<std::string> need_merge_var_names_;
+#ifdef PADDLE_WITH_HETERPS
+  std::vector<platform::Place> places_;
+#endif
+  
+  int num_microbatches_;
+  platform::Place place_;
+  TrainerDesc trainer_desc_;
+
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  std::unordered_map<int, std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
+  
+  std::shared_ptr<std::unordered_map<int, std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>
+      task_queue_;
+
+  platform::DeviceContext* dev_ctx_ = nullptr;
+  
+  std::shared_ptr<std::unordered_map<int, Scope*>> mini_scopes_; 
+  std::shared_ptr<std::unordered_map<int,
+      std::shared_ptr<std::vector<Scope*>>> >
+      micro_scopes_;
+
+  std::unique_ptr<std::thread> listen_ptr_ = nullptr;
+};
 
 }  // namespace framework
 }  // namespace paddle

@@ -16,8 +16,15 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+using gpuStream_t = cudaStream_t;
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+using gpuStream_t = hipStream_t;
 #endif
 
 #include "ext_dll_decl.h"  // NOLINT
@@ -88,9 +95,19 @@ class PD_DLL_DECL Tensor {
   /// It's usually used to set the input tensor data.
   /// \param PlaceType of target place, of which
   /// the tensor will copy to.
-
   template <typename T>
   Tensor copy_to(const PlaceType& place) const;
+
+  /// \brief Return a sub-tensor of the given tensor.
+  /// It is usually used to extract a sub-tensor (which supports
+  /// modifying the data of the original tensor) to perform further
+  /// operations.
+  /// \param begin_idx The index of the start row (inclusive) to slice.
+  ///                  The index number begins from 0.
+  /// \param end_idx  The index of the end row (exclusive) to slice.
+  ///                 The index number begins from begin_idx + 1.
+  /// \return The sliced tensor.
+  Tensor slice(const int64_t begin_idx, const int64_t end_idx) const;
 
   /// \brief Return the shape of the Tensor.
   std::vector<int64_t> shape() const;
@@ -116,11 +133,9 @@ class PD_DLL_DECL Tensor {
   /// \brief Check Tensor is initialized
   bool is_initialized() const;
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /// \bref Get current stream of Tensor
-  cudaStream_t stream() const;
-#elif defined(PADDLE_WITH_HIP)
-  hipStream_t stream() const;
+  gpuStream_t stream() const;
 #endif
 
  private:

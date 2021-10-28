@@ -158,16 +158,17 @@ void BindDistCommunicator(py::module* m) {
       .def("start", &Communicator::Start)
       .def("push_sparse_param", &Communicator::RpcSendSparseParam)
       .def("is_running", &Communicator::IsRunning)
-      .def("init_params", &Communicator::InitParams);
+      .def("init_params", &Communicator::InitParams)
+      .def("pull_dense", &Communicator::PullDense);
   //  .def("recv", &Communicator::RecvNoBarrier);
 }
 
 void BindHeterClient(py::module* m) {
   py::class_<HeterClient, std::shared_ptr<HeterClient>>(*m, "HeterClient")
-      .def(py::init(
-          [](const std::vector<std::string>& endpoint, const int& trainer_id) {
-            return HeterClient::GetInstance(endpoint, trainer_id);
-          }))
+      .def(py::init([](const std::vector<std::string>& endpoint,
+                       const std::vector<std::string>& previous_endpoint, const int& trainer_id) {
+        return HeterClient::GetInstance(endpoint, previous_endpoint, trainer_id);
+      }))
       .def("stop", &HeterClient::Stop);
 }
 
@@ -205,6 +206,7 @@ void BindGraphPyClient(py::module* m) {
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
       .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)
+      .def("remove_graph_node", &GraphPyClient::remove_graph_node)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
       .def("stop_server", &GraphPyClient::stop_server)
       .def("get_node_feat",
@@ -220,6 +222,20 @@ void BindGraphPyClient(py::module* m) {
                }
              }
              return bytes_feats;
+           })
+      .def("set_node_feat",
+           [](GraphPyClient& self, std::string node_type,
+              std::vector<uint64_t> node_ids,
+              std::vector<std::string> feature_names,
+              std::vector<std::vector<py::bytes>> bytes_feats) {
+             std::vector<std::vector<std::string>> feats(bytes_feats.size());
+             for (int i = 0; i < bytes_feats.size(); ++i) {
+               for (int j = 0; j < bytes_feats[i].size(); ++j) {
+                 feats[i].push_back(std::string(bytes_feats[i][j]));
+               }
+             }
+             self.set_node_feat(node_type, node_ids, feature_names, feats);
+             return;
            })
       .def("bind_local_server", &GraphPyClient::bind_local_server);
 }

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <ctime>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -27,6 +28,7 @@ limitations under the License. */
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -45,6 +47,7 @@ namespace paddle {
 namespace framework {
 class Executor;
 class ProgramDesc;
+class Scope;
 }  // namespace framework
 namespace platform {
 class DeviceContext;
@@ -148,6 +151,147 @@ class HeterService : public ::paddle::distributed::PsService {
   bool is_exit_ = false;
 };
 
+
+using SharedMiniScope = std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
+using SharedMicroScope = std::shared_ptr<std::unordered_map<int, std::shared_ptr<std::vector<::paddle::framework::Scope*>> > >;
+using SharedTaskQueue = std::shared_ptr<std::unordered_map<int, std::shared_ptr<
+                        ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>;
+
+class HeterRequestHandler {
+ public:
+  HeterRequestHandler()
+      : dev_ctx_(nullptr),
+        scope_(nullptr),
+        program_(nullptr) {}
+
+  virtual ~HeterRequestHandler() {}
+
+  void SetScope(const framework::Scope* scope) { scope_ = scope; }
+  void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
+  void SetProgram(framework::ProgramDesc* program) { program_ = program; }
+
+  virtual int Handle(const MultiVarMsg* request, MultiVarMsg* response,
+                     brpc::Controller* cntl) = 0;
+
+ protected:
+  const platform::DeviceContext* dev_ctx_;
+  const framework::Scope* scope_;
+  framework::ProgramDesc* program_;
+};
+
+class RequestSendAndRecvHandler final : public HeterRequestHandler {
+ public:
+  RequestSendAndRecvHandler() {
+    this->num_microbatch_ = 0;
+    this->num_minibatch_ = 0;
+  }
+
+  virtual ~RequestSendAndRecvHandler() { 
+  }
+
+  void SetMiniScopes(SharedMiniScope mini_scopes) {
+      mini_scopes_ = mini_scopes;
+      num_minibatch_ = mini_scopes_->size();
+  }
+  void SetMicroScopes(SharedMicroScope micro_scopes) {
+      micro_scopes_ = micro_scopes;
+      num_microbatch_ = micro_scopes_->size();
+  }
+
+  void SetTaskQueue(SharedTaskQueue task_queue) {
+      task_queue_ = task_queue;    
+  }
+  
+  int Handle(const MultiVarMsg* request, MultiVarMsg* response,
+             brpc::Controller* cntl) override {
+    platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
+    FLAGS_eager_delete_tensor_gb = -1;
+    
+    // get microID from request
+    // deserialize variable to micro scope
+    // Push to heter worker's task_queue
+    //auto& local_scope = scope_->NewScope();
+    std::unique_ptr<paddle::framework::Scope> local_scope_ptr(new paddle::framework::Scope());
+    auto& local_scope = *(local_scope_ptr.get());
+    auto message_name = request->message_name();
+      auto& request_io_buffer = cntl->request_attachment();
+      distributed::DeserializeFromMultiVarMsgAndIOBuf(
+          *request, &request_io_buffer, *dev_ctx_, &local_scope);
+
+      auto* var = local_scope.FindVar("microbatch_id");
+      PADDLE_ENFORCE_NE(var, nullptr,
+                        platform::errors::InvalidArgument(
+                            "Not find variable microbatch_id in scope."));
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      const auto place = dev_ctx_->GetPlace();
+
+      int micro_id = -1;
+      if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+        char* temp_ptr =
+            new char[tensor->numel() * framework::SizeOfType(tensor->type())];
+        auto stream =
+            reinterpret_cast<const platform::CUDADeviceContext&>(*dev_ctx_)
+                .stream();
+        memory::Copy(platform::CPUPlace(), temp_ptr,
+                     BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
+                     tensor->data<void>(),
+                     tensor->numel() * framework::SizeOfType(tensor->type()),
+                     stream);
+        float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
+        micro_id = static_cast<int>(temp_ptr_float[0]);
+        delete[] temp_ptr;
+#endif
+      } else {
+        auto data = reinterpret_cast<const float*>(tensor->data<void>());
+        micro_id = static_cast<int>(data[0]);
+      }
+
+      int minibatch_index = micro_id / 10;
+      int microbatch_index = micro_id % 10;
+      
+      PADDLE_ENFORCE_EQ((*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
+                        platform::errors::InvalidArgument(
+                            "minibatch index should in current trainer"));
+	  PADDLE_ENFORCE_EQ((*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(), 1,
+						platform::errors::InvalidArgument(
+							"minibatch index should in current trainer"));
+      
+      auto* micro_scope = (*((*micro_scopes_)[minibatch_index]))[microbatch_index];
+
+      distributed::DeserializeFromMultiVarMsgAndIOBuf(
+          *request, &request_io_buffer, *dev_ctx_, micro_scope);
+      // blocking queue handles multi thread
+      (*task_queue_)[minibatch_index]->Push(std::make_pair(message_name, microbatch_index));
+
+    auto response_var_nums = request->recv_var_names_size();
+    std::vector<std::string> response_var_names(response_var_nums),
+        empty_var_names{};
+    for (int var_idx = 0; var_idx < response_var_nums; ++var_idx) {
+      response_var_names[var_idx] = request->recv_var_names(var_idx);
+    }
+    auto& response_io_buffer = cntl->response_attachment();
+    distributed::SerializeToMultiVarMsgAndIOBuf(
+        message_name, response_var_names, empty_var_names, *dev_ctx_,
+        &local_scope, response, &response_io_buffer);
+    return 0;
+  }
+
+ private:
+  // share with HeterPipelineTrainer
+  SharedMiniScope mini_scopes_{nullptr};
+  SharedMicroScope micro_scopes_{nullptr};
+  
+  int num_microbatch_;
+  int num_minibatch_;
+
+  bool is_first_stage_ = false;
+  bool is_last_stage_ = false;
+
+  SharedTaskQueue task_queue_;
+
+};
+
 class HeterServer {
  public:
   virtual ~HeterServer() {}
@@ -173,6 +317,21 @@ class HeterServer {
   void SetEndPoint(std::string& endpoint);
   void SetFanin(int& fan_in);
 
+  void SetRequestHandler(std::shared_ptr<RequestSendAndRecvHandler> request_handler) { 
+      request_handler_ = request_handler; 
+  }
+
+  void SetMiniBatchScopes(SharedMiniScope  mini_scopes) {
+      request_handler_->SetMiniScopes(mini_scopes);
+  }
+  void SetMicroBatchScopes(SharedMicroScope micro_scopes) {
+      request_handler_->SetMicroScopes(micro_scopes);
+  }
+
+  void SetTaskQueue(SharedTaskQueue task_queue) {
+      request_handler_->SetTaskQueue(task_queue);
+  }
+
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
     if (NULL == s_instance_) {
@@ -194,78 +353,14 @@ class HeterServer {
  protected:
   brpc::Server server_;
   HeterService service_;
+  std::shared_ptr<RequestSendAndRecvHandler> request_handler_;
+
   DISABLE_COPY_AND_ASSIGN(HeterServer);
   std::mutex mutex_ready_;
 
   int ready_;
 };
 
-class HeterRequestHandler {
- public:
-  HeterRequestHandler()
-      : dev_ctx_(nullptr),
-        executor_(nullptr),
-        scope_(nullptr),
-        program_(nullptr) {}
-
-  virtual ~HeterRequestHandler() {}
-
-  void SetScope(framework::Scope* scope) { scope_ = scope; }
-  void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
-  void SetProgram(framework::ProgramDesc* program) { program_ = program; }
-  void SetExecutor(framework::Executor* executor) { executor_ = executor; }
-
-  void SetGradToPreparedCtx(
-      std::unordered_map<
-          std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
-    message_to_prepared_ctx_ = g;
-  }
-
-  virtual int Handle(const MultiVarMsg* request, MultiVarMsg* response,
-                     brpc::Controller* cntl) = 0;
-
- protected:
-  const platform::DeviceContext* dev_ctx_;
-  framework::Executor* executor_;
-  framework::Scope* scope_;
-  framework::ProgramDesc* program_;
-
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>*
-      message_to_prepared_ctx_;
-};
-
-class RequestSendAndRecvHandler final : public HeterRequestHandler {
- public:
-  RequestSendAndRecvHandler() {}
-  virtual ~RequestSendAndRecvHandler() {}
-  int Handle(const MultiVarMsg* request, MultiVarMsg* response,
-             brpc::Controller* cntl) override {
-    platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
-    FLAGS_eager_delete_tensor_gb = -1;
-    auto& local_scope = scope_->NewScope();
-    auto message_name = request->message_name();
-    auto& request_io_buffer = cntl->request_attachment();
-    distributed::DeserializeFromMultiVarMsgAndIOBuf(
-        *request, &request_io_buffer, *dev_ctx_, &local_scope);
-    executor_->RunPreparedContext(
-        (*message_to_prepared_ctx_)[message_name].get(), &local_scope, false);
-
-    auto response_var_nums = request->recv_var_names_size();
-    std::vector<std::string> response_var_names(response_var_nums),
-        empty_var_names{};
-
-    for (int var_idx = 0; var_idx < response_var_nums; ++var_idx) {
-      response_var_names[var_idx] = request->recv_var_names(var_idx);
-    }
-    auto& response_io_buffer = cntl->response_attachment();
-    distributed::SerializeToMultiVarMsgAndIOBuf(
-        message_name, response_var_names, empty_var_names, *dev_ctx_,
-        &local_scope, response, &response_io_buffer);
-    scope_->DeleteScope(&local_scope);
-    return 0;
-  }
-};
 
 }  // end namespace distributed
 }  // end namespace paddle

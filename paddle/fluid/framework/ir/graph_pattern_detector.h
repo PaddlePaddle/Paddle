@@ -976,6 +976,30 @@ struct Matmul : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
 };
 
+// MatmulV2: tensor * weight
+struct MatmulV2Weight : public PatternBase {
+  MatmulV2Weight(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2_weight") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(matmul_v2_out);
+};
+
+// MatmulV2: tensor * tensor or tensor * weight
+struct MatmulV2 : public PatternBase {
+  MatmulV2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(matmul_v2_out);
+};
+
 // Squeeze2 + Matmul
 // Forward pass.
 struct Squeeze2Matmul : public PatternBase {
@@ -1481,14 +1505,12 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}
 
-  void operator()();
+  void operator()(PDNode* input_node, const std::string& quantdequant_types);
 
-  PATTERN_DECL_NODE(any_op_out);
   PATTERN_DECL_NODE(quant_dequant_op_inscale);
   PATTERN_DECL_NODE(quant_dequant_op);
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
-  PATTERN_DECL_NODE(any_op2);
 };
 
 struct DeleteQuantDequantFilterOpPattern : public PatternBase {
@@ -1535,7 +1557,7 @@ struct MatmulTransposeReshapePattern : public PatternBase {
                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "matmul_transpose_reshape") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& op_name);
 
   PATTERN_DECL_NODE(matmul_op);
   PATTERN_DECL_NODE(matmul_out);
@@ -1560,6 +1582,28 @@ struct FusionGru : public PatternBase {
   PATTERN_DECL_NODE(weight_h);
   PATTERN_DECL_NODE(weight_x);
   PATTERN_DECL_NODE(out);
+};
+
+// fusion_lstm op
+// Forward pass for fusion_lstm.
+// fusion_lstm out is a result of the operator.
+struct FusionLSTM : public PatternBase {
+  FusionLSTM(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fusion_lstm") {}
+  // TODO(lidanqing): Is it enough to detect fusion_lstm with these things
+  PDNode* operator()();
+
+  // declare op
+  PATTERN_DECL_NODE(op);
+
+  // declate inputs
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(weight_h);
+  PATTERN_DECL_NODE(weight_x);
+
+  // decalre outputs
+  PATTERN_DECL_NODE(hidden);
+  PATTERN_DECL_NODE(cell);
 };
 
 // two concatenated fusion_gru ops
@@ -1660,6 +1704,18 @@ struct LayerNorm : public PatternBase {
   PATTERN_DECL_NODE(beta);
   PATTERN_DECL_NODE(shift);
   PATTERN_DECL_NODE(shift_out);
+};
+
+// Add support int8 flag
+struct AddSupportInt8 : public PatternBase {
+  AddSupportInt8(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "Add_support_int8") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
 };
 
 }  // namespace patterns

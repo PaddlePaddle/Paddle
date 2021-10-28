@@ -44,7 +44,7 @@ class Optimizer {
     if (w < optimizer_config::min_bound) w = optimizer_config::min_bound;
     if (w > optimizer_config::max_bound) w = optimizer_config::max_bound;
 
-    add_g2sum = scaled_grad * scaled_grad;
+    add_g2sum += scaled_grad * scaled_grad;
 
     g2sum += add_g2sum;
   }
@@ -64,7 +64,7 @@ class Optimizer {
         w[i] = optimizer_config::mf_min_bound;
       if (w[i] > optimizer_config::mf_max_bound)
         w[i] = optimizer_config::mf_max_bound;
-      add_g2sum = scaled_grad * scaled_grad;
+      add_g2sum += scaled_grad * scaled_grad;
     }
 
     g2sum += add_g2sum / n;

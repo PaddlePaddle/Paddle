@@ -305,12 +305,12 @@ Node *GraphTable::find_node(uint64_t id) {
   return node;
 }
 uint32_t GraphTable::get_thread_pool_index(uint64_t node_id) {
-  return node_id % shard_num % shard_num_per_table % task_pool_size_;
+  return node_id % shard_num % shard_num_per_server % task_pool_size_;
 }
 
 uint32_t GraphTable::get_thread_pool_index_by_shard_index(
     uint64_t shard_index) {
-  return shard_index % shard_num_per_table % task_pool_size_;
+  return shard_index % shard_num_per_server % task_pool_size_;
 }
 
 int32_t GraphTable::clear_nodes() {
@@ -469,6 +469,34 @@ int32_t GraphTable::get_node_feat(const std::vector<uint64_t> &node_ids,
   return 0;
 }
 
+int32_t GraphTable::set_node_feat(
+    const std::vector<uint64_t> &node_ids,
+    const std::vector<std::string> &feature_names,
+    const std::vector<std::vector<std::string>> &res) {
+  size_t node_num = node_ids.size();
+  std::vector<std::future<int>> tasks;
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    uint64_t node_id = node_ids[idx];
+    tasks.push_back(_shards_task_pool[get_thread_pool_index(node_id)]->enqueue(
+        [&, idx, node_id]() -> int {
+          size_t index = node_id % this->shard_num - this->shard_start;
+          auto node = shards[index].add_feature_node(node_id);
+          node->set_feature_size(this->feat_name.size());
+          for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+            const std::string &feature_name = feature_names[feat_idx];
+            if (feat_id_map.find(feature_name) != feat_id_map.end()) {
+              node->set_feature(feat_id_map[feature_name], res[feat_idx][idx]);
+            }
+          }
+          return 0;
+        }));
+  }
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    tasks[idx].get();
+  }
+  return 0;
+}
+
 std::pair<int32_t, std::string> GraphTable::parse_feature(
     std::string feat_str) {
   // Return (feat_id, btyes) if name are in this->feat_name, else return (-1,
@@ -547,6 +575,11 @@ int32_t GraphTable::pull_graph_list(int start, int total_size,
   actual_size = size;
   return 0;
 }
+
+int32_t GraphTable::get_server_index_by_id(uint64_t id) {
+  return id % shard_num / shard_num_per_server;
+}
+
 int32_t GraphTable::initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
@@ -583,13 +616,12 @@ int32_t GraphTable::initialize() {
   shard_num = _config.shard_num();
   VLOG(0) << "in init graph table shard num = " << shard_num << " shard_idx"
           << _shard_idx;
-  shard_num_per_table = sparse_local_shard_num(shard_num, server_num);
-  shard_start = _shard_idx * shard_num_per_table;
-  shard_end = shard_start + shard_num_per_table;
+  shard_num_per_server = sparse_local_shard_num(shard_num, server_num);
+  shard_start = _shard_idx * shard_num_per_server;
+  shard_end = shard_start + shard_num_per_server;
   VLOG(0) << "in init graph table shard idx = " << _shard_idx << " shard_start "
           << shard_start << " shard_end " << shard_end;
-  // shards.resize(shard_num_per_table);
-  shards = std::vector<GraphShard>(shard_num_per_table, GraphShard(shard_num));
+  shards = std::vector<GraphShard>(shard_num_per_server, GraphShard(shard_num));
   return 0;
 }
 }  // namespace distributed

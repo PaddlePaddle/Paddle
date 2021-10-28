@@ -34,12 +34,13 @@
 #include "paddle/fluid/platform/xpu/xpu_header.h"
 #endif
 
-DEFINE_bool(init_allocated_mem, false,
-            "It is a mistake that the values of the memory allocated by "
-            "BuddyAllocator are always zeroed in some op's implementation. "
-            "To find this error in time, we use init_allocated_mem to indicate "
-            "that initializing the allocated memory with a small value "
-            "during unit testing.");
+PADDLE_DEFINE_EXPORTED_bool(
+    init_allocated_mem, false,
+    "It is a mistake that the values of the memory allocated by "
+    "BuddyAllocator are always zeroed in some op's implementation. "
+    "To find this error in time, we use init_allocated_mem to indicate "
+    "that initializing the allocated memory with a small value "
+    "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -225,6 +226,7 @@ size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
 
 // For Ascend NPU
 #ifdef PADDLE_WITH_ASCEND_CL
+constexpr int EXTRA_PADDING_SIZE = 32;
 class NPUBuddyAllocatorList {
  private:
   NPUBuddyAllocatorList() : devices_(platform::GetSelectedNPUDevices()) {
@@ -257,10 +259,11 @@ class NPUBuddyAllocatorList {
 
     std::call_once(*init_flags_[pos], [this, pos] {
       platform::SetNPUDeviceId(devices_[pos]);
-      allocators_[pos].reset(new BuddyAllocator(
-          std::unique_ptr<detail::SystemAllocator>(
-              new detail::NPUAllocator(devices_[pos])),
-          platform::NPUMinChunkSize(), platform::NPUMaxChunkSize()));
+      allocators_[pos].reset(
+          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                 new detail::NPUAllocator(devices_[pos])),
+                             platform::NPUMinChunkSize(),
+                             platform::NPUMaxChunkSize(), EXTRA_PADDING_SIZE));
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "

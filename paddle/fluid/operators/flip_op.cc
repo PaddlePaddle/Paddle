@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -145,6 +146,7 @@ class FlipOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(flip, ops::FlipOp, ops::FlipOpMaker, ops::FlipOpInferVarType,
                   ops::FlipOpGradMaker<paddle::framework::OpDesc>,
                   ops::FlipOpGradMaker<paddle::imperative::OpBase>);
@@ -153,7 +155,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::FlipKernel<paddle::platform::CPUDeviceContext, double>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::FlipKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::FlipKernel<paddle::platform::CPUDeviceContext, plat::complex<float>>,
+    ops::FlipKernel<paddle::platform::CPUDeviceContext, plat::complex<double>>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(flip)
@@ -161,5 +165,5 @@ REGISTER_OP_VERSION(flip)
         R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewAttr("axis", "The added attr 'axis' doesn't set default value.",
-                     boost::none)
+                     paddle::none)
             .DeleteAttr("dims", "The attr 'dims' is deleted."));

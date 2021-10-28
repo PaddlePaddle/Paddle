@@ -89,7 +89,6 @@ void TensorRTEngine::FreezeNetwork() {
   if (enable_int8) {
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
 
     if (calibrator_) {
       infer_builder_config_->setInt8Calibrator(calibrator_);
@@ -136,12 +135,6 @@ void TensorRTEngine::FreezeNetwork() {
         }
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
-          if (temp_out->isNetworkOutput()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ") is set to float32 because its output("
-                    << temp_out->getName() << ") is the output of the network.";
-            return false;
-          }
           if (!temp_out->dynamicRangeIsSet()) {
             VLOG(1) << "Layer(Name: " << layer->getName()
                     << ") is set to float32 because its output("
@@ -197,6 +190,23 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
+#if IS_TRT_VERSION_LT(7000)
+      // trt6 will check all_of input > 0
+      if (!(std::all_of(input.second.begin(), input.second.end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(max_input_shape_[input.first].begin(),
+                        max_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(optim_input_shape_[input.first].begin(),
+                        optim_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }))) {
+        continue;
+      }
+#endif
+      VLOG(4) << "TRT dynamic_shape set " << input.first
+              << " min: " << Vec2Str(input.second)
+              << ", max: " << Vec2Str(max_input_shape_[input.first])
+              << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
       optim_profile_->setDimensions(
           input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
           Vec2TRT_Dims(input.second, input.first, true));
@@ -222,11 +232,12 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-  infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
+  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-  infer_engine_.reset(
-      runtime->deserializeCudaEngine(plan->data(), plan->size()));
+  infer_engine_.reset(runtime->deserializeCudaEngine(ihost_memory_->data(),
+                                                     ihost_memory_->size()));
 #endif
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -350,6 +361,13 @@ nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRTV2Ext *plugin) {
   owned_plugin_v2ext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
+}
+
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::IPluginV2IOExt *plugin) {
+  owned_plugin_v2ioext_.emplace_back(plugin);
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 

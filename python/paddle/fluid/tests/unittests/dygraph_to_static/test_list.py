@@ -147,14 +147,17 @@ def test_list_pop_without_control_flow_2(x):
 def test_list_pop_in_if(x):
     x = fluid.dygraph.to_variable(x)
     a = []
+    b = [x * 2 + (x + 1)]
     if x.numpy()[0] > 0:
         a.append(x)
+        b.append(x + 1)
         a.append(fluid.layers.fill_constant(shape=[1], value=1, dtype="int64"))
     else:
         a.append(x + 1)
+        b.append(x - 1)
         a.append(fluid.layers.fill_constant(shape=[2], value=2, dtype="int64"))
     item1 = a.pop(1)
-    return item1
+    return item1, b[-1]
 
 
 def test_list_pop_in_for_loop(x, iter_num):
@@ -165,14 +168,16 @@ def test_list_pop_in_for_loop(x, iter_num):
     )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
 
     a = []
+    b = [x - 1, x + 1]
     for i in range(iter_num):
         a.append(x + i)
+        b.append(x * 2)
 
     one = fluid.layers.ones(shape=[1], dtype="int32")
     for i in range(one.numpy()[0]):
         item = a.pop()
 
-    return a[0], item
+    return a[0], item, b[1]
 
 
 def test_list_pop_in_while_loop(x, iter_num):
@@ -180,14 +185,18 @@ def test_list_pop_in_while_loop(x, iter_num):
     iter_num = fluid.layers.fill_constant(
         shape=[1], value=iter_num, dtype="int32")
     a = []
+    b = [x]
+    b.append(x)
+    b.pop()
     i = 0
 
     while i < iter_num:
         a.append(x + i)
+        b.append(x - i)
         i += 1
         if i % 2 == 1:
             a.pop()
-    return a[0]
+    return a[0], b[2]
 
 
 class TestListWithoutControlFlow(unittest.TestCase):

@@ -144,7 +144,8 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
+
     const int W =
         (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                           : x_dims[x_dims.size() - 2]);
@@ -171,9 +172,16 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
-
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
 #ifdef __HIPCC__
     int block_size = std::max(std::min(256, imsize), 64);
 #else
@@ -307,7 +315,7 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
     const int W =
         (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                           : x_dims[x_dims.size() - 2]);
@@ -349,8 +357,16 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
 
 #ifdef __HIPCC__
     int block_size = std::max(std::min(256, imsize), 64);

@@ -54,6 +54,25 @@ def get_minor():
 def get_patch():
     return str(_get_version_detail(2))
 
+def get_cuda_version():
+    if '@WITH_GPU@' == 'ON':
+        return '@CUDA_VERSION@'
+    else:
+        return 'False'
+
+def get_cudnn_version():
+    if '@WITH_GPU@' == 'ON':
+        temp_cudnn_version = ''
+        if '@CUDNN_MAJOR_VERSION@':
+            temp_cudnn_version += '@CUDNN_MAJOR_VERSION@'
+            if '@CUDNN_MINOR_VERSION@':
+                temp_cudnn_version += '.@CUDNN_MINOR_VERSION@'
+                if '@CUDNN_PATCHLEVEL_VERSION@':
+                    temp_cudnn_version += '.@CUDNN_PATCHLEVEL_VERSION@'
+        return temp_cudnn_version
+    else:
+        return 'False'
+
 def is_taged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
@@ -67,7 +86,7 @@ def is_taged():
     else:
         return False
 
-def write_version_py(filename='paddle/version.py'):
+def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
 full_version    = '%(major)d.%(minor)d.%(patch)s'
@@ -75,9 +94,13 @@ major           = '%(major)d'
 minor           = '%(minor)d'
 patch           = '%(patch)s'
 rc              = '%(rc)d'
+cuda_version    = '%(cuda)s'
+cudnn_version   = '%(cudnn)s'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
 with_mkl        = '%(with_mkl)s'
+
+__all__ = ['cuda', 'cudnn']
 
 def show():
     if istaged:
@@ -91,8 +114,51 @@ def show():
 
 def mkl():
     return with_mkl
+
+def cuda():
+    """Get cuda version of paddle package.
+
+    Returns:
+        string: Return the version information of cuda. If paddle package is CPU version, it will return False.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.cuda()
+            # '10.2'
+
+    """
+    return cuda_version
+
+def cudnn():
+    """Get cudnn version of paddle package.
+
+    Returns:
+        string: Return the version information of cudnn. If paddle package is CPU version, it will return False.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.cudnn()
+            # '7.6.5'
+
+    """
+    return cudnn_version
 '''
     commit = git_commit()
+
+    dirname = os.path.dirname(filename)
+
+    try:
+        os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     with open(filename, 'w') as f:
         f.write(cnt % {
             'major': get_major(),
@@ -100,11 +166,27 @@ def mkl():
             'patch': get_patch(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
+            'cuda': get_cuda_version(),
+            'cudnn': get_cudnn_version(),
             'commit': commit,
             'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
 
-write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
+write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
+
+def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
+    cnt = ""
+    if '${JIT_RELEASE_WHL}' == 'ON':
+        cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
+#
+import os
+os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
+'''
+
+    with open(filename, 'w') as f:
+        f.write(cnt)
+
+write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
 def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
     cnt = '''from __future__ import print_function
@@ -148,6 +230,8 @@ packages=['paddle',
           'paddle.incubate.optimizer',
           'paddle.incubate.checkpoint',
           'paddle.incubate.operators',
+          'paddle.incubate.tensor',
+          'paddle.incubate.nn',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
@@ -164,10 +248,14 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
+          'paddle.distributed.auto_parallel',
+          'paddle.distributed.auto_parallel.operators',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
           'paddle.inference',
+          'paddle.inference.contrib',
+          'paddle.inference.contrib.utils',
           'paddle.fluid',
           'paddle.fluid.inference',
           'paddle.fluid.dygraph',
@@ -211,6 +299,9 @@ packages=['paddle',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
+          'paddle.incubate.nn',
+          'paddle.incubate.nn.functional',
+          'paddle.incubate.nn.layer',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -228,6 +319,7 @@ packages=['paddle',
           'paddle.autograd',
           'paddle.device',
           'paddle.device.cuda',
+          'paddle.version',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -287,6 +379,19 @@ package_data['paddle.libs']= []
 package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
+package_data['paddle.libs']+=[
+    os.path.basename('${LAPACK_LIB}'), 
+    os.path.basename('${BLAS_LIB}'),
+    os.path.basename('${GFORTRAN_LIB}'),
+    os.path.basename('${GNU_RT_LIB_1}')]
+shutil.copy('${BLAS_LIB}', libs_path)
+shutil.copy('${LAPACK_LIB}', libs_path)
+shutil.copy('${GFORTRAN_LIB}', libs_path)
+shutil.copy('${GNU_RT_LIB_1}', libs_path)
+if not sys.platform.startswith("linux"):
+    package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
+    shutil.copy('${GNU_RT_LIB_2}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
@@ -306,6 +411,12 @@ else:
 if '${WITH_LITE}' == 'ON':
     shutil.copy('${LITE_SHARED_LIB}', libs_path)
     package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
+    if '${LITE_WITH_NNADAPTER}' == 'ON':
+        shutil.copy('${LITE_NNADAPTER_LIB}', libs_path)
+        package_data['paddle.libs']+=['libnnadapter' + ext_name]
+        if '${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}' == 'ON':
+            shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
+            package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
@@ -366,13 +477,15 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
     if os.name != 'nt':
         # only change rpath in Release mode, since in Debug mode, ${FLUID_CORE_NAME}.xx is too large to be changed.
         if "@APPLE@" == "1":
-            command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
+            commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         else:
-            command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
+            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
-          if os.system(command) != 0:
-              raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
+            for command in commands:
+                if os.system(command) != 0:
+                    raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
@@ -395,11 +508,11 @@ def find_files(pattern, root, recursive=False):
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
-    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
     # to `extension/incude`,
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -412,10 +525,9 @@ class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
-        self.install_headers = os.path.join(self.install_platlib, 'paddle',
-                                            'include')
+        self.install_headers = os.path.join(self.install_platlib, 'paddle', 'include')
+        
         return ret
-
 
 class InstallHeaders(Command):
     """Override how headers are copied.
@@ -446,12 +558,12 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'fluid' in install_dir:
+            if 'fluid' in install_dir or 'utils' in install_dir:
                 install_dir = "paddle/extension/include/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['boost/src/extern_boost', 'install/mkldnn/include']
+            patterns = ['install/mkldnn/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
