@@ -58,24 +58,6 @@ DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-static void split(const std::string& str, char sep,
-                  std::vector<std::string>* pieces) {
-  pieces->clear();
-  if (str.empty()) {
-    return;
-  }
-  size_t pos = 0;
-  size_t next = str.find(sep, pos);
-  while (next != std::string::npos) {
-    pieces->push_back(str.substr(pos, next - pos));
-    pos = next + 1;
-    next = str.find(sep, pos);
-  }
-  if (!str.substr(pos).empty()) {
-    pieces->push_back(str.substr(pos));
-  }
-}
-
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
@@ -172,7 +154,6 @@ class HeterService : public ::paddle::distributed::PsService {
 
 using SharedMiniScope = std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
 using SharedMicroScope = std::shared_ptr<std::unordered_map<int, std::shared_ptr<std::vector<::paddle::framework::Scope*>> > >;
-
 using SharedTaskQueue = std::shared_ptr<std::unordered_map<int, std::shared_ptr<
                         ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>;
 
