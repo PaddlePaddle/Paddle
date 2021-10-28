@@ -235,6 +235,11 @@ void build_op_func_list(const platform::Place& place,
     auto inputs_names = op->Inputs();
     auto outputs_names = op->Outputs();
 
+    PADDLE_ENFORCE_NE(
+        dynamic_cast<const framework::OperatorWithKernel*>(op_base), nullptr,
+        platform::errors::Unavailable("%s operator is no a OperatorWithKernel.",
+                                      op_base->Type()));
+
     VariableValueMap ins_map;
     VariableIdMap ins_name2id;
     std::tie(ins_map, ins_name2id) =
