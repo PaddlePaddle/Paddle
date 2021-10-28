@@ -222,7 +222,6 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.amp',
-          'paddle.cost_model',
           'paddle.hapi',
           'paddle.vision',
           'paddle.vision.models',
@@ -288,6 +287,7 @@ if os.name != 'nt':
 else:
     package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
+package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
 
@@ -299,8 +299,6 @@ package_dir={
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
     'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
 }
-
-data_files=[('static_cost_model', ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json'])]
 
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
@@ -451,7 +449,6 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
-headers += list(find_files('*.json', '${PADDLE_BINARY_DIR}/python/paddle/cost_model'))
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
@@ -569,7 +566,6 @@ with redirect_stdout():
         scripts=paddle_bins,
         distclass=BinaryDistribution,
         headers=headers,
-        include_package_date=True,
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,

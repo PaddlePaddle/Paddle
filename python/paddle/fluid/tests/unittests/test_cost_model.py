@@ -58,14 +58,34 @@ class TestCostModel(unittest.TestCase):
         # init static data
         cost_model.static_cost_data()
         op_name = "abs"
-        abs_op_time = cost_model.get_static_op_time(op_name)["op_time"]
-        abs_op_config = cost_model.get_static_op_time(op_name)["config"]
+        abs_op_cost = cost_model.get_static_op_time(op_name)
+        abs_op_time = abs_op_cost["op_time"]
+        abs_op_config = abs_op_cost["config"]
         print("abs_op_time:", abs_op_time)
         print("abs_op_config:", abs_op_config)
-        #self.assertGreater(abs_op_time, 0)
-        conv2d_op_time = cost_model.get_static_op_time("conv2d")
-        #self.assertGreater(conv2d_op_time, 0)
-        print("in test cost model, abs_op_time:", abs_op_time)
+        self.assertGreater(float(abs_op_time), 0)
+        conv2d_op_cost = cost_model.get_static_op_time("conv2d")
+        conv2d_op_time = conv2d_op_cost["op_time"]
+        conv2d_op_config = conv2d_op_cost["config"]
+        self.assertGreater(float(conv2d_op_time), 0)
+        print("conv2d_op_time:", conv2d_op_time)
+        print("conv2d_op_config:", conv2d_op_config)
+
+        conv2d_backward_op_cost = cost_model.get_static_op_time(
+            "conv2d", forward=False)
+        conv2d_backward_op_time = conv2d_backward_op_cost["op_time"]
+        conv2d_backward_op_config = conv2d_backward_op_cost["config"]
+        self.assertGreater(float(conv2d_backward_op_time), 0)
+        print("conv2d_backward_op_time:", conv2d_backward_op_time)
+        print("conv2d_backward_op_config:", conv2d_backward_op_config)
+
+        conv2d_fp16_op_cost = cost_model.get_static_op_time(
+            "conv2d", dtype="float16")
+        conv2d_fp16_op_time = conv2d_fp16_op_cost["op_time"]
+        conv2d_fp16_op_config = conv2d_fp16_op_cost["config"]
+        self.assertGreater(float(conv2d_fp16_op_time), 0)
+        print("conv2d_fp16_op_time:", conv2d_fp16_op_time)
+        print("conv2d_fp16_op_config:", conv2d_fp16_op_config)
 
 
 if __name__ == '__main__':
