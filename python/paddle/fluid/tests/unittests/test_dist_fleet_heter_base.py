@@ -102,12 +102,6 @@ class FleetDistHeterRunnerBase(object):
     def run_dataset_trainer(self, args):
         out = self.do_dataset_training(fleet)
     
-    #def run_dataloader_heter_trainer(self, args):
-    #    out = self.do_dataloader_heter_training(fleet)
-
-    #def run_dataloader_trainer(self, args):
-    #    out = self.do_dataloader_training(fleet)
-
     def net(self, args, batch_size=4, lr=0.01):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
@@ -119,14 +113,6 @@ class FleetDistHeterRunnerBase(object):
     def do_dataset_heter_training(self, fleet):
         raise NotImplementedError(
             "do_dataset_heter_training should be implemented by child classes.")
-
-    #def do_dataloader_training(self, fleet):
-    #    raise NotImplementedError(
-    #        "do_dataloader_training should be implemented by child classes.")
-    
-    #def do_dataloader_heter_training(self, fleet):
-    #    raise NotImplementedError(
-    #        "do_dataloader_heter_training should be implemented by child classes.")
 
 
 class TestFleetHeterBase(unittest.TestCase):
@@ -366,7 +352,6 @@ def runtime_main(test_class):
     parser.add_argument('--mode', type=str, required=False, default='async')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
-    #parser.add_argument('--reader', type=str, required=False, default='dataset')
     args = parser.parse_args()
 
     model = test_class()
@@ -379,14 +364,8 @@ def runtime_main(test_class):
     if args.role == "pserver":
         model.run_pserver(args)
     else if args.role == "heter_trainer":
-        #if args.reader == "dataset":
         model.run_dataset_heter_trainer(args)
-        #else:
-        #    model.run_dataloader_heter_trainer(args)
         fleet.stop_worker()
     else:
-        #if args.reader == "dataset":
         model.run_dataset_trainer(args)
-        #else:
-        #    model.run_dataloader_trainer(args)
         fleet.stop_worker()
