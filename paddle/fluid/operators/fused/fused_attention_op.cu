@@ -97,9 +97,12 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *x_data = input_x->data<T>();
     auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
     auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
-    auto *ln_mean_data = ln_mean->mutable_data<U>(ctx.GetPlace());
-    auto *ln_var_data = ln_var->mutable_data<U>(ctx.GetPlace());
-    auto *ln_out_data = ln_out->mutable_data<T>(ctx.GetPlace());
+    auto *ln_mean_data =
+        pre_layer_norm ? ln_mean->mutable_data<U>(ctx.GetPlace()) : nullptr;
+    auto *ln_var_data =
+        pre_layer_norm ? ln_var->mutable_data<U>(ctx.GetPlace()) : nullptr;
+    auto *ln_out_data =
+        pre_layer_norm ? ln_out->mutable_data<T>(ctx.GetPlace()) : nullptr;
 
     auto *qkv_weight_data = qkv_weight->data<T>();
     auto *qkv_bias_data = qkv_bias->data<T>();
@@ -243,9 +246,6 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *out_linear_bias_data = out_linear_bias->data<T>();
 
     // fw output
-    auto *ln_mean = ctx.Input<Tensor>("LnMean");
-    auto *ln_var = ctx.Input<Tensor>("LnVariance");
-    auto *ln_out = ctx.Input<Tensor>("LnOut");
     auto *fmha_out = ctx.Input<Tensor>("FMHAOut");
     auto *transpose_out_2 = ctx.Input<Tensor>("TransposeOut2");
     auto *qk_out = ctx.Input<Tensor>("QKOut");
@@ -260,9 +260,6 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *dropout_mask_out = ctx.Input<Tensor>("DropoutMaskOut");
     auto *bias_dropout_residual_out =
         ctx.Input<Tensor>("BiasDropoutResidualOut");
-    auto *ln_mean_data = ln_mean->data<U>();
-    auto *ln_var_data = ln_var->data<U>();
-    auto *ln_out_data = ln_out->data<T>();
     auto *fmha_out_data = fmha_out->data<T>();
     auto *transpose_out_2_data = transpose_out_2->data<T>();
     auto *qk_out_data = qk_out->data<T>();
@@ -277,7 +274,6 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
 
     // output's grad
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_ln_out = ctx.Output<Tensor>(framework::GradVarName("LnOut"));
     auto *d_qkv_out = ctx.Output<Tensor>(framework::GradVarName("QKVOut"));
     auto *d_qkv_bias_out =
         ctx.Output<Tensor>(framework::GradVarName("QKVBiasOut"));
@@ -297,7 +293,6 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_bias_dropout_residual_out =
         ctx.Output<Tensor>(framework::GradVarName("BiasDropoutResidualOut"));
     auto *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
-    auto *d_ln_out_data = d_ln_out->mutable_data<T>(ctx.GetPlace());
     auto *d_qkv_out_data = d_qkv_out->mutable_data<T>(ctx.GetPlace());
     auto *d_qkv_bias_out_data = d_qkv_bias_out->mutable_data<T>(ctx.GetPlace());
     auto *d_qktv_out_data = d_qktv_out->mutable_data<T>(ctx.GetPlace());
@@ -315,8 +310,6 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
 
     // parameter grad
-    auto *d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
-    auto *d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
     auto *d_qkv_weight = ctx.Output<Tensor>(framework::GradVarName("QKVW"));
     auto *d_qkv_bias = ctx.Output<Tensor>(framework::GradVarName("QKVBias"));
     auto *d_out_linear_weight =
@@ -325,12 +318,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         ctx.Output<Tensor>(framework::GradVarName("OutLinearBias"));
     auto *d_ln_2_scale = ctx.Output<Tensor>(framework::GradVarName("Ln2Scale"));
     auto *d_ln_2_bias = ctx.Output<Tensor>(framework::GradVarName("Ln2Bias"));
-    auto *d_ln_scale_data =
-        (d_ln_scale == nullptr ? nullptr
-                               : d_ln_scale->mutable_data<U>(ctx.GetPlace()));
-    auto *d_ln_bias_data =
-        (d_ln_bias == nullptr ? nullptr
-                              : d_ln_bias->mutable_data<U>(ctx.GetPlace()));
+
     auto *d_qkv_weight_data = d_qkv_weight->mutable_data<T>(ctx.GetPlace());
     auto *d_qkv_bias_data = d_qkv_bias->mutable_data<T>(ctx.GetPlace());
     auto *d_out_linear_weight_data =
@@ -407,6 +395,24 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                     cudaMemcpyDeviceToDevice);
 
     if (pre_layer_norm) {
+      auto *ln_mean = ctx.Input<Tensor>("LnMean");
+      auto *ln_var = ctx.Input<Tensor>("LnVariance");
+      auto *ln_out = ctx.Input<Tensor>("LnOut");
+      auto *ln_mean_data = ln_mean->data<U>();
+      auto *ln_var_data = ln_var->data<U>();
+      auto *ln_out_data = ln_out->data<T>();
+
+      auto *d_ln_out = ctx.Output<Tensor>(framework::GradVarName("LnOut"));
+      auto *d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
+      auto *d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
+      auto *d_ln_out_data = d_ln_out->mutable_data<T>(ctx.GetPlace());
+      auto *d_ln_scale_data =
+          (d_ln_scale == nullptr ? nullptr
+                                 : d_ln_scale->mutable_data<U>(ctx.GetPlace()));
+      auto *d_ln_bias_data =
+          (d_ln_bias == nullptr ? nullptr
+                                : d_ln_bias->mutable_data<U>(ctx.GetPlace()));
+
       qkv_compute.ComputeBackward(ln_out_data, qkv_weight_data,
                                   d_qkv_bias_out_data, d_ln_out_data,
                                   d_qkv_weight_data, d_qkv_bias_data);
