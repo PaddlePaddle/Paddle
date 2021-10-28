@@ -60,6 +60,9 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.LeakyReLU()
         self.assertEqual(str(module), 'LeakyReLU(negative_slope=0.01)')
 
+        module = nn.RReLU()
+        self.assertEqual(str(module), 'RReLU(negative_slope=0.01)')
+
         module = nn.Sigmoid()
         self.assertEqual(str(module), 'Sigmoid()')
 

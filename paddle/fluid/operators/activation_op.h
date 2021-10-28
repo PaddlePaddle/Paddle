@@ -12,23 +12,26 @@ limitations under the License. */
 
 #pragma once
 #include <glog/logging.h>
+
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <cmath>
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
 
 #include <type_traits>
+
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/uniform_random_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -155,7 +158,7 @@ inline void ExtractActivationGradTensor(
     *X = *dX;
   }
 }
-
+// TODO(gsq7474741) class ActivationKernel
 template <typename DeviceContext, typename Functor>
 class ActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -191,6 +194,7 @@ class ActivationKernel
   }
 };
 
+// TODO(gsq7474741) class GradKernel
 template <typename DeviceContext, typename Functor>
 class ActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -1179,9 +1183,9 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout *
-                   ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
-                       .template cast<T>();
+    dx.device(d) =
+        dout * ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
+                   .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1213,9 +1217,8 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) =
-        dout *
-        ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
-            .template cast<T>();
+        dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
+                   .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -1808,6 +1811,40 @@ struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
+// TODO(gsq7474741) rrelu grad grad func
+template <typename T>
+struct RReluGradGradFunctor : public BaseActivationFunctor<T> {
+  float lower, upper, alpha;
+  int seed;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"lower", &lower}, {"upper", &upper}, {"seed", &seed}};
+  }
+  template <typename Device>
+  void operator()(const Device& dev, const framework::Tensor* X,
+                  const framework::Tensor* Out, const framework::Tensor* ddX,
+                  framework::Tensor* ddOut, framework::Tensor* dOut,
+                  framework::Tensor* dX) const {
+    std::uniform_real_distribution<T> dist(static_cast<T>(lower),
+                                           static_cast<T>(upper));
+    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    alpha = dist(*engine);
+    if (ddOut) {
+      auto* d = dev.eigen_device();
+      auto ddx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddX, "Input", "DDX", "RReluGradGrad"));
+      auto x = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(X, "Input", "X", "RReluGradGrad"));
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DOut", "RReluGradGrad"));
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 template <typename T>
 struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
   float alpha;
@@ -1827,11 +1864,10 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
           GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
-      ddout.device(*d) =
-          ddx *
-          ((x > static_cast<T>(0)).template cast<T>() +
-           static_cast<T>(alpha) * (x <= static_cast<T>(0)).template cast<T>())
-              .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1865,11 +1901,10 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ELUGradGrad"));
-      ddout.device(*d) = ddx *
-                         ((x > static_cast<T>(0)).template cast<T>() +
-                          static_cast<T>(alpha) * x.exp() *
-                              (x <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) * x.exp() *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1904,11 +1939,10 @@ struct CELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "CELUGradGrad"));
-      ddout.device(*d) = ddx *
-                         ((x > static_cast<T>(0)).template cast<T>() +
-                          (x / static_cast<T>(alpha)).exp() *
-                              (x <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                (x / static_cast<T>(alpha)).exp() *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -2081,6 +2115,322 @@ class SigmoidDoubleGradKernel
     functor(place, Out, ddX, dOut, dOutNew, ddOut);
   }
 };
+
+// TODO(gsq7474741) rrelu kernel framework::OpKernel<T>
+template <typename DeviceContext, typename T>
+class RReluKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const framework::Tensor* X = context.Input<Tensor>("X");
+    framework::Tensor* Out = context.Output<Tensor>("Out");
+    ExtractActivationTensor(context, &X, &Out);
+    Out->mutable_data<T>(context.GetPlace());
+
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "Activation"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
+    auto lower = context.Attr<float>("lower");
+    auto upper = context.Attr<float>("upper");
+    auto seed = context.Attr<int>("seed");
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
+
+    std::uniform_real_distribution<T> dist(static_cast<T>(lower),
+                                           static_cast<T>(upper));
+    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    auto alpha = dist(*engine);
+
+    if (alpha < 1.f) {
+      out.device(*place) = x.cwiseMax(static_cast<T>(alpha) * x);
+    } else {
+      out.device(*place) = x.cwiseMin(static_cast<T>(alpha) * x);
+    }
+
+    //    Functor functor;
+    //
+    //    auto attrs = functor.GetAttrs();
+    //    for (auto& attr : attrs) {
+    //      *attr.second = context.Attr<float>(attr.first);
+    //    }
+    // use 32bit index to speed up computation
+    //    bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
+    //    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    //    if (use_32bit_index && is_gpu_place) {
+    //      functor(*place, To32BitIndex(x), To32BitIndex(out));
+    //    } else {
+    //      functor(*place, x, out);
+    //    }
+  }
+};
+
+// TODO(gsq7474741) rrelu grad kernel
+template <typename DeviceContext, typename T>
+class RReluGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const framework::Tensor *X, *Out, *dOut;
+    framework::Tensor* dX = nullptr;
+    X = Out = dOut = nullptr;
+    ExtractActivationGradTensor<ActBwdOpFwdDeps::kDepX>(context, &X, &Out,
+                                                        &dOut, &dX);
+    dX->mutable_data<T>(context.GetPlace());
+    auto dout = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
+    auto dx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
+    auto lower = context.Attr<float>("lower");
+    auto upper = context.Attr<float>("upper");
+    auto seed = context.Attr<int>("seed");
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
+
+    std::uniform_real_distribution<T> dist(static_cast<T>(lower),
+                                           static_cast<T>(upper));
+    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    auto alpha = dist(*engine);
+
+    auto temp1 =
+        static_cast<T>(alpha) * (x < static_cast<T>(0)).template cast<T>();
+    auto temp2 = (x >= static_cast<T>(0)).template cast<T>();
+    dx.device(*place) = dout * (temp1 + temp2).template cast<T>();
+    //    auto attrs = functor.GetAttrs();
+    //    for (auto& attr : attrs) {
+    //      *attr.second = context.Attr<float>(attr.first);
+    //    }
+    //    // use 32bit index to speed up computation
+    //    bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
+    //    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    //    if (use_32bit_index && is_gpu_place) {
+    //      functor(*place, To32BitIndex(x), To32BitIndex(out),
+    //      To32BitIndex(dout),
+    //              To32BitIndex(dx));
+    //    } else {
+    //      functor(*place, x, out, dout, dx);
+    //    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class RReluDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *X, *Out, *ddX;
+    X = Out = ddX = nullptr;
+    framework::Tensor *ddOut, *dOut, *dX;
+    ddOut = dOut = dX = nullptr;
+
+    ExtractActivationDoubleGradTensor<ActBwdOpFwdDeps::kDepX>(
+        ctx, &X, &Out, &ddX, &dX, &dOut, &ddOut);
+
+    if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
+    if (dOut) dOut->mutable_data<T>(ctx.GetPlace());
+    if (dX) dX->mutable_data<T>(Out->dims(), ctx.GetPlace());
+
+    auto& place = ctx.template device_context<DeviceContext>();
+    auto lower = ctx.Attr<float>("lower");
+    auto upper = ctx.Attr<float>("upper");
+    auto seed = ctx.Attr<int>("seed");
+    //    auto* place = ctx.template
+    //    device_context<DeviceContext>().eigen_device();
+
+    std::uniform_real_distribution<T> dist(static_cast<T>(lower),
+                                           static_cast<T>(upper));
+    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    auto alpha = dist(*engine);
+
+    if (ddOut) {
+      auto* d = place.eigen_device();
+      auto ddx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddX, "Input", "DDX", "RReluGradGrad"));
+      auto x = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(X, "Input", "X", "RReluGradGrad"));
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DOut", "RReluGradGrad"));
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
+    }
+
+    //    Functor functor;
+    //    auto attrs = functor.GetAttrs();
+    //    for (auto& attr : attrs) {
+    //      *attr.second = ctx.Attr<float>(attr.first);
+    //    }
+    //    functor(place, X, Out, ddX, ddOut, dOut, dX);
+  }
+};
+
+// template <typename DeviceContext, typename T>
+// class RReluGradGradKernel: public framework::OpKernel<T> {
+//  public:
+//   void Compute(const framework::ExecutionContext& context) const override {
+//     const framework::Tensor *X, *Out, *dOut;
+//     framework::Tensor* dX = nullptr;
+//     X = Out = dOut = nullptr;
+//     ExtractActivationGradTensor<ActBwdOpFwdDeps::kDepX>
+//     (context, &X, &Out, &dOut,&dX);
+//     dX->mutable_data<T>(context.GetPlace());
+//     auto dout = framework::EigenVector<T>::Flatten(
+//         GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
+//     auto out = framework::EigenVector<T>::Flatten(
+//         GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
+//     auto dx = framework::EigenVector<T>::Flatten(
+//         GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
+//     auto x = framework::EigenVector<T>::Flatten(
+//         GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
+//     auto lower = context.Attr<float>("lower");
+//     auto upper = context.Attr<float>("upper");
+//     auto seed = context.Attr<int>("seed");
+//     auto* place =
+//         context.template device_context<DeviceContext>().eigen_device();
+//
+//     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
+//                                            static_cast<T>(upper));
+//     auto engine = paddle::framework::GetCPURandomEngine(seed);
+//     auto alpha=dist(*engine);
+//
+//     auto temp1 = static_cast<T>(alpha) * (x < static_cast<T>(0)).template
+//     cast<T>(); auto temp2 = (x >= static_cast<T>(0)).template cast<T>();
+//     dx.device(*place) = dout * (temp1 + temp2).template cast<T>();
+//
+//     if (ddOut) {
+//             auto* d = dev.eigen_device();
+//             auto ddx = framework::EigenVector<T>::Flatten(
+//                 GET_DATA_SAFELY(ddX, "Input", "DDX", "LeakyReluGradGrad"));
+//             auto x = framework::EigenVector<T>::Flatten(
+//                 GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
+//             auto ddout = framework::EigenVector<T>::Flatten(
+//                 GET_DATA_SAFELY(ddOut, "Output", "DOut",
+//                 "LeakyReluGradGrad"));
+//             ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template
+//             cast<T>() +
+//                 static_cast<T>(alpha) *
+//                 (x <= static_cast<T>(0)).template cast<T>())
+//                     .template cast<T>();
+//           }
+//
+//
+//     //    auto attrs = functor.GetAttrs();
+//     //    for (auto& attr : attrs) {
+//     //      *attr.second = context.Attr<float>(attr.first);
+//     //    }
+//     //    // use 32bit index to speed up computation
+//     //    bool use_32bit_index = out.size() <
+//     Eigen::NumTraits<int>::highest();
+//     //    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+//     //    if (use_32bit_index && is_gpu_place) {
+//     //      functor(*place, To32BitIndex(x), To32BitIndex(out),
+//     To32BitIndex(dout),
+//     //              To32BitIndex(dx));
+//     //    } else {
+//     //      functor(*place, x, out, dout, dx);
+//     //    }
+//   }
+// };
+
+// template <typename DeviceContext, typename T>
+// class RReluGradKernel1: public framework::OpKernel<T> {
+//  public:
+//   void Compute(const framework::ExecutionContext& context) const override {
+//     const framework::Tensor* X = context.Input<Tensor>("X");
+//     framework::Tensor* Out = context.Output<Tensor>("Out");
+//     ExtractActivationTensor(context, &X, &Out);
+//     Out->mutable_data<T>(context.GetPlace());
+//
+//     auto x = framework::EigenVector<T>::Flatten(
+//         GET_DATA_SAFELY(X, "Input", "X", "RReluGrad"));
+//     auto out = framework::EigenVector<T>::Flatten(
+//         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
+//     auto dx = framework::EigenVector<T>::Flatten(
+//         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
+//
+//     auto dx =
+//     context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+//
+//     auto lower = context.Attr<float>("lower");
+//     auto upper = context.Attr<float>("upper");
+//     auto seed = context.Attr<int>("seed");
+//     auto* place =
+//         context.template device_context<DeviceContext>().eigen_device();
+//
+//     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
+//                                            static_cast<T>(upper));
+//     auto engine = paddle::framework::GetCPURandomEngine(seed);
+//     auto alpha = dist(*engine);
+//
+//     if (alpha < 1.f) {
+//       out.device(*place) = x.cwiseMax(static_cast<T>(alpha) * x);
+//     } else {
+//       out.device(*place) = x.cwiseMin(static_cast<T>(alpha) * x);
+//     }
+//
+//     auto temp1 = static_cast<T>(alpha) * (x < static_cast<T>(0)).template
+//     cast<T>(); auto temp2 = (x >= static_cast<T>(0)).template cast<T>();
+//     dx.device(d) = dout * (temp1 + temp2).template cast<T>();
+//
+//     if (ddOut) {
+//       auto* d = dev.eigen_device();
+//       auto ddx = framework::EigenVector<T>::Flatten(
+//           GET_DATA_SAFELY(ddX, "Input", "DDX", "LeakyReluGradGrad"));
+//       auto x = framework::EigenVector<T>::Flatten(
+//           GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
+//       auto ddout = framework::EigenVector<T>::Flatten(
+//           GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
+//       ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+//           static_cast<T>(alpha) *
+//           (x <= static_cast<T>(0)).template cast<T>())
+//               .template cast<T>();
+//     }
+//
+//
+//   }
+// };
+
+// template <typename DeviceContext, typename T>
+// class RReluGradKernel: public framework::OpKernel<T> {
+//  public:
+//   void Compute(const framework::ExecutionContext& context) const override {
+//     const framework::Tensor *X, *Out, *dOut;
+//     framework::Tensor* dX = nullptr;
+//     int seed = context.template Attr<int>("seed");
+////    auto* x = context.Input<framework::LoDTensor>("X");
+//    auto* out = context.Input<framework::LoDTensor>("Out");
+//    X = Out = dOut = nullptr;
+//    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
+//                                                    &dX);
+//    dX->mutable_data<T>(context.GetPlace());
+//    auto dout = framework::EigenVector<T>::Flatten(
+//        GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
+//    auto out = framework::EigenVector<T>::Flatten(
+//        GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
+//    auto dx = framework::EigenVector<T>::Flatten(
+//        GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
+//    auto x = framework::EigenVector<T>::Flatten(
+//        GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
+//    auto* place =
+//        context.template device_context<DeviceContext>().eigen_device();
+//    Functor functor;
+//    auto attrs = functor.GetAttrs();
+//    for (auto& attr : attrs) {
+//      *attr.second = context.Attr<float>(attr.first);
+//    }
+//    // use 32bit index to speed up computation
+//    bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
+//    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+//    if (use_32bit_index && is_gpu_place) {
+//      functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
+//              To32BitIndex(dx));
+//    } else {
+//      functor(*place, x, out, dout, dx);
+//    }
+//  }
+//};
 
 // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
 // D_OutNew, D_DOut, D_DDx               // output

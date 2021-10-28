@@ -272,7 +272,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -341,7 +341,7 @@ class TestTanh(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
     def init_dtype(self):
-        #TODO If dtype is float64, the output (Out) has diff at CPUPlace
+        # TODO If dtype is float64, the output (Out) has diff at CPUPlace
         # when using and not using inplace. Therefore, set dtype as float32
         # for now.
         self.dtype = np.float32
@@ -625,7 +625,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(10, 20, [10, 17]).astype(np.float64)
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -717,7 +717,7 @@ class TestHardShrinkAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -789,7 +789,7 @@ class TestHardtanhAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -871,7 +871,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
         self.threshold = 0.8
         np.random.seed(1024)
         self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype(np.float64)
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -1193,7 +1193,7 @@ class TestReluAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         self.executed_api()
 
@@ -1291,69 +1291,142 @@ class TestLeakyReluAlpha3(TestLeakyRelu):
         return -2.0
 
 
-class TestLeakyReluAPI(unittest.TestCase):
-    # test paddle.nn.LeakyReLU, paddle.nn.functional.leaky_relu,
-    # fluid.layers.leaky_relu
+def ref_rrelu(x, alpha=0.01):
+    out = np.copy(x)
+    out[out < 0] *= alpha
+    return out
+
+
+class TestRRelu(TestActivation):
+    def get_lower(self):
+        return 0.125
+
+    def get_upper(self):
+        return 0.333
+
+    def get_seed(self):
+        return 2022
+
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.init_dtype()
+        alpha = self.get_alpha()
+        lower = self.get_attr()
+        upper = self.get_upper()
+        seed = self.get_seed()
+        rand_alpha = F.rrelu(paddle.to_tensor(-1.), upper, lower, seed=2022)
+
+        np.random.seed(2021)
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.05
+        out = ref_leaky_relu(x, rand_alpha)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'lower': lower, 'upper': upper, 'seed': seed}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestRReluAlpha1(TestLeakyRelu):
+    def get_lower(self):
+        return 0.1
+
+    def get_upper(self):
+        return 0.2
+
+    def get_seed(self):
+        return 2022
+
+
+class TestRReluAlpha2(TestLeakyRelu):
+    def get_lower(self):
+        return 0.
+
+    def get_upper(self):
+        return 1.
+
+    def get_seed(self):
+        return 2022
+
+
+class TestRReluAlpha3(TestLeakyRelu):
+    def get_lower(self):
+        return 0.125
+
+    def get_upper(self):
+        return 0.126
+
+    def get_seed(self):
+        return 2022
+
+
+# TODO(gsq7474741) test rrelu
+class TestRReluAPI(unittest.TestCase):
+    # test paddle.nn.RReLU, paddle.nn.functional.rrelu,
+    # fluid.layers.rrelu
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
+        # lower = self.get_attr()
+        # upper = self.get_upper()
+        # seed = self.get_seed()
+        rand_alpha = F.rrelu(paddle.to_tensor(-1.), upper, lower, seed=2022)
 
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
+            rand_alpha = F.rrelu(paddle.to_tensor(-1.), seed=2022)
             x = paddle.fluid.data('X', [10, 12])
-            out1 = F.leaky_relu(x)
-            m = paddle.nn.LeakyReLU()
+            out1 = F.rrelu(x, seed=2022)
+            m = paddle.nn.RReLU(seed=2022)
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_leaky_relu(self.x_np)
+        out_ref = ref_leaky_relu(self.x_np, alpha=rand_alpha)
         for r in res:
             self.assertEqual(np.allclose(out_ref, r), True)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
+        rand_alpha = F.rrelu(paddle.to_tensor(-1.), seed=2022)
         x = paddle.to_tensor(self.x_np)
-        out1 = F.leaky_relu(x)
-        m = paddle.nn.LeakyReLU()
+        out1 = F.rrelu(x, seed=2022)
+        m = paddle.nn.RReLU(seed=2022)
         out2 = m(x)
-        out_ref = ref_leaky_relu(self.x_np)
+        out_ref = ref_leaky_relu(self.x_np, alpha=rand_alpha)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-        out1 = F.leaky_relu(x, 0.6)
-        m = paddle.nn.LeakyReLU(0.6)
+        rand_alpha = F.rrelu(
+            paddle.to_tensor(-1.), lower=0.1, upper=0.9, seed=2022)
+        out1 = F.rrelu(x, lower=0.1, upper=0.9, seed=2022)
+        m = paddle.nn.RReLU(lower=0.1, upper=0.9, seed=2022)
         out2 = m(x)
-        out_ref = ref_leaky_relu(self.x_np, 0.6)
+        out_ref = ref_leaky_relu(self.x_np, alpha=rand_alpha)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12])
-            out = fluid.layers.leaky_relu(x, 0.01)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_leaky_relu(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, F.leaky_relu, 1)
+            self.assertRaises(TypeError, F.rrelu, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, F.leaky_relu, x_int32)
+            self.assertRaises(TypeError, F.rrelu, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
-            F.leaky_relu(x_fp16)
+            F.rrelu(x_fp16)
 
 
 def gelu(x, approximate):
@@ -1408,7 +1481,7 @@ class TestGELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -1494,7 +1567,7 @@ class TestBreluAPI(unittest.TestCase):
         self.out_ref[self.out_ref < self.t_min] = self.t_min
         self.out_ref[self.out_ref > self.t_max] = self.t_max
         self.out_ref = self.out_ref.astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_fluid_api(self):
@@ -1557,7 +1630,7 @@ class TestRelu6API(unittest.TestCase):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -1626,7 +1699,7 @@ class TestHardSwish(TestActivation):
         threshold = 6.0
         scale = 6.0
         offset = 3.0
-        #the same with TestAbs
+        # the same with TestAbs
         x[np.abs(x + offset) < 0.005] = 0.02
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
         out = ref_hardswish(x, threshold, scale, offset)
@@ -1647,7 +1720,7 @@ class TestHardswishAPI(unittest.TestCase):
     # test paddle.nn.Hardswish, paddle.nn.functional.hardswish
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -1772,7 +1845,7 @@ class TestELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         self.executed_api()
 
@@ -1856,7 +1929,7 @@ class TestCELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         self.executed_api()
 
@@ -2279,7 +2352,7 @@ class TestSTanhAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.scale_a = self.get_scale_a()
         self.scale_b = self.get_scale_b()
-        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -2372,7 +2445,7 @@ class TestSoftplusAPI(unittest.TestCase):
         self.threshold = 15
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -2451,7 +2524,7 @@ class TestSoftsignAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -2536,7 +2609,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -2634,7 +2707,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
     # test paddle.nn.Hardsigmoid, paddle.nn.functional.hardsigmoid
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -2717,7 +2790,7 @@ class TestSwishAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
@@ -2769,7 +2842,7 @@ class TestSwishAPI(unittest.TestCase):
             F.swish(x_fp16)
 
 
-#------------------ Test Error Activation----------------------
+# ------------------ Test Error Activation----------------------
 def create_test_error_class(op_type):
     class TestOpErrors(unittest.TestCase):
         def test_errors(self):
@@ -2803,7 +2876,7 @@ create_test_error_class('tanh')
 create_test_error_class('tan')
 
 
-#------------------ Test Cudnn Activation----------------------
+# ------------------ Test Cudnn Activation----------------------
 def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
@@ -2822,7 +2895,7 @@ create_test_act_cudnn_class(TestSigmoid)
 create_test_act_cudnn_class(TestTanh)
 
 
-#------------------ Test Fp16 ----------------------
+# ------------------ Test Fp16 ----------------------
 def create_test_act_fp16_class(parent,
                                atol=1e-3,
                                grad_check=True,
