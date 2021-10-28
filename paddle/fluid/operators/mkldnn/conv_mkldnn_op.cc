@@ -626,12 +626,21 @@ class ConvMKLDNNHandlerT
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
       const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key,
-      const framework::Tensor* bias,
-      const std::vector<float>& scale_data = {1.0f}, int mask = 0) {
+      const framework::Tensor* bias) {
     const K* bias_data = bias->data<K>();
     auto user_bias_md = platform::MKLDNNMemDesc(
         framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
         MKLDNNMemoryFormat::x);
+      
+    // Get Bias scales for int8
+    float mask_reorder;
+    std::vector<float> scale_bias_data;
+    if (platform::is_int8<T>()) {
+       std::tie(mask_reorder, scale_bias_data) = handler.get_int8_bias_scales(ctx);
+    } else {
+      mask_reorder =0;
+      scale_data = {1.0f};
+    }
 
     return this->AcquireMemoryWithReorder(
         dev_ctx, user_bias_md, this->fwd_pd_->bias_desc(),
@@ -846,10 +855,6 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {MKLDNN_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      float mask_reorder;
-      std::vector<float> scale_bias_data;
-      std::tie(mask_reorder, scale_bias_data) =
-          handler.get_int8_bias_scales(ctx);
 
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
           dev_ctx, key, bias, scale_bias_data, mask_reorder);
