@@ -242,7 +242,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
                         platform::errors::InvalidArgument(
                             "Not find variable microbatch_id in scope."));
       auto* tensor = var->GetMutable<framework::LoDTensor>();
-      const auto place = dev_ctx_->GetPlace()
+      const auto place = dev_ctx_->GetPlace();
 
       int micro_id = -1;
       if (platform::is_gpu_place(place)) {
