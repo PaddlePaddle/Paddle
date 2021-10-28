@@ -28,6 +28,48 @@ using paddle::platform::to_void_cast;
 using Tensor = paddle::framework::Tensor;
 
 namespace {
+// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+// original x_dim is returned.
+paddle::framework::DDim RowMatrixFromVector(
+    const paddle::framework::DDim& x_dim) {
+  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
+}
+
+// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
+// original y_dim is returned.
+paddle::framework::DDim ColumnMatrixFromVector(
+    const paddle::framework::DDim& y_dim) {
+  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
+}
+
+std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
+                               const std::vector<int>& axis) {
+  size_t in_rank = x.size();
+  size_t axis_size = axis.size();
+
+  auto axis_set = std::set<int>(axis.begin(), axis.end());
+  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
+                    paddle::platform::errors::InvalidArgument(
+                        "In an axis array, elements must be unique."));
+
+  PADDLE_ENFORCE_EQ(in_rank, axis_size,
+                    paddle::platform::errors::InvalidArgument(
+                        "The input dimension's size "
+                        "should be equal to the axis's size. "
+                        "But received dimension is %d, "
+                        "axis's size is %d",
+                        in_rank, axis_size));
+
+  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
+                    paddle::platform::errors::InvalidArgument(
+                        "Axis values must be ranging from 0 to (dims - 1)."));
+
+  std::vector<int64_t> new_x(x.size());
+  for (size_t i = 0; i < x.size(); i++) {
+    new_x[i] = x[axis[i]];
+  }
+  return new_x;
+}
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
@@ -239,8 +281,7 @@ class MatMulMKLDNNHandler
     }
 
     auto& MatrixDimsFromVector =
-        input_letter == 'X' ? paddle::operators::RowMatrixFromVector
-                            : paddle::operators::ColumnMatrixFromVector;
+        input_letter == 'X' ? RowMatrixFromVector : ColumnMatrixFromVector;
     paddle::operators::math::MatDescriptor mat_dim =
         paddle::operators::math::CreateMatrixDescriptor(
             MatrixDimsFromVector(new_dims), 0,
@@ -253,7 +294,7 @@ class MatMulMKLDNNHandler
       for (auto i = shape2.size() - 1; i > 0; --i) {
         strides.insert(strides.begin(), strides.front() * shape2[i]);
       }
-      strides = paddle::operators::Transpose(strides, axis);
+      strides = Transpose(strides, axis);
       if (shape.size() == 4)
         strides.erase(strides.begin());
       else if (shape.size() == 2)
@@ -395,8 +436,8 @@ static void ReshapeTensorToMatrixSequence(
  */
 static void ReshapeXYOutToMatrixSequence(Tensor* x, Tensor* y, Tensor* out,
                                          bool trans_x, bool trans_y) {
-  auto x_dim = paddle::operators::RowMatrixFromVector(x->dims());
-  auto y_dim = paddle::operators::ColumnMatrixFromVector(y->dims());
+  auto x_dim = RowMatrixFromVector(x->dims());
+  auto y_dim = ColumnMatrixFromVector(y->dims());
   auto mat_dim_x =
       paddle::operators::math::CreateMatrixDescriptor(x_dim, 0, trans_x);
   auto mat_dim_y =
@@ -463,45 +504,6 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
 namespace paddle {
 namespace operators {
-
-paddle::framework::DDim RowMatrixFromVector(
-    const paddle::framework::DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
-}
-
-paddle::framework::DDim ColumnMatrixFromVector(
-    const paddle::framework::DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
-}
-
-std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
-                               const std::vector<int>& axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(in_rank, axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank, axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
 
 static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
                                       const char input_letter) {

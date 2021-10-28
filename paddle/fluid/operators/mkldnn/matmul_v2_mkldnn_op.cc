@@ -28,10 +28,52 @@ using Tensor = paddle::framework::Tensor;
 using paddle::framework::vectorize;
 using paddle::framework::make_ddim;
 using paddle::framework::GradVarName;
-using paddle::framework::DDim;
 
-static DDim GetDimForInput(const ExecutionContext& ctx,
-                           const char input_letter) {
+// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+// original x_dim is returned.
+paddle::framework::DDim RowMatrixFromVector(
+    const paddle::framework::DDim& x_dim) {
+  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
+}
+
+// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
+// original y_dim is returned.
+paddle::framework::DDim ColumnMatrixFromVector(
+    const paddle::framework::DDim& y_dim) {
+  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
+}
+
+std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
+                               const std::vector<int>& axis) {
+  size_t in_rank = x.size();
+  size_t axis_size = axis.size();
+
+  auto axis_set = std::set<int>(axis.begin(), axis.end());
+  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
+                    paddle::platform::errors::InvalidArgument(
+                        "In an axis array, elements must be unique."));
+
+  PADDLE_ENFORCE_EQ(in_rank, axis_size,
+                    paddle::platform::errors::InvalidArgument(
+                        "The input dimension's size "
+                        "should be equal to the axis's size. "
+                        "But received dimension is %d, "
+                        "axis's size is %d",
+                        in_rank, axis_size));
+
+  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
+                    paddle::platform::errors::InvalidArgument(
+                        "Axis values must be ranging from 0 to (dims - 1)."));
+
+  std::vector<int64_t> new_x(x.size());
+  for (size_t i = 0; i < x.size(); i++) {
+    new_x[i] = x[axis[i]];
+  }
+  return new_x;
+}
+
+paddle::framework::DDim GetDimForInput(const ExecutionContext& ctx,
+                                       const char input_letter) {
   PADDLE_ENFORCE((input_letter == 'X' || input_letter == 'Y'),
                  paddle::platform::errors::InvalidArgument(
                      "Input name should be a single character 'X' or 'Y'."));
@@ -77,9 +119,8 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
-  auto& MatrixDimsFromVector = input_letter == 'X'
-                                   ? paddle::operators::RowMatrixFromVector
-                                   : paddle::operators::ColumnMatrixFromVector;
+  auto& MatrixDimsFromVector =
+      input_letter == 'X' ? RowMatrixFromVector : ColumnMatrixFromVector;
   paddle::operators::math::MatDescriptor mat_dim =
       paddle::operators::math::CreateMatrixDescriptor(
           MatrixDimsFromVector(new_dims), 0,
@@ -94,7 +135,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
       strides.insert(strides.begin(),
                      strides.front() * static_cast<int64_t>(shape2[i]));
     }
-    strides = paddle::operators::Transpose(strides, axis);
+    strides = Transpose(strides, axis);
     if (shape.size() == 2)
       strides.insert(strides.begin(),
                      static_cast<int64_t>(shape[0] * shape[1]));
