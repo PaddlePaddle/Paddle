@@ -861,6 +861,58 @@ def read_file(filename, name=None):
     return out
 
 
+def file_label_reader(file_root, batch_size, name=None):
+    """
+    Reads and outputs the bytes contents of a file as a uint8 Tensor
+    with one dimension.
+
+    Args:
+        filename (str): Path of the file to be read.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A uint8 tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import cv2
+            import paddle
+
+            image = paddle.vision.ops.file_label_reader('/workspace/datasets/ILSVRC2012/val/', 2)
+
+    """
+    from paddle.vision.datasets import DatasetFolder
+    data_folder = DatasetFolder(file_root)
+    samples = [s[0] for s in data_folder.samples]
+    targets = [s[1] for s in data_folder.samples]
+
+    if in_dygraph_mode():
+        return _C_ops.file_label_reader('root_dir', file_root, 'batch_size',
+                                        batch_size, 'files', samples, 'labels',
+                                        targets)
+
+    inputs = dict()
+    attrs = {
+        'root_dir': root_dir,
+        'batch_size': batch_size,
+        'files': samples,
+        'labels': targets
+    }
+
+    helper = LayerHelper("file_label_reader", **locals())
+    out = helper.create_variable_for_type_inference('uint8')
+    helper.append_op(
+        type="file_label_reader",
+        inputs=inputs,
+        attrs=attrs,
+        outputs={"Out": out})
+
+    return out
+
+
 def decode_jpeg(x, mode='unchanged', name=None):
     """
     Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
