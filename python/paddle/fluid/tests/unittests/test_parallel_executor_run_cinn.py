@@ -40,15 +40,15 @@ def set_cinn_flag(val):
 
 
 def reader(limit):
-    for _ in range(limit):
-        yield np.random.random([1, 28]).astype('float32'), \
-            np.random.randint(0, 2, size=[1]).astype('int64')
+    for i in range(limit):
+        yield np.ones([1, 28]).astype('float32') * (i * 3.14 / (i + 1)), \
+            np.array([i + 1]).astype('int64')
 
 
 def rand_data(img, label, loop_num=10):
     feed = []
     data = reader(loop_num)
-    for i in range(loop_num):
+    for _ in range(loop_num):
         d, l = next(data)
         feed.append({img: d, label: l})
     return feed
@@ -62,7 +62,7 @@ def build_program(main_program, startup_program):
             shape=[1, 28],
             dtype="float32",
             attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(
-                np.random.rand(1, 28).astype(np.float32))))
+                np.ones([1, 28]).astype(np.float32))))
         label = paddle.static.data(name="label", shape=[1], dtype='int64')
 
         hidden = paddle.add(img, param)
@@ -90,7 +90,7 @@ def do_test(dot_save_dir):
     compiled_program = paddle.static.CompiledProgram(
         main_program, build_strategy).with_data_parallel(loss_name=loss.name)
 
-    iters = 10
+    iters = 1
     feed = rand_data(img.name, label.name, iters)
     for step in range(iters):
         loss_v = exe.run(compiled_program,
