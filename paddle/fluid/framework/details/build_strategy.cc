@@ -83,13 +83,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
 
-#ifdef PADDLE_WITH_CINN
-    if (FLAGS_use_cinn) {
-      // Note: This pass is used to enable cinn.
-      AppendPass("build_cinn_pass");
-    }
-#endif
-
     SetCollectiveContext();
   }
 
