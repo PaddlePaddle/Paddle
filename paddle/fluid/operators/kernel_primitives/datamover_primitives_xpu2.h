@@ -429,7 +429,7 @@ __device__ __forceinline__ void WriteData(Ty _global_ptr_* dst, const Tx* src,
   __local__ Ty in_temp[1];
 
   // Each branch is added for better performance
-  if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
+  if (NX == 1 && NY == 1) {
     if (IsBoundary) {
       if (left_size_nx > 0) {
         in_temp[0] = static_cast<Ty>(src[0]);
@@ -439,7 +439,7 @@ __device__ __forceinline__ void WriteData(Ty _global_ptr_* dst, const Tx* src,
       in_temp[0] = static_cast<Ty>(src[0]);
       LM2GM(in_temp, dst + thread_offset, sizeof(T));
     }
-  } else if (NX == 1) {  // for NX == 1 and NY != 1
+  } else if (NX == 1) {
 #pragma unroll
     for (int idy = 0; idy < NY; ++idy) {
       if (IsBoundary) {
