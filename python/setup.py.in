@@ -451,6 +451,7 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
+headers += list(find_files('*.json', '${PADDLE_BINARY_DIR}/python/paddle/cost_model'))
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
@@ -565,7 +566,6 @@ with redirect_stdout():
         ext_modules=ext_modules,
         package_data=package_data,
         package_dir=package_dir,
-        data_files=data_files,
         scripts=paddle_bins,
         distclass=BinaryDistribution,
         headers=headers,

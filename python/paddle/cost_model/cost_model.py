@@ -58,7 +58,7 @@ class CostModel():
         cost_data = cost_model.ProfileMeasure(device)
 
     def static_cost_data(self):
-        static_cost_data_path = "./static_op_benchmark.json"
+        static_cost_data_path = "/home/hx/Paddle/python/paddle/cost_model/static_op_benchmark.json"
         with open(static_cost_data_path, 'r') as load_f:
             load_dict = json.load(load_f)
         self.static_cost_data = load_dict
@@ -74,14 +74,19 @@ class CostModel():
             raise ValueError(
                 'op_name should not be empty when you want to get static op time'
             )
+        ret = {}
         for op_data in self.static_cost_data:
             if (op_data["op"] == config["op_name"]) and (
                     config["dtype"] in op_data["config"]):
                 if (config["forward"] == True):
-                    return (op_data["paddle_gpu_time"])
+
+                    ret["op_time"] = op_data["paddle_gpu_time"]
                 else:
-                    return (op_data["paddle_gpu_time_backward"])
-        return -1
+                    ret["op_time"] = op_data["paddle_gpu_time_backward"]
+
+                ret["config"] = op_data["config"]
+
+        return ret
 
 
 cost_model = CostModel()
