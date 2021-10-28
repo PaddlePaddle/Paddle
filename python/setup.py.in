@@ -118,6 +118,10 @@ def show():
         patch: the patch level version of paddle
         
         rc: whether it's rc version
+
+        cuda: the cuda version of package. It will return `False` if CPU version paddle package is installed
+
+        cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
     
     Examples:
         .. code-block:: python
@@ -131,10 +135,14 @@ def show():
             # minor: 2
             # patch: 0
             # rc: 0
+            # cuda: '10.2'
+            # cudnn: '7.6.5'
 
             # Case 2: paddle is not tagged
             paddle.version.show()
             # commit: cfa357e984bfd2ffa16820e354020529df434f7d
+            # cuda: '10.2'
+            # cudnn: '7.6.5'
     """
     if istaged:
         print('full_version:', full_version)
@@ -144,6 +152,8 @@ def show():
         print('rc:', rc)
     else:
         print('commit:', commit)
+    print('cuda:', cuda_version)
+    print('cudnn:', cudnn_version)
 
 def mkl():
     return with_mkl
