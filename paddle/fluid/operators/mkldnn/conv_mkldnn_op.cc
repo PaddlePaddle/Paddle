@@ -433,7 +433,7 @@ class ConvMKLDNNHandlerT
             ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
             : 1;
 
-    bias_scale_tuple = std::make_shared<std::make_tuple<float, std::vector<float> >(static_cast<float>(mask_reorder), std::vector<float>(count));
+    bias_scale_tuple = std::make_shared<std::make_tuple<float, std::vector<float> >(mask_reorder, std::vector<float>(count));
     for (int i = 0; i < count; i++) {
       bias_scale_tuple->get<1>[i] = scale_in_data * scale_weights_data[i];
     }
