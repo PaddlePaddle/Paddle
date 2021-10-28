@@ -64,7 +64,6 @@ import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 
-from .tensor import fft
 from .tensor.random import bernoulli  # noqa: F401
 
 from .tensor.attribute import rank  # noqa: F401
@@ -297,6 +296,8 @@ from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
+from . import fft  # noqa: F401
+from . import signal  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
