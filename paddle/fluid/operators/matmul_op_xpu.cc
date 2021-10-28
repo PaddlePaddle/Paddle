@@ -162,7 +162,7 @@ static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
   int ldout = n;
   if (batch_size <= 1) {
     int r = 0;
-    r = paddle::platform::xpu_fc_wrapper<XPUType, FCT>(
+    r = xpu_fc_wrapper<XPUType, FCT>(
         dev_ctx.x_context(), reinterpret_cast<const XPUType *>(x->data<T>()),
         reinterpret_cast<const XPUType *>(y->data<T>()),
         reinterpret_cast<XPUType *>(data_c), m, n, k, mat_dim_a.trans_,

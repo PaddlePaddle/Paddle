@@ -14,7 +14,7 @@ limitations under the License. */
 #include <vector>
 
 namespace paddle {
-namespace platform {
+namespace operators {
 
 template <typename XPUType, typename FCT>
 int xpu_fc_wrapper(xpu::Context* ctx, const XPUType* x, const XPUType* w,
@@ -71,6 +71,6 @@ int xpu_fc_wrapper(xpu::Context* ctx, const XPUType* x, const XPUType* w,
   return r;
 }
 
-}  // namespace platform
+}  // namespace operators
 }  // namespace paddle
 #endif
