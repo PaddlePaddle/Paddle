@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
 
 USE_NO_KERNEL_OP(cinn_launch);
@@ -105,6 +106,8 @@ void CopyInputDataToPlace(const framework::Scope& scope,
 
 TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
   paddle::framework::InitDevices();
+  platform::SetNumThreads(1);
+
   // cache test graph into CinnCompiler
   const auto& test_out_name = "test_out";
   const auto& expected_out_name = "expected_out";
@@ -157,15 +160,17 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
   };
 
   LOG(INFO) << "Check compute result on cpu";
-  // TODO(CtfGo): remove these environment variables
-  // restrict after cinn fix muti-thread bug on cpu
-  putenv("OMP_NUM_THREADS=1");
-  putenv("MKL_NUM_THREADS=1");
+  run_and_check_fn(platform::CPUPlace());
   run_and_check_fn(platform::CPUPlace());
 
-  // gpu
+  // create an new elementwise_add op
+  // because the above one cached the cpu kernel
   LOG(INFO) << "Check compute result on gpu";
-  run_and_check_fn(platform::CUDAPlace(0));
+  elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
+      "elementwise_add", {{"X", {"test_x"}}, {"Y", {"test_y"}}},
+      {{"Out", {expected_out_name}}}, {{}});
+  run_and_check_fn(platform::CUDAPlace());
+  run_and_check_fn(platform::CUDAPlace());
 }
 
 }  // namespace operators

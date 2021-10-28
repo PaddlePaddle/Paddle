@@ -185,8 +185,8 @@ void InitializeTempVar(const std::vector<std::string>& variable_names,
     // TODO(CtfGo): support mutable corresponding c++ type with the compilation
     // type
     paddle_tensor->mutable_data<float>(compiled_ddim, place);
-    VLOG(2) << "Add temporary variable(" << var_name << "), dimension is [%s]"
-            << compiled_ddim;
+    VLOG(2) << "Add temporary variable(" << var_name << "), dimension is ["
+            << compiled_ddim << "]";
   }
 }
 
