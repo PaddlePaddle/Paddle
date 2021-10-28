@@ -35,8 +35,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         super(ParameterServerOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
-        self.micro_batch_size = user_defined_strategy.pipeline_configs[
-            'micro_batch_size']
+        #self.micro_batch_size = user_defined_strategy.pipeline_configs[
+        #    'micro_batch_size']
         self.num_microbatches = user_defined_strategy.pipeline_configs[
             'accumulate_steps']
 
