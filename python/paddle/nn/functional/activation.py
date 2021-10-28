@@ -435,6 +435,60 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     return out
 
 
+def rrelu(x, lower=0.125, upper=0.333, seed=0, name=None):
+    r"""
+    rrelu activation
+
+    .. math::
+        leaky\_relu(x)=
+        \left\{
+            \begin{array}{rcl}
+                x, & & if \ x >= 0 \\
+                negative\_slope * x, & & otherwise \\
+            \end{array}
+        \right.
+        negative\_slope~U(lower,upper)
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        lower(float, optional): The lower bound of the uniform distribution. Default is 0.125.
+        upper(float, optional): The upper bound of the uniform distribution. Default is 0.333.
+        seed(int, optional): The random seed of uniform distribution engin. If seed is 0,
+            it will use the seed of the global default generator (which can be set by paddle.seed).
+            Note that if seed is not 0, this operator will always generate the same random negative_slope every
+            time. Default is 0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.to_tensor([-2., 0., 1.])
+            out = F.rrelu(x) # [-0.02, 0., 1.]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'seed', seed)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
+    helper = LayerHelper('rrelu', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='rrelu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'lower': lower,
+               'upper': upper,
+               'seed': seed})
+    return out
+
+
 def prelu(x, weight, name=None):
     """
     prelu activation.

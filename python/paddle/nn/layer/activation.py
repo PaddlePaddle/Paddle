@@ -603,6 +603,63 @@ class LeakyReLU(Layer):
         return 'negative_slope={}{}'.format(self._negative_slope, name_str)
 
 
+class RReLU(Layer):
+    r"""
+    Randomized Leaky ReLU Activation.
+
+    .. math::
+
+        RReLU(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    negative\_slope * x, & & otherwise \\
+                \end{array}
+            \right.
+            negative\_slope~U(lower,upper)
+
+
+    Parameters:
+        lower(float, optional): The lower bound of the uniform distribution. Default is 0.125.
+        upper(float, optional): The upper bound of the uniform distribution. Default is 0.333.
+        seed(int, optional): The random seed of uniform distribution engin. If seed is 0,
+            it will use the seed of the global default generator (which can be set by paddle.seed).
+            Note that if seed is not 0, this operator will always generate the same random negative_slope every
+            time. Default is 0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            m = paddle.nn.RReLU()
+            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
+            out = m(x)  # [-0.02, 0., 1.]
+    """
+
+    def __init__(self, lower=0.125, upper=0.333, seed=0, name=None):
+        super(RReLU, self).__init__()
+        self._lower = lower
+        self._upper = upper
+        self._seed = seed
+        self._name = name
+
+    def forward(self, x):
+        return F.rrelu(x, self._lower, self._upper, self._seed, self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'lower={}, upper={}, seed={}{}'.format(self._lower, self._upper,
+                                                      self._seed, name_str)
+
+
 class Sigmoid(Layer):
     """
     this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.

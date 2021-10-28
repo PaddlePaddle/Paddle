@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
@@ -30,6 +31,8 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
+using framework::OpKernelType;
+using operators::ActBwdOpFwdDeps;
 using paddle::framework::Tensor;
 
 template <typename GradFunctor>
@@ -401,6 +404,65 @@ $$out = \tan^{-1}(x)$$
 )DOC");
   }
 };
+
+// TODO(gsq7474741) rrelu op maker
+class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "A LoDTensor or Tensor representing preactivation values. Must be "
+             "one of the following types: float32, float64.");
+    AddOutput(
+        "Out",
+        "A LoDTensor or Tensor with the same type and size as that of x.");
+    AddAttr<float>("lower", "Lower bound of the uniform distribution.")
+        .SetDefault(0.125f);
+    AddAttr<float>("upper", "Upper bound of the uniform distribution.")
+        .SetDefault(0.333333f);
+    AddAttr<int>("seed",
+                 "Random seed used for generating in uniform distribution.")
+        .SetDefault(0);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddComment(R"DOC(
+RRelu Activation Operator.
+
+$$out = \max(x, \alpha * x)$$
+$$\alpha ~ U(lower, upper)$$
+
+    )DOC");
+  }
+};
+
+// tdo(gsq7474741) rrelu grad op maker
+// template <ActBwdOpFwdDeps kDepValue, typename T>
+// class RReluGradOpMaker : public framework::SingleGradOpMaker<T> {
+//  public:
+//   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+//
+//  protected:
+//   void Apply(GradOpPtr<T> op) const override {
+//     op->SetType(this->ForwardOpType() + "_grad");
+//     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+//     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+//     op->SetAttrMap(this->Attrs());
+//
+//     if ((static_cast<int>(kDepValue) &
+//     static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
+//     FLAGS_use_mkldnn ||
+//     (op->HasAttr("use_mkldnn") &&
+//     BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
+//       op->SetInput("X", this->Input("X"));  // x
+//     }
+//
+//     if (static_cast<int>(kDepValue) &
+//     static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
+//       op->SetInput("Out", this->Output("Out"));  // out
+//     }
+//   }
+// };
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -1009,6 +1071,74 @@ class LeakyReluDoubleGradMaker
   }
 };
 
+// TODO(gsq7474741) RReluGradMaker framework::SingleGradOpMaker
+//  leaky_relu Grad: dx=dy if x>=0 else alpha * dy
+template <typename T>
+class RReluGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("rrelu_grad");
+    // input1: X
+    op->SetInput("X", this->Input("X"));
+    // X@GRAD@GRAD: ddx
+    //    op->SetInput("DX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    // Out@GRAD@GRAD: ddy
+    //    op->SetOutput("DOut", this->InputGrad(framework::GradVarName("Out")));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+
+    //    retv->SetType("mul_grad");
+    //    retv->SetInput("X", this->Input("X"));
+    //    retv->SetInput("Y", this->Input("Y"));
+    //    retv->SetInput(framework::GradVarName("Out"),
+    //    this->OutputGrad("Out")); retv->SetOutput(framework::GradVarName("X"),
+    //    this->InputGrad("X")); retv->SetOutput(framework::GradVarName("Y"),
+    //    this->InputGrad("Y")); retv->SetAttrMap(this->Attrs());
+  }
+};
+
+template <typename T>
+class RReluGradGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("rrelu_grad_grad");
+    // input1: X
+    op->SetInput("X", this->Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+// rrelu Grad: dx=dy if x>=0 else alpha * dy
+// rrelu GradGrad: ddy=ddx if x>=0 else alpha * ddx
+template <typename T>
+class RReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("rrelu_grad_grad");
+    // input1: X
+    op->SetInput("X", this->Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
 // elu grad: dx=dy if y>0 else alpha*dy*x.exp()
 // elu gradgrad: ddx=ddy if y>0 else alpha*ddy*x.exp()
 template <typename T>
@@ -1412,6 +1542,39 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::LeakyReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+// TODO(gsq7474741) rrelu register
+
+/* ======================== random relu register  ============================
+ */
+REGISTER_OPERATOR(
+    rrelu, ops::ActivationOp, ops::RReluOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<paddle::operators::ActBwdOpFwdDeps::kDepX,
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<paddle::operators::ActBwdOpFwdDeps::kDepX,
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(rrelu_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::RReluGradMaker<paddle::framework::OpDesc>,
+                  ops::RReluGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    rrelu_grad_grad,
+    ops::ActivationOpDoubleGrad2<paddle::operators::ActBwdOpFwdDeps::kDepX>,
+    ops::ActivationDoubleGradOpInplaceInferer,
+    ops::RReluGradGradMaker<paddle::framework::OpDesc>,
+    ops::RReluGradGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_CPU_KERNEL(
+    rrelu, ops::RReluKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::RReluKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    rrelu_grad, ops::RReluGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::RReluGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    rrelu_grad_grad,
+    ops::RReluDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::RReluDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 /* ========================================================================== */
 
 /* ========================    elu  register     ============================ */

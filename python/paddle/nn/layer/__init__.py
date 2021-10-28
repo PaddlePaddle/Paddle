@@ -23,6 +23,7 @@ from .activation import PReLU  # noqa: F401
 from .activation import ReLU  # noqa: F401
 from .activation import ReLU6  # noqa: F401
 from .activation import LeakyReLU  # noqa: F401
+from .activation import RReLU  # noqa: F401
 from .activation import Sigmoid  # noqa: F401
 from .activation import Softmax  # noqa: F401
 from .activation import LogSoftmax  # noqa: F401
