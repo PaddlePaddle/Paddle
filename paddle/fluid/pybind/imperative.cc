@@ -1443,7 +1443,8 @@ void BindImperative(py::module *m_ptr) {
                 #   one of the variables needed for gradient computation has been modified by an inplace operation.
              
        )DOC")
-      .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
+      .def("clear_gradient", &imperative::VarBase::ClearGradient,
+           py::arg("release") = false, R"DOC(
 
         Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 

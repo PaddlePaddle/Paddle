@@ -186,7 +186,7 @@ size_t VarBase::GradOpNum() const {
   return grad_node_ ? grad_node_->size() : 0;
 }
 
-void VarBase::ClearGradient() {
+void VarBase::ClearGradient(bool release) {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {
@@ -204,9 +204,13 @@ void VarBase::ClearGradient() {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
-        auto* dev_ctx =
-            platform::DeviceContextPool::Instance().Get(grad_t->place());
-        operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+        if (!release) {
+          auto* dev_ctx =
+              platform::DeviceContextPool::Instance().Get(grad_t->place());
+          operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+        } else {
+          grad_t->clear();
+        }
 #ifdef PADDLE_WITH_MKLDNN
         if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
