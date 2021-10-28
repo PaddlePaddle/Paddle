@@ -76,13 +76,14 @@ void InterpreterCore::AddFetch(const std::vector<std::string>& fetch_names) {
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
-    const std::vector<framework::Tensor>& feed_tensors) {
+    const std::vector<framework::LoDTensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
       auto* feed_var = global_scope_->Var(feed_names_[i]);
 
       auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
+      feed_tensor->set_lod(feed_tensors[i].lod());
     }
   };
 
@@ -485,7 +486,7 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
 }
 
 void InterpreterCore::DryRunPrepare(
-    const std::vector<framework::Tensor>& feed_tensors) {
+    const std::vector<framework::LoDTensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
       auto* feed_var = global_scope_->FindVar(feed_names_[i]);
@@ -494,6 +495,7 @@ void InterpreterCore::DryRunPrepare(
 
       auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
+      feed_tensor->set_lod(feed_tensors[i].lod());
     }
   };
 
@@ -515,7 +517,7 @@ void InterpreterCore::DryRunPrepare(
 }
 
 const CostInfo& InterpreterCore::DryRun(
-    const std::vector<framework::Tensor>& feed_tensors) {
+    const std::vector<framework::LoDTensor>& feed_tensors) {
   DryRunPrepare(feed_tensors);
   // DryRun may be called many times.
   dry_run_profiler_.Reset();
