@@ -328,7 +328,6 @@ void MatMulFunction(const DeviceContext& dev_ctx,
                        x_broadcast_dims.data(),
                        y_broadcast_dims.data(),
                        out_broadcast_dims.data());
-
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 

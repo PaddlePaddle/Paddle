@@ -83,6 +83,8 @@ Tensor matmul(const Tensor& x,
   auto dense_y = std::dynamic_pointer_cast<pten::DenseTensor>(y.impl());
   kernel_context.EmplaceBackInput(dense_x);
   kernel_context.EmplaceBackInput(dense_y);
+  kernel_context.EmplaceBackAttr(transpose_x);
+  kernel_context.EmplaceBackAttr(transpose_y);
   // TODO(chenweihang): add transform impl
 
   // 4. InferShape
