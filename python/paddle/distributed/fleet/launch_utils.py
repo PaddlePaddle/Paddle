@@ -403,14 +403,13 @@ def find_free_ports(num):
 
 
 def get_ports(num, offset):
-    start_port = 15024
-    #if os.environ.get('FLAGS_START_PORT') is None:
-    #    ports = find_free_ports(num)
-    #    if ports is not None:
-    #        ports = list(ports)
-    #else:
-    #start_port = os.environ.get('FLAGS_START_PORT')
-    ports = range(start_port + offset, start_port + offset + num, 1)
+    if os.environ.get('FLAGS_START_PORT') is None:
+        ports = find_free_ports(num)
+        if ports is not None:
+            ports = list(ports)
+    else:
+        start_port = os.environ.get('FLAGS_START_PORT')
+        ports = range(start_port + offset, start_port + offset + num, 1)
     return ports
 
 
