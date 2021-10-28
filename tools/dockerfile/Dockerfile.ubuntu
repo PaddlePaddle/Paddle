@@ -45,7 +45,7 @@ RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && ta
 ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 # Install Python3.6
-RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
+RUN mkdir -p /root/python_build/ && wget -q https://paddle-ci.gz.bcebos.com/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
     ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
     wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
