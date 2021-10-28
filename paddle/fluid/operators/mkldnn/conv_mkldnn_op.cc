@@ -646,12 +646,12 @@ class ConvMKLDNNHandlerT
         MKLDNNMemoryFormat::x);
       
     // Get Bias scales for int8
-    auto p_tupple = platform::is_int8<T>() ?  (handler.get_int8_bias_scales(ctx, key)) : std::make_shared<(std::make_tuple(0.0f, {1.0f}));
+    auto p_tupple = platform::is_int8<T>() ?  (get_int8_bias_scales(ctx, dev_ctx, key)) : std::make_shared<(std::make_tuple(0.0f, {1.0f}));
 
     return this->AcquireMemoryWithReorder(
         dev_ctx, user_bias_md, this->fwd_pd_->bias_desc(),
         platform::to_void_cast<K>(bias_data), key, "@bias_mem_p", is_test_, {},
-        p_tuplamoja->scale_data, mask);
+        std::get<1>(*p_tupple), std::get<0>(*p_tupple));
   }
 
   std::shared_ptr<mkldnn::memory> AcquireResidualMemory(
