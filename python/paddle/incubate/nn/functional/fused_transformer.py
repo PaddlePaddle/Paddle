@@ -197,24 +197,24 @@ def fused_multi_head_attention(x,
 
     .. code-block:: python
 
-    if pre_layer_norm:
-    	out = layer_norm(x)
-        out = linear(out) + qkv) + bias
-    else:
-	out = linear(x) + bias
-    out = transpose(out, perm=[2, 0, 3, 1, 4])
-    # extract q, k and v from out.
-    q = out[0:1,::]
-    k = out[1:2,::]
-    v = out[2:3,::]
-    out = q * k^t
-    out = attn_mask + out
-    out = softmax(out)
-    out = dropout(out)
-    out = out * v
-    out = transpose(out, perm=[0, 2, 1, 3])
-    out = out_linear(out)
-    out = layer_norm(x + dropout(linear_bias + out))
+    	if pre_layer_norm:
+    	    out = layer_norm(x)
+            out = linear(out) + qkv) + bias
+    	else:
+	    out = linear(x) + bias
+    	out = transpose(out, perm=[2, 0, 3, 1, 4])
+    	# extract q, k and v from out.
+    	q = out[0:1,::]
+    	k = out[1:2,::]
+    	v = out[2:3,::]
+    	out = q * k^t
+    	out = attn_mask + out
+    	out = softmax(out)
+    	out = dropout(out)
+    	out = out * v
+    	out = transpose(out, perm=[0, 2, 1, 3])
+    	out = out_linear(out)
+    	out = layer_norm(x + dropout(linear_bias + out))
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
