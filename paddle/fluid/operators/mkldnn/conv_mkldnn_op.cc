@@ -638,6 +638,7 @@ class ConvMKLDNNHandlerT
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
+      const framework::ExecutionContext& ctx,
       const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key,
       const framework::Tensor* bias) {
     const K* bias_data = bias->data<K>();
@@ -771,7 +772,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
 
     if (bias) {
       auto bias_memory_p =
-          handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
+          handler.AcquireBiasMemoryWithReorder(ctx, dev_ctx, key, bias);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 
@@ -863,7 +864,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     if (bias) {
 
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-          dev_ctx, key, bias);
+          ctx, dev_ctx, key, bias);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 
