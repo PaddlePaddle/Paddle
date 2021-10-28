@@ -180,7 +180,6 @@ class SqueezeNet(nn.Layer):
         if self.num_classes > 0:
             x = self._drop(x)
             x = self._conv9(x)
-
         if self.with_pool:
             x = F.relu(x)
             x = self._avg_pool(x)
