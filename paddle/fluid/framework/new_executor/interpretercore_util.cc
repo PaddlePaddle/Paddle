@@ -142,8 +142,8 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
     if (nullptr == var_scope->FindVar(var_name)) {
       var_scope->AddVar(var_desc->Name(), var_desc);
     } else {
-      auto* var_desc = var_scope->VarDesc(var_name);
-      if (nullptr == var_desc) {
+      auto* var_desc_tmp = var_scope->VarDesc(var_name);
+      if (nullptr == var_desc_tmp) {
         VLOG(3) << "update var:" << var_name << " desc from nullptr into "
                 << var_desc;
         var_scope->VarMetaInfo(var_name).vardesc_ = var_desc;
@@ -237,8 +237,8 @@ void build_op_func_list(const platform::Place& place,
 
     PADDLE_ENFORCE_NE(
         dynamic_cast<const framework::OperatorWithKernel*>(op_base), nullptr,
-        platform::errors::Unavailable("%s operator is no a OperatorWithKernel.",
-                                      op_base->Type()));
+        platform::errors::Unavailable(
+            "%s operator is not a OperatorWithKernel.", op_base->Type()));
 
     VariableValueMap ins_map;
     VariableIdMap ins_name2id;
