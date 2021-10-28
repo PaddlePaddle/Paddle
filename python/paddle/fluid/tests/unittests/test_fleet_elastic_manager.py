@@ -34,61 +34,78 @@ class TestElasticManager(unittest.TestCase):
             scale = None
             force = None
 
+        class MockEtcdClient:
+            def put(self, key, value):
+                pass
+
+            def get(self, key):
+                value = "0"
+                return value, value
+
+            def delete_prefix(self, key):
+                pass
+
+            def get_prefix(self, key_prefix):
+                hosts = ["10.10.10.1", "10.10.10.2"]
+                return hosts
+
+            def add_watch_callback(self, *args, **kwargs):
+                return "host_watch"
+
+            def cancel_watch(self, watch_id):
+                pass
+
+            def delete(self, key):
+                pass
+
+        self.etcd_client = MockEtcdClient()
         self.args = Argument()
 
     def test_match(self):
-        try:
-            elastic = ElasticManager(self.args)
-            hosts = ["10.10.10.1", "10.10.10.2"]
-            self.assertEqual(elastic._match(hosts), False)
+        elastic = ElasticManager(self.args, self.etcd_client)
+        hosts = ["10.10.10.1", "10.10.10.2"]
+        self.assertEqual(elastic._match(hosts), False)
 
-            hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
-            self.assertEqual(elastic._match(hosts), False)
+        hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
+        self.assertEqual(elastic._match(hosts), False)
 
-            # TODO test timeout
-            #time.sleep(60)
-            #self.assertEqual(elastic._match(hosts), True)
-        except Exception as e:
-            pass
+        # TODO test timeout
+        #time.sleep(60)
+        #self.assertEqual(elastic._match(hosts), True)
 
     def test_update_hosts(self):
         #######################
         #  elastic, scale up  #
         #######################
-        try:
-            os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
-            os.environ[
-                'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:8001,10.10.10.2:8001"
-            elastic = ElasticManager(self.args)
-            # add 10.10.10.3
-            elastic.host = "10.10.10.1"
-            elastic.hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
-            elastic._update_hosts()
-            self.assertEqual(elastic.lastest_trainers,
-                             "10.10.10.1,10.10.10.2,10.10.10.3")
-            self.assertEqual(
-                os.getenv('PADDLE_TRAINERS'),
-                "10.10.10.1,10.10.10.2,10.10.10.3")
+        os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
+        os.environ[
+            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:8001,10.10.10.2:8001"
+        elastic = ElasticManager(self.args, self.etcd_client)
+        # add 10.10.10.3
+        elastic.host = "10.10.10.1"
+        elastic.hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
+        elastic._update_hosts()
+        self.assertEqual(elastic.lastest_trainers,
+                         "10.10.10.1,10.10.10.2,10.10.10.3")
+        self.assertEqual(
+            os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.2,10.10.10.3")
 
-            #######################
-            # elastic, scale down #
-            #######################
-            os.environ[
-                'PADDLE_TRAINERS'] = "10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3"
-            os.environ[
-                'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.0:8001,10.10.10.1:8001,10.10.10.2:8001,10.10.10.3:8001"
-            elastic = ElasticManager(self.args)
-            # remove 10.10.10.1
-            elastic.host = "10.10.10.1"
-            elastic.hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
-            elastic._update_hosts()
-            self.assertEqual(elastic.lastest_trainers,
-                             "10.10.10.3,10.10.10.1,10.10.10.2")
-            self.assertEqual(
-                os.getenv('PADDLE_TRAINERS'),
-                "10.10.10.3,10.10.10.1,10.10.10.2")
-        except Exception as e:
-            pass
+        #######################
+        # elastic, scale down #
+        #######################
+        os.environ[
+            'PADDLE_TRAINERS'] = "10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3"
+        os.environ[
+            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.0:8001,10.10.10.1:8001,10.10.10.2:8001,10.10.10.3:8001"
+        elastic = ElasticManager(self.args, self.etcd_client)
+        # remove 10.10.10.1
+        elastic.host = "10.10.10.1"
+        elastic.hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
+        elastic._update_hosts()
+        self.assertEqual(elastic.lastest_trainers,
+                         "10.10.10.3,10.10.10.1,10.10.10.2")
+        self.assertEqual(
+            os.getenv('PADDLE_TRAINERS'), "10.10.10.3,10.10.10.1,10.10.10.2")
 
 
 if __name__ == "__main__":

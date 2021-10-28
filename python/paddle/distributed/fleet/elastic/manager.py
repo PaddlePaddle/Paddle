@@ -109,7 +109,7 @@ class LauncherInterface(object):
 
 
 class ElasticManager(object):
-    def __init__(self, args):
+    def __init__(self, args, etcd_client):
 
         self.args = args
         server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
@@ -165,10 +165,7 @@ class ElasticManager(object):
         else:
             self.enable = True
 
-        import etcd3
-
-        srv, port = server.split(':')
-        self.etcd = etcd3.client(host=srv, port=port)
+        self.etcd = etcd_client
         self.host = host if host else self._get_host()
 
         # etcd data
@@ -466,19 +463,19 @@ class ElasticManager(object):
                 completed = True if ret == 0 else False
                 self.exit(completed=completed)
                 if completed:
-                    logger.info(":watch, job completed")
+                    #logger.info(":watch, job completed")
                     return ElasticStatus.COMPLETED
                 if self.elastic_level == ElasticLevel.FAULT_TOLERANCE or \
                     self.elastic_level == ElasticLevel.ELASTIC:
-                    logger.info(":watch, job restart")
+                    #logger.info(":watch, job restart")
                     return ElasticStatus.RESTART
                 else:
-                    logger.info(":watch, job error")
+                    #logger.info(":watch, job error")
                     return ElasticStatus.ERROR
 
             if not self._completed() and (not self._match() or self.need_sync):
                 self.launcher.stop()
-                logger.info(":watch, job hold")
+                #logger.info(":watch, job hold")
                 return ElasticStatus.HOLD
 
             time.sleep(2)
@@ -486,7 +483,7 @@ class ElasticManager(object):
         if self.launcher:
             self.launcher.stop()
 
-        logger.info(":watch, job exit")
+        #logger.info(":watch, job exit")
         return ElasticStatus.EXIT
 
     def signal_handler(self, sigint, frame):

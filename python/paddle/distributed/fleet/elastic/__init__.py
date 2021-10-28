@@ -41,7 +41,11 @@ def enable_elastic(args, distribute_mode):
 
 def launch_elastic(args, distribute_mode):
 
-    elastic = ElasticManager(args)
+    import etcd3
+    server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
+    srv, port = server.split(':')
+    etcd_client = etcd3.client(host=srv, port=port)
+    elastic = ElasticManager(args, etcd_client)
 
     signal.signal(signal.SIGTERM, elastic.signal_handler)
     signal.signal(signal.SIGABRT, elastic.signal_handler)
