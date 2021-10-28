@@ -136,7 +136,6 @@ void SerializeSelectedRows(framework::Variable* var,
 
   auto* var_data = var_msg->mutable_data();
   var_data->clear();
-
   var_data->resize(rows->size() * sizeof(int64_t));
   char* data_ptr = const_cast<char*>(var_data->data());
   memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));

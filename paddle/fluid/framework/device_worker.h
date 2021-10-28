@@ -28,7 +28,6 @@ limitations under the License. */
 #include <vector>
 #include <chrono>
 
-
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -630,9 +629,6 @@ class HeterSectionWorker : public DeviceWorker {
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
   void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
-  //void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
-  //  microbatch_scopes_ = scope;
-  //}
   std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
     return microbatch_scopes_;
   }
@@ -650,7 +646,6 @@ class HeterSectionWorker : public DeviceWorker {
   void RunBackward(int micro_id);
   void RunListen();
   void MiniBatchBarrier(const std::vector<int>& barrier_ids);
-  //void TrainerBarrier();
   void Run();
 
  protected:
@@ -680,7 +675,6 @@ class HeterSectionWorker : public DeviceWorker {
 
   static uint64_t batch_id_;
   uint64_t total_ins_num_ = 0;
-  //std::chrono::time_point<std::chrono::system_clock> start_;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 

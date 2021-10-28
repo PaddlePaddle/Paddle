@@ -54,25 +54,6 @@ Scope& Scope::NewScope() const {
   return *child;
 }
 
-//Scope& Scope::KidScope(int kidId) const {
-//  SCOPE_KIDS_READER_LOCK
-//  PADDLE_ENFORCE_LT(
-//      kidId, this->kids_.size(),
-//      platform::errors::InvalidArgument("kidId should less than kids size"));
-//  int cnt = 0;
-//  auto iter = this->kids_.begin();
-//  while (cnt < kidId) {
-//    iter++;
-//    cnt++;
-//  }
-//  return *(*iter);
-//}
-
-//int Scope::NumKids() const {
-//  SCOPE_KIDS_READER_LOCK
-//  return this->kids_.size();
-//}
-
 std::unique_ptr<Scope> Scope::NewTmpScope() const {
   return std::unique_ptr<Scope>(new Scope(this));
 }
@@ -186,7 +167,7 @@ std::string Scope::Rename(const std::string& origin_name) const {
 Variable* Scope::VarInternal(const std::string& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
-  v = new Variable();
+ v = new Variable();
   vars_.emplace(name, std::unique_ptr<Variable>(v));
   VLOG(3) << "Create variable " << name;
   return v;

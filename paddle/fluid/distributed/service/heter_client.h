@@ -118,10 +118,6 @@ class HeterClient {
 
   std::vector<std::string>& GetXpuList() { return xpu_list_; }
 
-  //void SetCurEndpoint(std::string cur_endpoint) {
-  //  cur_endpoint_ = cur_endpoint;
-  //}
-
   void SetXpuList(const std::vector<std::string>& xpu_list) {
     xpu_list_ = xpu_list;
   }
@@ -136,12 +132,10 @@ class HeterClient {
   static std::shared_ptr<HeterClient> s_instance_;
   static bool is_initialized_;
   std::unique_ptr<std::thread> main_thread_{nullptr};
-  //std::shared_ptr<brpc::Channel> barrier_channel_;
   std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
   std::vector<std::shared_ptr<brpc::Channel>> previous_xpu_channels_;
 
   DISABLE_COPY_AND_ASSIGN(HeterClient);
-  //std::string cur_endpoint_;
   std::vector<std::string> xpu_list_;
   std::vector<std::string> previous_xpu_list_;
 

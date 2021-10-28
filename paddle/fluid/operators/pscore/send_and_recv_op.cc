@@ -35,7 +35,6 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto send_var_name = ctx.Attr<std::vector<std::string>>("send_var_name");
     auto recv_var_name = ctx.Attr<std::vector<std::string>>("recv_var_name");
     auto next_epmap = ctx.Attr<std::vector<std::string>>("next_endpoints");
-    //auto cur_endpoint = ctx.Attr<std::string>("cur_endpoint");
     auto previous_epmap =
         ctx.Attr<std::vector<std::string>>("previous_endpoints");
     auto trainer_id = ctx.Attr<int>("trainer_id");

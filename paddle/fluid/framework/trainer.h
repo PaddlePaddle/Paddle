@@ -360,8 +360,6 @@ class HeterPipelineTrainer : public TrainerBase {
   int pipeline_stage_;
   std::unordered_map<int, std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
   
-  // trainer put data into queue
-  // threads get data from queue
   std::shared_ptr<std::unordered_map<int, std::shared_ptr<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> >>
       task_queue_;

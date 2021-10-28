@@ -1578,7 +1578,6 @@ class Executor(object):
         if fetch_info is None:
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
-
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
             from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
@@ -1663,7 +1662,6 @@ class Executor(object):
                 raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
-
         real_fetch_list = []
         if program._pipeline_opt:
             real_program = program._pipeline_opt["section_program"]
@@ -1691,18 +1689,6 @@ class Executor(object):
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
         
-        #if fetch_list is not None:
-        #    if isinstance(fetch_list, Variable) or isinstance(
-        #            fetch_list, str) or isinstance(fetch_list,
-        #                                           six.string_types):
-        #        fetch_list = [fetch_list]
-        #    assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-        #        "Currently , The fetch_list type only should be list or tuple, \n"\
-        #        "but the input type is {}. For more information please refer to \n"\
-        #        "the executor.run(...).".format(type(fetch_list))
-        #else:
-        #    fetch_list = []
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,

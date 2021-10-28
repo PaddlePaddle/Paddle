@@ -104,7 +104,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             # for main program
             _main = worker.distributed_ops_pass(_main, compiled_config,
                                                 use_ps_gpu)
-
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
@@ -113,7 +112,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
                 # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
-
             if use_ps_gpu:
                 _main = worker.ps_gpu_pass(_main)
                 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
@@ -331,10 +329,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         compiled_config.strategy = strategy
 
         if self.role_maker._is_worker() or self.role_maker._is_heter_worker():
-
             main_program, startup_program = self._build_trainer_programs(
                 compiled_config)
-
             if self.role_maker._is_heter_parameter_server_mode:
                 _origin_startup_program._heter_pipeline_opt = {
                     "startup_program": startup_program,

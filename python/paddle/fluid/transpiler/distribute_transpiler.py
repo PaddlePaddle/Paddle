@@ -583,6 +583,7 @@ class DistributeTranspiler(object):
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
+
         err_msg = """
 
 API is deprecated since 2.0.0 Please use FleetAPI instead.

@@ -102,9 +102,6 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
       this_worker->SetMicrobatchNum(num_microbatches_);
       this_worker->SetPipelineStageNum(num_pipeline_stages_);
       this_worker->SetPipelineStage(pipeline_stage_);
-      //this_worker->SetTrainerId(trainer_id_);
-      //this_worker->SetTrainers(trainers_);
-      //this_worker->SetThreadNum(thread_num_);
     }
   // set debug here
   SetDebug(trainer_desc.debug());
@@ -180,12 +177,7 @@ void HeterPipelineTrainer::Run() {
   heter_server->SetMicroBatchScopes(micro_scopes_);
   heter_server->SetTaskQueue(task_queue_);
   // main training logic
-  //VLOG(3) << "HeterPipelineTrainer threads size:" << threads_.size();
   if (pipeline_stage_ == 0) { // for cpu trainer
-    //for (int thidx = 0; thidx < thread_num_; ++thidx) {
-    //    threads_.push_back(
-    //      std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
-    //}
     for (auto& worker_pair: workers_) {
         auto device_worker = worker_pair.second;
         threads_.push_back(
@@ -198,11 +190,6 @@ void HeterPipelineTrainer::Run() {
           std::thread(&DeviceWorker::TrainFiles, device_worker.get() ));
     }
     
-    //threads_.push_back(
-    //    std::thread(&DeviceWorker::TrainFiles, workers_[0].get()));
-    // for heter worker, it will block until training end
-    //(listen_ptr_.get())->join();
-    //listen_ptr_.reset(nullptr);
   }
   for (auto& th : threads_) {
     th.join();

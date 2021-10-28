@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
-#include <chrono>
-
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/service/communicator.h"
 #endif
