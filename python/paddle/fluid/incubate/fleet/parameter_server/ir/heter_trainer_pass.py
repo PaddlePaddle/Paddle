@@ -70,33 +70,3 @@ def split_trainer_ops_pass(program, config, default_device = "cpu"):
     create_trainer_program(trainer_program, program, config, program_block_ops,
                            block_vars_detail)
     return trainer_program
-
-
-def delete_startup_useless_ops_var_pass(startup_program, main_program, config):
-    """
-    delete variable which not used in current main_program
-    """
-    # find all op and its var
-    vars_in_main_program = get_vars_name_in_block(main_program.global_block())
-
-    block_nums = startup_program.num_blocks
-    for block_index in range(1, block_nums):
-        current_block = startup_program.block(block_index)
-        # delete useless op
-        need_delete_op = []
-        for op in current_block.ops:
-            inputs, outputs = find_op_input_output(startup_program,
-                                                   current_block, op)
-            inputs += outputs
-            # Todo: delete some concat op
-            if list(set(inputs) & set(vars_in_main_program)) == []:
-                need_delete_op.append(op)
-        delete_ops(current_block, need_delete_op)
-
-        # delete useless var
-        block_vars = list(current_block.vars)
-        for var in block_vars:
-            if var not in vars_in_main_program:
-                current_block._remove_var(var)
-
-    return startup_program

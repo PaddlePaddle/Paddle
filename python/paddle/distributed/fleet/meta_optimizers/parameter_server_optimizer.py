@@ -140,9 +140,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     # for default worker
                     _main = heter_worker.split_trainer_ops_pass(_main,
                                                                 compiled_config)
-                # for startup change
-                #_startup = heter_worker.delete_startup_useless_ops_var_pass(
-                #    _startup, _main, compiled_config)
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -336,13 +333,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     "startup_program": startup_program,
                 }
 
-                #if core.is_compiled_with_cuda():
-                #    place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-                #    place = core.CUDAPlace(0)
-                #elif core.is_compiled_with_npu():
-                #    place_id = int(os.getenv("FLAGS_selected_npus", "0"))
-                #    place = core.NPUPlace(0)
-
                 loss.block.program._heter_pipeline_opt = {
                     "trainer": "HeterPipelineTrainer",
                     "device_worker": "HeterSection",
@@ -351,9 +341,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
                     "num_pipeline_stages": int(self.role_maker._get_num_stage()),
                     "section_program": main_program,
-                    #"place": place,
-                    #"place_id": place_id,
-                    #"sync_steps": -1,
                     "num_microbatches": self.num_microbatches,
                 }
             else:
