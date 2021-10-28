@@ -26,7 +26,6 @@ limitations under the License. */
 #include <unordered_set>  // NOLINT
 #include <utility>        // NOLINT
 #include <vector>
-#include <chrono>
 
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"

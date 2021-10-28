@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 #include <algorithm>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>

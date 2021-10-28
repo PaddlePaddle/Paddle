@@ -138,7 +138,6 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
   }
 }
 
-
 void HeterSectionWorker::CreateMicrobatchScopes() {
   PADDLE_ENFORCE_NOT_NULL(minibatch_scope_, platform::errors::InvalidArgument(
                                            "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
@@ -299,6 +298,5 @@ void HeterSectionWorker::TrainFiles() {
     dev_ctx_->Wait();
   }
 }
-
 }  // namespace framework
 }  // namespace paddle

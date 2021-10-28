@@ -189,7 +189,6 @@ void HeterPipelineTrainer::Run() {
         threads_.push_back(
           std::thread(&DeviceWorker::TrainFiles, device_worker.get() ));
     }
-    
   }
   for (auto& th : threads_) {
     th.join();
