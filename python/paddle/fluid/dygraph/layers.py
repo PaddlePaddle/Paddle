@@ -39,6 +39,7 @@ from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = ['Layer']
 
@@ -1468,7 +1469,6 @@ class Layer(core.Layer):
     def _apply(self, func, device, dtype, blocking):
         for layer in self.children():
             layer._apply(func, device, dtype, blocking)
-
         for key, param in self._parameters.items():
             if param is not None:
                 with no_grad():
@@ -1478,7 +1478,6 @@ class Layer(core.Layer):
                     if hasattr(param_applied, 'is_distributed'):
                         param_applied.is_distributed = param.is_distributed
                     self._parameters[key] = param_applied
-
                 if param.grad is not None:
                     with no_grad():
                         grad_applied = func(param._grad_ivar(), device, dtype,
@@ -1492,7 +1491,6 @@ class Layer(core.Layer):
                         self._parameters[key]._set_grad_ivar(grad_applied)
 
             self._parameters_transform_map[id(param)] = [param_applied, key]
-
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
             self._buffers_transform_map[id(buf)] = [self._buffers[key], key]
@@ -1572,13 +1570,13 @@ class Layer(core.Layer):
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
-
-            new_t = t._copy_to(device, blocking)
             if isinstance(t, framework.ParamBase):
+                helper = LayerHelper("cast", **locals())
+                new_t = helper.create_variable_for_type_inference(dtype=dtype)
                 if dtype is not None and dtype != t.dtype:
                     framework._dygraph_tracer().trace_op(
                         type='cast',
-                        inputs={'X': new_t},
+                        inputs={'X': t},
                         outputs={'Out': new_t},
                         attrs={
                             'in_dtype': t.dtype,
@@ -1586,8 +1584,7 @@ class Layer(core.Layer):
                         })
             else:
                 if dtype is not None and dtype != t.dtype:
-                    new_t = new_t.cast(dtype=dtype)
-
+                    new_t = t.cast(dtype=dtype)
             return new_t
 
         self._apply(transform, device, dtype, blocking)
