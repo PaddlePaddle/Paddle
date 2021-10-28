@@ -167,7 +167,7 @@ std::string Scope::Rename(const std::string& origin_name) const {
 Variable* Scope::VarInternal(const std::string& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
- v = new Variable();
+  v = new Variable();
   vars_.emplace(name, std::unique_ptr<Variable>(v));
   VLOG(3) << "Create variable " << name;
   return v;

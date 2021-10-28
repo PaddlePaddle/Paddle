@@ -661,11 +661,9 @@ class HeterSectionWorker : public DeviceWorker {
   std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
   const Scope* minibatch_scope_;
 
-  //std::vector<std::unique_ptr<OperatorBase>> ops_;
   std::unique_ptr<OperatorBase> listen_op_{nullptr};
   std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
   std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
-
 
   std::shared_ptr<framework::ProgramDesc> program_;
   
@@ -677,6 +675,5 @@ class HeterSectionWorker : public DeviceWorker {
   uint64_t total_ins_num_ = 0;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
-
 }  // namespace framework
 }  // namespace paddle

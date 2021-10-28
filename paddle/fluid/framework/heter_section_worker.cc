@@ -258,14 +258,11 @@ void HeterSectionWorker::Run() {
           }
         }
       }
-
-
   }
 }
 
 void HeterSectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
-
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
   if (max_memory_size >= 0) {

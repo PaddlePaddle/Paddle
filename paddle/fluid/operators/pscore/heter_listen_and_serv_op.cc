@@ -117,9 +117,6 @@ void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
 
 void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                                    const platform::Place &dev_place) const {
-
-
-
   // Mark this as PS that it should decide profiling by listening from trainer.
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
@@ -148,7 +145,6 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
-
   framework::Executor executor(dev_place);
 
   request_send_and_recv_handler_.reset(
@@ -156,7 +152,6 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   request_send_and_recv_handler_->SetScope(&scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
   request_send_and_recv_handler_->SetProgram(program);
-  
   rpc_service_->SetRequestHandler(request_send_and_recv_handler_);
 
   VLOG(2) << "RunAsyncLoop";

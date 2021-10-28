@@ -189,12 +189,6 @@ class HeterRequestHandler {
   void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
   void SetProgram(framework::ProgramDesc* program) { program_ = program; }
 
-  //void SetGradToPreparedCtx(
-  //    std::unordered_map<
-  //        std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
-  //  message_to_prepared_ctx_ = g;
-  //}
-
   virtual int Handle(const MultiVarMsg* request, MultiVarMsg* response,
                      brpc::Controller* cntl) = 0;
 
@@ -202,10 +196,6 @@ class HeterRequestHandler {
   const platform::DeviceContext* dev_ctx_;
   const framework::Scope* scope_;
   framework::ProgramDesc* program_;
-
-  //std::unordered_map<std::string,
-  //                   std::shared_ptr<framework::ExecutorPrepareContext>>*
-  //    message_to_prepared_ctx_;
 };
 
 class RequestSendAndRecvHandler final : public HeterRequestHandler {
@@ -307,7 +297,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   }
 
  private:
-  
   // share with HeterPipelineTrainer
   SharedMiniScope mini_scopes_{nullptr};
   SharedMicroScope micro_scopes_{nullptr};
@@ -321,9 +310,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   SharedTaskQueue task_queue_;
 
 };
-
-
-
 
 class HeterServer {
  public:
@@ -364,7 +350,6 @@ class HeterServer {
   void SetTaskQueue(SharedTaskQueue task_queue) {
       request_handler_->SetTaskQueue(task_queue);
   }
-
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
