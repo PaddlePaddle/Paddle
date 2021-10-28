@@ -82,7 +82,7 @@ struct FastDivMod {
  * index of the output data. if input or output shape is [dim0, dim1] then dims
  * must be [dim1, dim0].
  */
-template <int kDims>
+template <int kDims = 1>
 struct BroadcastConfig {
   FastDivMod divmoders[kDims];
   uint32_t strides[framework::DDim::kMaxRank];
