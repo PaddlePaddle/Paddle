@@ -16,6 +16,7 @@
 
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/functions/eigen/dot.h"
+#include "paddle/pten/kernels/functions/math/matmul_func.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"
@@ -28,6 +29,27 @@ void Dot(const CUDAContext& dev_ctx,
          const DenseTensor& y,
          DenseTensor* out) {
   eigen::Dot<CUDAContext, T>(dev_ctx, x, y, out);
+}
+
+template <typename T>
+void Matmul(const CUDAContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            bool transpose_x,
+            bool transpose_y,
+            DenseTensor* out) {
+  PADDLE_ENFORCE_NE(paddle::framework::product(x.dims()),
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The Input(X) dims size must not be equal 0,"
+                        " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_NE(paddle::framework::product(y.dims()),
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The Input(Y) dims size must not be equal 0,"
+                        " but reviced dims size is 0. "));
+  math::MatMulFunction<CUDAContext, T>(
+      dev_ctx, x, y, out, transpose_x, transpose_y);
 }
 
 }  // namespace pten
@@ -45,5 +67,14 @@ PT_REGISTER_KERNEL("dot",
                    double,
                    int,
                    int64_t,
+                   complex64,
+                   complex128) {}
+
+PT_REGISTER_KERNEL("matmul_v2",
+                   CUDA,
+                   ANY,
+                   pten::Matmul,
+                   float,
+                   double,
                    complex64,
                    complex128) {}
