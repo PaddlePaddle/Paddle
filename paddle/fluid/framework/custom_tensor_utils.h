@@ -18,11 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
-#endif
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -110,7 +108,7 @@ class CustomTensorUtils {
     if (pc == PlaceType::kCPU) {
       return platform::Place(platform::CPUPlace());
     } else if (pc == PlaceType::kGPU) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       return platform::Place(
           platform::CUDAPlace(platform::GetCurrentDeviceId()));
 #endif
@@ -127,7 +125,7 @@ class CustomTensorUtils {
     if (platform::is_cpu_place(pc)) {
       return PlaceType::kCPU;
     } else if (platform::is_gpu_place(pc)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       return PlaceType::kGPU;
 #endif
     } else {
@@ -142,7 +140,7 @@ class CustomTensorUtils {
   static void SetTensorCurrentStream(paddle::Tensor* src,
                                      const platform::Place& pc) {
     if (platform::is_gpu_place(pc)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
           platform::DeviceContextPool::Instance().Get(pc));
       src->stream_.SetStream(reinterpret_cast<void*>(dev_ctx->stream()));
