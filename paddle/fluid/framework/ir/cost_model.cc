@@ -68,6 +68,24 @@ bool CostData::SetCostData(const ProgramDesc& program,
   }
 
   std::vector<Event> main_thread_events = time_events[0];
+  std::vector<Event> sub_thread_events;
+  bool find_profiler_mark_in_main_thread_events = true;
+  if (time_events.size() > 1) {
+    std::vector<Event> sub_thread_events = time_events[1];
+    VLOG(3) << "program:sub_thread_events size" << sub_thread_events.size();
+  }
+  std::vector<Event> thread_events;
+  VLOG(3) << "main_thread_events.size" << main_thread_events.size();
+  if (main_thread_events.size() == 0 && time_events.size() > 1) {
+    VLOG(3) << "thread_events = sub_thread_events;";
+    VLOG(3) << "333 sub_thread_events.size:" << sub_thread_events.size();
+    thread_events = time_events[1];
+    VLOG(3) << "444 thread_events.size:" << thread_events.size();
+    VLOG(3) << "program:thread_events size" << thread_events.size();
+  } else {
+    VLOG(3) << "thread_events = main_thread_events;";
+    thread_events = main_thread_events;
+  }
   // Support global block only
   // TODO(zhhsplendid): support sub blocks
   const BlockDesc& global_block = program.Block(0);
@@ -84,15 +102,17 @@ bool CostData::SetCostData(const ProgramDesc& program,
     const OpDesc* op_desc = global_block.Op(i);
     std::string op_type = op_desc->Type();
 
-    while (event_index < main_thread_events.size()) {
-      if (main_thread_events[event_index].name() == op_type &&
-          main_thread_events[event_index].type() ==
+    while (event_index < thread_events.size()) {
+      if (thread_events[event_index].name() == op_type &&
+          thread_events[event_index].type() ==
               platform::EventType::kPushRange) {
         break;
       }
       ++event_index;
     }
-    if (event_index >= main_thread_events.size()) {
+    VLOG(3) << "event_index<<<<<<," << event_index;
+    VLOG(3) << "thread_events.size()," << thread_events.size();
+    if (event_index >= thread_events.size()) {
       LOG(WARNING) << "Input time_events for Op " << i << ", type '" << op_type
                    << "' have wrong format, skip this Op.";
       event_to_cost_success = false;
@@ -100,33 +120,35 @@ bool CostData::SetCostData(const ProgramDesc& program,
     }
     size_t op_push_index = event_index;
 
-    while (event_index < main_thread_events.size()) {
+    while (event_index < thread_events.size()) {
       // Is it possible to Push a lot of Ops with same type and then Pop?
       // ControlFlow Op can be like that, but this version only support global
       // block
       // TODO(zhhsplendid): make a more strict mapping between push and pop
-      if (main_thread_events[event_index].name() == op_type &&
-          main_thread_events[event_index].type() ==
-              platform::EventType::kPopRange) {
+      if (thread_events[event_index].name() == op_type &&
+          thread_events[event_index].type() == platform::EventType::kPopRange) {
         break;
       }
       ++event_index;
     }
-    if (event_index >= main_thread_events.size()) {
+    if (event_index >= thread_events.size()) {
       LOG(WARNING) << "Input time_events for Op " << i << ", type '" << op_type
                    << "' have wrong format, skip this Op.";
       event_to_cost_success = false;
       continue;
     }
     size_t op_pop_index = event_index;
-    double cpu_time_ms = main_thread_events[op_push_index].CpuElapsedMs(
-        main_thread_events[op_pop_index]);
+    double cpu_time_ms =
+        thread_events[op_push_index].CpuElapsedMs(thread_events[op_pop_index]);
     double gpu_time_ms = 0;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    gpu_time_ms = main_thread_events[op_push_index].CudaElapsedMs(
-        main_thread_events[op_pop_index]);
+    gpu_time_ms =
+        thread_events[op_push_index].CudaElapsedMs(thread_events[op_pop_index]);
 #endif
     double time_ms = gpu_time_ms + cpu_time_ms;
+    VLOG(1) << "program: inserted into map : op_time_ms_ " << i << ":"
+            << time_ms;
+    VLOG(1) << "program: inserted into map : map addr: " << &op_time_ms_;
     op_time_ms_[i] = time_ms;
   }
 
@@ -142,13 +164,43 @@ bool CostData::SetCostData(const ProgramDesc& program,
     }
     ++event_index;
   }
+
+  if (start_profiler_idx == -1 && stop_profiler_idx == -1) {
+    find_profiler_mark_in_main_thread_events = false;
+    VLOG(3) << "thread_finding profiler start.";
+    event_index = 0;
+    while (event_index < thread_events.size()) {
+      VLOG(3) << "thread_events <" << event_index
+              << "> name:" << thread_events[event_index].name();
+      if (thread_events[event_index].name() == "_start_profiler_") {
+        VLOG(3) << "find start profiler";
+        start_profiler_idx = event_index;
+      } else if (thread_events[event_index].name() == "_stop_profiler_") {
+        stop_profiler_idx = event_index;
+        break;
+      }
+      ++event_index;
+    }
+    // if not found, throw error.
+    if (start_profiler_idx == -1 || stop_profiler_idx == -1) {
+      PADDLE_THROW(
+          platform::errors::Fatal("start_profiler_idx and stop_profiler_idx "
+                                  "are expected to be greater than -1."));
+      return event_to_cost_success;
+    }
+  }
+
+  thread_events = (find_profiler_mark_in_main_thread_events)
+                      ? main_thread_events
+                      : sub_thread_events;
+
   if (start_profiler_idx != -1 && stop_profiler_idx != -1) {
-    double cpu_time_ms = main_thread_events[start_profiler_idx].CpuElapsedMs(
-        main_thread_events[stop_profiler_idx]);
+    double cpu_time_ms = thread_events[start_profiler_idx].CpuElapsedMs(
+        thread_events[stop_profiler_idx]);
     double gpu_time_ms = 0;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    gpu_time_ms = main_thread_events[start_profiler_idx].CudaElapsedMs(
-        main_thread_events[stop_profiler_idx]);
+    gpu_time_ms = thread_events[start_profiler_idx].CudaElapsedMs(
+        thread_events[stop_profiler_idx]);
 #endif
     whole_time_ms_ = gpu_time_ms + cpu_time_ms;
   } else {
@@ -182,8 +234,8 @@ bool CostData::SetGraphCostData(
   // main thread event.
   bool find_profiler_mark_in_main_thread_events = true;
   if (time_events.size() > 1) {
-    // for graph cost model, we first consider number of threads in thread pool
-    // is 1.
+    // for graph cost model, we consider number of threads in thread pool
+    // is 1 currently.
     sub_thread_events = time_events[1];
   }
   size_t event_index = 0;

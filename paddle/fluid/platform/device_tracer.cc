@@ -634,7 +634,7 @@ class DeviceTracerImpl : public DeviceTracer {
   static void CUPTIAPI ApiCallback(void *userdata, CUpti_CallbackDomain domain,
                                    CUpti_CallbackId cbid, const void *cbdata) {
     auto *cbInfo = reinterpret_cast<const CUpti_CallbackData *>(cbdata);
-    VLOG(3) << "<<<<<<<   cbdata size : >>>>>>>>>>" << sizeof(cbdata);
+    // VLOG(3) << "<<<<<<<   cbdata size : >>>>>>>>>>" << sizeof(cbdata);
     DeviceTracerImpl *tracer = reinterpret_cast<DeviceTracerImpl *>(userdata);
     if (cbInfo->callbackSite == CUPTI_API_ENTER) {
       Event *event = CurAnnotation();
