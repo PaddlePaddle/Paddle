@@ -477,7 +477,7 @@ class VariableScope : public ScopeBase {
   Variable* FindVar(const std::string& name) const {
     auto it = name2id_.find(name);
     if (it != name2id_.end()) {
-      PADDLE_ENFORCE_LE(it->second, var_list_.size(),
+      PADDLE_ENFORCE_LT(it->second, var_list_.size(),
                         platform::errors::NotFound(
                             "The id(%d) of variable(%s) should not be larger "
                             "than the size of variable list(%d).",
