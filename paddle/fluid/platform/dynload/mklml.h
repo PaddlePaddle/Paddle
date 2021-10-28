@@ -20,10 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
-extern "C" void strsm_(char *side, char *uplo, char *trans, char *diag, int *n,
-                       int *nrhs, float *alpha, float *a, int *lda, float *b,
-                       int *ldb);
-
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -53,7 +49,6 @@ extern void *mklml_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_MKLML_WRAP(__name) DYNAMIC_LOAD_MKLML_WRAP(__name)
 
 #define MKLML_ROUTINE_EACH(__macro) \
-  __macro(strsm_);                  \
   __macro(cblas_sgemm);             \
   __macro(cblas_dgemm);             \
   __macro(cblas_cgemm);             \

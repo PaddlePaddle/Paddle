@@ -51,8 +51,8 @@ class TriangularSolveFunctor<platform::CPUDeviceContext, T> {
     int a_dim_size = a->dims().size();
     int b_dim_size = b->dims().size();
 
-    int M = b->dims()[b_dim_size - 2];
-    int N = b->dims()[b_dim_size - 1];
+    int M = static_cast<int>(b->dims()[b_dim_size - 2]);
+    int N = static_cast<int>(b->dims()[b_dim_size - 1]);
     auto lda = left ? std::max(1, M) : std::max(1, N);
     auto ldb = std::max(1, N);
 
