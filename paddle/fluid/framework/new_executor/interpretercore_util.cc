@@ -300,6 +300,13 @@ void build_op_func_list(const platform::Place& place,
             static_cast<const framework::OperatorWithKernel*>(op_base)
                 ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                       expected_kernel_key);
+        if ((expected_kernel_key.data_type_ !=
+             kernel_type_for_var.data_type_) ||
+            NeedTransformLayout(expected_kernel_key.data_layout_,
+                                kernel_type_for_var.data_layout_)) {
+          PADDLE_THROW(platform::errors::Fatal(
+              "Unsupported different dtype or data_layout"));
+        }
         if (platform::is_same_place(kernel_type_for_var.place_,
                                     expected_kernel_key.place_) ||
             (is_cuda_pinned_place(kernel_type_for_var.place_) &&
