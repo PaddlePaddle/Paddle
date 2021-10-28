@@ -78,6 +78,7 @@ TEST(API, matmul_cpu) {
   }
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(API, matmul_cuda) {
   // Prepare CPU Dense Tensor
   const auto alloc_cpu =
@@ -155,3 +156,5 @@ TEST(API, matmul_cuda) {
     ASSERT_NEAR(sum[i], ref_out->data<float>()[i], 1e-6f);
   }
 }
+
+#endif
