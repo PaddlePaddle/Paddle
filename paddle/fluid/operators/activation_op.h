@@ -1813,37 +1813,37 @@ struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
 
 // TODO(gsq7474741) rrelu grad grad func
 template <typename T>
-struct RReluGradGradFunctor : public BaseActivationFunctor<T> {
-  float lower, upper, alpha;
-  int seed;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"lower", &lower}, {"upper", &upper}, {"seed", &seed}};
-  }
-  template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* X,
-                  const framework::Tensor* Out, const framework::Tensor* ddX,
-                  framework::Tensor* ddOut, framework::Tensor* dOut,
-                  framework::Tensor* dX) const {
-    std::uniform_real_distribution<T> dist(static_cast<T>(lower),
-                                           static_cast<T>(upper));
-    auto engine = paddle::framework::GetCPURandomEngine(seed);
-    alpha = dist(*engine);
-    if (ddOut) {
-      auto* d = dev.eigen_device();
-      auto ddx = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddX, "Input", "DDX", "RReluGradGrad"));
-      auto x = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(X, "Input", "X", "RReluGradGrad"));
-      auto ddout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DOut", "RReluGradGrad"));
-      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
-                                static_cast<T>(alpha) *
-                                    (x <= static_cast<T>(0)).template cast<T>())
-                                   .template cast<T>();
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
-};
+//struct RReluGradGradFunctor : public BaseActivationFunctor<T> {
+//  float lower, upper, alpha;
+//  int seed;
+//  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+//    return {{"lower", &lower}, {"upper", &upper}, {"seed", &seed}};
+//  }
+//  template <typename Device>
+//  void operator()(const Device& dev, const framework::Tensor* X,
+//                  const framework::Tensor* Out, const framework::Tensor* ddX,
+//                  framework::Tensor* ddOut, framework::Tensor* dOut,
+//                  framework::Tensor* dX) const {
+//    std::uniform_real_distribution<T> dist(static_cast<T>(lower),
+//                                           static_cast<T>(upper));
+//    auto engine = paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
+//    alpha = dist(*engine);
+//    if (ddOut) {
+//      auto* d = dev.eigen_device();
+//      auto ddx = framework::EigenVector<T>::Flatten(
+//          GET_DATA_SAFELY(ddX, "Input", "DDX", "RReluGradGrad"));
+//      auto x = framework::EigenVector<T>::Flatten(
+//          GET_DATA_SAFELY(X, "Input", "X", "RReluGradGrad"));
+//      auto ddout = framework::EigenVector<T>::Flatten(
+//          GET_DATA_SAFELY(ddOut, "Output", "DOut", "RReluGradGrad"));
+//      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+//                                static_cast<T>(alpha) *
+//                                    (x <= static_cast<T>(0)).template cast<T>())
+//                                   .template cast<T>();
+//    }
+//  }
+//  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+//};
 
 template <typename T>
 struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
@@ -2138,7 +2138,7 @@ class RReluKernel : public framework::OpKernel<T> {
 
     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
                                            static_cast<T>(upper));
-    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    auto engine = paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
     auto alpha = dist(*engine);
 
     if (alpha < 1.f) {
@@ -2191,7 +2191,7 @@ class RReluGradKernel : public framework::OpKernel<T> {
 
     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
                                            static_cast<T>(upper));
-    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    auto engine = paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
     auto alpha = dist(*engine);
 
     auto temp1 =
@@ -2240,7 +2240,7 @@ class RReluDoubleGradKernel : public framework::OpKernel<T> {
 
     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
                                            static_cast<T>(upper));
-    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    auto engine = paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
     auto alpha = dist(*engine);
 
     if (ddOut) {
