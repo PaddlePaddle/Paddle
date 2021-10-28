@@ -438,7 +438,7 @@ class ConvMKLDNNHandlerT
       scale_bias_data[i] = scale_in_data * scale_weights_data[i];
     }
 
-    bias_scale_tuple = std::make_shared<std::tuple<float, std::vector<float> >(mask_reorder, scale_bias_data);
+    bias_scale_tuple = std::make_shared<std::tuple<float, std::vector<float> >(static_cast<float>(mask_reorder), scale_bias_data);
     dev_ctx.SetBlob(key_bs, bias_scale_tuple);
 
     return bias_scale_tuple;
