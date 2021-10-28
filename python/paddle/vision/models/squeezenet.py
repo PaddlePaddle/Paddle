@@ -196,7 +196,6 @@ def _squeezenet(arch, version, pretrained, **kwargs):
             arch)
         weight_path = get_weights_path_from_url(model_urls[arch][0],
                                                 model_urls[arch][1])
-
         param = paddle.load(weight_path)
         model.set_dict(param)
 
