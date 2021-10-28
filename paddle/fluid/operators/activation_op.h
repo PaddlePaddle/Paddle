@@ -2177,8 +2177,8 @@ class RReluGradKernel : public framework::OpKernel<T> {
     dX->mutable_data<T>(context.GetPlace());
     auto dout = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
-    auto out = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
+//    auto out = framework::EigenVector<T>::Flatten(
+//        GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
     auto dx = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
     auto x = framework::EigenVector<T>::Flatten(
