@@ -440,7 +440,7 @@ static framework::Tensor& npu_float_status() {
 }
 
 void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
-                                 const framework::Scope& scope,
+                                 const framework::ScopeBase& scope,
                                  const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -505,7 +505,7 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
 }
 
 void PrintNPUOpValueInfo(const framework::OperatorBase& op,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const platform::Place& place) {
   LOG(WARNING) << "There are `nan` or `inf` in operator (" << op.Type()
                << "), here we print some tensor value info of this op.";
@@ -551,9 +551,8 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (sum >= 1.0) PrintNPUOpValueInfo(op, scope, place);
 
-  PADDLE_ENFORCE_LT(
-      sum, 1.0, platform::errors::PreconditionNotMet(
-                    "Operator %s contains Nan/Inf.", op.DebugStringEx(&scope)));
+  PADDLE_ENFORCE_LT(sum, 1.0, platform::errors::PreconditionNotMet(
+                                  "Operator %s contains Nan/Inf.", op.Type()));
 }
 #endif
 
