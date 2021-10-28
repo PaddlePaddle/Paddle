@@ -161,6 +161,9 @@ class Communicator(object):
     def init_params(self, context):
         self.communicator_.init_params(context)
 
+    def pull_dense(self, context):
+        self.communicator_.pull_dense(context)
+
     def push_sparse_param(self, var_name, table_id=-1, scope=global_scope()):
         if not self.is_running():
             raise ValueError(

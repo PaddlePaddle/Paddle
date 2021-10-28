@@ -70,6 +70,21 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet152(self):
         self.models_infer('resnet152')
 
+    def test_densenet121(self):
+        self.models_infer('densenet121')
+
+    def test_densenet161(self):
+        self.models_infer('densenet161')
+
+    def test_densenet169(self):
+        self.models_infer('densenet169')
+
+    def test_densenet201(self):
+        self.models_infer('densenet201')
+
+    def test_densenet264(self):
+        self.models_infer('densenet264')
+
     def test_alexnet(self):
         self.models_infer('alexnet')
 
@@ -90,6 +105,9 @@ class TestVisonModels(unittest.TestCase):
 
     def test_resnext152_64x4d(self):
         self.models_infer('resnext152_64x4d')
+
+    def test_inception_v3(self):
+        self.models_infer('inception_v3')
 
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)

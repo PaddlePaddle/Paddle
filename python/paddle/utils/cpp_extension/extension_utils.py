@@ -56,7 +56,12 @@ CLANG_LINK_FLAGS = [
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']
 
-COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
+if core.is_compiled_with_rocm():
+    COMMON_HIPCC_FLAGS = [
+        '-DPADDLE_WITH_HIP', '-DEIGEN_USE_GPU', '-DEIGEN_USE_HIP'
+    ]
+else:
+    COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
 
 GCC_MINI_VERSION = (5, 4, 0)
 MSVC_MINI_VERSION = (19, 0, 24215)
@@ -319,10 +324,14 @@ def prepare_unix_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + [
-        '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
-        '-DNVCC'
-    ] + cflags + get_cuda_arch_flags(cflags)
+    if core.is_compiled_with_rocm():
+        cflags = COMMON_HIPCC_FLAGS + ['-Xcompiler', '-fPIC'
+                                       ] + cflags + get_rocm_arch_flags(cflags)
+    else:
+        cflags = COMMON_NVCC_FLAGS + [
+            '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
+            '-DNVCC'
+        ] + cflags + get_cuda_arch_flags(cflags)
 
     return cflags
 
@@ -356,6 +365,14 @@ def get_cuda_arch_flags(cflags):
     """
     # TODO(Aurelius84):
     return []
+
+
+def get_rocm_arch_flags(cflags):
+    """
+    For ROCm platform, amdgpu target should be added for HIPCC.
+    """
+    cflags = cflags + ['-fno-gpu-rdc', '-amdgpu-target=gfx906']
+    return cflags
 
 
 def _get_fluid_path():
@@ -471,7 +488,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
 
         if use_cuda:
-            extra_link_args.append('-lcudart')
+            if core.is_compiled_with_rocm():
+                extra_link_args.append('-lamdhip64')
+            else:
+                extra_link_args.append('-lcudart')
 
         kwargs['extra_link_args'] = extra_link_args
 

@@ -62,10 +62,14 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
     }
+    const std::string& optim_cache_dir = Get<std::string>("optim_cache_dir");
     std::string program_bytes = program_desc.Proto()->SerializeAsString();
     // rename from "17_ir_fc_fuse_pass.dot" to "fc_fuse_pass.pdmodel"
     program_path =
         graph_viz_path.substr(found1 + 4, found2 - found1 - 4) + ".pdmodel";
+    if (!optim_cache_dir.empty()) {
+      program_path = optim_cache_dir + "/" + program_path;
+    }
     std::ofstream file(program_path.c_str(), std::ios::binary);
     file.write(program_bytes.c_str(), program_bytes.size());
     file.close();

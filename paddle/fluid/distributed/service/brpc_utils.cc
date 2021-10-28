@@ -139,14 +139,11 @@ void SerializeSelectedRows(framework::Variable* var,
 
   var_data->resize(rows->size() * sizeof(int64_t));
   char* data_ptr = const_cast<char*>(var_data->data());
-
   memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));
-
   var_msg->set_data_type(static_cast<VarMsg::Type>(tensor->type()));
   for (auto& dim : framework::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
-
   // IO Buffer
   if (platform::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * framework::SizeOfType(tensor->type());
@@ -155,7 +152,6 @@ void SerializeSelectedRows(framework::Variable* var,
                   data_len);
   } else {
 #ifdef PADDLE_WITH_CUDA
-    std::cout << "***DEBUG*** in iobuf" << tensor->numel() <<std::endl;
     char* temp_ptr =
         new char[tensor->numel() * framework::SizeOfType(tensor->type())];
     auto stream =

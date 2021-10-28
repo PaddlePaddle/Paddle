@@ -33,23 +33,16 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     auto name_list = outer_scope_->LocalVarNames();
     for (auto name : name_list) {
       auto v = outer_scope_->Var(name);
-      if (global_scope_.name2id.find(name) == global_scope_.name2id.end()) {
-        global_scope_.name2id[name] = global_scope_.var_list.size();
-        global_scope_.var_list.push_back(v);
-
-        VariableMetaInfo info;
-        info.var_ref_count_ = 0;
-        info.vardesc_ = nullptr;
-        global_scope_.vec_meta_info_.push_back(info);
+      if (!global_scope_.HasVar(name)) {
+        global_scope_.AddVar(name, *v);
       }
     }
   }
 
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
-  std::vector<paddle::framework::OperatorBase*> op_list;
   paddle::framework::interpretercore::build_op_func_list(
-      place_, startup_prog, &op_list, &vec_func_list, &global_scope_);
+      place_, startup_prog, &vec_func_list, &global_scope_);
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
@@ -80,16 +73,8 @@ void StandaloneExecutor::BuildVariableOuterScope(
       continue;
     }
 
-    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
-      var_scope->name2id[var->Name()] = var_scope->var_list.size();
-      auto v = outer_scope->Var(var->Name());
-      InitializeVariable(v, var->GetType());
-      var_scope->var_list.push_back(v);
-
-      VariableMetaInfo info;
-      info.var_ref_count_ = 0;
-      info.vardesc_ = var;
-      var_scope->vec_meta_info_.push_back(info);
+    if (!var_scope->HasVar(var->Name())) {
+      var_scope->AddVar(var->Name(), var);
     }
   }
 }
