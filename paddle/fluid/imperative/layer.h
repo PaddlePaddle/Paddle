@@ -223,6 +223,15 @@ class VarBase {
 
   void ClearGradient();
 
+  // byf add func
+  void _ClearGradient();
+
+  void _CopyFromGradient(const VarBase& src);
+
+  void use_count();
+
+  // std::shared_ptr<VarBase> _Slice(int64_t begin_idx, int64_t end_idx);
+
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
 
