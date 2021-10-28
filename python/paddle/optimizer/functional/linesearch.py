@@ -374,6 +374,9 @@ def update(state, phi, a, b, c, params, max_iters):
 
     return [A, B]
 
+def update_inverse_hessian(state, Hk, sk, yk):
+
+
 def hz_linesearch(state,
                   func,
                   gtol,
@@ -557,7 +560,7 @@ def hz_linesearch(state,
     # the line search state as failed for the corresponding batching element.
     pk = -paddle.dot(Hk, gk)
 
-    # The directional derivative of f at x_k on the direction of p_k.
+    # derive is the directional derivative of f at x_k on the direction of p_k.
     # It's also the gradient of phi    
     deriv = dot(gk, pk)
 
@@ -588,7 +591,7 @@ def hz_linesearch(state,
         # Applies secant2 to the located opposite slope interval
         a, b = secant2(state, phi, a_j, b_j, params, max_iters=max_iters)
 
-        # If interval shrinks above threshold, then applies bisections 
+        # If interval does not shrink enough, then applies bisections 
         # repeatedly.
         L2_cond = (b - a) > gamma * (b_j - a_j)
 
@@ -603,7 +606,7 @@ def hz_linesearch(state,
         if all_active_with_predicates(state.state, ls_found):
             break
 
-        A, B = update(a, b, c)        
+        A, B = update(a, b, c)
         a = paddle.where(L2_cond, A, a)
         b = paddle.where(L2_cond, B, b)
 
@@ -611,7 +614,29 @@ def hz_linesearch(state,
         a_j, b_j = a, b
         iters += 1
 
-    # Generates the next iterates given the line search step sizes.
+    # Updates the state of the instances for which the line search failed.
+    ls_failed = paddle.logical_not(ls_found)
+    state.state = update_state(state.state, ls_failed, 'failed')
     
+    # Uses the obtained search steps to generate next iterates.
+    next_xk = xk + ls_stepsize * pk
+    
+    # Calculates displacement s_k = x_k+1 - x_k
+    sk = next_xk - xk
+
+    # Obtains the function values and gradients at x_k+1
+    next_fk, next_gk = vjp(func, next_xk)
+    
+    # Calculates the gradient difference y_k = g_k+1 - g_k
+    yk = next_fk - fk
+    
+    # Updates the approximate inverse hessian
+    next_Hk = update_inverse_hessian(state, Hk, sk, yk)
+
+    state.xk = paddle.where(active_state(state.state), next_xk, xk)
+    state.fk = paddle.where(active_state(state.state), next_fk, fk)
+    state.gk = paddle.where(active_state(state.state), next_gk, gk)
+    state.Hk = paddle.where(active_state(state.state), next_Hk, Hk)
+
     return
 

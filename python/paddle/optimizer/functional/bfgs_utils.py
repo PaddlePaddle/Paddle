@@ -122,8 +122,8 @@ def update_state(input_state, predicate, new_state)
         input_state (Tensor): the original state tensor.
         predicate (Tensor): a tensor with the same shape of `input_state`, of 
         boolean type, indicating which locations should be updated.
-        new_state (str): specifies the new state, either 'converged' or 
-        'failed'.
+        new_state ('failed' | 'converged'): specifies the new state, either 
+            'converged' or 'failed'.
 
     Returns:
         Tensor updated on the specified locations.

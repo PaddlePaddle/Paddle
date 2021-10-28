@@ -18,7 +18,7 @@ from ...autograd import vjp
 from .bfgs_utils import as_float_tensor, make_state, update_state
 from .bfgs_utils import any_active, active_state, converged_state, failed_state
 from .bfgs_utils import vnorm_inf
-from .linesearch import hz_linesearch as linesearch
+from .linesearch import hz_linesearch as linesearch_next
 
 
 def verify_symmetric_positive_definite_matrix(H):
