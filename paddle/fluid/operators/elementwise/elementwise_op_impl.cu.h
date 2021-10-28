@@ -315,7 +315,7 @@ __global__ void ElementwiseKernel(
     int main_tid, Functor func) {
   int main_offset = main_tid * BLOCK_NUM_X * VecSize;
   int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int stride = BLOCK_NUM_X * GRID_NUN_X * VecSize;
+  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
   for (int offset = data_offset; offset < numel; offset += stride) {
     if (offset < main_offset) {
       ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank,
