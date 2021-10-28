@@ -428,7 +428,7 @@ class ConvMKLDNNHandlerT
 
     bool is_multi_channel = scale_weights_data.size() > 1;
     int mask_reorder = is_multi_channel ? 1 << 0 : 1;
-    int count =
+    const int count =
         is_multi_channel
             ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
             : 1;
