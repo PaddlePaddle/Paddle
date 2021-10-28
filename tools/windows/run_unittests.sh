@@ -354,7 +354,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
             exit 8;
         fi
     fi
-    run_unittest_gpu $cpu_parallel_job 12
+    run_unittest_gpu $cpu_parallel_job 10
     run_unittest_gpu $tetrad_parallel_job 4
     run_unittest_gpu $two_parallel_job 2
     run_unittest_gpu $non_parallel_job
