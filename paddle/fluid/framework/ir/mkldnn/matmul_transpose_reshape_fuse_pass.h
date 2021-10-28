@@ -31,6 +31,7 @@ class MatmulTransposeReshapeMKLDNNPass : public FusePassBase {
  protected:
   void ApplyImpl(Graph* graph) const override;
   const std::string name_scope_{"matmul_transpose_reshape_fuse"};
+  std::string op_name_;
 };
 }  // namespace ir
 }  // namespace framework

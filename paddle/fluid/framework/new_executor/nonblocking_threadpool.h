@@ -19,9 +19,12 @@
 namespace paddle {
 namespace framework {
 
+template <typename Notifier>
 class TaskTracker {
  public:
-  TaskTracker() : wait_empty_cv_(1) {}
+  TaskTracker() = default;
+
+  explicit TaskTracker(Notifier& notifier) : notifier_(&notifier) {}
 
   TaskTracker(const TaskTracker&) = delete;
 
@@ -33,32 +36,17 @@ class TaskTracker {
 
   void SubCounter() {
     if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {
-      wait_empty_cv_.Notify(true);
+      if (notifier_ != nullptr) {
+        notifier_->NotifyEvent();
+      }
     }
   }
 
-  // only one user can wait at any time
-  void WaitTaskNumToZero() {
-    bool waiting = false;
-    if (!wait_empty_.compare_exchange_strong(waiting, true,
-                                             std::memory_order_seq_cst,
-                                             std::memory_order_relaxed)) {
-      abort();
-    }
-    EventCount::Waiter* w = wait_empty_cv_.GetWaiter(0);
-    wait_empty_cv_.Prewait();
-    if (num_tasks_.load(std::memory_order_relaxed) == 0) {
-      wait_empty_cv_.CancelWait();
-    } else {
-      wait_empty_cv_.CommitWait(w);
-    }
-    wait_empty_.store(false);
-  }
+  uint64_t PendingTaskNum() { return num_tasks_.load(); }
 
  private:
   alignas(64) std::atomic<uint64_t> num_tasks_{0};
-  alignas(64) EventCount wait_empty_cv_;
-  alignas(64) std::atomic<bool> wait_empty_{false};
+  Notifier* notifier_{nullptr};
 };
 
 template <typename Environment>
@@ -183,6 +171,12 @@ class ThreadPoolTempl {
 
     // Wake up the threads without work to let them exit on their own.
     ec_.Notify(true);
+  }
+
+  void WaitThreadsExit() {
+    for (size_t i = 0; i < thread_data_.size(); ++i) {
+      thread_data_[i].thread->WaitExit();
+    }
   }
 
   size_t NumThreads() const { return num_threads_; }
@@ -400,16 +394,16 @@ class ThreadPoolTempl {
     // We already did best-effort emptiness check in Steal, so prepare for
     // blocking.
     ec_.Prewait();
+    if (cancelled_) {
+      ec_.CancelWait();
+      return false;
+    }
     // Now do a reliable emptiness check.
     int victim = NonEmptyQueueIndex();
     if (victim != -1) {
       ec_.CancelWait();
-      if (cancelled_) {
-        return false;
-      } else {
-        *t = thread_data_[victim].queue.PopBack();
-        return true;
-      }
+      *t = thread_data_[victim].queue.PopBack();
+      return true;
     }
     // Number of blocked threads is used as termination condition.
     // If we are shutting down and all worker threads blocked without work,

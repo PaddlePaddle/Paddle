@@ -87,9 +87,17 @@ class TensorAddFunctor : public boost::static_visitor<> {
 
 #ifdef PADDLE_WITH_XPU
   void operator()(const platform::XPUPlace& place) {
+    using XPUType = typename XPUTypeTrait<T>::Type;
     platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    xpu::add<T>(ctx->x_context(), x_, y_, y_, static_cast<int>(numel_));
+    int r = xpu::add<XPUType>(
+        ctx->x_context(), reinterpret_cast<const XPUType*>(x_),
+        reinterpret_cast<const XPUType*>(y_), reinterpret_cast<XPUType*>(y_),
+        static_cast<int>(numel_));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU add kernel return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
   }
 #else
   void operator()(const platform::XPUPlace& place) {
@@ -153,6 +161,24 @@ class TensorAddFunctor : public boost::static_visitor<> {
   const T* x_;
   T* y_;
 };
+
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+void XPUTensorAddFunctor(const platform::Place& place,
+                         const framework::Tensor& src, framework::Tensor* dst) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  const XPUType* x = reinterpret_cast<const XPUType*>(src.data<T>());
+  XPUType* y = reinterpret_cast<XPUType*>(dst->mutable_data<T>(place));
+  int r = xpu::add<XPUType>(ctx->x_context(), x, y, y,
+                            static_cast<int>(src.numel()));
+  PADDLE_ENFORCE_EQ(
+      r, XPU_SUCCESS,
+      platform::errors::External("XPU add kernel return wrong value[%d %s]", r,
+                                 XPUAPIErrorMsg[r]));
+}
+#endif
 
 template <typename DeviceContext, typename T>
 void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
@@ -226,7 +252,26 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
     return;
   }
 #endif
+
+#ifdef PADDLE_WITH_XPU
+  if (platform::is_xpu_place(place)) {
+    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+      XPUTensorAddFunctor<float>(place, src_tensor, dst_tensor);
+    } else if (data_type ==
+               framework::DataTypeTrait<platform::float16>::DataType()) {
+      XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+    }
+    return;
+  }
+#endif
+
   PADDLE_TENSOR_ADD(float);
+
 #ifndef PADDLE_WITH_XPU
   // NOTE(phlrain): xpu only support float
   PADDLE_TENSOR_ADD(double);

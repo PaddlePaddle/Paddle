@@ -331,6 +331,10 @@ TEST(enforce, hip_success) {
       CheckCudaStatusFailure(rocblas_status_invalid_handle, "Rocblas error"));
   EXPECT_TRUE(
       CheckCudaStatusFailure(rocblas_status_invalid_value, "Rocblas error"));
+  EXPECT_TRUE(CheckCudaStatusSuccess(HIPFFT_SUCCESS));
+  EXPECT_TRUE(CheckCudaStatusFailure(HIPFFT_INVALID_PLAN, "HIPFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(HIPFFT_ALLOC_FAILED, "HIPFFT error"));
+
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "Rccl error"));

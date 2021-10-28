@@ -682,14 +682,33 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
+ * Distributed related FLAG
+ * Name: FLAGS_allreduce_record_one_event
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_allreduce_record_one_event=true makes the allreduce
+ *          operations would only wait one event instead of multiple events.
+ * Note: Make the allreduce operations would only wait one event instead of
+ *       multiple events. Currently, only fuse allreduce supports this.
+ *       Otherwise, the precision may be wrong.
+ */
+PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
+                            "It controls whether the allreduce operations "
+                            "would only wait one event instead of multiple "
+                            "events. Currently, only fuse allreduce supports "
+                            "this. Otherwise, the precision may be wrong.");
+
+/*
  * CINN related FLAG
  * Name: FLAGS_use_cinn
  * Since Version: 2.3
  * Value Range: bool, default=false
  * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
  */
+#ifdef PADDLE_WITH_CINN
 PADDLE_DEFINE_EXPORTED_bool(
     use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+#endif
 
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");

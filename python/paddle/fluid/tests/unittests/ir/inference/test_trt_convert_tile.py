@@ -77,10 +77,14 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape == True:
-                return 0, 3
+            ver = paddle_infer.get_trt_compile_version()
+            if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 >= 7000:
+                if dynamic_shape == True:
+                    return 0, 3
+                else:
+                    return 1, 2
             else:
-                return 1, 2
+                return 0, 3
 
         attrs = [
             program_config.ops[i].attrs

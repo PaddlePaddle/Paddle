@@ -468,10 +468,17 @@ class HDFSClient(FS):
         self._bd_err_re = re.compile(
             r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
 
-    def _run_cmd(self, cmd, redirect_stderr=False):
+    def _run_cmd(self, cmd, redirect_stderr=False, retry_times=5):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
-        ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
-        ret = int(ret)
+        ret = 0
+        output = None
+        retry_sleep_second = 3
+        for x in range(retry_times + 1):
+            ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
+            ret = int(ret)
+            if ret == 0:
+                break
+            time.sleep(retry_sleep_second)
         if ret == 134:
             raise FSShellCmdAborted(cmd)
         return ret, output.splitlines()
@@ -835,8 +842,8 @@ class HDFSClient(FS):
         if self.is_file(fs_path):
             return self._try_download(fs_path, local_path)
         # download dir
-        _, all_files = self.ls_dir(fs_path)
-
+        _, all_filenames = self.ls_dir(fs_path)
+        all_files = [fs_path + i for i in all_filenames]
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
