@@ -80,44 +80,10 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
 }
 
 void HeterSectionWorker::RunBackward(int micro_id) {
-  
-  //bool is_first_stage = (pipeline_stage_ == 0);
-  //if (is_first_stage) {
-  //  BindingDataFeedMemory(micro_id);
-  //  int cur_micro_batch = device_reader_->Next();
-  //  if (cur_micro_batch <= 0) {
-  //    epoch_finish_ = true;
-  //    return;
-  //  }
-  //  total_ins_num_ += cur_micro_batch;
-  //}
-
   for (auto &op : backward_ops_) {
-    //int op_role = op->Attr<int>(std::string("op_role"));
-    //auto op_type = op->Type();
-
-    //if (op_type == "heter_listen_and_serv") continue;
-    //if (op_type == "send_and_recv") {
-    //  auto op_mode = op->Attr<std::string>(std::string("mode"));
-    //  if (op_mode == "barrier") continue;
-    //}
-    //if (op_type == "trainer_barrier") continue;
-    //bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
-    //                        (op_role == (static_cast<int>(OpRole::kForward) |
-    //                                     static_cast<int>(OpRole::kLoss))) ||
-    //                        (op_role == static_cast<int>(OpRole::kRPC)) ||
-    //                        (op_role == static_cast<int>(OpRole::kLRSched));
-
-    //bool run_others = (op_role == static_cast<int>(OpRole::kForward)) ||
-    //                  (op_role == (static_cast<int>(OpRole::kForward) |
-    //                               static_cast<int>(OpRole::kLoss))) ||
-    //                  (op_role == static_cast<int>(OpRole::kRPC));
-
-    //if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
       VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
               << micro_id;
       op->Run(*((*microbatch_scopes_)[micro_id]), place_);
-    //}
   }
 }
 
@@ -141,32 +107,11 @@ void HeterSectionWorker::MiniBatchBarrier(const std::vector<int>& barrier_ids) {
     }
 }
 
-//void HeterSectionWorker::TrainerBarrier() {
-//  for (auto &op : ops_) {
-//    auto op_type = op->Type();
-//    if (op_type != "trainer_barrier") continue;
-//    op->Run(*root_scope_, place_);
-//  }
-//}
-
 void HeterSectionWorker::RunListen() {
-  //bool is_first_stage = (pipeline_stage_ == 0);
   listen_op_->Run(*root_scope_, place_); 
-  //for (auto &op : ops_) {
-  //  auto op_type = op->Type();
-  //  if (op_type == "heter_listen_and_serv") {
-  //    if (is_first_stage) {
-  //      if (thread_id_ == 0)
-  //        op->Run(*root_scope_, place_);
-  //    } else { // for heter worker
-  //      op->Run(*root_scope_, place_);
-  //    }
-  //  }
-  //}
 }
 
 void HeterSectionWorker::RunForward(int micro_id) {
-  
   bool is_first_stage = (pipeline_stage_ == 0);
   if (is_first_stage) {
     BindingDataFeedMemory(micro_id);
@@ -177,33 +122,10 @@ void HeterSectionWorker::RunForward(int micro_id) {
     }
     total_ins_num_ += cur_micro_batch;
   }
-
   for (auto &op : forward_ops_) {
-    //int op_role = op->Attr<int>(std::string("op_role"));
-    //auto op_type = op->Type();
-
-    //if (op_type == "heter_listen_and_serv") continue;
-    //if (op_type == "send_and_recv") {
-    //  auto op_mode = op->Attr<std::string>(std::string("mode"));
-    //  if (op_mode == "barrier") continue;
-    //}
-    //if (op_type == "trainer_barrier") continue;
-    //bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
-    //                        (op_role == (static_cast<int>(OpRole::kForward) |
-    //                                     static_cast<int>(OpRole::kLoss))) ||
-    //                        (op_role == static_cast<int>(OpRole::kRPC)) ||
-    //                        (op_role == static_cast<int>(OpRole::kLRSched));
-
-    //bool run_others = (op_role == static_cast<int>(OpRole::kForward)) ||
-    //                  (op_role == (static_cast<int>(OpRole::kForward) |
-    //                               static_cast<int>(OpRole::kLoss))) ||
-    //                  (op_role == static_cast<int>(OpRole::kRPC));
-
-    //if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
       VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
               << micro_id;
       op->Run(*((*microbatch_scopes_)[micro_id]), place_);
-    //}
   }
 }
 
@@ -287,7 +209,6 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
     float* temp_ptr = reinterpret_cast<float*>(tensor_data);
     temp_ptr[0] = global_micro_id;
   }
-
   for (auto& var : var_list) {
     if (var->Persistable() && microbatch_id == 0) {
       if (root_scope_->FindVar(var->Name()) != nullptr) continue;
@@ -319,16 +240,6 @@ void HeterSectionWorker::Run() {
     // backward
     MiniBatchBarrier(micro_ids);
   } else { // for heter worker
-
-      //int cnt = 0;
-      //int target_ = -1;
-      //if (is_last_stage) {
-      //  target_ = num_microbatches_;
-      //} else {
-      //  target_ = 2 * num_microbatches_;
-      //} 
-
-
       while(true) {
         auto task = (*thread_queue_).Pop();
         auto message_name = task.first;
@@ -345,7 +256,6 @@ void HeterSectionWorker::Run() {
           } else if (message_name.find("backward") != std::string::npos) {
               RunBackward(micro_id);
           }
-          //cnt++;
         }
       }
 
