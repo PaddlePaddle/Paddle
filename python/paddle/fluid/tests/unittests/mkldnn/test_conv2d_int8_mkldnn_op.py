@@ -27,8 +27,8 @@ def conv2d_forward_refer(input, filter, group, conv_param):
     return out
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(not core.supports_int8(),
+                 "place does not support int8 computation")
 class TestConv2DInt8Op(TestConv2DOp):
     def setUp(self):
         self.op_type = "conv2d"
@@ -56,73 +56,57 @@ class TestConv2DInt8Op(TestConv2DOp):
         # https://oneapi-src.github.io/oneDNN/dev_guide_int8_computations.html#doxid-dev-guide-int8-computations-1dg-i8-comp-s11
         scale_output_shift = (self.scale_out /
                               (self.scale_in * self.scale_weights[0]))
-
         filter = np.random.random(self.filter_size).astype(self.weighttype)
 
+        # When the Intel AVX2 or Intel AVX512 Instruction Set is used
+        # the reorder additionally scales the weights by 0.5
+        # to overcome the potential overflow issue. If the processor supports VNNI instructions,
+        # modification of the weights is not necessary.
+        avx_scale = 0.5 if not core.supports_vnni(
+        ) and self.srctype == np.int8 else 1.
+        filter_int = np.round(filter * self.scale_weights[0] *
+                              avx_scale).astype(np.int32)
+        scale_output_shift = scale_output_shift / avx_scale
+
+        def conv2d_forward_refer_helper(input_):
+            return conv2d_forward_refer(
+                input_.astype(np.int32), filter_int, self.groups,
+                conv2d_param).astype(np.float32) * scale_output_shift
+
+        def residual_helper(init_low, init_high, output_):
+            input_residual_ = np.random.randint(
+                init_low, init_high,
+                self.input_residual_size).astype(self.srctype)
+            return (output_ + input_residual_ *
+                    (self.scale_out / self.scale_in_eltwise)), input_residual_
+
         if self.srctype == np.int8:
-            input = np.random.randint(-5, 5,
+            init_low, init_high = (-5, 5)
+            input = np.random.randint(init_low, init_high,
                                       self.input_size).astype(self.srctype)
             input_shift = (np.ones(self.input_size) * 128).astype(np.uint8)
 
-            if core.supports_vnni():
-                filter_int = np.round(filter *
-                                      self.scale_weights[0]).astype(np.int32)
-            else:
-                # When the Intel AVX2 or Intel AVX512 Instruction Set is used
-                # the reorder additionally scales the weights by 0.5
-                # to overcome the potential overflow issue.
-                filter_int = np.round(filter * self.scale_weights[0] *
-                                      0.5).astype(np.int32)
-                scale_output_shift = scale_output_shift / 0.5
-
-            output1 = conv2d_forward_refer(
-                np.round(input + input_shift).astype(np.int32), filter_int,
-                self.groups,
-                conv2d_param).astype(np.float32) * scale_output_shift
-            output2 = conv2d_forward_refer(
-                np.round(input_shift).astype(np.int32), filter_int, self.groups,
-                conv2d_param).astype(np.float32) * scale_output_shift
-            if self.fuse_residual:
-                input_residual = np.random.randint(
-                    -5, 5, self.input_residual_size).astype(self.srctype)
-                output_res = np.round(output1 - output2 + input_residual * (
-                    self.scale_out / self.scale_in_eltwise))
-                if self.fuse_activation == "relu":
-                    output = np.maximum(output_res, 0).astype(self.dsttype)
-                else:
-                    output = output_res.astype(self.dsttype)
-            else:
-                if self.fuse_activation == "relu":
-                    output = np.maximum(np.round(output1 - output2),
-                                        0).astype(self.dsttype)
-                else:
-                    output = np.round(output1 - output2).astype(self.dsttype)
-
+            output1 = conv2d_forward_refer_helper(
+                np.round(input + input_shift).astype(np.int32))
+            output2 = conv2d_forward_refer_helper(
+                np.round(input_shift).astype(np.int32))
+            output = output1 - output2
         else:
-            input = np.random.randint(0, 10,
+            init_low, init_high = (0, 10)
+            input = np.random.randint(init_low, init_high,
                                       self.input_size).astype(self.srctype)
-            filter_int = np.round(filter *
-                                  self.scale_weights[0]).astype(np.int32)
+            output = conv2d_forward_refer_helper(input)
 
-            output1 = conv2d_forward_refer(
-                input.astype(np.int32), filter_int, self.groups,
-                conv2d_param).astype(np.float32) * scale_output_shift
+        if self.fuse_residual:
+            output, input_residual = residual_helper(init_low, init_high,
+                                                     output)
 
-            if self.fuse_residual:
-                input_residual = np.random.randint(
-                    0, 10, self.input_residual_size).astype(self.srctype)
-                output_res = np.round(output1 + input_residual * (
-                    self.scale_out / self.scale_in_eltwise))
-                if self.fuse_activation == "relu":
-                    output = np.maximum(output_res, 0).astype(self.dsttype)
-                else:
-                    output = output_res.astype(self.dsttype)
-            else:
-                if self.fuse_activation == "relu":
-                    output = np.maximum(np.round(output1),
-                                        0).astype(self.dsttype)
-                else:
-                    output = np.round(output1).astype(self.dsttype)
+        output = np.round(output)
+
+        if self.fuse_activation == "relu":
+            output = np.maximum(output, 0)
+
+        output = output.astype(self.dsttype)
 
         self.inputs = {
             'Input':

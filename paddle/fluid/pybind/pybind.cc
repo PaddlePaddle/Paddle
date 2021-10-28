@@ -226,14 +226,20 @@ bool SupportsBfloat16FastPerformance() {
 #endif
 }
 
+bool SupportsInt8() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return (platform::MayIUse(platform::cpu_isa_t::avx2) ||
+          platform::MayIUse(platform::cpu_isa_t::avx512f));
+#endif
+}
+
 bool SupportsVNNI() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni))
-    return true;
-  else
-    return false;
+  return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
 #endif
 }
 
@@ -2124,6 +2130,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
+  m.def("supports_int8", SupportsInt8);
   m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
