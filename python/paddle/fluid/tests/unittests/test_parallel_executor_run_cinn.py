@@ -75,7 +75,7 @@ def build_program(main_program, startup_program):
     return img, label, avg_loss
 
 
-def do_test(dot_save_dir):
+def train(dot_save_dir, prefix):
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     img, label, loss = build_program(main_program, startup_program)
@@ -86,32 +86,35 @@ def do_test(dot_save_dir):
     exe.run(startup_program)
 
     build_strategy = paddle.static.BuildStrategy()
-    build_strategy.debug_graphviz_path = os.path.join(dot_save_dir, "viz")
+    build_strategy.debug_graphviz_path = os.path.join(dot_save_dir, prefix)
     compiled_program = paddle.static.CompiledProgram(
         main_program, build_strategy).with_data_parallel(loss_name=loss.name)
 
-    iters = 1
+    iters = 100
     feed = rand_data(img.name, label.name, iters)
+    loss_values = []
     for step in range(iters):
         loss_v = exe.run(compiled_program,
                          feed=feed[step],
                          fetch_list=[loss],
                          return_merged=False)
-        logger.info("loss value = {}".format(loss_v))
+        loss_values.append(loss_v[0][0][0])
+    return loss_values
 
 
 @unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")
 class TestParallelExecutorRunCinn(unittest.TestCase):
     def setUp(self):
-        set_cinn_flag(True)
         self.tmpdir = tempfile.mkdtemp(prefix="dots_")
 
     def tearDown(self):
-        set_cinn_flag(False)
         shutil.rmtree(self.tmpdir)
 
     def test_run_with_cinn(self):
-        do_test(self.tmpdir)
+        cinn_losses = train(self.tmpdir, "paddle")
+        set_cinn_flag(False)
+        pd_losses = train(self.tmpdir, "cinn")
+        np.allclose(cinn_losses, pd_losses)
 
 
 if __name__ == '__main__':
