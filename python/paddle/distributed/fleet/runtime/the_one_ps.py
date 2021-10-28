@@ -601,12 +601,6 @@ class TheOnePSRuntime(RuntimeBase):
                 next_trainers = []
                 if self.role_maker._get_next_trainers() != []:
                     next_trainers = self.role_maker._get_next_trainers()
-                cur_endpoint = ""
-                if self.role_maker._is_worker():
-                    cur_endpoint = self.role_maker._get_trainer_endpoint()
-                elif self.role_maker._is_heter_worker():
-                    cur_endpoint = self.role_maker._get_heter_worker_endpoint()
-                assert cur_endpoint != "", "cur_endpoint should not be null"
                 self._heter_client = HeterClient(
                     next_trainers, previous_trainers, self.role_maker._role_id())
 
