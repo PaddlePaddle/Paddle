@@ -136,11 +136,22 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
           index->data<int>(), reinterpret_cast<XPUType *>(dx->data<T>()),
           xshape, index->dims()[0], 0, overwrite);
     } else {
-      r = xpu::gather_grad<XPUType, int64_t>(
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      int *index_int_ptr_l3 =
+          RAII_GUARD.alloc_l3_or_gm<int32_t>(index->numel());
+      r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
+                                         index->data<int64_t>(),
+                                         index_int_ptr_l3, index->numel());
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
+                                            "XPU API(cast_v2) return wrong "
+                                            "value[%d %s]",
+                                            r, XPUAPIErrorMsg[r]));
+
+      r = xpu::gather_grad<XPUType, int>(
           dev_ctx.x_context(),
-          reinterpret_cast<const XPUType *>(dout->data<T>()),
-          index->data<int64_t>(), reinterpret_cast<XPUType *>(dx->data<T>()),
-          xshape, index->dims()[0], 0, overwrite);
+          reinterpret_cast<const XPUType *>(dout->data<T>()), index_int_ptr_l3,
+          reinterpret_cast<XPUType *>(dx->data<T>()), xshape, index->dims()[0],
+          0, overwrite);
     }
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                       platform::errors::External(

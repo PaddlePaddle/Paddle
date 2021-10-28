@@ -124,16 +124,6 @@ struct XPUTanhFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// template <typename T>
-// struct XPUGeluFunctor : public BaseActivationFunctor<T> {
-//   using XPUType = typename XPUTypeTrait<T>::Type;
-//   void operator()(const framework::ExecutionContext &ctx) const {
-//     xpu_activation_forward<paddle::platform::XPUDeviceContext, T,
-//     XPUType>(ctx,
-//                                                                   xpu::gelu<XPUType>);
-//   }
-// };
-
 template <typename T>
 struct XPULogFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -251,15 +241,6 @@ struct XPUSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// template <typename T>
-// struct XPUGeluGradFunctor : public BaseActivationFunctor<T> {
-//   using XPUType = typename XPUTypeTrait<T>::Type;
-//   void operator()(const framework::ExecutionContext &ctx) const {
-//     xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
-//         ctx, xpu::gelu_grad<XPUType>);
-//   }
-// };
-
 template <typename T>
 struct XPUSqrtGradFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -360,10 +341,8 @@ namespace ops = paddle::operators;
       ops::XPUActivationGradKernel<ops::grad_functor<float>>);
 
 REGISTER_ACTIVATION_XPU_KERNEL(relu, XPUReluFunctor, XPUReluGradFunctor)
-// REGISTER_ACTIVATION_XPU_KERNEL(tanh, XPUTanhFunctor, XPUTanhGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
                                XPUSigmoidGradFunctor)
-// REGISTER_ACTIVATION_XPU_KERNEL(gelu, XPUGeluFunctor, XPUGeluGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSquareGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, XPUHardSwishFunctor,

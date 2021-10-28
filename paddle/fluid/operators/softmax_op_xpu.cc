@@ -45,29 +45,36 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     int r = XPU_SUCCESS;
-    // Tensor clip_x;
-    // int len = x->numel();
-    // T* clip_x_data =
-    //     clip_x.mutable_data<T>(context.GetPlace(), len * sizeof(T));
-
-    // r = xpu::clip_v2(dev_ctx.x_context(), reinterpret_cast<const
-    // XPUType*>(x->data<T>()), reinterpret_cast<XPUType*>(clip_x_data), len,
-    //                  static_cast<XPUType>(-1e20),
-    //                  static_cast<XPUType>(1e20));
-    // PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-    //                   platform::errors::External("XPU API(clip) return wrong
-    //                   "
-    //                                              "value[%d %s]",
-    //                                              r, XPUAPIErrorMsg[r]));
-
-    r = xpu::softmax<XPUType>(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x->data<T>()),
-        reinterpret_cast<XPUType*>(out->data<T>()), x_dims, axis);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU API(softmax2d_forward) return wrong "
-                                   "value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    paddle::platform::XPUVersion version = dev_ctx.xpu_version();
+    if (version == paddle::platform::XPUVersion::XPU1) {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      XPUType* clip_x_data_l3 = RAII_GUARD.alloc_l3_or_gm<XPUType>(x->numel());
+      r = xpu::clip_v2(dev_ctx.x_context(),
+                       reinterpret_cast<const XPUType*>(x->data<T>()),
+                       clip_x_data_l3, x->numel(), static_cast<XPUType>(-1e20),
+                       static_cast<XPUType>(1e20));
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU API(clip_v2) return wrong value[%d %s]", r,
+                            XPUAPIErrorMsg[r]));
+      r = xpu::softmax<XPUType>(dev_ctx.x_context(), clip_x_data_l3,
+                                reinterpret_cast<XPUType*>(out->data<T>()),
+                                x_dims, axis);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU API(softmax2d_forward) return wrong "
+                                     "value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+    } else {
+      r = xpu::softmax<XPUType>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x->data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()), x_dims, axis);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU API(softmax2d_forward) return wrong "
+                                     "value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+    }
   }
 };
 
