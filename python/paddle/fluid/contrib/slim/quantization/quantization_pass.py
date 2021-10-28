@@ -520,7 +520,7 @@ class QuantizationTransformPass(object):
                 if var_node.name() in dequantized_vars:
                     dequant_var_node = dequantized_vars[var_node.name()]
                     graph.update_input_link(var_node, dequant_var_node, op)
-                    
+
         def _has_weight(op):
             has_weight = False
             for var_node in op.inputs:
