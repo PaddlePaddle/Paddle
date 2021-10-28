@@ -31,6 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -145,13 +147,11 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 
   std::unordered_map<Node*, Node*> old_var2new_var;
   for (auto* var : cluster_internals) {
-    Node* sub_node;
-    if (var->Var() == nullptr) {
-      // TODO(wzzju): If this case occurs, there maybe bugs when using CINN.
-      sub_node = subgraph->CreateEmptyNode(var->Name(), var->NodeType());
-    } else {
-      sub_node = subgraph->CreateVarNode(var->Var());
-    }
+    PADDLE_ENFORCE_NOT_NULL(var->Var(),
+                            platform::errors::PreconditionNotMet(
+                                "The var desc of the node in cluster_internals "
+                                "shouldn't be null."));
+    auto* sub_node = subgraph->CreateVarNode(var->Var());
     old_var2new_var[var] = sub_node;
   }
   for (auto* var : cluster_inputs) {

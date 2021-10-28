@@ -103,14 +103,15 @@ def do_test(dot_save_dir):
 @unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")
 class TestParallelExecutorRunCinn(unittest.TestCase):
     def setUp(self):
+        set_cinn_flag(True)
         self.tmpdir = tempfile.mkdtemp(prefix="dots_")
 
     def tearDown(self):
+        set_cinn_flag(False)
         shutil.rmtree(self.tmpdir)
 
     def test_run_with_cinn(self):
         do_test(self.tmpdir)
-        set_cinn_flag(False)
 
 
 if __name__ == '__main__':
