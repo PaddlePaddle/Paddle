@@ -248,8 +248,7 @@ void InterpreterCore::BuildInplace() {
             auto outvar = global_scope_->Var(iterout->second[0]);
             if (invar && outvar) {
               instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace "
-                      << vec_instruction_[i].kernel_func_.operator_base_->Type()
+              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
                       << " " << global_scope_->GetNameById(iter->second[0])
                       << " -> "
                       << global_scope_->GetNameById(iterout->second[0])
@@ -338,8 +337,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   if (FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
-        *instr_node.kernel_func_.operator_base_, *global_scope_,
-        instr_node.dev_ctx_->GetPlace());
+        *instr_node.OpBase(), *global_scope_,
+        instr_node.DeviceContext().GetPlace());
   }
 }
 

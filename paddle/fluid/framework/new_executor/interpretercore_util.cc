@@ -308,7 +308,6 @@ void build_op_func_list(const platform::Place& place,
           std::string new_var_name =
               var_name + "_copy_" + std::to_string(var_scope->VarSize() + 1);
           var_scope->AddVar(new_var_name, nullptr);
-          << var_scope->name2id_[new_var_name];
 
           VariableNameMap copy_in_map;
           copy_in_map["X"] = {var_name};

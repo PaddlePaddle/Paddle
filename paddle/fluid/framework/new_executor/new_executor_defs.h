@@ -512,15 +512,6 @@ class VariableScope : public ScopeBase {
     return "";
   }
 
-  Variable* FindVar(const std::string& name) const {
-    if (!HasVar(name)) {
-      return nullptr;
-    }
-    auto var_id = VarId(name);
-    CheckExist(var_id);
-    return var_list_[var_id];
-  }
-
   bool HasVar(const std::string& name) const {
     return name2id_.find(name) != name2id_.end();
   }
