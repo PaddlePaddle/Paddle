@@ -238,7 +238,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 program.global_block().vars[op.output("Out")[0]] for op in ops
             ]
 
-            #dag_check_up_and_reorder(program, inputs, outputs)
+            dag_check_up_and_reorder(program, inputs, outputs)
 
             op_idxs = [all_ops.index(op) for op in ops]
 
@@ -695,12 +695,6 @@ def find_heter_ops(program, default_device="cpu"):
                 else:
                    var2idx[origin_var] = i
 
-
-
-
-
-
-
     origin_porgram = program.clone()
     block = program.global_block()
     
@@ -780,12 +774,7 @@ def find_heter_ops(program, default_device="cpu"):
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".
         format(len(block.ops), total_heter_ops, heter_blocks))
 
-
-
-
-
     return origin_porgram, heter_ops, default_ops, program_block_ops
-
 
 def create_heter_program(program, config, heter_program, program_block_ops_list,
                          heter_ops, block_var_detail, current_device, stage_id):
