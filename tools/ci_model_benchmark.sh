@@ -84,6 +84,7 @@ function run_model_benchmark {
     export prepare_path=${cfs_dir}/model_dataset/model_benchmark_prepare
     export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
+    sed 's#/workspace/Paddle#/paddle#g' model_ci.sh
     bash model_ci.sh
 }
 
