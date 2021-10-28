@@ -389,6 +389,13 @@ class TestLayerTo(unittest.TestCase):
             for p in self.linear.parameters():
                 self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
 
+        if paddle.fluid.is_compiled_with_xpu():
+            self.linear.to(device=paddle.XPUPlace(0))
+            self.assertTrue(self.linear.weight.place.is_xpu_place())
+            self.assertTrue(self.linear.buf_name.place.is_xpu_place())
+            self.assertTrue(self.linear.weight._grad_ivar().place.is_xpu_place(
+            ))
+
         self.linear.to(device=paddle.CPUPlace())
         self.assertTrue(self.linear.weight.place.is_cpu_place())
         self.assertTrue(self.linear.buf_name.place.is_cpu_place())
