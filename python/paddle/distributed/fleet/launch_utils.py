@@ -807,6 +807,7 @@ def cloud_ps_heter_env_set(args):
     logger.info("Set heter parameter server env: {}".format(
         pretty_print_envs(environs)))
 
+
 def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
                        node_mapping_ranks):
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
@@ -1163,7 +1164,6 @@ class ParameterServerLauncher(object):
         server_rank = 0
         worker_rank = 0
         heter_worker_rank = 0
- 
         for node_rank, ip in enumerate(self.node_ips):
             pod = Pod()
             pod.rank = node_rank
@@ -1424,8 +1424,6 @@ class ParameterServerLauncher(object):
         elif fluid.core.is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
-        #if heter_device_num == 0:
-        #    return
 
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
             device_id = "0" if heter_device_num == 0 else str(device_list[
