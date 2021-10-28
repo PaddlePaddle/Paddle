@@ -75,13 +75,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
         datas = [dnn_data, lr_data, label]
 
-        #if args.reader == "pyreader":
-        #    self.reader = fluid.io.PyReader(
-        #        feed_list=datas,
-        #        capacity=64,
-        #        iterable=False,
-        #        use_double_buffer=False)
-
         # build dnn model
         dnn_layer_dims = [128, 64, 32, 1]
         dnn_embedding = fluid.layers.embedding(
@@ -142,91 +135,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         program = fluid.Program.parse_from_string(program_desc_str)
         with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
             wn.write(str(program))
-    
-    #def do_dataloader_training(self, fleet):
-    #    """
-    #    do training using dataloader, using fetch handler to catch variable
-    #    Args:
-    #        fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
-    #    """
-
-    #    exe = fluid.Executor(fluid.CPUPlace())
-    #    exe.run(fluid.default_startup_program())
-    #    fleet.init_worker()
-
-    #    batch_size = 128
-    #    def get_train_loader(feed_list, place):
-    
-    #        train_reader = paddle.batch(
-    #            fake_ctr_reader(),
-    #            batch_size=batch_size,
-    #            drop_last=True)
-    #        train_loader = paddle.io.DataLoader.from_generator(
-    #            capacity=64,
-    #            use_double_buffer=True,
-    #            feed_list=feed_list,
-    #            iterable=False)
-    #        train_loader.set_sample_list_generator(train_reader, place)
-    #       # return train_loader
-
-    #    self.reader = get_trainer_loader(self.feeds, paddle.static.cpu_places())
-
-    #    self.reader.start()
-    #    for epoch_id in range(1):
-    #        while True:
-    #          try:
-    #              pass_start = time.time()
-    #              exe.run(program=fluid.default_main_program())
-    #              pass_time = time.time() - pass_start
-    #          except fluid.core.EOFException:
-    #              self.reader.reset()
-    #              break
-
-    #    if fleet.is_first_worker():
-    #        model_path = tempfile.mkdtemp()
-    #        fleet.save_persistables(executor=exe, dirname=model_path)
-    #        shutil.rmtree(model_path)
-
-    #def do_dataloader_heter_training(self, fleet):
-    #    """
-    #    do training using dataloader, using fetch handler to catch variable
-    #    Args:
-    #        fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
-    #    """
-
-    #    fleet.init_heter_worker()
-
-    #    #train_file_list = ctr_dataset_reader.prepare_fake_data()
-    #    #exe = fluid.Executor(fluid.CPUPlace())
-    #    #exe.run(fluid.default_startup_program())
-    #    #fleet.init_worker()
-        
-    #    #thread_num = int(os.getenv("CPU_NUM", 2))
-    #    #batch_size = 128
-        
-    #    #filelist = fleet.util.get_file_shard(train_file_list)
-    #    #block_size = len(train_file_list) // fleet.worker_num()
-    #    #filelist = train_file_list[0: block_size] 
-    #    #print("filelist: {}".format(filelist))
-
-    #    #train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
-    #    #self.reader.decorate_sample_list_generator(train_reader)
-
-    #    #for epoch_id in range(1):
-    #    #    self.reader.start()
-    #    #    try:
-    #    #        pass_start = time.time()
-    #    #        while True:
-    #    #            exe.run(program=fluid.default_main_program())
-
-    #    #        pass_time = time.time() - pass_start
-    #    #    except fluid.core.EOFException:
-    #    #        self.reader.reset()
-
-    #    #if fleet.is_first_worker():
-    #    #    model_path = tempfile.mkdtemp()
-    #    #    fleet.save_persistables(executor=exe, dirname=model_path)
-    #    #    shutil.rmtree(model_path)
 
     def do_dataset_training(self, fleet):
         train_file_list = ctr_dataset_reader.prepare_fake_data()
