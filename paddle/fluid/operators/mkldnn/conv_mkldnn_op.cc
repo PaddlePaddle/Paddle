@@ -432,13 +432,12 @@ class ConvMKLDNNHandlerT
         is_multi_channel
             ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
             : 1;
-    std::vector<float> scale_bias_data(count);
 
+    bias_scale_tuple = std::make_shared<std::make_tuple<float, std::vector<float> >(static_cast<float>(mask_reorder), std::vector<float>(count));
     for (int i = 0; i < count; i++) {
-      scale_bias_data[i] = scale_in_data * scale_weights_data[i];
+      bias_scale_tuple->get<1>[i] = scale_in_data * scale_weights_data[i];
     }
 
-    bias_scale_tuple = std::make_shared<std::make_tuple<float, std::vector<float> >(static_cast<float>(mask_reorder), scale_bias_data);
     dev_ctx.SetBlob(key_bs, bias_scale_tuple);
 
     return bias_scale_tuple;
