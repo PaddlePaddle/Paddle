@@ -158,7 +158,8 @@ void BindDistCommunicator(py::module* m) {
       .def("start", &Communicator::Start)
       .def("push_sparse_param", &Communicator::RpcSendSparseParam)
       .def("is_running", &Communicator::IsRunning)
-      .def("init_params", &Communicator::InitParams);
+      .def("init_params", &Communicator::InitParams)
+      .def("pull_dense", &Communicator::PullDense);
   //  .def("recv", &Communicator::RecvNoBarrier);
 }
 
