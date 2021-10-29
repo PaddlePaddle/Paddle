@@ -119,9 +119,9 @@ def _in_amp_guard():
 
 
 @dygraph_only
-def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
+def pure_fp16_initialize(enable_pure_fp16, models):
     if not enable_pure_fp16:
-        return models, optimizers
+        return models
 
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
@@ -132,7 +132,7 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
                         paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
                     continue
                 layer.to(dtype='float16')
-
+    '''
     for idx_opt in range(len(optimizers)):
         # update _param_groups
         if getattr(optimizers[idx_opt], '_param_groups', None) and isinstance(
@@ -168,7 +168,8 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
                                 optimizers[idx_opt]._param_groups[
                                     i] = layer._parameters_transform_map[id(
                                         param)][0]
-    return models, optimizers
+    '''
+    return models
 
 
 def check_models(models):
@@ -401,8 +402,7 @@ def amp_decorate(models,
             "optimizers must be either a single optimizer or a list of optimizers."
         )
 
-    models, optimizers = pure_fp16_initialize(
-        enable_pure_fp16=True, models=models, optimizers=optimizers)
+    models = pure_fp16_initialize(enable_pure_fp16=True, models=models)
 
     # supprot master_weight    
     for idx_opt in range(len(optimizers)):

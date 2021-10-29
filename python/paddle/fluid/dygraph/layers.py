@@ -121,8 +121,8 @@ class Layer(core.Layer):
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
-        self._parameters_transform_map = {}
-        self._buffers_transform_map = {}
+        #self._parameters_transform_map = {}
+        #self._buffers_transform_map = {}
 
         self._casted_by_pure_fp16 = False
 
@@ -1473,29 +1473,32 @@ class Layer(core.Layer):
             if param is not None:
                 with no_grad():
                     param_applied = func(param, device, dtype, blocking)
+                    '''
                     assert param.is_leaf
                     param_applied.stop_gradient = param.stop_gradient
                     if hasattr(param_applied, 'is_distributed'):
                         param_applied.is_distributed = param.is_distributed
                     self._parameters[key] = param_applied
+                    '''
 
                 if param.grad is not None:
                     with no_grad():
                         grad_applied = func(param._grad_ivar(), device, dtype,
                                             blocking)
-
+                        '''
                         grad_applied.stop_gradient = param._grad_ivar(
                         ).stop_gradient
                         if hasattr(param._grad_ivar(), 'is_distributed'):
                             grad_applied.is_distributed = param._grad_ivar(
                             ).is_distributed
                         self._parameters[key]._set_grad_ivar(grad_applied)
+                        '''
 
-            self._parameters_transform_map[id(param)] = [param_applied, key]
+            #self._parameters_transform_map[id(param)] = [param_applied, key]
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
-            self._buffers_transform_map[id(buf)] = [self._buffers[key], key]
+            #self._buffers_transform_map[id(buf)] = [self._buffers[key], key]
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
@@ -1573,23 +1576,59 @@ class Layer(core.Layer):
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
-
-            new_t = t._copy_to(device, blocking)
+            # 1. Copy param / Tensor to cpu
+            print("1. Copy param / Tensor to cpu:", t.name, type(t))
+            '''
             if isinstance(t, framework.ParamBase):
-                if dtype is not None and dtype != t.dtype:
+                t_cpu = t._copy_to(device=paddle.CPUPlace(), blocking=blocking)
+            else:
+                t_cpu = paddle.to_tensor(t, dtype=dtype, place=paddle.CPUPlace())
+            '''
+            t_cpu = t._copy_to(paddle.CPUPlace(),
+                               blocking)  # k-v type will error
+
+            # 2. Release mem of t
+            print("2. Release mem of t")
+            t.value().get_tensor()._clear()
+
+            # 3. In cpu, cast param / Tensor to dtype
+            print("3. In cpu, cast param / Tensor to dtype")
+            if dtype is not None and dtype != t_cpu.dtype:
+                if isinstance(t, framework.ParamBase):
+                    from paddle.fluid.layer_helper import LayerHelper
+                    helper = LayerHelper("cast", **locals())
+                    t_cpu_casted = helper.create_variable_for_type_inference(
+                        dtype=dtype)
                     framework._dygraph_tracer().trace_op(
                         type='cast',
-                        inputs={'X': new_t},
-                        outputs={'Out': new_t},
+                        inputs={'X': t_cpu},
+                        outputs={'Out': t_cpu_casted},
                         attrs={
-                            'in_dtype': t.dtype,
+                            'in_dtype': t_cpu.dtype,
                             'out_dtype': convert_np_dtype_to_dtype_(dtype)
                         })
+                else:
+                    t_cpu_casted = t_cpu.cast(dtype=dtype)
             else:
-                if dtype is not None and dtype != t.dtype:
-                    new_t = new_t.cast(dtype=dtype)
+                t_cpu_casted = t_cpu
 
-            return new_t
+            # 4. Copy casted cpu param / Tensor to device
+            print("4. Copy casted cpu param / Tensor to device")
+            '''
+            if isinstance(t, framework.ParamBase):
+                new_t = t_cpu_casted._copy_to(device, blocking)
+            else:
+                new_t = paddle.to_tensor(t_cpu_casted, place=device)
+            '''
+            new_t = t_cpu_casted._copy_to(device, blocking)
+
+            # 5. share Tensor to origin param / Tensor
+            print("5. shared t param / Tensor to new_t")
+            dst_tensor = t.value().get_tensor()
+            src_tensor = new_t.value().get_tensor()
+            dst_tensor._share_data_with(src_tensor)
+            print("================>end")
+            return t
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
