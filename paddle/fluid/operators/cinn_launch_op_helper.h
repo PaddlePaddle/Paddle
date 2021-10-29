@@ -24,11 +24,9 @@
 
 namespace paddle {
 namespace operators {
-
 namespace details {
 
 const cinn::common::Target& PlaceToCinnTarget(const platform::Place& place);
-
 // Get the underlying tensor of a variable,
 // result: paddle name --> const LoDTensor*
 std::map<std::string, const framework::LoDTensor*> GetConstTensors(
@@ -88,6 +86,5 @@ void AppendExecutionArguments(
     std::vector<std::unique_ptr<cinn_buffer_t>>* hold_buffers);
 
 }  // namespace details
-
 }  // namespace operators
 }  // namespace paddle

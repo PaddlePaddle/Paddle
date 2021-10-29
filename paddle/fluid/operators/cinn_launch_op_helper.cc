@@ -23,7 +23,6 @@ namespace details {
 using LoDTensor = framework::LoDTensor;
 using Scope = framework::Scope;
 using Name2ConstTensor = std::map<std::string, const LoDTensor*>;
-
 using CinnTensor = cinn::hlir::framework::Tensor;
 using CinnScope = cinn::hlir::framework::Scope;
 using Name2CinnTensor = std::unordered_map<std::string, CinnTensor>;
@@ -176,14 +175,12 @@ void InitializeTempVar(const std::vector<std::string>& variable_names,
         compiled_scope.FindVar(var_name),
         platform::errors::NotFound(
             "Temporary variable(%s) not found in compiled scope", var_name));
-
     const auto& cinn_tensor = compiled_scope.GetTensor(var_name);
     // use the same variable name defined by CINN
     auto* var_ptr = temp_scope->Var(var_name);
     auto* paddle_tensor = var_ptr->GetMutable<LoDTensor>();
     auto compiled_ddim = framework::make_ddim(cinn_tensor->shape().data());
-    // TODO(CtfGo): support mutable corresponding c++ type with the compilation
-    // type
+    // TODO(CtfGo): support mutable corresponding c++ type
     paddle_tensor->mutable_data<float>(compiled_ddim, place);
     VLOG(2) << "Add temporary variable(" << var_name << "), dimension is ["
             << compiled_ddim << "]";
@@ -218,7 +215,6 @@ void AppendExecutionArguments(
     const auto& cinn_name = paddle2cinn_varmap.count(pd_name)
                                 ? paddle2cinn_varmap.at(pd_name)
                                 : pd_name;
-
     std::unique_ptr<cinn_buffer_t> buffer_ptr(new cinn_buffer_t());
     SharePaddleTensorWithCinnBuffer(paddle_tensor, buffer_ptr.get());
     name2argument->emplace(cinn_name, buffer_ptr.get());

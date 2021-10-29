@@ -95,12 +95,10 @@ It accomplishs the computation of graph following several steps:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
 REGISTER_OPERATOR(
     cinn_launch, ops::CinnLaunchOp, ops::CinnLaunchOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
 /* see [Why use single type kernel] */
 REGISTER_OP_CPU_KERNEL(
     cinn_launch,

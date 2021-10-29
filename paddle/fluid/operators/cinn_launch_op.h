@@ -80,7 +80,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     details::AppendExecutionArguments(ctx.scope(), input_variable_names,
                                       paddle2cinn_varmap, &name2argument,
                                       &hold_buffers);
-
     // prepare output variables
     auto output_variable_names = ctx.OutputNames(kOutputs);
     Name2CinnTensor output_compiled_tensors = details::GetCompiledTensors(
@@ -93,7 +92,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     details::AppendExecutionArguments(ctx.scope(), output_variable_names,
                                       paddle2cinn_varmap, &name2argument,
                                       &hold_buffers);
-
     // prepare temporary variables
     auto temp_variable_names =
         details::SeperateTempVar(compiled_scope, paddle2cinn_varmap,
@@ -106,7 +104,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                                         paddle2cinn_varmap, &name2argument,
                                         &hold_buffers);
     }
-
     // Step 4. Launch CINN to execute the compilation runtime program
     cinn_runtime_program->Execute(&name2argument);
     VLOG(2) << "CinnLaunchOp launch runtime_program execution done.";

@@ -107,13 +107,11 @@ void CopyInputDataToPlace(const framework::Scope& scope,
 TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
   paddle::framework::InitDevices();
   platform::SetNumThreads(1);
-
   // cache test graph into CinnCompiler
   const auto& test_out_name = "test_out";
   const auto& expected_out_name = "expected_out";
   auto compilation_key = CinnCompiler::GetInstance()->AddGraph(
       CreateOnlyElementwiseAddGraph("test_x", "test_y", test_out_name));
-
   // create cinn_launch_op and elementwise_add op
   auto cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
       "cinn_launch", {{"X", {"test_x", "test_y"}}}, {{"Out", {test_out_name}}},
@@ -121,12 +119,10 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
   auto elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
       "elementwise_add", {{"X", {"test_x"}}, {"Y", {"test_y"}}},
       {{"Out", {expected_out_name}}}, {{}});
-
   // prepare input data
   framework::Scope init_scope;
   CreateInputVariablesWithRandomData({"test_x", "test_y"}, {10, 20},
                                      &init_scope);
-
   // Run ops and check the computation results
   auto run_and_check_fn = [&](const platform::Place& place) {
     framework::Scope scope;
