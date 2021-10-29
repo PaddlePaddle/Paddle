@@ -64,7 +64,8 @@ class CheckMethod(Enum):
             .. code-block:: python
 
             import numpy as np
-            from paddle.fluid.contrib.sparsity import MaskAlgo, CheckMethod
+            from paddle.static.sparsity import MaskAlgo
+            from paddle.fluid.contrib.sparsity import CheckMethod
 
             CheckMethod.get_checking_method(MaskAlgo.MASK_1D)
             # CheckMethod.CHECK_1D
@@ -95,7 +96,7 @@ def calculate_density(x):
         .. code-block:: python
 
           import numpy as np
-          import paddle.fluid.contrib.sparsity as sparsity
+          import paddle.static.sparsity as sparsity
 
           x = np.array([[0, 1, 3, 0],
                         [1, 1, 0, 1]])
@@ -446,7 +447,7 @@ def get_mask_2d_best(mat, n, m):
                           [5, 6, 3, 9],
                           [2, 4, 6, 9]])
           mask_greedy = sparsity.get_mask_2d_greedy(mat, 2, 4)
-          mask_greedy = sparsity.get_mask_2d_best(mat, 2, 4)
+          mask_best = sparsity.get_mask_2d_best(mat, 2, 4)
           print("L1 norm of `greedy` sparse matrix", np.multiply(mat, mask_greedy).sum()) # 56
           print("L1 norm of `best` sparse matrix", np.multiply(mat, mask_best).sum()) # 61
     """
