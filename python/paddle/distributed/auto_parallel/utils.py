@@ -170,6 +170,7 @@ def _get_comm_group(processes, shape, axis, rank):
     """
     Given a rank and the processes mesh the rank belongs to,  
     compute the communication peers of the rank based on the give axis in the mesh.
+
     Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
     the rank communication peers of rank 0 (included) are following:
     in axis 0: [0, 1]
@@ -203,6 +204,7 @@ def _get_idx_in_axis(processes, shape, axis, rank):
     """
     Given a rank and the processes mesh the rank belongs to,  
     compute the index of the rank in given axis.
+
     Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
     the index of rank 22 are:
     in axis 0: 1
@@ -221,17 +223,22 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
     """
     convert a coordinate in multidimensional mesh space into a scala idx in linear space.
     it use Row-major order for dimension conversion. 
+
     so it has:  [most_significant_dim, ..., least_significant_dim]
     assume: 
+
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
+
     linear_idx of a n dimensional coordinate is: 
+
         I[n-1] * (S[n-2] * S[n-3] * S[n-4] *     ....    S[0]) +
         I[n-2] * (         S[n-3] * S[n-4] *     ....    S[0]) +       
         I[n-3] * (                  S[n-4] *     ....    S[0]) +  
         ...
         I[1]   * (                                       S[0]) + 
         I[0]
+
     """
     # NOTE the following function work based on a strong an assumption
     # that the processes in mesh are
@@ -267,15 +274,20 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
 def _linear_idx2coordinate(mesh_shape, linear_idx):
     """
     mapping a linear scala into multidimensional mesh space, return it coordinate in that space.
+
     it is the inverse function of _coordinate2linear_idx.
     assume: 
+
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
+
     the coordinate given linear_idx is:
+
         I[0] = linear_idx                                  % S[0]
         I[0] = (linear_idx / S[0])                         % S[1]
         I[0] = (linear_idx / (S[0] * S[1]))                % S[2]
         ....
+
     """
 
     assert linear_idx >= 0, "linear index [{}] is least than zero".format(
