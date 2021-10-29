@@ -19,7 +19,6 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
-#include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
@@ -248,7 +247,8 @@ void InterpreterCore::BuildInplace() {
           if (iterout != outputs.end() && !iterout->second.empty()) {
             auto invar = global_scope_->Var(iter->second[0]);
             auto outvar = global_scope_->Var(iterout->second[0]);
-            if (invar && outvar) {
+            if (invar && outvar && invar->IsType<LoDTensor>() &&
+                outvar->IsType<LoDTensor>()) {
               instr.AddInplace(invar, outvar);
               VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
                       << " " << global_scope_->GetNameById(iter->second[0])
@@ -322,11 +322,11 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   if (FLAGS_new_executor_use_inplace) {
     for (auto& pair : instr_node.InplaceInfo()) {
-      const auto in = paddle::imperative::GetTensorFromVar(*pair.first);
+      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
           paddle::framework::details::GetMutableTensorFromVar(pair.second);
-      if (in->dims() == out->dims()) {
-        out->ShareBufferWith(*in);
+      if (in.dims() == out->dims()) {
+        out->ShareBufferWith(in);
       }
     }
   }
