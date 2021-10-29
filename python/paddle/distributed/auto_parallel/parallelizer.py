@@ -15,11 +15,11 @@
 import paddle
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
-from .context import DistributedContext
-from .context import get_default_distributed_context
+from .dist_context import DistributedContext
+from .dist_context import get_default_distributed_context
 from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
-from .process import get_all_process_groups
+from .process_group import get_all_process_groups
 from .utils import make_data_unshard
 from .reshard import reshard
 
@@ -70,7 +70,6 @@ class AutoParallelizer:
         # Annotation completion
         completed_main_program = complete_annotation(
             self._original_main_program, self._dist_context)
-
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)
