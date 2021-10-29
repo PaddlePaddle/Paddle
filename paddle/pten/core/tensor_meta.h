@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/ddim.h"

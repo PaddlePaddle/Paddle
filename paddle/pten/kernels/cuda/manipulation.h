@@ -39,6 +39,12 @@ void Concat(const CUDAContext& dev_ctx,
             int axis,
             DenseTensor* out);
 
+template <typename T>
+void ConcatAxisTensor(const CUDAContext& dev_ctx,
+                      const std::vector<DenseTensor>& x,
+                      const DenseTensor& axis_tensor,
+                      DenseTensor* out);
+
 }  // namespace pten
 
 #endif

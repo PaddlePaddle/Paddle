@@ -25,4 +25,45 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 
 void Copy(const CUDAContext& dev_ctx, const DenseTensor& src, DenseTensor* dst);
 
+template <typename T = int32_t>
+inline std::vector<T> GetDataFromTensor(const CUDAContext& dev_ctx,
+                                        const DenseTensor* x) {
+  std::vector<T> vec_new_data;
+  if (x->data_type() == DataType::INT32) {
+    auto* data = x->data<int>();
+
+    if (!paddle::platform::is_cpu_place(x->place())) {
+      const auto allocator =
+          std::make_shared<paddle::experimental::DefaultAllocator>(
+              paddle::platform::CPUPlace());
+      DenseTensor cpu_attr_tensor(allocator, x->meta());
+
+      pten::Copy(dev_ctx, *x, &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int>();
+    }
+
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else if (x->data_type() == DataType::INT64) {
+    auto* data = x->data<int64_t>();
+
+    if (!paddle::platform::is_cpu_place(x->place())) {
+      const auto allocator =
+          std::make_shared<paddle::experimental::DefaultAllocator>(
+              paddle::platform::CPUPlace());
+      DenseTensor cpu_attr_tensor(allocator, x->meta());
+
+      pten::Copy(dev_ctx, *x, &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int64_t>();
+    }
+
+    // NOTE: Converting int64 to int32 may cause data overflow.
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The dtype of Tensor must be int32 or int64, but received: %s",
+        x->data_type()));
+  }
+  return vec_new_data;
+}
+
 }  // namespace pten

@@ -33,6 +33,49 @@ static inline int ComputeAxis(int axis, int rank) {
   return axis > 0 ? axis : 0;
 }
 
+static inline pten::DDim ComputeAndCheckShape(
+    const std::vector<pten::DDim>& inputs_dims, const size_t axis) {
+  const size_t n = inputs_dims.size();
+  auto out_dims = inputs_dims[0];
+  size_t in_zero_dims_size = out_dims.size();
+  for (size_t i = 1; i < n; i++) {
+    PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
+                      out_dims.size(),
+                      paddle::platform::errors::InvalidArgument(
+                          "The shape of input[0] and input[%d] "
+                          "is expected to be equal."
+                          "But received input[0]'s shape = "
+                          "[%s], input[%d]'s shape = [%s].",
+                          i,
+                          inputs_dims[0],
+                          i,
+                          inputs_dims[i]));
+    for (size_t j = 0; j < in_zero_dims_size; j++) {
+      if (j == axis) {
+        out_dims[axis] += inputs_dims[i][j];
+      } else {
+        bool check_shape = inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0;
+        if (check_shape) {
+          // check all shape in run time
+          PADDLE_ENFORCE_EQ(inputs_dims[0][j],
+                            inputs_dims[i][j],
+                            paddle::platform::errors::InvalidArgument(
+                                "The %d-th dimension of input[0] and input[%d] "
+                                "is expected to be equal."
+                                "But received input[0]'s shape = "
+                                "[%s], input[%d]'s shape = [%s].",
+                                j,
+                                i,
+                                inputs_dims[0],
+                                i,
+                                inputs_dims[i]));
+        }
+      }
+    }
+  }
+  return out_dims;
+}
+
 LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
 void AppendLoD(LoD* lod, const LoD& lod_length);
 

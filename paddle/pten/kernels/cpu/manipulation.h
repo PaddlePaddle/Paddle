@@ -37,11 +37,10 @@ void Concat(const CPUContext& dev_ctx,
             int axis,
             DenseTensor* out);
 
-// Todo: deal with the AxisTensor input
-/*
 template <typename T>
-void ConcatAxisTensor(const CPUContext& dev_ctx, const DenseTensor& x, int axis,
-DenseTensor* out);
-*/
+void ConcatAxisTensor(const CPUContext& dev_ctx,
+                      const std::vector<DenseTensor>& x,
+                      const DenseTensor& axis_tensor,
+                      DenseTensor* out);
 
 }  // namespace pten

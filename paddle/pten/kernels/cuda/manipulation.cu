@@ -122,6 +122,24 @@ void Concat(const CUDAContext& dev_ctx,
   }
 }
 
+template <typename T>
+void ConcatAxisTensor(const CUDAContext& dev_ctx,
+                      const std::vector<DenseTensor>& x,
+                      const DenseTensor& axis_tensor,
+                      DenseTensor* out) {
+  int axis = pten::GetDataFromTensor<int>(dev_ctx, &axis_tensor)[0];
+
+  const size_t n = x.size();
+  std::vector<DDim> ins_dims(n);
+  for (size_t i = 0; i < n; ++i) {
+    ins_dims[i] = x[i].dims();
+  }
+
+  DDim out_dims = pten::ComputeAndCheckShape(ins_dims, axis);
+
+  Concat<T>(dev_ctx, x, axis, out);
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -163,3 +181,15 @@ PT_REGISTER_KERNEL("concat",
                    int64_t,
                    int,
                    uint8_t) {}
+PT_REGISTER_KERNEL("concat.axisTensor",
+                   CUDA,
+                   ANY,
+                   pten::ConcatAxisTensor,
+                   float,
+                   double,
+                   bool,
+                   int64_t,
+                   int,
+                   uint8_t) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+}

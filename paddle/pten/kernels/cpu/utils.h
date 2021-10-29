@@ -25,4 +25,23 @@ using CPUContext = paddle::platform::CPUDeviceContext;
 
 void Copy(const CPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst);
 
+template <typename T = int32_t>
+inline std::vector<T> GetDataFromTensor(const CPUContext& dev_ctx,
+                                        const DenseTensor* x) {
+  std::vector<T> vec_new_data;
+  if (x->data_type() == DataType::INT32) {
+    auto* data = x->data<int>();
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else if (x->data_type() == DataType::INT64) {
+    auto* data = x->data<int64_t>();
+    // NOTE: Converting int64 to int32 may cause data overflow.
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The dtype of Tensor must be int32 or int64, but received: %s",
+        x->data_type()));
+  }
+  return vec_new_data;
+}
+
 }  // namespace pten
