@@ -20,7 +20,7 @@ import unittest
 import argparse
 from warnings import catch_warnings
 
-from paddle.distributed.fleet.elastic import enable_elastic
+from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import DistributeMode
 
 
@@ -36,6 +36,12 @@ class TestElasticInit(unittest.TestCase):
     def test_enable_elastic(self):
         result = enable_elastic(self.args, DistributeMode.COLLECTIVE)
         self.assertEqual(result, True)
+
+    def test_launch_elastic(self):
+        try:
+            launch_elastic(self.args, DistributeMode.COLLECTIVE)
+        except Exception as e:
+            pass
 
 
 if __name__ == "__main__":

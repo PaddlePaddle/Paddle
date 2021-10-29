@@ -26,14 +26,6 @@ from paddle.distributed.fleet.elastic.manager import ELASTIC_TIMEOUT
 
 class TestElasticManager(unittest.TestCase):
     def setUp(self):
-        class Argument:
-            elastic_server = "127.0.0.1:2379"
-            job_id = "test_job_id_123"
-            np = "2:4"
-            host = None
-            scale = None
-            force = None
-
         class MockEtcdClient:
             def put(self, key, value):
                 pass
@@ -59,10 +51,32 @@ class TestElasticManager(unittest.TestCase):
                 pass
 
         self.etcd_client = MockEtcdClient()
-        self.args = Argument()
 
-    def test_match(self):
-        elastic = ElasticManager(self.args, self.etcd_client)
+    def test_match_faulttolerance(self):
+        class Argument:
+            elastic_server = "127.0.0.1:2379"
+            job_id = "test_job_id_123"
+            np = "2"
+            host = None
+            scale = None
+            force = None
+
+        args = Argument()
+        elastic = ElasticManager(args, self.etcd_client)
+        hosts = ["10.10.10.1", "10.10.10.2"]
+        self.assertEqual(elastic._match(hosts), True)
+
+    def test_match_elastic(self):
+        class Argument:
+            elastic_server = "127.0.0.1:2379"
+            job_id = "test_job_id_123"
+            np = "2:4"
+            host = None
+            scale = None
+            force = None
+
+        args = Argument()
+        elastic = ElasticManager(args, self.etcd_client)
         hosts = ["10.10.10.1", "10.10.10.2"]
         self.assertEqual(elastic._match(hosts), False)
 
@@ -73,14 +87,44 @@ class TestElasticManager(unittest.TestCase):
         #time.sleep(60)
         #self.assertEqual(elastic._match(hosts), True)
 
-    def test_update_hosts(self):
-        #######################
-        #  elastic, scale up  #
-        #######################
+    def test_update_hosts_for_faulttolerance(self):
+        class Argument:
+            elastic_server = "127.0.0.1:2379"
+            job_id = "test_job_id_123"
+            np = "2"
+            host = None
+            scale = None
+            force = None
+
+        args = Argument()
         os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
         os.environ[
             'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:8001,10.10.10.2:8001"
-        elastic = ElasticManager(self.args, self.etcd_client)
+        elastic = ElasticManager(args, self.etcd_client)
+        # add 10.10.10.3
+        elastic.host = "10.10.10.1"
+        elastic.hosts = ["10.10.10.1", "10.10.10.2"]
+        elastic._update_hosts()
+        self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.2")
+
+    def test_update_hosts_for_elastic(self):
+        #######################
+        #  elastic, scale up  #
+        #######################
+        class Argument:
+            elastic_server = "127.0.0.1:2379"
+            job_id = "test_job_id_123"
+            np = "2:4"
+            host = None
+            scale = None
+            force = None
+
+        args = Argument()
+
+        os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
+        os.environ[
+            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:8001,10.10.10.2:8001"
+        elastic = ElasticManager(args, self.etcd_client)
         # add 10.10.10.3
         elastic.host = "10.10.10.1"
         elastic.hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
@@ -97,7 +141,7 @@ class TestElasticManager(unittest.TestCase):
             'PADDLE_TRAINERS'] = "10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3"
         os.environ[
             'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.0:8001,10.10.10.1:8001,10.10.10.2:8001,10.10.10.3:8001"
-        elastic = ElasticManager(self.args, self.etcd_client)
+        elastic = ElasticManager(args, self.etcd_client)
         # remove 10.10.10.1
         elastic.host = "10.10.10.1"
         elastic.hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
