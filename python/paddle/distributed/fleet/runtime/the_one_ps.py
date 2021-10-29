@@ -820,7 +820,9 @@ class TheOnePSRuntime(RuntimeBase):
         endpoints = self.compiled_strategy.get_ps_endpoints()
         is_sync = self.compiled_strategy.is_sync_mode()
         trainers = self.compiled_strategy.get_trainers()
-
+        if self.role_maker._is_heter_parameter_server_mode:
+            trainers += len(self.role_maker._get_heter_worker_endpoints(
+                ))
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
 
