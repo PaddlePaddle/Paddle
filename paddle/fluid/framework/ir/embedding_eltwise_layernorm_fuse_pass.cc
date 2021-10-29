@@ -380,7 +380,6 @@ EmbeddingEltwiseLayerNormFusePass::EmbeddingEltwiseLayerNormFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({0, -1})
       .End();
 
   AddOpCompat(OpCompat("layer_norm"))
