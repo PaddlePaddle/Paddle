@@ -21,7 +21,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
@@ -34,6 +33,7 @@ namespace operators {
 using framework::OpKernelType;
 using operators::ActBwdOpFwdDeps;
 using paddle::framework::Tensor;
+using framework::GetCPURandomEngine;
 
 template <typename GradFunctor>
 static constexpr bool CanInplaceAct() {

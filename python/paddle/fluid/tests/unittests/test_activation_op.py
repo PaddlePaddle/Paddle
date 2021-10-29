@@ -1369,7 +1369,6 @@ class TestRRelu(TestActivation):
     def setUp(self):
         self.op_type = "rrelu"
         self.init_dtype()
-        alpha = self.get_alpha()
         lower = self.get_attr()
         upper = self.get_upper()
         seed = self.get_seed()

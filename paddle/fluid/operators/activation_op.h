@@ -2108,7 +2108,8 @@ class RReluKernel : public framework::OpKernel<T> {
 
     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
                                            static_cast<T>(upper));
-    auto engine = paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
+    auto engine =
+        paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
     auto alpha = dist(*engine);
 
     if (alpha < 1.f) {
@@ -2132,8 +2133,8 @@ class RReluGradKernel : public framework::OpKernel<T> {
     dX->mutable_data<T>(context.GetPlace());
     auto dout = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
-//    auto out = framework::EigenVector<T>::Flatten(
-//        GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
+    //    auto out = framework::EigenVector<T>::Flatten(
+    //        GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
     auto dx = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
     auto x = framework::EigenVector<T>::Flatten(
@@ -2146,7 +2147,8 @@ class RReluGradKernel : public framework::OpKernel<T> {
 
     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
                                            static_cast<T>(upper));
-    auto engine = paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
+    auto engine =
+        paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
     auto alpha = dist(*engine);
 
     auto temp1 =
@@ -2172,6 +2174,7 @@ class RReluGradKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class RReluDoubleGradKernel : public framework::OpKernel<T> {
+//  using paddle::framework::GetCPURandomEngine
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const framework::Tensor *X, *Out, *ddX;
@@ -2206,10 +2209,11 @@ class RReluDoubleGradKernel : public framework::OpKernel<T> {
           GET_DATA_SAFELY(X, "Input", "X", "RReluGradGrad"));
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DOut", "RReluGradGrad"));
-      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
-                                static_cast<T>(alpha) *
-                                    (x <= static_cast<T>(0)).template cast<T>())
-                                   .template cast<T>();
+      ddout.device(*d) =
+          ddx *
+          ((x > static_cast<T>(0)).template cast<T>() +
+           static_cast<T>(alpha) * (x <= static_cast<T>(0)).template cast<T>())
+              .template cast<T>();
     }
 
     //    Functor functor;
