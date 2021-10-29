@@ -328,7 +328,6 @@ class StaticAnalysisVisitor(object):
                     result_type.add(NodeVarType.binary_op_output_type(l, r))
             return result_type
 
-        # a, b = 1, 2 not support
         if isinstance(node, gast.Assign):
             ret_type = self.node_to_wrapper_map[node.value].node_var_type
             for target in node.targets:
