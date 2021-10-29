@@ -1404,7 +1404,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
-      if (desc.HasAttr("reduce_all")) {
+      if (desc.HasAttr("out_dtype")) {
         int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
         if (out_dtype != -1) {
           return false;
