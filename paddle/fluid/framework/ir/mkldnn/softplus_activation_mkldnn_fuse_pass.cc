@@ -107,8 +107,9 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
 
   gpd(graph, handler);
   AddStatis(found_softplus_activation_count);
-  PrettyLogDetail("---    fused %d softplus with %s activation",
-                  found_softplus_activation_count, fuse_activation_type);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d softplus with %s activation",
+                    found_softplus_activation_count, fuse_activation_type);
 }
 }  // namespace ir
 }  // namespace framework
