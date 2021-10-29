@@ -14,6 +14,7 @@
 
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
+from .tensor.linalg import eig  # noqa: F401
 from .tensor.linalg import cond  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.linalg import solve  # noqa: F401
@@ -22,24 +23,31 @@ from .tensor.linalg import eigvals  # noqa: F401
 from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import matrix_rank
 from .tensor.linalg import svd
+from .tensor.linalg import eigvalsh
+from .tensor.linalg import qr
 from .tensor.linalg import eigh  # noqa: F401
 from .tensor.linalg import det
 from .tensor.linalg import slogdet
 from .tensor.linalg import pinv
+from .tensor.linalg import triangular_solve
 
 __all__ = [
     'cholesky',  #noqa
     'norm',
     'cond',
     'inv',
+    'eig',
     'eigvals',
     'multi_dot',
     'matrix_rank',
     'svd',
+    'qr',
     'matrix_power',
     'det',
     'slogdet',
     'eigh',
+    'eigvalsh',
     'pinv',
-    'solve'
+    'solve',
+    'triangular_solve',
 ]

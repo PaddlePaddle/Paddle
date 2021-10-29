@@ -171,9 +171,9 @@ class AdamW(Adam):
         self._lr_to_coeff = dict()
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
-            if core.is_compiled_with_xpu() or core.is_compiled_with_npu():
+            if not core.is_compiled_with_cuda():
                 raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in XPU and NPU")
+                    "'lr_ratio' is unimplemented in CPU, XPU and NPU")
         self._lr_ratio = lr_ratio
 
         super(AdamW, self).__init__(
@@ -189,9 +189,6 @@ class AdamW(Adam):
         self._default_dict = {'coeff': coeff}
 
         self.type = "adamw"
-
-        if core.is_compiled_with_xpu():
-            self.type = "adam"
 
         # Use _auxiliary_vars together with _set_auxiliary_var/_get_auxiliary_var to achieve that.
         self._auxiliary_vars = dict()
@@ -259,10 +256,6 @@ class AdamW(Adam):
                 paddle.fluid.layers.assign(input=scaled_param, output=param)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if paddle.is_compiled_with_xpu():
-            self._append_decoupled_weight_decay(block, param_and_grad)
-            return super(AdamW, self)._append_optimize_op(block, param_and_grad)
-
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
@@ -304,9 +297,8 @@ class AdamW(Adam):
                 moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
                 'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
                 'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
-                'beta2', _beta2, 'coeff', self._coeff, 'multi_precision',
-                find_master, "lr_ratio", lr_ratio_)
-
+                'beta2', _beta2, "with_decay", with_decay, 'coeff', self._coeff,
+                'multi_precision', find_master, 'lr_ratio', lr_ratio_)
             return None
 
         inputs = {

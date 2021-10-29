@@ -118,34 +118,35 @@ def remove_distributed_attr_suffix(name):
 
 
 def check_distributed_attr_for_program(program, dist_context=None):
-    from .context import get_default_distributed_context
+    from .dist_context import get_default_distributed_context
     if dist_context is None:
         dist_context = get_default_distributed_context()
     assert dist_context.is_initialized_for_program(), \
         "Distributed attributes must be initialized before check."
     for block in program.blocks:
         for tensor in block.vars.values():
-            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            dist_tensor = dist_context.get_dist_tensor_for_graph(tensor)
+            tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                 tensor)
-            if (tensor_dist_attr is not None) and (
-                    not tensor_dist_attr.is_valid()):
+            if (tensor_dist_attr is not None) and (not dist_tensor.is_valid()):
                 return False
         for op in block.ops:
-            op_dist_attr = dist_context.get_op_distributed_attr_for_program(op)
-            if (op_dist_attr is not None) and (not op_dist_attr.is_valid()):
+            dist_op = dist_context.get_dist_op_for_graph(tensor)
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            if (op_dist_attr is not None) and (not dist_op.is_valid()):
                 return False
     return True
 
 
-def print_program_with_distributed_attr(program, dist_context=None):
+def print_program_with_dist_attr(program, dist_context=None):
     """
     This function reuses the original program output ability with a distributed context.
     Using lock can avoid multiple threads change the default distributed context simultaneously.
     """
     lock = threading.Lock()
     lock.acquire()
-    from .context import get_default_distributed_context
-    from .context import set_default_distributed_context
+    from .dist_context import get_default_distributed_context
+    from .dist_context import set_default_distributed_context
     if dist_context is None:
         dist_context = get_default_distributed_context()
         print(program)
@@ -171,7 +172,9 @@ def _get_comm_group(processes, shape, axis, rank):
     """
 
     # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
-    #  tricks to support processes mesh when it is not start with 0 or continuous
+    # tricks to support processes mesh when it is not start with 0 or continuous
+    assert rank in processes, "rank [{}] is NOT in processes group {}".format(
+        rank, processes)
     rank_relatvie = processes.index(rank)
     coordinate = _linear_idx2coordinate(shape, rank_relatvie)
     coordinates_in_group = [coordinate[:] for i in range(shape[axis])]
@@ -187,6 +190,25 @@ def _get_comm_group(processes, shape, axis, rank):
     ranks_in_group = [processes[idx] for idx in ranks_in_group_relative]
 
     return sorted(ranks_in_group)
+
+
+def _get_idx_in_axis(processes, shape, axis, rank):
+    """
+    Given a rank and the processes mesh the rank belongs to,  
+    compute the index of the rank in given axis.
+
+    Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
+    the index of rank 22 are:
+    in axis 0: 1
+    in axis 1: 1
+    in axis 2: 2
+    """
+
+    # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
+    #  tricks to support processes mesh when it is not start with 0 or continuous
+    rank_relatvie = processes.index(rank)
+    coordinate = _linear_idx2coordinate(shape, rank_relatvie)
+    return coordinate[axis]
 
 
 def _coordinate2linear_idx(mesh_shape, coordinate):
@@ -211,12 +233,12 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
 
     """
     # NOTE the following function work based on a strong an assumption
-    # that the processes in mesh are 
+    # that the processes in mesh are
     #    1. starts from 0
-    #    2. continuous  
-    # it will be wrong if ths above condition doesnot meet, 
+    #    2. continuous
+    # it will be wrong if ths above condition doesnot meet,
     # e.g. process_mesh = { process_groups = [7, 8, 9,10, 12, 13, 14, 15], mesh = [2, 4]}
-    # if you want a more general mapping, you should use cartesian product 
+    # if you want a more general mapping, you should use cartesian product
 
     assert len(mesh_shape) == len(
         coordinate
@@ -277,3 +299,56 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
 
     # row major order
     return coordinate
+
+
+def _get_corresponding_rank(dist_context, target_mesh, rank):
+
+    # TODO(JZ-LIANG) a hack method to support varying mesh in Pipeline parallelism case.
+    # we assume that all mesh are evenly divide from a parent mesh and should have same size.
+    # to revise this in future.
+
+    coordinate = None
+    for mesh in dist_context.process_meshes:
+        if rank in mesh.processes and mesh.topology == target_mesh.topology:
+            coordinate = _linear_idx2coordinate(mesh.topology,
+                                                mesh.processes.index(rank))
+            break
+
+    assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
+        rank)
+    return target_mesh.processes[_coordinate2linear_idx(mesh.topology,
+                                                        coordinate)]
+
+
+def _get_unshard_dist_shape(var, dist_attr):
+    var_shape = var.shape
+    mapping = dist_attr.dims_mapping
+    mesh = dist_attr.process_mesh.topology
+    assert len(var_shape) == len(
+        mapping
+    ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
+        var_shape, mapping)
+    new_shape = []
+    for idx in range(len(var_shape)):
+        if var_shape[idx] == -1 or mapping[idx] == -1:
+            new_shape.append(var_shape[idx])
+        else:
+            new_shape.append(var_shape[idx] * mesh[mapping[idx]])
+
+    return new_shape
+
+
+def make_data_unshard(dist_main_prog, dist_startup_prog):
+    from .dist_context import get_default_distributed_context
+    dist_context = get_default_distributed_context()
+
+    for var in dist_main_prog.list_vars():
+        if var.is_data:
+            tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                var)
+            inverse_shape = _get_unshard_dist_shape(var, tensor_dist_attr)
+            var.desc.set_shape(inverse_shape)
+            dim_mapping = tensor_dist_attr.dims_mapping
+            dim_mapping = [-1] * len(dim_mapping)
+            tensor_dist_attr.dims_mapping = dim_mapping
+            dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)

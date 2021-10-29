@@ -26,6 +26,9 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
+if (WITH_CINN)
+  add_subdirectory(paddle2cinn)
+endif()
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -49,6 +52,8 @@ proto_library(heter_service_proto SRCS heter_service.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
   data_feed_proto)
+
+cc_library(string_array SRCS string_array.cc DEPS utf8proc)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
@@ -112,7 +117,7 @@ cc_test(reader_test SRCS reader_test.cc DEPS reader)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto)
+cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto scope)
 if (WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()

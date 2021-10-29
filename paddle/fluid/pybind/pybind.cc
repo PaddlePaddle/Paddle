@@ -30,6 +30,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -124,6 +125,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
+
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
@@ -520,6 +523,19 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("nccl_version", &GetNCCLVersion);
 #endif
 
+  m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::CUDAGraph>(m, "CUDAGraph")
+      .def_static("begin_capture",
+                  [](platform::CUDAPlace place, int mode) {
+                    platform::BeginCUDAGraphCapture(
+                        place, static_cast<cudaStreamCaptureMode>(mode));
+                  })
+      .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def("replay", &platform::CUDAGraph::Replay)
+      .def("reset", &platform::CUDAGraph::Reset);
+#endif
+
   m.def("wait_device", [](const platform::Place &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
@@ -537,11 +553,11 @@ PYBIND11_MODULE(core_noavx, m) {
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
 
-    if (dl.ctx.device_type == kDLCPU) {
+    if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (dl.ctx.device_type == kDLGPU) {
+    if (dl.device.device_type == kDLGPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #endif
@@ -721,6 +737,17 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
+      .def("_copy_from",
+           [](framework::Tensor &self, const framework::Tensor &other,
+              const platform::Place &place, int64_t batch_size) {
+             if (batch_size < 0) {
+               framework::TensorCopy(other, place, &self);
+             } else {
+               auto sliced = other.Slice(0, batch_size);
+               framework::TensorCopy(sliced, place, &self);
+             }
+           },
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
@@ -776,8 +803,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_to_dlpack",
            [](framework::Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt =
-                 dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+             DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
              auto capsule = py::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
                    if (ptr) {
@@ -1091,6 +1117,15 @@ PYBIND11_MODULE(core_noavx, m) {
              ostr << self;
              return ostr.str();
            })
+      .def("_as_type",
+           [](const LoDTensor &self,
+              paddle::framework::proto::VarType::Type type) {
+             LoDTensor dst;
+             if (self.IsInitialized() && self.numel() > 0) {
+               TransDataType(self, type, &dst);
+             }
+             return dst;
+           })
       .def("_copy", [](const LoDTensor &self, const platform::Place &place) {
         // follow fetch_op's inplementation
         LoDTensor dst;
@@ -1214,6 +1249,18 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) {
              return py::bytes(*self.GetMutable<std::string>());
            })
+      .def("set_string_list",
+           [](Variable &self, Strings str_list) {
+             *self.GetMutable<Strings>() = str_list;
+           })
+      .def("set_vocab", [](Variable &self,
+                           Vocab vocab) { *self.GetMutable<Vocab>() = vocab; })
+      .def("get_string_tensor",
+           [](Variable &self) { return self.GetMutable<Strings>(); },
+           py::return_value_policy::reference)
+      .def("get_map_tensor",
+           [](Variable &self) { return self.GetMutable<Vocab>(); },
+           py::return_value_policy::reference)
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
@@ -1662,6 +1709,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+  m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
+    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+  });
+  m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
+    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+  });
 #endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -1847,20 +1902,20 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static("create",
-                  [](py::bytes protobin) {
-                    proto::OpDesc desc;
-                    PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
-                                      true,
-                                      platform::errors::InvalidArgument(
-                                          "Cannot parse user input to OpDesc"));
-                    PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
-                                      platform::errors::InvalidArgument(
-                                          "The provided OpDesc is not "
-                                          "initialized, the reason is: %s",
-                                          desc.InitializationErrorString()));
-                    return OpRegistry::CreateOp(desc);
-                  })
+      .def_static(
+          "create",
+          [](py::bytes protobin) {
+            proto::OpDesc desc;
+            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
+                              platform::errors::InvalidArgument(
+                                  "Cannot parse user input to OpDesc"));
+            PADDLE_ENFORCE_EQ(
+                desc.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "The provided OpDesc is not initialized, the reason is: %s",
+                    desc.InitializationErrorString()));
+            return OpRegistry::CreateOp(desc);
+          })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) {
@@ -1991,7 +2046,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2011,10 +2066,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](StandaloneExecutor &self,
-              const std::unordered_map<std::string, framework::Tensor>
+              const std::unordered_map<std::string, framework::LoDTensor>
                   &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2032,7 +2087,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2114,7 +2169,12 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
-  m.def("set_feed_variable", framework::SetFeedVariable);
+  m.def("set_feed_variable",
+        static_cast<void (*)(Scope *, const LoDTensor &, const std::string &,
+                             size_t)>(&framework::SetFeedVariable));
+  m.def("set_feed_variable",
+        static_cast<void (*)(Scope *, const Strings &, const std::string &,
+                             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
         [](const Scope &scope, const std::string &var_name,
            size_t index) -> py::object {
@@ -2285,7 +2345,39 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
-  m.def("cuda_empty_cache", platform::EmptyCache);
+  m.def("cuda_empty_cache", [] {
+    for (int dev_id : platform::GetSelectedDevices()) {
+      auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
+          platform::CUDAPlace(dev_id));
+      dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+    }
+    platform::EmptyCache();
+  });
+  m.def("get_device_properties",
+        [](int id) -> const gpuDeviceProp & {
+          return platform::GetDeviceProperties(id);
+        },
+        py::return_value_policy::copy);
+
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+      .def_readonly("name", &gpuDeviceProp::name)
+      .def_readonly("major", &gpuDeviceProp::major)
+      .def_readonly("minor", &gpuDeviceProp::minor)
+      .def_readonly("is_multi_gpu_board", &gpuDeviceProp::isMultiGpuBoard)
+      .def_readonly("is_integrated", &gpuDeviceProp::integrated)
+      .def_readonly("multi_processor_count",
+                    &gpuDeviceProp::multiProcessorCount)
+      .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
+      .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
+        std::ostringstream stream;
+        stream << "_gpuDeviceProperties(name='" << gpu_device_prop.name
+               << "', major=" << gpu_device_prop.major
+               << ", minor=" << gpu_device_prop.minor << ", total_memory="
+               << gpu_device_prop.totalGlobalMem / (1024 * 1024)
+               << "MB, multi_processor_count="
+               << gpu_device_prop.multiProcessorCount << ")";
+        return stream.str();
+      });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);
@@ -3172,6 +3264,13 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool fix_op_run_order) {
             self.fix_op_run_order_ = fix_op_run_order;
           })
+      .def_property("allow_cuda_graph_capture",
+                    [](const BuildStrategy &self) {
+                      return self.allow_cuda_graph_capture_;
+                    },
+                    [](BuildStrategy &self, bool allow_cuda_graph_capture) {
+                      self.allow_cuda_graph_capture_ = allow_cuda_graph_capture;
+                    })
       .def("_copy",
            [](const BuildStrategy &self) {
              auto new_bs = self;

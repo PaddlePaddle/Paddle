@@ -161,7 +161,7 @@ class HardSwishPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
   HardSwishPluginDynamicCreator() {}
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "hardswish_plugin_dynamic";
+    return "hard_swish_plugin_dynamic";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
