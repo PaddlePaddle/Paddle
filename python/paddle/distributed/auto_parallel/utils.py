@@ -222,8 +222,8 @@ def _get_idx_in_axis(processes, shape, axis, rank):
 def _coordinate2linear_idx(mesh_shape, coordinate):
     """
     convert a coordinate in multidimensional mesh space into a scala idx in linear space.
-    it use Row-major order for dimension conversion. 
 
+    it use Row-major order for dimension conversion. 
     so it has:  [most_significant_dim, ..., least_significant_dim]
     assume: 
 
