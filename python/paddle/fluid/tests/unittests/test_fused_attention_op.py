@@ -65,7 +65,7 @@ class TestFusedAttentionOp(OpTest):
     def config(self):
         self.x_type = np.float32
         self.attn_mask_type = np.float64
-        self.pre_layer_norm = True
+        self.pre_layer_norm = False
         self.training = True
 
         self.batch_size = 8
@@ -213,11 +213,40 @@ class TestFusedAttentionOp(OpTest):
             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-5)
 
 
+class TestFusedAttentionOpPreLn(TestFusedAttentionOp):
+    def config(self):
+        self.x_type = np.float32
+        self.attn_mask_type = np.float64
+        self.pre_layer_norm = True
+        self.training = True
+
+        self.batch_size = 8
+        self.query_length = 128
+        self.head_dim = 64
+        self.num_heads = 16
+        self.embed_dim = self.head_dim * self.num_heads
+
+        self.dropout_prob = 0.0
+        self.attn_dropout_prob = 0.0
+        self.weight_attr = None
+        self.bias_attr = None
+        self.kdim, self.vdim = self.embed_dim, self.embed_dim
+        self.key_length, self.value_length = self.query_length, self.query_length
+
+    def test_fused_attention_op(self):
+        final_out_ref, x_grad_ref = self.GetBaselineOut()
+        final_out, x_grad = self.GetFusedAttentionOut()
+        np.testing.assert_allclose(
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
+        np.testing.assert_allclose(
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
+
+
 class TestFusedAttentionOpFp16(TestFusedAttentionOp):
     def config(self):
         self.x_type = np.float16
         self.attn_mask_type = np.float64
-        self.pre_layer_norm = True
+        self.pre_layer_norm = False
         self.training = True
 
         self.batch_size = 8
