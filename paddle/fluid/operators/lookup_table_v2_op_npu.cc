@@ -101,6 +101,7 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+    int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");
 
     /* EmbeddingDenseGrad has bug on large shape, temporarily disable it.
 
@@ -123,13 +124,34 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
     runner_zeros.Run(stream);
 
-    // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
-    // can be different tensor, but in cann 20.2+, it does inplace operation.
-    // Thus, the first input and output should be same tensor.
-    const auto &runner_scatter =
-        NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
-                    {*table_grad_t}, {{"use_locking", true}});
-    runner_scatter.Run(stream);
+    if (padding_idx == kNoPadding) {
+      // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
+      // can be different tensor, but in cann 20.2+, it does inplace operation.
+      // Thus, the first input and output should be same tensor.
+      const auto &runner_scatter =
+          NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
+                      {*table_grad_t}, {{"use_locking", true}});
+      runner_scatter.Run(stream);
+    } else {
+      Tensor casted_ids_t;
+      if (ids_t->type() != framework::proto::VarType::INT32) {
+        casted_ids_t.mutable_data<int32_t>(ids_t->dims(), ctx.GetPlace());
+        const auto &cast_runner = NpuOpRunner("Cast", {*ids_t}, {casted_ids_t},
+                                              {{"dst_type", ACL_INT32}});
+        cast_runner.Run(stream);
+      } else {
+        casted_ids_t.ShareDataWith(*ids_t);
+      }
+      auto table_grad_dims = table_grad_t->dims();
+
+      NpuOpRunner runner;
+      runner.SetType("UnsortedSegmentSum")
+          .AddInput(*output_grad_t)
+          .AddInput(casted_ids_t)
+          .AddInput(std::vector<int64_t>{table_grad_dims[0]})
+          .AddOutput(*table_grad_t);
+      runner.Run(stream);
+    }
   }
 };
 }  // namespace operators
