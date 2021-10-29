@@ -149,7 +149,7 @@ class KernelContext {
   // Note: can't use API Tensor here, the inference don't use this API Tensor
   paddle::SmallVector<std::shared_ptr<TensorBase>> inputs_;
   paddle::SmallVector<std::shared_ptr<TensorBase>> outputs_;
-  paddle::SmallVector<paddle::any> attrs_{};
+  paddle::SmallVector<paddle::any> attrs_;
 
   // Only contains input like list[Tensor] need `range`
   paddle::SmallVector<std::pair<int, int>> input_range_;
