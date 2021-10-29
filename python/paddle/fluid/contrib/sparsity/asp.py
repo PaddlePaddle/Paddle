@@ -149,11 +149,11 @@ def decorate(optimizer):
 def prune_model(main_program=None,
                 n=2,
                 m=4,
-                func_name='mask_1d',
+                mask_algo='mask_1d',
                 with_mask=True):
     r"""
     Pruning parameters of supported layers in :attr:`main_program` via 
-    specified mask generation function given by :attr:`func_name`. This 
+    specified mask generation function given by :attr:`mask_algo`. This 
     function supports both training and inference controlled by :attr:`with_mask`.
     If :attr:`with_mask` is True, it would also prune parameter related ASP mask Variables,
     else only prunes parameters.
@@ -170,7 +170,7 @@ def prune_model(main_program=None,
         main_program (Program, optional): Program with model definition and its parameters. Default is `paddle.static.default_main_program()
         n (int): n of `n:m` sparse pattern.
         m (int): m of `n:m` sparse pattern.
-        func_name (string, optional): The function name to generate spase mask. Default is `mask_1d`.
+        mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
                                       The vaild inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
         with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Defalut is True.
     Returns:
@@ -212,7 +212,7 @@ def prune_model(main_program=None,
             exe.run(startup_program)
 
             # Must call `exe.run(startup_program)` first before calling `sparsity.prune_model`
-            sparsity.prune_model(main_program, func_name='mask_2d_best')
+            sparsity.prune_model(main_program, mask_algo='mask_2d_best')
     """
     device = paddle.device.get_device()
     place = paddle.set_device(device)
@@ -222,15 +222,15 @@ def prune_model(main_program=None,
         'mask_2d_greedy': sparsity.MaskAlgo.MASK_2D_GREEDY,
         'mask_2d_best': sparsity.MaskAlgo.MASK_2D_BEST
     }
-    assert (func_name in MaskAlgo_mapping), \
-           'The "func_name" should be one of ["mask_1d", "mask_2d_greedy", "mask_2d_best"]'
+    assert (mask_algo in MaskAlgo_mapping), \
+           'The "mask_algo" should be one of ["mask_1d", "mask_2d_greedy", "mask_2d_best"]'
 
     return ASPHelper.prune_model(
         place=place,
         main_program=main_program,
         n=n,
         m=m,
-        func_name=MaskAlgo_mapping[func_name],
+        mask_algo=MaskAlgo_mapping[mask_algo],
         with_mask=with_mask)
 
 
@@ -317,12 +317,12 @@ class ASPHelper(object):
                     main_program=None,
                     n=2,
                     m=4,
-                    func_name=sparsity.MaskAlgo.MASK_1D,
+                    mask_algo=sparsity.MaskAlgo.MASK_1D,
                     with_mask=True):
         r"""
         This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
         """
-        checked_func_name = sparsity.CheckMethod.get_checking_method(func_name)
+        checked_func_name = sparsity.CheckMethod.get_checking_method(mask_algo)
 
         if main_program is None:
             main_program = paddle.static.default_main_program()
@@ -345,7 +345,7 @@ class ASPHelper(object):
                 # matrices beforce invoking create_mask. Then we transpose the result maks to make 
                 # sure its shape to be the same as the input weight.
                 weight_sparse_mask = sparsity.create_mask(
-                    weight_nparray.T, func_name=func_name, n=n, m=m).T
+                    weight_nparray.T, func_name=mask_algo, n=n, m=m).T
                 weight_pruned_nparray = np.multiply(weight_nparray,
                                                     weight_sparse_mask)
                 weight_tensor.set(weight_pruned_nparray, place)
