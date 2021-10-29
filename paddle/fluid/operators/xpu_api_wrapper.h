@@ -27,21 +27,9 @@ int xpu_fc_wrapper(xpu::Context* ctx, const XPUType* x, const XPUType* w,
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
       std::is_same<float, XPUType>::value) {
     XPUType* l3_addr = nullptr;
-    uint32_t l3_size = 63 * 1024 * 1024;  // default 63M L3
-    if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
-      l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
-    }
-    if (m * k * sizeof(XPUType) <= l3_size) {
-      r = xpu_malloc(reinterpret_cast<void**>(&l3_addr),
-                     m * k * sizeof(XPUType), XPU_MEM_L3);
-    }
-    if (r != XPU_SUCCESS || m * k * sizeof(XPUType) > l3_size) {
-      r = xpu_malloc(reinterpret_cast<void**>(&l3_addr),
-                     m * k * sizeof(XPUType));
-    }
-    if (r != XPU_SUCCESS) {
-      return r;
-    }
+    xpu::ctx_guard RAII_GUARD(ctx);
+    l3_addr = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * k);
+    if (l3_addr == nullptr) return XPUERR_NOMEM;
 
     std::vector<int> shape = {k, m};
     std::vector<int> axis = {1, 0};
