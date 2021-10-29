@@ -331,6 +331,7 @@ tensor_method_func  = [ #noqa
            'logical_xor',
            'not_equal',
            'allclose',
+           'isclose',
            'is_tensor',
            'cast',
            'concat',

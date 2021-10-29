@@ -322,6 +322,7 @@ __all__ = [  # noqa
            'complex128',
            'addmm',
            'allclose',
+           'isclose',
            't',
            'add',
            'subtract',
