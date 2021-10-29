@@ -176,6 +176,7 @@ class SqueezeNet(nn.Layer):
             x = self._conv6(x)
             x = self._conv7(x)
             x = self._conv8(x)
+
         if self.num_classes > 0:
             x = self._drop(x)
             x = self._conv9(x)
