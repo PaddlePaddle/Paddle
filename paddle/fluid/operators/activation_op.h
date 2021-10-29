@@ -2091,8 +2091,8 @@ template <typename DeviceContext, typename T>
 class RReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* X = context.Input<Tensor>("X");
-    framework::Tensor* Out = context.Output<Tensor>("Out");
+    const framework::Tensor* X = context.Input<framework::Tensor>("X");
+    framework::Tensor* Out = context.Output<framework::Tensor>("Out");
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
 
