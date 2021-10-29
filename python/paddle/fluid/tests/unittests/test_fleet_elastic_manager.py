@@ -107,6 +107,12 @@ class TestElasticManager(unittest.TestCase):
         elastic._update_hosts()
         self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.2")
 
+        # add 10.10.10.3
+        elastic.host = "10.10.10.3"
+        elastic.hosts = ["10.10.10.1", "10.10.10.3"]
+        elastic._update_hosts()
+        self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.3")
+
     def test_update_hosts_for_elastic(self):
         #######################
         #  elastic, scale up  #
