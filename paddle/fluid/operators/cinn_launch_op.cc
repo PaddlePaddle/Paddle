@@ -12,104 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#include "paddle/fluid/operators/cinn_launch_op_helper.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/operators/cinn_launch_op.h"
 
 namespace paddle {
 namespace operators {
 
-static constexpr char kX[] = "X";
-static constexpr char kOutputs[] = "Out";
-static constexpr char kCompilationKey[] = "compilation_key";
-
-using LoDTensor = framework::LoDTensor;
-using Name2ConstTensor = std::map<std::string, const LoDTensor*>;
-using CinnTensor = cinn::hlir::framework::Tensor;
-using Name2CinnTensor = std::unordered_map<std::string, CinnTensor>;
-using framework::paddle2cinn::CinnCompiler;
-
-class CinnLaunchOp : public framework::OperatorBase {
+class CinnLaunchOp : public framework::OperatorWithKernel {
  public:
-  CinnLaunchOp(const std::string& type,
-               const framework::VariableNameMap& inputs,
-               const framework::VariableNameMap& outputs,
-               const framework::AttributeMap& attrs)
-      : framework::OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
- private:
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    // Step 1. Find graph object and prepare input
-    PADDLE_ENFORCE_EQ(HasAttr(kCompilationKey), true,
-                      platform::errors::NotFound(
-                          "No Attribute(%s) found for CinnLaunchOp operator.",
-                          kCompilationKey));
-    const auto& compilation_key = Attr<std::string>(kCompilationKey);
-    VLOG(2) << "CinnLaunchOp compilation_key:" << compilation_key;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInputs(kX), "Input", kX, "CinnLaunchOp");
+    OP_INOUT_CHECK(ctx->HasOutput(kOutputs), "Output", kOutputs,
+                   "CinnLaunchOp");
+  }
 
-    const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
-    OP_INOUT_CHECK(HasInputs(kX), "Input", kX, "CinnLaunchOp");
-    Name2ConstTensor input_tensors =
-        details::GetConstTensors(scope, Inputs(kX));
+ protected:
+  /* [Why use single type kernel]:
+   *
+   * This op is similar to a control flow op, it doses not need
+   * a op kernel, but in order to make it execute under dynamic
+   * graph mode, implement it with op kernel.
+   *
+   * So whether the kernel data type is int, float or other type,
+   * which has no effect on its execution logic, so directly
+   * specified a data type here.
+   *
+   * Of course, the data type here is also not important.
+   */
 
-    // Step 2. Get compilation result of the graph
-    auto target = details::PlaceToCinnTarget(place);
-    const auto& cinn_compiled_object =
-        CinnCompiler::GetInstance()->Compile(graph, input_tensors, target);
-    VLOG(2) << "CinnLaunchOp compile graph done on " << place;
-
-    const auto& cinn_runtime_program = cinn_compiled_object.runtime_program;
-    const auto& compiled_scope = *(cinn_compiled_object.scope.get());
-    const auto& paddle2cinn_varmap = cinn_compiled_object.paddle2cinn_varmap;
-
-    // Step 3. Initialize all variables of the compilation runtime program
-    //         in paddle, and pack them into execution arguments
-    VLOG(2) << "CinnLaunchOp prepare execution arguments";
-    std::map<std::string, cinn_pod_value_t> name2argument;
-    std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers;
-    // prepare input variables
-    Name2CinnTensor input_compiled_tensors = details::GetCompiledTensors(
-        Inputs(kX), compiled_scope, paddle2cinn_varmap);
-    details::CheckTensorEquivalent(input_tensors, input_compiled_tensors);
-    details::AppendExecutionArguments(scope, Inputs(kX), paddle2cinn_varmap,
-                                      &name2argument, &hold_buffers);
-
-    // prepare output variables
-    Name2CinnTensor output_compiled_tensors = details::GetCompiledTensors(
-        Outputs(kOutputs), compiled_scope, paddle2cinn_varmap);
-    details::InitializeOutputVar(scope, place, output_compiled_tensors);
-    Name2ConstTensor output_tensors =
-        details::GetConstTensors(scope, Outputs(kOutputs));
-    details::CheckTensorEquivalent(output_tensors, output_compiled_tensors);
-    details::AppendExecutionArguments(scope, Outputs(kOutputs),
-                                      paddle2cinn_varmap, &name2argument,
-                                      &hold_buffers);
-
-    // prepare temporary variables
-    auto temp_variable_names = details::SeperateTempVar(
-        compiled_scope, paddle2cinn_varmap, Inputs(kX), Outputs(kOutputs));
-    auto temp_scope = scope.NewTmpScope();
-    if (!temp_variable_names.empty()) {
-      details::InitializeTempVar(temp_variable_names, compiled_scope, place,
-                                 temp_scope.get());
-      details::AppendExecutionArguments(*temp_scope, temp_variable_names,
-                                        paddle2cinn_varmap, &name2argument,
-                                        &hold_buffers);
-    }
-
-    // Step 4. Launch CINN to execute the compilation runtime program
-    cinn_runtime_program->Execute(&name2argument);
-    VLOG(2) << "CinnLaunchOp launch runtime_program execution done.";
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -160,4 +95,13 @@ It accomplishs the computation of graph following several steps:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(cinn_launch, ops::CinnLaunchOp, ops::CinnLaunchOpMaker);
+
+REGISTER_OPERATOR(
+    cinn_launch, ops::CinnLaunchOp, ops::CinnLaunchOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+/* see [Why use single type kernel] */
+REGISTER_OP_CPU_KERNEL(
+    cinn_launch,
+    ops::CinnLaunchOpKernel<paddle::platform::CPUDeviceContext, float>);

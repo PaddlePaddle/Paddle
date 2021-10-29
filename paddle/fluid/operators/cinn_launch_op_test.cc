@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
 
-USE_NO_KERNEL_OP(cinn_launch);
+USE_OP(cinn_launch);
 USE_OP(elementwise_add);
 
 namespace paddle {
@@ -166,6 +166,9 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
   // create an new elementwise_add op
   // because the above one cached the cpu kernel
   LOG(INFO) << "Check compute result on gpu";
+  cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
+      "cinn_launch", {{"X", {"test_x", "test_y"}}}, {{"Out", {test_out_name}}},
+      {{"compilation_key", compilation_key}});
   elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
       "elementwise_add", {{"X", {"test_x"}}, {"Y", {"test_y"}}},
       {{"Out", {expected_out_name}}}, {{}});
