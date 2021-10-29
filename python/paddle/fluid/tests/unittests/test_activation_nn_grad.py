@@ -168,22 +168,6 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 class TestRReluDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [2, 4, 4, 4]
-        eps = 1e-6
-        alpha = 0.2
-        dtype = np.float64
-        SEED = 0
-
-        x = layers.data('x', shape, False, dtype)
-        x.persistable = True
-
-        y = F.celu(x, alpha=alpha)
-        np.random.RandomState(SEED)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
-
-    def func(self, place):
         shape = [2, 3, 7, 9]
         eps = 0.005
         dtype = np.float64

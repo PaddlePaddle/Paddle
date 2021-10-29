@@ -12,26 +12,24 @@ limitations under the License. */
 
 #pragma once
 #include <glog/logging.h>
-
 #include <algorithm>
-#include <cmath>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+#include <cmath>
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
 
 #include <type_traits>
-
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/uniform_random_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -1183,9 +1181,9 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) =
-        dout * ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
-                   .template cast<T>();
+    dx.device(d) = dout *
+                   ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
+                       .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1217,8 +1215,9 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) =
-        dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
-                   .template cast<T>();
+        dout *
+        ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
+            .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -1832,10 +1831,11 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
           GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
-      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
-                                static_cast<T>(alpha) *
-                                    (x <= static_cast<T>(0)).template cast<T>())
-                                   .template cast<T>();
+      ddout.device(*d) =
+          ddx *
+          ((x > static_cast<T>(0)).template cast<T>() +
+           static_cast<T>(alpha) * (x <= static_cast<T>(0)).template cast<T>())
+              .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1869,10 +1869,11 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ELUGradGrad"));
-      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
-                                static_cast<T>(alpha) * x.exp() *
-                                    (x <= static_cast<T>(0)).template cast<T>())
-                                   .template cast<T>();
+      ddout.device(*d) = ddx *
+                         ((x > static_cast<T>(0)).template cast<T>() +
+                          static_cast<T>(alpha) * x.exp() *
+                              (x <= static_cast<T>(0)).template cast<T>())
+                             .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1907,10 +1908,11 @@ struct CELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "CELUGradGrad"));
-      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
-                                (x / static_cast<T>(alpha)).exp() *
-                                    (x <= static_cast<T>(0)).template cast<T>())
-                                   .template cast<T>();
+      ddout.device(*d) = ddx *
+                         ((x > static_cast<T>(0)).template cast<T>() +
+                          (x / static_cast<T>(alpha)).exp() *
+                              (x <= static_cast<T>(0)).template cast<T>())
+                             .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -2193,7 +2195,7 @@ class RReluDoubleGradKernel : public framework::OpKernel<T> {
 
     std::uniform_real_distribution<T> dist(static_cast<T>(lower),
                                            static_cast<T>(upper));
-    auto engine = paddle::framework::GetCPURandomEngine(static_cast<unsigned int>(seed));
+    auto engine = paddle::framework::GetCPURandomEngine(static_cast<int>(seed));
     auto alpha = dist(*engine);
 
     if (ddOut) {
