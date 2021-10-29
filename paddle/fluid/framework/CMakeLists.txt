@@ -303,7 +303,7 @@ if(WITH_DISTRIBUTE)
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
-            graph_to_program_pass variab_e_helper timer monitor heter_service_proto fleet heter_server)
+            graph_to_program_pass variable_helper timer monitor heter_service_proto fleet heter_server)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
         set(DISTRIBUTE_COMPILE_FLAGS
