@@ -2315,6 +2315,79 @@ def solve(x, y, name=None):
     return out
 
 
+def triangular_solve(x,
+                     y,
+                     upper=True,
+                     transpose=False,
+                     unitriangular=False,
+                     name=None):
+    r"""
+    Computes the solution of a system of equations with a triangular coefficient matrix `x` and
+    multiple right-hand sides `y` .
+
+    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
+    is also batches.
+
+    Args:
+        x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is 
+            zero or more batch dimensions. Its data type should be float32 or float64.
+        upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular 
+            system of equations. Default: True.
+        transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
+        unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed 
+            to be 1 and not referenced from `x` . Default: False.
+        name(str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The solution of the system of equations. Its data type should be the same as that of `x`.
+
+    Examples:
+    .. code-block:: python
+
+        # a square system of linear equations:
+        # x1 +   x2  +   x3 = 0
+        #      2*x2  +   x3 = -9
+        #               -x3 = 5
+
+        import paddle
+        import numpy as np
+
+        x = paddle.to_tensor([[1, 1, 1], 
+                              [0, 2, 1],
+                              [0, 0,-1]], dtype="float64")
+        y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+        out = paddle.linalg.triangular_solve(x, y, upper=True)
+
+        print(out)
+        # [7, -2, -5]
+    """
+    if in_dygraph_mode():
+        return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
+                                       transpose, 'unitriangular',
+                                       unitriangular)
+
+    inputs = {"X": [x], "Y": [y]}
+    helper = LayerHelper("triangular_solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'triangular_solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'triangular_solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='triangular_solve',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={
+            'upper': upper,
+            'transpose': transpose,
+            'unitriangular': unitriangular
+        })
+    return out
+
+
 def eigvalsh(x, UPLO='L', name=None):
     """
     Computes the eigenvalues of a 
