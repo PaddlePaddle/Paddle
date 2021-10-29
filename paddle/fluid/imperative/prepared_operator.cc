@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
@@ -245,12 +246,12 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
-static pten::KernelContext BuildDygraphPtenKernelContext(
+static void BuildDygraphPtenKernelContext(
     const framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::DeviceContext& dev_ctx) {
+    platform::DeviceContext* dev_ctx, pten::KernelContext* kernel_ctx) {
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
@@ -258,7 +259,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  pten::KernelContext op_kernel_ctx(dev_ctx);
+  kernel_ctx->SetDeviceContext(dev_ctx);
 
   auto& input_names = std::get<0>(pt_kernel_signature.args);
   auto& attr_names = std::get<1>(pt_kernel_signature.args);
@@ -290,7 +291,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
     if (ins_vector.size() == 1UL) {
-      op_kernel_ctx.EmplaceBackInput(experimental::MakePtenTensorBaseFromVar(
+      kernel_ctx->EmplaceBackInput(experimental::MakePtenTensorBaseFromVar(
           ins_vector[0]->Var(), in_def));
     } else {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
@@ -299,7 +300,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
         tmp_inputs.emplace_back(
             experimental::MakePtenTensorBaseFromVar(variable, in_def));
       }
-      op_kernel_ctx.EmplaceBackInputs(std::move(tmp_inputs));
+      kernel_ctx->EmplaceBackInputs(std::move(tmp_inputs));
     }
   }
 
@@ -307,7 +308,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
     if (outs_vector.size() == 1UL) {
-      op_kernel_ctx.EmplaceBackOutput(experimental::MakePtenTensorBaseFromVar(
+      kernel_ctx->EmplaceBackOutput(experimental::MakePtenTensorBaseFromVar(
           outs_vector[0]->MutableVar(), out_def));
     } else {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
@@ -316,7 +317,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
         tmp_outputs.emplace_back(
             experimental::MakePtenTensorBaseFromVar(variable, out_def));
       }
-      op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
+      kernel_ctx->EmplaceBackOutputs(std::move(tmp_outputs));
     }
   }
 
@@ -327,7 +328,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-        op_kernel_ctx.EmplaceBackAttr(
+        kernel_ctx->EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -338,11 +339,11 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     } else {
       // TODO(chenweihang): support other attrs later
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
-        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
-        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
-        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
@@ -351,8 +352,6 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
       }
     }
   }
-
-  return op_kernel_ctx;
 }
 
 template <typename VarType>
@@ -422,11 +421,14 @@ static void PreparedOpRunPtImpl(
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  auto op_kernel_ctx = BuildDygraphPtenKernelContext<VarType>(
-      pt_kernel_signature, pt_kernel, ins, outs, attrs, default_attrs,
-      *dev_ctx);
+  auto* kernel_ctx = GetCurrentTracer()->GetCurrentKernelContext();
+  BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
+                                         outs, attrs, default_attrs, dev_ctx,
+                                         kernel_ctx);
 
-  pt_kernel(&op_kernel_ctx);
+  pt_kernel(kernel_ctx);
+
+  kernel_ctx->Clear();
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later

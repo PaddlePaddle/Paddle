@@ -40,16 +40,14 @@ using DataLayout = paddle::experimental::DataLayout;
  */
 class KernelContext {
  public:
-  explicit KernelContext(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
-  KernelContext(const DeviceContext& dev_ctx,
-                const paddle::SmallVector<std::shared_ptr<TensorBase>>& inputs,
-                const paddle::SmallVector<std::shared_ptr<TensorBase>>& outputs,
-                const paddle::SmallVector<paddle::any>& attrs)
-      : dev_ctx_(dev_ctx), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
+  KernelContext() = default;
+  explicit KernelContext(DeviceContext* dev_ctx) : dev_ctx_(dev_ctx) {}
+
+  void SetDeviceContext(DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
   template <typename CtxType>
   const CtxType& GetDeviceContext() const {
-    return static_cast<const CtxType&>(dev_ctx_);
+    return static_cast<const CtxType&>(*dev_ctx_);
   }
 
   void EmplaceBackInput(std::shared_ptr<TensorBase> input) {
@@ -139,12 +137,20 @@ class KernelContext {
     }
   }
 
+  void Clear() {
+    inputs_.clear();
+    outputs_.clear();
+    attrs_.clear();
+    input_range_.clear();
+    output_range_.clear();
+  }
+
  private:
   bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
 
  private:
   // DeviceContext base class
-  const DeviceContext& dev_ctx_;
+  DeviceContext* dev_ctx_;
 
   // TODO(chenweihang): Tensor -> Tensor*, Tensor should by managed `scope`
   // Note: can't use API Tensor here, the inference don't use this API Tensor
@@ -155,11 +161,6 @@ class KernelContext {
   // Only contains input like list[Tensor] need `range`
   paddle::SmallVector<std::pair<int, int>> input_range_;
   paddle::SmallVector<std::pair<int, int>> output_range_;
-
-  // Only static graph need `name`
-  // TODO(chenweihang): replaced by paddle::string_view
-  paddle::SmallVector<std::string> input_names_;
-  paddle::SmallVector<std::string> output_names_;
 };
 
 }  // namespace pten

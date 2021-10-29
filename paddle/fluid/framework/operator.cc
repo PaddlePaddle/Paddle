@@ -1178,7 +1178,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
     if (run_pten_kernel_) {
-      auto op_kernel_ctx = BuildPtenKernelContext(*runtime_ctx, *dev_ctx);
+      auto op_kernel_ctx = BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
     } else {
       (*kernel_func_)(
@@ -1772,7 +1772,7 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
 }
 
 pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
-    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
+    const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const {
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor

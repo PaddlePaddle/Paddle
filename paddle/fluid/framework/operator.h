@@ -587,7 +587,7 @@ class OperatorWithKernel : public OperatorBase {
   void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
   pten::KernelContext BuildPtenKernelContext(
-      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
+      const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

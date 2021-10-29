@@ -28,6 +28,7 @@
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/api/include/core.h"
 
 namespace paddle {
 namespace imperative {
@@ -118,6 +119,8 @@ class Tracer {
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
 
+  pten::KernelContext* GetCurrentKernelContext() { return &kernel_contex_; }
+
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
@@ -127,6 +130,9 @@ class Tracer {
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
   AmpLevel amp_level_{AmpLevel::O0};
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  pten::KernelContext kernel_contex_;
 };
 
 // To access static variable current_tracer
