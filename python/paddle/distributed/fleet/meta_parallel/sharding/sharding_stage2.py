@@ -11,27 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-A nn.Module wrapper to go with a Sharded Optimizer in order to handle targeted gradient
-reduction automatically.
-"""
+
 import os
-from collections import deque
 import contextlib
-import functools
-from itertools import chain
 import logging
 import time
+import functools
+from itertools import chain
+from functools import reduce
+from collections import deque
 
 import paddle
 from paddle import nn
-# from torch.autograd import Variable
-# import torch.autograd.profiler as profiler
 import paddle.distributed as dist
 
-from .bucket import GradBucket
-from .oss import OSS
-from .sharding_utils import Workhandle, GpuInfo
+from .sharding_optimizer import ShardingOptimizer
+from .internal_storage import GradStorage
+from .sharding_utils import Taskflow, GpuInfo, Type
 
 
 def _trainable(param):
@@ -41,10 +37,9 @@ def _trainable(param):
 class ShardingStage2(nn.Layer):
     """ 
     A wrapper for Sharding Stage2 Layer in Dygraph. 
-
     .. warning: ShardingStage2 encapsulates the layer strategy and integrates it into the nn.Layer.
-
-    .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf
+    .. this file is inspired by: https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/data_parallel/sharded_ddp.py.
+    .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
 
     # TODO (Baibaifan) 
@@ -60,498 +55,405 @@ class ShardingStage2(nn.Layer):
             layer,
             sharding_optimizer,
             group,
-            broadcast_buffers=False,
+            sync_buffers=False,
             pertrain_sync_models=True,
-            grad_buffer_size=2**24,  #8MB 16MB
+            buffer_max_size=2**24,  #16MB param/ranks
             auto_refresh_trainable=True,
             device="gpu",
-            reduce_fp16=False):
+            post_hook=False):
         super().__init__()
 
-        # This field needs to be exposed to insure interface parity with DDP
-        self.layer = layer
-
-        self._sharded_optimizers = [sharded_optimizer] if not isinstance(
-            sharded_optimizer, list) else sharded_optimizer
-        self._enable_broadcast_buffers = broadcast_buffers
+        # training options
+        self._layer = layer
+        self._sharding_optimizers = [sharding_optimizer] if not isinstance(
+            sharding_optimizer, list) else sharding_optimizer
+        self._sync_buffers = sync_buffers
         self._auto_refresh_trainable = auto_refresh_trainable
-        # maybe have errors in paddle
-        self._reduce_fp16 = reduce_fp16
-        if reduce_buffer_size > 0 and reduce_fp16:
-            self._reduce_fp16 = False
-            logging.warning(
-                "fp16 gradient reduction is not compatible with reduction buffers, which are requested. fp16 grad reduction is deactivated."
-            )
+        self._post_hook = post_hook
 
-        # Handle a no_sync() context which prevents the gradient synchronization,
-        # accumulate in place
-        self._should_accumulate_grads = False
-        self._accumulate_grads_flipped = False
+        # Gradient accumulation, Gradient flip
+        self._accumulate_grads = True if self._sharding_optimizers[
+            0].accumulation_steps is not None else False
+        self._grads_flipped = True if self._sharding_optimizers[
+            0].accumulation_steps is not None else False
 
         # Communication related attributes
-        assert process_group is not None, "Distributed communication group is must be gived"
-        self._process_group = process_group
-        # self._backend = process_group.backend
-        self._world_size_scaling = 1.0 / self._process_group.nranks  # > 0
-        self._rank = process_group.rank
-        dev_id = self._rank
+        assert group is not None, "Distributed communication group is must be gived"
+        self._group = group
+        self._world_size_scaling = 1.0 / self._group.nranks
+        assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
+        self._rank = self._group.rank
         self._global_root_rank = 0  # picking rank 0 as the reference
-        self._local_to_global_rank = self._process_group.ranks
-        self._default_device = use_device
+        self._global_ranks = self._group.ranks
+        self._default_device = device
 
-        # Scafolding to be able to reduce the grads during the BW pass
-        # several optimizers can be present each working on seperate parameter set which is spread across multiple ranks
-
-        # - we build an iterator which goes through all the parameters involved globally
+        # Global statistical parameters
         self._all_params = list(
-            chain(* [
-                sum([sum(p, []) for p in optim.per_device_params.values()], [])
-                for optim in self._sharded_optimizers
-            ]))
+            chain(
+                * [optim.local_params for optim in self._sharding_optimizers]))
         self._trainable_params = []
-        self._grad_to_be_reduced = []
-        self._trainable_param_to_rank = {}
-        self._reference_trainable_mask = list(map(_trainable, self._all_params))
+        self._grad_reduced = []
+        self._trainable_param2rank = {}
+        self._trainable_mask = list(map(_trainable, self._all_params))
 
-        # - setup buckets and tensor views
-        model_size = sum([p.numel() for p in self.layer.parameters()]).item()
-        self._buffer_max_size = min(reduce_buffer_size, model_size)
+        # Set grad storage size
+        self._buffer_max_size = buffer_max_size
+        self._use_grad_storage = self._buffer_max_size > 0
+        self._grad_storages = {}  # {dtype: {rank: GradStorage}}
+        self._has_grad_storage = []
+        self._grad_storage_list = []
+        model_size = sum([p.numel() for p in self._layer.parameters()]).item()
+        if Type.fp16.value == self._all_params[0].dtype:
+            print(
+                "GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters".
+                format(self._buffer_max_size / 2**20, model_size / 2**19))
+        elif Type.fp32.value == self._all_params[0].dtype:
+            print(
+                "GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters".
+                format(self._buffer_max_size / 2**20, model_size / 2**18))
 
-        assert self._process_group.nranks > 1, "Training is not really distributed, single rank. Deactivating buckets"
+        # Set backward pass hooks
+        self._bw_hooks = []
 
-        logging.info(
-            "ShardedDDP bucket size: {:.2f}M parameters, model size {:.2f}M parameters".
-            format(self._buffer_max_size / 2**20, model_size / 2**20))
-        self._use_buckets = self._buffer_max_size > 0
-
-        self._buckets = {}  # {device: {rank: GradBucket}}
-        self._should_bucket_grad = []
-        self._bucket_list = []
-
-        # - setup backward hooks which will be called by Paddle's autograd in due time
-        self._grad_accs = []
-        self._grad_hooks = []
-        self._manual_reduce = []
-
-        # passing a handle to torch.nn.SyncBatchNorm layer(paddle undetermined)
-        # self._passing_sync_batchnorm_handle(self.layer)
-
-        # Make sure that all ranks start with the same model
-        if sync_models_at_startup:
+        # Synchronous all ranks models
+        if pertrain_sync_models:
             self._sync_params_and_buffers()
 
-        self._work_handles = deque()
-        self._bucket_flush_callback_set = False
+        # Set tasks flow
+        self._tasks_flow = deque()
 
     def forward(self, *inputs, **kwargs):
         """
-        Module forward pass, handles any DDP-specific work in the background. Primes the
-        backward pass for gradient reduction to the proper ranks.
+        A wrapper for Sharding Stage2 layer.
+        - Fresh trainable params or rebuild grad storage
+        - Sync layer's buffer params
+        - Clear all flags states
+        - Forward for origin layers
         """
 
-        # Deferred initialization, or change detection
-        needs_setup = len(self._grad_hooks) == 0 and self.training
+        # Whether to need to reset trainable parameters
+        needs_fresh = len(self._bw_hooks) == 0 and self.training
 
         if self._auto_refresh_trainable:
-            needs_setup |= self._detect_train_change()
+            needs_fresh |= self._detect_train_change()
 
-        if needs_setup:
-            self.refresh_trainable()
-        else:
-            self.build_bucket_buffer()
+        # Front hook
+        if not self._post_hook:
+            self._init_internal_storage(needs_fresh)
 
-        if self._enable_broadcast_buffers:
-            # NCCL communications are on a different stream, needs to be blocking
-            # for the subsequent FW to be correct
-            self.sync_buffers(blocking=True)
-
-        # Reset all the grad reduce and bucket state flags
-        self._clear_counters()
+        # Sync layer's buffers state
+        if self._sync_buffers:
+            self.sync_buffers()
 
         # Normal FW on the base model
-        return self.layer(*inputs, **kwargs)
+        fw = self._layer(*inputs, **kwargs)
 
-    def to(self, device, dtype=None, blocking=True):
+        # Post hook
+        if self._post_hook:
+            self._init_internal_storage(needs_fresh)
+
+        return fw
+
+    def _init_internal_storage(self, needs_fresh):
         """
-        Moves and/or casts the parameters and buffers.
+        Judge Fresh trainable params or rebuild grad storage.
+        """
+        if needs_fresh:
+            self.fresh_trainable()
+        else:
+            self.build_grad_storages()
 
-        Its signature is similar to :meth:`torch.Tensor.to`, but only accepts
-        floating point desired :attr:`dtype` s. In addition, this method will
-        only cast the floating point parameters and buffers to :attr:`dtype`
-        (if given). The integral parameters and buffers will be moved
-        :attr:`device`, if that is given, but with dtypes unchanged. When
-        :attr:`non_blocking` is set, it tries to convert/move asynchronously
-        with respect to the host if possible, e.g., moving CPU Tensors with
-        pinned memory to CUDA devices.
+        # Clear all flags state 
+        self._clear_counters()
 
-        .. note::
-            This method modifies the module in-place.
-
-        .. warning:
-            Device changes are not supported, and this will raise an exception. The issue in that case is not
-            really ShardedDDP, but OSS which will not be aware of the device change, and whose buffers will be
-            in a broken state.
-
-        Arguments:
-            device (:class:`paddle.device`): the desired device of the parameters and buffers in this module.
-            dtype (:class:`paddle.dtype`): the desired floating point type of the floating point parameters and buffers.
-            blocking (bool): make it a synchronous call.
-
-        Returns:
-            Module: self.
+    def to(self, device=None, dtype=None, blocking=True):
+        """
+        Synchronously or asynchronously convert the data type of the layer, the device is not supported now.
         """
 
         assert isinstance(device, str), "Device must be type str"
-        assert (
-            device is None or len(self._buckets.keys()) == 0 or
-            device in self._buckets.keys()
-        ), "Changing devices is not supported, because this would break OSSs state"
+        assert device == self._default_device, "New devices are not supported, because of the optimizer state is not sync"
 
-        assert (
-            len(self._buckets.keys()) < 2
-        ), "Several devices specified to begin with, incompatible with setting a single device here"
-
-        self.layer.to(device=device, dtype=dtype, blocking=blocking)
+        self._layer.to(device=device, dtype=dtype, blocking=blocking)
 
         # Re-build the buckets, hooks, etc..
-        self.refresh_trainable()
+        self.fresh_trainable()
 
-    def refresh_trainable(self):
-        """ If the module trainability has changed, update all the assumptions """
+    def fresh_trainable(self):
+        """ Whether to update training parameters """
 
         # Make sure that this is not done while gradients are waiting to be reduced (if no_sync context for instance)
-        if functools.reduce(lambda x, y: x or y, self._grad_to_be_reduced,
-                            False):
-            logging.warning(
-                "Grads waiting to be reduced. If this is on purpose (grad accumulation), please use a no_sync() context"
-            )
+        if reduce(lambda x, y: x or y, self._grad_reduced, False):
+            logging.warning("Grads waiting to be reduced.")
 
         self._trainable_params = list(
             filter(lambda x: x.trainable, self._all_params))
         self._trainable_params.sort(key=lambda x: x.numel())
 
-        self._trainable_param_to_rank = {}
-        for optim in self._sharded_optimizers:
-            # OSS may need to change the communication pattern
-            if len(optim.buckets.keys()) == 0:
-                optim.refresh_trainable()
+        self._trainable_param2rank = {}
+        for optim in self._sharding_optimizers:
+            # Need to be wrappered for Sharding Stage2 Optimizer
+            if len(optim.param_storages.keys()) == 0:
+                optim.update_opt_status()
 
-            # Update ShardedDDP given the new partitions
-            for (device_per_rank_params) in optim._per_device_params.values(
-            ):  # all the params on this device (inc all ranks)
-                for device_params in device_per_rank_params:
-                    for param in filter(lambda x: x.trainable, device_params):
-                        self._trainable_param_to_rank[
-                            param] = optim.param_to_rank[param]
+            # Get the parameters split by the optimizer according to rank
+            for per_rank_params in optim.dtype_rank_params.values(
+            ):  # all the params from all ranks
+                for params in per_rank_params:
+                    for param in filter(lambda x: x.trainable, params):
+                        self._trainable_param2rank[param] = optim.param2rank[
+                            param]
 
-            self._setup_bucket_strategy()
-            self._setup_backward_hooks()
+        self._setup_use_grad_storage()
+        self._setup_backward_hooks()
 
     @paddle.no_grad()
-    def sync_buffers(self, blocking=False):
+    def sync_buffers(self):
         """
-        Sync all the param buffers in between ranks (including for instance batch norm statistics).
-
-        Arguments:
-            blocking (bool): wait for the operation to conclude.
+        Sync all the param buffers from all ranks (exp: batch norm statistics).
         """
 
-        work_handles = []
-
-        for buffer in self.layer.buffers(include_sublayers=True):
-            work_handles.append(
-                dist.broadcast(
-                    buffer,
-                    self._global_root_rank,
-                    self._process_group,
-                    use_calc_stream=True))
-
-        if blocking:
-            dist.wait(
-                tensor=buffer, group=self._process_group, use_calc_stream=True)
-
-    def zero_grad(self, set_to_none=False):
-        r"""Sets gradients of all model parameters to zero. See similar function
-        under :class:`torch.optim.Optimizer` for more context.
-
-        Arguments:
-            set_to_none (bool): instead of setting to zero, set the grads to None.
-                See :meth:`torch.optim.Optimizer.zero_grad` for details.
-        """
-
-        for index, trainable_param in enumerate(self._trainable_params):
-            if set_to_none and (len(self._should_bucket_grad) == 0 or
-                                not self._should_bucket_grad[index]):
-                trainable_param._clear_gradient()
-            elif trainable_param.grad is not None:
-                trainable_param.grad.zero_()
-
-        for bucket in self._bucket_list:
-            bucket.zero()
+        for buffer in self._layer.buffers(include_sublayers=True):
+            dist.broadcast(
+                buffer,
+                self._global_root_rank,
+                self._group,
+                use_calc_stream=True)
+        dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
     def __getattr__(self, name):
-        """Forward missing attributes to wrapped module."""
+        """Forward missing attributes to wrapped layer."""
         try:
-            return super().__getattr__(name)  # defer to nn.Module's logic
+            return super().__getattr__(name)
         except AttributeError:
-            return getattr(self.layer, name)
-
-    @contextlib.contextmanager
-    def no_sync(self):
-        """A context manager to disable gradient synchronization."""
-        old_should_accumulate_grads = self._should_accumulate_grads
-        self._should_accumulate_grads = True
-        yield
-        self._accumulate_grads_flipped = self._should_accumulate_grads != old_should_accumulate_grads
-        self._should_accumulate_grads = old_should_accumulate_grads
+            return getattr(self._layer, name)
 
     @paddle.no_grad()
     def _clear_counters(self):
         """Reset all the grad reduce and call counters"""
         if self.training:
-            self._grad_to_be_reduced = [True for _ in self._trainable_params]
-        self._bucket_flush_callback_set = False
+            self._grad_reduced = [True for _ in self._trainable_params]
 
-        if self._use_buckets:
-            for bucket in self._bucket_list:
-                bucket.reset_checked_in()
+        if self._use_grad_storage:
+            for grad_storage in self._grad_storage_list:
+                grad_storage.reset_checked_in()
 
-        if not self._should_accumulate_grads:
-            self._accumulate_grads_flipped = False
+        if not self._accumulate_grads:
+            self._grads_flipped = False
 
     def _get_reduce_fn(self, index, param, dst_rank):
         """
-        Two possible backward hooks for a given parameter: either directly reduce to the appropriate rank,
-        or contribute to a bucket and reduce when the bucket is full.
-
-        Either way a delayed action is necessary and is passed as a callback.
+        There are two ways to reduce gradient.
+        - 1. Do not use use_grad_storage or exceeded buffer_max_size will be reduced separately.
+        - 2. Use grad_storage Reduce the storage to get the full gradient from different ranks.
         """
 
-        if not self._use_buckets or not self._should_bucket_grad[index]:
+        if not self._use_grad_storage or not self._grad_reduced[index]:
             # Direct reduction
             @paddle.no_grad()
             def reduce(*_):
-                # Skip gradient reduction, do not alter status flags
-                if not self._should_accumulate_grads and self._grad_to_be_reduced[
-                        index]:
-                    assert param.grad is not None, "Reducing gradients during backward pass, cannot be None"
+                # Skip gradient reduction, do not change status information
+                if not self._accumulate_grads and self._grad_reduced[index]:
+                    assert param.grad is not None, "Parameter gradient cannot be None"
 
-                    # maybe have errors in paddle
-                    # if not self._bucket_flush_callback_set:
-                    #     Variable._execution_engine.queue_callback(self._flush_reduce_calls)
-                    #     self._bucket_flush_callback_set = True
-
-                    # Make sure that this is not fired twice
-                    self._grad_to_be_reduced[index] = False
+                    # Change reduce information
+                    self._grad_reduced[index] = False
                     paddle.multiply(param.grad,
                                     paddle.to_tensor(
                                         [self._world_size_scaling]))
 
-                    # maybe have errors in paddle
-                    if self._reduce_fp16:
-                        paddle.cast(param.grad, paddle.float16)
-
-                    # Future work includes clearing up the buffer if possible
+                    # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
                         if dst_rank != self._rank:
                             param._clear_gradient()
-                        else:
-                            assert param.grad is not None
-                            paddle.cast(param.grad, param.dtype)
 
-                    # Async reduce for this buffer, log the future
-                    self._work_handles.append(
-                        Workhandle(
-                            handle=dist.reduce(
+                    # Synchronize the reduce parameter gradient
+                    self._tasks_flow.append(
+                        Taskflow(
+                            task=dist.reduce(
                                 tensor=param.grad,
                                 dst=dst_rank,
-                                group=self._process_group,
+                                group=self._group,
                                 use_calc_stream=True),
                             callback=cleanup))
                     dist.wait(
                         tensor=param.grad,
-                        group=self._process_group,
+                        group=self._group,
                         use_calc_stream=True)
 
-                    # Opportunistically try to empty the queue, free memory
-                    # maybe have errors async in paddle
-                    self._try_consume_work_handle()
-
+                    # Clear the task flow and trigger callback to clear the redundant gradient
+                    self._clear_task_flow()
         else:
-
+            # Buffer reduction
             @paddle.no_grad()
             def reduce(*_):
-                # Skip gradient reduction, do not alter status flags
+                # Skip gradient reduction, do not change status information
+                if not self._accumulate_grads and self._grad_reduced[index]:
+                    assert param.grad is not None, "Parameter gradient cannot be None"
 
-                if not self._should_accumulate_grads and self._grad_to_be_reduced[
-                        index]:
-                    assert param.grad is not None, "Reducing gradients during backward pass, cannot be None"
+                    # Change reduce information
+                    self._grad_reduced[index] = False
+                    grad_storage = self._grad_storages[param.dtype][dst_rank]
+                    grad_storage.params_checked_in += 1
 
-                    # Make sure that this is not fired twice
-                    self._grad_to_be_reduced[index] = False
-                    bucket = self._buckets[self._default_device][dst_rank]
-                    bucket.params_checked_in += 1
+                    if grad_storage.all_checked_in:
+                        assert grad_storage.buffer is not None
 
-                    if bucket.all_checked_in:
-                        assert bucket.buffer is not None
-
-                        # Normalize the bucket in one go
-                        paddle.multiply(bucket.buffer,
+                        # Normalize all ranks grad_storage
+                        paddle.multiply(grad_storage.buffer,
                                         paddle.to_tensor(
                                             [self._world_size_scaling]))
 
-                        # Future work includes clearing up the buffer if possible
+                        # Clearing up the grad_storage buffer
                         def cleanup():
                             if dst_rank != self._rank:
-                                for p in bucket._params:
+                                for p in grad_storage._params:
                                     p._clear_gradient()
-                                    print("bbbbbbbbbb", p.grad)
-                                print("ddddddddddddd")
-                                time.sleep(10)
-                                print(bucket.buffer.use_count())
-                                bucket.buffer.value().get_tensor()._clear()
-                                print(bucket.buffer.use_count())
-                                # bucket.buffer = None
-                                print("ssssssssssssss")
-                                time.sleep(10)
+                                grad_storage.buffer.value().get_tensor()._clear(
+                                )
 
                         # Reduce the bucket
-                        bucket.sent = True
-                        self._work_handles.append(
-                            Workhandle(
-                                handle=dist.reduce(
-                                    tensor=bucket.buffer,
-                                    dst=bucket.destination,
-                                    group=self._process_group,
+                        grad_storage.sent = True
+                        self._tasks_flow.append(
+                            Taskflow(
+                                task=dist.reduce(
+                                    tensor=grad_storage.buffer,
+                                    dst=grad_storage.destination,
+                                    group=self._group,
                                     use_calc_stream=True),
                                 callback=cleanup))
                         dist.wait(
-                            tensor=bucket.buffer,
-                            group=self._process_group,
+                            tensor=grad_storage.buffer,
+                            group=self._group,
                             use_calc_stream=True)
 
-                    # Opportunistically try to empty the queue
-                    self._try_consume_work_handle()
+                    # Clear the task flow and trigger callback to clear the redundant gradient
+                    self._clear_task_flow()
 
         return reduce
 
     def _setup_backward_hooks(self):
         """
-        Attach a reduce function to each grad-requiring parameter.
-        This makes the gradient reduction automatic whenever there's a backward pass
+        Set the backward hook to synchronize the gradients of all rank by reduce group ranks.
         """
 
-        # Detach possible pre-existing hooks
-        while len(self._grad_hooks) > 0:
-            self._grad_hooks.pop().remove()
+        # Remove previous backward hooks
+        while len(self._bw_hooks) > 0:
+            self._bw_hooks.pop().remove()
 
         # Go through the parameters, attach the hook
         self._grad_accs = []
-        self._manual_reduce = []
         if not self.training:
             return
 
         for index, param in enumerate(self._trainable_params):
-            dst_rank = self._trainable_param_to_rank[param]
+            dst_rank = self._trainable_param2rank[param]
 
             reduce_function = self._get_reduce_fn(index, param, dst_rank)
 
-            self._grad_hooks.append(
+            self._bw_hooks.append(
                 param._register_backward_hook(reduce_function))
-            self._manual_reduce.append(reduce_function)
 
     @paddle.no_grad()
     def _sync_params_and_buffers(self):
         """
-        Sync the complete model states in between the ranks
+        Sync all model states for all ranks
         """
 
-        work_handles = []
+        for t in self._layer.state_dict().values():
+            dist.broadcast(
+                t,
+                src=self._global_root_rank,
+                group=self._group,
+                use_calc_stream=True)
+            dist.wait(tensor=t, group=self._group, use_calc_stream=True)
 
-        for t in self.layer.state_dict().values():
-            work_handles.append(
-                dist.broadcast(
-                    t,
-                    src=self._global_root_rank,
-                    group=self._process_group,
-                    use_calc_stream=True))
-            dist.wait(tensor=t, group=self._process_group, use_calc_stream=True)
-
-    def _setup_bucket_strategy(self):
-        """Devise a bucketing strategy on a per-rank ownership level.
-        These buckets will not be sharded, since the gradients would be re-allocated during the backward in that case.
-        This method can be a slow for big models, but it it not typically called often (not for every forward for instance)
+    def _setup_use_grad_storage(self):
+        """
+        Integrate the parameters gradient into a continuous memory according to rank, and support the update of training parameters.
         """
 
-        if not self._use_buckets:
+        if not self._use_grad_storage:
             return
 
-        # Devise the bucketing strategy. Parameters are already sorted, in that:
-        # - these are only the trainable parameters, so they should produce grads
-        # - they are sorted by increasing size
-        self._buckets = {}
-        self._should_bucket_grad = [False for _ in self._trainable_params]
+        # According to parameters's numel sort, allocate memory of parameter gradient to continuous memory according to rank
+        self._grad_storages = {}
+        self._grad_reduced = [False for _ in self._trainable_params]
 
-        for i, param in enumerate(self._trainable_params):
-            dst_rank = self._trainable_param_to_rank[param]
+        for index, param in enumerate(self._trainable_params):
+            dst_rank = self._trainable_param2rank[param]
 
-            if self._default_device not in self._buckets.keys():
-                self._buckets[self._default_device] = {}
+            if param.dtype not in self._grad_storages.keys():
+                self._grad_storages[param.dtype] = {}
 
-            if dst_rank not in self._buckets[self._default_device].keys():
-                self._buckets[self._default_device][dst_rank] = GradBucket(
+            if dst_rank not in self._grad_storages[param.dtype].keys():
+                self._grad_storages[param.dtype][dst_rank] = GradStorage(
                     self._buffer_max_size,
                     dtype=param.dtype,
                     device=self._default_device,
                     destination=dst_rank)
 
-            # Criteria to decide whether this parameter is to be bucketed or not:
-            # - enough room in the bucket
-            if self._buckets[self._default_device][dst_rank].can_add_grad_view(
+            # Criteria to decide whether this parameter is to be put in GradStorage
+            if self._grad_storages[param.dtype][dst_rank].can_add_grad_view(
                     param):
-                self._buckets[self._default_device][dst_rank].add_grad(param)
-                self._should_bucket_grad[i] = True
+                self._grad_storages[param.dtype][dst_rank].add_grad(param)
+                self._grad_reduced[index] = True
 
-        self._bucket_list = list(
+        self._grad_storage_list = list(
             chain(* [
-                self._buckets[device].values()
-                for device in self._buckets.keys()
+                self._grad_storages[dtype].values()
+                for dtype in self._grad_storages.keys()
             ]))
 
-        # Resize the buckets to remove lost space in the end
-        for bucket in self._bucket_list:
-            bucket.shrink()
+        # Shrink the grad_storages to remove lost space in the end
+        for grad_storage in self._grad_storage_list:
+            grad_storage.rearrange()
 
-    # maybe have errors in paddle
-    def _try_consume_work_handle(self):
-        """Try to consume the oldest future. This is non blocking, if not ready we'll pass"""
-        # while len(self._work_handles) > 0 and self._work_handles[0].handle.is_completed():
-        while len(self._work_handles) > 0:
-            work_handle = self._work_handles.popleft()
-            if work_handle.callback is not None:
-                print("1111111111111111111")
-                work_handle.callback()
+    def _clear_task_flow(self):
+        """Try to consume the previous tasks"""
+        while len(self._tasks_flow) > 0:
+            task = self._tasks_flow.popleft()
+            if task.callback is not None:
+                task.callback()
 
     def _detect_train_change(self):
-        # Optionally check whether the trainable parameters have changed
+        # Current trainable parameters
         trainable_mask = list(map(_trainable, self._all_params))
 
-        # - one or more parameters trainability changed
-        trainability_changed = trainable_mask != self._reference_trainable_mask
+        # Whether parameters trainability changed
+        trainability_changed = trainable_mask != self._trainable_mask
 
-        # - the whole model is not trainable but we still have grad hooks
-        trainability_changed |= not self.training and len(self._grad_hooks) > 0
+        # The whole model is not trainable but we still have grad hooks
+        trainability_changed |= not self.training and len(self._bw_hooks) > 0
 
         if trainability_changed:
             logging.warning(
-                "ShardedDDP detected that the trainable params changed, either because of eval/train mode or parameter freezing/unfreeze."
+                "Trainable params changed, because of eval/train mode or parameter freezing/unfreeze."
             )
-            self._reference_trainable_mask = trainable_mask
+            self._trainable_mask = trainable_mask
 
         return trainability_changed
 
-    def build_bucket_buffer(self):
-        for dst_rank, bucket in self._buckets[self._default_device].items():
-            bucket._fill = 0
-            bucket._is_collapsed = True
-            bucket.rebuild()
+    def build_grad_storages(self):
+        """
+        Rebuild grad storages
+        """
+
+        only_fp32 = False
+
+        if len(self._grad_storages.keys(
+        )) == 1 and Type.fp32.value in self._grad_storages.keys():
+            only_fp32 = True
+
+        if not only_fp32:
+            # Rebuild fp16 grad storages
+            for dst_rank, grad_storage in self._grad_storages[
+                    Type.fp16.value].items():
+                grad_storage.manumal_relase()
+                grad_storage.rebuild()
+
+        # Rebuild fp32 grad storages
+        for dst_rank, grad_storage in self._grad_storages[
+                Type.fp32.value].items():
+            grad_storage.manumal_relase()
+            grad_storage.rebuild()

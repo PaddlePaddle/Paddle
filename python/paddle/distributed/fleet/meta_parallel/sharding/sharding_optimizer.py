@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
-import copy
 import io
-from itertools import chain
-from functools import reduce
+import copy
 import logging
 from math import inf
+from itertools import chain
+from functools import reduce
+from collections import OrderedDict
 
 import paddle
 import paddle.distributed as dist
@@ -27,17 +27,15 @@ from paddle.optimizer import SGD, Optimizer
 from .internal_storage import ParamStorage
 from .sharding_utils import Type
 
-__all__ = ["ShardingOptimizer2"]
+__all__ = ["ShardingOptimizer"]
 
 
 class ShardingOptimizer(Optimizer):
     """
     A wrapper for Sharding Stage2 Optimizer in Dygraph. 
-
     .. warning: ShardingOptimizer encapsulates the optimization strategy and integrates it into the optimizer.
-
-    .. ZeRO: 1.https://arxiv.org/pdf/1910.02054.pdf 2.https://arxiv.org/pdf/1910.02054.pdf
-
+    .. this file is inspired by: https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py.
+    .. ZeRO: 1.https://arxiv.org/pdf/1910.02054.pdf 2.https://arxiv.org/pdf/1910.02054.pdf.
     """
 
     # TODO (Baibaifan) 
@@ -54,6 +52,7 @@ class ShardingOptimizer(Optimizer):
                  broadcast_fp16=False,
                  offload=False,
                  device="gpu",
+                 accumulation_steps=None,
                  **kw):
 
         super().__init__(optim._learning_rate, params, kw)
@@ -69,6 +68,7 @@ class ShardingOptimizer(Optimizer):
         self._optim = optim
         self._local_params = params
         self._default_device = device
+        self._accumulation_steps = accumulation_steps
 
         assert group is not None, "Distributed communication group is must be gived"
         self.group = group
@@ -76,7 +76,7 @@ class ShardingOptimizer(Optimizer):
         self.rank = group.rank
 
         self.broadcast_fp16 = broadcast_fp16
-        self.internal_storages = {}  # {dtype: {rank: InternalStorage}}
+        self.param_storages = {}  # {dtype: {rank: InternalStorage}}
         self.offload = offload  # Using for offload
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
@@ -115,6 +115,14 @@ class ShardingOptimizer(Optimizer):
         return self._segment_params
 
     @property
+    def local_params(self):
+        return self._local_params
+
+    @property
+    def accumulation_steps(self):
+        return self._accumulation_steps
+
+    @property
     def param2rank(self):
         """Map the params to the rank which owns them"""
         if len(self._param2rank) == 0:
@@ -139,7 +147,7 @@ class ShardingOptimizer(Optimizer):
 
             # Sort per rank params by size
             for dtype in self._dtype_rank_params.keys():
-                for rank_params in self._per_device_params[dtype]:
+                for rank_params in self._dtype_rank_params[dtype]:
                     rank_params.sort(key=lambda x: x.numel())
 
         return self._dtype_rank_params
@@ -150,8 +158,8 @@ class ShardingOptimizer(Optimizer):
         """
 
         for dtype, per_rank_params in self.dtype_rank_params.items():
-            if dtype not in self.internal_storages.keys():
-                self.internal_storages[dtype] = {}
+            if dtype not in self.param_storages.keys():
+                self.param_storages[dtype] = {}
 
             for dst_rank, params in enumerate(per_rank_params):
                 if len(params) > 0:
@@ -170,15 +178,14 @@ class ShardingOptimizer(Optimizer):
                         for param in trainable_params:
                             param_storage.add_param(param)
 
-                        self.internal_storages[dtype][dst_rank] = param_storage
+                        self.param_storages[dtype][dst_rank] = param_storage
 
         # Clear the InternalStorage keys which are not in use anymore
         dtype_in_use = list(self.dtype_rank_params.keys())
         dtype_to_pop = list(
-            filter(lambda x: x not in dtype_in_use,
-                   self.internal_storages.keys()))
+            filter(lambda x: x not in dtype_in_use, self.param_storages.keys()))
         for d in dtype_to_pop:
-            self.internal_storages.pop(d)
+            self.param_storages.pop(d)
 
     def step(self):
         """
@@ -186,8 +193,14 @@ class ShardingOptimizer(Optimizer):
         """
 
         # Synchronize optimizer parameters for the current rank
-        self._optim._parameter_list = self.dtype_rank_params[Type.fp16][
-            self.rank] + self.dtype_rank_params[Type.fp32][self.rank]
+        if len(self.dtype_rank_params.keys(
+        )) == 1 and Type.fp32.value in self.dtype_rank_params.keys():
+            self._optim._parameter_list = self.dtype_rank_params[
+                Type.fp32.value][self.rank]
+        else:
+            self._optim._parameter_list = self.dtype_rank_params[
+                Type.fp16.value][self.rank] + self.dtype_rank_params[
+                    Type.fp32.value][self.rank]
 
         # Run the optimizer of the current rank step
         loss = self._optim.step()
@@ -222,16 +235,16 @@ class ShardingOptimizer(Optimizer):
 
         # Convert fp32 internal storage to fp16
         if self.broadcast_fp16:
-            for dst_rank, internal_storage in self.dtype_rank_params[
-                    Type.fp32].items():
-                internal_storage.to(dtype=Type.fp16,
+            for dst_rank, internal_storage in self.param_storages[
+                    Type.fp32.value].items():
+                internal_storage.to(dtype=Type.fp16.value,
                                     local_rank=dst_rank,
                                     device=self._default_device,
                                     keep_alignment=False)
             paddle.device.cuda.synchronize()
 
         # Exchange all the shards with the other ranks
-        for dtype_per_rank in self.dtype_rank_params.values():
+        for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
                 dist.broadcast(
                     tensor=internal_storage.buffer,
@@ -245,9 +258,9 @@ class ShardingOptimizer(Optimizer):
 
         # Convert fp32 internal storage to fp32
         if self.broadcast_fp16:
-            for dst_rank, internal_storage in self.dtype_rank_params[
-                    Type.fp32].items():
-                internal_storage.to(dtype=Type.fp32,
+            for dst_rank, internal_storage in self.param_storages[
+                    Type.fp32.value].items():
+                internal_storage.to(dtype=Type.fp32.value,
                                     local_rank=dst_rank,
                                     device=self._default_device,
                                     keep_alignment=False)

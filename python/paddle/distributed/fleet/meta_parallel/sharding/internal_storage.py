@@ -19,7 +19,6 @@ from paddle.fluid import core
 class InternalStorage:
     """
     This is a basic class, which is responsible for consolidating the basic storage tensor.
-
     """
 
     # Support integration parameter tensor
@@ -122,7 +121,7 @@ class GradStorage(InternalStorage):
 
         self.params_checked_in = 0
         self.destination = destination
-        self.sent = True
+        self.sent = False
         self.callback = None
 
     def reset_checked_in(self):
@@ -136,7 +135,6 @@ class GradStorage(InternalStorage):
         """ Judge all the expected gradient check-in happened """
         return len(self._params) == self.params_checked_in
 
-    @property
     def can_add_grad_view(self, param):
         """ Is there enough InternalStorage to add this parameter gradient, and whether this param have already checked in.
         """
@@ -176,9 +174,9 @@ class GradStorage(InternalStorage):
         """
         if not self._release:
             for p in self._params:
-                assert p.grad is not None
-                p.grad.detach()
-                p._clear_gradient()
+                if p.grad is not None:
+                    p.grad.detach()
+                    p._clear_gradient()
 
             self.buffer = None
             self._fill = 0

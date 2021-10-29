@@ -21,6 +21,7 @@ import paddle
 import paddle.distributed as dist
 from paddle.fluid import core
 
+# Set global device id
 global dev_id
 if core.is_compiled_with_cuda():
     dev_id = int(os.environ.get('FLAGS_selected_gpus', 0))
@@ -30,18 +31,29 @@ else:
     raise ValueError("This device doesn't support.")
 
 
-class Workhandle:
-    def __init__(self, handle, callback):
-        self.handle = handle
+class Taskflow:
+    """
+    Task flows, one way linked list for task acquisition.
+    """
+
+    def __init__(self, task, callback):
+        self.task = task
         self.callback = callback
 
 
 class Type(Enum):
+    """
+    Type of trainable parameters
+    """
     fp16 = paddle.float16
     fp32 = paddle.float32
 
 
 def GpuInfo(fn):
+    """
+    Displays GPU usage information before and after the function。
+    """
+
     def used(*args, **kw):
         # Before using
         b_info = os.popen("nvidia-smi -i {} | grep MiB".format(str(

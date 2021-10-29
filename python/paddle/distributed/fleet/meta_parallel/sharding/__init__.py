@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .sharding_optimizer import ShardingOptimizer
-from .sharding_stage2 import ShardingStage2
 from .sharding_utils import GpuInfo
+from .sharding_stage2 import ShardingStage2
+from .sharding_optimizer import ShardingOptimizer
