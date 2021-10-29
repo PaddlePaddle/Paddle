@@ -228,12 +228,14 @@ Conv2DHardSigmoidFusePass::Conv2DHardSigmoidFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End()
-      // default=0.2
+      // optional, default=0.2
       .AddAttr("slope")
+      .IsOptional()
       .IsType<float>()
       .End()
-      // default=0.5
+      // optional, default=0.5
       .AddAttr("offset")
+      .IsOptional()
       .IsType<float>()
       .End();
 }
