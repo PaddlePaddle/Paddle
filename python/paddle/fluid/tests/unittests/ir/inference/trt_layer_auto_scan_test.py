@@ -122,7 +122,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 "Output has diff between GPU and TensorRT. ")
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
-        last_passed_program = 'transpose_flatten_concat_fuse_pass.pdmodel'
+        last_passed_program = os.path.join(
+            self.trt_cache_dir, 'transpose_flatten_concat_fuse_pass.pdmodel')
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
@@ -179,7 +180,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     def run_test(self, quant=False):
         status = True
-        np.random.seed(int(1000 * time.time()) % 2**32)
+        # Choose different tests by week
+        np.random.seed(int(time.strftime("%W")))
         run_flags = []
         for prog_config in self.sample_program_configs():
             # In CI, only run 30% cases
@@ -283,4 +285,4 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 self.success_log('RUN ' + str(prog_config) + ' vs ' +
                                  self.inference_config_str(pred_config))
 
-        # self.assertTrue(status)
+        self.assertTrue(status)

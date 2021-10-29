@@ -70,6 +70,21 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet152(self):
         self.models_infer('resnet152')
 
+    def test_densenet121(self):
+        self.models_infer('densenet121')
+
+    def test_densenet161(self):
+        self.models_infer('densenet161')
+
+    def test_densenet169(self):
+        self.models_infer('densenet169')
+
+    def test_densenet201(self):
+        self.models_infer('densenet201')
+
+    def test_densenet264(self):
+        self.models_infer('densenet264')
+
     def test_alexnet(self):
         self.models_infer('alexnet')
 
