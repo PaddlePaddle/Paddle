@@ -16,8 +16,6 @@ import os
 import paddle
 import threading
 import numpy as np
-import os
-import paddle
 import warnings
 import logging
 import paddle.fluid.core as core
