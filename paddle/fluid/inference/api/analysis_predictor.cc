@@ -33,6 +33,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/bkcl_context.h"
+#include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -1494,6 +1496,73 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 
 std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);
+}
+
+int init_parallel_env(int rank, int nranks,
+                      const std::vector<int> &selected_gpus,
+                      const std::vector<std::string> &trainer_endpoints,
+                      const std::string &current_endpoint, int nrings) {
+  if (nrings <= 0 || nrings >= 9) {
+    LOG(ERROR) << "nccl_nrings must be an integer greater than 0"
+               << "or less than 9, which is enough in most scenarios."
+               << "Now nccl_nrings=" << nrings;
+    return -1;
+  }
+  if (nranks < 2) {
+    LOG(ERROR) << "Currently not a parallel execution environment,"
+               << "init_parallel_env will do nothing.";
+    return -1;
+  }
+  paddle::framework::InitDevices();
+  int device_id = 0;
+  bool is_gpu = false;
+  bool is_xpu = false;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  is_gpu = true;
+#endif
+#ifdef PADDLE_WITH_XPU
+  is_xpu = true;
+#endif
+  std::unique_ptr<paddle::platform::Place> place_ptr;
+  if (is_gpu) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    device_id = selected_gpus[0];
+    paddle::platform::CUDAPlace place(device_id);
+    place_ptr.reset(new paddle::platform::Place(place));
+#endif
+  } else if (is_xpu) {
+#ifdef PADDLE_WITH_XPU
+    device_id = selected_gpus[0];
+    paddle::platform::XPUPlace place(device_id);
+    place_ptr.reset(new paddle::platform::Place(place));
+#endif
+  } else {
+    LOG(ERROR) << "Could not find device_id!";
+    return -1;
+  }
+
+  paddle::imperative::ParallelStrategy strategy;
+  strategy.nranks_ = nranks;
+  strategy.local_rank_ = rank;
+  strategy.trainer_endpoints_ = trainer_endpoints;
+  strategy.current_endpoint_ = current_endpoint;
+  strategy.nrings_ = nrings;
+
+  static std::unique_ptr<paddle::imperative::ParallelContext> parallel_ctx_ptr;
+  if (is_gpu) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    parallel_ctx_ptr.reset(
+        new paddle::imperative::NCCLParallelContext(strategy, *place_ptr));
+#endif
+  } else if (is_xpu) {
+#ifdef PADDLE_WITH_XPU
+    parallel_ctx_ptr.reset(
+        new paddle::imperative::BKCLParallelContext(strategy, *place_ptr));
+#endif
+  }
+  parallel_ctx_ptr->Init();
+
+  return 0;
 }
 
 }  // namespace paddle_infer

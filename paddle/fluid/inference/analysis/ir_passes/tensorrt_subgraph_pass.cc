@@ -138,7 +138,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
 
   for (auto *node : subgraph) {
-    std::cout << "tensorrt node name => " << node->Name() << std::endl;
     auto *new_block_op = new_block->AppendOp();
     auto *op = block_desc.AppendOp();
     *new_block_op->Proto() = *node->Op()->Proto();
