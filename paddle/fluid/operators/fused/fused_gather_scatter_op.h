@@ -73,7 +73,7 @@ void elementwise_inner_operation(const Tensor& src, Tensor* dst,
 }
 
 template <typename T, typename IndexT, typename Functor>
-void gather_scatter_cpu_for_loop(const int index_size, const IndexT* g_index,
+void gather_scatter_cpu_for_loop(const int& index_size, const IndexT* g_index,
                                  const IndexT* s_index, const Tensor& src,
                                  Tensor* dst, const std::string& pool_type) {
   Functor functor;
@@ -99,6 +99,16 @@ void gather_scatter_cpu_for_loop(const int index_size, const IndexT* g_index,
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_ptr,
                                                       dst_ptr, 0, functor);
     }
+  }
+}
+
+template <typename T, typename IndexT>
+void cal_mean_cpu_for_loop(const int& size, Tensor* dst, int* count) {
+  for (int i = 0; i < size; ++i) {
+    if (count[i] == 0) continue;
+    auto dst_slice = dst->Slice(i, i + 1);
+    auto eigen_dst = framework::EigenVector<T>::Flatten(dst_slice);
+    eigen_dst = eigen_dst / static_cast<T>(count[i]);
   }
 }
 
@@ -136,7 +146,16 @@ class FusedGatherScatterOpKernel : public framework::OpKernel<T> {
     } else if (pool_type == "MEAN") {
       gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
           index_size, g_index, s_index, *X, Y, pool_type);
-      // TODO(daisiming): Add mean operation.
+      int count[src_dims[0]];
+      memset(count, 0, src_dims[0] * sizeof(int));
+      for (int i = 0; i < index_size; ++i) {
+        IndexT dst_ptr = s_index[i];
+        count[dst_ptr] += 1;
+      }
+      for (int i = 0; i < src_dims[0]; ++i) {
+        VLOG(0) << count[i];
+      }
+      cal_mean_cpu_for_loop<T, IndexT>(src_dims[0], Y, count);
     }
   }
 };
@@ -175,7 +194,16 @@ class FusedGatherScatterGradOpKernel : public framework::OpKernel<T> {
     } else if (pool_type == "MEAN") {
       gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
           index_size, g_index, s_index, *X, Y, pool_type);
-      // TODO(daisiming): Add mean operation.
+      int count[src_dims[0]];
+      memset(count, 0, src_dims[0] * sizeof(int));
+      for (int i = 0; i < index_size; ++i) {
+        IndexT dst_ptr = s_index[i];
+        count[dst_ptr] += 1;
+      }
+      for (int i = 0; i < src_dims[0]; ++i) {
+        VLOG(0) << count[i];
+      }
+      cal_mean_cpu_for_loop<T, IndexT>(src_dims[0], Y, count);
     }
   }
 };
