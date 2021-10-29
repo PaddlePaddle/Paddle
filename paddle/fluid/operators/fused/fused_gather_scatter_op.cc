@@ -160,22 +160,28 @@ REGISTER_OPERATOR(
     ops::FusedGatherScatterGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedGatherScatterGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_gather_scatter_grad, ops::FusedGatherScatterGradOp);
-REGISTER_OP_CPU_KERNEL(fused_gather_scatter,
-                       ops::FusedGatherScatterOpKernel<CPU, float, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, double, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, int, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, int64_t, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, float, int64_t>,
-                       ops::FusedGatherScatterOpKernel<CPU, double, int64_t>,
-                       ops::FusedGatherScatterOpKernel<CPU, int, int64_t>,
-                       ops::FusedGatherScatterOpKernel<CPU, int64_t, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    fused_gather_scatter, ops::FusedGatherScatterOpKernel<CPU, float, int>,
+    ops::FusedGatherScatterOpKernel<CPU, float, int64_t>,
+    ops::FusedGatherScatterOpKernel<CPU, double, int>,
+    ops::FusedGatherScatterOpKernel<CPU, double, int64_t>,
+    ops::FusedGatherScatterOpKernel<CPU, int, int>,
+    ops::FusedGatherScatterOpKernel<CPU, int, int64_t>,
+    ops::FusedGatherScatterOpKernel<CPU, int64_t, int>,
+    ops::FusedGatherScatterOpKernel<CPU, int64_t, int64_t>,
+    ops::FusedGatherScatterOpKernel<CPU, paddle::platform::float16, int>,
+    ops::FusedGatherScatterOpKernel<CPU, paddle::platform::float16, int64_t>);
+
 REGISTER_OP_CPU_KERNEL(
     fused_gather_scatter_grad,
     ops::FusedGatherScatterGradOpKernel<CPU, float, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, double, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int>,
     ops::FusedGatherScatterGradOpKernel<CPU, float, int64_t>,
+    ops::FusedGatherScatterGradOpKernel<CPU, double, int>,
     ops::FusedGatherScatterGradOpKernel<CPU, double, int64_t>,
+    ops::FusedGatherScatterGradOpKernel<CPU, int, int>,
     ops::FusedGatherScatterGradOpKernel<CPU, int, int64_t>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int64_t>);
+    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int>,
+    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int64_t>,
+    ops::FusedGatherScatterGradOpKernel<CPU, paddle::platform::float16, int>,
+    ops::FusedGatherScatterGradOpKernel<CPU, paddle::platform::float16,
+                                        int64_t>);
