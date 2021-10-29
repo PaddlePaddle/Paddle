@@ -83,6 +83,9 @@ class TestElasticManager(unittest.TestCase):
         hosts = ["10.10.10.1", "10.10.10.2", "10.10.10.3"]
         self.assertEqual(elastic._match(hosts), False)
 
+        hosts = ["10.10.10.1"]
+        self.assertEqual(elastic._match(hosts), False)
+
         # TODO test timeout
         #time.sleep(60)
         #self.assertEqual(elastic._match(hosts), True)
@@ -112,7 +115,12 @@ class TestElasticManager(unittest.TestCase):
         elastic.host = "10.10.10.3"
         elastic.hosts = ["10.10.10.1", "10.10.10.3"]
         os.environ['PADDLE_TRAINER_ID'] = "1"
+        elastic._update_hosts()
+        self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.3")
 
+        elastic.host = "10.10.10.3"
+        elastic.hosts = ["10.10.10.1", "10.10.10.3"]
+        os.environ['PADDLE_TRAINER_ID'] = "-1"
         elastic._update_hosts()
         self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.3")
 
