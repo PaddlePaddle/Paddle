@@ -39,4 +39,7 @@ constexpr char kContainSelectedRowsSuffix[] = "sr";
 
 // For kernels with intermediate output
 constexpr char kContainMidOutputTensorSuffix[] = "mid";
+
+// For kernels with axis tensor in attribute
+constexpr char kContainAxisTensorSuffix[] = "axisTensor";
 }  // namespace pten

@@ -15,33 +15,20 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
-
 namespace pten {
 
-using CPUContext = paddle::platform::CPUDeviceContext;
+using CUDAContext = paddle::platform::CUDADeviceContext;
+namespace detail {
 
 template <typename T>
-void Flatten(const CPUContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out);
+void ConcatImpl(const CUDAContext& ctx,
+                const std::vector<pten::DenseTensor>& input,
+                int axis,
+                DenseTensor* output);
 
-template <typename T>
-void Concat(const CPUContext& dev_ctx,
-            const std::vector<DenseTensor>& x,
-            int axis,
-            DenseTensor* out);
-
-// Todo: deal with the AxisTensor input
-/*
-template <typename T>
-void ConcatAxisTensor(const CPUContext& dev_ctx, const DenseTensor& x, int axis,
-DenseTensor* out);
-*/
+}  // namespace detail
 
 }  // namespace pten

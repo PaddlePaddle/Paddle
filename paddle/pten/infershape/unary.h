@@ -41,4 +41,7 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
                                   int start_axis,
                                   int stop_axis);
 
+DenseTensorMeta ConcatInferShap(const std::vector<DenseTensorMeta>& x_metas,
+                                int axis);
+
 }  // namespace pten

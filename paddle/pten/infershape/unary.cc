@@ -14,6 +14,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/kernels/functions/lod_utils.h"
 
 namespace pten {
 
@@ -72,6 +73,69 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
   }
 
   return return_meta;
+}
+
+DenseTensorMeta ConcatInferShap(const std::vector<DenseTensorMeta>& x_metas,
+                                int axis) {
+  std::vector<pten::DDim> inputs_dims;
+  inputs_dims.reserve(x_metas.size());
+  for (size_t i = 0; i < x_metas.size(); ++i) {
+    inputs_dims.emplace_back(x_metas[i].dims);
+  }
+
+  const size_t inputs_num = inputs_dims.size();
+  PADDLE_ENFORCE_GT(
+      inputs_num,
+      static_cast<size_t>(0),
+      paddle::platform::errors::InvalidArgument(
+          "The number of input tensors in concat op should > 0. But "
+          "received inputs' length is 0."));
+  if (inputs_num == 1) {
+    VLOG(3) << "Warning: concat op have only one input, may waste memory";
+  }
+
+  size_t axis1 = pten::ComputeAxis(axis, inputs_dims[0].size());
+
+  const size_t n = inputs_dims.size();
+  auto out_dims = inputs_dims[0];
+  size_t in_zero_dims_size = out_dims.size();
+  for (size_t i = 1; i < n; ++i) {
+    PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
+                      out_dims.size(),
+                      paddle::platform::errors::InvalidArgument(
+                          "The shape of input[0] and input[%d] "
+                          "is expected to be equal."
+                          "But received input[0]'s shape = "
+                          "[%s], input[%d]'s shape = [%s].",
+                          i,
+                          inputs_dims[0],
+                          i,
+                          inputs_dims[i]));
+    for (size_t j = 0; j < in_zero_dims_size; j++) {
+      if (j == axis1) {
+        out_dims[axis] += inputs_dims[i][j];
+      } else {
+        bool check_shape = (inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0);
+        if (check_shape) {
+          // check all shape in run time
+          PADDLE_ENFORCE_EQ(inputs_dims[0][j],
+                            inputs_dims[i][j],
+                            paddle::platform::errors::InvalidArgument(
+                                "The %d-th dimension of input[0] and input[%d] "
+                                "is expected to be equal."
+                                "But received input[0]'s shape = "
+                                "[%s], input[%d]'s shape = [%s].",
+                                j,
+                                i,
+                                inputs_dims[0],
+                                i,
+                                inputs_dims[i]));
+        }
+      }
+    }
+  }
+  DenseTensorMeta out_meta(x_metas[0].type, out_dims, x_metas[0].layout);
+  return out_meta;
 }
 
 }  // namespace pten

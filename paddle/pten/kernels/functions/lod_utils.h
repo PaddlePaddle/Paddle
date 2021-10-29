@@ -13,32 +13,27 @@
 // limitations under the License.
 
 #pragma once
-
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#include "paddle/pten/core/dense_tensor.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
 
-using CUDAContext = paddle::platform::CUDADeviceContext;
+static inline int ComputeAxis(int axis, int rank) {
+  PADDLE_ENFORCE_EQ(
+      axis >= -rank && axis < rank,
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "The axis is expected to be in range of [%d, %d), but got %d",
+          -rank,
+          rank,
+          axis));
+  if (axis < 0) {
+    axis = axis + rank;
+  }
+  return axis > 0 ? axis : 0;
+}
 
-template <typename T>
-void Flatten(const CUDAContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out);
-
-template <typename T>
-void Concat(const CUDAContext& dev_ctx,
-            const std::vector<DenseTensor>& x,
-            int axis,
-            DenseTensor* out);
+LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
+void AppendLoD(LoD* lod, const LoD& lod_length);
 
 }  // namespace pten
-
-#endif

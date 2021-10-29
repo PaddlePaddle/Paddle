@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/pten/hapi/lib/kernel_dispatch.h"
 #include "paddle/pten/hapi/lib/utils/allocator.h"
 #include "paddle/pten/infershape/unary.h"
+#include "paddle/utils/small_vector.h"
 
 namespace paddle {
 namespace experimental {
@@ -58,5 +59,47 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
 
   return out;
 }
+
+Tensor concat(const std::vector<Tensor>& x, int axis) {
+  // 1. Get kernel signature and kernel
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      "concat", kernel_key);
+
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(*dev_ctx);
+
+  // 3. Auto data transform
+  paddle::SmallVector<std::shared_ptr<pten::TensorBase>> dense_x;
+  std::vector<pten::DenseTensorMeta> x_metas;
+  for (size_t i = 0; i < x.size(); ++i) {
+    auto tmp = std::dynamic_pointer_cast<pten::DenseTensor>(x[i].impl());
+    x_metas.emplace_back(tmp->meta());
+    dense_x.emplace_back(tmp);
+  }
+
+  kernel_context.EmplaceBackInputs(dense_x);
+  kernel_context.EmplaceBackAttr(axis);
+
+  // 4. InferShape
+  auto out_meta = ConcatInferShap(x_metas, axis);
+
+  // 5. Prepare outputs
+  Tensor out;
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  kernel_context.EmplaceBackOutput(dense_out);
+  out.set_impl(dense_out);
+
+  // 6. Call kernel
+  kernel(&kernel_context);
+
+  return out;
+}
+
 }  // namespace experimental
 }  // namespace paddle

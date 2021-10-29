@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/pten/infershape/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/functions/lod_utils.h"
+
+#include "paddle/pten/kernels/cuda/concat_impl.h"
 
 namespace pten {
 
@@ -51,6 +56,72 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
   xshape->set_lod(x.lod());
 }
 
+template <typename T>
+void Concat(const CUDAContext& dev_ctx,
+            const std::vector<DenseTensor>& x,
+            int axis,
+            DenseTensor* out) {
+  axis = pten::ComputeAxis(axis, x[0].dims().size());
+
+  // If axis is 0, the lod of the output is not the same as inputs.
+  if (axis == 0 && x[0].lod().size() > 0) {
+    size_t lod_size_0 = x[0].lod().size();
+    size_t lod_size = lod_size_0;
+    for (size_t i = 1; i < x.size(); ++i) {
+      if (x[i].lod().size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            x[i].lod().size(),
+            lod_size_0,
+            paddle::platform::errors::Unimplemented(
+                "The lod level of all input LoDTensors should be same. "
+                "Maybe different lod level of input LoDTensors can concat,"
+                "it is not supported currently. The lod level of %dth input "
+                "is %d and first input is %d.",
+                i,
+                x[i].lod().size(),
+                lod_size_0));
+      } else {
+        lod_size = 0;
+        break;
+      }
+    }
+    if (lod_size) {
+      auto out_lod = out->lod();
+      for (size_t i = 1; i < x.size(); ++i) {
+        auto in_lod = pten::ConvertToLengthBasedLoD(x[i].lod());
+        pten::AppendLoD(&out_lod, in_lod);
+      }
+    }
+  }
+
+  // Sometimes direct copies will be faster, this maybe need deeply analysis.
+  if (axis == 0 && x.size() < 10) {
+    size_t output_offset = 0;
+    for (auto& in : x) {
+      if (in.numel() == 0UL) {
+        continue;
+      }
+
+      auto in_stride = paddle::framework::stride_numel(in.dims());
+      auto out_stride = paddle::framework::stride_numel(out->dims());
+      paddle::operators::StridedNumelCopyWithAxis<T>(
+          dev_ctx,
+          axis,
+          out->mutable_data<T>() + output_offset,
+          out_stride,
+          in.data<T>(),
+          in_stride,
+          in_stride[axis]);
+      output_offset += in_stride[axis];
+    }
+  } else {
+    // Note(chentianyu03): Old kernel will filter the numel()>0 tensor here.
+    // because DensorTensor does not support copy constructor, we try to filter
+    // in ConcatImpl.
+    pten::detail::ConcatImpl<T>(dev_ctx, x, axis, out);
+  }
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -81,3 +152,14 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+
+PT_REGISTER_KERNEL("concat",
+                   CUDA,
+                   ANY,
+                   pten::Concat,
+                   float,
+                   double,
+                   bool,
+                   int64_t,
+                   int,
+                   uint8_t) {}

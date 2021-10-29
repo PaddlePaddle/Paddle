@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/cpu/manipulation.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/pten/infershape/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
+#include "paddle/pten/kernels/functions/lod_utils.h"
 
 namespace pten {
 
@@ -51,6 +54,108 @@ void FlattenWithXShape(const CPUContext& dev_ctx,
   xshape->set_lod(x.lod());
 }
 
+template <typename T>
+void Concat(const CPUContext& dev_ctx,
+            const std::vector<DenseTensor>& x,
+            int axis,
+            DenseTensor* out) {
+  axis = pten::ComputeAxis(axis, x[0].dims().size());
+
+  // If axis is 0, the lod of the output is not the same as inputs.
+  if (axis == 0 && x[0].lod().size() > 0) {
+    size_t lod_size_0 = x[0].lod().size();
+    size_t lod_size = lod_size_0;
+    for (size_t i = 1; i < x.size(); ++i) {
+      if (x[i].lod().size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            x[i].lod().size(),
+            lod_size_0,
+            paddle::platform::errors::Unimplemented(
+                "The lod level of all input LoDTensors should be same. "
+                "Maybe different lod level of input LoDTensors can concat,"
+                "it is not supported currently. The lod level of %dth input "
+                "is %d and first input is %d.",
+                i,
+                x[i].lod().size(),
+                lod_size_0));
+      } else {
+        lod_size = 0;
+        break;
+      }
+    }
+    if (lod_size) {
+      auto out_lod = out->lod();
+      for (size_t i = 1; i < x.size(); ++i) {
+        auto in_lod = pten::ConvertToLengthBasedLoD(x[i].lod());
+        pten::AppendLoD(&out_lod, in_lod);
+      }
+    }
+  }
+
+  // Sometimes direct copies will be faster, this maybe need deeply analysis.
+  if (axis == 0 && x.size() < 10) {
+    size_t output_offset = 0;
+    for (auto& in : x) {
+      if (in.numel() == 0UL) {
+        continue;
+      }
+
+      auto in_stride = paddle::framework::stride_numel(in.dims());
+      auto out_stride = paddle::framework::stride_numel(out->dims());
+      paddle::operators::StridedNumelCopyWithAxis<T>(
+          dev_ctx,
+          axis,
+          out->mutable_data<T>() + output_offset,
+          out_stride,
+          in.data<T>(),
+          in_stride,
+          in_stride[axis]);
+      output_offset += in_stride[axis];
+    }
+  } else {
+    std::vector<const DenseTensor*> input;
+    for (size_t j = 0; j < x.size(); ++j) {
+      if (x[j].numel() > 0) {
+        input.push_back(&x[j]);
+      }
+    }
+
+    size_t num = input.size();
+
+    int64_t rows = 1;
+    auto dim_0 = input[0]->dims();
+    for (int i = 0; i < axis; ++i) {
+      rows *= dim_0[i];
+    }
+    int64_t out_rows = rows, out_cols = 0;
+
+    std::vector<int64_t> input_cols(input.size());
+    for (size_t i = 0; i < num; ++i) {
+      int64_t t_cols = input[i]->numel() / rows;
+      out_cols += t_cols;
+      input_cols[i] = t_cols;
+    }
+    auto cpu_place = dev_ctx.GetPlace();
+
+    // computation
+    auto output_data = out->mutable_data<T>();
+    int64_t col_idx = 0;
+    for (size_t j = 0; j < num; ++j) {
+      int64_t col_len = input_cols[j];
+      auto input_data = input[j]->data<T>();
+      for (int64_t k = 0; k < out_rows; ++k) {
+        paddle::memory::Copy(
+            BOOST_GET_CONST(paddle::platform::CPUPlace, cpu_place),
+            output_data + k * out_cols + col_idx,
+            BOOST_GET_CONST(paddle::platform::CPUPlace, cpu_place),
+            input_data + k * col_len,
+            sizeof(T) * col_len);
+      }
+      col_idx += col_len;
+    }
+  }
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -79,3 +184,14 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+
+PT_REGISTER_KERNEL("concat",
+                   CPU,
+                   ANY,
+                   pten::Concat,
+                   float,
+                   double,
+                   bool,
+                   int64_t,
+                   int,
+                   uint8_t) {}
