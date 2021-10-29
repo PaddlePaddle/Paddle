@@ -216,8 +216,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
         gm_block._insert_op(
             first_optimize_op_idx + insert_op_num,
             type="c_sync_comm_stream",
-            inputs={'X': grad_vars[-1]},
-            outputs={'Out': grad_vars[-1]},
+            inputs={'X': grad_vars},
+            outputs={'Out': grad_vars},
             attrs={
                 'ring_id': ring_id,
                 OP_ROLE_KEY: OpRole.Backward,
@@ -259,6 +259,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         block = self.main_program.global_block()
         ring_id = self.global_ring_id
         grad = None
+        grad_vars = []
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
                     OP_ROLE_VAR_KEY in op.attr_names:
@@ -275,6 +276,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     if param.is_distributed:
                         continue
 
+                    grad_vars.append(grad)
                     block._insert_op(
                         idx + offset,
                         type='c_sync_calc_stream',
@@ -300,8 +302,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 block._insert_op(
                     idx,
                     type='c_sync_comm_stream',
-                    inputs={'X': grad},
-                    outputs={'Out': grad},
+                    inputs={'X': grad_vars},
+                    outputs={'Out': grad_vars},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
                 break
@@ -441,8 +443,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 block._insert_op_without_sync(
                     idx,
                     type='c_sync_comm_stream',
-                    inputs={'X': grad_segment[0]},
-                    outputs={'Out': grad_segment[0]},
+                    inputs={'X': fused_vars},
+                    outputs={'Out': fused_vars},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
                 break

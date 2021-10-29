@@ -19,6 +19,7 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/process_mesh_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -81,7 +82,10 @@ void BindProgramDesc(pybind11::module *m) {
            },
            pybind11::arg("version") = pd::kCurProgramVersion)
       .def("_version",
-           [](pd::ProgramDesc &self) -> int64_t { return self.Version(); });
+           [](pd::ProgramDesc &self) -> int64_t { return self.Version(); })
+      .def("get_op_deps", [](const framework::ProgramDesc &program) {
+        return framework::ir::GetOpDependencies(program);
+      });
 }
 
 void BindProcessMeshDesc(pybind11::module *m) {

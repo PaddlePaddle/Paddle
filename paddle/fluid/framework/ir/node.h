@@ -63,6 +63,7 @@ class Node {
   }
 
   enum class Type { kOperation, kVariable };
+  enum class Dep { kSame = 0, kBefore = 1, kAfter = 2, kNoDep = 3 };
 #if !defined(_WIN32)  // msvc not support constexpr correctly.
   static constexpr char kControlDepVarName[] = "__control_var";
 #else
