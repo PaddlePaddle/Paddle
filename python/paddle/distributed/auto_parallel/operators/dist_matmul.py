@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperator
+from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
-from .common import register_distributed_operator
+from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import copy_distributed_attr_for_var
 from .common import copy_distributed_attr_for_dist_op
@@ -24,19 +24,20 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
-from ..attribute import OperatorDistributedAttribute
+from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
-from ..process import new_process_group
+from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
 
-def _update_dims_mapping_for_matmul(op_dist_attr):
+def _update_dims_mapping_for_matmul(dist_op):
     changed = False
-    op_desc = op_dist_attr.get_owner_op().desc
+    op_desc = dist_op.serial_op.desc
+    op_dist_attr = dist_op.dist_attr
     x_name = op_desc.input('X')[0]
     y_name = op_desc.input('Y')[0]
     out_name = op_desc.output('Out')[0]
@@ -53,7 +54,7 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
     if y_dims_mapping_len == 1:
         y_dims_mapping.insert(1, -1)
 
-    # Deal with dim > 2 and take care of broadcasting 
+    # Deal with dim > 2 and take care of broadcasting
     if out_dims_mapping_len > 2:
         broadcast_x_dims_mapping = []
         broadcast_y_dims_mapping = []
@@ -95,7 +96,7 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
                 out_dims_mapping[i] = compatible_dims_mapping[i]
                 changed = True
 
-    # The following which uses negative index can be work 
+    # The following which uses negative index can be work
     # when len(out_dims_mapping) > 2 and len(out_dims_mapping) <=2
     dim_changed = compute_compatible_and_update_dim_mapping(
         [x_dims_mapping, y_dims_mapping], [-1, -2])
@@ -112,7 +113,7 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
     if dim_changed:
         changed = True
 
-    # Remove unnecessary dim mapping to make sure the lenght of dims_mapping is same as its tensor
+    # Remove unnecessary dim mapping to make sure the length of dims_mapping is same as its tensor
     if x_dims_mapping_len == 1:
         x_dims_mapping.pop(0)
     if y_dims_mapping_len == 1:
@@ -129,17 +130,17 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     # by now the backward function only insert the gradient allreduce for dist op itself
 
-    dist_op_helper = ctx.get_dist_op_helper()
-    main_block = dist_op_helper.get_dst_main_program().global_block()
-    backward_op = dist_op_helper.get_cur_src_op()
-    rank_id = dist_op_helper.get_rank_id()
-    dist_attr = ctx.get_op_distributed_attr_for_program(backward_op)
+    dist_op_context = ctx.dist_op_context
+    main_block = dist_op_context.get_dst_main_program().global_block()
+    backward_op = dist_op_context.get_cur_src_op()
+    rank_id = dist_op_context.get_rank_id()
+    dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
     assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
         str(backward_op))
 
     # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-    if rank_id not in dist_attr.get_process_mesh().process_group:
-        rank_id = _get_corresponding_rank(dist_attr.get_process_mesh(), rank_id)
+    if rank_id not in dist_attr.process_mesh.processes:
+        rank_id = _get_corresponding_rank(ctx, dist_attr.process_mesh, rank_id)
 
     # check if need gradient allreduce
     need_gradient_allreduce = False
@@ -175,13 +176,13 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     assert not X_var.is_parameter, "left operand(X) [{}] of dist matmul should not be parameter".format(
         X_var.name)
 
-    process_mesh = dist_attr.get_process_mesh()
+    process_mesh = dist_attr.process_mesh
     var_dim_mapping = dist_attr.get_input_dims_mapping(X_var.name)
     mesh_shape = process_mesh.topology
     batch_size_axis = var_dim_mapping[0]
     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
         need_gradient_allreduce = True
-        group_ranks = _get_comm_group(process_mesh.process_group,
+        group_ranks = _get_comm_group(process_mesh.processes,
                                       process_mesh.topology, batch_size_axis,
                                       rank_id)
         dp_degree = len(group_ranks)
@@ -207,32 +208,32 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                    OP_ROLE_KEY: OpRole.Backward})
         main_block._sync_with_cpp()
 
-        dims_mapping = ctx.get_tensor_distributed_attr_for_program(
-            Y_Grad_var).get_dims_mapping()
-        process_mesh = dist_attr.get_process_mesh()
+        dims_mapping = ctx.get_tensor_dist_attr_for_program(
+            Y_Grad_var).dims_mapping
+        process_mesh = dist_attr.process_mesh
         for op in [allreduce_op, scale_op]:
-            op_attr = OperatorDistributedAttribute(op, ctx)
-            op_attr.set_process_mesh(process_mesh)
+            op_attr = OperatorDistributedAttribute()
+            op_attr.process_mesh = process_mesh
             op_attr.set_output_dims_mapping(Y_Grad_var.name, dims_mapping)
             op_attr.set_input_dims_mapping(Y_Grad_var.name, dims_mapping)
-            ctx.set_op_distributed_attr_for_program(op, op_attr)
+            ctx.set_op_dist_attr_for_program(op, op_attr)
 
 
-def _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx, rank_id):
+def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
 
-    assert Weight_var.name not in dist_op_helper.already_init_sync_vars
+    assert Weight_var.name not in dist_op_context.already_init_sync_vars
     assert startup_block.has_var(Weight_var.name)
-    dist_op_helper.already_init_sync_vars.add(Weight_var.name)
+    dist_op_context.already_init_sync_vars.add(Weight_var.name)
     param = startup_block.var(Weight_var.name)
-    param_dist_attr = ctx.get_tensor_distributed_attr_for_program(param)
-    process_mesh = param_dist_attr.get_process_mesh()
-    dim_mapping = param_dist_attr.get_dims_mapping()
+    param_dist_attr = ctx.get_tensor_dist_attr_for_program(param)
+    process_mesh = param_dist_attr.process_mesh
+    dim_mapping = param_dist_attr.dims_mapping
 
     for axis, size in enumerate(process_mesh.topology):
         if size <= 1 or axis in dim_mapping:
             pass
         else:
-            group_ranks = _get_comm_group(process_mesh.process_group,
+            group_ranks = _get_comm_group(process_mesh.processes,
                                           process_mesh.topology, axis, rank_id)
             sync_group = new_process_group(group_ranks)
 
@@ -249,13 +250,14 @@ def _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx, rank_id):
     startup_block._sync_with_cpp()
 
 
-class DistributedMatmul(DistributedOperator):
+class DistributedMatmul(DistributedOperatorImplContainer):
     def __init__(self, name):
         super(DistributedMatmul, self).__init__()
         self._name = name
 
 
-register_distributed_operator("matmul", DistributedMatmul("matmul"))
+register_distributed_operator_impl_container("matmul",
+                                             DistributedMatmul("matmul"))
 
 
 # ColumnParallel
@@ -266,12 +268,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
-        return True
-
-    def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -286,8 +285,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 return False
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         if is_dim_replicate(out_dims_mapping[-1]):
@@ -297,9 +297,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 return False
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        dim_changed = _update_dims_mapping_for_matmul(dist_op)
         if dim_changed:
             changed = True
         return changed
@@ -310,21 +310,21 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         kwargs: inputname_mapping & outputname_mapping
         """
 
-        dist_op_helper = ctx.get_dist_op_helper()
-        main_block = dist_op_helper.get_dst_main_program().global_block()
-        startup_block = dist_op_helper.get_dst_startup_program().global_block()
-        src_op = dist_op_helper.get_cur_src_op()
-        rank_id = dist_op_helper.get_rank_id()
-        op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
+        dist_op_context = ctx.dist_op_context
+        main_block = dist_op_context.get_dst_main_program().global_block()
+        startup_block = dist_op_context.get_dst_startup_program().global_block()
+        src_op = dist_op_context.get_cur_src_op()
+        rank_id = dist_op_context.get_rank_id()
+        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.get_process_mesh().process_group:
-            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+        if rank_id not in op_dist_attr.process_mesh.processes:
+            rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
                                               rank_id)
 
-        # check validation of inputs / outputs 
+        # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
             assert input_name in kwargs, "input [{}] is not given".format(
                 input_name)
@@ -348,8 +348,8 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             Weight_var.name)[1]
         assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping)
-        process_mesh_shape = op_dist_attr.get_process_mesh().topology
-        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
 
         parallel_axis = matmul_col_dim_mapping
         group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
@@ -365,7 +365,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             persistable=False,
             stop_gradient=X_var.stop_gradient)
         # copy X_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, X_var)
+        copy_distributed_attr_for_var(ctx, intermediate_var_0, X_var)
 
         check_variable_and_dtype(
             X_var, 'tensor',
@@ -395,13 +395,14 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs)
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(c_identity_op, main_block,
+        copy_distributed_attr_for_dist_op(ctx, c_identity_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(matmul_op, main_block, op_dist_attr)
+        copy_distributed_attr_for_dist_op(ctx, matmul_op, main_block,
+                                          op_dist_attr)
 
         # init param sync
         if Weight_var.is_parameter:
-            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+            _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
     @staticmethod
@@ -417,12 +418,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
-        return True
-
-    def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -438,8 +436,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 return False
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         if is_dim_shard(out_dims_mapping[-1]):
@@ -450,9 +449,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 return False
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        dim_changed = _update_dims_mapping_for_matmul(dist_op)
         if dim_changed:
             changed = True
         return changed
@@ -463,21 +462,21 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         kwargs: inputname_mapping & outputname_mapping
         """
 
-        dist_op_helper = ctx.get_dist_op_helper()
-        main_block = dist_op_helper.get_dst_main_program().global_block()
-        startup_block = dist_op_helper.get_dst_startup_program().global_block()
-        src_op = dist_op_helper.get_cur_src_op()
-        rank_id = dist_op_helper.get_rank_id()
-        op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
+        dist_op_context = ctx.dist_op_context
+        main_block = dist_op_context.get_dst_main_program().global_block()
+        startup_block = dist_op_context.get_dst_startup_program().global_block()
+        src_op = dist_op_context.get_cur_src_op()
+        rank_id = dist_op_context.get_rank_id()
+        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.get_process_mesh().process_group:
-            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+        if rank_id not in op_dist_attr.process_mesh.processes:
+            rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
                                               rank_id)
 
-        # check validation of inputs / outputs 
+        # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
             assert input_name in kwargs, "input [{}] is not given".format(
                 input_name)
@@ -501,8 +500,8 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             Weight_var.name)[0]
         assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping)
-        process_mesh_shape = op_dist_attr.get_process_mesh().topology
-        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
 
         parallel_axis = matmul_row_dim_mapping
         group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
@@ -528,7 +527,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             is_data=False,
             need_check_feed=Out_var.desc.need_check_feed())
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, Out_var)
+        copy_distributed_attr_for_var(ctx, intermediate_var_0, Out_var)
 
         matmul_op = main_block.append_op(
             type='matmul',
@@ -547,13 +546,14 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             })
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(matmul_op, main_block, op_dist_attr)
-        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, main_block,
+        copy_distributed_attr_for_dist_op(ctx, matmul_op, main_block,
+                                          op_dist_attr)
+        copy_distributed_attr_for_dist_op(ctx, c_allreduce_sum_op, main_block,
                                           op_dist_attr)
 
         # init param sync
         if Weight_var.is_parameter:
-            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+            _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
     @staticmethod
@@ -561,18 +561,15 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
 
 
-# ReplicateParallel 
+# ReplicateParallel
 class DistributedMatmulImpl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulImpl2, self).__init__()
         self._name = name
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
-        return True
-
-    def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -592,8 +589,9 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
 
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
@@ -605,9 +603,9 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
 
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        dim_changed = _update_dims_mapping_for_matmul(dist_op)
         if dim_changed:
             changed = True
         return changed
@@ -625,13 +623,14 @@ register_distributed_operator_impl("matmul",
                                    DistributedMatmulImpl2("replicate_parallel"))
 
 
-class DistributedMatmulV2(DistributedOperator):
+class DistributedMatmulV2(DistributedOperatorImplContainer):
     def __init__(self, name):
         super(DistributedMatmulV2, self).__init__()
         self._name = name
 
 
-register_distributed_operator("matmul_v2", DistributedMatmulV2("matmul_v2"))
+register_distributed_operator_impl_container("matmul_v2",
+                                             DistributedMatmulV2("matmul_v2"))
 
 
 # ColumnParallel
@@ -642,12 +641,9 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
-        return True
-
-    def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -662,8 +658,9 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 return False
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         if is_dim_replicate(out_dims_mapping[-1]):
@@ -673,9 +670,9 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 return False
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        dim_changed = _update_dims_mapping_for_matmul(dist_op)
         if dim_changed:
             changed = True
         return changed
@@ -686,21 +683,21 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         kwargs: inputname_mapping & outputname_mapping
         """
 
-        dist_op_helper = ctx.get_dist_op_helper()
-        main_block = dist_op_helper.get_dst_main_program().global_block()
-        startup_block = dist_op_helper.get_dst_startup_program().global_block()
-        src_op = dist_op_helper.get_cur_src_op()
-        rank_id = dist_op_helper.get_rank_id()
-        op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
+        dist_op_context = ctx.dist_op_context
+        main_block = dist_op_context.get_dst_main_program().global_block()
+        startup_block = dist_op_context.get_dst_startup_program().global_block()
+        src_op = dist_op_context.get_cur_src_op()
+        rank_id = dist_op_context.get_rank_id()
+        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.get_process_mesh().process_group:
-            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+        if rank_id not in op_dist_attr.process_mesh.processes:
+            rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
                                               rank_id)
 
-        # check validation of inputs / outputs 
+        # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
             assert input_name in kwargs, "input [{}] is not given".format(
                 input_name)
@@ -724,8 +721,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             Weight_var.name)[1]
         assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping)
-        process_mesh_shape = op_dist_attr.get_process_mesh().topology
-        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
 
         parallel_axis = matmul_col_dim_mapping
         group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
@@ -741,7 +738,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             persistable=False,
             stop_gradient=X_var.stop_gradient)
         # copy X_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, X_var)
+        copy_distributed_attr_for_var(ctx, intermediate_var_0, X_var)
 
         check_variable_and_dtype(
             X_var, 'tensor',
@@ -770,14 +767,14 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             attrs=attrs)
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(c_identity_op, main_block,
+        copy_distributed_attr_for_dist_op(ctx, c_identity_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(matmul_v2_op, main_block,
+        copy_distributed_attr_for_dist_op(ctx, matmul_v2_op, main_block,
                                           op_dist_attr)
 
         # init param sync
         if Weight_var.is_parameter:
-            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+            _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
     @staticmethod
@@ -793,12 +790,9 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
-        return True
-
-    def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -814,8 +808,9 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 return False
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         if is_dim_shard(out_dims_mapping[-1]):
@@ -826,9 +821,9 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 return False
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        dim_changed = _update_dims_mapping_for_matmul(dist_op)
         if dim_changed:
             changed = True
         return changed
@@ -839,21 +834,21 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         kwargs: inputname_mapping & outputname_mapping
         """
 
-        dist_op_helper = ctx.get_dist_op_helper()
-        main_block = dist_op_helper.get_dst_main_program().global_block()
-        startup_block = dist_op_helper.get_dst_startup_program().global_block()
-        src_op = dist_op_helper.get_cur_src_op()
-        rank_id = dist_op_helper.get_rank_id()
-        op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
+        dist_op_context = ctx.dist_op_context
+        main_block = dist_op_context.get_dst_main_program().global_block()
+        startup_block = dist_op_context.get_dst_startup_program().global_block()
+        src_op = dist_op_context.get_cur_src_op()
+        rank_id = dist_op_context.get_rank_id()
+        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.get_process_mesh().process_group:
-            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+        if rank_id not in op_dist_attr.process_mesh.processes:
+            rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
                                               rank_id)
 
-        # check validation of inputs / outputs 
+        # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
             assert input_name in kwargs, "input [{}] is not given".format(
                 input_name)
@@ -877,8 +872,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             Weight_var.name)[0]
         assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping)
-        process_mesh_shape = op_dist_attr.get_process_mesh().topology
-        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
 
         parallel_axis = matmul_row_dim_mapping
         group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
@@ -900,7 +895,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             is_data=False,
             need_check_feed=Out_var.desc.need_check_feed())
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, Out_var)
+        copy_distributed_attr_for_var(ctx, intermediate_var_0, Out_var)
 
         matmul_v2_op = main_block.append_op(
             type='matmul_v2',
@@ -919,14 +914,14 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             })
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(matmul_v2_op, main_block,
+        copy_distributed_attr_for_dist_op(ctx, matmul_v2_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, main_block,
+        copy_distributed_attr_for_dist_op(ctx, c_allreduce_sum_op, main_block,
                                           op_dist_attr)
 
         # init param sync
         if Weight_var.is_parameter:
-            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+            _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
     @staticmethod
@@ -934,18 +929,15 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
 
 
-# ReplicateParallel 
+# ReplicateParallel
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulV2Impl2, self).__init__()
         self._name = name
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
-        return True
-
-    def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -965,8 +957,11 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
 
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
@@ -978,9 +973,9 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
 
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        dim_changed = _update_dims_mapping_for_matmul(dist_op)
         if dim_changed:
             changed = True
         return changed

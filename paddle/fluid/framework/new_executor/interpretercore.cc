@@ -17,12 +17,15 @@
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
+
+DECLARE_bool(check_nan_inf);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 
@@ -81,7 +84,6 @@ paddle::framework::FetchList InterpreterCore::Run(
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
       auto* feed_var = global_scope_->Var(feed_names_[i]);
-
       auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
@@ -248,10 +250,10 @@ void InterpreterCore::BuildInplace() {
             auto outvar = global_scope_->Var(iterout->second[0]);
             if (invar && outvar) {
               instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace " << op_base->Type() << " "
-                      << global_scope_->VarDesc(iter->second[0])->Name()
+              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
+                      << " " << global_scope_->GetNameById(iter->second[0])
                       << " -> "
-                      << global_scope_->VarDesc(iterout->second[0])->Name()
+                      << global_scope_->GetNameById(iterout->second[0])
                       << std::endl;
             }
           }
@@ -331,6 +333,14 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   {
     platform::RecordEvent compute_event("Compute");
     instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+  }
+
+  // for debug nan/inf
+  if (FLAGS_check_nan_inf) {
+    VLOG(4) << "Check nan/inf";
+    framework::details::CheckOpHasNanOrInf(
+        *instr_node.OpBase(), *global_scope_,
+        instr_node.DeviceContext().GetPlace());
   }
 }
 
