@@ -134,11 +134,11 @@ TEST(CinnLaunchOpHelperTest, TestInitializeOutputVar) {
 
 TEST(CinnLaunchOpHelperTest, TestSeperateTempVar) {
   CinnScope compiled_scope;
-  complied_scope.Var<CinnTensor>("cinn_temp_var1");
-  complied_scope.Var<CinnTensor>("cinn_input_var1");
-  complied_scope.Var<CinnTensor>("cinn_input_var2");
-  complied_scope.Var<CinnTensor>("cinn_temp_var2");
-  complied_scope.Var<CinnTensor>("cinn_output_var1");
+  compiled_scope.Var<CinnTensor>("cinn_temp_var1");
+  compiled_scope.Var<CinnTensor>("cinn_input_var1");
+  compiled_scope.Var<CinnTensor>("cinn_input_var2");
+  compiled_scope.Var<CinnTensor>("cinn_temp_var2");
+  compiled_scope.Var<CinnTensor>("cinn_output_var1");
   auto variable_names =
       SeperateTempVar(compiled_scope, {{"input_var1", "cinn_input_var1"},
                                        {"input_var2", "cinn_input_var2"},
