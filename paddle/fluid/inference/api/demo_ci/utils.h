@@ -83,6 +83,8 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output,
   VLOG(3) << "predictor output numel " << numel;
   VLOG(3) << "reference output numel " << refer.data.size();
   CHECK_EQ(numel, refer.data.size());
+
+#ifndef WIN32
   switch (output.dtype) {
     case PaddleDType::INT64: {
       for (size_t i = 0; i < numel; ++i) {
@@ -105,6 +107,7 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output,
       break;
     }
   }
+#endif
 }
 
 /*
