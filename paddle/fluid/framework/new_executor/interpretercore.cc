@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
@@ -319,11 +320,11 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   if (FLAGS_new_executor_use_inplace) {
     for (auto& pair : instr_node.InplaceInfo()) {
-      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
+      const auto in = paddle::imperative::GetTensorFromVar(*pair.first);
       auto* out =
           paddle::framework::details::GetMutableTensorFromVar(pair.second);
-      if (in.dims() == out->dims()) {
-        out->ShareBufferWith(in);
+      if (in->dims() == out->dims()) {
+        out->ShareBufferWith(*in);
       }
     }
   }
