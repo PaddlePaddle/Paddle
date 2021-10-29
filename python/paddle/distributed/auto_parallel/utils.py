@@ -16,7 +16,6 @@ import os
 import paddle
 import threading
 import numpy as np
-
 import warnings
 import logging
 from functools import reduce
@@ -564,20 +563,20 @@ def _get_dist_attr(program):
     """
     Get distributed attribute of current rank
     """
-    from .context import get_default_distributed_context
+    from .dist_context import get_default_distributed_context
 
     dist_context = get_default_distributed_context()
     dist_attr = {}
     for var in program.list_vars():
         if is_parameter(var) or is_belong_to_optimizer(var):
-            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                 var)
-            process_mesh = tensor_dist_attr.get_process_mesh()
-            dims_mapping = tensor_dist_attr.get_dims_mapping()
+            process_mesh = tensor_dist_attr.process_mesh
+            dims_mapping = tensor_dist_attr.dims_mapping
 
             dist_attr[var.name] = {
                 "process_shape": process_mesh.topology,
-                "process_group": process_mesh.process_group,
+                "process_group": process_mesh.processes,
                 "dims_mapping": dims_mapping
             }
 
