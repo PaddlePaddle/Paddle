@@ -164,5 +164,4 @@ def iterates(func,
         # Updates the state tensor on the newly converged elements.
         state.state = update_state(state.state, gnorm < gtol, 'converged')
         
-
-        
+        yield state

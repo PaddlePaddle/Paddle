@@ -374,8 +374,66 @@ def update(state, phi, a, b, c, params, max_iters):
 
     return [A, B]
 
-def update_inverse_hessian(state, Hk, sk, yk):
+def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
+    r"""Updates the approximate inverse Hessian.
+    
+    Given the input displacement s_k and the change of gradients y_k,
+    the inverse Hessian at the next iterate is approximated using the following
+    formula:
+    
+        H_k+1 = (I - rho_k * s_k * T(y_k)) * H_k * (I - rho_k * y_k * T(s_k))
+                + rho_k * s_k * T(s_k),
+    
+                            1
+        where rho_k = ----------------.
+                        T(s_k) * y_k
 
+    Note, the symmetric positive definite property of H_k+1 requires
+        
+        T(s_k) * y_k > 0.
+    
+    This is the curvature condition. It's known that a line search result that 
+    satisfies the strong Wolfe conditions is guaranteed to meet the curvature 
+    condition.
+
+    Args:
+        
+    """
+    rho_k = .1 / paddle.dot(sk, yk)
+
+    # Enforces the curvature condition before updating the inverse Hessian.
+    if enforce_curvature:
+        assert not any_active_with_predicates(rho_k <= 0)
+    else:
+        update_state(state.state, rho_k <= 0, 'failed')
+
+    # By expanding the updating formula we obtain a sum of tensor products
+    #
+    #      H_k+1 = H_k 
+    #              - rho * H_k * y_k * T(s_k)    ----- (2)
+    #              - rho * s_k * T(y_k) * H_k    ----- (3)
+    #              + rho * s_k * T(s_k)                            ----- (4)
+    #              + rho * rho * (T(y_k) * H_y * y_k) s_k * T(s_k) ----- (5)
+    #
+    # Since H_k is symmetric, (3) is (2)'s transpose.
+    prod_H_y = paddle.matmul(Hk, yk.unsqueeze(-1))
+    
+    term23 = prod_H_y * s_k
+    
+    perm = list(range(Hk.dim()))
+    perm[-1], perm[-2] = perm[-2], perm[-1] 
+    
+    # Sums terms (2) and (3) forgoing rho
+    term23 += term23.transpose(perm)
+
+    # Merges terms (4) and (5) forgoing rho
+    term45 = sk + rho_k * paddle.dot(prod_H_y.unsqueeze(-1), yk) * sk
+    term45 *= sk.unsqueeze(-1)
+
+    # Updates H_k and obtain H_k+1
+    new_Hk = Hk + rho_k * (term45 - term23)
+
+    return new_Hk
 
 def hz_linesearch(state,
                   func,
@@ -631,12 +689,13 @@ def hz_linesearch(state,
     yk = next_fk - fk
     
     # Updates the approximate inverse hessian
-    next_Hk = update_inverse_hessian(state, Hk, sk, yk)
+    next_Hk = update_approx_inverse_hessian(state, Hk, sk, yk)
 
     state.xk = paddle.where(active_state(state.state), next_xk, xk)
     state.fk = paddle.where(active_state(state.state), next_fk, fk)
     state.gk = paddle.where(active_state(state.state), next_gk, gk)
     state.Hk = paddle.where(active_state(state.state), next_Hk, Hk)
+    state.k = k + 1
 
     return
 
