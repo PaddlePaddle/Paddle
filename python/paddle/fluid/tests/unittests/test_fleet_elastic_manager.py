@@ -102,6 +102,7 @@ class TestElasticManager(unittest.TestCase):
             'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:8001,10.10.10.2:8001"
         elastic = ElasticManager(args, self.etcd_client)
         # add 10.10.10.3
+        os.environ['PADDLE_TRAINER_ID'] = "0"
         elastic.host = "10.10.10.1"
         elastic.hosts = ["10.10.10.1", "10.10.10.2"]
         elastic._update_hosts()
@@ -110,6 +111,8 @@ class TestElasticManager(unittest.TestCase):
         # add 10.10.10.3
         elastic.host = "10.10.10.3"
         elastic.hosts = ["10.10.10.1", "10.10.10.3"]
+        os.environ['PADDLE_TRAINER_ID'] = "1"
+
         elastic._update_hosts()
         self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.3")
 
