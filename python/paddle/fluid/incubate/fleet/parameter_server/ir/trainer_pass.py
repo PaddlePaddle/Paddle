@@ -267,7 +267,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     distributed_idx = min(op_idxs)
                 else:
                     distributed_idx = max(inputs_idxs) + 1
-                #distributed_idx = max(inputs_idxs) + 1
 
                 if use_ps_gpu:
                     program.global_block()._insert_op(
@@ -706,7 +705,6 @@ def find_heter_ops(program, default_device="cpu"):
     current_heter_block_ops = []
     current_default_block_ops = []
     current_heter_device = default_device
-
     is_heter = False
     for op in block.ops:
         if _is_heter_op(op, current_heter_device, default_device):
