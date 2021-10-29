@@ -1577,22 +1577,13 @@ class Layer(core.Layer):
             if dtype is None:
                 dtype = t.dtype
             # 1. Copy param / Tensor to cpu
-            print("1. Copy param / Tensor to cpu:", t.name, type(t))
-            '''
-            if isinstance(t, framework.ParamBase):
-                t_cpu = t._copy_to(device=paddle.CPUPlace(), blocking=blocking)
-            else:
-                t_cpu = paddle.to_tensor(t, dtype=dtype, place=paddle.CPUPlace())
-            '''
             t_cpu = t._copy_to(paddle.CPUPlace(),
                                blocking)  # k-v type will error
 
             # 2. Release mem of t
-            print("2. Release mem of t")
             t.value().get_tensor()._clear()
 
             # 3. In cpu, cast param / Tensor to dtype
-            print("3. In cpu, cast param / Tensor to dtype")
             if dtype is not None and dtype != t_cpu.dtype:
                 if isinstance(t, framework.ParamBase):
                     from paddle.fluid.layer_helper import LayerHelper
@@ -1613,21 +1604,12 @@ class Layer(core.Layer):
                 t_cpu_casted = t_cpu
 
             # 4. Copy casted cpu param / Tensor to device
-            print("4. Copy casted cpu param / Tensor to device")
-            '''
-            if isinstance(t, framework.ParamBase):
-                new_t = t_cpu_casted._copy_to(device, blocking)
-            else:
-                new_t = paddle.to_tensor(t_cpu_casted, place=device)
-            '''
             new_t = t_cpu_casted._copy_to(device, blocking)
 
             # 5. share Tensor to origin param / Tensor
-            print("5. shared t param / Tensor to new_t")
             dst_tensor = t.value().get_tensor()
             src_tensor = new_t.value().get_tensor()
             dst_tensor._share_data_with(src_tensor)
-            print("================>end")
             return t
 
         with warnings.catch_warnings():
