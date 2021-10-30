@@ -42,7 +42,7 @@ void Communicator::init_gflag(const std::string &gflags) {
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
-    flags.push_back("-bthread_concurrency=200");
+    flags.push_back("-bthread_concurrency=100");
     flags.push_back("-socket_max_unwritten_bytes=2048000000");
     flags.push_back("-max_connection_pool_size=1950");
   }
@@ -360,8 +360,8 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
               << " from 0' trainer done";
     }
   }
-  // for debug
-  std::this_thread::sleep_for(std::chrono::milliseconds(100 + trainer_id_* 10));
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(100 + trainer_id_ * 10));
   BarrierWithTable(1);
   return;
 }

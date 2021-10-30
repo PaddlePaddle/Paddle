@@ -165,9 +165,11 @@ void BindDistCommunicator(py::module* m) {
 
 void BindHeterClient(py::module* m) {
   py::class_<HeterClient, std::shared_ptr<HeterClient>>(*m, "HeterClient")
-      .def(py::init([](const std::vector<std::string>& endpoint,
-                       const std::vector<std::string>& previous_endpoint, const int& trainer_id) {
-        return HeterClient::GetInstance(endpoint, previous_endpoint, trainer_id);
+      .def(py::init([](const std::vector<std::string>& endpoints,
+                       const std::vector<std::string>& previous_endpoints,
+                       const int& trainer_id) {
+        return HeterClient::GetInstance(endpoints, previous_endpoints,
+                                        trainer_id);
       }))
       .def("stop", &HeterClient::Stop);
 }
