@@ -593,7 +593,6 @@ class TheOnePSRuntime(RuntimeBase):
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_next_trainers(
             ) != []:
                 wait_server_ready(self.role_maker._get_next_trainers())
-
             if self.role_maker._is_heter_parameter_server_mode:
                 previous_trainers = []
                 if self.role_maker._get_previous_trainers() != []:
@@ -601,8 +600,9 @@ class TheOnePSRuntime(RuntimeBase):
                 next_trainers = []
                 if self.role_maker._get_next_trainers() != []:
                     next_trainers = self.role_maker._get_next_trainers()
-                self._heter_client = HeterClient(
-                    next_trainers, previous_trainers, self.role_maker._role_id())
+                self._heter_client = HeterClient(next_trainers,
+                                                 previous_trainers,
+                                                 self.role_maker._role_id())
 
     def _push_sparse_param(self,
                            var_name,
@@ -821,8 +821,7 @@ class TheOnePSRuntime(RuntimeBase):
         is_sync = self.compiled_strategy.is_sync_mode()
         trainers = self.compiled_strategy.get_trainers()
         if self.role_maker._is_heter_parameter_server_mode:
-            trainers += len(self.role_maker._get_heter_worker_endpoints(
-                ))
+            trainers += len(self.role_maker._get_heter_worker_endpoints())
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
 
@@ -884,16 +883,16 @@ class TheOnePSRuntime(RuntimeBase):
     def _init_heter_worker(self):
         executor = self._get_executor()
         startup_program = fluid.default_startup_program()
-        real_startup_program = startup_program._heter_pipeline_opt["startup_program"]
+        real_startup_program = startup_program._heter_pipeline_opt[
+            "startup_program"]
         executor.run(real_startup_program)
         self._init_worker()
 
     def _run_heter_worker(self, dataset):
         executor = self._get_executor()
-        executor.train_from_dataset(program=fluid.default_main_program(),
-                                    dataset=dataset,
-                                    debug=False)
-    
+        executor.train_from_dataset(
+            program=fluid.default_main_program(), dataset=dataset, debug=False)
+
     def _stop_worker(self):
         self._communicator.stop()
         if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
