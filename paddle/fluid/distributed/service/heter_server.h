@@ -209,7 +209,8 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
         new paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& cpu_dev_ctx = *pool.Get(platform::CPUPlace);
+    platform::CPUPlace cpu_place;
+    auto& cpu_dev_ctx = *pool.Get(cpu_place);
 
     auto message_name = request->message_name();
     auto& request_io_buffer = cntl->request_attachment();

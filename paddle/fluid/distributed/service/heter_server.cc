@@ -59,7 +59,7 @@ void HeterServer::SetEndPoint(const std::string& endpoint) {
   service_.SetEndpoint(endpoint);
 }
 
-void HeterServer::SetFanin(int& fan_in) { service_.SetFanin(fan_in); }
+void HeterServer::SetFanin(const int& fan_in) { service_.SetFanin(fan_in); }
 
 void HeterServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
