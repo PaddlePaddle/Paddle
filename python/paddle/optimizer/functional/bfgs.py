@@ -79,6 +79,7 @@ class SearchState(object):
         self.nf = nf
         self.ng = ng
         self.state = make_state(fk)
+        self.params = None
 
 
 def iterates(func,

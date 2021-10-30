@@ -43,9 +43,11 @@ def all_active_with_predicates(state, *predicates):
         A scalar boolean tensor. True if the predicates are true for every
         active state. Otherwise False.
     """
-    p = paddle.logical_and(*predicates) if len(predicates) > 1 else predicates
-    negate_state = paddle.logical_not(active_state(state))
-    return paddle.all(paddle.logical_or(negate_state, p))
+    active_preds = active = active_state(state)
+    for p in predicates:
+        active_preds = paddle.logical_and(active_preds, p)
+  
+    return paddle.all(active == active_preds)
 
 def any_active_with_predicates(state, *predicates):
     r"""Tests whether there's any active state also satisfies all the
@@ -61,7 +63,11 @@ def any_active_with_predicates(state, *predicates):
         A scalar boolean tensor. True if any element in `state` is active and
         the corresponding predicate values are all True. Otherwise False.
     """
-    return paddle.any(paddle.logical_and(active_state(state), *predicates))
+    active_preds = active_state(state)
+    for p in predicates:
+        active_preds = paddle.logical_and(active_preds, p)
+
+    return paddle.any(active_preds)
 
 def active_state(state):
     return state == 0
@@ -109,12 +115,12 @@ def make_state(tensor_like, value='active'):
     elif value is 'converged':
         state = paddle.ones_like(tensor_like, dtype='int8')
     else:
-        assert value is 'failed':
+        assert value is 'failed'
         state = paddle.ones_like(tensor_like, dtype='int8') + 1
     
     return state
 
-def update_state(input_state, predicate, new_state)
+def update_state(input_state, predicate, new_state):
     r"""Updates the state on the locations where the old value is 0 and 
     corresponding predicate is True.
 
@@ -135,7 +141,7 @@ def update_state(input_state, predicate, new_state)
     else:
         increments = paddle.to_tensor(predicate, dtype='int8') * 2
     
-    output_state = paddle.where(state == 0, increments, state)
+    output_state = paddle.where(input_state == 0, increments, input_state)
     return output_state
 
 def as_float_tensor(input, dtype=None):
@@ -152,7 +158,7 @@ def as_float_tensor(input, dtype=None):
         A tensor with the required dtype.
     """
     assert isinstance(input, (float, list, paddle.Tensor)), (
-        f'Input `{input}` should be float, list or paddle.Tensor but found 
+        f'Input `{input}` should be float, list or paddle.Tensor but found ' 
         f'{type(input)}.'
     )
 
@@ -164,7 +170,7 @@ def as_float_tensor(input, dtype=None):
         assert dtype is None
     try:
         output = paddle.to_tensor(input, dtype=dtype)
-        if output.dtype not in paddle.float32, paddle.float64:
+        if output.dtype not in (paddle.float32, paddle.float64):
             raise TypeError
     except TypeError:
         raise TypeError(f'The data type of {input} is {type(input)}, which is not supported.')

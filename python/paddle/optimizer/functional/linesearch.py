@@ -15,35 +15,70 @@
 import paddle
 from ...autograd import vjp
 from .bfgs import SearchState
-from .bfgs_utils import make_state, update_state, 
-from .bfgs_utils import vnorm_inf, vnorm_p, any_predicates
-from .bfgs_utils import any_active, active_state, converged_state, failed_state
+from .bfgs_utils import (vnorm_inf,
+                         vnorm_p,
+                         make_const,
+                         update_state,
+                         any_active,
+                         any_predicates,
+                         active_state,
+                         converged_state,
+                         failed_state,
+                         any_active_with_predicates,
+                         all_active_with_predicates)
 
-_hz_params = {
+
+hz_default_params = {
     'eps': 1e-6,
     'delta': .1,
     'sigma': .9,
     'omiga': 1e-3,
     'rho': 5.0,
-    'mu': 0.01,
+    'mu': .01,
     'theta': .5,
+    'gamma': .66,
     'Delta': .7,
-    'psi_0': 0.01,
-    'psi_1': 0.1,
+    'psi_0': .01,
+    'psi_1': .1,
     'psi_2': 2
 }
 
 
-def initial(state, params):
+class CounterStopException(Exception):
+    r"""An instance of CounterStopException is raised when incrementing
+    a BoundedCounter hits its upper bound.
+    """
+    pass
+
+
+class BoundedCounter(object):
+    r"""Defines a counter, when the upper bound is reached, triggers a failure.
+    """
+
+    def __init__(self, upper_bound):
+        self.count = 0
+        assert upper_bound > 0
+        self.upper_bound = upper_bound
+    
+    def increment(self):
+        r"""Increments the counter."""
+
+        if self.count < self.upper_bound:
+            self.count += 1
+        else:
+            raise CounterStopException()
+
+
+def initial(state):
     r"""Generates initial step size.
     
     Args:
         state (Tensor): the search state tensor.
-        params(Dict): the control parameters used in the HagerZhang method.
 
     Returns:
         The tensor of initial step size.
     """
+    params = state.params
     psi_0, psi_1, psi_2 = params['psi_0'], params['psi_1'], params['psi_2']
 
     # I0. if k = 0, generate the initial step size c using the following rules.
@@ -75,20 +110,20 @@ def initial(state, params):
     
     return c
 
-def bracket(state, phi, c, params, max_iters):
+
+def bracket(state, phi, c, iter_count):
     r"""Generates opposite slope interval.
         
     Args:
         state (Tensor): the search state tensor.
         phi (Callable): the restricted function on the search line.
         c (Tensor): the initial step sizes.
-        params (Dict): the control parameters used in the HagerZhang method.
-        max_iters (int): the number controls the maximum number of iterations.
+        iter_count (BoundedCounter): the bounded counter that controls the  
+            maximum number of iterations.
     
     Returns:
         [a, b]: left ends and right ends of the result intervels.
     """
-
     # B0. Initialize j = 0, c_0 = c
     #
     # B1. If phi'(c_j) >= 0, then return [c_j-1, c_j]
@@ -97,6 +132,7 @@ def bracket(state, phi, c, params, max_iters):
     #     then return Bisect([0, c_j])
     #
     # B3. Otherwise, c_j = c, c_j+1 = rho * c, j = j + 1, goto B1
+    params = state.params
     eps, rho = params['eps'], params['rho']
     epsilon_k = eps * state.Ck
 
@@ -104,31 +140,32 @@ def bracket(state, phi, c, params, max_iters):
     f0 = state.fk
 
     # The following loop repeatedly applies B3 if condition allows
-    iters = 0
     expanding = True
     prev_c = make_const(c, .0)
+
     # f = phi(c), g = phi'(c)
+    iter_count.increment()
     f, g = vjp(phi, c)
     
-    while expanding and iters < max_iters:
+    while expanding:
         # Generates the B3 condition in a boolean tensor.
         B3_cond = paddle.logical_and(g < .0, f <= f0 + epsilon_k)
 
         # Sets [prev_c, c] to [c, rho*c] if B3 is true.
         prev_c = paddle.where(B3_cond, c, prev_c)
-        c = paddle.where(B3_cond, rho*c, c)
+        c = paddle.where(B3_cond, rho * c, c)
 
         # Calculates function values and gradients for the new step size.
+        iter_count.increment()
         f, g = vjp(phi, c)
 
         expanding = any_active_with_predicates(state.state, B3_cond)
-        iters += 1
     
     # (TODO) Line search stops on the still expanding step sizes and exceeding 
     # maximum iterations.
     
     # Narrows down the interval by recursively bisecting it. 
-    a, b = bisect(state, phi, make_const(c, .0), c, params, max_iters)
+    a, b = bisect(state, phi, make_const(c, .0), c, iter_count)
 
     # Condition B1, that is, the rising right end
     B1_cond = g >= .0
@@ -148,7 +185,8 @@ def bracket(state, phi, c, params, max_iters):
 
     return [a, b]
 
-def bisect(state, phi, a, b, params, max_iters):
+
+def bisect(state, phi, a, b, iter_count):
     r"""Bisects to locate opposite slope interval.
     
     Args:
@@ -156,12 +194,13 @@ def bisect(state, phi, a, b, params, max_iters):
         phi (Callable): the restricted function on the search line.
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
-        params(Dict): the control parameters used in the HagerZhang method.
-        max_iters (int): the number controls the maximum number of iterations.
+        iter_count (BoundedCounter): the bounded counter that controls the  
+            maximum number of iterations.
 
     Returns:
         [a, b]: left ends and right ends of the result intervels.   
     """
+    params = state.params
     theta, eps = params['theta'], params['eps']
     epsilon_k = eps * state.Ck
 
@@ -172,36 +211,36 @@ def bisect(state, phi, a, b, params, max_iters):
     # b. If phi'(d) < 0 and phi(d) > phi(0) + epsilon_k, then Bisect([a, d])
     #
     # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
-    iters = 0
-
-    while iters < max_iters:
+    while True:
         d = (1 - theta) * a + theta * b
+
+        iter_count.increment()
         f, g = vjp(phi, d)
         
-        # Updates the interval ends
+        # Updates the intervals
         c_cond = paddle.logical_and(g < .0, f <= f0 + epsilon_k)
         a = paddle.where(c_cond, d, a)
         b = paddle.where(c_cond, b, d)
 
-        # If a condition is not all true then continue
+        # If condition a is not all true then continue
         a_cond = g >= .0
         if all_active_with_predicates(state.state, a_cond):
             return [a, b]
-
-        iters += 1
 
     # Invalidates the state if a condition does not hold.
     failed = g < .0
     state.state = update_state(state.state, failed, 'failed')
 
-def secant(state, phi, a, b):
+    return [a, b]
+
+
+def secant(phi, a, b):
     r"""Implements the secant function, a sub-procedure in secant2.
 
     The output value is the weighted average of the input values, where
     the weights are given by the slopes of `phi` at the inputs values. 
 
     Args:
-        state (Tensor): the search state tensor.
         phi (Callable): the restricted function on the search line.
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
@@ -222,7 +261,8 @@ def secant(state, phi, a, b):
     #     c = paddle.where(paddle.isinf(c), paddle.zeros_like(c), c)
     return c
 
-def secant2(state, phi, a, b, params, max_iters):
+
+def secant2(state, phi, a, b, iter_count):
     r"""Implements the secant2 procedure in the Hager-Zhang method.
 
     Args:
@@ -230,8 +270,8 @@ def secant2(state, phi, a, b, params, max_iters):
         phi (Callable): the restricted function on the search line.
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
-        params(Dict): the control parameters used in the HagerZhang method.
-        max_iters (int): the number controls the maximum number of iterations.
+        iter_count (BoundedCounter): the bounded counter that controls the  
+            maximum number of iterations.
 
     Returns:
         [a, b]: left ends and right ends of the result intervels. 
@@ -246,9 +286,9 @@ def secant2(state, phi, a, b, params, max_iters):
     # S3. If c = A, then let c = secant(a, A), [a, b] = update(A, B, c)
     #
     # S3. Otherwise, [a, b] = [A, B]
-    c = secant(a, b)
+    c = secant(phi, a, b)
 
-    A, B = update(a, b, c)
+    A, B = update(state, phi, a, b, c, iter_count)
     
     # Boolean tensor each element of which holds the S2 condition 
     S2_cond = c == B
@@ -264,17 +304,18 @@ def secant2(state, phi, a, b, params, max_iters):
     r = paddle.where(S3_cond, A, r)
 
     # Outputs of S2 and S3
-    a, b = update(A, B, c)
+    a, b = update(state, phi, A, B, c, iter_count)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
-    S2_or_S3 = paddle.logical_or(B2_cond, B3_cond)
+    S2_or_S3 = paddle.logical_or(S2_cond, S3_cond)
     a = paddle.where(S2_or_S3, a, A)
-    b = paddle.where(S3_or_S3, b, B)
+    b = paddle.where(S2_or_S3, b, B)
 
     return [a, b]   
 
+
 def stopping_condition(state, phi, c, phiprime_0,
-                       phi_c=None, phiprime_c=None, params=None):
+                       phi_c=None, phiprime_c=None):
     r"""Tests T1/T2 condition in the Hager-Zhang paper.
     
     Args:
@@ -285,14 +326,14 @@ def stopping_condition(state, phi, c, phiprime_0,
         phi_c (Tensor, optional): the value of `phi(c)`. Default is None.
         phiprime_c (Tensor, optional): the derivative of `phi` at `c`.
             Default is None.
-        params (Dict, optional): the control parameters. Default is None.
+        params (Dict, optional): used to configure the HagerZhang method.
+            Default is None.
 
     Returns:
         A boolean tensor holding the evaluated stopping condition for each
         function instance.
     """
-    if params is None:
-        params = _hz_params
+    params = state.params
     delta, sigma, eps = params['delta'], params['sigma'], params['eps']
     epsilon_k = eps * state.Ck
 
@@ -316,7 +357,7 @@ def stopping_condition(state, phi, c, phiprime_0,
     
     wolfe_cond = paddle.logical_and(T11_cond, T12_cond)
 
-    T21_cond = phiprime_c <= (2*sigma - 1) * phiprime_0 
+    T21_cond = phiprime_c <= (2 * sigma - 1) * phiprime_0 
     T22_cond = T12_cond
     T23_cond = phi_dy <= epsilon_k
 
@@ -326,7 +367,8 @@ def stopping_condition(state, phi, c, phiprime_0,
 
     return stopping
 
-def update(state, phi, a, b, c, params, max_iters):
+
+def update(state, phi, a, b, c, iter_count):
     r"""Performs the update procedure in the Hager-Zhang method.
 
     Args:
@@ -335,12 +377,13 @@ def update(state, phi, a, b, c, params, max_iters):
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
         c (Tensor): holds the new step sizes.
-        params (Dict): the control parameters.
+        iter_count (BoundedCounter): the bounded counter that controls the  
+            maximum number of iterations.
 
     Returns:
         [a, b]: left ends and right ends of the result intervels. 
     """
-    eps = params['eps']
+    eps = state.params['eps']
     f0 = state.fk
     epsilon_k = eps * state.Ck
 
@@ -352,15 +395,16 @@ def update(state, phi, a, b, c, params, max_iters):
     #
     # U3. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
     #     return Bisect([a, c])
+    iter_count.increment()
     f, g = vjp(phi, c)
 
     # Bisects [a, c] for the U3 condition
-    A, B = bisect(state, phi, a, c, params, max_iters)
+    A, B = bisect(state, phi, a, c, iter_count)
 
     # Step 1: branches between U2 and U3 
     U23_cond = f <= f0 + epsilon_k
-    A = paddle.where(U2_cond, c, A)
-    B = paddle.where(U2_cond, b, B)
+    A = paddle.where(U23_cond, c, A)
+    B = paddle.where(U23_cond, b, B)
 
     # Step 2: updates for true U1
     U1_cond = g >= .0
@@ -373,6 +417,7 @@ def update(state, phi, a, b, c, params, max_iters):
     B = paddle.where(U0_cond, b, B)
 
     return [A, B]
+
 
 def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     r"""Updates the approximate inverse Hessian.
@@ -418,7 +463,7 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     # Since H_k is symmetric, (3) is (2)'s transpose.
     prod_H_y = paddle.matmul(Hk, yk.unsqueeze(-1))
     
-    term23 = prod_H_y * s_k
+    term23 = prod_H_y * sk
     
     perm = list(range(Hk.dim()))
     perm[-1], perm[-2] = perm[-2], perm[-1] 
@@ -435,12 +480,13 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
 
     return new_Hk
 
+
 def hz_linesearch(state,
                   func,
                   gtol,
                   xtol,
                   initial_step=None,
-                  max_iters=10,
+                  max_iters=20,
                   params=None):
     r"""
     Implements the Hager-Zhang line search method. This method can be used as
@@ -458,8 +504,8 @@ def hz_linesearch(state,
             line search. Default value is None.
         max_iters (int, optional): the maximum number of trials for locating
             the next step size. Default value is 10.
-        params (Dict, optional): the control parameters used in the HagerZhang 
-            method. Default is None. 
+        params (Dict, optional): used to configure the HagerZhang method.
+            Default is None. 
 
     Reference:
         Algorithm 851: CG_DESCENT, a conjugate gradient method with guaranteed 
@@ -587,24 +633,10 @@ def hz_linesearch(state,
             return Bisect([a, c])
 
     """
-
     if params is None:
-        params = _hz_params
+        state.params = hz_default_params
 
-
-    def phi(a):
-        r'''
-        phi is used as the objective function restricted on the line search 
-        secant.
-
-        Args:
-            a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
-            mode, giving the step sizes alpha.
-        '''
-        if len(p.shape) > 1:
-            a = paddle.unsqueeze(a, axis=-1)
-
-        return func(x + a*p)
+    gamma = state.params['gamma']
 
     # For each line search, the input location, function value, gradients and
     # the approximate inverse hessian are already present in the state date
@@ -618,9 +650,23 @@ def hz_linesearch(state,
     # the line search state as failed for the corresponding batching element.
     pk = -paddle.dot(Hk, gk)
 
+    def phi(a):
+        r'''
+        phi is used as the objective function restricted on the line search 
+        secant.
+
+        Args:
+            a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
+            mode, giving the step sizes alpha.
+        '''
+        if len(pk.shape) > 1:
+            a = paddle.unsqueeze(a, axis=-1)
+
+        return func(xk + a * pk)
+
     # derive is the directional derivative of f at x_k on the direction of p_k.
     # It's also the gradient of phi    
-    deriv = dot(gk, pk)
+    deriv = paddle.dot(gk, pk)
 
     # Marks inputs with invalid function values and non-negative derivatives 
     invalid_input = paddle.logical_or(paddle.isinf(fk), deriv >= .0)
@@ -635,42 +681,49 @@ def hz_linesearch(state,
     #
     # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
 
+    # Initializes a bounded counter
+    iter_count = BoundedCounter(max_iters)
+
     # Generates initial step sizes
-    c = initial(state, params)
+    c = initial(state)
 
-    # Generates the opposite slope interval
-    a_j, b_j = bracket(state, phi, c, params, max_iters=max_iters)
+    try:
+        # Generates the opposite slope interval
+        a_j, b_j = bracket(state, phi, c, iter_count)
 
-    ls_found = make_const(c, False, dtype='bool')
-    ls_stepsize = c
+        ls_found = make_const(c, False, dtype='bool')
+        ls_stepsize = c
 
-    iters = 0
-    while iters < max_iters:
-        # Applies secant2 to the located opposite slope interval
-        a, b = secant2(state, phi, a_j, b_j, params, max_iters=max_iters)
+        while True:
+            # Applies secant2 to the located opposite slope interval
+            a, b = secant2(state, phi, a_j, b_j, iter_count)
 
-        # If interval does not shrink enough, then applies bisections 
-        # repeatedly.
-        L2_cond = (b - a) > gamma * (b_j - a_j)
+            # If interval does not shrink enough, then applies bisections 
+            # repeatedly.
+            L2_cond = (b - a) > gamma * (b_j - a_j)
 
-        c = 0.5 * (a + b)
+            c = 0.5 * (a + b)
         
-        # Halts the line search if the stopping conditions are all satisfied.
-        stopped = stopping_condition(state, phi, c, deriv)
-        new_stopped = paddle.logical_and(logical_not(ls_found), stopped)
-        ls_stepsize = paddle.where(new_stopped, c, ls_stepsize)
-        ls_found = paddle.logical_or(ls_found, stopped)
+            # Halts the line search if the stopping conditions are all 
+            # satisfied.
+            not_found = paddle.logical_not(ls_found)
+            stopped = stopping_condition(state, phi, c, deriv)
+            new_stopped = paddle.logical_and(not_found, stopped)
+            ls_stepsize = paddle.where(new_stopped, c, ls_stepsize)
+            ls_found = paddle.logical_or(ls_found, stopped)
 
-        if all_active_with_predicates(state.state, ls_found):
-            break
+            if all_active_with_predicates(state.state, ls_found):
+                break
 
-        A, B = update(a, b, c)
-        a = paddle.where(L2_cond, A, a)
-        b = paddle.where(L2_cond, B, b)
+            A, B = update(state, phi, a, b, c, iter_count)
+            a = paddle.where(L2_cond, A, a)
+            b = paddle.where(L2_cond, B, b)
 
-        # Goes to next iteration
-        a_j, b_j = a, b
-        iters += 1
+            # Goes to next iteration
+            a_j, b_j = a, b
+
+    except CounterStopException:
+        pass
 
     # Updates the state of the instances for which the line search failed.
     ls_failed = paddle.logical_not(ls_found)
