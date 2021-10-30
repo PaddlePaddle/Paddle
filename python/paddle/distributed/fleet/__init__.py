@@ -77,7 +77,6 @@ stop_worker = fleet.stop_worker
 distributed_optimizer = fleet.distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
-merge_embedding_shards_to_binary = fleet.merge_embedding_shards_to_binary
 load_model = fleet.load_model
 minimize = fleet.minimize
 distributed_model = fleet.distributed_model
