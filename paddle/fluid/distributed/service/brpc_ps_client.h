@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,9 +22,10 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-#include "paddle/fluid/distributed/common/thread_queue.h"
+// #include "paddle/fluid/distributed/common/thread_queue.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -245,14 +247,16 @@ class BrpcPsClient : public PSClient {
   // 异步push dense task
   std::thread _async_push_dense_thread;
   typedef AsyncRequestTask<std::shared_ptr<std::vector<float>>> DenseAsyncTask;
-  typedef thread_queue<DenseAsyncTask *, store_value> DenseAsyncTaskQueue;
-  std::unordered_map<uint32_t, std::shared_ptr<DenseAsyncTaskQueue>>
+  // typedef thread_queue<DenseAsyncTask *, store_value> DenseAsyncTaskQueue;
+  // std::unordered_map<uint32_t, std::shared_ptr<DenseAsyncTaskQueue>>
+  std::unordered_map<uint32_t, paddle::framework::Channel<DenseAsyncTask *>>
       _push_dense_task_queue_map;
   // 异步push sparse task
   std::thread _async_push_sparse_thread;
   typedef AsyncRequestTask<std::shared_ptr<SparsePushTaskData>> SparseAsyncTask;
-  typedef thread_queue<SparseAsyncTask *, store_value> SparseAsyncTaskQueue;
-  std::unordered_map<uint32_t, std::shared_ptr<SparseAsyncTaskQueue>>
+  // typedef thread_queue<SparseAsyncTask *, store_value> SparseAsyncTaskQueue;
+  // std::unordered_map<uint32_t, std::shared_ptr<SparseAsyncTaskQueue>>
+  std::unordered_map<uint32_t, paddle::framework::Channel<SparseAsyncTask *>>
       _push_sparse_task_queue_map;
   std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
 
