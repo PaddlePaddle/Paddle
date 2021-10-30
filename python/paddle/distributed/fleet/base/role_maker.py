@@ -371,7 +371,7 @@ class RoleMakerBase(object):
         self._role = None
         self._current_id = -1
 
-    def _heter_device_type():
+    def _heter_device_type(self):
         """
         return device type that current heter worker is using
         """
