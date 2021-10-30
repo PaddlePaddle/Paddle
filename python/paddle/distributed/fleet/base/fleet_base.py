@@ -839,9 +839,13 @@ class Fleet(object):
                           hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
 
         Examples:
-            .. code-block:: python
-
+            .. code-block:: text
+              import paddle
+              paddle.enable_static()
               import paddle.distributed.fleet as fleet
+
+              fleet.init()
+              exe = paddle.static.Executor(paddle.CPUPlace())
               fleet.merge_embedding_shards_to_binary("input_path", "output_path")
         """
         feasign_nums = kwargs.get("feasign_nums", 1000)
