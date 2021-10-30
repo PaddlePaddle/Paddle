@@ -141,9 +141,13 @@ def init_parallel_env():
 
     # 1. Check backend
     backend = os.getenv("PADDLE_DISTRI_BACKEND", "auto")
+    # NOTE(liubo48): this new env should be set/detect in distributed.launch.
+    nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "2"))
     print("### DEBUG ### backend is: ", backend)
     is_cpu_only = _is_cpuonly(backend)
-    enable_gloo = is_cpu_only or (backend == "heter")
+    #enable_gloo = is_cpu_only or (backend == "heter")
+    # NOTE(liubo48): fix enable_gloo to false for testing multi-npus mix training (no enough cards)
+    enable_gloo = False
 
     # 2. Check device
     if not (is_cpu_only or core.is_compiled_with_cuda() or
@@ -170,7 +174,7 @@ def init_parallel_env():
         # The number of cards on each heter node need to be same,
         # and only use local rank 0 to do gloo communication.
         if (backend == 'heter'):
-            gloo_worker_size = int(parallel_env.world_size / 2)
+            gloo_worker_size = int(parallel_env.world_size / nranks_per_node)
         else:
             gloo_worker_size = parallel_env.world_size
         assert gloo_worker_size >= 2, 'size of gloo worker should be >= 2.'
@@ -195,6 +199,7 @@ def init_parallel_env():
         warnings.warn("The parallel environment has been initialized.")
     strategy.nranks = parallel_env.world_size
     strategy.local_rank = parallel_env.rank
+    strategy.local_nranks = nranks_per_node
     strategy.trainer_endpoints = parallel_env.trainer_endpoints
     strategy.current_endpoint = parallel_env.current_endpoint
     strategy.nrings = parallel_env.nrings

@@ -2110,6 +2110,13 @@ void BindImperative(py::module *m_ptr) {
                     [](imperative::ParallelStrategy &self, int local_rank) {
                       self.local_rank_ = local_rank;
                     })
+      .def_property("local_nranks",
+                    [](const imperative::ParallelStrategy &self) {
+                      return self.local_nranks_;
+                    },
+                    [](imperative::ParallelStrategy &self, int local_nranks) {
+                      self.local_nranks_ = local_nranks;
+                    })
       .def_property(
           "trainer_endpoints",
           [](const imperative::ParallelStrategy &self) {

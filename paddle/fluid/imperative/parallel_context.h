@@ -35,6 +35,7 @@ namespace imperative {
 struct ParallelStrategy {
   int nranks_{1};
   int local_rank_{0};
+  int local_nranks_{1};
   std::vector<std::string> trainer_endpoints_{};
   std::string current_endpoint_{""};
   int nrings_{1};

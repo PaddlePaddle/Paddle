@@ -121,11 +121,6 @@ void HCCLParallelContext::InitWithRingID(int ring_id) {
 static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
                       const aclrtStream stream,
                       const platform::HCCLComm *comm) {
-  const auto &place = src.place();
-  PADDLE_ENFORCE_EQ(
-      platform::is_npu_place(place), true,
-      platform::errors::Unimplemented(
-          "Imperative mode does not support multi-NPU training yet."));
   void *src_ptr =
       reinterpret_cast<void *>(const_cast<void *>(src.data<void>()));
   dst->Resize(src.dims());
@@ -162,45 +157,49 @@ void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void HCCLParallelContext::InterReduce(const framework::Variable &src,
                                       framework::Variable *dst, int ring_id) {
-  //   // std::cout << "/// DEBUG /// start inter reduce with ring_id: " <<
-  //   ring_id
-  //   // << std::endl;
-  //   const framework::Tensor &src_tensor = src.Get<framework::LoDTensor>();
-  //   framework::Tensor *dst_tensor = dst->GetMutable<framework::LoDTensor>();
+  std::cout << "/// DEBUG /// start inter reduce with ring_id: " << ring_id
+            << std::endl;
+  if (src.IsType<framework::LoDTensor>()) {
+    const framework::Tensor &src_tensor = src.Get<framework::LoDTensor>();
+    framework::Tensor *dst_tensor = dst->GetMutable<framework::LoDTensor>();
 
-  //   const auto &place = src_tensor.place();
-  //   // check success
-  //   platform::NCCLComm *comm =
-  //       platform::NCCLCommContext::Instance().Get(ring_id, place);
-  //   gpuStream_t stream = comm->stream();
-
-  //   const void *src_ptr = src_tensor.data<void>();
-  //   dst_tensor->Resize(src_tensor.dims());
-  //   auto *dst_ptr =
-  //       dst_tensor->mutable_data(src_tensor.place(), src_tensor.type());
-  //   auto nccl_dtype = platform::ToNCCLDataType(src_tensor.type());
-  //   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
-  //       src_ptr, dst_ptr, src_tensor.numel(), nccl_dtype, ncclSum, 0,
-  //       comm->comm(), stream));
-  return;
+    const auto &place = src_tensor.place();
+    platform::HCCLComm *comm =
+        platform::HCCLCommContext::Instance().Get(ring_id, place);
+    aclrtStream stream = comm->stream();
+    // no Reduce, use AllReduce instead
+    AllReduce(src_tensor, dst_tensor, stream, comm);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unsupported variable type %s for imperative allreduce, only "
+        "LoDTensor is supported.",
+        platform::demangle(framework::ToTypeName(src.Type()))));
+  }
 }
 
 void HCCLParallelContext::InterBroadCast(framework::Variable *src,
                                          int ring_id) {
-  //   // std::cout << "/// DEBUG /// start inter broadcast with ring_id: " <<
-  //   // ring_id << std::endl;
-  //   framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
-  //   const auto &place = src_tensor->place();
-  //   // check success
-  //   platform::NCCLComm *comm =
-  //       platform::NCCLCommContext::Instance().Get(ring_id, place);
-  //   gpuStream_t stream = comm->stream();
+  std::cout << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id
+            << std::endl;
+  if (src->IsType<framework::LoDTensor>()) {
+    framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+    const auto &place = src_tensor->place();
+    platform::HCCLComm *comm =
+        platform::HCCLCommContext::Instance().Get(ring_id, place);
+    aclrtStream stream = comm->stream();
 
-  //   void *src_ptr = src_tensor->data<void>();
-  //   auto nccl_dtype = platform::ToNCCLDataType(src_tensor->type());
-  //   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
-  //       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
-  return;
+    void *src_ptr =
+        reinterpret_cast<void *>(const_cast<void *>(src_tensor->data<void>()));
+    auto hccl_dtype = platform::ToHCCLDataType(src_tensor->type());
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+        src_ptr, src_tensor->numel(), hccl_dtype, 0, comm->comm(),
+        reinterpret_cast<void *>(stream)));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unsupported variable type %s for imperative allreduce, only "
+        "LoDTensor is supported.",
+        platform::demangle(framework::ToTypeName(src->Type()))));
+  }
 }
 
 paddle::platform::DeviceContext *HCCLParallelContext::GetDeviceContext(

@@ -73,8 +73,7 @@ class HeterParallelContext : public ParallelContext {
   ParallelStrategy gloo_strategy_;
   ParallelStrategy node_strategy_;
   platform::Place node_place_;
-  std::vector<std::string> node_ips_;
-  int inter_ring_id_{-1};
+  std::unordered_set<std::string> nodes_ips_;
   std::shared_ptr<imperative::ParallelContext> heter_parallel_ctx_{nullptr};
   std::shared_ptr<imperative::ParallelContext> gloo_ctx_{nullptr};
 };
