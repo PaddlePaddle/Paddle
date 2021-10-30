@@ -888,8 +888,8 @@ def get_mapped_cluster_from_args(args, device_mode):
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
                 x
-                for x in range(start_port, start_port + len(node_ranks_mapping[
-                    node_rank]))
+                for x in range(start_port,
+                               start_port + len(node_ranks_mapping[node_rank]))
             ]
         else:
             free_ports = find_free_ports(len(node_ranks_mapping[node_rank]))
@@ -990,20 +990,23 @@ class ParameterServerLauncher(object):
         # get heter worker envs
         if self.distribute_mode == DistributeMode.PS_HETER:
             assert args.heter_devices != "", "The setting of Parameter-Server heter mode must has heter_devices."
-            self.stage_device_map[1] = "cpu" #  for cpu trainer
+            self.stage_device_map[1] = "cpu"  #  for cpu trainer
             heter_devices_list = args.heter_devices.split(";")
             for i in range(len(heter_devices_list)):
                 self.stage_device_map[i + 2] = heter_devices_list[i]
-                    
+
             self.stage_heter_map[1] = self.worker_endpoints
             if args.heter_worker_num:
                 self.stage_heter_trainer_num = args.heter_worker_num.split(",")
-                self.stage_heter_trainer_num = [int(trainer_num) for trainer_num in self.stage_heter_trainer_num]
-                    
+                self.stage_heter_trainer_num = [
+                    int(trainer_num)
+                    for trainer_num in self.stage_heter_trainer_num
+                ]
+
                 if args.heter_workers:
-                    assert len(
-                        args.heter_workers.split(";")
-                    ) == len(self.stage_heter_trainer_num), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num epual to heter_worker_num stage, but received heter_workers enpoint stage num: {} and heter_worker_num stage {}".format(
+                    assert len(args.heter_workers.split(";")) == len(
+                        self.stage_heter_trainer_num
+                    ), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num epual to heter_worker_num stage, but received heter_workers enpoint stage num: {} and heter_worker_num stage {}".format(
                         len(args.heter_workers.split(";")),
                         len(self.stage_heter_trainer_num))
                     heter_worker_endpoints_list = args.heter_workers.split(";")
@@ -1011,21 +1014,28 @@ class ParameterServerLauncher(object):
                     for i in range(len(self.stage_heter_trainer_num)):
                         if self.heter_worker_endpoints != "":
                             self.heter_worker_endpoints += ","
-                        heter_worker_endpoints = heter_worker_endpoints_list[i].split(",")
-                        assert len(heter_worker_endpoints) == self.stage_heter_trainer_num[i], "The heter trainer num in stage {} is not equal in args.heter_worker_num and args.heter_workers".format(i)
-                            
+                        heter_worker_endpoints = heter_worker_endpoints_list[
+                            i].split(",")
+                        assert len(
+                            heter_worker_endpoints
+                        ) == self.stage_heter_trainer_num[
+                            i], "The heter trainer num in stage {} is not equal in args.heter_worker_num and args.heter_workers".format(
+                                i)
+
                         heter_worker_endpoints_ips = [
-                            x.strip().split(":")[0] for x in heter_worker_endpoints
+                            x.strip().split(":")[0]
+                            for x in heter_worker_endpoints
                         ]
                         heter_worker_endpoints_len = [
-                            len(x.strip().split(":")) for x in heter_worker_endpoints
+                            len(x.strip().split(":"))
+                            for x in heter_worker_endpoints
                         ]
 
                         if 1 in heter_worker_endpoints_len:
                             # if no port value in heter_worker_endpoint, will set default port values.
                             heter_worker_endpoints_port = get_ports(
-                                len(heter_worker_endpoints_ips), self.worker_num +
-                                    self.server_num + self.heter_worker_num)
+                                len(heter_worker_endpoints_ips), self.worker_num
+                                + self.server_num + self.heter_worker_num)
                             new_heter_worker_endpoints = []
                             for j in range(len(heter_worker_endpoints_ips)):
                                 new_heter_worker_endpoints.append(":".join((
@@ -1037,7 +1047,7 @@ class ParameterServerLauncher(object):
 
                         self.stage_heter_map[i + 2] = ip_port_list
                         self.stage_list.extend([i + 2] *
-                                       len(ip_port_list.split(',')))
+                                               len(ip_port_list.split(',')))
 
                         self.heter_worker_num += self.stage_heter_trainer_num[i]
                         self.heter_worker_endpoints += ip_port_list
@@ -1045,12 +1055,13 @@ class ParameterServerLauncher(object):
                     for i in range(len(self.stage_heter_trainer_num)):
                         heter_trainer_num = self.stage_heter_trainer_num[i]
                         ports = get_ports(heter_trainer_num,
-                                          self.server_num + self.worker_num + self.heter_worker_num)
+                                          self.server_num + self.worker_num +
+                                          self.heter_worker_num)
                         ip_port_list = ",".join(
                             ["127.0.0.1:" + str(x) for x in ports])
                         self.stage_heter_map[i + 2] = ip_port_list
                         self.stage_list.extend([i + 2] *
-                                       len(ip_port_list.split(',')))
+                                               len(ip_port_list.split(',')))
                         self.heter_worker_num += heter_trainer_num
                         if self.heter_worker_endpoints != "":
                             self.heter_worker_endpoints += ","
@@ -1063,20 +1074,23 @@ class ParameterServerLauncher(object):
                 for i in range(len(heter_worker_endpoints_list)):
                     if self.heter_worker_endpoints != "":
                         self.heter_worker_endpoints += ","
-                    heter_worker_endpoints = heter_worker_endpoints_list[i].split(",")
-                    self.stage_heter_trainer_num.append(len(heter_worker_endpoints))
+                    heter_worker_endpoints = heter_worker_endpoints_list[
+                        i].split(",")
+                    self.stage_heter_trainer_num.append(
+                        len(heter_worker_endpoints))
                     heter_worker_endpoints_ips = [
                         x.strip().split(":")[0] for x in heter_worker_endpoints
                     ]
                     heter_worker_endpoints_len = [
-                        len(x.strip().split(":")) for x in heter_worker_endpoints
+                        len(x.strip().split(":"))
+                        for x in heter_worker_endpoints
                     ]
                     if 1 in heter_worker_endpoints_len:
                         # if no port value in heter_worker_endpoint, will set default port values.
                         heter_worker_endpoints_port = get_ports(
                             len(heter_worker_endpoints_ips), self.worker_num +
-                                self.server_num + self.heter_worker_num)
-                                
+                            self.server_num + self.heter_worker_num)
+
                         new_heter_worker_endpoints = []
                         for j in range(len(heter_worker_endpoints_ips)):
                             new_heter_worker_endpoints.append(":".join((
@@ -1088,14 +1102,15 @@ class ParameterServerLauncher(object):
 
                     self.stage_heter_map[i + 2] = ip_port_list
                     self.stage_list.extend([i + 2] *
-                                   len(ip_port_list.split(',')))
+                                           len(ip_port_list.split(',')))
 
                     self.heter_worker_num += self.stage_heter_trainer_num[-1]
                     if self.heter_worker_endpoints != "":
                         self.heter_worker_endpoints += ","
                     self.heter_worker_endpoints += ip_port_list
 
-            self.stage_trainer_num = [self.worker_num] + self.stage_heter_trainer_num                  
+            self.stage_trainer_num = [self.worker_num
+                                      ] + self.stage_heter_trainer_num
             self.stage_num = len(self.stage_trainer_num)
 
         # get http_port
@@ -1120,14 +1135,14 @@ class ParameterServerLauncher(object):
         self.worker_endpoints_port = [
             x.strip().split(":")[1] for x in self.worker_endpoints.split(",")
         ]
-        self.node_ips = []    
+        self.node_ips = []
         for ip in self.server_endpoints_ips:
             if ip not in self.node_ips:
                 self.node_ips.append(ip)
         for ip in self.worker_endpoints_ips:
             if ip not in self.node_ips:
                 self.node_ips.append(ip)
-        
+
         if self.distribute_mode == DistributeMode.PS_HETER:
             self.heter_worker_endpoints_ips = [
                 x.strip().split(":")[0]
@@ -1258,32 +1273,35 @@ class ParameterServerLauncher(object):
         current_env.pop("https_proxy", None)
         for idx, cur_server in enumerate(pod.servers):
             if self.distribute_mode == DistributeMode.PS_HETER:
-              proc_env = {
-                "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
-                "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
-                "PADDLE_PORT": cur_server.endpoint.split(":")[1],
-                "TRAINING_ROLE": "PSERVER",
-                "PADDLE_TRAINERS_NUM": str(self.worker_num),
-                "POD_IP": cur_server.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
-                "PADDLE_GLOO_RENDEZVOUS": "3",
-                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
-              }
+                proc_env = {
+                    "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
+                    "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                    "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
+                    self.heter_worker_endpoints,
+                    "PADDLE_PORT": cur_server.endpoint.split(":")[1],
+                    "TRAINING_ROLE": "PSERVER",
+                    "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                    "POD_IP": cur_server.endpoint.split(":")[0],
+                    "PADDLE_WITH_GLOO":
+                    str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                    "PADDLE_GLOO_RENDEZVOUS": "3",
+                    "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                    "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+                }
             else:
-              proc_env = {
-                "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
-                "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_PORT": cur_server.endpoint.split(":")[1],
-                "TRAINING_ROLE": "PSERVER",
-                "PADDLE_TRAINERS_NUM": str(self.worker_num),
-                "POD_IP": cur_server.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
-                "PADDLE_GLOO_RENDEZVOUS": "3",
-                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
-              }
+                proc_env = {
+                    "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
+                    "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                    "PADDLE_PORT": cur_server.endpoint.split(":")[1],
+                    "TRAINING_ROLE": "PSERVER",
+                    "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                    "POD_IP": cur_server.endpoint.split(":")[0],
+                    "PADDLE_WITH_GLOO":
+                    str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                    "PADDLE_GLOO_RENDEZVOUS": "3",
+                    "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                    "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+                }
             current_env.update(proc_env)
 
             cmd = [sys.executable, "-u", args.training_script
@@ -1333,51 +1351,56 @@ class ParameterServerLauncher(object):
             device_list = [str(x) for x in range(0, heter_device_num)]
 
         for idx, cur_worker in enumerate(pod.workers):
-            device_id = "0" if heter_device_num == 0 else str(device_list[
-                (idx) % heter_device_num])
+            device_id = "0" if heter_device_num == 0 else str(device_list[(
+                idx) % heter_device_num])
             if self.distribute_mode == DistributeMode.PS_HETER:
-              proc_env = {
-                "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
-                "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_TRAINERS_NUM": str(self.worker_num),
-                "PADDLE_STAGE_TRAINERS_NUM": str(self.stage_trainer_num),
-                "STAGE_ID": "1",
-                "STAGE_NUM": str(self.stage_num),
-                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": "",
-                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2],
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
-                "HETER_DEVICE_TYPE": self.stage_device_map[1],
-                "TRAINING_ROLE": "TRAINER",
-                "POD_IP": cur_worker.endpoint.split(":")[0],
-                "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
-                "PADDLE_TRAINER_ID": str(cur_worker.rank),
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
-                "PADDLE_GLOO_RENDEZVOUS": "3",
-                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "FLAGS_selected_gpus": "0",
-                "FLAGS_selected_xpus": "0",
-                "CUDA_VISIBLE_DEVICES": device_id,
-                "XPU_VISIBLE_DEVICES": device_id,
-                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
-              }
+                proc_env = {
+                    "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
+                    "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                    "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                    "PADDLE_STAGE_TRAINERS_NUM": str(self.stage_trainer_num),
+                    "STAGE_ID": "1",
+                    "STAGE_NUM": str(self.stage_num),
+                    "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": "",
+                    "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST":
+                    self.stage_heter_map[2],
+                    "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
+                    self.heter_worker_endpoints,
+                    "HETER_DEVICE_TYPE": self.stage_device_map[1],
+                    "TRAINING_ROLE": "TRAINER",
+                    "POD_IP": cur_worker.endpoint.split(":")[0],
+                    "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
+                    "PADDLE_TRAINER_ID": str(cur_worker.rank),
+                    "PADDLE_WITH_GLOO":
+                    str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                    "PADDLE_GLOO_RENDEZVOUS": "3",
+                    "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                    "FLAGS_selected_gpus": "0",
+                    "FLAGS_selected_xpus": "0",
+                    "CUDA_VISIBLE_DEVICES": device_id,
+                    "XPU_VISIBLE_DEVICES": device_id,
+                    "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+                }
             else:
-              proc_env = {
-                "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
-                "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_TRAINERS_NUM": str(self.worker_num),
-                "TRAINING_ROLE": "TRAINER",
-                "POD_IP": cur_worker.endpoint.split(":")[0],
-                "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
-                "PADDLE_TRAINER_ID": str(cur_worker.rank),
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
-                "PADDLE_GLOO_RENDEZVOUS": "3",
-                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "FLAGS_selected_gpus": "0",
-                "FLAGS_selected_xpus": "0",
-                "CUDA_VISIBLE_DEVICES": device_id,
-                "XPU_VISIBLE_DEVICES": device_id,
-                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
-              }
+                proc_env = {
+                    "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
+                    "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                    "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                    "TRAINING_ROLE": "TRAINER",
+                    "POD_IP": cur_worker.endpoint.split(":")[0],
+                    "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
+                    "PADDLE_TRAINER_ID": str(cur_worker.rank),
+                    "PADDLE_WITH_GLOO":
+                    str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                    "PADDLE_GLOO_RENDEZVOUS": "3",
+                    "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                    "FLAGS_selected_gpus": "0",
+                    "FLAGS_selected_xpus": "0",
+                    "CUDA_VISIBLE_DEVICES": device_id,
+                    "XPU_VISIBLE_DEVICES": device_id,
+                    "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+                }
+
             current_env.update(proc_env)
             cmd = [sys.executable, "-u", args.training_script
                    ] + args.training_script_args
@@ -1426,8 +1449,8 @@ class ParameterServerLauncher(object):
             device_list = [str(x) for x in range(0, heter_device_num)]
 
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
-            device_id = "0" if heter_device_num == 0 else str(device_list[
-                (idx) % heter_device_num])
+            device_id = "0" if heter_device_num == 0 else str(device_list[(
+                idx) % heter_device_num])
             stage_id = cur_heter_worker.stage
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
