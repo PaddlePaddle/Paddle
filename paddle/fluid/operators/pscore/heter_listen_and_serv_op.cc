@@ -49,8 +49,7 @@ HeterListenAndServOp::~HeterListenAndServOp() { Stop(); }
 
 void HeterListenAndServOp::Stop() {}
 
-void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
-                                        framework::ProgramDesc *program) const {
+void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   VLOG(2) << "RunAsyncLoop";
   auto message_to_block_id_str =
       Attr<std::vector<std::string>>("message_to_block_id");
@@ -144,14 +143,13 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                     platform::errors::PreconditionNotMet(
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
+
   auto *program = optimize_blocks[0]->Program();
-  framework::Executor executor(dev_place);
 
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler());
   request_send_and_recv_handler_->SetScope(&scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
-  request_send_and_recv_handler_->SetProgram(program);
   rpc_service_->SetRequestHandler(request_send_and_recv_handler_);
 
   VLOG(2) << "RunAsyncLoop";
@@ -162,7 +160,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
-  RunAsyncLoop(&executor, program);
+  RunAsyncLoop(program);
   VLOG(3) << "Wait for Server_thread_ stop";
   (server_thread_.get())->join();
   VLOG(3) << "Server_thread_ stop";

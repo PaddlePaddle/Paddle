@@ -25,6 +25,36 @@ namespace distributed {
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = NULL;
 bool HeterClient::is_initialized_ = false;
 
+int GetMicroId(const platform::DeviceContext& ctx,
+               const framework::Scope* scope) {
+  framework::Variable* var = scope->FindVar("microbatch_id");
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+                    platform::errors::InvalidArgument(
+                        "the type of micro id shoulde be LoDTensor."));
+  auto micro_id = -1;
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  if (platform::is_cpu_place(tensor->place())) {
+    auto data = reinterpret_cast<const float*>(tensor->data<void>());
+    micro_id = static_cast<int>(data[0]);
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    std::vector<char> temp;
+    temp.resize(tensor->numel() * framework::SizeOfType(tensor->type()));
+    char* temp_ptr = temp.data();
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    memory::Copy(platform::CPUPlace(), temp_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * framework::SizeOfType(tensor->type()),
+                 stream);
+    float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
+    micro_id = static_cast<int>(temp_ptr_float[0]);
+#endif
+  }
+  return micro_id;
+}
+
 void HeterClient::MainThread() {
   while (running_) {
     RpcProfilerControl();
@@ -118,8 +148,8 @@ void HeterClient::CreateClient2XpuConnection() {
 }
 
 void HeterClient::SendAndRecvAsync(
-    const std::vector<std::string>& ep, const platform::DeviceContext& ctx,
-    const framework::Scope& scope, const std::string& message_name,
+    const platform::DeviceContext& ctx, const framework::Scope& scope,
+    const std::string& message_name,
     const std::vector<std::string>& send_var_name,
     const std::vector<std::string>& recv_var_name, const std::string& mode) {
   platform::RecordEvent record_event("HeterClient->SendAndRecvAsync");
@@ -147,33 +177,8 @@ void HeterClient::SendAndRecvAsync(
   distributed::SerializeToMultiVarMsgAndIOBuf(
       message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
-  // get micro id from p_scope
-  auto* var = p_scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_NE(var, nullptr,
-                    platform::errors::InvalidArgument(
-                        "not find variable microbatch_id in scope."));
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
-  const auto place = p_ctx->GetPlace();
-  int micro_id = -1;
-  if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
-      char* temp_ptr =
-          new char[tensor->numel() * framework::SizeOfType(tensor->type())];
-      auto stream =
-          reinterpret_cast<const platform::CUDADeviceContext&>(*p_ctx).stream();
-      memory::Copy(platform::CPUPlace(), temp_ptr,
-                   BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-                   tensor->data<void>(),
-                   tensor->numel() * framework::SizeOfType(tensor->type()),
-                   stream);
-      float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
-      micro_id = static_cast<int>(temp_ptr_float[0]);
-      delete[] temp_ptr;
-#endif
-  } else {
-    auto data = reinterpret_cast<const float*>(tensor->data<void>());
-    micro_id = static_cast<int>(data[0]);
-  }
+
+  int micro_id = GetMicroId(ctx, p_scope);
   auto minibatch_id = micro_id / 10;
   // select channel according to micro id
   if (mode == "forward") {

@@ -57,6 +57,9 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
 
+  auto micro_var = scope->Var("microbatch_id");
+  micro_var->GetMutable<framework::LoDTensor>();
+
   auto ids_var = scope->Var("ids");
   ids_var->GetMutable<framework::LoDTensor>();
 
@@ -74,6 +77,12 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   int64_t* ids_ptr =
       ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
+
+  auto micro_id_var =
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+  float* micro_id_ptr =
+      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+  micro_id_ptr[0] = 0;
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
@@ -115,28 +124,17 @@ void StartSendAndRecvServer(std::string endpoint) {
   auto block = AppendSendAndRecvBlock(&program);
   std::string in_var_name("x");
   std::vector<int> prefetch_block_ids{block->ID()};
-  auto prepared = exe.Prepare(program, prefetch_block_ids);
 
   LOG(INFO) << "before InitTensorsOnServer";
   InitTensorsOnServer(&scope, &place, 10);
   LOG(INFO) << "end InitTensorsOnServer";
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      message_to_prepared_ctx;
-  message_to_prepared_ctx[in_var_name] = prepared[0];
 
   std::shared_ptr<distributed::RequestSendAndRecvHandler> b_req_handler;
   b_req_handler.reset(new distributed::RequestSendAndRecvHandler());
-  LOG(INFO) << "before SetProgram";
-  b_req_handler->SetProgram(&program);
-  LOG(INFO) << "before SetGradToPreparedCtx";
-  b_req_handler->SetGradToPreparedCtx(&message_to_prepared_ctx);
   LOG(INFO) << "before SetDevCtx";
   b_req_handler->SetDevCtx(&ctx);
   LOG(INFO) << "before SetScope";
   b_req_handler->SetScope(&scope);
-  LOG(INFO) << "before SetExecutor";
-  b_req_handler->SetExecutor(&exe);
   LOG(INFO) << "before HeterServer::GetInstance";
   b_rpc_service = distributed::HeterServer::GetInstance();
   b_rpc_service->SetEndPoint(endpoint);
@@ -147,6 +145,7 @@ void StartSendAndRecvServer(std::string endpoint) {
         return b_req_handler->Handle(request, response, cntl);
       });
 
+  b_rpc_service->SetRequestHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
   std::thread server_thread(std::bind(RunServer, b_rpc_service));
 
@@ -157,47 +156,49 @@ TEST(SENDANDRECV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   std::string endpoint = "127.0.0.1:4444";
+  std::string previous_endpoint = "127.0.0.1:4444";
   LOG(INFO) << "before StartSendAndRecvServer";
   b_rpc_service = distributed::HeterServer::GetInstance();
   std::thread server_thread(StartSendAndRecvServer, endpoint);
   b_rpc_service->WaitServerReady();
-
+  using MicroScope =
+      std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
+  std::shared_ptr<MicroScope> micro_scopes(new MicroScope{});
+  std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
+      new std::vector<framework::Scope*>{});
+  (*micro_scope).push_back(new framework::Scope());
+  (*micro_scopes)[0] = micro_scope;
+  b_rpc_service->SetMicroBatchScopes(micro_scopes);
   LOG(INFO) << "before HeterClient::GetInstance";
   distributed::HeterClient* rpc_client =
-      distributed::HeterClient::GetInstance({endpoint}, 0).get();
+      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
+          .get();
 
   PADDLE_ENFORCE_NE(rpc_client, nullptr,
                     platform::errors::InvalidArgument(
                         "Client Start Fail, Check Your Code & Env"));
 
-  framework::Scope scope;
+  framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
 
   // create var on local scope
   int64_t rows_numel = 10;
   LOG(INFO) << "before InitTensorsOnClient";
-  InitTensorsOnClient(&scope, &place, rows_numel);
+  InitTensorsOnClient(scope, &place, rows_numel);
   std::string in_var_name("x");
   std::string out_var_name("res");
   std::vector<std::string> send_var = {in_var_name};
-  std::vector<std::string> recv_var = {out_var_name};
+  std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  rpc_client->SendAndRecvAsync({endpoint}, ctx, scope, in_var_name, send_var,
-                               recv_var);
-  auto var = scope.Var(out_var_name);
-  auto value = var->GetMutable<framework::LoDTensor>();
-  auto ptr = value->mutable_data<float>(place);
+  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
+                               "forward");
 
-  LOG(INFO) << "before CHECK";
-  for (int64_t i = 0; i < rows_numel; ++i) {
-    LOG(INFO) << "ptr " << i << " is " << ptr[i];
-    EXPECT_EQ(ptr[i], 0.5);
-  }
-  LOG(INFO) << "end CHECK";
+  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
+                               "backward");
+
   rpc_client->FinalizeWorker();
-  // b_rpc_service->Stop();
   b_rpc_service->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

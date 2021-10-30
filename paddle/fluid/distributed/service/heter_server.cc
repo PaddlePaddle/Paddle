@@ -54,7 +54,7 @@ void HeterServer::StartHeterService() {
   });
 }
 
-void HeterServer::SetEndPoint(std::string& endpoint) {
+void HeterServer::SetEndPoint(const std::string& endpoint) {
   endpoint_ = endpoint;
   service_.SetEndpoint(endpoint);
 }

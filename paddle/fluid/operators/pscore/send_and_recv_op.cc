@@ -44,11 +44,12 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto& context = *pool.Get(place);
 
     distributed::HeterClient* rpc_client =
-        distributed::HeterClient::GetInstance(next_epmap, previous_epmap, trainer_id)
+        distributed::HeterClient::GetInstance(next_epmap, previous_epmap,
+                                              trainer_id)
             .get();
     VLOG(3) << "SendAndRecvOp message_name: " << message_name;
-    rpc_client->SendAndRecvAsync(next_epmap, context, scope, message_name,
-                                 send_var_name, recv_var_name, mode);
+    rpc_client->SendAndRecvAsync(context, scope, message_name, send_var_name,
+                                 recv_var_name, mode);
   }
 };
 
@@ -97,7 +98,7 @@ REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
 REGISTER_OP_CUDA_KERNEL(
     send_and_recv,
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, float>,
-     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     send_and_recv,
     ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>,

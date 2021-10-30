@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
+#include "paddle/fluid/distributed/service/heter_server.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -76,6 +77,9 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
   x_var->GetMutable<framework::LoDTensor>();
 
+  auto micro_var = scope->Var("microbatch_id");
+  micro_var->GetMutable<framework::LoDTensor>();
+
   auto res_var = scope->Var("res");
   res_var->GetMutable<framework::LoDTensor>();
 }
@@ -87,6 +91,12 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+
+  auto micro_id_var =
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+  float* micro_id_ptr =
+      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+  micro_id_ptr[0] = 0;
 
   auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
   float* res_ptr =
@@ -121,45 +131,52 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   std::string endpoint = "127.0.0.1:19944";
+  std::string previous_endpoint = "127.0.0.1:19944";
   LOG(INFO) << "before StartSendAndRecvServer";
   FLAGS_eager_delete_tensor_gb = -1;
   std::thread server_thread(StartHeterServer);
   sleep(1);
 
+  auto b_rpc_service = distributed::HeterServer::GetInstance();
+  b_rpc_service->WaitServerReady();
+  using MicroScope =
+      std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
+  std::shared_ptr<MicroScope> micro_scopes(new MicroScope{});
+  std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
+      new std::vector<framework::Scope*>{});
+  (*micro_scope).push_back(new framework::Scope());
+  (*micro_scopes)[0] = micro_scope;
+  b_rpc_service->SetMicroBatchScopes(micro_scopes);
+
   LOG(INFO) << "before HeterClient::GetInstance";
   distributed::HeterClient* rpc_client =
-      distributed::HeterClient::GetInstance({endpoint}, 0).get();
+      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
+          .get();
 
   PADDLE_ENFORCE_NE(rpc_client, nullptr,
                     platform::errors::InvalidArgument(
                         "Client Start Fail, Check Your Code & Env"));
 
-  framework::Scope scope;
+  framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
 
   // create var on local scope
   int64_t rows_numel = 10;
   LOG(INFO) << "before InitTensorsOnClient";
-  InitTensorsOnClient(&scope, &place, rows_numel);
+  InitTensorsOnClient(scope, &place, rows_numel);
   std::string in_var_name("x");
   std::string out_var_name("res");
   std::vector<std::string> send_var = {in_var_name};
-  std::vector<std::string> recv_var = {out_var_name};
+  std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  rpc_client->SendAndRecvAsync({endpoint}, ctx, scope, in_var_name, send_var,
-                               recv_var);
-  auto var = scope.Var(out_var_name);
-  auto value = var->GetMutable<framework::LoDTensor>();
-  auto ptr = value->mutable_data<float>(place);
+  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
+                               "forward");
 
-  LOG(INFO) << "before CHECK";
-  for (int64_t i = 0; i < rows_numel; ++i) {
-    LOG(INFO) << "ptr " << i << " is " << ptr[i];
-    EXPECT_EQ(ptr[i], 0.5);
-  }
-  LOG(INFO) << "end CHECK";
+  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
+                               "backward");
+
   rpc_client->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

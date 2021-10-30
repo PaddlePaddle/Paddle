@@ -77,8 +77,7 @@ class HeterListenAndServOp : public framework::OperatorBase {
                        const framework::AttributeMap& attrs);
   virtual ~HeterListenAndServOp();
 
-  void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program) const;
+  void RunAsyncLoop(framework::ProgramDesc* program) const;
 
   void Stop() override;
 

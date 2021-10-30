@@ -76,8 +76,7 @@ class HeterClient {
 
   void CreateClient2XpuConnection();
 
-  void SendAndRecvAsync(const std::vector<std::string>& ep,
-                        const platform::DeviceContext& ctx,
+  void SendAndRecvAsync(const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& message_name,
                         const std::vector<std::string>& send_var_name,
