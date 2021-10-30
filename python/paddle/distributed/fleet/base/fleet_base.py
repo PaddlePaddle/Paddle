@@ -580,7 +580,7 @@ class Fleet(object):
                 import paddle.distributed.fleet as fleet
                 fleet.init()
                 fleet.is_heter_worker()
-        """ 
+        """
         return self._role_maker._is_heter_worker()
 
     def barrier_worker(self):
@@ -694,7 +694,7 @@ class Fleet(object):
     @inited_runtime_handler
     def run_heter_worker(self, dataset):
         """
-        run_heter_worker will run heter worker main program with executor.
+        run_heter_worker will run heter trainer main program with executor.
 
         Returns:
             None
@@ -714,7 +714,7 @@ class Fleet(object):
 
         """
         self._runtime_handle._run_heter_worker(dataset)
-    
+
     @is_non_distributed_check
     @inited_runtime_handler
     def run_server(self):
@@ -1634,13 +1634,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
