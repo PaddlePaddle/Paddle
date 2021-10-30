@@ -1285,12 +1285,12 @@ class Executor(object):
                     program,
                     fetch_list=fetch_list,
                     use_program_cache=use_program_cache)
-        
+
         if isinstance(program, Program) and program._heter_pipeline_opt:
             if "startup_program" in program._heter_pipeline_opt:
                 program = program._heter_pipeline_opt["startup_program"]
             # TODO(zhangminxu): support heterps pipeline training using exe.run
-           
+
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
             if use_default_main_program:
@@ -1688,7 +1688,6 @@ class Executor(object):
                         'op_role',
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -1721,7 +1720,7 @@ class Executor(object):
                 trainer_instance = self._default_executor.init_for_dataset(
                     program.desc, trainer._desc(), scope, dataset.dataset)
                 self._add_trainer_cache(cache_key, trainer_instance)
-            else: 
+            else:
                 trainer_instance.ResetDataset(dataset.dataset)
 
         if fetch_handler is not None:
@@ -2079,6 +2078,6 @@ class Executor(object):
                                      dataset=dataset)
 
         """
-        return self._run_from_dataset(
-            program, dataset, scope, thread, False, debug, fetch_list,
-            fetch_info, print_period, fetch_handler)
+        return self._run_from_dataset(program, dataset, scope, thread, False,
+                                      debug, fetch_list, fetch_info,
+                                      print_period, fetch_handler)
