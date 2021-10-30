@@ -606,6 +606,7 @@ class SectionWorker : public DeviceWorker {
 };
 #endif
 
+#if defined(PADDLE_WITH_PSCORE)
 class HeterSectionWorker : public DeviceWorker {
  public:
   HeterSectionWorker() {}
@@ -631,12 +632,12 @@ class HeterSectionWorker : public DeviceWorker {
   std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
     return microbatch_scopes_;
   }
-  using SHARED_THREAD_QUEUE = std::shared_ptr<::paddle::framework::BlockingQueue<std::pair<std::string, int>>>;
+  using SHARED_THREAD_QUEUE = std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>;
 
-  SHARED_THREAD_QUEUE GetThreadQueue() {
-      return thread_queue_;
-  }
-  void CopyParameters(int microbatch_id, const ProgramDesc& program, const platform::Place& place);
+  SHARED_THREAD_QUEUE GetThreadQueue() { return thread_queue_; }
+  void CopyParameters(int microbatch_id, const ProgramDesc& program,
+                      const platform::Place& place);
   void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
   void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
   void SetTrainers(int trainers) { this->trainers_ = trainers; }
@@ -665,14 +666,16 @@ class HeterSectionWorker : public DeviceWorker {
   std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
 
   std::shared_ptr<framework::ProgramDesc> program_;
-  
+
   std::shared_ptr<
-      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>> 
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>
       thread_queue_;
 
   static uint64_t batch_id_;
   uint64_t total_ins_num_ = 0;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
+#endif
+
 }  // namespace framework
 }  // namespace paddle

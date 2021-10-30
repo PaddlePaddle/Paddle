@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_PSCORE)
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/trainer.h"
 #if defined _WIN32 || defined __APPLE__
@@ -24,7 +25,8 @@ namespace framework {
 
 TEST(HeterPipelineTrainerTest, test1) {
 #ifdef _LINUX
-  std::shared_ptr<HeterPipelineTrainer> tmp1 = std::make_shared<HeterPipelineTrainer>(); 
+  std::shared_ptr<HeterPipelineTrainer> tmp1 =
+      std::make_shared<HeterPipelineTrainer>();
   TrainerDesc t;
   t.set_class_name("HeterPipelineTrainer");
   t.set_device_worker_name("HeterSectionWorker");
@@ -58,8 +60,7 @@ TEST(HeterPipelineTrainerTest, test1) {
   tmp1->Finalize();
 
 #endif
-
 }
 }  // namespace framework
 }  // namespace paddle
-
+#endif

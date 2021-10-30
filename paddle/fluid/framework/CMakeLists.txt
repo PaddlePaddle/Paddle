@@ -276,10 +276,10 @@ if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-    heterxpu_trainer.cc heter_pipeline_trainer.cc
+    heterxpu_trainer.cc
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
     ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-    pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+    pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
@@ -317,23 +317,14 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   else()
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
-            dist_multi_trainer.cc heter_pipeline_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+            dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
             ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-            pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+            pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor)
-    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-        set(DISTRIBUTE_COMPILE_FLAGS
-                "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-    endif()
-    set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(heter_section_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -347,29 +338,20 @@ elseif(WITH_PSLIB)
   set_source_files_properties(heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  heterxpu_trainer.cc heter_pipeline_trainer.cc
+  heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
   ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-  pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+  pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor ${BRPC_DEP})
 else()
-  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      set(DISTRIBUTE_COMPILE_FLAGS
-              "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-  endif()
-  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(heter_section_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  heterxpu_trainer.cc heter_pipeline_trainer.cc
+  heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
   ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-  pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+  pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor)
@@ -392,8 +374,6 @@ if(WITH_PSCORE)
 else()
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
         conditional_block_op executor gloo_wrapper)
-    cc_test(heter_pipeline_trainer_test SRCS heter_pipeline_trainer_test.cc DEPS
-           conditional_block_op executor heter_server gloo_wrapper)
 endif()
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
