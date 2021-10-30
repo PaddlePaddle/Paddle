@@ -52,7 +52,7 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
     return heter_program
 
 
-def split_trainer_ops_pass(program, config, default_device = "cpu"):
+def split_trainer_ops_pass(program, config, default_device="cpu"):
     """
     split cpu-trainer program from origin-program
     1. find heter op (located on different device)
