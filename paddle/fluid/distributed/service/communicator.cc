@@ -519,7 +519,6 @@ void AsyncCommunicator::SendByCommunicator() {
           MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
         }
       }
-
       if (ctx.is_tensor_table) {
         SendGlobalStep(ctx, merged_var_num, send_scope_.get());
       } else if (ctx.is_sparse) {
