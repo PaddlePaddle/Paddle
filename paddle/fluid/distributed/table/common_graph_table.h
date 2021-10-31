@@ -121,6 +121,7 @@ class RandomSampleLRU {
   RandomSampleLRU(ScaledLRU<K, V, Hash> *_father) : father(_father) {
     node_size = 0;
     node_head = node_end = NULL;
+    global_ttl = father->ttl;
   }
 
   ~RandomSampleLRU() {
@@ -221,7 +222,7 @@ class RandomSampleLRU {
  private:
   std::unordered_map<K, LRUNode<K, V> *, Hash> key_map;
   ScaledLRU<K, V, Hash> *father;
-  const size_t global_ttl = 4;
+  size_t global_ttl;
   int node_size;
   LRUNode<K, V> *node_head, *node_end;
   friend class ScaledLRU<K, V, Hash>;
@@ -230,9 +231,11 @@ class RandomSampleLRU {
 template <typename K, typename V, typename Hash>
 class ScaledLRU {
  public:
-  ScaledLRU(size_t shard_num, size_t size_limit) : size_limit(size_limit) {
+  ScaledLRU(size_t shard_num, size_t size_limit, size_t _ttl)
+      : size_limit(size_limit), ttl(_ttl) {
     pthread_rwlock_init(&rwlock, NULL);
     thread_pool.reset(new ::ThreadPool(1));
+    global_count = 0;
     lru_pool = std::vector<RandomSampleLRU<K, V, Hash>>(
         shard_num, RandomSampleLRU<K, V, Hash>(this));
     shrink_job = std::thread([this]() -> void {
@@ -317,9 +320,12 @@ class ScaledLRU {
     }
   }
 
+  size_t get_ttl() { return ttl; }
+
  private:
   pthread_rwlock_t rwlock;
   int global_count;
+  size_t ttl = 4;
   std::thread shrink_job;
   std::vector<RandomSampleLRU<K, V, Hash>> lru_pool;
   size_t size_limit;

@@ -619,17 +619,18 @@ void testCache() {
   sp.reset(result);
   std::vector<std::pair<SampleKey, std::shared_ptr<SampleResult>>> r;
   st.query(0, &skey, 1, r);
-  ASSERT_EQ(r.size(), 0);
+  ASSERT_EQ((int)r.size(), 0);
   st.insert(0, &skey, &sp, 1);
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < st.ttl; i++) {
     r.clear();
     st.query(0, &skey, 1, r);
     char* p = (char*)r[0].second.get()->buffer;
-    ASSERT_EQ(r.size(), 1);
+    ASSERT_EQ((int)r.size(), 1);
     ASSERT_EQ(strcmp(p, "54321"), 0);
   }
   st.query(0, &skey, 1, r);
-  ASSERT_EQ(r.size(), 0);
+  ASSERT_EQ((int)r.size(), 0);
+  SampleResult* result = new SampleResult();
 }
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
