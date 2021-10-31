@@ -98,10 +98,10 @@ class FleetDistHeterRunnerBase(object):
 
     def run_dataset_heter_trainer(self, args):
         out = self.do_dataset_heter_training(fleet)
- 
+
     def run_dataset_trainer(self, args):
         out = self.do_dataset_training(fleet)
-    
+
     def net(self, args, batch_size=4, lr=0.01):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
@@ -109,7 +109,7 @@ class FleetDistHeterRunnerBase(object):
     def do_dataset_training(self, fleet):
         raise NotImplementedError(
             "do_dataset_training should be implemented by child classes.")
-    
+
     def do_dataset_heter_training(self, fleet):
         raise NotImplementedError(
             "do_dataset_heter_training should be implemented by child classes.")
@@ -363,7 +363,7 @@ def runtime_main(test_class):
 
     if args.role == "pserver":
         model.run_pserver(args)
-    else if args.role == "heter_trainer":
+    elif args.role == "heter_trainer":
         model.run_dataset_heter_trainer(args)
         fleet.stop_worker()
     else:
