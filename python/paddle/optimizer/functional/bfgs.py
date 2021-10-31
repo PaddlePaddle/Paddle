@@ -55,12 +55,12 @@ BfgsResult = collections.namedtuple(
     'BfgsResult', [
         'converged',
         'failed',
-        'number of function evals',
-        'number of gradient evals',
+        'function_evals',
+        'gradient_evals',
         'location',
-        'function value',
+        'function_value',
         'gradient',
-        'inverse Hessian'
+        'inverse_hessian'
     ]
 )
 
@@ -101,12 +101,12 @@ class SearchState(object):
         kw = {
             'converged' : converged_state(self.state),
             'failed' : failed_state(self.state),
-            'number of function evals' : self.state.nf,
-            'number of gradient evals' : self.state.ng,
+            'function_evals' : self.state.nf,
+            'gradient_evals' : self.state.ng,
             'location' : self.xk,
-            'function value' : self.fk,
+            'function_value' : self.fk,
             'gradient' : self.gk,
-            'inverse Hessian' : self.Hk
+            'inverse_hessian' : self.Hk
         }
         return BfgsResult(kw)
 

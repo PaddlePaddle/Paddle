@@ -14,7 +14,6 @@
 
 import paddle
 from ...autograd import vjp
-from .bfgs import SearchState
 from .bfgs_utils import (StopCounter,
                          StopCounterException,
                          vnorm_inf,
