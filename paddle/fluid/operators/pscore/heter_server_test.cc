@@ -187,8 +187,9 @@ TEST(SENDANDRECV, CPU) {
   LOG(INFO) << "before InitTensorsOnClient";
   InitTensorsOnClient(scope, &place, rows_numel);
   std::string in_var_name("x");
+  std::string micro_var_name("microbatch_id");
   std::string out_var_name("res");
-  std::vector<std::string> send_var = {in_var_name};
+  std::vector<std::string> send_var = {in_var_name, micro_var_name};
   std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
