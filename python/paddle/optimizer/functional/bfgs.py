@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import contextlib
+import collections
 import paddle
 from ...autograd import vjp
-from .bfgs_utils import as_float_tensor, make_state, update_state
-from .bfgs_utils import any_active, active_state, converged_state, failed_state
-from .bfgs_utils import vnorm_inf
+from .bfgs_utils import make_state, update_state, any_active
+from .bfgs_utils import converged_state, failed_state
+from .bfgs_utils import as_float_tensor, vnorm_inf
+from .bfgs_utils import StopCounter, StopCounterException
 from .linesearch import hz_linesearch as linesearch_next
 
 
@@ -47,6 +49,20 @@ def verify_symmetric_positive_definite_matrix(H):
     assert is_symmetic, (
         f"(Batched) matrix {H} is not symmetric."
     )
+
+
+BfgsResult = collections.namedtuple(
+    'BfgsResult', [
+        'converged',
+        'failed',
+        'number of function evals',
+        'number of gradient evals',
+        'location',
+        'function value',
+        'gradient',
+        'inverse Hessian'
+    ]
+)
 
 
 class SearchState(object):
@@ -81,6 +97,18 @@ class SearchState(object):
         self.state = make_state(fk)
         self.params = None
 
+    def output(self):
+        kw = {
+            'converged' : converged_state(self.state),
+            'failed' : failed_state(self.state),
+            'number of function evals' : self.state.nf,
+            'number of gradient evals' : self.state.ng,
+            'location' : self.xk,
+            'function value' : self.fk,
+            'gradient' : self.gk,
+            'inverse Hessian' : self.Hk
+        }
+        return BfgsResult(kw)
 
 def iterates(func,
              x0, 
@@ -151,18 +179,54 @@ def iterates(func,
     gnorm = vnorm_inf(g0)
     state = SearchState(x0, f0, g0, H0)
 
-    while any_active(state.state) and state.k < iters:
-        # Performs line search and updates the state 
-        linesearch_next(state,
-                        func, 
-                        gtol=gtol,
-                        xtol=xtol,
-                        max_iters=ls_iters)
-        
-        # Calculates the gradient norms
-        gnorm = vnorm_inf(state.gk)
+    # Uses a stop counter to guard the iteration number.
+    iter_count = StopCounter(iters)
+    
+    try:
+        while any_active(state.state):
+            # Counts iterations
+            iter_count.increment()
 
-        # Updates the state tensor on the newly converged elements.
-        state.state = update_state(state.state, gnorm < gtol, 'converged')
+            # Performs line search and updates the state 
+            linesearch_next(state,
+                            func, 
+                            gtol=gtol,
+                            xtol=xtol,
+                            max_iters=ls_iters)
         
-        yield state
+            # Calculates the gradient norms
+            gnorm = vnorm_inf(state.gk)
+
+            # Updates the state tensor on the newly converged elements.
+            state.state = update_state(state.state, gnorm < gtol, 'converged')
+            
+            yield state
+    except StopCounterException:
+        pass
+    finally:
+        return
+
+
+def optimize(func,
+             x0,
+             dtype='float',
+             H0=None,
+             gtol=1e-8,
+             xtol=0,
+             iters=50,
+             ls_iters=50,
+             summary_only=True):
+    
+    iterate_states = list(iterates(func,
+                                   x0,
+                                   dtype,
+                                   H0,
+                                   gtol,
+                                   xtol,
+                                   iters,
+                                   ls_iters))
+    
+    if summary_only:
+        return iterate_states[-1].output()
+
+    return [x.output() for x in iterate_states]

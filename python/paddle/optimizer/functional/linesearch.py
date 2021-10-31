@@ -15,12 +15,13 @@
 import paddle
 from ...autograd import vjp
 from .bfgs import SearchState
-from .bfgs_utils import (vnorm_inf,
+from .bfgs_utils import (StopCounter,
+                         StopCounterException,
+                         vnorm_inf,
                          vnorm_p,
                          make_const,
                          update_state,
                          any_active,
-                         any_predicates,
                          active_state,
                          converged_state,
                          failed_state,
@@ -42,31 +43,6 @@ hz_default_params = {
     'psi_1': .1,
     'psi_2': 2
 }
-
-
-class CounterStopException(Exception):
-    r"""An instance of CounterStopException is raised when incrementing
-    a BoundedCounter hits its upper bound.
-    """
-    pass
-
-
-class BoundedCounter(object):
-    r"""Defines a counter, when the upper bound is reached, triggers a failure.
-    """
-
-    def __init__(self, upper_bound):
-        self.count = 0
-        assert upper_bound > 0
-        self.upper_bound = upper_bound
-    
-    def increment(self):
-        r"""Increments the counter."""
-
-        if self.count < self.upper_bound:
-            self.count += 1
-        else:
-            raise CounterStopException()
 
 
 def initial(state):
@@ -682,7 +658,7 @@ def hz_linesearch(state,
     # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
 
     # Initializes a bounded counter
-    iter_count = BoundedCounter(max_iters)
+    iter_count = StopCounter(max_iters)
 
     # Generates initial step sizes
     c = initial(state)
@@ -722,7 +698,7 @@ def hz_linesearch(state,
             # Goes to next iteration
             a_j, b_j = a, b
 
-    except CounterStopException:
+    except StopCounterException:
         pass
 
     # Updates the state of the instances for which the line search failed.

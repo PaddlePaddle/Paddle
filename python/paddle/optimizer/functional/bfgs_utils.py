@@ -176,3 +176,28 @@ def as_float_tensor(input, dtype=None):
         raise TypeError(f'The data type of {input} is {type(input)}, which is not supported.')
     
     return output
+
+
+class StopCounterException(Exception):
+    r"""raises this Exception on the event that increments a stopped 
+    StopCounter.
+    """
+    pass
+
+
+class StopCounter(object):
+    r"""Defines a counter with a predefined end count.
+    """
+
+    def __init__(self, end):
+        self.count = 0
+        assert end is int and end > 0
+        self.end = end
+    
+    def increment(self):
+        r"""Increments the counter."""
+
+        if self.count < self.end:
+            self.count += 1
+        else:
+            raise StopCounterException()
