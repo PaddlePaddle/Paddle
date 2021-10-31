@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from ...autograd import vjp
+from .bfgs_utils import vjp
 from .bfgs_utils import (StopCounter,
                          StopCounterException,
                          vnorm_inf,
@@ -608,6 +608,20 @@ def hz_linesearch(state,
             return Bisect([a, c])
 
     """
+    def phi(a):
+        r'''
+        phi is used as the objective function restricted on the line search 
+        secant.
+
+        Args:
+            a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
+            mode, giving the step sizes alpha.
+        '''
+        if len(pk.shape) > 1:
+            a = paddle.unsqueeze(a, axis=-1)
+
+        return func(xk + a * pk)
+
     if params is None:
         state.params = hz_default_params
 
@@ -623,25 +637,11 @@ def hz_linesearch(state,
     # the directional derivative on p_k should be checked to make sure 
     # the p_k is a descending direction. If that's not the case, then sets
     # the line search state as failed for the corresponding batching element.
-    pk = -paddle.dot(Hk, gk)
-
-    def phi(a):
-        r'''
-        phi is used as the objective function restricted on the line search 
-        secant.
-
-        Args:
-            a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
-            mode, giving the step sizes alpha.
-        '''
-        if len(pk.shape) > 1:
-            a = paddle.unsqueeze(a, axis=-1)
-
-        return func(xk + a * pk)
+    pk = -paddle.matmul(Hk, gk)
 
     # derive is the directional derivative of f at x_k on the direction of p_k.
     # It's also the gradient of phi    
-    deriv = paddle.dot(gk, pk)
+    deriv = paddle.matmul(gk, pk)
 
     # Marks inputs with invalid function values and non-negative derivatives 
     invalid_input = paddle.logical_or(paddle.isinf(fk), deriv >= .0)

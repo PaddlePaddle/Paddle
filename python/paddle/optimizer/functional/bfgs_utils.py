@@ -12,8 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import paddle
+from ...autograd import vjp as _vjp
 
+
+def vjp(f, x):
+    r"""A single tensor version of VJP.
+    
+    Args:
+        f (Callable): the objective function.
+        x (Tensor): the input tensor.
+
+    Returns:
+        (fval, gval):
+            fval: a tensor that holds the function value.
+            gval: a tensor that holds the function gradients.  
+    """
+    assert isinstance(x, paddle.Tensor)
+    fval, gval = _vjp(f, x)
+    assert len(fval) == 1
+
+    return fval[0], gval[0]
 
 def vnorm_p(x, p=2):
     r"""p vector norm."""
@@ -21,7 +41,7 @@ def vnorm_p(x, p=2):
 
 def vnorm_inf(x):
     r"""Infinum vector norm."""
-    return paddle.norm(x, p='inf', axis=-1)
+    return paddle.norm(x, p=np.inf, axis=-1)
 
 def matnorm(x):
     r"""Matrix norm."""
@@ -34,7 +54,7 @@ def all_active_with_predicates(state, *predicates):
     r"""Tests whether all active states also satisfies the predicates.
     
     Args:
-        state (Tensor): the search state of dtype int8. For each element, 0 
+        state (Tensor): the search state of dtype int. For each element, 0 
             represents active state.
         predicates (List[Tensor]): a list of boolean typed tensors of the
             same shape with `state`.
@@ -54,7 +74,7 @@ def any_active_with_predicates(state, *predicates):
     predicates.
     
     Args:
-        state (Tensor): the search state of dtype int8. For each element, 0 
+        state (Tensor): the search state of dtype int. For each element, 0 
             represents active state.
         predicates (List[Tensor]): a list of boolean typed tensors of the
             same shape with `state`.
@@ -108,15 +128,15 @@ def make_state(tensor_like, value='active'):
             Default value is 'active'.
 
     Returns:
-        Tensor wiht the same shape of `tensor_like`, of dtype `int8`.
+        Tensor wiht the same shape of `tensor_like`, of dtype `int`.
     """
     if value is 'active':
-        state = paddle.zeros_like(tensor_like, dtype='int8')
+        state = paddle.zeros_like(tensor_like, dtype='int')
     elif value is 'converged':
-        state = paddle.ones_like(tensor_like, dtype='int8')
+        state = paddle.ones_like(tensor_like, dtype='int')
     else:
         assert value is 'failed'
-        state = paddle.ones_like(tensor_like, dtype='int8') + 1
+        state = paddle.ones_like(tensor_like, dtype='int') + 1
     
     return state
 
@@ -137,9 +157,9 @@ def update_state(input_state, predicate, new_state):
     assert new_state in 'converged', 'failed'
         
     if new_state is 'converge':
-        increments = paddle.to_tensor(predicate, dtype='int8')
+        increments = paddle.to_tensor(predicate, dtype='int')
     else:
-        increments = paddle.to_tensor(predicate, dtype='int8') * 2
+        increments = paddle.to_tensor(predicate, dtype='int') * 2
     
     output_state = paddle.where(input_state == 0, increments, input_state)
     return output_state
@@ -157,14 +177,14 @@ def as_float_tensor(input, dtype=None):
     Returns:
         A tensor with the required dtype.
     """
-    assert isinstance(input, (float, list, paddle.Tensor)), (
+    assert isinstance(input, (int, float, list, paddle.Tensor)), (
         f'Input `{input}` should be float, list or paddle.Tensor but found ' 
         f'{type(input)}.'
     )
 
-    if dtype in ('float', 'float32'):
+    if dtype in ('float', 'float32', paddle.float32):
         dtype = 'float32'
-    elif dtype in ['float64', 'double']:
+    elif dtype in ['float64', 'double', paddle.float64]:
         dtype = 'float64'
     else:
         assert dtype is None
@@ -191,7 +211,7 @@ class StopCounter(object):
 
     def __init__(self, end):
         self.count = 0
-        assert end is int and end > 0
+        assert isinstance(end, int) and end > 0
         self.end = end
     
     def increment(self):

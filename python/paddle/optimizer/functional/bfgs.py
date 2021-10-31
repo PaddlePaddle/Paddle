@@ -15,7 +15,7 @@
 import contextlib
 import collections
 import paddle
-from ...autograd import vjp
+from .bfgs_utils import vjp
 from .bfgs_utils import make_state, update_state, any_active
 from .bfgs_utils import converged_state, failed_state
 from .bfgs_utils import as_float_tensor, vnorm_inf
@@ -72,7 +72,7 @@ class SearchState(object):
 
     Pulic instance members:    
         k: the iteration number.
-        state (Tensor): a int8 tensor of shape [...], holding the set of
+        state (Tensor): an int tensor of shape [...], holding the set of
             searching states for the batch inputs. For each element,
             0 indicates active, 1 converged and 2 failed.
         nf (Tensor): scalar valued tensor holding the number of
@@ -201,8 +201,8 @@ def iterates(func,
             state.state = update_state(state.state, gnorm < gtol, 'converged')
             
             yield state
-    except StopCounterException:
-        pass
+    # except StopCounterException:
+    #     pass
     finally:
         return
 
