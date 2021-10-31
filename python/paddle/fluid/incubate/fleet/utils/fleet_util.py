@@ -1196,7 +1196,6 @@ class FleetUtil(object):
 
         return shards, param_dim
 
-
     def get_last_save_xbox_base(self,
                                 output_path,
                                 hadoop_fs_name,
