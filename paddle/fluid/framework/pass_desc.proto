@@ -26,6 +26,7 @@ message PassDesc {
     kMul = 2;
     kDiv = 3;
     kSize = 4;
+    kMod = 5;
   }
   enum ConditionType {
     kEQ = 0;

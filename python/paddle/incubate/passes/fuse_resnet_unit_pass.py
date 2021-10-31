@@ -16,84 +16,96 @@ import paddle
 import paddle.fluid.ir as ir
 
 
-@ir.RegisterPass
-def fuse_resenet_unit():
-    def pattern0(x, filter, scale, bias, mean, var):
+def set_resnet_unit_attrs(resnet_unit, has_shortcut):
+    resnet_unit.SetAttr("fuse_add", False)
+    resnet_unit.SetAttr("act_type", "relu")
+    resnet_unit.SetAttr("has_shortcut", has_shortcut)
+    resnet_unit.Attr("stride").MappedPattern(
+        op="conv2d", name="strides", element_index=0)
+    resnet_unit.Attr("padding").MappedPattern(
+        op="conv2d", name="paddings", element_index=0)
+    resnet_unit.Attr("group").MappedPattern(op="conv2d", name="groups")
+    resnet_unit.Attr("op_device").MappedPattern(op="conv2d", name="op_device")
+    resnet_unit.Attr("data_format").MappedPattern(
+        op="conv2d", name="data_format")
+    resnet_unit.Attr("op_namescope").MappedPattern(
+        op="conv2d", name="op_namescope")
+    resnet_unit.Attr("momentum").MappedPattern(op="batch_norm", name="momentum")
+    resnet_unit.Attr("epsilon").MappedPattern(op="batch_norm", name="epsilon")
+    resnet_unit.Attr("use_global_stats").MappedPattern(
+        op="batch_norm", name="use_global_stats")
+
+
+def set_resnet_unit_outputs(resnet_unit, meanX, varX, meanZ=None, varZ=None):
+    resnet_unit.SetOutputs(
+        RunningMeanX=meanX,
+        RunningVarX=varX,
+        RunningMeanZ=meanZ,
+        RunningVarZ=varZ)
+
+
+def generate_passes(data_format):
+    def pattern_conv_bn(x, filter, scale, bias, mean, var):
+        if data_format == "NCHW":
+            filter.Attr("shape")[0].Mod(32).EQ(0)
+            filter.Attr("shape")[1].Mod(8).EQ(0)
+        else:
+            filter.Attr("shape")[0].Mod(32).EQ(0)
+            filter.Attr("shape")[1].Mod(8).EQ(0)
         conv2d = ir.PassDesc.OP.conv2d(Input=x, Filter=filter)
+        conv2d.Attr("data_format").EQ(data_format)
         bn = ir.PassDesc.OP.batch_norm(
             X=conv2d, Bias=bias, Mean=mean, Scale=scale, Variance=var)
+        return bn
+
+    def pattern_one_input(x, filter, scale, bias, mean, var):
+        bn = pattern_conv_bn(x, filter, scale, bias, mean, var)
         relu = ir.PassDesc.OP.relu(X=bn.Output("Y"))
         return relu
 
-    def replace0(x, filter, scale, bias, mean, var):
+    def replace_one_input(x, filter, scale, bias, mean, var):
         resnet_unit = ir.PassDesc.OP.resnet_unit(
             X=x, FilterX=filter, ScaleX=scale, BiasX=bias, MeanX=mean, VarX=var)
-        resnet_unit.SetAttr("fuse_add", False)
-        resnet_unit.SetAttr("act_type", "relu")
-        # resnet_unit.SetAttr("has_shortcut", False)
-        # resnet_unit.Attr("stride").MappedPattern(op="conv2d", name="strides", element_index=0)
-        # resnet_unit.Attr("padding").MappedPattern(op="conv2d", name="paddings", element_index=0)
-        resnet_unit.Attr("group").MappedPattern(op="conv2d", name="groups")
-        resnet_unit.Attr("op_device").MappedPattern(
-            op="conv2d", name="op_device")
-        resnet_unit.Attr("data_format").MappedPattern(
-            op="conv2d", name="data_format")
-        resnet_unit.Attr("op_namescope").MappedPattern(
-            op="conv2d", name="op_namescope")
-        resnet_unit.Attr("momentum").MappedPattern(
-            op="batch_norm", name="momentum")
-        resnet_unit.Attr("epsilon").MappedPattern(
-            op="batch_norm", name="epsilon")
-        resnet_unit.Attr("use_global_stats").MappedPattern(
-            op="batch_norm", name="use_global_stats")
-        return resnet_unit.Output("Y")
+        set_resnet_unit_attrs(resnet_unit, False)
+        set_resnet_unit_outputs(resnet_unit, mean, var)
+        out = resnet_unit.Output("Y")
+        return out
 
-    def pattern1(x, filter0, scale0, bias0, mean0, var0, y, filter1, scale1,
-                 bias1, mean1, var1):
-        conv2d_0 = ir.PassDesc.OP.conv2d(Input=x, Filter=filter0)
-        bn_0 = ir.PassDesc.OP.batch_norm(
-            X=conv2d_0, Bias=bias0, Mean=mean0, Scale=scale0, Variance=var0)
-        conv2d_1 = ir.PassDesc.OP.conv2d(Input=y, Filter=filter1)
-        bn_1 = ir.PassDesc.OP.batch_norm(
-            X=conv2d_1, Bias=bias1, Mean=mean1, Scale=scale1, Variance=var1)
+    def pattern_two_input(x, filterX, scaleX, biasX, meanX, varX, z, filterZ,
+                          scaleZ, biasZ, meanZ, varZ):
+        bnX = pattern_conv_bn(x, filterX, scaleX, biasX, meanX, varX)
+        bnZ = pattern_conv_bn(x, filterZ, scaleZ, biasZ, meanZ, varZ)
         ewadd = ir.PassDesc.OP.elementwise_add(
-            X=bn_0.Output("Y"), Y=bn_1.Output("Y"))
+            X=bnX.Output("Y"), Y=bnZ.Output("Y"))
         relu = ir.PassDesc.OP.relu(X=ewadd)
         return relu
 
-    def replace1(x, filter0, scale0, bias0, mean0, var0, y, filter1, scale1,
-                 bias1, mean1, var1):
+    def replace_two_input(x, filterX, scaleX, biasX, meanX, varX, z, filterZ,
+                          scaleZ, biasZ, meanZ, varZ):
         resnet_unit = ir.PassDesc.OP.resnet_unit(
             X=x,
-            FilterX=filter0,
-            ScaleX=scale0,
-            BiasX=bias0,
-            MeanX=mean0,
-            VarX=var0,
-            Z=y,
-            FilterZ=filter1,
-            ScaleZ=scale1,
-            BiasZ=bias1,
-            MeanZ=mean1,
-            VarZ=var1)
-        resnet_unit.SetAttr("fuse_add", True)
-        resnet_unit.SetAttr("act_type", "relu")
-        # resnet_unit.SetAttr("has_shortcut", False)
-        # resnet_unit.Attr("stride").MappedPattern(op="conv2d", name="strides", element_index=0)
-        # resnet_unit.Attr("padding").MappedPattern(op="conv2d", name="paddings", element_index=0)
-        resnet_unit.Attr("group").MappedPattern(op="conv2d", name="groups")
-        resnet_unit.Attr("op_device").MappedPattern(
-            op="conv2d", name="op_device")
-        resnet_unit.Attr("data_format").MappedPattern(
-            op="conv2d", name="data_format")
-        resnet_unit.Attr("op_namescope").MappedPattern(
-            op="conv2d", name="op_namescope")
-        resnet_unit.Attr("momentum").MappedPattern(
-            op="batch_norm", name="momentum")
-        resnet_unit.Attr("epsilon").MappedPattern(
-            op="batch_norm", name="epsilon")
-        resnet_unit.Attr("use_global_stats").MappedPattern(
-            op="batch_norm", name="use_global_stats")
+            FilterX=filterX,
+            ScaleX=scaleX,
+            BiasX=biasX,
+            MeanX=meanX,
+            VarX=varX,
+            Z=z,
+            FilterZ=filterZ,
+            ScaleZ=scaleZ,
+            BiasZ=biasZ,
+            MeanZ=meanZ,
+            VarZ=varZ)
+        set_resnet_unit_attrs(resnet_unit, True)
+        set_resnet_unit_outputs(resnet_unit, meanX, varX, meanZ, varZ)
         return resnet_unit.Output("Y")
 
-    return (pattern0, replace0), (pattern1, replace1)
+    return (pattern_one_input, replace_one_input), (pattern_two_input,
+                                                    replace_two_input)
+
+
+@ir.RegisterPass
+def fuse_resenet_unit():
+    passes = list()
+    passes.extend(generate_passes('NCHW'))
+    passes.extend(generate_passes('NHCW'))
+    return passes

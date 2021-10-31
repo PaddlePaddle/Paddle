@@ -23,8 +23,11 @@ from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
 paddle.enable_static()
 
 
+@unittest.skipIf(paddle.get_cudnn_version() < 8000,
+                 "cudnn version is at least 8.0.")
 class TestFuseResNetUnit(unittest.TestCase):
     def test_fuse_resenet_unit(self):
+        place = paddle.CUDAPlace(0)
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.amp.fp16_guard():
@@ -34,9 +37,17 @@ class TestFuseResNetUnit(unittest.TestCase):
                 out = resnet50(x)
         graph = core.Graph(program.desc)
         core.get_pass("fuse_resenet_unit").apply(graph)
-        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
-        paddle.static.amp.cast_model_to_fp16(after_program)
-        exe = paddle.static.Executor()
+        # after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        after_program = program
+        params = paddle.static.amp.cast_model_to_fp16(program)
+        after_params = paddle.static.amp.cast_model_to_fp16(after_program)
+        exe = paddle.static.Executor(place)
         exe.run(startup_program)
+        paddle.static.amp.cast_parameters_to_fp16(
+            place, program, to_fp16_var_names=params)
+        paddle.static.amp.cast_parameters_to_fp16(
+            place, after_program, to_fp16_var_names=after_params)
         feed = {"x": np.random.random([5, 3, 224, 224]).astype("float16")}
-        exe.run(after_program, feed=feed, fetch_list=[out.name])
+        before_out = exe.run(program, feed=feed, fetch_list=[out.name])
+        after_out = exe.run(after_program, feed=feed, fetch_list=[out.name])
+        self.assertTrue(np.allclose(before_out, after_out))
