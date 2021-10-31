@@ -607,6 +607,30 @@ void RunBrpcPushSparse() {
   client1.stop_server();
 }
 
+void testCache() {
+  ScaledLRU<SampleKey, std::shared_ptr<SampleResult>, SampleKeyHash> st(1, 2);
+  std::shared_ptr<SampleResult> sp;
+  SampleResult* result = new SampleResult();
+  result->actual_size = 15;
+  result->buffer = new char[15];
+  char* ch = (char*)result->buffer;
+  strcpy(ch, "54321");
+  SampleKey skey = {6, 3};
+  sp.reset(result);
+  std::vector<std::pair<SampleKey, std::shared_ptr<SampleResult>>> r;
+  st.query(0, &skey, 1, r);
+  ASSERT_EQ(r.size(), 0);
+  st.insert(0, &skey, &sp, 1);
+  for (int i = 0; i < 4; i++) {
+    r.clear();
+    st.query(0, &skey, 1, r);
+    char* p = (char*)r[0].second.get()->buffer;
+    ASSERT_EQ(r.size(), 1);
+    ASSERT_EQ(strcmp(p, "54321"), 0);
+  }
+  st.query(0, &skey, 1, r);
+  ASSERT_EQ(r.size(), 0);
+}
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
   s.set_feature_size(1);
