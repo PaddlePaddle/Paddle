@@ -72,7 +72,7 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Tensor Input variable to be sent").AsDuplicable();
     AddOutput("Out", "Tensor Output varibale to be recv").AsDuplicable();
     AddAttr<std::string>("message_name", "");
-    AddAttr<std::string>("mode", "");
+    AddAttr<std::string>("mode", "forward or backward").SetDefault("forward");
     AddAttr<std::vector<std::string>>("send_var_name", "Send Tensor's name");
     AddAttr<std::vector<std::string>>("recv_var_name", "Recv Tensor's name");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
@@ -98,8 +98,12 @@ REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
 REGISTER_OP_CUDA_KERNEL(
     send_and_recv,
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     send_and_recv,
     ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int64_t>);
