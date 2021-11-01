@@ -21,8 +21,6 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestAutoParallelSaveLoad(TestMultipleGpus):
-
-    # check sharding logic as well as the accuracy with single mode
     def test_auto_parallel_save_load(self):
         self.run_mnist_2gpu('auto_parallel_save_load.py')
 
