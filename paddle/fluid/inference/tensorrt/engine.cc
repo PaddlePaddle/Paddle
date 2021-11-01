@@ -148,7 +148,7 @@ void TensorRTEngine::FreezeNetwork() {
       // and outputs have scales,
       // this layer's precision and output type are set to float32.
       // This step has no effect if this layer is fused during TRT optimization.
-      size_t layers_no_int8 = 0;
+      int layers_no_int8 = 0;
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
         if (!is_layer_int8(layer)) {
