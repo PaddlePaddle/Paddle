@@ -65,6 +65,7 @@ import os
 import time
 import six
 import copy
+import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
 import paddle.fluid as fluid
@@ -162,6 +163,31 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
+    collective_group.add_argument(
+        "--rank_mapping_file",
+        type=argparse.FileType('r'),
+        default=sys.stdin,
+        help="This rank mapping information in json format is used specifically "
+        "for lazy launch for auto parallel. Some of the ranks in each node "
+        "may not be used, and the indices of rank should be kept the same "
+        "as the indices of sub-task splited by auto parallel. "
+        " { "
+        "   \"ip_ranks\": [ "
+        "     { "
+        "       \"ip\": \"127.0.0.1\", "
+        "       \"ranks\": [0,1] "
+        "     }, "
+        "     { "
+        "       \"ip\": \"127.0.0.2\", "
+        "       \"ranks\": [2,3,4] "
+        "     } "
+        "   ] "
+        " } ")
+    collective_group.add_argument(
+        "--enable_auto_mapping",
+        type=bool,
+        default=False,
+        help="Set true to enable the lazy launch for auto-parallel scenario.")
 
     ps_group = parser.add_argument_group("Parameter-Server Parameters")
     # for parameter server
@@ -261,21 +287,25 @@ def launch_collective(args):
     start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
-    if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(
-            args.ips, device_mode, devices_per_proc, start_port)
-        logger.debug("get cluster from cloud:{}".format(cluster))
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(
-            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-            device_mode=device_mode,
-            start_port=start_port)
+    # lazy launch for auto-parallel
+    if args.enable_auto_mapping == True:
+        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
     else:
-        # trainers_num = 1 or not use paddlecloud ips="a,b"
-        cluster, pod = get_cluster_from_args(args, device_mode,
-                                             devices_per_proc)
-        logger.debug("get cluster from args:{}".format(cluster))
+        # for ascend
+        if device_mode == DeviceMode.ASCEND_NPU:
+            cluster, pod = ascend_utils.get_cloud_cluster(
+                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+                device_mode=device_mode,
+                start_port=start_port)
+        elif cloud_utils.use_paddlecloud() and trainers_num != 1:
+            cluster, pod = cloud_utils.get_cloud_cluster(
+                args.ips, device_mode, devices_per_proc, start_port)
+            logger.debug("get cluster from cloud:{}".format(cluster))
+        else:
+            # trainers_num = 1 or not use paddlecloud ips="a,b"
+            cluster, pod = get_cluster_from_args(args, device_mode,
+                                                 devices_per_proc)
+            logger.debug("get cluster from args:{}".format(cluster))
 
     global_envs = copy.copy(os.environ.copy())
     gloo_rendezvous_dir = tempfile.mkdtemp()

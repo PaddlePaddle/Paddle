@@ -115,6 +115,9 @@ class TestVisonModels(unittest.TestCase):
     def test_inception_v3(self):
         self.models_infer('inception_v3')
 
+    def test_googlenet(self):
+        self.models_infer('googlenet')
+
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)
 

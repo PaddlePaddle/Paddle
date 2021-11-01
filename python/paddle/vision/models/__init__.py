@@ -48,6 +48,8 @@ from .inceptionv3 import inception_v3  # noqa: F401
 from .squeezenet import SqueezeNet  # noqa: F401
 from .squeezenet import squeezenet1_0  # noqa: F401
 from .squeezenet import squeezenet1_1  # noqa: F401
+from .googlenet import GoogLeNet  # noqa: F401
+from .googlenet import googlenet  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -86,4 +88,6 @@ __all__ = [ #noqa
     'SqueezeNet',
     'squeezenet1_0',
     'squeezenet1_1',
+    'GoogLeNet',
+    'googlenet',
 ]

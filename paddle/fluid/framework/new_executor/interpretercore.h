@@ -46,9 +46,9 @@ class InterpreterCore {
                   const std::vector<std::string>& fetch_names);
 
   paddle::framework::FetchList Run(
-      const std::vector<framework::Tensor>& feed_tensors);
+      const std::vector<framework::LoDTensor>& feed_tensors);
 
-  const CostInfo& DryRun(const std::vector<framework::Tensor>& feed_tensors);
+  const CostInfo& DryRun(const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
   void Convert();
@@ -65,9 +65,9 @@ class InterpreterCore {
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
-  void DryRunPrepare(const std::vector<framework::Tensor>& feed_tensors);
+  void DryRunPrepare(const std::vector<framework::LoDTensor>& feed_tensors);
 
-  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list);
+  void CheckGC(const Instruction& instr);
 
   void RunInstructionAsync(size_t instr_id);
   void RunNextInstructions(const Instruction& instr_id,
@@ -82,15 +82,14 @@ class InterpreterCore {
   ProgramDesc main_program_;
   VariableScope* global_scope_;
 
-  std::vector<Instruction> vec_instruction_;
+  std::vector<paddle::framework::OpFuncNode> vec_func_list_;
+  std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
+
   InstructionInfo instruction_info_;
   std::vector<size_t> dependecy_count_;
   std::vector<std::vector<size_t>> input_var2op_info_;
   std::vector<VariableMetaInfo> ref_coun_info_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-
-  std::vector<paddle::framework::OpFuncNode> vec_func_list_;
-  std::vector<paddle::framework::OperatorBase*> op_list_;
 
   std::vector<std::string> feed_names_;
 
