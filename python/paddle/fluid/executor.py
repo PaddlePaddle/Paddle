@@ -1714,6 +1714,8 @@ class Executor(object):
                 program.desc, trainer._desc(), scope, dataset.dataset)
         else:
             # cache trainer instance for heterps pipeline training
+            if fetch_list == None:
+                fetch_list = []
             cache_key = _get_strong_program_cache_key(program, None, fetch_list)
             trainer_instance = self._get_trainer_cache(cache_key)
             if trainer_instance is None:
