@@ -346,9 +346,10 @@ def _get_unshard_dist_shape(var, dist_attr):
     return new_shape
 
 
-def make_data_unshard(dist_main_prog, dist_startup_prog):
+def make_data_unshard(dist_main_prog, dist_startup_prog, dist_context=None):
     from .dist_context import get_default_distributed_context
-    dist_context = get_default_distributed_context()
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
 
     for var in dist_main_prog.list_vars():
         if var.is_data:
