@@ -164,6 +164,7 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
 
   /* Output Helpers */
 
