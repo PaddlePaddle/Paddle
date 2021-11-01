@@ -16,11 +16,12 @@ import contextlib
 import collections
 import paddle
 from .bfgs_utils import vjp
-from .bfgs_utils import make_state, update_state, any_active
+from .bfgs_utils import make_state, make_const, update_state
+from .bfgs_utils import active_state, any_active, any_active_with_predicates
 from .bfgs_utils import converged_state, failed_state
 from .bfgs_utils import as_float_tensor, vnorm_inf
 from .bfgs_utils import StopCounter, StopCounterException
-from .linesearch import hz_linesearch as linesearch_next
+from .linesearch import hz_linesearch as linesearch
 
 
 def verify_symmetric_positive_definite_matrix(H):
@@ -79,6 +80,10 @@ class SearchState(object):
             function calls made.
         ng (Tensor): scalar valued tensor holding the number of
             gradient calls made.
+        ak (Tensor): step size.
+        pk (Tensor): the minimizer direction.
+        Qk (Tensor): weight for averaging function values.
+        Ck (Tensor): weighted average of function values.
         xk (Tensor): the iterate point.
         fk (Tensor): the ``func``'s output.
         gk (Tensor): the ``func``'s gradients. 
@@ -91,10 +96,12 @@ class SearchState(object):
         self.Hk = Hk
         self.k = k
         self.ak = ak
-        self.Ck = fk
         self.nf = nf
         self.ng = ng
+        self.pk = None
         self.state = make_state(fk)
+        self.Qk = make_const(fk, 0)
+        self.Ck = make_const(fk, 0)
         self.params = None
 
     def output(self):
@@ -109,6 +116,69 @@ class SearchState(object):
             'inverse_hessian' : self.Hk
         }
         return BfgsResult(kw)
+
+
+def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
+    r"""Updates the approximate inverse Hessian.
+    
+    Given the input displacement s_k and the change of gradients y_k,
+    the inverse Hessian at the next iterate is approximated using the following
+    formula:
+    
+        H_k+1 = (I - rho_k * s_k * T(y_k)) * H_k * (I - rho_k * y_k * T(s_k))
+                + rho_k * s_k * T(s_k),
+    
+                            1
+        where rho_k = ----------------.
+                        T(s_k) * y_k
+
+    Note, the symmetric positive definite property of H_k+1 requires
+        
+        T(s_k) * y_k > 0.
+    
+    This is the curvature condition. It's known that a line search result that 
+    satisfies the strong Wolfe conditions is guaranteed to meet the curvature 
+    condition.
+
+    Args:
+        
+    """
+    rho_k = .1 / paddle.dot(sk, yk)
+
+    # Enforces the curvature condition before updating the inverse Hessian.
+    if enforce_curvature:
+        assert not any_active_with_predicates(rho_k <= 0)
+    else:
+        update_state(state.state, rho_k <= 0, 'failed')
+
+    # By expanding the updating formula we obtain a sum of tensor products
+    #
+    #      H_k+1 = H_k 
+    #              - rho * H_k * y_k * T(s_k)    ----- (2)
+    #              - rho * s_k * T(y_k) * H_k    ----- (3)
+    #              + rho * s_k * T(s_k)                            ----- (4)
+    #              + rho * rho * (T(y_k) * H_y * y_k) s_k * T(s_k) ----- (5)
+    #
+    # Since H_k is symmetric, (3) is (2)'s transpose.
+    prod_H_y = paddle.matmul(Hk, yk.unsqueeze(-1))
+    
+    term23 = prod_H_y * sk
+    
+    perm = list(range(Hk.dim()))
+    perm[-1], perm[-2] = perm[-2], perm[-1] 
+    
+    # Sums terms (2) and (3) forgoing rho
+    term23 += term23.transpose(perm)
+
+    # Merges terms (4) and (5) forgoing rho
+    term45 = sk + rho_k * paddle.dot(prod_H_y.unsqueeze(-1), yk) * sk
+    term45 *= sk.unsqueeze(-1)
+
+    # Updates H_k and obtain H_k+1
+    new_Hk = Hk + rho_k * (term45 - term23)
+
+    return new_Hk
+
 
 def iterates(func,
              x0, 
@@ -179,27 +249,63 @@ def iterates(func,
     gnorm = vnorm_inf(g0)
     state = SearchState(x0, f0, g0, H0)
 
-    # Uses a stop counter to guard the iteration number.
-    iter_count = StopCounter(iters)
-    
+    # Calculates the gradient norms
+    gnorm = vnorm_inf(state.gk)
+
+    # Updates the state tensor on the newly converged elements.
+    state.state = update_state(state.state, gnorm < gtol, 'converged')
+
     try:
+        # Starts to count the number of iterations.
+        iter_count = StopCounter(iters)
+        iter_count.increment()
+
         while any_active(state.state):
+            k, xk, fk, gk, Hk = state.k, state.xk, state.fk, state.gk, state.Hk
+ 
+            # The negative product of inverse Hessian and gradients - H_k * g_k
+            # is used as the line search direction. 
+            state.pk = pk = -paddle.matmul(Hk, gk)
+
+            # Performs line search and updates the state
+            linesearch(state,
+                       func, 
+                       gtol=gtol,
+                       xtol=xtol,
+                       max_iters=ls_iters)
+        
+            # Uses the obtained search steps to generate next iterates.
+            next_xk = xk + state.ak * pk
+    
+            # Calculates displacement s_k = x_k+1 - x_k
+            sk = next_xk - xk
+
+            # Obtains the function values and gradients at x_k+1
+            next_fk, next_gk = vjp(func, next_xk)
+    
+            # Calculates the gradient difference y_k = g_k+1 - g_k
+            yk = next_fk - fk
+    
+            # Updates the approximate inverse hessian
+            next_Hk = update_approx_inverse_hessian(state, Hk, sk, yk)
+
+            # Finally transitions to the next state
+            p = active_state(state.state)
+            state.xk = paddle.where(p, next_xk, xk)
+            state.fk = paddle.where(p, next_fk, fk)
+            state.gk = paddle.where(p, next_gk, gk)
+            state.Hk = paddle.where(p, next_Hk, Hk)
+            state.k = k + 1
+
+            # Calculates the gradient norms
+            gnorm = vnorm_inf(next_gk)
+
+            # Updates the state on the newly converged elements.
+            state.state = update_state(state.state, gnorm < gtol, 'converged')
+
             # Counts iterations
             iter_count.increment()
 
-            # Performs line search and updates the state 
-            linesearch_next(state,
-                            func, 
-                            gtol=gtol,
-                            xtol=xtol,
-                            max_iters=ls_iters)
-        
-            # Calculates the gradient norms
-            gnorm = vnorm_inf(state.gk)
-
-            # Updates the state tensor on the newly converged elements.
-            state.state = update_state(state.state, gnorm < gtol, 'converged')
-            
             yield state
     # except StopCounterException:
     #     pass

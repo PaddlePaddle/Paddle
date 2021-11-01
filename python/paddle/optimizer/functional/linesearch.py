@@ -122,9 +122,12 @@ def bracket(state, phi, c, iter_count):
     iter_count.increment()
     f, g = vjp(phi, c)
     
+    # Initialize B3 condition
+    B3_cond = make_const(c, True, dtype='bool')
+
     while expanding:
         # Generates the B3 condition in a boolean tensor.
-        B3_cond = paddle.logical_and(g < .0, f <= f0 + epsilon_k)
+        B3_cond = B3_cond & (g < .0) & (f <= f0 + epsilon_k)
 
         # Sets [prev_c, c] to [c, rho*c] if B3 is true.
         prev_c = paddle.where(B3_cond, c, prev_c)
@@ -135,33 +138,28 @@ def bracket(state, phi, c, iter_count):
         f, g = vjp(phi, c)
 
         expanding = any_active_with_predicates(state.state, B3_cond)
-    
+
     # (TODO) Line search stops on the still expanding step sizes and exceeding 
     # maximum iterations.
     
-    # Narrows down the interval by recursively bisecting it. 
-    a, b = bisect(state, phi, make_const(c, .0), c, iter_count)
-
-    # Condition B1, that is, the rising right end
-    B1_cond = g >= .0
-    
-    # Condition B2, that is, the hoisted falling right end  
-    B2_cond = paddle.logical_and(g < .0, f > f0 + epsilon_k)
+    # Narrows down the interval by recursively bisecting it.
+    ifcond = B21_cond = g < .0
+    a, b = bisect(state, phi, make_const(c, .0), c, ifcond, iter_count)
 
     # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
-    a = paddle.where(B2_cond, a, prev_c)
+    a = paddle.where(B21_cond, a, prev_c)
 
     # Sets [_, b] to [_, c] if B1 holds, [_, b] if B2 holds
-    b = paddle.where(B2_cond, b, c)
+    b = paddle.where(B21_cond, b, c)
 
-    # Invalidates the state in case neither B1 nor B2 holds.
-    failed = paddle.logical_not(paddle.logical_or(B1_cond, B2_cond))
-    state.state = update_state(state.state, failed, 'failed')
+    # # Invalidates the state in case neither B1 nor B2 holds.
+    # # failed = 
+    # state.state = update_state(state.state, failed, 'failed')
 
     return [a, b]
 
 
-def bisect(state, phi, a, b, iter_count):
+def bisect(state, phi, a, b, ifcond, iter_count):
     r"""Bisects to locate opposite slope interval.
     
     Args:
@@ -169,6 +167,7 @@ def bisect(state, phi, a, b, iter_count):
         phi (Callable): the restricted function on the search line.
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
+        ifcond (Tensor): boolean tensor that holds the if-converse condition.
         iter_count (BoundedCounter): the bounded counter that controls the  
             maximum number of iterations.
 
@@ -186,25 +185,28 @@ def bisect(state, phi, a, b, iter_count):
     # b. If phi'(d) < 0 and phi(d) > phi(0) + epsilon_k, then Bisect([a, d])
     #
     # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
-    while True:
+
+    falling = make_const(f0, True, dtype='bool')
+    while True: 
         d = (1 - theta) * a + theta * b
 
         iter_count.increment()
         f, g = vjp(phi, d)
         
-        # Updates the intervals
-        c_cond = paddle.logical_and(g < .0, f <= f0 + epsilon_k)
-        a = paddle.where(c_cond, d, a)
-        b = paddle.where(c_cond, b, d)
+        falling = falling & (g < .0)
 
-        # If condition a is not all true then continue
-        a_cond = g >= .0
-        if all_active_with_predicates(state.state, a_cond):
-            return [a, b]
+        pred = ifcond & falling
+        if any_active_with_predicates(state.state, pred):
+            hi = f > f0 + epsilon_k
+            lo = ~hi
+            a = paddle.where(lo & pred, d, a)
+            b = paddle.where(hi & pred, d, b)
+        else:
+            break
 
-    # Invalidates the state if a condition does not hold.
-    failed = g < .0
-    state.state = update_state(state.state, failed, 'failed')
+    # # Invalidates the state if a condition does not hold.
+    # failed = g < .0
+    # state.state = update_state(state.state, failed, 'failed')
 
     return [a, b]
 
@@ -237,7 +239,7 @@ def secant(phi, a, b):
     return c
 
 
-def secant2(state, phi, a, b, iter_count):
+def secant2(state, phi, a, b, ifcond, iter_count):
     r"""Implements the secant2 procedure in the Hager-Zhang method.
 
     Args:
@@ -263,7 +265,7 @@ def secant2(state, phi, a, b, iter_count):
     # S3. Otherwise, [a, b] = [A, B]
     c = secant(phi, a, b)
 
-    A, B = update(state, phi, a, b, c, iter_count)
+    A, B = update(state, phi, a, b, c, ifcond, iter_count)
     
     # Boolean tensor each element of which holds the S2 condition 
     S2_cond = c == B
@@ -279,7 +281,7 @@ def secant2(state, phi, a, b, iter_count):
     r = paddle.where(S3_cond, A, r)
 
     # Outputs of S2 and S3
-    a, b = update(state, phi, A, B, c, iter_count)
+    a, b = update(state, phi, A, B, c, ifcond, iter_count)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
     S2_or_S3 = paddle.logical_or(S2_cond, S3_cond)
@@ -343,7 +345,7 @@ def stopping_condition(state, phi, c, phiprime_0,
     return stopping
 
 
-def update(state, phi, a, b, c, iter_count):
+def update(state, phi, a, b, c, ifcond, iter_count):
     r"""Performs the update procedure in the Hager-Zhang method.
 
     Args:
@@ -352,6 +354,7 @@ def update(state, phi, a, b, c, iter_count):
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
         c (Tensor): holds the new step sizes.
+        ifcond (Tensor): boolean tensor for control dependence.
         iter_count (BoundedCounter): the bounded counter that controls the  
             maximum number of iterations.
 
@@ -373,8 +376,24 @@ def update(state, phi, a, b, c, iter_count):
     iter_count.increment()
     f, g = vjp(phi, c)
 
+    # Early returns on U0
+    U0_cond = (c > a) == (c > b)
+    if all_active_with_predicates(state.state, ~ifcond | U0_cond):
+        return [a, b]
+
+    # Early returns if U1 holds
+    U1_cond = g >= .0
+    if all_active_with_predicates(state.state, ~ifcond | (~U0_cond & U1_cond)):
+        return [a, c]
+
+    # It's tricky to handle iterative tensor algorithms when control dependence
+    # is involved. If naively running two branches in parallel before merging
+    # the two control paths, the `invalid` path may have never ended.
+    # We use an if-converse predicate to overcome this issue.
+    U3_cond = ~U1_cond & (g < .0) & (f > f0 + epsilon_k)
+
     # Bisects [a, c] for the U3 condition
-    A, B = bisect(state, phi, a, c, iter_count)
+    A, B = bisect(state, phi, a, c, ifcond & U3_cond, iter_count)
 
     # Step 1: branches between U2 and U3 
     U23_cond = f <= f0 + epsilon_k
@@ -382,78 +401,14 @@ def update(state, phi, a, b, c, iter_count):
     B = paddle.where(U23_cond, b, B)
 
     # Step 2: updates for true U1
-    U1_cond = g >= .0
     A = paddle.where(U1_cond, a, A)
     B = paddle.where(U1_cond, c, B)
 
     # Step 3: in case c is not in [a, b], keeps [a, b]
-    U0_cond = (c > a) == (c > b)
     A = paddle.where(U0_cond, a, A)
     B = paddle.where(U0_cond, b, B)
 
     return [A, B]
-
-
-def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
-    r"""Updates the approximate inverse Hessian.
-    
-    Given the input displacement s_k and the change of gradients y_k,
-    the inverse Hessian at the next iterate is approximated using the following
-    formula:
-    
-        H_k+1 = (I - rho_k * s_k * T(y_k)) * H_k * (I - rho_k * y_k * T(s_k))
-                + rho_k * s_k * T(s_k),
-    
-                            1
-        where rho_k = ----------------.
-                        T(s_k) * y_k
-
-    Note, the symmetric positive definite property of H_k+1 requires
-        
-        T(s_k) * y_k > 0.
-    
-    This is the curvature condition. It's known that a line search result that 
-    satisfies the strong Wolfe conditions is guaranteed to meet the curvature 
-    condition.
-
-    Args:
-        
-    """
-    rho_k = .1 / paddle.dot(sk, yk)
-
-    # Enforces the curvature condition before updating the inverse Hessian.
-    if enforce_curvature:
-        assert not any_active_with_predicates(rho_k <= 0)
-    else:
-        update_state(state.state, rho_k <= 0, 'failed')
-
-    # By expanding the updating formula we obtain a sum of tensor products
-    #
-    #      H_k+1 = H_k 
-    #              - rho * H_k * y_k * T(s_k)    ----- (2)
-    #              - rho * s_k * T(y_k) * H_k    ----- (3)
-    #              + rho * s_k * T(s_k)                            ----- (4)
-    #              + rho * rho * (T(y_k) * H_y * y_k) s_k * T(s_k) ----- (5)
-    #
-    # Since H_k is symmetric, (3) is (2)'s transpose.
-    prod_H_y = paddle.matmul(Hk, yk.unsqueeze(-1))
-    
-    term23 = prod_H_y * sk
-    
-    perm = list(range(Hk.dim()))
-    perm[-1], perm[-2] = perm[-2], perm[-1] 
-    
-    # Sums terms (2) and (3) forgoing rho
-    term23 += term23.transpose(perm)
-
-    # Merges terms (4) and (5) forgoing rho
-    term45 = sk + rho_k * paddle.dot(prod_H_y.unsqueeze(-1), yk) * sk
-    term45 *= sk.unsqueeze(-1)
-
-    # Updates H_k and obtain H_k+1
-    new_Hk = Hk + rho_k * (term45 - term23)
-
-    return new_Hk
 
 
 def hz_linesearch(state,
@@ -624,24 +579,38 @@ def hz_linesearch(state,
 
     if params is None:
         state.params = hz_default_params
-
-    gamma = state.params['gamma']
+    
+    # Load config parameters
+    params = state.params
+    gamma, Delta = params['gamma'], params['Delta']
 
     # For each line search, the input location, function value, gradients and
     # the approximate inverse hessian are already present in the state date
     # struture. No need to recompute.
     k, xk, fk, gk, Hk = state.k, state.xk, state.fk, state.gk, state.Hk  
 
+    # Updates C_k, the weighted average of the absolute function values, 
+    # used for assessing the relative change of function values over succesive
+    # iterates.
+    Qk, Ck = state.Qk, state.Ck
+    Qk = 1 + Qk * Delta
+    Ck = Ck + (paddle.abs(fk) - Ck) / Qk
+    state.Qk, state.Ck = Qk, Ck
+
     # The negative inner product of approximate inverse hessian and gradient
     # gives the line search direction p_k. Immediately after p_k is calculated,
     # the directional derivative on p_k should be checked to make sure 
     # the p_k is a descending direction. If that's not the case, then sets
     # the line search state as failed for the corresponding batching element.
-    pk = -paddle.matmul(Hk, gk)
+    if state.pk is None:
+        pk = -paddle.matmul(Hk, gk)
+        state.pk = pk
+    else:
+        pk = state.pk
 
-    # derive is the directional derivative of f at x_k on the direction of p_k.
+    # deriv is the directional derivative of f at x_k on the direction of p_k.
     # It's also the gradient of phi    
-    deriv = paddle.matmul(gk, pk)
+    deriv = paddle.dot(gk, pk)
 
     # Marks inputs with invalid function values and non-negative derivatives 
     invalid_input = paddle.logical_or(paddle.isinf(fk), deriv >= .0)
@@ -659,40 +628,39 @@ def hz_linesearch(state,
     # Initializes a bounded counter
     iter_count = StopCounter(max_iters)
 
-    # Generates initial step sizes
-    c = initial(state)
+    stopped = make_const(fk, False, dtype='bool')
 
     try:
-        # Generates the opposite slope interval
+        # Generates initial step sizes
+        c = initial(state)
+        ls_stepsize = c
+        
+        # Initial stopping test, unlikely to succeed though
+        stopped = stopping_condition(state, phi, c, deriv)
+        iter_count.increment()
+
+        # Obtains the first interval with opposite slopes at end points
         a_j, b_j = bracket(state, phi, c, iter_count)
 
-        ls_found = make_const(c, False, dtype='bool')
-        ls_stepsize = c
-
-        while True:
+        # Continues if there's line search still active
+        while any_active_with_predicates(state.state, ~stopped):
             # Applies secant2 to the located opposite slope interval
-            a, b = secant2(state, phi, a_j, b_j, iter_count)
+            a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
 
-            # If interval does not shrink enough, then applies bisections 
+            stopped = stopped | stopping_condition(state, phi, b, deriv)
+
+            # If interval does not shrink enough, then applies bisect
             # repeatedly.
             L2_cond = (b - a) > gamma * (b_j - a_j)
 
-            c = 0.5 * (a + b)
+            L2_cond = ~stopped & L2_cond
+
+            if any_active_with_predicates(state.state, L2_cond):
+                c = 0.5 * (a + b)
         
-            # Halts the line search if the stopping conditions are all 
-            # satisfied.
-            not_found = paddle.logical_not(ls_found)
-            stopped = stopping_condition(state, phi, c, deriv)
-            new_stopped = paddle.logical_and(not_found, stopped)
-            ls_stepsize = paddle.where(new_stopped, c, ls_stepsize)
-            ls_found = paddle.logical_or(ls_found, stopped)
-
-            if all_active_with_predicates(state.state, ls_found):
-                break
-
-            A, B = update(state, phi, a, b, c, iter_count)
-            a = paddle.where(L2_cond, A, a)
-            b = paddle.where(L2_cond, B, b)
+                A, B = update(state, phi, a, b, c, L2_cond, iter_count)
+                a = paddle.where(L2_cond, A, a)
+                b = paddle.where(L2_cond, B, b)
 
             # Goes to next iteration
             a_j, b_j = a, b
@@ -700,30 +668,11 @@ def hz_linesearch(state,
     except StopCounterException:
         pass
 
-    # Updates the state of the instances for which the line search failed.
-    ls_failed = paddle.logical_not(ls_found)
-    state.state = update_state(state.state, ls_failed, 'failed')
-    
-    # Uses the obtained search steps to generate next iterates.
-    next_xk = xk + ls_stepsize * pk
-    
-    # Calculates displacement s_k = x_k+1 - x_k
-    sk = next_xk - xk
+    # Changes state due to failed line search
+    state.state = update_state(state.state, ~stopped, 'failed')
 
-    # Obtains the function values and gradients at x_k+1
-    next_fk, next_gk = vjp(func, next_xk)
-    
-    # Calculates the gradient difference y_k = g_k+1 - g_k
-    yk = next_fk - fk
-    
-    # Updates the approximate inverse hessian
-    next_Hk = update_approx_inverse_hessian(state, Hk, sk, yk)
-
-    state.xk = paddle.where(active_state(state.state), next_xk, xk)
-    state.fk = paddle.where(active_state(state.state), next_fk, fk)
-    state.gk = paddle.where(active_state(state.state), next_gk, gk)
-    state.Hk = paddle.where(active_state(state.state), next_Hk, Hk)
-    state.k = k + 1
+    # Writes the successfully obtained step sizes back to the search state.
+    state.ak = paddle.where(active_state(state.state), ls_stepsize, state.ak)
 
     return
 

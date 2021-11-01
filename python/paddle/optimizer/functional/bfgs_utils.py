@@ -130,13 +130,15 @@ def make_state(tensor_like, value='active'):
     Returns:
         Tensor wiht the same shape of `tensor_like`, of dtype `int`.
     """
+    # (FIXME) int8 is preferably a better choice but we found it's not 
+    # consistently supported across Paddle APIs so we used int32 instead.  
     if value is 'active':
-        state = paddle.zeros_like(tensor_like, dtype='int')
+        state = paddle.zeros_like(tensor_like, dtype='int32')
     elif value is 'converged':
-        state = paddle.ones_like(tensor_like, dtype='int')
+        state = paddle.ones_like(tensor_like, dtype='int32')
     else:
         assert value is 'failed'
-        state = paddle.ones_like(tensor_like, dtype='int') + 1
+        state = paddle.ones_like(tensor_like, dtype='int32') + 1
     
     return state
 
@@ -154,12 +156,12 @@ def update_state(input_state, predicate, new_state):
     Returns:
         Tensor updated on the specified locations.
     """
-    assert new_state in 'converged', 'failed'
+    assert new_state in ('converged', 'failed')
         
     if new_state is 'converge':
-        increments = paddle.to_tensor(predicate, dtype='int')
+        increments = paddle.to_tensor(predicate, dtype='int32')
     else:
-        increments = paddle.to_tensor(predicate, dtype='int') * 2
+        increments = paddle.to_tensor(predicate, dtype='int32') * 2
     
     output_state = paddle.where(input_state == 0, increments, input_state)
     return output_state
