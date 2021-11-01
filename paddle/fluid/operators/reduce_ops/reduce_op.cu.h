@@ -267,6 +267,19 @@ struct OneDimIndexCal {
   __device__ inline int operator()(int index) const { return index * stride; }
   int stride;
 };
+#ifdef PADDLE_WITH_XPU2
+struct dim3 {
+  int x;
+  int y;
+  int z;
+
+  dim3(int xx, int yy 1, int zz = 1) {
+    x = xx;
+    y = yy;
+    z = zz;
+  }
+}
+#endif
 
 // reduce config
 template <typename Ty>
@@ -510,59 +523,60 @@ struct ReduceConfig {
   // for ReduceHigherDim: if block is enough -> splite reduce_num
   //                     else init block(32, 1) grid(block_num, 1)
   // for others: block(block_num, 1) , grid(left_num, 1)
+  void SetBlockDimForHigher(dim3* block_dim, dim3* grid_dim) {
+    int last_dim_num = x_dim.back();
+    // update left_num
+    int grid_z = left_num / last_dim_num;
+    left_num = last_dim_num;
+    grid_dim->z = grid_z;
+    int device_id = platform::GetCurrentDeviceId();
+    int max_mp = platform::GetCUDAMultiProcessors(device_id);
+    int max_threads_per_mp =
+        platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+    int max_threads = max_threads_per_mp * max_mp;
+    // init
+    int num_block = (max_threads / left_num);
+    block_dim->x = details::GetBlockDim(left_num);
+    grid_dim->x = details::AlignUp(left_num, block_dim->x);
+    blocking_size = reduce_num;
+
+    if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
+      blocking_size = details::GetLastPow2(reduce_num / num_block);
+      if (blocking_size <= 1) {
+        blocking_size = details::GetLastPow2(sqrt(reduce_num));
+      } else if (blocking_size * 2 < reduce_num) {
+        blocking_size *= 2;
+      }
+      should_reduce_again = true;
+      grid_dim->y = details::AlignUp(reduce_num, blocking_size);
+    }
+  }
   void SetBlockDim() {
     // init
     int block_num = details::GetBlockDim(reduce_num);
     should_reduce_again = false;
-
-    dim3 block_dim(block_num, 1);
-    dim3 grid_dim(left_num, 1);
+    dim3 block_dim(block_num, 1, 1);
+    dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
-
+#ifdef PADDLE_WITH_XPU2
+    if (reduce_last_dim) {
+      block_dim.x = 128;
+      block_dim.y = reduce_num;
+      grid_dim.x = 8;
+      grid_dim.y = 1;
+    } else {
+      block_dim.x = 128;
+      block_dim.y = left_num;
+      grid_dim.x = 8;
+      grid_dim.y = 1;
+    }
+#else
     if (reduce_type == ReduceType::kReduceHigherDim) {
-      int last_dim_num = x_dim.back();
-      // update left_num
-      int grid_z = left_num / last_dim_num;
-      left_num = last_dim_num;
-
-      block_dim.z = 1;
-      grid_dim.z = grid_z;
-
-      int device_id = platform::GetCurrentDeviceId();
-      int max_mp = platform::GetCUDAMultiProcessors(device_id);
-      int max_threads_per_mp =
-          platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
-      int max_threads = max_threads_per_mp * max_mp;
-
-      // init
-      int num_block = (max_threads / left_num);
-
-      if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
-        blocking_size = details::GetLastPow2(reduce_num / num_block);
-
-        if (blocking_size <= 1) {
-          blocking_size = details::GetLastPow2(sqrt(reduce_num));
-        } else if (blocking_size * 2 < reduce_num) {
-          blocking_size *= 2;
-        }
-
-        should_reduce_again = true;
-
-        block_dim.x = details::GetBlockDim(left_num);
-        block_dim.y = 1;
-        grid_dim.x = (left_num + block_dim.x - 1) / block_dim.x;
-        grid_dim.y = (reduce_num + blocking_size - 1) / blocking_size;
-
-      } else {
-        block_dim.x = details::GetBlockDim(left_num);
-        block_dim.y = 1;
-        blocking_size = reduce_num;
-        grid_dim.x = (left_num + block_dim.x - 1) / block_dim.x;
-        grid_dim.y = 1;
-      }
+      SetBlockDimForHigher(&block_dim, &grid_dim);
     } else {
       SetBlockDimForReduceAny(&block_dim, &grid_dim);
     }
+#endif
 
     block = block_dim;
     grid = grid_dim;
@@ -790,11 +804,19 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
                        config.block.x, config.block.y, 0);
     dim.setRem(config.reduce_num % config.block.x, 0, 0);
 
+#ifdef PADDLE_WITH_XPU2
+    ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
+                    OneDimIndexCal><<<8, 128, stream>>>(
+        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
+        init, config.reduce_num, config.left_num, config.reduce_last_dim,
+        reduce_index_calculator, left_index_calculator, dim);
+#else
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
                     OneDimIndexCal><<<config.grid, config.block, 0, stream>>>(
         x_data, config.output_data, reducer, TransformOp(config.reduce_num),
         init, config.reduce_num, config.left_num, config.reduce_last_dim,
         reduce_index_calculator, left_index_calculator, dim);
+#endif
 
   } else {
     int reduce_rank = config.reduce_strides.size();
@@ -810,11 +832,19 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
                        config.block.x, config.block.y, 0);
     dim.setRem(config.reduce_num % config.block.x, 0, 0);
 
+#ifdef PADDLE_WITH_XPU2
+    ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
+                    IndexCalculator><<<8, 128, stream>>>(
+        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
+        init, config.reduce_num, config.left_num, config.reduce_last_dim,
+        reduce_index_calculator, left_index_calculator, dim);
+#else
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
                     IndexCalculator><<<config.grid, config.block, 0, stream>>>(
         x_data, config.output_data, reducer, TransformOp(config.reduce_num),
         init, config.reduce_num, config.left_num, config.reduce_last_dim,
         reduce_index_calculator, left_index_calculator, dim);
+#endif
   }
 
   if (config.should_reduce_again) {
@@ -833,13 +863,21 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
     kps::DimConfig dim =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
     dim.setRem(config.left_num % block.x, 0, 0);
-
+#ifdef PADDLE_WITH_XPU2
+    ReduceHigherDimKernel<
+        Ty, Ty, MPType, ReduceOp,
+        kps::details::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
+        config.output_data, y_data, reducer,
+        kps::details::IdentityFunctor<Ty, MPType>(config.grid.y), init,
+        config.grid.y, config.left_num, config.grid.y, dim);
+#else
     ReduceHigherDimKernel<
         Ty, Ty, MPType, ReduceOp,
         kps::details::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
         kps::details::IdentityFunctor<Ty, MPType>(config.grid.y), init,
         config.grid.y, config.left_num, config.grid.y, dim);
+#endif
   }
 }
 
@@ -916,12 +954,20 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
     dim.setRem(config.left_num % config.block.x,
                config.reduce_num % config.blocking_size, 0);
 
+#ifdef PADDLE_WITH_XPU2
+    ReduceHigherDimKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>,
+                          TransformOp><<<8, 128, stream>>>(
+        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
+        reducer.initial(), config.reduce_num, config.left_num,
+        config.blocking_size, dim);
+#else
     ReduceHigherDimKernel<
         Tx, Ty, MPType, ReduceOp<Tx, MPType>,
         TransformOp><<<config.grid, config.block, 0, stream>>>(
         x_data, config.output_data, reducer, TransformOp(config.reduce_num),
         reducer.initial(), config.reduce_num, config.left_num,
         config.blocking_size, dim);
+#endif
 
     if (config.should_reduce_again) {
       dim3 block = dim3(config.block.x, 1, 1);
@@ -929,13 +975,23 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
       kps::DimConfig dim2 =
           kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
       dim2.setRem(config.left_num % config.block.x, 0, 0);
-      ReduceHigherDimKernel<Ty, Ty, MPType, ReduceOp<Tx, MPType>,
-                            kps::details::IdentityFunctor<
-                                Ty, MPType>><<<grid, block, 0, stream>>>(
+
+#ifdef PADDLE_WITH_XPU2
+      ReduceHigherDimKernel<
+          Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+          kps::details::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
           config.output_data, y_data, reducer,
           kps::details::IdentityFunctor<Ty, MPType>(config.grid.y),
           reducer.initial(), config.grid.y, config.left_num, config.grid.y,
           dim2);
+#else
+      ReduceHigherDimKernel<
+          Tx, Ty, MPType, ReduceOp<Tx, MPType>,
+          TransformOp><<<config.grid, config.block, 0, stream>>>(
+          x_data, config.output_data, reducer, TransformOp(config.reduce_num),
+          reducer.initial(), config.reduce_num, config.left_num,
+          config.blocking_size, dim);
+#endif
     }
     return;
   }
