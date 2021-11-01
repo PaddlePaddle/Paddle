@@ -252,6 +252,10 @@ class VarBase {
         std::forward<std::shared_ptr<std::function<void()>>>(hook));
   }
 
+  std::shared_ptr<VarBase> To(const platform::Place& dst_place,
+                              framework::proto::VarType::Type data_type,
+                              const bool blocking) const;
+
  private:
   /**
    * NOTE(zengjinle): never remove the const qualifier of `var_` if you are

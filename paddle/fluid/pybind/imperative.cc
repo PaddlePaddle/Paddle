@@ -1865,6 +1865,81 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
+      .def("_clear",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             t->clear();
+           })
+      .def("_offset",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->offset();
+           })
+      .def("_share_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &target_t) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t_t =
+                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             t->ShareBufferWith(*t_t);
+           })
+      .def("_is_shared_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &target_t) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t_t =
+                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->IsSharedBufferWith(*t_t);
+           })
+      .def("_Slice",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              int64_t begin_idx, int64_t end_idx) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->Slice(begin_idx, end_idx);
+           })
+      .def("_To",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::Place &place,
+              framework::proto::VarType::Type data_type, bool blocking) {
+             auto new_var = self->To(place, data_type, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
+      .def("_To",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CPUPlace &place,
+              framework::proto::VarType::Type data_type, bool blocking) {
+             auto new_var = self->To(place, data_type, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property("stop_gradient",
