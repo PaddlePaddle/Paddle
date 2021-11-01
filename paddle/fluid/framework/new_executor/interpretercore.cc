@@ -313,13 +313,19 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(3) << "RunInstruction:  " << instr_node.OpBase()->Type();
 
+  auto op =
+      dynamic_cast<const framework::OperatorWithKernel*>(instr_node.OpBase());
   {
     platform::RecordEvent infershape_event("InferShape");
-    static_cast<const framework::OperatorWithKernel*>(instr_node.OpBase())
-        ->InferShape(instr_node.InnerInferShapeContext().get());
+    // If it is OperatorBase, InferShape do nothing.
+    if (op != nullptr)
+      op->InferShape(instr_node.InnerInferShapeContext().get());
   }
 
-  if (FLAGS_new_executor_use_inplace) {
+  if (op != nullptr &&
+      FLAGS_new_executor_use_inplace) {  // TODO(xiongkun03) Does operator
+                                         // base support
+                                         // inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
       const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
@@ -331,14 +337,18 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
   {
     platform::RecordEvent compute_event("Compute");
-    instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+    if (op == nullptr)
+      instr_node.OpBase()->Run(*global_scope_->GetScope(), place_);
+    else
+      instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
   }
 
   // for debug nan/inf
   if (FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
-        *instr_node.OpBase(), *global_scope_,
+        *instr_node.OpBase(),
+        *global_scope_,  // TODO(xiongkun03) change it to inner scope.
         instr_node.DeviceContext().GetPlace());
   }
 }

@@ -473,14 +473,16 @@ struct VariableMetaInfo {
 
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
 
-// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need ScopeBase. 
-//                   Scope manager the variables and VariableScope is just a quick
+// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
+// ScopeBase.
+//                   Scope manager the variables and VariableScope is just a
+//                   quick
 //                   access machanism.
-class VariableScope : public ScopeBase{
+class VariableScope : public ScopeBase {
  public:
-  VariableScope() {
-    scope_ptr_.reset(new Scope());
-  }
+  VariableScope() { scope_ptr_.reset(new Scope()); }
+
+  const Scope* GetScope() const { return scope_ptr_.get(); }
 
   Variable* FindVar(const std::string& name) const {
     auto it = name2id_.find(name);
@@ -543,7 +545,10 @@ class VariableScope : public ScopeBase{
     if (nullptr == var_desc) {
       v->GetMutable<LoDTensor>();
     } else {
-      InitializeVariable(v, var_desc->GetType()); // Scope don't initialize variable recently created
+      InitializeVariable(
+          v,
+          var_desc
+              ->GetType());  // Scope don't initialize variable recently created
     }
     var_list_.push_back(v);
 
@@ -556,7 +561,7 @@ class VariableScope : public ScopeBase{
   void AddVar(const std::string& name, Variable& var) {  // NOLINT
     // must copy.
     auto v = scope_ptr_->Var(name);
-    *v = var ; 
+    *v = var;
     name2id_[name] = VarSize();
     var_list_.push_back(v);
 
@@ -596,7 +601,7 @@ class VariableScope : public ScopeBase{
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-  std::unique_ptr<Scope> scope_ptr_ ; 
+  std::unique_ptr<Scope> scope_ptr_;
 };
 
 class NextInstruction {
