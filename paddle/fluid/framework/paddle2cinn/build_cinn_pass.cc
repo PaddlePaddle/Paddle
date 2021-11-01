@@ -33,6 +33,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/string/string_helper.h"
+
+DECLARE_string(allow_cinn_ops);
+DECLARE_string(deny_cinn_ops);
+DECLARE_string(cinn_ops_delim);
 
 namespace paddle {
 namespace framework {
@@ -340,8 +345,29 @@ void ReplaceSubGraphWithCinnOpNode(const GraphNodeSet& cluster,
 // to check whether the op node supported by CINN.
 void SearchAllSubgraphs(Graph* graph) {
   auto teller = [](const Node* node) {
-    return ::cinn::frontend::OpMapperRegistry::Global()->Find(node->Name()) !=
-           nullptr;
+    bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
+                          node->Name()) != nullptr;
+    // if the op type is registered in CINN and allow_ops is not empty, return
+    // true only when it is in allow_ops
+    auto allow_ops =
+        string::split_string(FLAGS_allow_cinn_ops, FLAGS_cinn_ops_delim);
+    if (allow_ops.size()) {
+      return registered &&
+             std::find(allow_ops.begin(), allow_ops.end(), node->Name()) !=
+                 allow_ops.end();
+    }
+    // if the op type is registered in CINN and deny_ops is not empty, return
+    // true only when it is not in deny_ops
+    auto deny_ops =
+        string::split_string(FLAGS_deny_cinn_ops, FLAGS_cinn_ops_delim);
+    if (deny_ops.size()) {
+      return registered &&
+             std::find(deny_ops.begin(), deny_ops.end(), node->Name()) ==
+                 deny_ops.end();
+    }
+    // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
+    // return true only when it is registered in CINN
+    return registered;
   };
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();

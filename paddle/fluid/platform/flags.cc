@@ -698,6 +698,7 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
                             "events. Currently, only fuse allreduce supports "
                             "this. Otherwise, the precision may be wrong.");
 
+#ifdef PADDLE_WITH_CINN
 /*
  * CINN related FLAG
  * Name: FLAGS_use_cinn
@@ -705,9 +706,42 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
  * Value Range: bool, default=false
  * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
  */
-#ifdef PADDLE_WITH_CINN
 PADDLE_DEFINE_EXPORTED_bool(
     use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_allow_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_allow_cinn_ops="mul;relu" would only cover `mul` and `relu`
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
+                              "It controls the cinn op subset to be used, "
+                              "which has the highest priority.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_deny_cinn_ops="mul" would block `mul` op when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
+                              "It controls the cinn op subset to be not used.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_ops_delim
+ * Since Version: 2.3
+ * Value Range: string, default=";"
+ * Example: FLAGS_cinn_ops_delim=";" would use `;` to split the two lists
+ * (FLAGS_allow_cinn_ops & FLAGS_deny_cinn_ops)
+ */
+PADDLE_DEFINE_EXPORTED_string(cinn_ops_delim, ";",
+                              "The delim of cinn ops used in "
+                              "FLAGS_allow_cinn_ops & FLAGS_deny_cinn_ops.");
 #endif
 
 DEFINE_int32(record_pool_max_size, 2000000,
