@@ -129,6 +129,7 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
 
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
+  // TODO(jiabin): Sync Tensor and Variable here when we support
   egr::EagerTensor ret =
       egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
                      ->eagertensor,

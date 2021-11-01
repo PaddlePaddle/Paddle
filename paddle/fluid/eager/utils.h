@@ -15,17 +15,20 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/eager/function_api.h"
 #include "paddle/pten/hapi/all.h"
-std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
+namespace egr {
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
     const egr::EagerTensor& tensor);
-std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
     const std::vector<egr::EagerTensor>& tensors);
-std::vector<egr::EagerTensor> VarBasesToTensors(
-    const std::shared_ptr<paddle::imperative::VarBase>& var_base);
-std::vector<egr::EagerTensor> VarBasesToTensors(
-    const std::vector<std::shared_ptr<paddle::imperative::VarBase>>& var_bases);
-
-std::vector<std::shared_ptr<paddle::imperative::VarBase>>
-ConstructDuplicableOutput(const size_t num);
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
+    const egr::EagerTensor& tensor);
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
+    const std::vector<egr::EagerTensor>& tensors);
+std::vector<std::shared_ptr<EagerTensor>> ConstructDuplicableOutput(
+    const size_t num);
+std::vector<egr::EagerTensor> GetOutputs(
+    const std::vector<std::shared_ptr<EagerTensor>>& outs);
+egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& outs);
+}  // namespace egr

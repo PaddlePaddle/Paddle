@@ -19,8 +19,12 @@
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 namespace egr {
-pten::TensorMeta* MutableMeta(egr::EagerTensor* tensor);
-void InitializeTensor(egr::EagerTensor* tensor, const pten::TensorMeta& meta,
-                      const pten::TensorStatus& status);
-void InitializeTensor(egr::EagerTensor* tensor);
+void InitializeVariable(paddle::framework::Variable* var,
+                        paddle::framework::proto::VarType::Type var_type);
+paddle::framework::proto::VarType::Type GetDtypeFromVar(
+    const paddle::framework::Variable& var);
+const paddle::platform::Place& GetPlaceFromVar(
+    const paddle::framework::Variable& var);
+void CopyVariable(const paddle::framework::Variable& src_var,
+                  paddle::framework::Variable* dst_var);
 }

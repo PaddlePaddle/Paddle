@@ -22,20 +22,22 @@
 #include "paddle/fluid/eager/legacy/tensor_helper.h"
 #include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 
 namespace egr {
 
 // infer var type context for imperative mode
-template <typename VarType>
-class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
+class TensorRuntimeInferVarTypeContext
+    : public paddle::framework::InferVarTypeContext {
  public:
   TensorRuntimeInferVarTypeContext(
       const NameTensorMap& inputs, const NameTensorMap& outputs,
-      const framework::AttributeMap& attrs_map,
-      const framework::AttributeMap& default_attrs_map)
+      const paddle::framework::AttributeMap& attrs_map,
+      const paddle::framework::AttributeMap& default_attrs_map)
       : InferVarTypeContext(nullptr, nullptr),
         inputs_(inputs),
         outputs_(outputs),
@@ -44,13 +46,13 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   virtual ~TensorRuntimeInferVarTypeContext() {}
 
-  framework::Attribute GetAttr(const std::string& name) const override {
+  paddle::framework::Attribute GetAttr(const std::string& name) const override {
     auto it = attrs_.find(name);
 
     if (it == attrs_.end()) {
       it = default_attrs_.find(name);
       if (it == default_attrs_.end()) {
-        PADDLE_THROW(platform::errors::NotFound(
+        PADDLE_THROW(paddle::platform::errors::NotFound(
             "Can not find [%s] in attributes.", name));
       }
     }
@@ -77,33 +79,31 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     // TODO(jiabin): Support this usage inputs_.at(name)[index]->Name()
     auto it = inputs_.find(name);
     PADDLE_ENFORCE_NE(it, inputs_.end(),
-                      platform::errors::PreconditionNotMet(
+                      paddle::platform::errors::PreconditionNotMet(
                           "Can not find [%s] in Input", name));
     return inputs_.at(name)[index]->name();
   }
 
-  bool InputTypeAnyOf(const std::string& name,
-                      framework::proto::VarType::Type type) const override {
+  bool InputTypeAnyOf(
+      const std::string& name,
+      paddle::framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::any_of(inputs.begin(), inputs.end(),
-                       [&type](const std::shared_ptr<egr::EagerTensor>& var) {
-                         // TODO(jiabin): Support this when we figure out if
-                         // DenseTensor a type
-                         // in proto
-                         return framework::proto::VarType::LOD_TENSOR == type;
-                       });
+    return std::any_of(
+        inputs.begin(), inputs.end(),
+        [&type](const std::shared_ptr<egr::EagerTensor>& var) {
+          return paddle::framework::ToVarType(var->Var().Type()) == type;
+        });
   }
 
-  bool InputTypeAllOf(const std::string& name,
-                      framework::proto::VarType::Type type) const override {
+  bool InputTypeAllOf(
+      const std::string& name,
+      paddle::framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::all_of(inputs.begin(), inputs.end(),
-                       [&type](const std::shared_ptr<egr::EagerTensor>& var) {
-                         // TODO(jiabin): Support this when we figure out if
-                         // DenseTensor a type
-                         // in proto
-                         return framework::proto::VarType::LOD_TENSOR == type;
-                       });
+    return std::all_of(
+        inputs.begin(), inputs.end(),
+        [&type](const std::shared_ptr<egr::EagerTensor>& var) {
+          return paddle::framework::ToVarType(var->Var().Type()) == type;
+        });
   }
 
   void SyncTypeAndDataType(const std::string& input_name,
@@ -112,16 +112,17 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     auto in_tensor = inputs_.at(input_name)[index];
     auto out_tensor = outputs_.at(output_name)[index];
     if (in_tensor != out_tensor) {
-      // TODO(jiabin): Now we only support DenseTensor, add Set tensor type when
-      // we support.
-      this->SetTensorDataType(out_tensor, in_tensor->type());
+      this->SetTensorType(
+          out_tensor, paddle::framework::ToVarType(in_tensor->Var().Type()));
+      // TODO(jiabin): It seems doesn't make sense to set data_type in
+      // EagerMode.
     }
   }
 
   void SetOutputType(const std::string& name,
-                     framework::proto::VarType::Type type,
+                     paddle::framework::proto::VarType::Type type,
                      int index = 0) override {
-    if (index == framework::ALL_ELEMENTS) {
+    if (index == paddle::framework::ALL_ELEMENTS) {
       for (auto& item : outputs_.at(name)) {
         this->SetTensorType(item, type);
       }
@@ -132,140 +133,136 @@ class TensorRuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   }
 
   void SetTensorType(std::shared_ptr<egr::EagerTensor> out,
-                     framework::proto::VarType::Type type) {
+                     paddle::framework::proto::VarType::Type type) {
     // TODO(jiabin): Supoort SelectedRows later. We do nothing here for now
     // since we only support DenseTensor
-    PADDLE_ENFORCE_EQ(type, framework::proto::VarType::LOD_TENSOR,
-                      "We can only support LOD_TENSOR with pten::Tensor");
-    InitializeTensor(out.get());
+    switch (type) {
+      case paddle::framework::proto::VarType::LOD_TENSOR: {
+        out->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+        break;
+      }
+      default: {
+        PADDLE_THROW(paddle::platform::errors::NotFound(
+            "Cannot found var type: %s while running runtime InferVarType",
+            paddle::framework::ToTypeName(type)));
+      }
+    }
   }
 
-  void SetTensorDataType(std::shared_ptr<egr::EagerTensor> out,
-                         framework::proto::VarType::Type type) {
-    // TODO(jiabin): We do nothing here for now, since we only support
-    // DenseTensor
-    auto* meta = MutableMeta(out.get());
-    auto pt_dtype = pten::TransToPtenDataType(type);
-    meta->type = pt_dtype;
-  }
-
-  framework::proto::VarType::Type GetInputType(
+  paddle::framework::proto::VarType::Type GetInputType(
       const std::string& name, const int& index = 0) const override {
     // return inputs_.at(name)[index]->Type();
     // TODO(jiabin): Support this when we figure out if DenseTensor a type in
     // proto
-    return framework::proto::VarType::LOD_TENSOR
+    return paddle::framework::ToVarType(inputs_.at(name)[index]->Var().Type());
   }
 
-  framework::proto::VarType::Type GetOutputType(
+  paddle::framework::proto::VarType::Type GetOutputType(
       const std::string& name, const int& index = 0) const override {
     // return outputs_.at(name)[index]->Type();
     // TODO(jiabin): Support this when we figure out if DenseTensor a type in
     // proto
-    return framework::proto::VarType::LOD_TENSOR
+    return paddle::framework::ToVarType(outputs_.at(name)[index]->Var().Type());
   }
 
-  framework::proto::VarType::Type GetInputDataType(
+  paddle::framework::proto::VarType::Type GetInputDataType(
       const std::string& name, const int& index = 0) const override {
-    return pten::TransToProtoVarType(inputs_.at(name)[index]->type());
+    return inputs_.at(name)[index]
+        ->Var()
+        .Get<paddle::framework::LoDTensor>()
+        .type();
   }
 
   void SetOutputDataType(const std::string& name,
-                         framework::proto::VarType::Type type,
+                         paddle::framework::proto::VarType::Type type,
                          int index = 0) override {
-    if (framework::ALL_ELEMENTS == index) {
-      for (auto& item : outputs_.at(name)) {
-        this->SetTensorDataType(item, type);
-      }
-    } else {
-      auto& var = outputs_.at(name)[index];
-      this->SetTensorDataType(var, type);
-    }
+    // TODO(jiabin): It seems doesn't make sense to set data_type in EagerMode.
   }
 
   bool IsDygraph() const override { return true; }
 
  protected:
   bool HasVar(const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "HasVar is not supported in runtime InferVarType"));
   }
 
   const std::vector<std::string>& InputVars(
       const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "InputVars is not supported in runtime InferVarType"));
   }
 
   const std::vector<std::string>& OutputVars(
       const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "OutputVars is not supported in runtime InferVarType"));
   }
 
-  framework::proto::VarType::Type GetVarType(
+  paddle::framework::proto::VarType::Type GetVarType(
       const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   void SetVarType(const std::string& name,
-                  framework::proto::VarType::Type type) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+                  paddle::framework::proto::VarType::Type type) override {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
-  framework::proto::VarType::Type GetVarDataType(
+  paddle::framework::proto::VarType::Type GetVarDataType(
       const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   void SetVarDataType(const std::string& name,
-                      framework::proto::VarType::Type type) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+                      paddle::framework::proto::VarType::Type type) override {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
-  std::vector<framework::proto::VarType::Type> GetVarDataTypes(
+  std::vector<paddle::framework::proto::VarType::Type> GetVarDataTypes(
       const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "GetVarDataTypes is not supported in runtime InferVarType"));
   }
 
-  void SetVarDataTypes(const std::string& name,
-                       const std::vector<framework::proto::VarType::Type>&
-                           multiple_data_type) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+  void SetVarDataTypes(
+      const std::string& name,
+      const std::vector<paddle::framework::proto::VarType::Type>&
+          multiple_data_type) override {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "SetVarDataTypes is not supported in runtime InferVarType"));
   }
 
   std::vector<int64_t> GetVarShape(const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
   void SetVarShape(const std::string& name,
                    const std::vector<int64_t>& dims) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
   int32_t GetVarLoDLevel(const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }
 
   void SetVarLoDLevel(const std::string& name, int32_t lod_level) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }
 
  private:
   const NameTensorMap& inputs_;
   const NameTensorMap& outputs_;
-  const framework::AttributeMap& attrs_;
-  const framework::AttributeMap& default_attrs_;
+  const paddle::framework::AttributeMap& attrs_;
+  const paddle::framework::AttributeMap& default_attrs_;
 };
 
 }  // namespace egr

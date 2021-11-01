@@ -61,7 +61,6 @@ std::vector<std::vector<egr::EagerTensor>> GradNodeScale::operator()(
   if (ReduceHooksRegistered()) {
     ApplyReduceHooks();
   }
-
   return {{out}};
 }
 

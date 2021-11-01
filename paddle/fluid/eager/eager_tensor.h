@@ -14,9 +14,12 @@
 
 #pragma once
 #include <Python.h>
+#include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
-
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better
@@ -190,6 +193,84 @@ class EagerTensor final {
   const paddle::framework::Variable& Var() const { return var_; }
 
   paddle::framework::Variable* MutableVar() { return &var_; }
+
+  /** Part 10: Sync paddle::framework::Variable with pten::Tensor **/
+  void SyncToVar(paddle::framework::proto::VarType_Type type =
+                     paddle::framework::proto::VarType::LOD_TENSOR) {
+    // Synchronize allocation only once.
+    if (!var_.IsInitialized()) {
+      // TODO(jiabin): Support selected rows later.
+      if (this->initialized()) {
+        if (type == paddle::framework::proto::VarType::LOD_TENSOR) {
+          auto* framework_tensor =
+              var_.GetMutable<paddle::framework::LoDTensor>();
+          framework_tensor->Resize(tensor_->shape());
+          framework_tensor->set_layout(
+              pten::TransToFluidDataLayout(tensor_->layout()));
+          // Contruct framework::Tensor from egr::EagerTensor
+          if (auto tensor_dense = std::dynamic_pointer_cast<pten::DenseTensor>(
+                  tensor_->impl())) {
+            paddle::framework::ShareTensorImpl<pten::DenseTensor>(
+                tensor_dense.get(), framework_tensor);
+
+          } else {
+            PADDLE_THROW(paddle::platform::errors::Fatal(
+                "Unrecognized egr::EagerTensor type, only "
+                "DenseTensor is supported for now."));
+          }
+        }
+      } else {
+        PADDLE_THROW(
+            paddle::platform::errors::Fatal("Can not Sync EagerTensor %s whose "
+                                            "pten::Tensor is not initialized!",
+                                            name()));
+      }
+    }
+  }
+  /** Part 11: Sync paddle::framework::Variable with pten::Tensor **/
+  void SyncToTensor() {
+    // Synchronize allocation only once.
+    if (!this->defined() || !this->initialized()) {
+      // TODO(jiabin): Support selected rows later.
+      if (var_.IsInitialized()) {
+        std::shared_ptr<paddle::memory::allocation::Allocation> allocation;
+        if (var_.IsType<paddle::framework::LoDTensor>()) {
+          SetImplWithLegacyTensor<paddle::framework::LoDTensor,
+                                  pten::DenseTensor>();
+        } else if (var_.IsType<paddle::framework::Tensor>()) {
+          SetImplWithLegacyTensor<paddle::framework::Tensor,
+                                  pten::DenseTensor>();
+        } else {
+          PADDLE_THROW(paddle::platform::errors::Fatal(
+              "Unable to fetch underlying tensor "
+              "from VarBase, only LoDTensor and "
+              "Tensor are supported for now"));
+        }
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
+            "not initialized!",
+            name()));
+      }
+    }
+  }
+
+  void ResetVar(const paddle::framework::Variable& src) { var_ = src; }
+
+ private:
+  template <typename LEGACY_TYPE, typename TYPE>
+  void SetImplWithLegacyTensor() {
+    pten::TensorMeta meta;
+    const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
+    meta.dims = framework_tensor.dims();
+    meta.backend = pten::TransToPtenBackend(framework_tensor.place());
+    meta.type = pten::TransToPtenDataType(framework_tensor.type());
+    meta.layout = pten::TransToPtenDataLayout(framework_tensor.layout());
+    auto impl_tensor =
+        std::make_shared<TYPE>(std::move(meta), pten::TensorStatus());
+    impl_tensor->ShareAllocation(framework_tensor.Holder());
+    this->set_impl(impl_tensor);
+  }
 
  private:
   std::shared_ptr<paddle::experimental::Tensor> tensor_ = nullptr;

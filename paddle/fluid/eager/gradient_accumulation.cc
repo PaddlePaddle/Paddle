@@ -142,6 +142,18 @@ void TensorAddImpl(const std::shared_ptr<pten::DenseTensor>& src,
   func(dev_ctx, *(src.get()), dst);
 }
 
+template <typename DeviceContext, typename T>
+void TensorAddImpl(const paddle::framework::Tensor& src,
+                   paddle::framework::Tensor* dst,
+                   const paddle::platform::Place& place) {
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  paddle::platform::DeviceContext* ctx = pool.Get(place);
+  auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
+  paddle::operators::math::ElementwiseAddTo<DeviceContext, T> func;
+  func(dev_ctx, src, dst);
+}
+
 void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
   // TODO(jiabin): Support other tensor type later
   std::shared_ptr<pten::DenseTensor> dst_tensor =
@@ -216,4 +228,80 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
       "supported in imperative mode",
       paddle::framework::DataTypeToString(data_type), place));
 }
+
+void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
+  // TODO(jiabin): Support other tensor type later
+  auto* dst_tensor =
+      dst->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+  auto& src_tensor = src.Var().Get<paddle::framework::LoDTensor>();
+
+  auto numel = src_tensor.numel();
+
+  // FIXME(minqiyang): loss_grad op will pass a zero grad of label
+  // ugly fix for it
+  if (numel == 0) {
+    return;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      dst_tensor->numel(), numel,
+      paddle::platform::errors::PreconditionNotMet(
+          "The number of elements of source tensor and destination tensor "
+          "should be equal, but got the number of elements of source tensor is "
+          "%zu and the number of elements of destination tensor is %zu.",
+          numel, dst_tensor->numel()));
+
+  auto data_type = src_tensor.type();
+  auto place = src_tensor.place();
+
+  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "The data type of source tensor and destination tensor "
+                        "should be equal, Otherwise, the calculation results "
+                        "will be incorrect."));
+
+#define PADDLE_TENSOR_ADD(cpp_type)                                          \
+  if (data_type == paddle::framework::DataTypeTrait<cpp_type>::DataType()) { \
+    TensorAddFunctor<cpp_type> func(                                         \
+        numel, src_tensor.data<cpp_type>(),                                  \
+        dst_tensor->mutable_data<cpp_type>(place));                          \
+    boost::apply_visitor(func, place);                                       \
+    return;                                                                  \
+  }
+
+  // TODO(jiabin): Support NPU here
+  PADDLE_TENSOR_ADD(float);
+  // NOTE(phlrain): xpu only support float
+  PADDLE_TENSOR_ADD(double);
+  // NOTE(chenweihang): only support complex grad tensor accumulated,
+  // support selected rows if needed in the future
+  PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
+  PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
+
+#undef PADDLE_TENSOR_ADD
+
+  if (data_type == paddle::framework::proto::VarType::FP16) {
+    if (paddle::platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      return TensorAddImpl<paddle::platform::CUDADeviceContext,
+                           paddle::platform::float16>(src_tensor, dst_tensor,
+                                                      place);
+#else
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          paddle::framework::DataTypeToString(data_type), place));
+#endif
+    } else if (paddle::platform::is_cpu_place(place)) {
+      return TensorAddImpl<paddle::platform::CPUDeviceContext,
+                           paddle::platform::float16>(src_tensor, dst_tensor,
+                                                      place);
+    }
+  }
+  PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      "Gradient accumulation of data type (%s) on place (%s) is not "
+      "supported in imperative mode",
+      paddle::framework::DataTypeToString(data_type), place));
+}
+
 }  // namespace egr

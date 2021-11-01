@@ -19,117 +19,82 @@
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-/* ---- Tensor -> VarBase ---- */
-static std::shared_ptr<paddle::imperative::VarBase> TensorToVarBase(
+namespace egr {
+/* ---- Tensor -> Var ---- */
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
     const egr::EagerTensor& tensor) {
-  // Create imperative::VarBase with underlying type of framework::Tensor
-  auto var_base = std::make_shared<paddle::imperative::VarBase>(
-      false /*has_grad*/, "whatever" /*name*/);
-  paddle::framework::Variable* var = var_base->MutableVar();
-  paddle::framework::Tensor* framework_tensor =
-      var->GetMutable<paddle::framework::LoDTensor>();
-
-  framework_tensor->Resize(tensor.shape());
-  framework_tensor->set_layout(pten::TransToFluidDataLayout(tensor.layout()));
-
-  std::shared_ptr<pten::TensorBase> tensor_interface = tensor.impl();
-  // Contruct framework::Tensor from egr::EagerTensor
-  if (auto tensor_dense =
-          std::dynamic_pointer_cast<pten::DenseTensor>(tensor_interface)) {
-    paddle::framework::ShareTensorImpl<pten::DenseTensor>(tensor_dense.get(),
-                                                          framework_tensor);
-
-  } else {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Unrecognized egr::EagerTensor type, only "
-        "DenseTensor is supported for now."));
-  }
-  return var_base;
+  // TODO(jiabin): No const cast here. We should call SyncToVar in Python_C
+  // wrapper
+  auto egr_tensor = std::make_shared<EagerTensor>(tensor);
+  egr_tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
+  return {egr_tensor};
 }
 
-std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
-    const egr::EagerTensor& tensor) {
-  return {TensorToVarBase(tensor)};
-}
-
-std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
     const std::vector<egr::EagerTensor>& tensors) {
-  std::vector<std::shared_ptr<paddle::imperative::VarBase>> var_bases;
-
-  for (const egr::EagerTensor& tensor : tensors) {
-    var_bases.emplace_back(std::move(TensorToVarBase(tensor)));
-  }
-
-  return var_bases;
-}
-
-/* ---- VarBase -> Tensor ---- */
-egr::EagerTensor VarBaseToTensor(
-    const std::shared_ptr<paddle::imperative::VarBase>& var_base) {
-  // Get Underlying Tensor from VarBase
-  paddle::framework::Variable* var = var_base->MutableVar();
-
-  paddle::framework::DDim ddim;
-  pten::Backend backend;
-  pten::DataType dtype;
-  pten::DataLayout layout;
-  std::shared_ptr<paddle::memory::allocation::Allocation> allocation;
-
-  if (var->IsType<paddle::framework::LoDTensor>()) {
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
-    ddim = framework_tensor.dims();
-    backend = pten::TransToPtenBackend(framework_tensor.place());
-    dtype = pten::TransToPtenDataType(framework_tensor.type());
-    layout = pten::TransToPtenDataLayout(framework_tensor.layout());
-    allocation = framework_tensor.Holder();
-
-  } else if (var->IsType<paddle::framework::Tensor>()) {
-    const auto& framework_tensor = var->Get<paddle::framework::Tensor>();
-    ddim = framework_tensor.dims();
-    backend = pten::TransToPtenBackend(framework_tensor.place());
-    dtype = pten::TransToPtenDataType(framework_tensor.type());
-    layout = pten::TransToPtenDataLayout(framework_tensor.layout());
-    allocation = framework_tensor.Holder();
-
-  } else {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Unable to fetch underlying tensor from VarBase, only LoDTensor and "
-        "Tensor are supported for now"));
-  }
-  auto tensor_meta = pten::TensorMeta(ddim, backend, dtype, layout);
-  auto tensor_dense = std::make_shared<pten::DenseTensor>(
-      std::move(tensor_meta), pten::TensorStatus());
-  tensor_dense->ShareAllocation(allocation);
-
-  return egr::EagerTensor(tensor_dense);
-}
-
-std::vector<egr::EagerTensor> VarBasesToTensors(
-    const std::shared_ptr<paddle::imperative::VarBase>& var_base) {
-  return {VarBaseToTensor(var_base)};
-}
-
-std::vector<egr::EagerTensor> VarBasesToTensors(
-    const std::vector<std::shared_ptr<paddle::imperative::VarBase>>&
-        var_bases) {
-  std::vector<egr::EagerTensor> tensors;
-
-  for (const std::shared_ptr<paddle::imperative::VarBase>& var_base :
-       var_bases) {
-    tensors.emplace_back(std::move(VarBaseToTensor(var_base)));
-  }
-
-  return tensors;
-}
-
-std::vector<std::shared_ptr<paddle::imperative::VarBase>>
-ConstructDuplicableOutput(const size_t num) {
-  auto tracer = paddle::imperative::GetCurrentTracer();
-  std::vector<std::shared_ptr<paddle::imperative::VarBase>> res;
+  // TODO(jiabin): No const cast here. We should call SyncToVar in Python_C
+  // wrapper
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
-    auto var_base_name = tracer->GenerateUniqueName();
-    res.emplace_back(new paddle::imperative::VarBase(var_base_name));
+    res.emplace_back(new EagerTensor(tensors[i]));
+    res.back()->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
   }
   return res;
 }
+
+/* ---- VarBase -> Tensor ---- */
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
+    const egr::EagerTensor& tensor) {
+  // TODO(jiabin): No const cast here. We should call SyncToTensor in Python_C
+  // wrapper
+  auto egr_tensor = std::make_shared<EagerTensor>(tensor);
+  egr_tensor->SyncToTensor();
+  return {egr_tensor};
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
+    const std::vector<egr::EagerTensor>& tensors) {
+  // TODO(jiabin): No const cast here. We should call SyncToTensor in Python_C
+  // wrapper
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  size_t num = tensors.size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    res.emplace_back(new EagerTensor(tensors[i]));
+    res.back()->SyncToTensor();
+  }
+  return res;
+}
+
+std::vector<std::shared_ptr<EagerTensor>> ConstructDuplicableOutput(
+    const size_t num) {
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    res.emplace_back(
+        new EagerTensor(Controller::Instance().GenerateUniqueName()));
+  }
+  return res;
+}
+
+std::vector<egr::EagerTensor> GetOutputs(
+    const std::vector<std::shared_ptr<EagerTensor>>& outs) {
+  std::vector<egr::EagerTensor> res;
+  res.reserve(outs.size());
+  for (const auto& out : outs) {
+    PADDLE_ENFORCE_NOT_NULL(out.get(),
+                            "Eager Tensor %s is null and cannot be copied.",
+                            out->name());
+    res.emplace_back((*(out.get())));
+  }
+  return res;
+}
+
+egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out.get(), "Eager Tensor %s is null and cannot be copied.", out->name());
+  return EagerTensor((*(out.get())));
+}
+}  // namespace egr

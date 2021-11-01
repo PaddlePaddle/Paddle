@@ -104,15 +104,15 @@ void benchmark_eager_intermediate_matmul_accuracy_check(
 
   // Examine Forward Grad (w.r.t max_num_runs = 2)
   PADDLE_ENFORCE(
-      CompareTensorWithValue<float>(input_tensor0, 16) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 8189.0));
+      CompareVariableWithValue<float>(input_tensor0, 16) == true,
+      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 16.0));
   // Examine Backward Grad (w.r.t max_num_runs = 2)
   PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(X, 16) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
+      CompareGradVariableWithValue<float>(X, 16) == true,
+      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 16.0));
   PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(Y, 16) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
+      CompareGradVariableWithValue<float>(Y, 16) == true,
+      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 16.0));
 }
 
 void benchmark_eager_intermediate_matmul(const egr::EagerTensor& X,

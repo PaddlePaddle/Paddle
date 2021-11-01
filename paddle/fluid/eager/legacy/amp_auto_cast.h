@@ -24,6 +24,14 @@
 
 namespace egr {
 
+// NOTE(zhiqiu): only O1 and O2 are valid now
+enum class AmpLevel {
+  O0 = 0,  // fp32
+  O1,      // amp, mixed fp32-fp16
+  O2,      // almost fp16
+  O3,      // fp16
+};
+
 // Singleton implementation with C++ 11
 class Controller;
 
@@ -62,7 +70,7 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
-  explict AutoCastGuard(int guard_level) {
+  explicit AutoCastGuard(int guard_level) {
     pre_amp_level_ = Controller::Instance().GetAMPLevel();
 
     if (pre_amp_level_ != guard_level) {

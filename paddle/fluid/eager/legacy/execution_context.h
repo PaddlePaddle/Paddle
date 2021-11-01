@@ -21,22 +21,20 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/variable.h"
 
-namespace paddle {
-namespace imperative {
+namespace egr {
 
-template <typename VarType>
-class EagerExecutionContext : public framework::ExecutionContext {
-  using Variable = framework::Variable;
+class EagerExecutionContext : public paddle::framework::ExecutionContext {
+  using Variable = paddle::framework::Variable;
 
  public:
-  EagerExecutionContext(const framework::OperatorBase& op,
-                        const framework::Scope& scope,
-                        const platform::DeviceContext& device_context,
-                        const framework::RuntimeContext& ctx,
+  EagerExecutionContext(const paddle::framework::OperatorBase& op,
+                        const paddle::framework::Scope& scope,
+                        const paddle::platform::DeviceContext& device_context,
+                        const paddle::framework::RuntimeContext& ctx,
                         const NameTensorMap& tensor_map_in,
                         const NameTensorMap& tensor_map_out,
-                        const framework::AttributeMap& attrs,
-                        const framework::AttributeMap& default_attrs)
+                        const paddle::framework::AttributeMap& attrs,
+                        const paddle::framework::AttributeMap& default_attrs)
       : ExecutionContext(op, scope, device_context, ctx),
         tensor_map_in_(tensor_map_in),
         tensor_map_out_(tensor_map_out),
@@ -46,18 +44,19 @@ class EagerExecutionContext : public framework::ExecutionContext {
   std::string InputName(const std::string& name) const override {
     auto it = tensor_map_in_.find(name);
     PADDLE_ENFORCE_NE(it, tensor_map_in_.end(),
-                      platform::errors::PreconditionNotMet(
+                      paddle::platform::errors::PreconditionNotMet(
                           "Can not find [%s] in Input", name));
     // TODO(jiabin): This is used for egr::EagerTensor temporally,
     // once we have name, remove it.
-    return it->second[0] ? it->second[0]->name() : framework::kEmptyVarName;
+    return it->second[0] ? it->second[0]->name()
+                         : paddle::framework::kEmptyVarName;
   }
 
   std::vector<std::string> InputNames(const std::string& name) const override {
     auto it = tensor_map_in_.find(name);
     PADDLE_ENFORCE_NE(
         it, tensor_map_in_.end(),
-        platform::errors::NotFound("Can not find [%s] in Input", name));
+        paddle::platform::errors::NotFound("Can not find [%s] in Input", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
@@ -66,7 +65,7 @@ class EagerExecutionContext : public framework::ExecutionContext {
         // temporally, once we have name, remove it.
         vec_res.push_back(it->second[i]->name());
       } else {
-        vec_res.push_back(framework::kEmptyVarName);
+        vec_res.push_back(paddle::framework::kEmptyVarName);
       }
     }
     return vec_res;
@@ -74,24 +73,25 @@ class EagerExecutionContext : public framework::ExecutionContext {
 
   std::string OutputName(const std::string& name) const override {
     auto it = tensor_map_out_.find(name);
-    PADDLE_ENFORCE_NE(
-        it, tensor_map_out_.end(),
-        platform::errors::NotFound("Can not find [%s] in Output", name));
-    return it->second[0] ? it->second[0]->name() : framework::kEmptyVarName;
+    PADDLE_ENFORCE_NE(it, tensor_map_out_.end(),
+                      paddle::platform::errors::NotFound(
+                          "Can not find [%s] in Output", name));
+    return it->second[0] ? it->second[0]->name()
+                         : paddle::framework::kEmptyVarName;
   }
 
   std::vector<std::string> OutputNames(const std::string& name) const override {
     auto it = tensor_map_out_.find(name);
-    PADDLE_ENFORCE_NE(
-        it, tensor_map_out_.end(),
-        platform::errors::NotFound("Can not find [%s] in Output", name));
+    PADDLE_ENFORCE_NE(it, tensor_map_out_.end(),
+                      paddle::platform::errors::NotFound(
+                          "Can not find [%s] in Output", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
         vec_res.push_back(it->second[i]->name());
       } else {
-        vec_res.push_back(framework::kEmptyVarName);
+        vec_res.push_back(paddle::framework::kEmptyVarName);
       }
     }
     return vec_res;
@@ -101,15 +101,18 @@ class EagerExecutionContext : public framework::ExecutionContext {
     return attrs_.count(name) != 0 || default_attrs_.count(name) != 0;
   }
 
-  const framework::AttributeMap& Attrs() const override { return attrs_; }
+  const paddle::framework::AttributeMap& Attrs() const override {
+    return attrs_;
+  }
 
-  const framework::Attribute& GetAttr(const std::string& name) const override {
+  const paddle::framework::Attribute& GetAttr(
+      const std::string& name) const override {
     auto it = attrs_.find(name);
 
     if (it == attrs_.end()) {
       it = default_attrs_.find(name);
       if (it == default_attrs_.end()) {
-        PADDLE_THROW(platform::errors::NotFound(
+        PADDLE_THROW(paddle::platform::errors::NotFound(
             "Can not find [%s] in attributes of op %s.", name,
             this->GetOp().Type()));
       }
@@ -202,9 +205,8 @@ class EagerExecutionContext : public framework::ExecutionContext {
  private:
   const NameTensorMap& tensor_map_in_;
   const NameTensorMap& tensor_map_out_;
-  const framework::AttributeMap& attrs_;
-  const framework::AttributeMap& default_attrs_;
+  const paddle::framework::AttributeMap& attrs_;
+  const paddle::framework::AttributeMap& default_attrs_;
 };
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace egr

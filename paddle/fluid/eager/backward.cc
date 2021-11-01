@@ -177,7 +177,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
         if (!grad_output_tensor.defined() ||
             !grad_output_tensor.initialized()) {
           VLOG(6) << "We get grad_output_tensor with slot: " << i
-                  << ", rank: " << j << "as uninitialized or undefined tensor";
+                  << ", rank: " << j << " as uninitialized or undefined tensor";
         }
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
 

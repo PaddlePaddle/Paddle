@@ -56,6 +56,7 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
 
 template <typename T>
 bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
+  // TODO(jiabin): Support Selected Rows later
   auto dense_t = std::dynamic_pointer_cast<pten::DenseTensor>(target.impl());
   T* ptr = dense_t->mutable_data<T>();
 
@@ -75,6 +76,63 @@ bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
 
   for (int i = 0; i < dense_t->numel(); i++) {
     if (ptr[i] != value) return false;
+  }
+  return true;
+}
+
+template <typename T>
+bool CompareVariableWithValue(const egr::EagerTensor& target, T value) {
+  // TODO(jiabin): Support Selected Rows later
+  auto lod_tensor = target.Var().Get<paddle::framework::LoDTensor>();
+  T* ptr = lod_tensor.data<T>();
+
+  std::vector<T> host_data(lod_tensor.numel());
+  if (paddle::platform::is_gpu_place(lod_tensor.place())) {
+    paddle::platform::DeviceContextPool& pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+        pool.Get(paddle::platform::CUDAPlace()));
+    auto stream = dev_ctx->stream();
+
+    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
+                         paddle::platform::CUDAPlace(), ptr,
+                         sizeof(T) * lod_tensor.numel(), stream);
+    ptr = host_data.data();
+  }
+
+  for (int i = 0; i < lod_tensor.numel(); i++) {
+    if (ptr[i] != value) return false;
+  }
+  return true;
+}
+
+template <typename T>
+bool CompareGradVariableWithValue(const egr::EagerTensor& target, T value) {
+  // TODO(jiabin): Support Selected Rows later
+  egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
+  auto lod_tensor = meta->Grad().Var().Get<paddle::framework::LoDTensor>();
+  T* ptr = lod_tensor.data<T>();
+
+  std::vector<T> host_data(lod_tensor.numel());
+  if (paddle::platform::is_gpu_place(lod_tensor.place())) {
+    paddle::platform::DeviceContextPool& pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+        pool.Get(paddle::platform::CUDAPlace()));
+    auto stream = dev_ctx->stream();
+
+    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
+                         paddle::platform::CUDAPlace(), ptr,
+                         sizeof(T) * lod_tensor.numel(), stream);
+    ptr = host_data.data();
+  }
+
+  for (int i = 0; i < lod_tensor.numel(); i++) {
+    if (ptr[i] != value) {
+      std::cout << " current value is: " << ptr[i] << " i is: " << i
+                << std::endl;
+      return false;
+    }
   }
   return true;
 }

@@ -25,6 +25,10 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
 void FillConstAPI(double value, const pten::DDim& ddim,
                   const pten::Backend& backend, const pten::DataType& dtype,
                   const pten::DataLayout& layout, egr::EagerTensor* target);
+void FillConstAPI(double value, const paddle::framework::DDim& ddim,
+                  const paddle::platform::Place& place,
+                  const paddle::framework::proto::VarType::Type& dtype,
+                  egr::EagerTensor* target);
 //
 class UniqueNameGenerator {
  public:

@@ -39,15 +39,16 @@ class TensorWrapper {
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
      * to avoid recursive depends on GradNodeBase
      * **/
-
+    full_reserved_ = full_reserved;
     if (full_reserved_) {
+      VLOG(6) << "Fully reserved tensor: " << tensor.name();
       intermidiate_tensor_ = tensor;
       return;
     }
 
     // shallow copy tensor_impl here
     intermidiate_tensor_.set_impl(tensor.impl());
-
+    intermidiate_tensor_.ResetVar(tensor.Var());
     PADDLE_ENFORCE_NOT_NULL(
         EagerUtils::unsafe_autograd_meta(tensor),
         "Full reserved Tensor should not have null autograd meta");
@@ -57,7 +58,8 @@ class TensorWrapper {
 
   egr::EagerTensor recover(const std::shared_ptr<GradNodeBase>& grad_node) {
     VLOG(6) << "Recover tensor for wrapper";
-    if (!intermidiate_tensor_.defined()) {
+    if ((!intermidiate_tensor_.defined()) &&
+        (!intermidiate_tensor_.Var().IsInitialized())) {
       VLOG(6) << "Return NULL tensor Here. ";
       return egr::EagerTensor();
     }

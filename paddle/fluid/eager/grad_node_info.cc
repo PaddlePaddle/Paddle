@@ -19,6 +19,7 @@
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/dense_tensor.h"
 
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -232,21 +233,56 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
                      slot_id, buffer_[slot_id].size(), rank));
   egr::EagerTensor& buffer_tensor = buffer_[slot_id][rank];
   if (!fill_one) {
-    if (!buffer_tensor.defined() || !buffer_tensor.initialized()) {
+    // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
+    // remove framework::Variable
+    // related code later.
+    // This if statement is trying to test neither pten::Tensor nor
+    // framework::Variable is initialized.
+    if ((!buffer_tensor.defined() || !buffer_tensor.initialized()) &&
+        (!buffer_tensor.Var().IsInitialized())) {
       // Simply copy tensor->impl
       buffer_tensor = t;
-
     } else {
       // Accumulation
-      TensorAdd(t, &buffer_tensor);
+      if (t.defined() && buffer_tensor.defined()) {
+        TensorAdd(t, &buffer_tensor);
+      } else if (t.Var().IsInitialized() &&
+                 buffer_tensor.Var().IsInitialized()) {
+        VariableAdd(t, &buffer_tensor);
+      } else if (t.Var().IsInitialized() && buffer_tensor.defined()) {
+        // TODO(jiabin): This can be merge to upper if case.
+        buffer_tensor.SyncToVar();
+        VariableAdd(t, &buffer_tensor);
+      } else {
+        // TODO(jiabin): This can be merge to upper if case.
+        buffer_tensor.SyncToTensor();
+        TensorAdd(t, &buffer_tensor);
+      }
     }
   } else {
     // Create new tensor->impl and fill it with 1.0
-    auto t_impl = t.impl();
-
-    // Fill 1.0
-    FillConstAPI(1.0, t_impl->dims(), t_impl->backend(), t_impl->data_type(),
-                 t_impl->layout(), &buffer_tensor);
+    if (t.defined()) {
+      // Fill 1.0
+      auto t_impl = t.impl();
+      FillConstAPI(1.0, t_impl->dims(), t_impl->backend(), t_impl->data_type(),
+                   t_impl->layout(), &buffer_tensor);
+    } else {
+      // TODO(jiabin): Only Support LodTensorForNow
+      auto type = paddle::framework::ToVarType(t.Var().Type());
+      switch (type) {
+        case paddle::framework::proto::VarType::LOD_TENSOR: {
+          auto t_ftensor = t.Var().Get<paddle::framework::LoDTensor>();
+          FillConstAPI(1.0, t_ftensor.dims(), t_ftensor.place(),
+                       t_ftensor.type(), &buffer_tensor);
+          break;
+        }
+        default: {
+          PADDLE_THROW(paddle::platform::errors::NotFound(
+              "Cannot found var type: %s in Fill Constant API",
+              paddle::framework::ToTypeName(type)));
+        }
+      }
+    }
   }
 }
 
