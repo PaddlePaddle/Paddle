@@ -357,24 +357,24 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return None, None
 
     def _disable_strategy(self, dist_strategy):
-        if self.role_maker._is_heter_parameter_server_mode:
-            dist_strategy.pipeline = False
-            dist_strategy.pipeline_configs = {
-                "micro_batch_size": 1,
-                "accumulate_steps": 1,
-            }
+        #if self.role_maker._is_heter_parameter_server_mode:
+        #    dist_strategy.pipeline = False
+        #    dist_strategy.pipeline_configs = {
+        #        "micro_batch_size": 1,
+        #        "accumulate_steps": 1,
+        #    }
         dist_strategy.a_sync = False
         a_sync_configs = dist_strategy.a_sync_configs
         a_sync_configs["k_steps"] = -1
         dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
-        if self.role_maker._is_heter_parameter_server_mode:
-            dist_strategy.pipeline = True
-            dist_strategy.pipeline_configs = {
-                "micro_batch_size": 1,
-                "accumulate_steps": 1,
-            }
+        #if self.role_maker._is_heter_parameter_server_mode:
+        #    dist_strategy.pipeline = True
+        #    dist_strategy.pipeline_configs = {
+        #        "micro_batch_size": 1,
+        #        "accumulate_steps": 1,
+        #    }
         a_sync_configs = dist_strategy.a_sync_configs
         if a_sync_configs["k_steps"] >= 0:
             return

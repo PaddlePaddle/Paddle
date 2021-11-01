@@ -54,51 +54,53 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         """
         dnn_input_dim, lr_input_dim = int(1e5), int(1e5)
 
-        dnn_data = fluid.layers.data(
-            name="dnn_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        lr_data = fluid.layers.data(
-            name="lr_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        label = fluid.layers.data(
-            name="click",
-            shape=[-1, 1],
-            dtype="float32",
-            lod_level=0,
-            append_batch_size=False)
+        with fluid.device_guard("cpu"):
+            dnn_data = fluid.layers.data(
+                name="dnn_data",
+                shape=[-1, 1],
+                dtype="int64",
+                lod_level=1,
+                append_batch_size=False)
+            lr_data = fluid.layers.data(
+                name="lr_data",
+                shape=[-1, 1],
+                dtype="int64",
+                lod_level=1,
+                append_batch_size=False)
+            label = fluid.layers.data(
+                name="click",
+                shape=[-1, 1],
+                dtype="float32",
+                lod_level=0,
+                append_batch_size=False)
 
-        datas = [dnn_data, lr_data, label]
+            datas = [dnn_data, lr_data, label]
 
-        # build dnn model
-        dnn_layer_dims = [128, 64, 32, 1]
-        dnn_embedding = fluid.layers.embedding(
-            is_distributed=False,
-            input=dnn_data,
-            size=[dnn_input_dim, dnn_layer_dims[0]],
-            param_attr=fluid.ParamAttr(
-                name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
-        dnn_pool = fluid.layers.sequence_pool(
-            input=dnn_embedding, pool_type="sum")
-        dnn_out = dnn_pool
+            # build dnn model
+            dnn_layer_dims = [128, 64, 32, 1]
+            dnn_embedding = fluid.layers.embedding(
+                is_distributed=False,
+                input=dnn_data,
+                size=[dnn_input_dim, dnn_layer_dims[0]],
+                param_attr=fluid.ParamAttr(
+                    name="deep_embedding",
+                    initializer=fluid.initializer.Constant(value=0.01)),
+                is_sparse=True)
+            dnn_pool = fluid.layers.sequence_pool(
+                input=dnn_embedding, pool_type="sum")
+            dnn_out = dnn_pool
 
-        # build lr model
-        lr_embbding = fluid.layers.embedding(
-            is_distributed=False,
-            input=lr_data,
-            size=[lr_input_dim, 1],
-            param_attr=fluid.ParamAttr(
-                name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+            # build lr model
+            lr_embbding = fluid.layers.embedding(
+                is_distributed=False,
+                input=lr_data,
+                size=[lr_input_dim, 1],
+                param_attr=fluid.ParamAttr(
+                    name="wide_embedding",
+                    initializer=fluid.initializer.Constant(value=0.01)),
+                is_sparse=True)
+            lr_pool = fluid.layers.sequence_pool(
+                input=lr_embbding, pool_type="sum")
 
         with fluid.device_guard("gpu"):
             for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -149,7 +151,8 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
         block_size = len(train_file_list) // fleet.worker_num()
         worker_id = fleet.worker_index()
-        filelist = train_file_list[worker_id * file_per_train: (worker_id + 1) * file_per_train]
+        filelist = train_file_list[worker_id * file_per_train:(worker_id + 1) *
+                                   file_per_train]
 
         #filelist = fleet.util.get_file_shard(train_file_list)
         print("filelist: {}".format(filelist))
@@ -178,7 +181,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             print("do_dataset_training done. using time {}".format(pass_time))
 
     def do_dataset_heter_training(self, fleet):
-        
+
         fleet.init_heter_worker()
         train_file_list = ctr_dataset_reader.prepare_fake_data()
 
@@ -188,10 +191,10 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
         thread_num = int(os.getenv("CPU_NUM", 2))
         batch_size = 128
-        
+
         #filelist = fleet.util.get_file_shard(train_file_list)
         block_size = len(train_file_list) // fleet.worker_num()
-        filelist = train_file_list[0: block_size] 
+        filelist = train_file_list[0:block_size]
         print("filelist: {}".format(filelist))
 
         # config dataset
@@ -219,6 +222,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         #        debug=int(os.getenv("Debug", "0")))
         #    pass_time = time.time() - pass_start
         #    print("do_dataset_heter_training done. using time {}".format(pass_time))
+
 
 if __name__ == "__main__":
     runtime_main(TestHeterPipelinePsCTR2x2)

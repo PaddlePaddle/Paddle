@@ -1592,13 +1592,15 @@ class Fleet(object):
         else:
             apply_ir_passes(loss.block.program, startup_program, self)
 
-        program = paddle.static.default_main_program()
-        opt_info = {}
-        opt_info["mpi_size"] = self.worker_num()
-        opt_info["mpi_rank"] = self.worker_index()
-        for k, v in self._user_defined_strategy.trainer_desc_configs.items():
-            opt_info[k] = v
-        program._fleet_opt = opt_info
+        if not self._role_maker._is_heter_parameter_server_mode:
+            program = paddle.static.default_main_program()
+            opt_info = {}
+            opt_info["mpi_size"] = self.worker_num()
+            opt_info["mpi_rank"] = self.worker_index()
+            for k, v in self._user_defined_strategy.trainer_desc_configs.items(
+            ):
+                opt_info[k] = v
+            program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
@@ -1634,13 +1636,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))

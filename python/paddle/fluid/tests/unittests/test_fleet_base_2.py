@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 class TestFleetBase(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36000"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
             "127.0.0.1:36001,127.0.0.2:36001"

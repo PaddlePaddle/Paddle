@@ -26,7 +26,7 @@ paddle.enable_static()
 class TestDistHeterPyreaderAsync2x2(TestFleetHeterBase):
     def _setup_config(self):
         self._mode = "async"
-        self._reader = "pyreader"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,
@@ -52,7 +52,9 @@ class TestDistHeterPyreaderAsync2x2(TestFleetHeterBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_heter_ctr.py", delta=1e-5, check_error_log=True)
+            "dist_fleet_heter_pipeline_ctr.py",
+            delta=1e-5,
+            check_error_log=True)
 
 
 if __name__ == "__main__":

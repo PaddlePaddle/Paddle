@@ -51,28 +51,67 @@ class FleetDistHeterRunnerBase(object):
     """
 
     def build_role(self, args):
+
         environs = {}
-        environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
-        environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
-        environs[
-            "PADDLE_HETER_TRAINER_IP_PORT_LIST"] = args.heter_trainer_endpoints
-        environs["PADDLE_HETER_TRAINER_DEVICE"] = args.heter_trainer_device
-        environs["TRAINING_ROLE"] = args.role.upper()
-        environs["PADDLE_TRAINERS_NUM"] = args.trainers
-        environs["PADDLE_TRAINER_ID"] = args.current_id
         if args.role.upper() == "PSERVER":
+            environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
+            environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
+            environs[
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = args.heter_trainer_endpoints
             environs["POD_IP"] = args.endpoints.split(",")[int(
                 args.current_id)].split(":")[0]
             environs["PADDLE_PORT"] = args.endpoints.split(",")[int(
                 args.current_id)].split(":")[1]
+            environs["TRAINING_ROLE"] = args.role.upper()
+            environs["PADDLE_TRAINERS_NUM"] = args.trainers
         elif args.role.upper() == "HETER_TRAINER":
+            environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
+            environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
+            environs["PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"] = ""
+            environs[
+                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = args.trainer_endpoints
+            environs[
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = args.heter_trainer_endpoints
+            environs["HETER_DEVICE_TYPE"] = args.heter_trainer_device
+            environs["TRAINING_ROLE"] = args.role.upper()
             environs["POD_IP"] = args.heter_trainer_endpoints.split(",")[int(
                 args.current_id)].split(":")[0]
             environs["PADDLE_PORT"] = args.heter_trainer_endpoints.split(",")[
                 int(args.current_id)].split(":")[1]
-            environs["FLAGS_selected_gpus"] = args.current_id
+            environs["PADDLE_TRAINERS_NUM"] = args.trainers
+            environs["PADDLE_STAGE_TRAINERS_NUM"] = [2, 2]
+            environs["FLAGS_selected_gpus"] = 0
+            environs["FLAGS_selected_xpus"] = 0
+            environs["CUDA_VISIBLE_DEVICES"] = 0
+            environs["XPU_VISIBLE_DEVICES"] = 0
+            environs["STAGE_ID"] = 2
+            environs["STAGE_NUM"] = 2
+        elif args.role.upper() == "TRAINER":
+            environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
+            environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
+            environs[
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"] = args.heter_trainer_endpoints
+            environs["PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = ""
+            environs[
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = args.heter_trainer_endpoints
+            environs["HETER_DEVICE_TYPE"] = "cpu"
+            environs["TRAINING_ROLE"] = args.role.upper()
+            environs["PADDLE_TRAINER_ID"] = args.current_id
+            environs["POD_IP"] = args.trainer_endpoints.split(",")[int(
+                args.current_id)].split(":")[0]
+            environs["PADDLE_PORT"] = args.trainer_endpoints.split(",")[int(
+                args.current_id)].split(":")[1]
+            environs["PADDLE_TRAINERS_NUM"] = args.trainers
+            environs["PADDLE_STAGE_TRAINERS_NUM"] = [2, 2]
+            environs["FLAGS_selected_gpus"] = 0
+            environs["FLAGS_selected_xpus"] = 0
+            environs["CUDA_VISIBLE_DEVICES"] = 0
+            environs["XPU_VISIBLE_DEVICES"] = 0
+            environs["STAGE_ID"] = 1
+            environs["STAGE_NUM"] = 2
 
         for k, v in environs.items():
+            print(k, v)
             os.environ[k] = str(v)
 
         self.role = role_maker.PaddleCloudRoleMaker()
@@ -132,7 +171,7 @@ class TestFleetHeterBase(unittest.TestCase):
         self.startTime = time.time()
 
         self._mode = "async"
-        self._reader = "pyreader"
+        self._reader = "dataset"
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
@@ -352,6 +391,7 @@ def runtime_main(test_class):
     parser.add_argument('--mode', type=str, required=False, default='async')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
+    parser.add_argument('--reader', type=str, required=False, default='dataset')
     args = parser.parse_args()
 
     model = test_class()
