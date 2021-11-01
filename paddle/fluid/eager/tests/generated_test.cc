@@ -35,31 +35,32 @@ using namespace egr;  // NOLINT
 TEST(Generated, Sigmoid) {
   // Prepare Device Contexts
   InitEnv(paddle::platform::CPUPlace());
-
-  auto tracer = std::make_shared<paddle::imperative::Tracer>();
-  paddle::imperative::SetCurrentTracer(tracer);
-
+  VLOG(6) << "Init Env";
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  VLOG(6) << "Make Dim";
   egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
       ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
       0.0, true);
+  VLOG(6) << "Make EagerTensor";
   RetainGradForTensor(tensor);
-
+  VLOG(6) << "Retain Grad for Tensor";
   auto output_tensor = sigmoid_dygraph_function(
       tensor, false /*use_mkldnn*/, false /*use_cudnn*/, 0 /*op_role*/,
       {} /*op_role_var*/, "" /*op_namescope*/, {} /*op_callstack*/,
       "" /*op_device*/, false /*with_quant_attr*/, true /*trace_backward*/);
-
+  VLOG(6) << "Run Backward";
   PADDLE_ENFORCE(
-      CompareTensorWithValue<float>(output_tensor, 0.5) == true,
+      CompareVariableWithValue<float>(output_tensor, 0.5) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 0.5));
 
   std::vector<egr::EagerTensor> target_tensors = {output_tensor};
+  VLOG(6) << "Runing Backward";
   RunBackward(target_tensors, {});
 
+  VLOG(6) << "Finish Backward";
   PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(tensor, 0.25) == true,
+      CompareGradVariableWithValue<float>(tensor, 0.25) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 0.25));
 }
 
@@ -91,7 +92,7 @@ TEST(Generated, Matmul_v2) {
       false /*with_quant_attr*/, true /*trace_backward*/);
 
   PADDLE_ENFORCE(
-      CompareTensorWithValue<float>(output_tensor, 96) == true,
+      CompareVariableWithValue<float>(output_tensor, 96) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 96));
 
   std::vector<egr::EagerTensor> target_tensors = {output_tensor};
@@ -99,10 +100,10 @@ TEST(Generated, Matmul_v2) {
   RunBackward(target_tensors, {});
 
   PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(X, 2.0 * 20) == true,
+      CompareGradVariableWithValue<float>(X, 2.0 * 20) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 40.0));
 
   PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(Y, 3.0 * 4) == true,
+      CompareGradVariableWithValue<float>(Y, 3.0 * 4) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 12.0));
 }

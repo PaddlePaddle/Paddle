@@ -19,6 +19,7 @@
 #include "paddle/pten/hapi/all.h"
 
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace egr {
@@ -221,6 +222,7 @@ void FillConstAPI(double value, const pten::DDim& ddim,
                   const pten::DataLayout& layout, egr::EagerTensor* target) {
   // Create new tensor->impl and fill it with 1.0
   // Fill 1.0
+  // TODO(jiabin): Refactor this with operators::math::set_constant
   std::shared_ptr<pten::DenseTensor> tensor_dense = nullptr;
   if (!target->defined() || !target->initialized()) {
     VLOG(6) << "Init undefined or uninitialized tensor in FillConstAPI";
@@ -254,6 +256,22 @@ void FillConstAPI(double value, const pten::DDim& ddim,
           "Only CPU and CUDA Backend are supported for now"));
     }
   }
+}
+
+void FillConstAPI(double value, const paddle::framework::DDim& ddim,
+                  const paddle::platform::Place& place,
+                  const paddle::framework::proto::VarType::Type& dtype,
+                  egr::EagerTensor* target) {
+  auto* dst_tensor =
+      target->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  dst_tensor->Resize(ddim);
+  // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
+  // grad mission
+  // we can't get data_type_ directly. We need to check if we can only use
+  // default data_type for now.
+  dst_tensor->mutable_data(place, dtype);
+  paddle::operators::math::set_constant(*dev_ctx, dst_tensor, value);
 }
 
 }  // namespace egr

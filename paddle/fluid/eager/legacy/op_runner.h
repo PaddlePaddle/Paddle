@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/eager/legacy/type_defs.h"
+#include "paddle/fluid/eager/legacy/type_def.h"
 // TODO(Jiabin): We should not depends on this header remove it later
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/pten/core/tensor_meta.h"
@@ -21,7 +21,7 @@
 namespace egr {
 
 void RunOp(const std::string& type, const NameTensorMap& ins,
-           const NameTensorMap& outs, framework::AttributeMap attrs,
-           const platform::Place& place,
+           const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+           const paddle::platform::Place& place,
            const std::map<std::string, std::string>& inplace_map = {});
 }

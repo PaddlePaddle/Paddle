@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/function_api.h"
 #include "paddle/pten/hapi/all.h"
 namespace egr {
 std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
@@ -29,6 +30,5 @@ std::vector<std::shared_ptr<EagerTensor>> ConstructDuplicableOutput(
     const size_t num);
 std::vector<egr::EagerTensor> GetOutputs(
     const std::vector<std::shared_ptr<EagerTensor>>& outs);
-egr::EagerTensor GetOutput(
-    const std::vector<std::shared_ptr<EagerTensor>>& outs);
+egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& outs);
 }  // namespace egr

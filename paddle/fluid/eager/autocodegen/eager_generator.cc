@@ -738,18 +738,20 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
         // Forward Function Body
         // According to fwd_inputs_name_pos_map
-        std::map<std::string, std::vector<std::shared_ptr<EagerTensor>>> ins =
+        std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>
+  ins =
                 { {"X" , SyncToVars(X)}, { "Y" , SyncToVars(Y)} };
 
-        std::map<std::string, std::vector<std::shared_ptr<EagerTensor>>> outs =
+        std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>
+  outs =
   {
           {"Out0" , ConstructDuplicableOutput(Out0Num)}, {"Out1"
   ,ConstructDuplicableOutput(Out1Num)} };
 
         // According to op_proto->attrs()
         framework::AttributeMap attrs = { {"attr0", attr0},  ... };
-        RunOp("op_type", ins, outs, attrs,
-  Controller.Instance().GetExpectedPlace(),false, {});
+        egr::RunOp("op_type", ins, outs, attrs,
+  Controller.Instance().GetExpectedPlace(), {});
 
         // According to fwd_outputs_names
         std::vector<egr::EagerTensor> Out0 = GetOutputs(outs["Out0"]);
@@ -789,7 +791,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
     }
-    const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", SyncToVars(%s) },";
+    const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", egr::SyncToVars(%s) },";
     ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE,
                                                 input_name, input_name);
   }
@@ -852,7 +854,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       dygraph_function_args_str += arg_str;
     }
     const char* FWD_OUTS_CONTENT_TEMPLATE =
-        "{ \"%s\", ConstructDuplicableOutput(%s) },";
+        "{ \"%s\", egr::ConstructDuplicableOutput(%s) },";
     outs_contents_str +=
         paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE, output_name, outnum);
   }
@@ -861,7 +863,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   const char* FWD_OUTS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<EagerTensor>>> outs = { "
+      "std::vector<std::shared_ptr<egr::EagerTensor>>> outs = { "
       "%s };\n";
   std::string outs_map_str =
       paddle::string::Sprintf(FWD_OUTS_MAP_TEMPLATE, outs_contents_str);
@@ -870,8 +872,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   // [Generation] Get TraceOp
   const char* FWD_TRACE_OP_TEMPLATE =
-      "  RunOp(\"%s\", ins, outs, attrs, "
-      "Controller::Instance().GetExpectedPlace(), false, {});\n";
+      "  egr::RunOp(\"%s\", ins, outs, attrs, "
+      "egr::Controller::Instance().GetExpectedPlace(), {});\n";
   std::string trace_op_str =
       paddle::string::Sprintf(FWD_TRACE_OP_TEMPLATE, op_proto.type());
   generated_function_body += trace_op_str;
@@ -889,14 +891,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if (output.duplicable()) {
       const char* FWD_OUT_TENSORS_TEMPLATE =
           "  std::vector<egr::EagerTensor> %s = "
-          "GetOutputs(outs[\"%s\"]);\n";
+          "egr::GetOutputs(outs[\"%s\"]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
                                                output_name, output_name);
       return_types[return_position] = "std::vector<egr::EagerTensor>";
     } else {
       const char* FWD_OUT_TENSOR_TEMPLATE =
           "  egr::EagerTensor %s = "
-          "GetOutput(outs[\"%s\"])[0];\n";
+          "egr::GetOutput(outs[\"%s\"][0]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                output_name, output_name);
       return_types[return_position] = "egr::EagerTensor";
@@ -1006,7 +1008,7 @@ static std::string GenerateGradNodeCCContents(
             {
             "X" : this->"X", "Y" : this->"Y",
             "Out0@Grad":
-  TensorsToVarBases(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out0@Grad"]]"]),
+  SyncToVars(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out0@Grad"]]"]),
             "Out1@Grad":
   TensorsToVarBases(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out1@Grad"]]"])
              };
@@ -1029,14 +1031,14 @@ static std::string GenerateGradNodeCCContents(
         for(auto& kv : "iter->DefaultAttrsMap()") {
             attrs[kv.first] = this->"kv.first";
         }
-        tracer->TraceOp("iter->Type()", ins, outs, attrs,
-  tracer->ExpectedPlace(), false, {});
+        egr::RunOp("iter->Type()", ins, outs, attrs,
+  egr::Controller::Instance().ExpectedPlace(), false, {});
     }
 
-    vector<vector<Tensor>> outputs(outs.size());
+    vector<vector<egr::EagerTensor>> outputs(outs.size());
     for(auto& kv : outs) {
         outputs["fwd_inputs_name_pos_map[grad_outs_slotname_map[kv.first]]"] =
-  VarBasesToTensors(outs["kv.first"]);
+  GetOutputs(outs["kv.first"]);
     }
 
     return outputs;
@@ -1048,10 +1050,6 @@ static std::string GenerateGradNodeCCContents(
 
   // [Generation] Get Tracer
   generated_grad_function_body += "\n";
-  std::string tracer_str =
-      "  const std::shared_ptr<paddle::imperative::Tracer>& tracer = "
-      "paddle::imperative::GetCurrentTracer();\n";
-  generated_grad_function_body += tracer_str;
   generated_grad_function_body += "\n";
 
   // [Generation] Get Ins Map
@@ -1064,7 +1062,7 @@ static std::string GenerateGradNodeCCContents(
       std::string struct_fwd_input_name =
           grad_ins_fwd_slotname_map.at(grad_input_name) + "_";
       const char* GRAD_INS_FWD_CONTENT_TEMPLATE =
-          "{ \"%s\", TensorsToVarBases(this->%s.recover(nullptr)) },";
+          "{ \"%s\", egr::SyncToVars(this->%s.recover(nullptr)) },";
       ins_contents_str +=
           paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE,
                                   grad_input_name, struct_fwd_input_name);
@@ -1074,7 +1072,7 @@ static std::string GenerateGradNodeCCContents(
       size_t fwd_output_position = fwd_outputs_name_pos_map.at(
           grad_ins_grad_slotname_map.at(grad_input_name));
       const char* GRAD_INS_GRAD_CONTENT_TEMPLATE =
-          "{ \"%s\", TensorsToVarBases(grads[%d]) },";
+          "{ \"%s\", egr::SyncToVars(grads[%d]) },";
       ins_contents_str += paddle::string::Sprintf(
           GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, fwd_output_position);
 
@@ -1088,7 +1086,7 @@ static std::string GenerateGradNodeCCContents(
 
   const char* BWD_INS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<paddle::imperative::VarBase>>> ins = { "
+      "std::vector<std::shared_ptr<egr::EagerTensor>>> ins = { "
       "%s };\n";
   std::string ins_map_str =
       paddle::string::Sprintf(BWD_INS_MAP_TEMPLATE, ins_contents_str);
@@ -1104,7 +1102,7 @@ static std::string GenerateGradNodeCCContents(
       size_t fwd_input_position = fwd_inputs_name_pos_map.at(
           grad_outs_slotname_map.at(grad_output_name));
       const char* GRAD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", ConstructDuplicableOutput( "
+          "{ \"%s\", egr::ConstructDuplicableOutput( "
           "this->OutputMeta()[%d].Size() ) },";
       outs_contents_str += paddle::string::Sprintf(
           GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
@@ -1119,7 +1117,7 @@ static std::string GenerateGradNodeCCContents(
 
   const char* BWD_OUTS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<paddle::imperative::VarBase>>> outs = { "
+      "std::vector<std::shared_ptr<egr::EagerTensor>>> outs = { "
       "%s };\n";
   std::string outs_map_str =
       paddle::string::Sprintf(BWD_OUTS_MAP_TEMPLATE, outs_contents_str);
@@ -1147,8 +1145,8 @@ static std::string GenerateGradNodeCCContents(
         paddle::string::Sprintf(ATTRS_MAP_TEMPLATE, attr_contents_str);
 
     const char* TRACE_OP_TEMPLATE =
-        "  tracer->TraceOp(\"%s\", ins, outs, attrs, "
-        "tracer->ExpectedPlace(), false, {});\n";
+        "  egr::RunOp(\"%s\", ins, outs, attrs, "
+        "egr::Controller::Instance().GetExpectedPlace(), {});\n";
     std::string trace_op_str =
         paddle::string::Sprintf(TRACE_OP_TEMPLATE, op_base_type);
 
@@ -1167,7 +1165,7 @@ static std::string GenerateGradNodeCCContents(
         fwd_inputs_name_pos_map.at(grad_outs_slotname_map.at(grad_out_name));
 
     const char* BWD_OUTPUT_TEMPLATE =
-        "  outputs[%d] = VarBasesToTensors(outs[\"%s\"]);\n";
+        "  outputs[%d] = GetOutputs(outs[\"%s\"]);\n";
     outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE,
                                            fwd_input_position, grad_out_name);
   }
@@ -1337,6 +1335,8 @@ static void GenerateForwardDygraphFile(const std::string& op_type,
   std::string forward_cc_path = forwards_dir + forward_cc_filename;
   const char* FORWARD_INCLUDE_TEMPLATE =
       "#include \"paddle/fluid/eager/generated/dygraph_forward_api.h\"\n"
+      "#include \"paddle/fluid/eager/function_api.h\"\n"
+      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n"
       "#include \"paddle/fluid/eager/generated/nodes/%s\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE, node_h_filename);
@@ -1354,6 +1354,8 @@ static void GenerateNodeHFile(const std::string& op_type,
   std::string node_h_path = nodes_dir + node_h_filename;
   std::string node_h_include_str =
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
+      "#include \"paddle/fluid/eager/function_api.h\"\n"
+      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n"
       "#include \"paddle/fluid/eager/grad_node_info.h\"\n\n";
   std::ofstream node_h_stream(node_h_path, std::ios::out);
   node_h_stream << node_h_include_str;
@@ -1389,7 +1391,6 @@ static std::string GenerateDygraphHFileIncludes() {
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
       "#include \"paddle/pten/hapi/all.h\"\n"
-      "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
 

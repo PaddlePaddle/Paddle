@@ -26,7 +26,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
   // TODO(jiabin): No const cast here. We should call SyncToVar in Python_C
   // wrapper
   auto egr_tensor = std::make_shared<EagerTensor>(tensor);
-  egr_tensor->SyncToVar(paddle::framework::proto::VarType::LOD_TENSOR);
+  egr_tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
   return {egr_tensor};
 }
 
@@ -39,7 +39,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
     res.emplace_back(new EagerTensor(tensors[i]));
-    res.back()->SyncToVar(paddle::framework::proto::VarType::LOD_TENSOR);
+    res.back()->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
   }
   return res;
 }
@@ -50,7 +50,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
   // TODO(jiabin): No const cast here. We should call SyncToTensor in Python_C
   // wrapper
   auto egr_tensor = std::make_shared<EagerTensor>(tensor);
-  egr_tensor->SyncToTensor(paddle::framework::proto::VarType::LOD_TENSOR);
+  egr_tensor->SyncToTensor();
   return {egr_tensor};
 }
 
@@ -63,7 +63,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
     res.emplace_back(new EagerTensor(tensors[i]));
-    res.back()->SyncToTensor(paddle::framework::proto::VarType::LOD_TENSOR);
+    res.back()->SyncToTensor();
   }
   return res;
 }
@@ -82,18 +82,19 @@ std::vector<std::shared_ptr<EagerTensor>> ConstructDuplicableOutput(
 std::vector<egr::EagerTensor> GetOutputs(
     const std::vector<std::shared_ptr<EagerTensor>>& outs) {
   std::vector<egr::EagerTensor> res;
-  res.reserve(num);
+  res.reserve(outs.size());
   for (const auto& out : outs) {
-    PADDLE_ENFORCE_NOT_NULL(
-        out.get(),
-        "Eager Tensor %s is null and cannot be copied." % out->name());
-    res.emplace_back((*(out.get())))
+    PADDLE_ENFORCE_NOT_NULL(out.get(),
+                            "Eager Tensor %s is null and cannot be copied.",
+                            out->name());
+    res.emplace_back((*(out.get())));
   }
+  return res;
 }
 
 egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& out) {
   PADDLE_ENFORCE_NOT_NULL(
-      out.get(), "Eager Tensor %s is null and cannot be copied." % out->name());
+      out.get(), "Eager Tensor %s is null and cannot be copied.", out->name());
   return EagerTensor((*(out.get())));
 }
 }  // namespace egr

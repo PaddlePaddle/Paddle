@@ -18,5 +18,6 @@
 namespace egr {
 // Accumulation API
 void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst);
+void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst);
 
 }  // namespace egr

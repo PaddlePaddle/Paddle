@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/legacy/amp_auto_cast.h"
-
 #include <memory>
 #include <string>
+#include "paddle/fluid/eager/legacy/op_runner.h"
+#include "paddle/fluid/eager/legacy/tensor_helper.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace egr {
 
@@ -23,13 +25,13 @@ AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
       block_ops_(new std::unordered_set<std::string>()),
       unsupported_fp16_ops_(new std::unordered_set<std::string>()) {
-  auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
-  auto fp16_dtype = framework::proto::VarType::FP16;
+  auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
+  auto fp16_dtype = paddle::framework::proto::VarType::FP16;
   for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
     bool supported = false;
     for (auto& kernel_type : it->second) {
-      if ((platform::is_gpu_place(kernel_type.first.place_) ||
-           platform::is_xpu_place(kernel_type.first.place_)) &&
+      if ((paddle::platform::is_gpu_place(kernel_type.first.place_) ||
+           paddle::platform::is_xpu_place(kernel_type.first.place_)) &&
           kernel_type.first.data_type_ == fp16_dtype) {
         supported = true;
       }
@@ -82,17 +84,19 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
 
 inline std::string GetDtypeStr(
     const std::shared_ptr<egr::EagerTensor>& tensor) {
-  return framework::DataTypeToString(pten::TransToProtoVarType(tensor->type()));
+  return paddle::framework::DataTypeToString(
+      egr::GetDtypeFromVar(tensor->Var()));
 }
 
 inline bool NeedCast(const std::shared_ptr<egr::EagerTensor>& tensor) {
-  auto place = pten::TransToFluidPlace(tensor->place());
-  auto data_type = pten::TransToProtoVarType(tensor->type());
-  if (platform::is_gpu_place(place) || platform::is_cuda_pinned_place(place) ||
-      platform::is_xpu_place(place)) {
+  auto place = egr::GetPlaceFromVar(tensor->Var());
+  auto data_type = egr::GetDtypeFromVar(tensor->Var());
+  if (paddle::platform::is_gpu_place(place) ||
+      paddle::platform::is_cuda_pinned_place(place) ||
+      paddle::platform::is_xpu_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
-    if (data_type == framework::proto::VarType::FP32 ||
-        data_type == framework::proto::VarType::FP16) {
+    if (data_type == paddle::framework::proto::VarType::FP32 ||
+        data_type == paddle::framework::proto::VarType::FP16) {
       return true;
     }
   }
@@ -103,17 +107,17 @@ inline bool NeedCast(const std::shared_ptr<egr::EagerTensor>& tensor) {
 // var will be cast back from fp16 to fp32 during backward phase.
 static inline std::shared_ptr<egr::EagerTensor> CastToType(
     const std::shared_ptr<egr::EagerTensor>& tensor,
-    const framework::proto::VarType::Type dst_type) {
-  imperative::NameTensorMap ins = {{"X", {tensor}}};
-  auto in_data_type = pten::TransToProtoVarType(tensor->type());
-  framework::AttributeMap attrs = {{"in_dtype", in_data_type},
-                                   {"out_dtype", dst_type}};
+    const paddle::framework::proto::VarType::Type dst_type) {
+  NameTensorMap ins = {{"X", {tensor}}};
+  auto in_data_type = egr::GetDtypeFromVar(tensor->Var());
+  paddle::framework::AttributeMap attrs = {{"in_dtype", in_data_type},
+                                           {"out_dtype", dst_type}};
   auto out = std::shared_ptr<egr::EagerTensor>(new egr::EagerTensor());
-  imperative::NameTensorMap outs = {{"Out", {out}}};
+  NameTensorMap outs = {{"Out", {out}}};
 
   {
     AutoCastGuard guard(0);
-    RunOp("cast", ins, outs, std::move(attrs));
+    RunOp("cast", ins, outs, std::move(attrs), {});
   }
 
   return out;
@@ -121,9 +125,8 @@ static inline std::shared_ptr<egr::EagerTensor> CastToType(
 
 static inline std::shared_ptr<egr::EagerTensor> CastToFP16(
     const std::shared_ptr<egr::EagerTensor>& tensor) {
-  auto dst_type = framework::proto::VarType::FP16;
-  if (NeedCast(tensor) &&
-      (pten::TransToProtoVarType(tensor->type()) != dst_type)) {
+  auto dst_type = paddle::framework::proto::VarType::FP16;
+  if (NeedCast(tensor) && (egr::GetDtypeFromVar(tensor->Var()) != dst_type)) {
     return CastToType(tensor, dst_type);
   }
   return tensor;
@@ -131,22 +134,21 @@ static inline std::shared_ptr<egr::EagerTensor> CastToFP16(
 
 static inline std::shared_ptr<egr::EagerTensor> CastToFP32(
     const std::shared_ptr<egr::EagerTensor>& tensor) {
-  auto dst_type = framework::proto::VarType::FP32;
-  if (NeedCast(tensor) &&
-      (pten::TransToProtoVarType(tensor->type()) != dst_type)) {
+  auto dst_type = paddle::framework::proto::VarType::FP32;
+  if (NeedCast(tensor) && (egr::GetDtypeFromVar(tensor->Var()) != dst_type)) {
     return CastToType(tensor, dst_type);
   }
   return tensor;
 }
 
-static inline framework::proto::VarType::Type GetPromoteType(
+static inline paddle::framework::proto::VarType::Type GetPromoteType(
     const std::string& op_type, const NameTensorMap& ins) {
-  auto dst_type = framework::proto::VarType::FP16;
+  auto dst_type = paddle::framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
     for (const auto& tensor : pair.second) {
-      if (pten::TransToProtoVarType(tensor->type()) ==
-          framework::proto::VarType::FP32) {
-        dst_type = pten::TransToProtoVarType(tensor->type());
+      if (egr::GetDtypeFromVar(tensor->Var()) ==
+          paddle::framework::proto::VarType::FP32) {
+        dst_type = egr::GetDtypeFromVar(tensor->Var());
         break;
       }
     }
@@ -157,9 +159,9 @@ static inline framework::proto::VarType::Type GetPromoteType(
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
       if (pair.first == "X" &&
-          pten::TransToProtoVarType(pair.second.front()->DataType()) ==
-              framework::proto::VarType::FP16) {
-        dst_type = framework::proto::VarType::FP16;
+          egr::GetDtypeFromVar(pair.second.front()->Var()) ==
+              paddle::framework::proto::VarType::FP16) {
+        dst_type = paddle::framework::proto::VarType::FP16;
       }
     }
   }
@@ -199,24 +201,26 @@ NameTensorMap AutoCastInputs(const std::string& op_type,
     auto dst_type = GetPromoteType(op_type, ins);
 
     // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
-    if (dst_type == framework::proto::VarType::FP16 &&
+    if (dst_type == paddle::framework::proto::VarType::FP16 &&
         AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
             op_type)) {
-      dst_type = framework::proto::VarType::FP32;
+      dst_type = paddle::framework::proto::VarType::FP32;
     }
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
-          pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
+          pair.first == "X" &&
+          dst_type == paddle::framework::proto::VarType::FP32) {
         continue;
       }
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to "
-              << framework::DataTypeToString(dst_type);
+              << paddle::framework::DataTypeToString(dst_type);
       for (auto& var : pair.second) {
-        var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
-                                                           : CastToFP16(var));
+        var = (dst_type == paddle::framework::proto::VarType::FP32
+                   ? CastToFP32(var)
+                   : CastToFP16(var));
       }
     }
     return new_ins;
@@ -227,10 +231,10 @@ NameTensorMap AutoCastInputs(const std::string& op_type,
 NameTensorMap CastPureFp16Inputs(const std::string& op_type,
                                  const NameTensorMap& ins) {
   NameTensorMap new_ins(ins);
-  auto dst_type = framework::proto::VarType::FP16;
+  auto dst_type = paddle::framework::proto::VarType::FP16;
   if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
       AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
-    dst_type = framework::proto::VarType::FP32;
+    dst_type = paddle::framework::proto::VarType::FP32;
   }
   for (auto& pair : new_ins) {
     if ((op_type == "batch_norm" || op_type == "layer_norm" ||
@@ -240,10 +244,11 @@ NameTensorMap CastPureFp16Inputs(const std::string& op_type,
     }
     VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
             << GetDtypeStr(*pair.second.cbegin()) << " to "
-            << framework::DataTypeToString(dst_type);
+            << paddle::framework::DataTypeToString(dst_type);
     for (auto& var : pair.second) {
-      var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
-                                                         : CastToFP16(var));
+      var = (dst_type == paddle::framework::proto::VarType::FP32
+                 ? CastToFP32(var)
+                 : CastToFP16(var));
     }
   }
   return new_ins;

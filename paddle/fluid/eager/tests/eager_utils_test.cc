@@ -23,7 +23,7 @@
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
-TEST(Utils, TensorsToVarBasesSingle) {
+TEST(Utils, SyncToVarsSingle) {
   egr::InitEnv(paddle::platform::CPUPlace());
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
@@ -31,8 +31,7 @@ TEST(Utils, TensorsToVarBasesSingle) {
       ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
       5.0, true);
 
-  std::vector<std::shared_ptr<paddle::imperative::VarBase>> var_bases =
-      TensorsToVarBases(tensor);
+  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases = SyncToVars(tensor);
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
   const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
@@ -49,7 +48,7 @@ TEST(Utils, TensorsToVarBasesSingle) {
   }
 }
 
-TEST(Utils, TensorsToVarBasesMultiple) {
+TEST(Utils, SyncToVarsMultiple) {
   egr::InitEnv(paddle::platform::CPUPlace());
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
@@ -61,8 +60,8 @@ TEST(Utils, TensorsToVarBasesMultiple) {
           ddim, pten::Backend::CPU, pten::DataType::FLOAT32,
           pten::DataLayout::NCHW, 2.0, true)};
 
-  std::vector<std::shared_ptr<paddle::imperative::VarBase>> var_bases =
-      TensorsToVarBases(tensors);
+  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =
+      SyncToVars(tensors);
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
@@ -97,11 +96,10 @@ TEST(Utils, TensorsToVarBasesMultiple) {
   }
 }
 
-TEST(Utils, VarBasesToTensorsSingle) {
+TEST(Utils, SyncToTensorSingle) {
   egr::InitEnv(paddle::platform::CPUPlace());
 
-  std::shared_ptr<paddle::imperative::VarBase> X(
-      new paddle::imperative::VarBase(false, "X"));
+  std::shared_ptr<egr::EagerTensor> X(new egr::EagerTensor());
   std::vector<float> src_data(128, 5.0);
   std::vector<int64_t> dims = {2, 4, 4, 4};
   paddle::platform::CPUPlace place;
@@ -111,47 +109,44 @@ TEST(Utils, VarBasesToTensorsSingle) {
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-
-  egr::EagerTensor tensor = VarBasesToTensors(X)[0];
+  auto X_ = SyncToTensors(*(X.get()));
+  egr::EagerTensor tensor = GetOutput(X_[0]);
 
   PADDLE_ENFORCE(
       egr::CompareTensorWithValue<float>(tensor, 5.0) == true,
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 5.0));
 }
 
-TEST(Utils, VarBasesToTensorsMultiple) {
+TEST(Utils, SyncToTensorMultiple) {
   egr::InitEnv(paddle::platform::CPUPlace());
   std::vector<int64_t> dims = {2, 4, 4, 4};
   paddle::platform::CPUPlace place;
 
-  std::vector<std::shared_ptr<paddle::imperative::VarBase>> var_bases;
+  std::vector<egr::EagerTensor> egr_tensors;
   {
-    std::shared_ptr<paddle::imperative::VarBase> X(
-        new paddle::imperative::VarBase(false, "X"));
+    auto egr_tensor = egr::EagerTensor();
     std::vector<float> src_data(128, 1.0);
-
     auto* x_tensor =
-        X->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+        egr_tensor.MutableVar()->GetMutable<paddle::framework::LoDTensor>();
     x_tensor->Resize(paddle::framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                          sizeof(float) * src_data.size());
-    var_bases.emplace_back(std::move(X));
+    egr_tensors.emplace_back(egr_tensor);
   }
   {
-    std::shared_ptr<paddle::imperative::VarBase> X(
-        new paddle::imperative::VarBase(false, "X"));
+    auto egr_tensor = egr::EagerTensor();
     std::vector<float> src_data(128, 2.0);
-
     auto* x_tensor =
-        X->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+        egr_tensor.MutableVar()->GetMutable<paddle::framework::LoDTensor>();
     x_tensor->Resize(paddle::framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                          sizeof(float) * src_data.size());
-    var_bases.emplace_back(std::move(X));
+    egr_tensors.emplace_back(std::move(egr_tensor));
   }
-  std::vector<egr::EagerTensor> tensors = VarBasesToTensors(var_bases);
+  std::vector<egr::EagerTensor> tensors =
+      GetOutputs(SyncToTensors(egr_tensors));
 
   PADDLE_ENFORCE(
       egr::CompareTensorWithValue<float>(tensors[0], 1.0) == true,

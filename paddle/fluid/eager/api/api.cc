@@ -39,18 +39,30 @@ void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
 
 void RetainGradForTensor(const egr::EagerTensor& tensor) {
   // TODO(jiabin): Support More Tensor type here
-  auto tensor_instance =
-      std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
-
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
   egr::EagerTensor* grad_tensor = meta->MutableGrad();
 
   // Define Hook
   std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
       [grad_tensor](const egr::EagerTensor& t) {
-        // Simply Copy impl() to grad_tensor
-        grad_tensor->set_impl(t.impl());
-        return *grad_tensor;
+        if (!grad_tensor) {
+          PADDLE_THROW(paddle::platform::errors::Fatal(
+              "Grad tensor in AutogradMeta of should not be nullptr"));
+        }
+        if (t.defined()) {
+          // Simply Copy impl() to grad_tensor
+          grad_tensor->set_impl(t.impl());
+          return *grad_tensor;
+        } else {
+          PADDLE_ENFORCE_EQ(
+              t.Var().IsInitialized(), true,
+              "Variable %s has to be initialized while we need to set it.",
+              t.name());
+          grad_tensor->MutableVar()
+              ->GetMutable<paddle::framework::LoDTensor>()
+              ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
+          return *grad_tensor;
+        }
       };
 
   if (EagerUtils::IsLeafTensor(tensor)) {

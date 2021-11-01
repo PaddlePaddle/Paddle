@@ -18,7 +18,9 @@
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/eager/legacy/amp_auto_cast.h"
+#include "paddle/fluid/eager/legacy/infer_var_type_context.h"
 #include "paddle/fluid/eager/legacy/prepared_operator.h"
+#include "paddle/fluid/eager/legacy/tensor_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -29,26 +31,29 @@ DECLARE_string(tracer_mkldnn_ops_off);
 
 namespace egr {
 
-void OpRunImpl(const framework::OperatorBase& op, const NameTensorMap& ins,
-               const NameTensorMap& outs, const framework::AttributeMap& attrs,
-               const framework::AttributeMap& default_attrs,
-               const platform::Place& place) {
-  auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
+void OpRunImpl(const paddle::framework::OperatorBase& op,
+               const NameTensorMap& ins, const NameTensorMap& outs,
+               const paddle::framework::AttributeMap& attrs,
+               const paddle::framework::AttributeMap& default_attrs,
+               const paddle::platform::Place& place) {
+  auto* op_kernel =
+      dynamic_cast<const paddle::framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
-      op_kernel, platform::errors::PermissionDenied(
+      op_kernel, paddle::platform::errors::PermissionDenied(
                      "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    TensorRuntimeInferVarTypeContext infer_var_type_ctx(ins, outs, attrs,
-                                                        default_attrs);
+    egr::TensorRuntimeInferVarTypeContext infer_var_type_ctx(ins, outs, attrs,
+                                                             default_attrs);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
   // Initialize output tensor
   for (auto& tensor_pair : outs) {
     for (auto& tensor : tensor_pair.second) {
-      if (tensor) {
-        InitializeTensor(tensor);
+      if (tensor && tensor.get() && (!tensor->Var().IsInitialized())) {
+        InitializeVariable(tensor->MutableVar(),
+                           paddle::framework::proto::VarType::LOD_TENSOR);
       }
     }
   }
@@ -71,33 +76,23 @@ void OpRunImpl(const framework::OperatorBase& op, const NameTensorMap& ins,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto prepared_op =
-      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
+  auto prepared_op = egr::PreparedOp::Prepare(ins, outs, *op_kernel, place,
+                                              attrs, default_attrs);
   auto tmp_ins_ptr =
-      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+      egr::PrepareData(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
   }
 
-  VLOG(4) << LayerDebugString(op.Type(), ins, outs);
-
-  // set the output var
-  for (auto& var_pair : outs) {
-    for (auto& var : var_pair.second) {
-      // NOTE(zhiqu): The ouput may be NULL because of pruning.
-      if (var) {
-        SetForwardDataTypeOfGradVar(var);
-      }
-    }
-  }
+  // TODO(jiabin): Set the output var's grad Forward DataType
 }
 
 void RunOp(const std::string& type, const NameTensorMap& ins,
-           const NameTensorMap& outs, framework::AttributeMap attrs,
-           const platform::Place& place,
-           const std::map<std::string, std::string>& inplace_map = {}) {
+           const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+           const paddle::platform::Place& place,
+           const std::map<std::string, std::string>& inplace_map) {
   VLOG(1) << "Run Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
@@ -112,7 +107,7 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
       attrs["use_mkldnn"] = !is_off;
     }
   }
-  auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
+  auto op = paddle::framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
@@ -123,62 +118,64 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
   const paddle::framework::AttributeMap& default_attrs =
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
-
+  auto amp_level = egr::Controller::Instance().GetAMPLevel();
   NameTensorMap new_ins = ins;
-  if (amp_level_ == 1) {
+  if (amp_level == 1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
-  } else if (amp_level_ == 2) {
+  } else if (amp_level == 2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
     new_ins = CastPureFp16Inputs(type, ins);
   }
 
   try {
-    if (platform::is_gpu_place(place)) {
+    if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
+      paddle::platform::SetDeviceId(
+          BOOST_GET_CONST(paddle::platform::CUDAPlace, place).device);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
-    } else if (platform::is_xpu_place(place)) {
+    } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-      platform::SetXPUDeviceId(
-          BOOST_GET_CONST(platform::XPUPlace, place).device);
+      paddle::platform::SetXPUDeviceId(
+          BOOST_GET_CONST(paddle::platform::XPUPlace, place).device);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
-    } else if (platform::is_npu_place(place)) {
+    } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::SetNPUDeviceId(
-          BOOST_GET_CONST(platform::NPUPlace, place).device);
+      paddle::platform::SetNPUDeviceId(
+          BOOST_GET_CONST(paddle::platform::NPUPlace, place).device);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
     }
 
     OpRunImpl(*op, new_ins, outs, attrs, default_attrs, place);
-  } catch (platform::EnforceNotMet& exception) {
-    framework::AppendErrorOpHint(type, &exception);
+  } catch (paddle::platform::EnforceNotMet& exception) {
+    paddle::framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
   } catch (std::exception& ex) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(paddle::platform::errors::Fatal(
         "Operator %s raises an %s exception.\n"
         "The exception content is\n:%s.",
-        type, platform::demangle(typeid(ex).name()), ex.what()));
+        type, paddle::platform::demangle(typeid(ex).name()), ex.what()));
   } catch (...) {
     // NOTE: this branch represents a very serious bug with
     // low probability of occurrence, and we can't get its
     // exception content here.
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(paddle::platform::errors::Fatal(
         "Operator %s raises an unknown exception.", type));
   }
 
-  if (enable_program_desc_tracing_) {
-    VLOG(5) << "Trace op " << type << " into ProgramDesc";
-    program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
-  }
+  // TODO(jiabin): Support this later
+  // if (enable_program_desc_tracing_) {
+  //   VLOG(5) << "Trace op " << type << " into ProgramDesc";
+  //   program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
+  // }
 }
 }  // namespace egr
