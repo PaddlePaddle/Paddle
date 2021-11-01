@@ -148,19 +148,6 @@ class CUDNNMHAMetaData:
         self.sm_scaler = sm_scaler
 
 
-class CUDNNSeqDataInfo:
-    def __init__(self, attention_mask, place):
-        self.max_seq_len = attention_mask.shape[1]
-        self.low_win_idx = np.zeros((self.max_seq_len, ), dtype=np.int32)
-        self.hi_win_idx = np.full(
-            (self.max_seq_len, ), self.max_seq_len, dtype=np.int32)
-        self.qo_seqlen = np.sum(attention_mask == 1, axis=1)
-        self.kv_seqlen = self.qo_seqlen
-        self.qo_seqlen_tensor = paddle.to_tensor(
-            self.qo_seqlen, dtype=np.int32, place=place)
-        self.kv_seqlen_tensor = self.qo_seqlen_tensor
-
-
 class CUDNNMultiHeadAttention(Layer):
     def __init__(self,
                  embed_dim,
