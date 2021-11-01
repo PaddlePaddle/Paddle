@@ -143,7 +143,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "conv3d_transpose",
                                              "mish",
                                              "nearest_interp_v2",
-                                             "pool3d"};
+                                             "pool3d",
+                                             "deformable_conv"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -330,6 +331,51 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
 #endif
+    }
+
+    if (op_type == "deformable_conv") {
+      if (with_dynamic_shape) {
+        VLOG(3) << "Deformable conv trt plugin does not support dynamic shape";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto input_name = desc.Input("Input")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+
+      if (input_shape.size() != 4) {
+        VLOG(3) << "Input of deformable conv should be 4-D Tensor, but got "
+                << input_shape.size();
+        return false;
+      }
+
+      auto filter_name = desc.Input("Filter")[0];
+      auto* filter_desc = block->FindVar(filter_name);
+      const auto filter_shape = filter_desc->GetShape();
+
+      int groups = BOOST_GET_CONST(int, desc.GetAttr("groups"));
+      if (input_shape[1] != filter_shape[1] * groups) {
+        VLOG(3) << "The number of input channels should be equal to filter "
+                << "channels * groups. But got input channels "
+                << input_shape[1] << "filter channels " << filter_shape[1];
+        return false;
+      }
+
+      const std::vector<int> strides =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+      if (strides.size() != 2) {
+        VLOG(3) << "The size of strides should be 2, but got "
+                << strides.size();
+        return false;
+      }
+
+      const std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+      if (paddings.size() != 2) {
+        VLOG(3) << "The size of paddings shoule be 2, but got "
+                << paddings.size();
+        return false;
+      }
     }
 
     if (op_type == "matmul") {
@@ -1504,7 +1550,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
-      if (desc.HasAttr("reduce_all")) {
+      if (desc.HasAttr("out_dtype")) {
         int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
         if (out_dtype != -1) {
           return false;
