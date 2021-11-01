@@ -186,7 +186,36 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP32, XPUPlace())})},
       {"scale", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::FP16, XPUPlace()),
-                              pOpKernelType(vartype::INT64, XPUPlace())})}
+                              pOpKernelType(vartype::INT64, XPUPlace())})},
+      {"tanh", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                             pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"tanh_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                  pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"gelu", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                             pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"gelu_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                  pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"gather", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                               pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"gather_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                    pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"fill_constant",
+       XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
+                     pOpKernelType(vartype::INT32, XPUPlace()),
+                     pOpKernelType(vartype::INT16, XPUPlace()),
+                     pOpKernelType(vartype::INT8, XPUPlace()),
+                     pOpKernelType(vartype::BOOL, XPUPlace()),
+                     pOpKernelType(vartype::FP64, XPUPlace()),
+                     pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace()),
+                     pOpKernelType(vartype::BF16, XPUPlace()),
+                     pOpKernelType(vartype::COMPLEX64, XPUPlace()),
+                     pOpKernelType(vartype::COMPLEX128, XPUPlace())})},
+      {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"softmax_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                     pOpKernelType(vartype::FP16, XPUPlace())})}
+
       // AddMore
   };
 
