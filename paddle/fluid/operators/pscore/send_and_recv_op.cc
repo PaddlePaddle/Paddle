@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -114,7 +115,8 @@ REGISTER_OP_VERSION(send_and_recv)
     .AddCheckpoint(
         R"ROC(add new attributes [next_endpoints] [previous_endpoints] and [mode])ROC",
         paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("next_endpoints", "Server endpoint", {"127.0.0.1:6164"})
+            .NewAttr("next_endpoints", "Server endpoint",
+                     std::vector<std::string>({"127.0.0.1:6164"}))
             .NewAttr("previous_endpoints", "Server endpoint",
-                     {"127.0.0.1:6164"})
+                     std::vector<std::string>({"127.0.0.1:6164"}))
             .NewAttr("mode", "forward or backward", "forward"));
