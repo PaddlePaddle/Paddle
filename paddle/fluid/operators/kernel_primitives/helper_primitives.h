@@ -100,30 +100,6 @@ struct DimConfig {
     rem_y = rem_ny;
     rem_z = rem_nz;
   }
-
-  HOSTDEVICE int getFixIdx(int block_id) {
-#ifdef PADDLE_WITH_XPU
-    return block_id % split_num_x;
-#else
-    return threadIdx.x;
-#endif
-  }
-
-  HOSTDEVICE int getFixIdy(int block_id) {
-#ifdef PADDLE_WITH_XPU
-    return (block_id / split_num_x) % split_num_y;
-#else
-    return threadIdx.y;
-#endif
-  }
-
-  HOSTDEVICE int getFixIdz(int block_id) {
-#ifdef PADDLE_WITH_XPU
-    return ((block_id / split_num_x) / split_num_y) % split_num_z;
-#else
-    return threadIdx.z;
-#endif
-  }
 };
 }  // namespace kernel_primitives
 }  // namespace operators
