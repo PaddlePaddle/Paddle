@@ -18,6 +18,7 @@ import threading
 import numpy as np
 import warnings
 import logging
+
 import paddle.fluid.core as core
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.framework.io import _to_LodTensor
@@ -344,7 +345,11 @@ def _get_unshard_dist_shape(var, dist_attr):
     return new_shape
 
 
-def make_data_unshard(dist_main_prog, dist_startup_prog, dist_context):
+def make_data_unshard(dist_main_prog, dist_startup_prog, dist_context=None):
+    from .dist_context import get_default_distributed_context
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
+
     for var in dist_main_prog.list_vars():
         if var.is_data:
             tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
@@ -378,7 +383,7 @@ def _check_valid_path(file_path):
     if not file_path:
         return file_path
     elif isinstance(file_path, str):
-        if os.path.exists(file_path):
+        if not os.path.exists(file_path):
             raise ValueError("The file_path '{}' does not exist.".format(
                 file_path))
         else:

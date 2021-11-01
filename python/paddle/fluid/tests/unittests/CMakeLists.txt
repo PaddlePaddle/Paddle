@@ -38,7 +38,7 @@ list(APPEND DIST_TEST_OPS test_hybrid_parallel_inference_helper)
 list(APPEND DIST_TEST_OPS test_parallel_class_center_sample)
 list(APPEND DIST_TEST_OPS test_parallel_margin_cross_entropy)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_save_load)
+list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
