@@ -93,9 +93,18 @@ struct SampleKeyHash {
   }
 };
 
-struct SampleResult {
+class SampleResult {
+ public:
   size_t actual_size;
-  void *buffer;
+  char *buffer;
+  SampleResult(size_t _actual_size, char *_buffer) : actual_size(_actual_size) {
+    buffer = new char[actual_size];
+    memcpy(buffer, _buffer, actual_size);
+  }
+  ~SampleResult() {
+    // std::cout<<"in SampleResult deconstructor\n";
+    delete[] buffer;
+  }
 };
 
 template <typename K, typename V>
@@ -106,10 +115,10 @@ class LRUNode {
   }
   std::chrono::milliseconds ms;
   // the last hit time
-  size_t ttl;
-  // time to live
   K key;
   V data;
+  size_t ttl;
+  // time to live
   LRUNode<K, V> *pre, *next;
 };
 template <typename K, typename V, typename Hash = std::hash<K>>
@@ -234,14 +243,23 @@ class ScaledLRU {
   ScaledLRU(size_t shard_num, size_t size_limit, size_t _ttl)
       : size_limit(size_limit), ttl(_ttl) {
     pthread_rwlock_init(&rwlock, NULL);
+    stop = false;
     thread_pool.reset(new ::ThreadPool(1));
     global_count = 0;
     lru_pool = std::vector<RandomSampleLRU<K, V, Hash>>(
         shard_num, RandomSampleLRU<K, V, Hash>(this));
     shrink_job = std::thread([this]() -> void {
       while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        {
+          std::unique_lock<std::mutex> lock(mutex_);
+          cv_.wait_for(lock, std::chrono::milliseconds(1));
+          if (stop) {
+            return;
+          }
+        }
+
         // shrink();
+        // std::cerr<<"shrink job in queue\n";
         auto status =
             thread_pool->enqueue([this]() -> int { return shrink(); });
         status.wait();
@@ -249,7 +267,13 @@ class ScaledLRU {
     });
     shrink_job.detach();
   }
-  ~ScaledLRU() { pthread_cancel(shrink_job.native_handle()); }
+  ~ScaledLRU() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    // std::cerr<<"cancel shrink job\n";
+    stop = true;
+    cv_.notify_one();
+    // pthread_cancel(shrink_job.native_handle());
+  }
   LRUResponse query(size_t index, K *keys, size_t length,
                     std::vector<std::pair<K, V>> &res) {
     return lru_pool[index].query(keys, length, res);
@@ -285,7 +309,6 @@ class ScaledLRU {
           // "<<global_count<<std::endl;
           size_t remove = global_count - size_limit;
           while (remove--) {
-            int ind = 0;
             RemovedNode remove_node = q.top();
             q.pop();
             auto next = remove_node.node->next;
@@ -325,10 +348,13 @@ class ScaledLRU {
  private:
   pthread_rwlock_t rwlock;
   int global_count;
-  size_t ttl = 4;
+  size_t size_limit;
+  size_t ttl;
+  bool stop;
   std::thread shrink_job;
   std::vector<RandomSampleLRU<K, V, Hash>> lru_pool;
-  size_t size_limit;
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
   struct RemovedNode {
     LRUNode<K, V> *node;
     RandomSampleLRU<K, V, Hash> *lru_pointer;
