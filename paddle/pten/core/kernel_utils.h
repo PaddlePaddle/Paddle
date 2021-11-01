@@ -146,7 +146,7 @@ using XPUContext = paddle::platform::XPUDeviceContext;
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)     \
   template <typename... Tail>                                            \
-  struct KernelCallHelper<const std::vector<tensor_type*>&, Tail...> {   \
+  struct KernelCallHelper<std::vector<tensor_type*>, Tail...> {          \
     template <int dev_ctx_idx,                                           \
               int in_idx,                                                \
               int attr_idx,                                              \
@@ -154,7 +154,7 @@ using XPUContext = paddle::platform::XPUDeviceContext;
               typename... PreviousArgs>                                  \
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {    \
       const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);     \
-      const std::vector<tensor_type*> arg = std::move(                   \
+      std::vector<tensor_type*> arg = std::move(                         \
           ctx->MutableOutputAt<tensor_type>(range.first, range.second)); \
       KernelCallHelper<Tail...>::                                        \
           template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(  \
