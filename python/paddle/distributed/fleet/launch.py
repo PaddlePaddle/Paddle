@@ -416,7 +416,6 @@ def which_distributed_mode(args):
     elif fluid.core.is_compiled_with_xpu():
         accelerators = fluid.core.get_xpu_device_count()
     else:
-        args.backend = 'gloo'
         accelerators = 0
 
     if len(has_ps_args) > 0:
