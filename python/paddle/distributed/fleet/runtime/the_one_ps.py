@@ -1182,6 +1182,16 @@ class TheOnePSRuntime(RuntimeBase):
         model_basename = os.path.join(model_path, model_basename)
         paddle.save(infer_program, model_basename)
 
+        sparses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=False,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
+        print("the one ps sparses:", sparses)
+        sparse_names = []
+        for id, name in sparses.items():
+            sparse_names.extend(name)
+        print("the one ps sparse names:", sparse_names)
+
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
@@ -1190,10 +1200,12 @@ class TheOnePSRuntime(RuntimeBase):
 
         generate_vars = self.context[
             "user_defined_strategy"].trainer_desc_configs["stat_var_names"]
+        generate_vars = [var for var in generate_vars]
         remaining_vars = list(
             filter(
-                TheOnePSRuntime.__exclude_vars(generate_vars),
+                TheOnePSRuntime.__exclude_vars(generate_vars + sparse_names),
                 infer_program.list_vars()))
+        print("remain_vars:", [var.name for var in remaining_vars])
         for var in remaining_vars:
             tensor = var.get_value()
             paddle.save(
