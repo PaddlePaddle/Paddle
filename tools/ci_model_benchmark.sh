@@ -47,7 +47,7 @@ function compile_install_paddle {
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
-    cd /paddle
+    cd /workspace/Paddle
     git clone --depth=1 https://github.com/paddlepaddle/benchmark.git
     cd benchmark
     set +x
@@ -57,7 +57,7 @@ function compile_install_paddle {
 }
 
 function init_benchmark {
-    cd /paddle/benchmark
+    cd /workspace/Paddle/benchmark
     git clone PaddleClas.bundle PaddleClas
 
 }
@@ -77,14 +77,13 @@ function prepare_data {
 }
 
 function run_model_benchmark {
-    cd /paddle
+    cd /workspace/Paddle
     pip install build/pr_whl/*.whl
     cd ${cache_dir}/benchmark_data
     export data_path=${cfs_dir}/model_dataset/model_benchmark_data
     export prepare_path=${cfs_dir}/model_dataset/model_benchmark_prepare
-    export BENCHMARK_ROOT=/paddle/benchmark
+    export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
-    sed -i 's#/paddle#/paddle#g' model_ci.sh
     bash model_ci.sh
 }
 
