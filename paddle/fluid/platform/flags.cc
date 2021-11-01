@@ -682,6 +682,18 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
+ * Pt kernel related FLAG
+ * Name: FLAGS_run_pten_kernel
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_run_pten_kernel=true would use the pt kernel to compute in the
+ * Op.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
+                            "It controls whether to use pten kernel");
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_allreduce_record_one_event
  * Since Version: 2.2.0
