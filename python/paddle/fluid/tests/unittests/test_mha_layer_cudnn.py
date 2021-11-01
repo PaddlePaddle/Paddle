@@ -379,6 +379,5 @@ class TestFP16CUDNNMHALayerWithSeqDataCache(TestFP32CUDNNMHALayerWithSeqDataCach
         self.atol = 1e-3
         self.rtol = 1e-2
 
-
 if __name__ == "__main__":
     unittest.main()
