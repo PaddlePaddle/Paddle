@@ -23,7 +23,6 @@
 #include <ctime>
 #include <functional>
 #include <iostream>
-#include <iostream>
 #include <list>
 #include <map>
 #include <memory>
@@ -36,7 +35,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <vector>
 #include <vector>
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
