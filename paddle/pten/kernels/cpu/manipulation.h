@@ -43,4 +43,29 @@ void ConcatAxisTensor(const CPUContext& dev_ctx,
                       const DenseTensor& axis_tensor,
                       DenseTensor* out);
 
+template <typename T>
+void Split(const CPUContext& dev_ctx,
+           const DenseTensor& x,
+           const std::vector<int>& sections,
+           int num,
+           int axis,
+           std::vector<DenseTensor*> out);
+
+/*
+template <typename T>
+void Split(const CPUContext& dev_ctx, const DenseTensor& x, const DenseTensor&
+axis_tensor, std::vector<int>& sections, int num, int axis,
+std::vector<DenseTensor*> out);
+
+template <typename T>
+void Split(const CPUContext& dev_ctx, const DenseTensor& x,
+std::vector<DenseTensor>& sections_tensor_list, std::vector<int>& sections, int
+num, int axis, std::vector<DenseTensor*> out);
+
+template <typename T>
+void Split(const CPUContext& dev_ctx, const DenseTensor& x, const DenseTensor&
+axis_tensor, std::vector<DenseTensor>& sections_tensor_list, std::vector<int>&
+sections, int num, int axis, std::vector<DenseTensor*> out);
+*/
+
 }  // namespace pten

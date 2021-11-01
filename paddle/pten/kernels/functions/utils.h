@@ -14,41 +14,38 @@
 
 #pragma once
 
+#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/cpu/utils.h"
 #include "paddle/pten/kernels/cuda/utils.h"
 namespace pten {
 
-template <typename T = int32_t>
-inline std::vector<T> GetDataFromTensor(const pten::DenseTensor* x) {
-  std::vector<T> vec_new_data;
-  if (x->type() == DataType::INT32) {
-    auto* data = x->data<int>();
-    pten::DenseTensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
-      TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
+template <typename T>
+inline void StridedMemcpyWithAxis0(
+    const paddle::platform::DeviceContext& dev_ctx,
+    const pten::DenseTensor& input,
+    const std::vector<const pten::DenseTensor*>& shape_refer,
+    std::vector<pten::DenseTensor*>* outputs) {
+  const pten::DDim in_stride = stride_numel(input.dims());
+  const int axis = 0;
+  size_t input_offset = 0;
 
-      x->place();
-
-      data = cpu_attr_tensor.data<int>();
+  for (size_t i = 0; i < outputs->size(); ++i) {
+    auto out_stride = stride_numel(shape_refer[i]->dims());
+    auto out = outputs->at(i);
+    if (out != nullptr) {
+      paddle::operators::StridedNumelCopyWithAxis<T>(
+          dev_ctx,
+          axis,
+          out->mutable_data<T>(),
+          out_stride,
+          input.data<T>() + input_offset,
+          in_stride,
+          out_stride[axis]);
     }
-    vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (x->type() == framework::proto::VarType::INT64) {
-    auto* data = x->data<int64_t>();
-    framework::Tensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
-      TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
-      data = cpu_attr_tensor.data<int64_t>();
-    }
-    // NOTE: Converting int64 to int32 may cause data overflow.
-    vec_new_data = std::vector<T>(data, data + x->numel());
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The dtype of Tensor must be int32 or int64, but received: %s",
-        x->data_type()));
+    input_offset += out_stride[axis];
   }
-  return vec_new_data;
 }
 
 }  // namespace pten

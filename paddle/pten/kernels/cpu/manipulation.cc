@@ -16,8 +16,10 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/kernels/cpu/split_impl.h"
 #include "paddle/pten/kernels/cpu/utils.h"
 #include "paddle/pten/kernels/functions/lod_utils.h"
+#include "paddle/pten/kernels/functions/utils.h"
 
 namespace pten {
 
@@ -175,6 +177,27 @@ void ConcatAxisTensor(const CPUContext& dev_ctx,
   Concat<T>(dev_ctx, x, axis, out);
 }
 
+template <typename T>
+void Split(const CPUContext& dev_ctx,
+           const DenseTensor& x,
+           const std::vector<int>& sections,
+           int num,
+           int axis,
+           std::vector<DenseTensor*> out) {
+  std::vector<const DenseTensor*> shape_refer;
+
+  for (size_t j = 0; j < out.size(); ++j) {
+    out[j]->mutable_data<T>();
+    shape_refer.emplace_back(out[j]);
+  }
+
+  if (axis == 0 && out.size() < 10) {
+    pten::StridedMemcpyWithAxis0<T>(dev_ctx, x, shape_refer, &out);
+  } else {
+    pten::detail::SplitImpl<T>(dev_ctx, x, shape_refer, axis, &out);
+  }
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -227,3 +250,14 @@ PT_REGISTER_KERNEL("concat.axisTensor",
                    uint8_t) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
 }
+
+PT_REGISTER_KERNEL("split",
+                   CPU,
+                   ANY,
+                   pten::Split,
+                   float,
+                   double,
+                   bool,
+                   int64_t,
+                   int,
+                   uint8_t) {}
