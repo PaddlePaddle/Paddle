@@ -22,6 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
 
+#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/api/include/manipulation.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
+
 namespace paddle {
 namespace operators {
 static inline framework::DDim ComputeAndCheckShape(
@@ -93,82 +97,24 @@ class ConcatKernel : public framework::OpKernel<T> {
                             platform::errors::NotFound(
                                 "The first input tensor is not initalized."));
     auto axis = ctx.Attr<int>("axis");
-    bool need_resize_out_dims = false;
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    std::vector<pten::DenseTensor> pt_x_vec;
+    pt_x_vec.reserve(ins.size());
+    for (size_t i = 0; i < ins.size(); ++i) {
+      auto tmp_ptr = paddle::experimental::MakePtenDenseTensor(*ins[i]);
+      pt_x_vec.emplace_back(std::move(*tmp_ptr.get()));
+    }
+
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
+
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
-      axis = GetDataFromTensor<int>(axis_tensor)[0];
-      need_resize_out_dims = true;
-    }
-    axis = ComputeAxis(static_cast<int64_t>(axis),
-                       static_cast<int64_t>(ins[0]->dims().size()));
-
-    if (need_resize_out_dims) {
-      const size_t n = ins.size();
-      std::vector<framework::DDim> ins_dims(n);
-      for (size_t i = 0; i < n; i++) {
-        ins_dims[i] = ins[i]->dims();
-      }
-
-      framework::DDim out_dims = ComputeAndCheckShape(true, ins_dims, axis);
-      out->Resize(out_dims);
-    }
-    auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
-
-    // If axis is 0, the lod of the output is not the same as inputs.
-    if (axis == 0 && ins[0]->lod().size() > 0) {
-      size_t lod_size_0 = ins[0]->lod().size();
-      size_t lod_size = lod_size_0;
-      for (size_t i = 1; i < ins.size(); ++i) {
-        if (ins[i]->lod().size() > 0) {
-          PADDLE_ENFORCE_EQ(
-              ins[i]->lod().size(), lod_size_0,
-              platform::errors::Unimplemented(
-                  "The lod level of all input LoDTensors should be same. "
-                  "Maybe different lod level of input LoDTensors can concat,"
-                  "it is not supported currently. The lod level of %dth input "
-                  "is %d and first input is %d.",
-                  i, ins[i]->lod().size(), lod_size_0));
-        } else {
-          lod_size = 0;
-          break;
-        }
-      }
-      if (lod_size) {
-        auto* out_lod = out->mutable_lod();
-        for (size_t i = 1; i < ins.size(); ++i) {
-          auto in_lod = ConvertToLengthBasedLoD(ins[i]->lod());
-          AppendLoD(out_lod, in_lod);
-        }
-      }
-    }
-
-    // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (axis == 0 && ins.size() < 10) {
-      size_t output_offset = 0;
-      for (auto* in : ins) {
-        if (!in || in->numel() == 0UL) {
-          continue;
-        }
-        auto in_stride = framework::stride_numel(in->dims());
-        auto out_stride = framework::stride_numel(out->dims());
-        StridedNumelCopyWithAxis<T>(ctx.device_context(), axis,
-                                    out->data<T>() + output_offset, out_stride,
-                                    in->data<T>(), in_stride, in_stride[axis]);
-        output_offset += in_stride[axis];
-      }
+      auto pt_axis = paddle::experimental::MakePtenDenseTensor(*axis_tensor);
+      pten::ConcatAxisTensor<T>(dev_ctx, pt_x_vec, *pt_axis.get(),
+                                pt_out.get());
     } else {
-      std::vector<framework::Tensor> inputs;
-      for (size_t j = 0; j < ins.size(); ++j) {
-        if (ins[j] && ins[j]->numel() > 0) {
-          inputs.push_back(*ins[j]);
-        } else {
-          continue;
-        }
-      }
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
-      concat_functor(dev_ctx, inputs, static_cast<int>(axis), out);
+      pten::Concat<T>(dev_ctx, pt_x_vec, axis, pt_out.get());
     }
   }
 };

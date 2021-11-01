@@ -224,6 +224,9 @@ PT_REGISTER_KERNEL("concat.axisTensor",
                    bool,
                    int64_t,
                    int,
-                   uint8_t) {
+                   uint8_t,
+                   paddle::platform::float16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
 }
