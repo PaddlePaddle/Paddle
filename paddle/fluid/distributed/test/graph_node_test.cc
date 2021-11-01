@@ -222,6 +222,7 @@ void testBatchSampleNeighboor(
   }
 }
 
+void testCache();
 void testGraphToBuffer();
 // std::string nodes[] = {std::string("37\taa\t45;0.34\t145;0.31\t112;0.21"),
 //                        std::string("96\tfeature\t48;1.4\t247;0.31\t111;1.21"),
@@ -400,6 +401,8 @@ void RunClient(
 }
 
 void RunBrpcPushSparse() {
+  std::cout << "in test cache";
+  testCache();
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   prepare_file(edge_file_name, 1);
@@ -607,6 +610,64 @@ void RunBrpcPushSparse() {
   client1.stop_server();
 }
 
+void testCache() {
+  ::paddle::distributed::ScaledLRU<
+      ::paddle::distributed::SampleKey,
+      std::shared_ptr<::paddle::distributed::SampleResult>,
+      ::paddle::distributed::SampleKeyHash>
+      st(1, 2, 4);
+  std::shared_ptr<::paddle::distributed::SampleResult> sp;
+  char* str = (char*)"54321";
+  ::paddle::distributed::SampleResult* result =
+      new ::paddle::distributed::SampleResult(5, str);
+  ::paddle::distributed::SampleKey skey = {6, 1};
+  sp.reset(result);
+  std::vector<std::pair<::paddle::distributed::SampleKey,
+                        std::shared_ptr<::paddle::distributed::SampleResult>>>
+      r;
+  st.query(0, &skey, 1, r);
+  ASSERT_EQ((int)r.size(), 0);
+
+  st.insert(0, &skey, &sp, 1);
+  for (int i = 0; i < st.get_ttl(); i++) {
+    st.query(0, &skey, 1, r);
+    ASSERT_EQ((int)r.size(), 1);
+    char* p = (char*)r[0].second.get()->buffer;
+    for (int j = 0; j < r[0].second.get()->actual_size; j++)
+      ASSERT_EQ(p[j], str[j]);
+    r.clear();
+  }
+  st.query(0, &skey, 1, r);
+  ASSERT_EQ((int)r.size(), 0);
+  str = (char*)"342cd4321";
+  result = new ::paddle::distributed::SampleResult(strlen(str), str);
+  std::shared_ptr<::paddle::distributed::SampleResult> sp1;
+  sp1.reset(result);
+  st.insert(0, &skey, &sp1, 1);
+  for (int i = 0; i < st.get_ttl() / 2; i++) {
+    st.query(0, &skey, 1, r);
+    ASSERT_EQ((int)r.size(), 1);
+    char* p = (char*)r[0].second.get()->buffer;
+    for (int j = 0; j < r[0].second.get()->actual_size; j++)
+      ASSERT_EQ(p[j], str[j]);
+    r.clear();
+  }
+  str = (char*)"343332d4321";
+  result = new ::paddle::distributed::SampleResult(strlen(str), str);
+  std::shared_ptr<::paddle::distributed::SampleResult> sp2;
+  sp2.reset(result);
+  st.insert(0, &skey, &sp2, 1);
+  for (int i = 0; i < st.get_ttl(); i++) {
+    st.query(0, &skey, 1, r);
+    ASSERT_EQ((int)r.size(), 1);
+    char* p = (char*)r[0].second.get()->buffer;
+    for (int j = 0; j < r[0].second.get()->actual_size; j++)
+      ASSERT_EQ(p[j], str[j]);
+    r.clear();
+  }
+  st.query(0, &skey, 1, r);
+  ASSERT_EQ((int)r.size(), 0);
+}
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
   s.set_feature_size(1);
