@@ -21,11 +21,8 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/complex.h"
 
-<<<<<<< HEAD
 #include "paddle/pten/kernels/functions/math/matmul_func.h"
 
-=======
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
 namespace pten {
 
 template <typename T>
@@ -88,10 +85,7 @@ PT_REGISTER_KERNEL("dot",
                    int64_t,
                    complex64,
                    complex128) {}
-<<<<<<< HEAD
 
 PT_REGISTER_KERNEL(
     "matmul_v2", CPU, ANY, pten::Matmul, float, double, complex64, complex128) {
 }
-=======
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b

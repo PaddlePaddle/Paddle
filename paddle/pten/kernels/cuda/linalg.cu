@@ -16,10 +16,7 @@
 
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/functions/eigen/dot.h"
-<<<<<<< HEAD
 #include "paddle/pten/kernels/functions/math/matmul_func.h"
-=======
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"
@@ -34,7 +31,6 @@ void Dot(const CUDAContext& dev_ctx,
   eigen::Dot<CUDAContext, T>(dev_ctx, x, y, out);
 }
 
-<<<<<<< HEAD
 template <typename T>
 void Matmul(const CUDAContext& dev_ctx,
             const DenseTensor& x,
@@ -56,16 +52,11 @@ void Matmul(const CUDAContext& dev_ctx,
       dev_ctx, x, y, out, transpose_x, transpose_y);
 }
 
-=======
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
 }  // namespace pten
 
 PT_REGISTER_MODULE(LinalgCUDA);
 
-<<<<<<< HEAD
 using float16 = paddle::platform::float16;
-=======
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 

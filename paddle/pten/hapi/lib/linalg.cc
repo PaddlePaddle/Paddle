@@ -25,10 +25,6 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/hapi/lib/kernel_dispatch.h"
 #include "paddle/pten/hapi/lib/utils/allocator.h"
-<<<<<<< HEAD
-=======
-#include "paddle/pten/infershape/binary.h"
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
 
 namespace paddle {
 namespace experimental {

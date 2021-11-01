@@ -1764,10 +1764,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
   if (!KernelSignatureMap::Instance().Has(Type())) {
-<<<<<<< HEAD
-=======
     // TODO(chenweihang): we can generate this map by proto info in compile time
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
     KernelArgsNameMakerByOpProto maker(Info().proto_);
     KernelSignatureMap::Instance().Emplace(
         Type(), std::move(maker.GetKernelSignature()));
@@ -1786,15 +1783,9 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
   // 5. kernel input is not DenseTensor
   pten::KernelContext op_kernel_ctx(dev_ctx);
 
-<<<<<<< HEAD
-  auto& input_names = std::get<0>(pt_kernel_signature_->second);
-  auto& attr_names = std::get<1>(pt_kernel_signature_->second);
-  auto& output_names = std::get<2>(pt_kernel_signature_->second);
-=======
   auto& input_names = std::get<0>(pt_kernel_signature_->args);
   auto& attr_names = std::get<1>(pt_kernel_signature_->args);
   auto& output_names = std::get<2>(pt_kernel_signature_->args);
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
 
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
@@ -1853,11 +1844,7 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
-<<<<<<< HEAD
-            pten::Scalar(BOOST_GET_CONST(float, attr)));
-=======
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
->>>>>>> b9fdd3bc0f4f22af17a81bb8a50a337b563c876b
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "
