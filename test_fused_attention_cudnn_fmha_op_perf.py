@@ -18,11 +18,13 @@ import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+import paddle.incubate.nn.functional as incubate_f
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 from paddle import tensor
 from paddle.fluid import layers
-from paddle.nn.layer import fused_transformer
+#from paddle.nn.layer import fused_transformer
+from paddle.incubate.nn.layer import fused_transformer
 # import unittest
 import time
 #import paddle.fluid.profiler as profiler
@@ -195,7 +197,7 @@ def GetFusedAttentionCuDNNFMHAOut():
             core.nvprof_nvtx_push(str(i))
 
         core.nvprof_nvtx_push("forward")
-        ln_out, out_linear_out, final_out = F.fused_multihead_attention_cudnn_impl(
+        ln_out, out_linear_out, final_out = incubate_f.fused_multihead_attention_cudnn_impl(
             x, weight_tensor, seq_len_tensor, num_heads, pre_layer_norm,
             ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon, out_linear_bias,
             dropout_prob, attn_dropout_prob, ln2_epsilon, attn_low_windows,

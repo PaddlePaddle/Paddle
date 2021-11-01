@@ -1503,6 +1503,7 @@ def linear(x, weight, bias=None, name=None):
             res = tmp
         return res
 
+
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
