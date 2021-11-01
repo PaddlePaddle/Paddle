@@ -73,8 +73,58 @@ struct DivideFunctor {
  private:
   T n_inv;
 };
-
 }  // namespace details
+struct DimConfig {
+  int split_num_x;
+  int split_num_y;
+  int split_num_z;
+  int deal_size_x;
+  int deal_size_y;
+  int deal_size_z;
+  int rem_x;
+  int rem_y;
+  int rem_z;
+
+  HOSTDEVICE explicit inline DimConfig(int split_x, int split_y, int split_z,
+                                       int size_x, int size_y, int size_z) {
+    split_num_x = split_x;
+    split_num_y = split_y;
+    split_num_z = split_z;
+    deal_size_x = size_x;
+    deal_size_y = size_y;
+    deal_size_z = size_z;
+  }
+
+  HOSTDEVICE void setRem(int rem_nx, int rem_ny, int rem_nz) {
+    rem_x = rem_nx;
+    rem_y = rem_ny;
+    rem_z = rem_nz;
+  }
+
+  HOSTDEVICE int getFixIdx(int block_id) {
+#ifdef PADDLE_WITH_XPU
+    return block_id % split_num_x;
+#else
+    return threadIdx.x;
+#endif
+  }
+
+  HOSTDEVICE int getFixIdy(int block_id) {
+#ifdef PADDLE_WITH_XPU
+    return (block_id / split_num_x) % split_num_y;
+#else
+    return threadIdx.y;
+#endif
+  }
+
+  HOSTDEVICE int getFixIdz(int block_id) {
+#ifdef PADDLE_WITH_XPU
+    return ((block_id / split_num_x) / split_num_y) % split_num_z;
+#else
+    return threadIdx.z;
+#endif
+  }
+};
 }  // namespace kernel_primitives
 }  // namespace operators
 }  // namespace paddle
