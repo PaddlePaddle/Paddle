@@ -296,7 +296,8 @@ def interpolate(x,
         )
 
     if resample == 'AREA':
-        if isinstance(size, list) or isinstance(size, tuple):
+        if isinstance(size, list) or isinstance(size, tuple) or isinstance(
+                size, Variable):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if len(x.shape) == 3:

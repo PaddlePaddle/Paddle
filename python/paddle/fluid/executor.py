@@ -24,7 +24,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
-from .framework import convert_np_dtype_to_dtype_, get_flags
+from .framework import convert_np_dtype_to_dtype_
 from . import core
 from . import unique_name
 from . import compiler
@@ -485,10 +485,11 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor(object):
-    def __init__(self, place, main_program):
+    def __init__(self, place, main_program, scope):
         self._place = core.Place()
         self._place.set_place(place)
         self._main_program = main_program
+        self._scope = scope
         self._new_exe = self._create_new_executor()
 
     def run(self, feed, fetch_list, return_numpy=True):
@@ -522,9 +523,8 @@ class _StandaloneExecutor(object):
     def _create_new_executor(self):
         # NOTE: It's a trick to set empty start_up program.
         startup_program = Program()
-        outer_scope = global_scope()
         new_exe = core.StandaloneExecutor(self._place, startup_program.desc,
-                                          self._main_program.desc, outer_scope)
+                                          self._main_program.desc, self._scope)
 
         return new_exe
 
@@ -585,11 +585,11 @@ class _ExecutorCache(object):
         self._place = place
         self._cached_executors = {}
 
-    def run(self, program, feed, fetch_list, return_numpy=True):
-        new_exe = self._get_exe_from_cache(program)
+    def run(self, program, scope, feed, fetch_list, return_numpy=True):
+        new_exe = self._get_exe_from_cache(program, scope)
         return new_exe.run(feed, fetch_list, return_numpy)
 
-    def _get_exe_from_cache(self, program):
+    def _get_exe_from_cache(self, program, scope):
         """
         Return cached _StandaloneExecutor instance. If not found, create associated 
         _StandaloneExecutor instance with given program and cache it.
@@ -598,7 +598,7 @@ class _ExecutorCache(object):
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
         if program not in self._cached_executors:
-            new_exe = _StandaloneExecutor(self._place, program)
+            new_exe = _StandaloneExecutor(self._place, program, scope)
             self._cached_executors[program] = new_exe
 
         return self._cached_executors[program]
@@ -792,9 +792,11 @@ class Executor(object):
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 var = global_block.var(feed_target_name)
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place, var.dtype)
-                check_feed_shape_type(var, cur_feed)
+                if var.dtype != core.VarDesc.VarType.STRINGS:
+                    if not isinstance(cur_feed, core.LoDTensor):
+                        cur_feed = _as_lodtensor(cur_feed, self.place,
+                                                 var.dtype)
+                    check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
@@ -1016,17 +1018,8 @@ class Executor(object):
                 if need_check_feed:
                     check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
+            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
 
-            #TODO(zhhsplendid): handle other feed data format case for CINN
-            use_cinn = get_flags("FLAGS_use_cinn")["FLAGS_use_cinn"]
-            if use_cinn:
-                fetch_var_names = list(map(_to_name_str, fetch_list))
-                fetch_tensors = exe.run_from_cinn(
-                    feed_tensor_dict, fetch_var_names)._move_to_list()
-                return as_numpy(
-                    fetch_tensors) if return_numpy else fetch_tensors
-            else:
-                exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
         elif isinstance(feed, list) or isinstance(feed, tuple):
             res = list()
             for i, each in enumerate(feed):
@@ -1047,7 +1040,6 @@ class Executor(object):
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
 
-            use_cinn = get_flags("FLAGS_use_cinn")["FLAGS_use_cinn"]
             exe.feed_tensors_into_local_scopes(res)
 
         if hasattr(program._program, 'lr_sheduler'):
@@ -1305,7 +1297,7 @@ class Executor(object):
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
         if self._enable_interpreter_core and not program._is_start_up_program_:
-            return self._executor_cache.run(program, feed, fetch_list,
+            return self._executor_cache.run(program, scope, feed, fetch_list,
                                             return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list

@@ -1,15 +1,17 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/fused_attention_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
@@ -35,12 +37,15 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
                    "FusedAttentionOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
-                   "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
-                   "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
-                   "FusedAttentionOp");
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
+                     "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
+                     "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
+                     "FusedAttentionOp");
+    }
+
     // qkv_out: [batch_size, seq_len, 3, num_head, dim_head]
     OP_INOUT_CHECK(ctx->HasOutput("QKVOut"), "Output", "QKVOut",
                    "FusedAttentionOp");
@@ -99,9 +104,11 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                           "input qkv_weight = [%s]",
                           x_dim, y_dim));
 
-    ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("LnOut", ctx->GetInputDim("X"));
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
+      ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
+      ctx->SetOutputDim("LnOut", ctx->GetInputDim("X"));
+    }
     // [batch_size, seq_len, 3, num_head, head_size]
     ctx->SetOutputDim("QKVOut",
                       {x_dim[0], x_dim[1], y_dim[0], y_dim[1], y_dim[2]});
@@ -116,7 +123,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
                       {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
-    if (ctx->Attrs().Get<bool>("is_test1") == false) {
+    if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
                         {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
     }
@@ -129,7 +136,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
     ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
+    if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
     ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
@@ -213,39 +220,39 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     // for dropout in fmha.
-    AddAttr<float>("attn_dropout_prob", "Probability of setting units to zero.")
+    AddAttr<float>("attn_dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'attn_dropout_prob' must be between 0.0 and 1.0."));
+                  "'attn_dropout_rate' must be between 0.0 and 1.0."));
         });
-    AddAttr<bool>("is_test1",
+    AddAttr<bool>("attn_dropout_is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed1",
+    AddAttr<bool>("attn_dropout_fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
         .SetDefault(true);
-    AddAttr<int>("seed1", "Dropout random seed.").SetDefault(0);
+    AddAttr<int>("attn_dropout_seed", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
-        "dropout_implementation1",
+        "attn_dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
         "There are two kinds of ways to implement dropout"
         "(the mask below is a tensor have the same shape with input"
-        "the value of mask is 0 or 1, the ratio of 0 is dropout_prob)"
+        "the value of mask is 0 or 1, the ratio of 0 is dropout_rate)"
         "1. downgrade_in_infer(default), downgrade the outcome at inference "
         "time"
         "   train: out = input * mask"
-        "   inference: out = input * (1.0 - dropout_prob)"
+        "   inference: out = input * (1.0 - dropout_rate)"
         "2. upscale_in_train, upscale the outcome at training time, do nothing "
         "in inference"
-        "   train: out = input * mask / ( 1.0 - dropout_prob )"
+        "   train: out = input * mask / ( 1.0 - dropout_rate )"
         "   inference: out = input"
         "   dropout op can be removed from the program. the program will be "
         "efficient")
@@ -258,42 +265,30 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "upscale_in_train"));
         });
 
-    AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
+    AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
                             platform::errors::InvalidArgument(
-                                "'dropout_prob' must be between 0.0 and 1.0."));
+                                "'dropout_rate' must be between 0.0 and 1.0."));
         });
 
-    AddAttr<bool>("is_test",
+    AddAttr<bool>("dropout_is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed",
+    AddAttr<bool>("dropout_fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
         .SetDefault(true);
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<int>("dropout_seed", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
-        "There are two kinds of ways to implement dropout"
-        "(the mask below is a tensor have the same shape with input"
-        "the value of mask is 0 or 1, the ratio of 0 is dropout_prob)"
-        "1. downgrade_in_infer(default), downgrade the outcome at inference "
-        "time"
-        "   train: out = input * mask"
-        "   inference: out = input * (1.0 - dropout_prob)"
-        "2. upscale_in_train, upscale the outcome at training time, do nothing "
-        "in inference"
-        "   train: out = input * mask / ( 1.0 - dropout_prob )"
-        "   inference: out = input"
-        "   dropout op can be removed from the program. the program will be "
-        "efficient")
+        "The meaning is the same as 'attn_dropout_implementation'.")
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
@@ -302,16 +297,16 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<float>("ln2epsilon",
+    AddAttr<float>("ln_epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
-        .AddCustomChecker([](const float &ln2epsilon) {
-          PADDLE_ENFORCE_EQ(ln2epsilon >= 0.0f && ln2epsilon <= 0.001f, true,
+        .AddCustomChecker([](const float &ln_epsilon) {
+          PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f, true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' of the second LayerNorm in Fused "
                                 "attention op should be between"
                                 "0.0 and 0.001, But received [%s].",
-                                ln2epsilon));
+                                ln_epsilon));
         });
 
     AddComment(R"DOC(
@@ -343,9 +338,10 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
-                      platform::errors::InvalidArgument(
-                          "GradOp is only callable when is_test is false"));
+    PADDLE_ENFORCE_EQ(
+        ctx->Attrs().Get<bool>("attn_dropout_is_test"), false,
+        platform::errors::InvalidArgument(
+            "GradOp is only callable when attn_dropout_is_test is false"));
 
     OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",
                    "FusedAttentionGrad");
@@ -360,11 +356,11 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("Ln2Bias"));
     }
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionGrad");
-    OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
-                   "FusedAttentionGrad");
-    OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
-                   "FusedAttentionGrad");
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
+                     "FusedAttentionGrad");
+      OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
+                     "FusedAttentionGrad");
       OP_INOUT_CHECK(ctx->HasInput("LnOut"), "Input", "LnOut",
                      "FusedAttentionGrad");
     }
@@ -379,13 +375,15 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
                    "FusedAttentionGrad");
 
-    if (ctx->HasOutput(framework::GradVarName("LnScale"))) {
-      ctx->SetOutputDim(framework::GradVarName("LnScale"),
-                        ctx->GetInputDim("LnScale"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("LnBias"))) {
-      ctx->SetOutputDim(framework::GradVarName("LnBias"),
-                        ctx->GetInputDim("LnBias"));
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      if (ctx->HasOutput(framework::GradVarName("LnScale"))) {
+        ctx->SetOutputDim(framework::GradVarName("LnScale"),
+                          ctx->GetInputDim("LnScale"));
+      }
+      if (ctx->HasOutput(framework::GradVarName("LnBias"))) {
+        ctx->SetOutputDim(framework::GradVarName("LnBias"),
+                          ctx->GetInputDim("LnBias"));
+      }
     }
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
@@ -399,8 +397,10 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("QKVBias"),
                       ctx->GetInputDim("QKVBias"));
 
-    ctx->SetOutputDim(framework::GradVarName("LnOut"),
-                      ctx->GetInputDim("LnOut"));
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+      ctx->SetOutputDim(framework::GradVarName("LnOut"),
+                        ctx->GetInputDim("LnOut"));
+    }
     ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
                       ctx->GetInputDim("FMHAOut"));
     ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
@@ -451,16 +451,23 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("SrcMask", this->Input("SrcMask"));
     op->SetInput("OutLinearW", this->Input("OutLinearW"));
     op->SetInput("OutLinearBias", this->Input("OutLinearBias"));
-    if (this->HasInput("LnScale")) {
-      op->SetInput("LnScale", this->Input("LnScale"));
-      op->SetOutput(framework::GradVarName("LnScale"),
-                    this->InputGrad("LnScale"));
+
+    op->SetAttrMap(this->Attrs());
+    bool is_pre_layer_norm =
+        BOOST_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+    if (is_pre_layer_norm) {
+      if (this->HasInput("LnScale")) {
+        op->SetInput("LnScale", this->Input("LnScale"));
+        op->SetOutput(framework::GradVarName("LnScale"),
+                      this->InputGrad("LnScale"));
+      }
+      if (this->HasInput("LnBias")) {
+        op->SetInput("LnBias", this->Input("LnBias"));
+        op->SetOutput(framework::GradVarName("LnBias"),
+                      this->InputGrad("LnBias"));
+      }
     }
-    if (this->HasInput("LnBias")) {
-      op->SetInput("LnBias", this->Input("LnBias"));
-      op->SetOutput(framework::GradVarName("LnBias"),
-                    this->InputGrad("LnBias"));
-    }
+
     if (this->HasInput("Ln2Scale")) {
       op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
       op->SetOutput(framework::GradVarName("Ln2Scale"),
@@ -482,9 +489,17 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
                   this->InputGrad("OutLinearW"));
 
     // use forward outputs as backward inputs.
-    op->SetInput("LnOut", this->Output("LnOut"));
-    op->SetInput("LnMean", this->Output("LnMean"));
-    op->SetInput("LnVariance", this->Output("LnVariance"));
+    if (is_pre_layer_norm) {
+      if (this->HasOutput("LnOut")) {
+        op->SetInput("LnOut", this->Output("LnOut"));
+      }
+      if (this->HasOutput("LnMean")) {
+        op->SetInput("LnMean", this->Output("LnMean"));
+      }
+      if (this->HasOutput("LnVariance")) {
+        op->SetInput("LnVariance", this->Output("LnVariance"));
+      }
+    }
     op->SetInput("QKVOut", this->Output("QKVOut"));
     op->SetInput("QKVBiasOut", this->Output("QKVBiasOut"));
     op->SetInput("TransposeOut2", this->Output("TransposeOut2"));
@@ -505,7 +520,12 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("QKVOut", this->Output("QKVOut"));
 
     // backward outputs: dinput
-    op->SetOutput(framework::GradVarName("LnOut"), this->OutputGrad("LnOut"));
+    if (is_pre_layer_norm) {
+      if (this->HasOutput("LnOut")) {
+        op->SetOutput(framework::GradVarName("LnOut"),
+                      this->OutputGrad("LnOut"));
+      }
+    }
     op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
     op->SetOutput(framework::GradVarName("QKVBiasOut"),
                   this->OutputGrad("QKVBiasOut"));
@@ -526,8 +546,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
                   this->OutputGrad("BiasDropoutResidualOut"));
     op->SetOutput(framework::GradVarName("OutLinearOut"),
                   this->OutputGrad("OutLinearOut"));
-
-    op->SetAttrMap(this->Attrs());
   }
 };
 

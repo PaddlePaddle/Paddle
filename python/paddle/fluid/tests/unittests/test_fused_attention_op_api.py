@@ -18,7 +18,11 @@ import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+<<<<<<< HEAD
 from paddle.nn.layer.fused_transformer import FusedMultiHeadAttention
+=======
+from paddle.incubate.nn.layer.fused_transformer import FusedMultiHeadAttention
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
 from paddle import tensor
 from paddle.fluid import layers
 from paddle.static import Program, program_guard
@@ -107,7 +111,11 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
 
     q = qkv[0:1, ::]
     q = q.reshape(batch_size, num_head, seq_len, head_dim)
+<<<<<<< HEAD
     k = qkv[1:2, ::]  #[1, batch_size, num_head, seq_len, head_dim] 
+=======
+    k = qkv[1:2, ::]  #[1, batch_size, num_head, seq_len, head_dim]
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
     k = k.reshape(batch_size, num_head, seq_len, head_dim)
     v = qkv[2::]
     v = v.reshape(batch_size, num_head, seq_len, head_dim)
@@ -143,8 +151,11 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     return out_linear_bias_dropout_residual_ln_out
 
 
+<<<<<<< HEAD
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "Paddle core is not compiled with CUDA")
+=======
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
 class TestFusedAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.config()
@@ -197,6 +208,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
             paddle.to_tensor(self.query), paddle.to_tensor(self.attn_mask))
         ref_out = compute_reference(self.pre_layer_norm, self.query,
                                     self.attn_mask,
+<<<<<<< HEAD
                                     fused_attn.ln_scale.numpy(),
                                     fused_attn.ln_bias.numpy(),
                                     fused_attn.ln_2_scale.numpy(),
@@ -206,6 +218,17 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     fused_attn.out_linear_weight.numpy(),
                                     fused_attn.out_linear_bias.numpy())
         self.assertTrue(np.allclose(ref_out, out, rtol=1e-5, atol=1e-3))
+=======
+                                    fused_attn.pre_ln_scale.numpy(),
+                                    fused_attn.pre_ln_bias.numpy(),
+                                    fused_attn.ln_scale.numpy(),
+                                    fused_attn.ln_bias.numpy(),
+                                    fused_attn.qkv_weight.numpy(),
+                                    fused_attn.qkv_bias.numpy(),
+                                    fused_attn.linear_weight.numpy(),
+                                    fused_attn.linear_bias.numpy())
+        self.assertTrue(np.allclose(ref_out, out, rtol=1e-5, atol=1e-5))
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
 
     def run_static(self):
         fused_attn = FusedMultiHeadAttention(
@@ -229,31 +252,55 @@ class TestFusedAttentionAPI(unittest.TestCase):
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
+<<<<<<< HEAD
         out, qkv_weight, qkv_bias, out_linear_weight, out_linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
+=======
+        out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
             paddle.static.default_main_program(),
             feed={"X": self.query,
                   "SrcMask": self.attn_mask},
             fetch_list=[
                 final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
+<<<<<<< HEAD
                 fused_attn.out_linear_weight, fused_attn.out_linear_bias,
                 fused_attn.ln_scale, fused_attn.ln_bias, fused_attn.ln_2_scale,
                 fused_attn.ln_2_bias
             ])
 
         return out, qkv_weight, qkv_bias, out_linear_weight, out_linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias
+=======
+                fused_attn.linear_weight, fused_attn.linear_bias,
+                fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
+                fused_attn.ln_scale, fused_attn.ln_bias
+            ])
+
+        return out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
 
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(Program()):
+<<<<<<< HEAD
             out, qkv_weight, qkv_bias, out_linear_weight, out_linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = self.run_static(
+=======
+            out, qkv_weight, qkv_bias, linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = self.run_static(
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
             )
         ref_out = compute_reference(self.pre_layer_norm, self.query,
                                     self.attn_mask, ln_scale, ln_bias,
                                     ln_2_scale, ln_2_bias, qkv_weight, qkv_bias,
+<<<<<<< HEAD
                                     out_linear_weight, out_linear_bias)
         self.assertTrue(
             np.allclose(
                 np.array(ref_out), np.array(out), rtol=1e-5, atol=1e-3))
+=======
+                                    linear_weight, linear_bias)
+        self.assertTrue(
+            np.allclose(
+                np.array(ref_out), np.array(out), rtol=1e-5, atol=1e-5))
+>>>>>>> 29c6bcbf31a2200e512e453558636db3b13a881f
 
     def test_dynamic_api(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))

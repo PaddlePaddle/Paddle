@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace imperative {
@@ -206,6 +207,19 @@ static void PreparedOpRunImpl(
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
         op.Type(), outs, dev_ctx->GetPlace());
+  }
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+#if defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
   }
 
   /**

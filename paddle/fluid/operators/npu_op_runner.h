@@ -58,6 +58,12 @@ class NpuOpRunner {
 
   NpuOpRunner &AddAttr(const std::string &name, const NPUAttribute &attr);
 
+  // NOTE(qili93): need to add indivisual api for aclopSetAttrDataType
+  // as typeid(aclDataType) and typeid(framework::proto::VarType::Type)
+  // always go to attr.type() == typeid(int) to call aclopSetAttrInt
+  NpuOpRunner &AddAttrDataType(const std::string &name,
+                               const NPUAttribute &attr);
+
   NpuOpRunner &AddAttrs(const NPUAttributeMap &attrs);
 
   NpuOpRunner &AddInput(const Tensor &tensor);
@@ -96,6 +102,16 @@ class NpuOpRunner {
   std::vector<aclDataBuffer *> &GetOutputBuffers();
 
   void Run(aclrtStream stream = nullptr) const;
+
+  static void TypeAdapter(
+      const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
+      const NPUAttributeMap &attrs, const platform::NPUDeviceContext &dev_ctx,
+      std::function<void(const std::vector<Tensor> &,
+                         const std::vector<Tensor> &, const NPUAttributeMap &,
+                         const platform::NPUDeviceContext &)>
+          op_runner,
+      const std::vector<framework::proto::VarType::Type> &input_type,
+      const std::vector<framework::proto::VarType::Type> &output_type);
 
  private:
   aclTensorDesc *CreateTensorDesc(Tensor tensor,

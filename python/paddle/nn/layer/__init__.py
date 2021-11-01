@@ -19,6 +19,7 @@ from . import transformer  # noqa: F401
 from . import fused_transformer  # noqa: F401
 from . import container  # noqa: F401
 
+from .activation import CELU  # noqa: F401
 from .activation import PReLU  # noqa: F401
 from .activation import ReLU  # noqa: F401
 from .activation import ReLU6  # noqa: F401
