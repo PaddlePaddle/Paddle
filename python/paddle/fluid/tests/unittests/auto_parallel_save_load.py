@@ -199,10 +199,6 @@ class TestMLPSaveLoad(unittest.TestCase):
         random.seed(2021)
         np.random.seed(2021)
 
-    def _rm_temp_dir(self, dirname):
-        if paddle.distributed.get_rank() in [0]:
-            shutil.rmtree(dirname)
-
     def test_mlp_dp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
@@ -218,7 +214,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output"
+                path = "./output_dp{}".format(paddle.distributed.get_rank())
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path)
 
@@ -231,8 +227,8 @@ class TestMLPSaveLoad(unittest.TestCase):
 
         last_res = res[0]
         ckpt_path = [
-            "./output/model_state_rank0.pdmodel",
-            "./output/model_state_rank1.pdmodel"
+            "./output_dp0/model_state_rank0.pdmodel",
+            "./output_dp1/model_state_rank1.pdmodel"
         ]
         load_distributed_checkpoint(ckpt_path, dist_main_prog)
         for step in range(10, 20):
@@ -244,7 +240,7 @@ class TestMLPSaveLoad(unittest.TestCase):
                           fetch_list=[loss])
 
         self.assertEqual(last_res, res[0])
-        self._rm_temp_dir(path)
+        shutil.rmtree("./output_dp{}".format(paddle.distributed.get_rank()))
 
     def test_mlp_mp(self):
         global _global_parallel_strategy
@@ -262,7 +258,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output"
+                path = "./output_mp{}".format(paddle.distributed.get_rank())
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path)
 
@@ -275,8 +271,8 @@ class TestMLPSaveLoad(unittest.TestCase):
 
         last_res = res[0]
         ckpt_path = [
-            "./output/model_state_rank0.pdmodel",
-            "./output/model_state_rank1.pdmodel"
+            "./output_mp0/model_state_rank0.pdmodel",
+            "./output_mp1/model_state_rank1.pdmodel"
         ]
         load_distributed_checkpoint(ckpt_path, dist_main_prog)
         for step in range(10, 20):
@@ -288,7 +284,7 @@ class TestMLPSaveLoad(unittest.TestCase):
                           fetch_list=[loss])
 
         self.assertEqual(last_res, res[0])
-        self._rm_temp_dir(path)
+        shutil.rmtree("./output_mp{}".format(paddle.distributed.get_rank()))
 
     def test_mlp_pp(self):
         global _global_parallel_strategy
@@ -310,7 +306,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output"
+                path = "./output_pp{}".format(paddle.distributed.get_rank())
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path)
 
@@ -332,8 +328,8 @@ class TestMLPSaveLoad(unittest.TestCase):
             last_res = res[0]
 
         ckpt_path = [
-            "./output/model_state_rank0.pdmodel",
-            "./output/model_state_rank1.pdmodel"
+            "./output_pp0/model_state_rank0.pdmodel",
+            "./output_pp1/model_state_rank1.pdmodel"
         ]
         load_distributed_checkpoint(ckpt_path, dist_main_prog)
         for step in range(10, 20):
@@ -353,7 +349,7 @@ class TestMLPSaveLoad(unittest.TestCase):
 
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
-        self._rm_temp_dir(path)
+        shutil.rmtree("./output_pp{}".format(paddle.distributed.get_rank()))
 
 
 if __name__ == "__main__":
