@@ -25,6 +25,7 @@
 #endif
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace imperative {
@@ -159,7 +160,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
     VLOG(1) << framework::KernelSignatureToString(pt_kernel_signature);
 
-    auto pt_kernel_name = pten::KernelName(pt_kernel_signature.first);
+    auto pt_kernel_name = pten::KernelName(pt_kernel_signature.name);
     auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
     auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
@@ -260,9 +261,9 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
   // 5. kernel input is not DenseTensor
   pten::KernelContext op_kernel_ctx(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature.second);
-  auto& attr_names = std::get<1>(pt_kernel_signature.second);
-  auto& output_names = std::get<2>(pt_kernel_signature.second);
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& attr_names = std::get<1>(pt_kernel_signature.args);
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
 
   auto& input_defs = pt_kernel.args_def().input_defs();
   auto& output_defs = pt_kernel.args_def().output_defs();
@@ -320,7 +321,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
-            pten::Scalar(BOOST_GET_CONST(float, attr)));
+            std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "
@@ -369,6 +370,19 @@ static void PreparedOpRunImpl(
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
         op.Type(), outs, dev_ctx->GetPlace());
+  }
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+#if defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
   }
 
   /**

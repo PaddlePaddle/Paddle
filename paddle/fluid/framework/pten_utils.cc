@@ -59,11 +59,6 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
-KernelSignatureMap& KernelSignatureMap::Instance() {
-  static KernelSignatureMap g_kernel_signature_map;
-  return g_kernel_signature_map;
-}
-
 const paddle::SmallVector<std::string>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {
@@ -124,20 +119,17 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return std::make_pair(
-      op_proto_->type(),
-      std::make_tuple(GetInputArgsNames(), GetAttrsArgsNames(),
-                      GetOutputArgsNames()));
+  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
+                         GetAttrsArgsNames(), GetOutputArgsNames());
 }
 
 std::string KernelSignatureToString(const KernelSignature& signature) {
   std::stringstream os;
-  os << "Kernel Signature - name: " << signature.first << "; inputs: "
-     << string::join_strings(std::get<0>(signature.second), ", ")
+  os << "Kernel Signature - name: " << signature.name
+     << "; inputs: " << string::join_strings(std::get<0>(signature.args), ", ")
      << "; attributes: "
-     << string::join_strings(std::get<1>(signature.second), ", ")
-     << "; outputs: "
-     << string::join_strings(std::get<2>(signature.second), ", ");
+     << string::join_strings(std::get<1>(signature.args), ", ") << "; outputs: "
+     << string::join_strings(std::get<2>(signature.args), ", ");
   return os.str();
 }
 

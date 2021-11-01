@@ -684,16 +684,14 @@ PADDLE_DEFINE_EXPORTED_bool(
 /**
  * Pt kernel related FLAG
  * Name: FLAGS_run_pten_kernel
- * Since Version: 2.2.0
+ * Since Version: 2.3.0
  * Value Range: bool, default=false
  * Example: FLAGS_run_pten_kernel=true would use the pt kernel to compute in the
  * Op.
  * Note:
  */
-// TODO(chentianyu03): change default value to false before merge into develop
-// branch
 PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
-                            "It controls whether to use pt kernel");
+                            "It controls whether to use pten kernel");
 
 /**
  * Distributed related FLAG
@@ -719,8 +717,10 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
  * Value Range: bool, default=false
  * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
  */
+#ifdef PADDLE_WITH_CINN
 PADDLE_DEFINE_EXPORTED_bool(
     use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+#endif
 
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");

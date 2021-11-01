@@ -66,7 +66,6 @@ class MeanKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    VLOG(1) << "chenweihang: call original mean kernel compute.";
     pten::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };

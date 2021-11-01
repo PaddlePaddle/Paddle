@@ -56,10 +56,18 @@ void IRPassManager::CreatePasses(Argument *argument,
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
 
     if (pass_name == "graph_viz_pass") {
-      std::string dot_file_path = std::to_string(pass_num) + "_ir_" +
-                                  (pre_pass.empty() ? "origin" : pre_pass) +
-                                  ".dot";
+      std::string optim_cache_dir = argument->optim_cache_dir();
+      std::string dot_file_path;
+      if (optim_cache_dir.empty()) {
+        dot_file_path = std::to_string(pass_num) + "_ir_" +
+                        (pre_pass.empty() ? "origin" : pre_pass) + ".dot";
+      } else {
+        dot_file_path = optim_cache_dir + "/" + std::to_string(pass_num) +
+                        "_ir_" + (pre_pass.empty() ? "origin" : pre_pass) +
+                        ".dot";
+      }
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
+      pass->Set("optim_cache_dir", new std::string(std::move(optim_cache_dir)));
       pass_num++;
     } else if (pass_name == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",

@@ -103,6 +103,16 @@ class NpuOpRunner {
 
   void Run(aclrtStream stream = nullptr) const;
 
+  static void TypeAdapter(
+      const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
+      const NPUAttributeMap &attrs, const platform::NPUDeviceContext &dev_ctx,
+      std::function<void(const std::vector<Tensor> &,
+                         const std::vector<Tensor> &, const NPUAttributeMap &,
+                         const platform::NPUDeviceContext &)>
+          op_runner,
+      const std::vector<framework::proto::VarType::Type> &input_type,
+      const std::vector<framework::proto::VarType::Type> &output_type);
+
  private:
   aclTensorDesc *CreateTensorDesc(Tensor tensor,
                                   aclMemType mem_type = ACL_MEMTYPE_DEVICE);
