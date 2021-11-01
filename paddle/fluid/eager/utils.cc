@@ -25,9 +25,9 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
     const egr::EagerTensor& tensor) {
   // TODO(jiabin): No const cast here. We should call SyncToVar in Python_C
   // wrapper
-  auto egr_tensor = std::make_shared<EagerTensor>(tensor);
-  egr_tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
-  return {egr_tensor};
+  const_cast<EagerTensor*>(&tensor)->SyncToVar(
+      paddle::framework::proto::VarType_Type_LOD_TENSOR);
+  return {std::make_shared<EagerTensor>(tensor)};
 }
 
 std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
@@ -38,8 +38,9 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
+    const_cast<EagerTensor*>(&(tensors[i]))
+        ->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
     res.emplace_back(new EagerTensor(tensors[i]));
-    res.back()->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
   }
   return res;
 }
@@ -49,9 +50,8 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
     const egr::EagerTensor& tensor) {
   // TODO(jiabin): No const cast here. We should call SyncToTensor in Python_C
   // wrapper
-  auto egr_tensor = std::make_shared<EagerTensor>(tensor);
-  egr_tensor->SyncToTensor();
-  return {egr_tensor};
+  const_cast<EagerTensor*>(&tensor)->SyncToTensor();
+  return {std::make_shared<EagerTensor>(tensor)};
 }
 
 std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
@@ -62,8 +62,8 @@ std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
+    const_cast<EagerTensor*>(&(tensors[i]))->SyncToTensor();
     res.emplace_back(new EagerTensor(tensors[i]));
-    res.back()->SyncToTensor();
   }
   return res;
 }
