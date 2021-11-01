@@ -277,7 +277,7 @@ class FusedCudnnMultiHeadAttention(Layer):
                 attr=self._weight_attr,
                 dtype=self._dtype,
                 is_bias=False)
-        self.out_linear_bias = self.create_parameter(
+        self.linear_bias = self.create_parameter(
             shape=[embed_dim],
             attr=self._bias_attr,
             dtype=self._dtype,
@@ -362,7 +362,7 @@ class FusedCudnnMultiHeadAttention(Layer):
             ln_2_scale=self.ln_scale,
             ln_2_bias=self.ln_bias,
             epsilon=1e-05,
-            out_linear_bias=self.out_linear_bias,
+            linear_bias=self.linear_bias,
             dropout=self.dropout,
             attn_dropout=self.attn_dropout,
             ln2_epsilon=1e-05,

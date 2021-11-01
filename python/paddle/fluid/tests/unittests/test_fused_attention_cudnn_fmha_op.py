@@ -175,7 +175,7 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         #v_proj_bias = paddle.to_tensor(self.v_proj.bias, stop_gradient=False)
         # out_linear_weight = paddle.to_tensor(
         #     self.out_proj.weight, stop_gradient=False)
-        out_linear_bias = paddle.to_tensor(
+        linear_bias = paddle.to_tensor(
             self.out_proj.bias, stop_gradient=False)
 
         ln1_scale = paddle.to_tensor(self.norm1.weight, stop_gradient=False)
@@ -220,11 +220,11 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         #     attn_mask = _convert_attention_mask(attn_mask, x.dtype)
 
         for i in range(1):
-            #ln_out, out_linear_out, final_out = F.fused_multihead_attention_cudnn_impl(
+            #ln_out, linear_out, final_out = F.fused_multihead_attention_cudnn_impl(
             final_out = incubate_f.fused_multihead_attention_cudnn_impl(
                 x, weight_tensor, seq_len_tensor, self.num_heads,
                 self.pre_layer_norm, ln1_scale, ln1_bias, 
-                ln2_scale, ln2_bias, epsilon, out_linear_bias, 
+                ln2_scale, ln2_bias, epsilon, linear_bias, 
                 self.dropout_prob, self.attn_dropout_prob, 
                 ln2_epsilon, attn_low_windows_tensor_host, 
                 attn_high_windows_tensor_host,
@@ -232,8 +232,8 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
             paddle.autograd.backward(
                 [final_out], [dout_tensor], retain_graph=True)
 
-        #return ln_out, out_linear_out, final_out, final_out.grad, out_linear_out.grad, ln_out.grad, x.grad
-        #return out_linear_out, final_out, out_linear_out.grad, x.grad
+        #return ln_out, linear_out, final_out, final_out.grad, linear_out.grad, ln_out.grad, x.grad
+        #return linear_out, final_out, linear_out.grad, x.grad
         return final_out, x.grad
 
     def test_fused_attention_cudnn_fmha_op(self):
@@ -242,8 +242,8 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         )
         print(self.batch_size, self.query_length, self.embed_dim,
               self.num_heads, self.head_dim)
-        #ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
-        #ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
+        #ln_out_ref, linear_out_ref, final_out_ref, final_grad_ref, linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
+        #ln_out, linear_out, final_out, final_grad, linear_grad, ln_grad, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
         
@@ -251,7 +251,7 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         #    ln_out_ref, ln_out.numpy(), rtol=1e-5, atol=1e-5)
         
         # np.testing.assert_allclose(
-        #    out_linear_out_ref, out_linear_out.numpy(), rtol=1e-5, atol=1e-3)
+        #    linear_out_ref, linear_out.numpy(), rtol=1e-5, atol=1e-3)
 
         np.testing.assert_allclose(
             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-3)
@@ -259,7 +259,7 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         #np.testing.assert_allclose(
         #    final_grad_ref, final_grad.numpy(), rtol=1e-5, atol=1e-4)
         # np.testing.assert_allclose(
-        #    out_linear_grad_ref, out_linear_grad.numpy(), rtol=1e-5, atol=1e-3)
+        #    linear_grad_ref, linear_grad.numpy(), rtol=1e-5, atol=1e-3)
         #np.testing.assert_allclose(
         #    ln_grad_ref, ln_grad.numpy(), rtol=1e-5, atol=1e-3)
         np.testing.assert_allclose(
@@ -293,8 +293,8 @@ class TestFusedAttentionCuDNNFMHAOpPreLn(TestFusedAttentionCuDNNFMHAOp):
         )
         print(self.batch_size, self.query_length, self.embed_dim,
               self.num_heads, self.head_dim)
-        #ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
-        #ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
+        #ln_out_ref, linear_out_ref, final_out_ref, final_grad_ref, linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
+        #ln_out, linear_out, final_out, final_grad, linear_grad, ln_grad, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
 
@@ -331,8 +331,8 @@ class TestFusedAttentionCuDNNFMHAOpFp16(TestFusedAttentionCuDNNFMHAOp):
         )
         print(self.batch_size, self.query_length, self.embed_dim,
               self.num_heads, self.head_dim)
-        #ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
-        #ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
+        #ln_out_ref, linear_out_ref, final_out_ref, final_grad_ref, linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
+        #ln_out, linear_out, final_out, final_grad, linear_grad, ln_grad, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionCuDNNFMHAOut()
         
@@ -340,7 +340,7 @@ class TestFusedAttentionCuDNNFMHAOpFp16(TestFusedAttentionCuDNNFMHAOp):
         #    ln_out_ref, ln_out.numpy(), rtol=1e-5, atol=1e-1)
         
         #np.testing.assert_allclose(
-        #    out_linear_out_ref, out_linear_out.numpy(), rtol=1e-5, atol=1e-1)
+        #    linear_out_ref, linear_out.numpy(), rtol=1e-5, atol=1e-1)
 
         np.testing.assert_allclose(
             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
@@ -348,7 +348,7 @@ class TestFusedAttentionCuDNNFMHAOpFp16(TestFusedAttentionCuDNNFMHAOp):
         #np.testing.assert_allclose(
         #    final_grad_ref, final_grad.numpy(), rtol=1e-5, atol=1e-1)
         #np.testing.assert_allclose(
-        #    out_linear_grad_ref, out_linear_grad.numpy(), rtol=1e-5, atol=1e-1)
+        #    linear_grad_ref, linear_grad.numpy(), rtol=1e-5, atol=1e-1)
         #np.testing.assert_allclose(
         #    ln_grad_ref, ln_grad.numpy(), rtol=1e-5, atol=1e-1)
         np.testing.assert_allclose(

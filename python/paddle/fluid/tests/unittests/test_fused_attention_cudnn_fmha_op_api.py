@@ -231,7 +231,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     fused_attn.ln_scale.numpy(),
                                     fused_attn.ln_bias.numpy(),
                                     fused_attn.weight.numpy(),
-                                    fused_attn.out_linear_bias.numpy())
+                                    fused_attn.linear_bias.numpy())
         # np.testing.assert_allclose(ref_ln, ln_out, rtol=1e-5, atol=1e-5)
         # np.testing.assert_allclose(ref_out_linear, linear_out, rtol=1e-5, atol=1e-3)
         np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-2)
@@ -292,7 +292,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
                   "AttnHighWin": self.attn_high_window,
                   "SeqLenHost": self.seq_len},
             fetch_list=[
-                final_out, fused_attn.weight, fused_attn.out_linear_bias,
+                final_out, fused_attn.weight, fused_attn.linear_bias,
                 fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
                 fused_attn.ln_scale, fused_attn.ln_bias
             ])

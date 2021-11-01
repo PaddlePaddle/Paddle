@@ -445,15 +445,21 @@ class FusedAttentionCuDNNFMHAGradOpMaker
     op->SetInput("QOSeqLenHost", this->Input("QOSeqLenHost"));
     op->SetInput("KVSeqLenHost", this->Input("KVSeqLenHost"));
 
-    if (this->HasInput("LnScale")) {
-      op->SetInput("LnScale", this->Input("LnScale"));
-      op->SetOutput(framework::GradVarName("LnScale"),
-                    this->InputGrad("LnScale"));
-    }
-    if (this->HasInput("LnBias")) {
-      op->SetInput("LnBias", this->Input("LnBias"));
-      op->SetOutput(framework::GradVarName("LnBias"),
-                    this->InputGrad("LnBias"));
+    op->SetAttrMap(this->Attrs());
+    bool is_pre_layer_norm =
+        BOOST_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+
+    if (is_pre_layer_norm) {
+      if (this->HasInput("LnScale")) {
+        op->SetInput("LnScale", this->Input("LnScale"));
+        op->SetOutput(framework::GradVarName("LnScale"),
+                      this->InputGrad("LnScale"));
+      }
+      if (this->HasInput("LnBias")) {
+        op->SetInput("LnBias", this->Input("LnBias"));
+        op->SetOutput(framework::GradVarName("LnBias"),
+                      this->InputGrad("LnBias"));
+      }
     }
     op->SetInput("OutLinearBias", this->Input("OutLinearBias"));
 
@@ -471,14 +477,16 @@ class FusedAttentionCuDNNFMHAGradOpMaker
       op->SetOutput(framework::GradVarName("Ln2Bias"),
                     this->InputGrad("Ln2Bias"));
     }
-    if (this->HasOutput("LnOut")) {
-      op->SetInput("LnOut", this->Output("LnOut"));
-    }
-    if (this->HasOutput("LnMean")) {
-      op->SetInput("LnMean", this->Output("LnMean"));
-    }
-    if (this->HasOutput("LnVariance")) {
-      op->SetInput("LnVariance", this->Output("LnVariance"));
+    if (is_pre_layer_norm) {
+      if (this->HasOutput("LnOut")) {
+        op->SetInput("LnOut", this->Output("LnOut"));
+      }
+      if (this->HasOutput("LnMean")) {
+        op->SetInput("LnMean", this->Output("LnMean"));
+      }
+      if (this->HasOutput("LnVariance")) {
+        op->SetInput("LnVariance", this->Output("LnVariance"));
+      }
     }
 
     op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
@@ -494,8 +502,11 @@ class FusedAttentionCuDNNFMHAGradOpMaker
     // op->SetOutput(framework::GradVarName("V"), this->InputGrad("V"));
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
 
-    if (this->HasOutput("LnOut")) {
-      op->SetOutput(framework::GradVarName("LnOut"), this->OutputGrad("LnOut"));
+    if (is_pre_layer_norm) {
+      if (this->HasOutput("LnOut")) {
+        op->SetOutput(framework::GradVarName("LnOut"),
+                      this->OutputGrad("LnOut"));
+      }
     }
 
     op->SetOutput(framework::GradVarName("OutLinearBias"),
@@ -504,8 +515,6 @@ class FusedAttentionCuDNNFMHAGradOpMaker
                   this->OutputGrad("OutLinearOut"));
     op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
                   this->OutputGrad("BiasDropoutResidualOut"));
-
-    op->SetAttrMap(this->Attrs());
 #endif
   }
 };
