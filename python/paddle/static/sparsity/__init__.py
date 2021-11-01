@@ -13,25 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from ...fluid.contrib.sparsity import calculate_density  #noqa: F401
+from ...fluid.contrib.sparsity import decorate  #noqa: F401
+from ...fluid.contrib.sparsity import prune_model  #noqa: F401
+from ...fluid.contrib.sparsity import set_excluded_layers  #noqa: F401
+from ...fluid.contrib.sparsity import reset_excluded_layers  #noqa: F401
 
-import unittest
-import paddle
-from paddle.static import sparsity
-from paddle.fluid.tests.unittests.asp.asp_pruning_base import TestASPHelperPruningBase
-
-paddle.enable_static()
-
-
-class TestASPHelperPruning1D(TestASPHelperPruningBase):
-    def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(
-            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
-
-    def test_1D_training_pruning(self):
-        self.run_training_pruning_test(
-            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
-
-
-if __name__ == '__main__':
-    unittest.main()
+__all__ = [     #noqa
+    'calculate_density',
+    'decorate',
+    'prune_model',
+    'set_excluded_layers',
+    'reset_excluded_layers'
+]
