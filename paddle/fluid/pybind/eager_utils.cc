@@ -157,6 +157,7 @@ PyObject* ToPyObject(const egr::EagerTensor& value) {
   PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
+    new (&(v->eagertensor)) egr::EagerTensor();
     v->eagertensor = value;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
@@ -222,6 +223,7 @@ PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value) {
     PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
     if (obj) {
       auto v = reinterpret_cast<EagerTensorObject*>(obj);
+      new (&(v->eagertensor)) egr::EagerTensor();
       v->eagertensor = value[i];
     } else {
       PADDLE_THROW(platform::errors::Fatal(
