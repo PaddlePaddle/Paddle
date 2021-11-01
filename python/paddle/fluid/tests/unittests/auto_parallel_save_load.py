@@ -165,32 +165,20 @@ def mlp_forward(train_program, start_program):
 def get_distributed_program():
     train_program = static.Program()
     startup_program = static.Program()
-    dist_context = DistributedContext()
-    rank_id = paddle.distributed.get_rank()
+
+    dist_strategy = fleet.DistributedStrategy()
+    dist_strategy.semi_auto = True
+    fleet.init(is_collective=True, strategy=dist_strategy)
 
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
-    train_program = auto.complete_annotation(train_program, dist_context)
 
     optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
+    optimizer = fleet.distributed_optimizer(optimizer)
+    _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
+        loss, startup_program)
 
-    dist_strategy = fleet.DistributedStrategy()
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-    dist_main_program, dist_startup_program = partitioner.transpile_forward(
-        train_program, startup_program)
-    dist_params_grads = partitioner.apply_backward(
-        loss, train_program, startup_program, dist_main_program,
-        dist_startup_program)
-    opt_ops = partitioner.apply_optimize(
-        optimizer, dist_params_grads, dist_main_program, dist_startup_program)
-    all_process_groups = get_all_process_groups()
-    for process_group in all_process_groups:
-        if rank_id not in process_group._ranks:
-            continue
-        process_group.instantiate()
-    make_data_unshard(dist_main_program, dist_startup_program, dist_context)
-    reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
-    return dist_main_program, dist_startup_program, loss
+    return dist_main_prog, dist_startup_prog, loss
 
 
 class TestMLPSaveLoad(unittest.TestCase):
