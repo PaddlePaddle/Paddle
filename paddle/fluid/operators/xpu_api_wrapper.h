@@ -34,23 +34,12 @@ int xpu_fc_wrapper(xpu::Context* ctx, const XPUType* x, const XPUType* w,
     std::vector<int> shape = {k, m};
     std::vector<int> axis = {1, 0};
     r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
-    if (r != XPU_SUCCESS) {
-      xpu_free(l3_addr);
-      return r;
-    }
+    if (r != XPU_SUCCESS) return r;
+
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(
         ctx, l3_addr, w, y, m, n, k, false, w_trans, x_maxptr, w_maxptr,
         y_maxptr, k, ldw, ldy, alpha, beta, bias, act);
-    if (r != XPU_SUCCESS) {
-      xpu_free(l3_addr);
-      return r;
-    }
-    r = xpu_wait(ctx->xpu_stream);
-    if (r != XPU_SUCCESS) {
-      xpu_free(l3_addr);
-      return r;
-    }
-    xpu_free(l3_addr);
+    if (r != XPU_SUCCESS) return r;
   } else {
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(
         ctx, x, w, y, m, n, k, x_trans, w_trans, x_maxptr, w_maxptr, y_maxptr,
