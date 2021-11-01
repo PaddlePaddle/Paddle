@@ -53,7 +53,7 @@ class KernelContext {
 
   void EmplaceBackInput(std::shared_ptr<TensorBase> input) {
     int index = inputs_.size();
-    inputs_.emplace_back(input);
+    inputs_.emplace_back(std::move(input));
     // Record the start and end index of the input
     input_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
@@ -62,7 +62,7 @@ class KernelContext {
       const paddle::SmallVector<std::shared_ptr<TensorBase>>& inputs) {
     int index = inputs_.size();
     for (auto in : inputs) {
-      inputs_.emplace_back(in);
+      inputs_.emplace_back(std::move(in));
     }
     // Record the start and end index of the input
     input_range_.emplace_back(
@@ -71,7 +71,7 @@ class KernelContext {
 
   void EmplaceBackOutput(std::shared_ptr<TensorBase> output) {
     int index = outputs_.size();
-    outputs_.emplace_back(output);
+    outputs_.emplace_back(std::move(output));
     // Record the start and end index of the input
     output_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
@@ -80,14 +80,16 @@ class KernelContext {
       const paddle::SmallVector<std::shared_ptr<TensorBase>>& outputs) {
     int index = outputs_.size();
     for (auto out : outputs) {
-      outputs_.emplace_back(out);
+      outputs_.emplace_back(std::move(out));
     }
     // Record the start and end index of the input
     output_range_.emplace_back(
         std::pair<int, int>(index, index + outputs.size()));
   }
 
-  void EmplaceBackAttr(paddle::any attr) { attrs_.emplace_back(attr); }
+  void EmplaceBackAttr(paddle::any attr) {
+    attrs_.emplace_back(std::move(attr));
+  }
 
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
