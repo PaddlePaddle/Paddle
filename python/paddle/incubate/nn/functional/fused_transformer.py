@@ -389,3 +389,123 @@ def fused_multi_head_attention(x,
             },
             attrs=attrs)
         return final_out
+
+def fused_multihead_attention_cudnn_impl(x,
+                              weight,
+                              seq_len,
+                              num_heads,
+                              pre_layer_norm=False,
+                              ln_scale=None,
+                              ln_bias=None,
+                              ln_2_scale=None,
+                              ln_2_bias=None,
+                              epsilon=1e-05,
+                              out_linear_bias=None,
+                              dropout=0.,
+                              attn_dropout=0.,
+                              ln2_epsilon=1e-05,
+                              attn_low_windows=None, 
+                              attn_high_windows=None,
+                              attn_qo_seqlen=None,
+                              attn_kv_seqlen=None,
+                              name=None):
+    r"""
+    """
+    if in_dygraph_mode():
+        # print("attn_low_windows = ")
+        # print(attn_low_windows)
+        # print("attn_high_windows = ")
+        # print(attn_high_windows)
+        # print("seq_len = ")
+        # print(seq_len)
+        # print("weight.name = ", weight.name)
+        ## finally code
+        ln_mean, ln_variance, ln_out, _, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention_cudnn_fmha(
+            x, weight, seq_len, seq_len, attn_low_windows, attn_high_windows, 
+            attn_qo_seqlen, attn_kv_seqlen, ln_scale, ln_bias, out_linear_bias, 
+            ln_2_scale, ln_2_bias,
+            'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon, 
+            'ln2_epsilon', ln2_epsilon, 'attn_heads', num_heads, 
+            'attn_dropout_rate', attn_dropout, 'dropout_rate', dropout)
+        #return ln_out, out_linear_out, bias_dropout_residual_out, final_out
+        #return ln_out, out_linear_out, final_out
+        return final_out
+    else:
+        helper = LayerHelper('fused_multihead_attention_cudnn_impl', **locals())
+        dtype = x.dtype
+        # check dtypes
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'fused_multihead_attention_cudnn_impl')
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                    'fused_multihead_attention_cudnn_impl')
+
+        # set inputs
+        inputs = dict()
+        inputs['X'] = [x]
+        inputs['W'] = [weight]
+        inputs['QO_Seqlen'] = [seq_len]
+        inputs['KV_Seqlen'] = [seq_len]
+        inputs['AttnLowWinHost'] = [attn_low_windows]
+        inputs['AttnHighWinHost'] = [attn_high_windows]
+        inputs['QOSeqLenHost'] = [attn_qo_seqlen]
+        inputs['KVSeqLenHost'] = [attn_kv_seqlen]
+        if ln_scale:
+            inputs['LnScale'] = [ln_scale]
+        if ln_bias:
+            inputs['LnBias'] = [ln_bias]
+        inputs['OutLinearBias'] = [out_linear_bias]
+        if ln_2_scale:
+            inputs['Ln2Scale'] = [ln_2_scale]
+        if ln_2_bias:
+            inputs['Ln2Bias'] = [ln_2_bias]
+
+        # set attrs
+        attrs = {
+            'pre_layer_norm': pre_layer_norm,
+            'epsilon': epsilon,
+            'ln2_epsilon': ln2_epsilon,
+            'attn_heads': num_heads,
+            'attn_dropout_rate': attn_dropout,
+            'dropout_rate': dropout,
+            # 'attn_low_windows': attn_low_windows,
+            # 'attn_high_windows': attn_high_windows,
+            # 'attn_qo_seq_len': attn_qo_seqlen,
+            # 'attn_kv_seqlen': attn_kv_seqlen,
+        }
+
+        # set outputs
+        ln_mean_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        ln_variance_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        ln_out = helper.create_variable_for_type_inference(dtype=dtype)
+        reserve_space = helper.create_variable_for_type_inference(dtype=dtype)
+        out_linear_out = helper.create_variable_for_type_inference(dtype=dtype)
+        dropout_mask_out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        ln_2_mean_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        ln_2_variance_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        bias_dropout_residual_out = helper.create_variable_for_type_inference(
+            dtype=dtype)
+        final_out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        helper.append_op(
+            type='fused_attention_cudnn_fmha',
+            inputs=inputs,
+            outputs={
+                "LnMean": ln_mean_out,
+                "LnVariance": ln_variance_out,
+                "LnOut": ln_out,
+                "ReserveSpace": reserve_space,
+                "OutLinearOut": out_linear_out,
+                "DropoutMaskOut": dropout_mask_out,
+                "Ln2Mean": ln_2_mean_out,
+                "Ln2Variance": ln_2_variance_out,
+                "BiasDropoutResidualOut": bias_dropout_residual_out,
+                'Y': final_out
+            },
+            attrs=attrs)
+        return final_out
+        

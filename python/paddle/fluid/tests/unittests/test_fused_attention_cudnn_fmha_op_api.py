@@ -18,7 +18,8 @@ import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.nn.layer.fused_transformer import FusedMultiHeadAttention
+#from paddle.nn.layer.fused_transformer import FusedMultiHeadAttention
+from paddle.incubate.nn.layer.fused_transformer import FusedCudnnMultiHeadAttention
 from paddle import tensor
 from paddle.fluid import layers
 from paddle.static import Program, program_guard
@@ -78,21 +79,21 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
     embed_dim = query.shape[2]
     head_dim = embed_dim//num_head
 
-    print(batch_size)
-    print(seq_len)
-    print(embed_dim)
-    print(head_dim)
+    # print(batch_size)
+    # print(seq_len)
+    # print(embed_dim)
+    # print(head_dim)
     
     #[1, embed_dim, embed_dim]
     q_weight = weight[0:1, ::]
     k_weight = weight[1:2, ::]
     v_weight = weight[2:3, ::]
     out_linear_weight = weight[3:4, ::]
-    print(weight.shape)
-    print(q_weight.shape)
-    print(k_weight.shape)
-    print(v_weight.shape)
-    print(out_linear_weight.shape)
+    # print(weight.shape)
+    # print(q_weight.shape)
+    # print(k_weight.shape)
+    # print(v_weight.shape)
+    # print(out_linear_weight.shape)
 
     q_weight = q_weight.reshape(embed_dim, num_head*head_dim)
     k_weight = k_weight.reshape(embed_dim, num_head*head_dim)
@@ -104,8 +105,8 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
 
     if (pre_layer_norm):
         ln_out = ln_out.reshape(batch_size * seq_len, embed_dim)
-        print(ln_out.shape)
-        print(q_weight.shape)
+        # print(ln_out.shape)
+        # print(q_weight.shape)
         q = fc(ln_out, q_weight)
         k = fc(ln_out, k_weight)
         v = fc(ln_out, v_weight)
@@ -158,8 +159,6 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
     return out_linear_bias_dropout_residual_ln_out
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
 class TestFusedAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.config()
@@ -209,7 +208,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.attn_high_window = np.full((self.query_length, ), self.query_length, dtype=np.int32)
 
     def run_imperative(self):
-        fused_attn = FusedMultiHeadAttention(
+        fused_attn = FusedCudnnMultiHeadAttention(
             self.embed_dim, self.num_heads, self.dropout_prob,
             self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
             self.need_weight, self.weight_attr, self.bias_attr)
@@ -238,7 +237,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
         np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-2)
 
     def run_static(self):
-        fused_attn = FusedMultiHeadAttention(
+        fused_attn = FusedCudnnMultiHeadAttention(
             self.embed_dim, self.num_heads, self.dropout_prob,
             self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
             self.need_weight, self.weight_attr, self.bias_attr)

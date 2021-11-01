@@ -15,10 +15,12 @@
 from .layer.fused_transformer import FusedMultiHeadAttention  # noqa: F401
 from .layer.fused_transformer import FusedFeedForward  # noqa: F401
 from .layer.fused_transformer import FusedTransformerEncoderLayer  # noqa: F401
+from .layer.fused_transformer import FusedCudnnMultiHeadAttention  # noqa: F401
 
 __all__ = [  #noqa
     'FusedMultiHeadAttention',
     'FusedFeedForward',
     'FusedTransformerEncoderLayer',
+    'FusedCudnnMultiHeadAttention',
 
 ]

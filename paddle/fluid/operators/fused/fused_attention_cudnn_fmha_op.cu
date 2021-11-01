@@ -97,7 +97,7 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
     const Tensor* mha_qo_slen = ctx.Input<Tensor>("QO_Seqlen"); 
     const Tensor* mha_kv_slen = ctx.Input<Tensor>("KV_Seqlen");
 
-    float attn_dropout_rate = ctx.Attr<float>("attn_dropout_prob");
+    float attn_dropout_rate = ctx.Attr<float>("attn_dropout_rate");
     int attn_heads = ctx.Attr<int>("attn_heads");  // must
 
     // std::vector<int> attn_low_windows =
@@ -152,7 +152,7 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
     double attn_sm_scaler = 1.0/sqrt(dim_head); // 1/sqrt(dim_head)
     // double attn_sm_scaler = 1.0;
 
-#if 1
+#if 0
     std::cout << "low_win = " << std::endl;
 #if 0
     auto *attn_low_windows_data = attn_low_windows->data<int>();

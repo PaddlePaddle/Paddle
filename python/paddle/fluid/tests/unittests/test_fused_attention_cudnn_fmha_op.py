@@ -18,6 +18,7 @@ import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+import paddle.incubate.nn.functional as incubate_f
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 # from paddle.fluid.data_feeder import convert_dtype
@@ -220,7 +221,7 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
 
         for i in range(1):
             #ln_out, out_linear_out, final_out = F.fused_multihead_attention_cudnn_impl(
-            final_out = F.fused_multihead_attention_cudnn_impl(
+            final_out = incubate_f.fused_multihead_attention_cudnn_impl(
                 x, weight_tensor, seq_len_tensor, self.num_heads,
                 self.pre_layer_norm, ln1_scale, ln1_bias, 
                 ln2_scale, ln2_bias, epsilon, out_linear_bias, 
@@ -265,13 +266,9 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-2)
 
 
-# fp16 is not supported when cudnn > 8.2 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
 class TestFusedAttentionCuDNNFMHAOpPreLn(TestFusedAttentionCuDNNFMHAOp):
     def config(self):
         self.x_type = np.float32
-        #self.attn_mask_type = np.float64
         self.pre_layer_norm = True
         self.training = True
 
@@ -307,13 +304,9 @@ class TestFusedAttentionCuDNNFMHAOpPreLn(TestFusedAttentionCuDNNFMHAOp):
             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-2)
 
 
-# fp16 is not supported when cudnn > 8.2 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
 class TestFusedAttentionCuDNNFMHAOpFp16(TestFusedAttentionCuDNNFMHAOp):
     def config(self):
         self.x_type = np.float16
-        #self.attn_mask_type = np.float64
         self.pre_layer_norm = False
         self.training = True
 

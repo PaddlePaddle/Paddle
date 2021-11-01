@@ -102,6 +102,8 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_attention_cudnn_fmha_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_attention_cudnn_fmha_op_api)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
