@@ -95,6 +95,31 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
+void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
+                          int64_t rows_numel) {
+  CreateVarsOnScope(scope, place);
+  auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  int64_t* ids_ptr =
+      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
+
+  auto micro_id_var =
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+  float* micro_id_ptr =
+      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+  micro_id_ptr[0] = 1;
+
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  float* x_ptr =
+      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+
+  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  float* res_ptr =
+      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
+}
+
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
@@ -123,6 +148,7 @@ void StartSendAndRecvServer(std::string endpoint) {
   LOG(INFO) << "before AppendSendAndRecvBlock";
   auto block = AppendSendAndRecvBlock(&program);
   std::string in_var_name("x");
+  std::string in_var_name2("y");
   std::vector<int> prefetch_block_ids{block->ID()};
 
   LOG(INFO) << "before InitTensorsOnServer";
@@ -142,6 +168,11 @@ void StartSendAndRecvServer(std::string endpoint) {
   b_rpc_service->RegisterServiceHandler(
       in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
                        brpc::Controller* cntl) -> int {
+        return b_req_handler->Handle(request, response, cntl);
+      });
+  b_rpc_service->RegisterServiceHandler(
+      in_var_name2, [&](const MultiVarMsg* request, MultiVarMsg* response,
+                        brpc::Controller* cntl) -> int {
         return b_req_handler->Handle(request, response, cntl);
       });
 
@@ -167,8 +198,22 @@ TEST(SENDANDRECV, CPU) {
   std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
       new std::vector<framework::Scope*>{});
   (*micro_scope).push_back(new framework::Scope());
+  (*micro_scope).push_back(new framework::Scope());
   (*micro_scopes)[0] = micro_scope;
   b_rpc_service->SetMicroBatchScopes(micro_scopes);
+
+  using TaskQueue =
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>;
+  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
+      int, std::shared_ptr<::paddle::framework::BlockingQueue<
+               std::pair<std::string, int>>>>>;
+  SharedTaskQueue task_queue_(new TaskQueue{});
+  (*task_queue_)[0] = std::make_shared<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
+  b_rpc_service->SetTaskQueue(task_queue_);
+
   LOG(INFO) << "before HeterClient::GetInstance";
   distributed::HeterClient* rpc_client =
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
@@ -196,8 +241,22 @@ TEST(SENDANDRECV, CPU) {
   rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
                                "forward");
 
-  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
-                               "backward");
+  LOG(INFO) << "client wait for Pop";
+  auto task = (*task_queue_)[0]->Pop();
+  LOG(INFO) << "client get from task queue";
+  PADDLE_ENFORCE_EQ(task.first, "x",
+                    platform::errors::InvalidArgument("message not match"));
+
+  InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
+  LOG(INFO) << "before SendAndRecvAsync 2";
+  std::string in_var_name2("y");
+  rpc_client->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name2,
+                               send_var, recv_var, "backward");
+  LOG(INFO) << "after SendAndRecvAsync 2";
+
+  auto task2 = (*task_queue_)[0]->Pop();
+  PADDLE_ENFORCE_EQ(task2.first, "y",
+                    platform::errors::InvalidArgument("message not match"));
 
   rpc_client->FinalizeWorker();
   b_rpc_service->Stop();

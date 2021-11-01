@@ -76,6 +76,8 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>("send_var_name", "Send Tensor's name");
     AddAttr<std::vector<std::string>>("recv_var_name", "Recv Tensor's name");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<std::string>>("endpoints", "Server endpoint")
+        .SetDefault({"127.0.0.1:6164"});
     AddAttr<std::vector<std::string>>("next_endpoints", "Server endpoint")
         .SetDefault({"127.0.0.1:6164"});
     AddAttr<std::vector<std::string>>("previous_endpoints",
@@ -107,3 +109,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+REGISTER_OP_VERSION(send_and_recv)
+    .AddCheckpoint(
+        R"ROC(add new attributes [next_endpoints] [previous_endpoints] and [mode])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("next_endpoints", "Server endpoint", {"127.0.0.1:6164"})
+            .NewAttr("previous_endpoints", "Server endpoint",
+                     {"127.0.0.1:6164"})
+            .NewAttr("mode", "forward or backward", "forward"));

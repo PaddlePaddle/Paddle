@@ -186,10 +186,10 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
   virtual ~RequestSendAndRecvHandler() {}
 
-  void SetMiniScopes(SharedMiniScope mini_scopes) {
-    mini_scopes_ = mini_scopes;
-    num_minibatch_ = mini_scopes_->size();
-  }
+  // void SetMiniScopes(SharedMiniScope mini_scopes) {
+  //  mini_scopes_ = mini_scopes;
+  //  num_minibatch_ = mini_scopes_->size();
+  //}
   void SetMicroScopes(SharedMicroScope micro_scopes) {
     micro_scopes_ = micro_scopes;
     num_microbatch_ = micro_scopes_->size();
@@ -229,10 +229,10 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     int minibatch_index = micro_id / 10;
     int microbatch_index = micro_id % 10;
 
-    PADDLE_ENFORCE_EQ(
-        (*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
-        platform::errors::InvalidArgument(
-            "minibatch index should in current trainer"));
+    // PADDLE_ENFORCE_EQ(
+    //    (*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
+    //    platform::errors::InvalidArgument(
+    //        "minibatch index should in current trainer"));
     PADDLE_ENFORCE_EQ(
         (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(), 1,
         platform::errors::InvalidArgument(
@@ -243,6 +243,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
     distributed::DeserializeFromMultiVarMsgAndIOBuf(
         *request, &request_io_buffer, *dev_ctx_, micro_scope);
+
     // blocking queue handles multi thread
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));
@@ -262,7 +263,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
  private:
   // share with HeterPipelineTrainer
-  SharedMiniScope mini_scopes_{nullptr};
+  // SharedMiniScope mini_scopes_{nullptr};
   SharedMicroScope micro_scopes_{nullptr};
 
   int num_microbatch_;
@@ -304,9 +305,10 @@ class HeterServer {
     request_handler_ = request_handler;
   }
 
-  void SetMiniBatchScopes(SharedMiniScope mini_scopes) {
-    request_handler_->SetMiniScopes(mini_scopes);
-  }
+  // void SetMiniBatchScopes(SharedMiniScope mini_scopes) {
+  //  request_handler_->SetMiniScopes(mini_scopes);
+  //}
+
   void SetMicroBatchScopes(SharedMicroScope micro_scopes) {
     request_handler_->SetMicroScopes(micro_scopes);
   }

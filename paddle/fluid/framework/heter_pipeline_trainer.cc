@@ -181,7 +181,7 @@ void HeterPipelineTrainer::Run() {
   }
   auto heter_server = paddle::distributed::HeterServer::GetInstance();
   heter_server->WaitServerReady();
-  heter_server->SetMiniBatchScopes(mini_scopes_);
+  // heter_server->SetMiniBatchScopes(mini_scopes_);
   heter_server->SetMicroBatchScopes(micro_scopes_);
   heter_server->SetTaskQueue(task_queue_);
   // main training logic

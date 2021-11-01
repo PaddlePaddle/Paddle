@@ -104,6 +104,26 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
+void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
+                          int64_t rows_numel) {
+  CreateVarsOnScope(scope, place);
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  float* x_ptr =
+      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+
+  auto micro_id_var =
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+  float* micro_id_ptr =
+      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+  micro_id_ptr[0] = 1;
+
+  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  float* res_ptr =
+      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
+}
+
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
@@ -145,8 +165,21 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
       new std::vector<framework::Scope*>{});
   (*micro_scope).push_back(new framework::Scope());
+  (*micro_scope).push_back(new framework::Scope());
   (*micro_scopes)[0] = micro_scope;
   b_rpc_service->SetMicroBatchScopes(micro_scopes);
+
+  using TaskQueue =
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>;
+  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
+      int, std::shared_ptr<::paddle::framework::BlockingQueue<
+               std::pair<std::string, int>>>>>;
+  SharedTaskQueue task_queue_(new TaskQueue{});
+  (*task_queue_)[0] = std::make_shared<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
+  b_rpc_service->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
   distributed::HeterClient* rpc_client =
@@ -174,9 +207,17 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   LOG(INFO) << "before SendAndRecvAsync";
   rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
                                "forward");
+  auto task = (*task_queue_)[0]->Pop();
+  PADDLE_ENFORCE_EQ(task.first, "x",
+                    platform::errors::InvalidArgument("message not match"));
 
-  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
-                               "backward");
+  InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
+  LOG(INFO) << "before SendAndRecvAsync 2";
+  rpc_client->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name, send_var,
+                               recv_var, "backward");
+  auto task2 = (*task_queue_)[0]->Pop();
+  PADDLE_ENFORCE_EQ(task2.first, "x",
+                    platform::errors::InvalidArgument("message not match"));
 
   rpc_client->Stop();
   LOG(INFO) << "end server Stop";
