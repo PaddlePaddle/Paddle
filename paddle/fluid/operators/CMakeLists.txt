@@ -79,8 +79,10 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op 
-        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten)
+
+register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
+        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op cinn_launch_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 op_library(save_combine_op DEPS string_array)
@@ -164,6 +166,15 @@ if (WITH_ASCEND_CL)
   cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
   cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
+endif()
+
+if (WITH_CINN)
+  cc_library(cinn_launch_op_helper SRCS cinn_launch_op_helper.cc DEPS operator cinn)
+  cc_test(cinn_launch_op_helper_test SRCS cinn_launch_op_helper_test.cc DEPS cinn_launch_op_helper)
+  op_library(cinn_launch_op SRCS cinn_launch_op.cc cinn_launch_op.cu.cc DEPS cinn_compiler cinn_launch_op_helper cinn ${OP_HEADER_DEPS})
+  if (WITH_GPU)
+      nv_test(cinn_launch_op_test SRCS cinn_launch_op_test.cc DEPS cinn_compiler cinn_launch_op elementwise_add_op)
+  endif()
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.

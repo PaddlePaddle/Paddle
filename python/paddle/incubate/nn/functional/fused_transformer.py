@@ -194,31 +194,34 @@ def fused_multi_head_attention(x,
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
-    if pre_layer_norm:
-    	out = layer_norm(x);
-        out = linear(out) + qkv)bias
-    else:
-	out = linear(x) + bias;
-    out = transpose(out, perm=[2, 0, 3, 1, 4]);
-    # extract q, k and v from out.
-    q = out[0:1,::]
-    k = out[1:2,::]
-    v = out[2:3,::]
-    out = q * k^t;
-    out = attn_mask + out;
-    out = softmax(out);
-    out = dropout(out);
-    out = out * v;
-    out = transpose(out, perm=[0, 2, 1, 3]);
-    out = out_linear(out);
-    out = layer_norm(x + dropout(linear_bias + out));
+
+    .. code-block:: python
+
+    	if pre_layer_norm:
+    	    out = layer_norm(x)
+            out = linear(out) + qkv) + bias
+    	else:
+	    out = linear(x) + bias
+    	out = transpose(out, perm=[2, 0, 3, 1, 4])
+    	# extract q, k and v from out.
+    	q = out[0:1,::]
+    	k = out[1:2,::]
+    	v = out[2:3,::]
+    	out = q * k^t
+    	out = attn_mask + out
+    	out = softmax(out)
+    	out = dropout(out)
+    	out = out * v
+    	out = transpose(out, perm=[0, 2, 1, 3])
+    	out = out_linear(out)
+    	out = layer_norm(x + dropout(linear_bias + out))
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
             `[batch\_size, sequence\_len, embed\_dim]`.
         qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
-        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture 
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
 	    (False). Default False.
         pre_ln_scale (Tensor, optional): The weight tensor of pre layernorm. Default None.
         pre_ln_bias (Tensor, optional): The bias tensor of pre layernorm. Default None.
@@ -229,12 +232,12 @@ def fused_multi_head_attention(x,
         qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
-        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to 
- 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor 
-            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the 
-            data type is bool, the unwanted positions have `False` values and the others have `True` values. 
-            When the data type is int, the unwanted positions have 0 values and the others have 1 values. 
-            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values. 
+        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
+ 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
+            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
+            data type is bool, the unwanted positions have `False` values and the others have `True` values.
+            When the data type is int, the unwanted positions have 0 values and the others have 1 values.
+            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values.
             It can be None when nothing wanted or needed to be prevented attention to. Default None.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention.
@@ -244,6 +247,9 @@ def fused_multi_head_attention(x,
             0 for no dropout. Default 0.5.
         ln_epsilon (float, optional): Small float value added to denominator of layer_norm
             to avoid dividing by zero. Default is 1e-5.
+
+    Returns:
+        Tensor: The output Tensor, the data type and shape is same as `x`.
 
     Examples:
 
