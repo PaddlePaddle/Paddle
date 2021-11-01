@@ -52,6 +52,7 @@ from .linalg import qr  # noqa: F401
 from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401
+from .linalg import eigvalsh  # noqa: F401
 from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
@@ -240,6 +241,7 @@ tensor_method_func  = [ #noqa
            'matrix_power',
            'qr',
            'eigvals',
+           'eigvalsh',
            'abs',
            'acos',
            'all',
@@ -395,6 +397,7 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
+           'triangular_solve'
 ]
 
 #this list used in math_op_patch.py for magic_method bind

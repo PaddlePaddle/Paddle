@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperator
+from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
-from .common import register_distributed_operator
+from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
@@ -24,13 +24,14 @@ from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 
 
-class DistributedTranspose2(DistributedOperator):
+class DistributedTranspose2(DistributedOperatorImplContainer):
     def __init__(self, name):
         super(DistributedTranspose2, self).__init__()
         self._name = name
 
 
-register_distributed_operator("transpose2", DistributedTranspose2("transpose2"))
+register_distributed_operator_impl_container(
+    "transpose2", DistributedTranspose2("transpose2"))
 
 
 class DistributedTranspose2Impl(DistributedOperatorImpl):
@@ -40,19 +41,16 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         self._forward_implemented = False
         self._backward_implemented = True
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
+    def is_input_compatible(self, dist_op):
         return True
 
-    def is_input_compatible(self, op_dist_attr):
+    def is_output_compatible(self, dist_op):
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        return True
-
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         changed = False
-        op_desc = op_dist_attr.get_owner_op().desc
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_shape_name = op_desc.output('XShape')[0]
