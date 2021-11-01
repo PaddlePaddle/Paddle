@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include <sstream>
-#include "paddle/fluid/distributed/common/afs_warpper.h"
+
+#include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include "paddle/fluid/framework/io/fs.h"
 
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
-
-namespace paddle {
-namespace distributed {
-class ValueBlock;
-}  // namespace distributed
-}  // namespace paddle
 
 namespace paddle {
 namespace distributed {
