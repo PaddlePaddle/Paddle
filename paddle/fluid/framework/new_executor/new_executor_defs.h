@@ -471,44 +471,73 @@ struct VariableMetaInfo {
   paddle::framework::VarDesc* vardesc_;
 };
 
-// TODO(Aurelius84): Consider inherit ScopeBase to unify interface.
-class VariableScope {
+// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
+class VariableScope : public ScopeBase {
  public:
   Variable* FindVar(const std::string& name) const {
-    if (!HasVar(name)) {
-      return nullptr;
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      PADDLE_ENFORCE_LT(it->second, var_list_.size(),
+                        platform::errors::NotFound(
+                            "The id(%d) of variable(%s) should not be larger "
+                            "than the size of variable list(%d).",
+                            it->second, name, var_list_.size()));
+      return var_list_[it->second];
     }
-    auto var_id = VarId(name);
-    CheckExist(var_id);
-    return var_list[var_id];
+    return nullptr;
+  }
+
+  // Get variable id by name, return -1 if not found
+  int GetIdByName(const std::string& name) const {
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      return it->second;
+    }
+    return -1;
+  }
+
+  // Get variable name by id, return "" if not found
+  std::string GetNameById(int id) const {
+    // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
+    // vec_meta_info_[id] may be nullptr,
+    // typically when the target variable is not existed in the original program
+    // desc, but created by interpretercore.
+    // For example, created and used by d2h_copy or h2d_copy operator.
+    auto it =
+        std::find_if(name2id_.begin(), name2id_.end(),
+                     [id](const auto& pair) { return pair.second == id; });
+    if (it != name2id_.end()) {
+      return it->first;
+    }
+    return "";
   }
 
   bool HasVar(const std::string& name) const {
-    return name2id.find(name) != name2id.end();
+    return name2id_.find(name) != name2id_.end();
   }
 
   int VarId(const std::string& name) const {
     CheckExist(name);
-    return name2id.at(name);
+    return name2id_.at(name);
   }
 
-  Variable* Var(int id) const { return var_list.at(id); }
+  Variable* Var(int id) const { return var_list_.at(id); }
 
   Variable* Var(const std::string& name) const {
-    return var_list.at(VarId(name));
+    return var_list_.at(VarId(name));
   }
 
-  size_t VarSize() const { return var_list.size(); }
+  size_t VarSize() const { return var_list_.size(); }
 
   void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
-    name2id[name] = VarSize();
+    name2id_[name] = VarSize();
     auto v = new Variable();
     if (nullptr == var_desc) {
       v->GetMutable<LoDTensor>();
     } else {
       InitializeVariable(v, var_desc->GetType());
     }
-    var_list.push_back(v);
+    var_list_.push_back(v);
 
     VariableMetaInfo info;
     info.var_ref_count_ = 0;
@@ -517,8 +546,8 @@ class VariableScope {
   }
 
   void AddVar(const std::string& name, Variable& var) {  // NOLINT
-    name2id[name] = VarSize();
-    var_list.push_back(&var);
+    name2id_[name] = VarSize();
+    var_list_.push_back(&var);
 
     VariableMetaInfo info;
     info.var_ref_count_ = 0;
@@ -540,10 +569,10 @@ class VariableScope {
   }
 
   void CheckExist(int id) const {
-    PADDLE_ENFORCE_LT(id, var_list.size(),
+    PADDLE_ENFORCE_LT(id, var_list_.size(),
                       platform::errors::PreconditionNotMet(
                           "Required var_id < %d, but received var_id = %d.",
-                          var_list.size(), id));
+                          var_list_.size(), id));
   }
 
   void CheckExist(const std::string& name) const {
@@ -553,8 +582,8 @@ class VariableScope {
   }
 
  private:
-  std::vector<Variable*> var_list;
-  std::map<std::string, int> name2id;
+  std::vector<Variable*> var_list_;
+  std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
