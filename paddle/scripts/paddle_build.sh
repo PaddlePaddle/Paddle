@@ -2388,6 +2388,40 @@ function find_temporary_files() {
     fi
 }
 
+function trt_convert_test() {
+    set +e
+    cd ${PADDLE_ROOT}
+    result_num=0
+    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python
+    for file_name in `find python/ -name 'test_trt_convert*'`;do
+        echo "----- test trt ut: $file_name -----"
+        python $file_name
+        res=$?
+        if [ "$res" != "0" ];then
+            echo "$file_name convert test failed " >&2
+            result_num=11
+        fi
+    done
+    if [ "$result_num" != "0" ];then
+        exit 11
+    fi
+}
+
+function build_pr_and_develop() {
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
+    rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+    git checkout .
+    git checkout -b develop_base_pr upstream/$BRANCH
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+}
+
 
 function main() {
     local CMD=$1 
@@ -2396,6 +2430,9 @@ function main() {
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        ;;
+      build_pr_dev)
+        build_pr_and_develop 
         ;;
       build_and_check)
         set +e
@@ -2637,6 +2674,10 @@ function main() {
         ;;
       test_model_benchmark)
         test_model_benchmark
+        ;;
+      trt_convert_test)
+        # only test trt convert.
+        trt_convert_test
         ;;
       *)
         print_usage
