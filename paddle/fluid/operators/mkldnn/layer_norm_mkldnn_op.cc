@@ -43,8 +43,8 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
     }
   }
 
-  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
-      const Tensor* scale, const Tensor* shift) {
+  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
+                                                        const Tensor* shift) {
     // OneDNN requires a single piece of memory for scale and shift data
     const unsigned int C = framework::vectorize(scale->dims())[0];
 
@@ -54,7 +54,8 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
     auto mem_data_handle =
         reinterpret_cast<float*>(scaleshift_memory->get_data_handle());
     std::copy(scale->data<float>(), scale->data<float>() + C, mem_data_handle);
-    std::copy(shift->data<float>(), shift->data<float>() + C, mem_data_handle + C);
+    std::copy(shift->data<float>(), shift->data<float>() + C,
+              mem_data_handle + C);
     return scaleshift_memory;
   }
 
@@ -115,10 +116,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto layer_norm_p = handler.AcquireForwardPrimitive();
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    std::unordered_map<int, dnnl::memory> args;
-
-    args.insert({DNNL_ARG_SRC, *src_memory});
-    args.insert({DNNL_ARG_DST, *dst_memory});
+    std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC, *src_memory},
+                                                  {DNNL_ARG_DST, *dst_memory}};
 
     if (!is_test) {
       auto* mean = ctx.Output<Tensor>("Mean");
@@ -151,5 +150,4 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 // TODO(jczaja): Enable FP32 when performance is good
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(layer_norm, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::LayerNormMKLDNNOpKernel<float>,
                    ops::LayerNormMKLDNNOpKernel<paddle::platform::bfloat16>);
