@@ -344,10 +344,7 @@ def _get_unshard_dist_shape(var, dist_attr):
     return new_shape
 
 
-def make_data_unshard(dist_main_prog, dist_startup_prog):
-    from .dist_context import get_default_distributed_context
-    dist_context = get_default_distributed_context()
-
+def make_data_unshard(dist_main_prog, dist_startup_prog, dist_context):
     for var in dist_main_prog.list_vars():
         if var.is_data:
             tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(

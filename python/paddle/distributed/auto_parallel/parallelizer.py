@@ -93,7 +93,8 @@ class AutoParallelizer:
         # The last step: remove all distributed attributes to be compatiable
         # with inference.
         self._remove_distributed_attrs(partitioned_main_prog)
-        make_data_unshard(partitioned_main_prog, partitioned_startup_prog)
+        make_data_unshard(partitioned_main_prog, partitioned_startup_prog,
+                          self._dist_context)
 
         reshard(partitioned_main_prog, partitioned_startup_prog, rank,
                 self._dist_context)
