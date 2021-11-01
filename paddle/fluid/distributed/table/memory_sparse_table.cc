@@ -429,17 +429,6 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
     tasks[shard_id].wait();
   }
 
-  /*
-  VLOG(3) << "debug sparse table::pull_sparse";
-  for (int i = 0; i < pull_value.numel_; ++i) {
-    VLOG(3) << "key: " << i << ": " << pull_value.feasigns_[i];
-    for (int j = 0; j < select_value_size; ++j)
-      VLOG(3) << " value " << j << ": "
-              << pull_values[i * select_value_size + j];
-  }
-  VLOG(3) << "debug sparse table::pull_sparse end";
-  */
-
   return 0;
 }
 
@@ -498,15 +487,6 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
             float* value_data = feature_value->data();
             size_t value_size = feature_value->size();
 
-            // VLOG(3) << "push sparse, key: " << key << " value: ";
-            // for (int i = 0; i < value_size; ++i)
-            //   VLOG(3) << value_data[i] << " ";
-            // VLOG(3) << "\n";
-            // VLOG(3) << "update_data: ";
-            // for (int i = 0; i < update_value_col; ++i)
-            //   VLOG(3) << update_data[i] << " ";
-            // VLOG(3) << "\n";
-
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
               _value_accesor->update(&value_data, &update_data, 1);
             } else {
@@ -521,11 +501,6 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
-            /*
-            VLOG(3) << "after update key:" << key;
-            for(int i = 0; i < feature_value->size(); ++ i)
-                VLOG(3) << value_data[i] << " ";
-            */
           }
           return 0;
         });
