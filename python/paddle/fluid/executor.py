@@ -485,10 +485,11 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor(object):
-    def __init__(self, place, main_program):
+    def __init__(self, place, main_program, scope):
         self._place = core.Place()
         self._place.set_place(place)
         self._main_program = main_program
+        self._scope = scope
         self._new_exe = self._create_new_executor()
 
     def run(self, feed, fetch_list, return_numpy=True):
@@ -522,9 +523,8 @@ class _StandaloneExecutor(object):
     def _create_new_executor(self):
         # NOTE: It's a trick to set empty start_up program.
         startup_program = Program()
-        outer_scope = global_scope()
         new_exe = core.StandaloneExecutor(self._place, startup_program.desc,
-                                          self._main_program.desc, outer_scope)
+                                          self._main_program.desc, self._scope)
 
         return new_exe
 
@@ -585,11 +585,11 @@ class _ExecutorCache(object):
         self._place = place
         self._cached_executors = {}
 
-    def run(self, program, feed, fetch_list, return_numpy=True):
-        new_exe = self._get_exe_from_cache(program)
+    def run(self, program, scope, feed, fetch_list, return_numpy=True):
+        new_exe = self._get_exe_from_cache(program, scope)
         return new_exe.run(feed, fetch_list, return_numpy)
 
-    def _get_exe_from_cache(self, program):
+    def _get_exe_from_cache(self, program, scope):
         """
         Return cached _StandaloneExecutor instance. If not found, create associated 
         _StandaloneExecutor instance with given program and cache it.
@@ -598,7 +598,7 @@ class _ExecutorCache(object):
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
         if program not in self._cached_executors:
-            new_exe = _StandaloneExecutor(self._place, program)
+            new_exe = _StandaloneExecutor(self._place, program, scope)
             self._cached_executors[program] = new_exe
 
         return self._cached_executors[program]
@@ -1297,7 +1297,7 @@ class Executor(object):
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
         if self._enable_interpreter_core and not program._is_start_up_program_:
-            return self._executor_cache.run(program, feed, fetch_list,
+            return self._executor_cache.run(program, scope, feed, fetch_list,
                                             return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list

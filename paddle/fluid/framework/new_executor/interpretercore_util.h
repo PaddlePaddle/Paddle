@@ -81,6 +81,8 @@ class AsyncWorkQueue {
     queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
   }
 
+  void Cancel() { queue_group_->Cancel(); }
+
   AtomicVectorSizeT& AtomicDeps() { return atomic_deps_; }
   AtomicVectorSizeT& AtomicVarRef() { return atomic_var_ref_; }
 
@@ -99,7 +101,6 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
 
 void build_op_func_list(const platform::Place& place,
                         const framework::ProgramDesc& pdesc,
-                        std::vector<OperatorBase*>* op_list,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope);
 
