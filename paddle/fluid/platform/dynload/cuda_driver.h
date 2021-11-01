@@ -42,7 +42,6 @@ extern bool HasCUDADriver();
   };                                                                     \
   extern struct DynLoad__##__name __name
 
-#if CUDA_VERSION >= 10020
 /**
  * include all needed cuda driver functions
  **/
@@ -59,34 +58,23 @@ extern bool HasCUDADriver();
   __macro(cuCtxGetCurrent);                             \
   __macro(cuDeviceGetCount);                            \
   __macro(cuDevicePrimaryCtxGetState);                  \
-  __macro(cuMemGetAllocationGranularity);               \
-  __macro(cuMemAddressReserve);                         \
-  __macro(cuMemCreate);                                 \
-  __macro(cuMemMap);                                    \
-  __macro(cuMemSetAccess);                              \
-  __macro(cuMemUnmap);                                  \
-  __macro(cuMemRelease);                                \
-  __macro(cuMemAddressFree);                            \
   __macro(cuDeviceGetAttribute);                        \
   __macro(cuDeviceGet)
-#else
-/**
- * include all needed cuda driver functions
- **/
-#define CUDA_ROUTINE_EACH(__macro)                      \
-  __macro(cuInit);                                      \
-  __macro(cuDriverGetVersion);                          \
-  __macro(cuGetErrorString);                            \
-  __macro(cuModuleLoadData);                            \
-  __macro(cuModuleGetFunction);                         \
-  __macro(cuModuleUnload);                              \
-  __macro(cuOccupancyMaxActiveBlocksPerMultiprocessor); \
-  __macro(cuLaunchKernel);                              \
-  __macro(cuCtxCreate);                                 \
-  __macro(cuCtxGetCurrent);                             \
-  __macro(cuDeviceGetCount);                            \
-  __macro(cuDevicePrimaryCtxGetState)
+
+#if CUDA_VERSION >= 10020
+#define CUDA_ROUTINE_EACH_VVM(__macro)    \
+  __macro(cuMemGetAllocationGranularity); \
+  __macro(cuMemAddressReserve);           \
+  __macro(cuMemCreate);                   \
+  __macro(cuMemMap);                      \
+  __macro(cuMemSetAccess);                \
+  __macro(cuMemUnmap);                    \
+  __macro(cuMemRelease);                  \
+  __macro(cuMemAddressFree)
+
+CUDA_ROUTINE_EACH_VVM(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 #endif
+
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_CUDA_WRAP
