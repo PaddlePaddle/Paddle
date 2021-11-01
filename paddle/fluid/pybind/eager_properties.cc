@@ -47,17 +47,15 @@ static const int numpy_initialized_m = init_numpy_p();
 
 extern PyTypeObject* pEagerTensorType;
 
-PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
-                                            void* closure) {
-  auto ddim = self->eagertensor.shape();
-  std::vector<int64_t> value;
-  size_t rank = static_cast<size_t>(ddim.size());
-  value.resize(rank);
-  for (size_t i = 0; i < rank; i++) {
-    value[i] = ddim[i];
-  }
+PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
+                                           void* closure) {
+  return ToPyObject(self->eagertensor.name());
+}
 
-  return ToPyObject(value);
+int eager_tensor_properties_set_name(EagerTensorObject* self, PyObject* value,
+                                     void* closure) {
+  self->eagertensor.set_name(CastPyArg2AttrString(value, 0));
+  return 0;
 }
 
 PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
@@ -73,9 +71,38 @@ int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
   return 0;
 }
 
-PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
+PyObject* eager_tensor_properties_get_persistable(EagerTensorObject* self,
+                                                  void* closure) {
+  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  return ToPyObject(meta->Persistable());
+}
+
+int eager_tensor_properties_set_persistable(EagerTensorObject* self,
+                                            PyObject* value, void* closure) {
+  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  meta->SetPersistable(CastPyArg2AttrBoolean(value, 0));
+  return 0;
+}
+
+PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
                                             void* closure) {
-  return ToPyObject(pten::DataType2String(self->eagertensor.type()));
+  auto ddim = self->eagertensor.shape();
+  std::vector<int64_t> value;
+  size_t rank = static_cast<size_t>(ddim.size());
+  value.resize(rank);
+  for (size_t i = 0; i < rank; i++) {
+    value[i] = ddim[i];
+  }
+
+  return ToPyObject(value);
+}
+
+PyObject* eager_tensor_properties_get_place(EagerTensorObject* self,
+                                            void* closure) {
+  auto place = self->eagertensor.place();
+  auto obj = ::pybind11::cast(place);
+  obj.inc_ref();
+  return obj.ptr();
 }
 
 PyObject* eager_tensor_properties_get_place_str(EagerTensorObject* self,
@@ -85,15 +112,29 @@ PyObject* eager_tensor_properties_get_place_str(EagerTensorObject* self,
   return ToPyObject(ostr.str());
 }
 
+PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
+                                            void* closure) {
+  return ToPyObject(pten::DataType2String(self->eagertensor.type()));
+}
+
 struct PyGetSetDef variable_properties[] = {
-    {"shape", (getter)eager_tensor_properties_get_shape, nullptr, nullptr,
-     nullptr},
+    {"name", (getter)eager_tensor_properties_get_name,
+     (setter)eager_tensor_properties_set_name, nullptr, nullptr},
     {"stop_gradient", (getter)eager_tensor_properties_get_stop_gradient,
      (setter)eager_tensor_properties_set_stop_gradient, nullptr, nullptr},
-    {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
+    {"persistable", (getter)eager_tensor_properties_get_persistable,
+     (setter)eager_tensor_properties_set_persistable, nullptr, nullptr},
+    {"shape", (getter)eager_tensor_properties_get_shape, nullptr, nullptr,
+     nullptr},
+    // {"is_leaf", (getter)eager_tensor_properties_get_is_leaf, nullptr,
+    // nullptr,
+    //  nullptr},
+    {"place", (getter)eager_tensor_properties_get_place, nullptr, nullptr,
      nullptr},
     {"_place_str", (getter)eager_tensor_properties_get_place_str, nullptr,
      nullptr, nullptr},
+    {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
+     nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind

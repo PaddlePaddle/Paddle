@@ -117,6 +117,10 @@ class AutogradMeta : public AbstractAutogradMeta {
     }
   }
 
+  bool Persistable() const { return persistable_; }
+
+  void SetPersistable(bool persistable) { persistable_ = persistable; }
+
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
   egr::EagerTensor grad_;

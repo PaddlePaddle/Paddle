@@ -25,33 +25,23 @@ class EagerScaleTestCase(unittest.TestCase):
         with eager_guard():
             paddle.set_device("cpu")
             arr = np.ones([4, 16, 16, 32]).astype('float32')
-            a = paddle.to_tensor(arr, 'float32', core.CPUPlace())
-            print(arr)
-            print("=============")
-            print(a)
-            a = core.eager.scale(a, 2.0, 0.9, True, False)
+            tensor = paddle.to_tensor(arr, 'float32', core.CPUPlace())
+            print(tensor)
+            tensor = core.eager.scale(tensor, 2.0, 0.9, True, False)
             for i in range(0, 100):
-                a = core.eager.scale(a, 2.0, 0.9, True, False)
-            print(a.shape)
-            print(a.stop_gradient)
-            a.stop_gradient = False
-            print(a.stop_gradient)
-            a.stop_gradient = True
-            print(a.stop_gradient)
-            print(a)
-
-
-with eager_guard():
-    paddle.set_device("cpu")
-    arr = np.ones([4, 16, 16, 32]).astype('float32')
-    a = paddle.to_tensor(arr, 'float32', core.CPUPlace())
-    a = core.eager.scale(a, 2.0, 0.9, True, False)
-    for i in range(0, 100):
-        a = core.eager.scale(a, 2.0, 0.9, True, False)
-    print(a.shape)
-    print(a.stop_gradient)
-    a.stop_gradient = False
-    print(a.stop_gradient)
-    a.stop_gradient = True
-    print(a.stop_gradient)
-    print(a)
+                tensor = core.eager.scale(tensor, 2.0, 0.9, True, False)
+            print(tensor)
+            self.assertEqual(tensor.shape, [4, 16, 16, 32])
+            self.assertEqual(tensor.stop_gradient, True)
+            tensor.stop_gradient = False
+            self.assertEqual(tensor.stop_gradient, False)
+            tensor.stop_gradient = True
+            self.assertEqual(tensor.stop_gradient, False)
+            tensor.name = 'tensor_name_test'
+            self.assertEqual(tensor.name, 'tensor_name_test')
+            self.assertEqual(tensor.persistable, False)
+            tensor.persistable = True
+            self.assertEqual(tensor.persistable, True)
+            tensor.persistable = False
+            self.assertEqual(tensor.persistable, False)
+            self.assertTrue(tensor.place.is_cpu_place())
