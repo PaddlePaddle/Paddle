@@ -142,7 +142,7 @@ def init_parallel_env():
     # 1. Check backend
     backend = os.getenv("PADDLE_DISTRI_BACKEND", "auto")
     # NOTE(liubo48): this new env should be set/detect in distributed.launch.
-    nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "1"))
+    nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "2"))
     print("### DEBUG ### backend is: ", backend)
     is_cpu_only = _is_cpuonly(backend)
     enable_gloo = is_cpu_only or (backend == "heter")

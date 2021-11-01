@@ -77,8 +77,7 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   node_strategy_.local_rank_ = strategy_.local_rank_ % local_nranks;
   node_strategy_.current_endpoint_ = strategy_.current_endpoint_;
 
-  // NOTE(liubo48): for single node with same ip for test only.
-  // TODO(liubo48): remove nodes_ips_.size() == 1
+  // TODO(liubo48): remove nodes_ips_.size() == 1, currently under test...
   if (nodes_ips_.size() == 1) {
     node_strategy_.trainer_endpoints_ = strategy_.trainer_endpoints_;
   } else {
@@ -93,9 +92,14 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     }
   }
 
+  PADDLE_ENFORCE_GT(node_strategy_.trainer_endpoints_.size(), 1,
+                    platform::errors::InvalidArgument(
+                        "In heter mode, the number of ranks on each node "
+                        "should be greater than 1."
+                    ));
+
   // construct gloo_strategy_ from global strategy by selecting the
   // endpoints with local_rank which can be evenly divided by local_nranks_.
-  // TODO(liubo48): remove nodes_ips_.size() > 1
   if ((nodes_ips_.size() > 1) &&
       (strategy_.local_rank_ % local_nranks == 0)) {
     gloo_strategy_.nranks_ = strategy_.nranks_ / local_nranks;
@@ -136,7 +140,7 @@ void HeterParallelContext::Init() {
   // NOTE(liubo48): call Init() to create ring_id(0) for compatibility.
   heter_parallel_ctx_->Init();
 
-  // create another ring for internal communication.
+  // create another ring for internal communication. (might not need this additional ring?)
   heter_parallel_ctx_->InitWithRingID(1);
 
   if (gloo_ctx_ != nullptr) {
@@ -159,21 +163,19 @@ void HeterParallelContext::AllReduceByStream(
   heter_parallel_ctx_->WaitComm(0);
 
   // step 2: call allreduce between nodes with gloo
-  // TODO(liubo48): if(gloo_ctx_ != nullptr)
-  // TODO(liubo48): remove nodes_ips_.size() == 1 which is for test only.
-  if ((nodes_ips_.size() == 1) &&
-      (node_strategy_.local_rank_ % node_strategy_.nranks_ == 0)) {
-    // TODO(liubo48): add gloo instance
-    // auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
-    // PADDLE_ENFORCE_EQ(gloo_ptr->IsInitialized(), true,
-    //                   paddle::platform::errors::Unavailable(
-    //                       "Gloo context is not initialized."));
+  // if ((nodes_ips_.size() == 1) &&
+  //     (node_strategy_.local_rank_ % node_strategy_.nranks_ == 0)) {
+  if (gloo_ctx_ != nullptr) {
+    auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
+    PADDLE_ENFORCE_EQ(gloo_ptr->IsInitialized(), true,
+                      paddle::platform::errors::Unavailable(
+                          "Gloo context is not initialized."));
 
     auto src_dev_tensor = src.Get<framework::LoDTensor>();
     auto *dst_dev_tensor = dst->GetMutable<framework::LoDTensor>();
     dst_dev_tensor->Resize(src_dev_tensor.dims());
 
-    // step 2.1: NPU Tensor to CPU Tensor
+    // step 2.1: Dev Tensor to CPU Tensor
     std::cout << "/// DEBUG /// step 2.1: Dev Tensor to CPU Tensor... " << std::endl;
     framework::Tensor src_cpu_tensor;
     framework::Tensor dst_cpu_tensor;
@@ -203,21 +205,17 @@ void HeterParallelContext::AllReduceByStream(
     dev_ctx->Wait();
 
     // step 2.2: call gloo->AllReduce between cpus
-    // TODO(liubo48): add back
-    // std::vector<float> send_vector;
-    // framework::TensorToVector<float>(src_cpu_tensor, &send_vector);
-    // auto recv_vector = gloo_ptr->AllReduce<float>(send_vector);
-    // framework::TensorFromVector<float>(recv_vector, &dst_cpu_tensor);
+    std::vector<float> send_vector;
+    framework::TensorToVector<float>(src_cpu_tensor, &send_vector);
+    auto recv_vector = gloo_ptr->AllReduce<float>(send_vector);
+    framework::TensorFromVector<float>(recv_vector, &dst_cpu_tensor);
 
-    // step 2.3: CPU Tensor to NPU tensor
+    // step 2.3: CPU Tensor to Dev tensor
     std::cout << "/// DEBUG /// step 2.3: CPU Tensor to Dev tensor... " << std::endl;
-    // TODO(liubo48): change src_cpu_tensor to dst_cpu_tensor
-    //framework::TensorCopy(dst_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
-    framework::TensorCopy(src_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
+    framework::TensorCopy(dst_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
     dev_ctx->Wait();
 
-    // TODO(liubo48): add back
-    //gloo_ptr->Barrier();
+    gloo_ptr->Barrier();
   }
 
   // step 3: call broadcast within node
