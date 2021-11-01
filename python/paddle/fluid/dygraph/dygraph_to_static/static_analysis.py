@@ -337,6 +337,8 @@ class StaticAnalysisVisitor(object):
             return ret_type
 
         if isinstance(node, gast.AnnAssign):
+            # TODO(0x45f): To determine whether need to support assignment statements
+            # like `self.x: float = 2.1`.
             ret_type = {NodeVarType.type_from_annotation(node.annotation)}
             # if annotation and value(Constant) are diffent type, we use value type
             if node.value:
