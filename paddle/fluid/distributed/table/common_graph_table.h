@@ -250,7 +250,7 @@ class ScaledLRU {
       while (true) {
         {
           std::unique_lock<std::mutex> lock(mutex_);
-          cv_.wait_for(lock, std::chrono::milliseconds(1));
+          cv_.wait_for(lock, std::chrono::milliseconds(3000));
           if (stop) {
             return;
           }
