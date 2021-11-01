@@ -84,7 +84,7 @@ struct FastDivMod {
  */
 template <int kDims>
 struct BroadcastConfig {
-  FastDivMod divmoders[kDims];
+  FastDivMod divmoders[framework::DDim::kMaxRank];
   uint32_t strides[framework::DDim::kMaxRank];
   HOSTDEVICE BroadcastConfig() {}
 
