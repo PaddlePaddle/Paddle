@@ -142,12 +142,10 @@ def init_parallel_env():
     # 1. Check backend
     backend = os.getenv("PADDLE_DISTRI_BACKEND", "auto")
     # NOTE(liubo48): this new env should be set/detect in distributed.launch.
-    nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "2"))
+    nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "1"))
     print("### DEBUG ### backend is: ", backend)
     is_cpu_only = _is_cpuonly(backend)
-    #enable_gloo = is_cpu_only or (backend == "heter")
-    # NOTE(liubo48): fix enable_gloo to false for testing multi-npus mix training (no enough cards)
-    enable_gloo = False
+    enable_gloo = is_cpu_only or (backend == "heter")
 
     # 2. Check device
     if not (is_cpu_only or core.is_compiled_with_cuda() or

@@ -296,9 +296,6 @@ def launch_collective(args):
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
-    # NOTE(liubo48): add gloo ifname selection for local and remote communication.
-    global_envs["PADDLE_GLOO_IFNAME"] = str(
-        os.getenv("PADDLE_GLOO_IFNAME", "lo"))
     # NOTE(liubo48): add whitelist disable env to fix hcclGetRootInfo failure.
     global_envs["HCCL_WHITELIST_DISABLE"] = "1"
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend

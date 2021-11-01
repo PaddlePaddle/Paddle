@@ -37,11 +37,13 @@ void GLOOParallelContext::Init() {
   gloo_wrapper->SetSize(strategy_.nranks_);
   gloo_wrapper->SetRank(strategy_.local_rank_);
   gloo_wrapper->SetPrefix("");
-  auto *env_ifname = std::getenv("PADDLE_GLOO_IFNAME");
-  if (env_ifname == nullptr) {
-    PADDLE_THROW(platform::errors::Unavailable("Gloo ifname was not set."));
-  }
-  gloo_wrapper->SetIface(std::string(env_ifname));
+  // NOTE(liubo48): There are two scenarioes for gloo context initialization.
+  // For single machine case, the iface can be set to "lo", while in multi-node
+  // case, the iface need to be detected and set manually by the end user.
+  // Actually in the gloo implementation, it can get the ip of each node by
+  // hostname automatically. Refer to below link,
+  // https://discuss.pytorch.org/t/strange-behaviour-of-gloo-tcp-transport/66651
+  gloo_wrapper->SetIface("");
   auto addr = paddle::string::Split(strategy_.trainer_endpoints_[0], ':');
   VLOG(4) << "Server is" << strategy_.trainer_endpoints_[0];
   std::string host = addr[0];
