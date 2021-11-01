@@ -229,7 +229,7 @@ void build_op_func_list(const platform::Place& place,
 
   size_t ops_index = 0;
   for (auto& op : global_block.AllOps()) {
-    VLOG(3) << "Build OpFuncNode from : " << op->Type();
+    VLOG(6) << "Build OpFuncNode from : " << op->Type();
 
     auto op_base = ops[ops_index++];
     auto inputs_names = op->Inputs();
@@ -435,7 +435,7 @@ void build_op_func_list(const platform::Place& place,
         continue;
       }
 
-      VLOG(2) << "Erase variable " << var_name;
+      VLOG(6) << "Erase variable " << var_name;
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
