@@ -22,8 +22,23 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 import numpy as np
 
+def mha_seq_data_prep(seq_data_info, seq_data_cache_key):
+    helper = LayerHelper('mha_seq_data_prep', **locals())
 
-def multi_head_attn(q, k, v, weight, meta_data, seq_data_info):
+    inputs = {
+        'QKVO_seqlen': seq_data_info.qo_kv_seqlen,
+        'lo_hi_windows': seq_data_info.low_hi_win_idx
+    }
+
+    attrs = {
+        'cache_key': seq_data_cache_key
+    }
+
+    helper.append_op(
+        type='mha_seq_data_prep', inputs=inputs, attrs=attrs)
+
+
+def multi_head_attn(q, k, v, weight, meta_data, seq_data_info, seq_data_cache_key=None):
 
     # if in_dygraph_mode():
     #     pre_bias = _varbase_creator(dtype=x.dtype)
@@ -48,20 +63,11 @@ def multi_head_attn(q, k, v, weight, meta_data, seq_data_info):
         'K': k,
         'V': v,
         'W': weight,
-        'QO_Seqlen': seq_data_info.qo_seqlen_tensor,
-        'KV_Seqlen': seq_data_info.kv_seqlen_tensor,
-        'QO_Seqlen_host': seq_data_info.qo_seqlen,
-        'KV_Seqlen_host': seq_data_info.kv_seqlen,
-        'low_windows':seq_data_info.low_win_idx,
-        'high_windows':seq_data_info.hi_win_idx
+        'QO_KV_Seqlen': seq_data_info.qo_kv_seqlen,
     }
 
     attrs = {
         'cache_key': weight.name,
-        # 'attn_QO_Seqlen': seq_data_info.qo_seqlen,
-        # 'attn_KV_Seqlen': seq_data_info.kv_seqlen,
-        # 'attn_low_windows': seq_data_info.low_win_idx,
-        # 'attn_high_windows': seq_data_info.hi_win_idx,
         'attn_dropout_rate': meta_data.dropout_rate,
         'attn_heads': meta_data.nheads,
         'attn_sm_scaler': meta_data.sm_scaler,
@@ -74,6 +80,9 @@ def multi_head_attn(q, k, v, weight, meta_data, seq_data_info):
         'attn_max_kv_seq_len': seq_data_info.max_seq_len,
         'attn_beam_size': 1
     }
+
+    if seq_data_cache_key is not None:
+        attrs.update({'seq_data_key':seq_data_cache_key})
 
     output = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

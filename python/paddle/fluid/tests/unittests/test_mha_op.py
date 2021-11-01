@@ -147,20 +147,11 @@ class TestMHAOpFP16(OpTest):
             'K': K,
             'V': V,
             'W': W,
-            'QO_Seqlen': qo_slen,
-            'KV_Seqlen': kv_slen,
-            'QO_Seqlen_host': qo_slen,
-            'KV_Seqlen_host': kv_slen,
-            'low_windows': lo_win,
-            'high_windows': hi_win,
+            'QO_KV_Seqlen': np.concatenate((qo_slen,kv_slen))
         }
 
         self.attrs = {
             'cache_key': str(id(type(self))),
-            # 'attn_QO_Seqlen': qo_slen,
-            # 'attn_KV_Seqlen': kv_slen,
-            # 'attn_low_windows': lo_win,
-            # 'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
             'attn_heads': nheads,
             'attn_sm_scaler': 1.,
@@ -251,20 +242,11 @@ class TestMHAOpPadVarLenFP16(OpTest):
             'K': K,
             'V': V,
             'W': W,
-            'QO_Seqlen': qo_slen,
-            'KV_Seqlen': kv_slen,
-            'QO_Seqlen_host': qo_slen,
-            'KV_Seqlen_host': kv_slen,
-            'low_windows': lo_win,
-            'high_windows': hi_win,
+            'QO_KV_Seqlen': np.concatenate((qo_slen,kv_slen))
         }
 
         self.attrs = {
             'cache_key': str(id(type(self))),
-            # 'attn_QO_Seqlen': qo_slen,
-            # 'attn_KV_Seqlen': kv_slen,
-            # 'attn_low_windows': lo_win,
-            # 'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
             'attn_heads': nheads,
             'attn_sm_scaler': 1.,
@@ -363,24 +345,12 @@ class TestMHAOpVarLenFP16(OpTest):
             'K': K,
             'V': V,
             'W': W,
-            'QO_Seqlen': qo_slens,
-            'KV_Seqlen': kv_slens,
-            'QO_Seqlen_host': qo_slens,
-            'KV_Seqlen_host': kv_slens,
-            'low_windows': lo_win,
-            'high_windows': hi_win,
+            'QO_KV_Seqlen': np.concatenate((qo_slens, kv_slens)),
+            'low_high_windows': np.concatenate((lo_win, hi_win))
         }
 
-        # TODO(Ming Huang): Is is a work around for 1 batch size. 
-        # due to attribute cannot be get as std::vector when list lenght==1
-        # qo_slens_host = [*qo_slens, 0]
-        # kv_slens_host = [*kv_slens, 0]
         self.attrs = {
             'cache_key': str(id(type(self))),
-            # 'attn_QO_Seqlen': qo_slens_host,
-            # 'attn_KV_Seqlen': kv_slens_host,
-            # 'attn_low_windows': lo_win,
-            # 'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
             'attn_heads': nheads,
             'attn_sm_scaler': 1.,

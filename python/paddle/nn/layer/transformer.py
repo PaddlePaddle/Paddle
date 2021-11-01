@@ -108,41 +108,35 @@ def _convert_attention_mask(attn_mask, dtype):
 
 
 class CUDNNSeqInfo:
-    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
-                 kv_seqlen, qo_seqlen_tensor, kv_seqlen_tensor):
+    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen):
         self.max_seq_len = max_seq_len
-        self.low_win_idx = low_win_idx
-        self.hi_win_idx = hi_win_idx
-        self.qo_seqlen = qo_seqlen
-        self.kv_seqlen = kv_seqlen
-        self.qo_seqlen_tensor = qo_seqlen_tensor
-        self.kv_seqlen_tensor = kv_seqlen_tensor
-        # self.qo_seqlen_tensor = paddle.to_tensor(qo_seqlen_tensor, place=paddle.CUDAPlace(0))
-        # self.kv_seqlen_tensor = paddle.to_tensor(kv_seqlen_tensor, place=paddle.CUDAPlace(0))
+        self.low_hi_win_idx = paddle.concat([low_win_idx, hi_win_idx], axis=0)
+        self.qo_kv_seqlen = paddle.concat([qo_seqlen, kv_seqlen], axis=0)
 
 
 class CUDNNSeqInfoInfer(Layer):
-    def __init__(self):
+
+    id = 0
+
+    def __init__(self, enable_cache=True):
         super(CUDNNSeqInfoInfer, self).__init__()
+        self.enable_cache = enable_cache
+        self.id = "{}_{}".format(CUDNNSeqInfoInfer.__name__, CUDNNSeqInfoInfer.id)
+        CUDNNSeqInfoInfer.id += 1
 
     def forward(self, attention_mask):
-        # place = paddle.CPUPlace()
         max_seq_len = attention_mask.shape[1]
-        # low_win_idx = paddle.to_tensor(paddle.zeros((max_seq_len, ), dtype='int32'), place=place)
-        # hi_win_idx = paddle.to_tensor(paddle.full((max_seq_len, ), max_seq_len, dtype='int32'), place=place)
-        # qo_seqlen = paddle.to_tensor(paddle.sum(attention_mask == 1, axis=1, dtype='int32'), place=place)
-        # kv_seqlen = qo_seqlen
         low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
         hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
-        qo_seqlen_tensor = paddle.sum(attention_mask == 1,
+        qo_seqlen = paddle.sum(attention_mask == 1,
                                       axis=1,
                                       dtype='int32')
-        kv_seqlen_tensor = qo_seqlen_tensor
-        qo_seqlen = qo_seqlen_tensor
-        kv_seqlen = kv_seqlen_tensor
-
-        return CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
-                            kv_seqlen, qo_seqlen_tensor, kv_seqlen_tensor)
+        kv_seqlen = qo_seqlen
+        
+        seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen)
+        if self.enable_cache:
+            F.mha_seq_data_prep(seq_info, self.id)
+        return seq_info
 
 
 class CUDNNMHAMetaData:
@@ -174,6 +168,7 @@ class CUDNNMultiHeadAttention(Layer):
                  dropout=0.,
                  weight_attr=None,
                  name=None,
+                 seq_data_infer=None,
                  add_to_asp=True):
         super(CUDNNMultiHeadAttention, self).__init__()
 
@@ -192,6 +187,10 @@ class CUDNNMultiHeadAttention(Layer):
 
         self.name = name
 
+        self.seq_data_cache_key = None
+        if seq_data_infer is not None:
+            self.seq_data_cache_key = seq_data_infer.id
+
         if add_to_asp:
             from paddle.fluid.contrib.sparsity import add_supported_layer
             add_supported_layer(
@@ -201,7 +200,7 @@ class CUDNNMultiHeadAttention(Layer):
 
     def forward(self, query, key, value, seq_data_info):
         return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
-                                 seq_data_info)
+                                 seq_data_info, self.seq_data_cache_key)
 
     def state_dict(self,
                    destination=None,
@@ -242,32 +241,8 @@ class CUDNNMultiHeadAttention(Layer):
             self.meta_data.hidden_size, self._dtype, name_str)
 
     def _split_W_into_WQKVO(self):
-
-        # import paddle.fluid.framework.ParamBase as ParamBase
-        # import copy
         param_shape = (self._embed_dim, self._embed_dim)
-        # state = copy.deepcopy(self.__dict__, memo)
-        # # state["name"] = self.name + unique_name.generate("_deepcopy")
-        # WQ_P = ParamBase(param_shape, self._dtype, **state)
-        # WQ_B = ParamBase(self._embed_dim, self._dtype, **state)
-        # WK_P = ParamBase(param_shape, self._dtype, **state)
-        # WK_B = ParamBase(self._embed_dim, self._dtype, **state)
-        # WV_P = ParamBase(param_shape, self._dtype, **state)
-        # WV_B = ParamBase(self._embed_dim, self._dtype, **state)
-        # WO_P = ParamBase(param_shape, self._dtype, **state)
-        # WO_B = ParamBase(self._embed_dim, self._dtype, **state)
-
         stride = self._embed_dim * self._embed_dim
-        # WQ_P.set_value(self.weight[:stride].reshape(param_shape))
-        # WK_P.set_value(self.weight[stride:2*stride].reshape(param_shape))
-        # WV_P.set_value(self.weight[2*stride:3*stride].reshape(param_shape))
-        # WO_P.set_value(self.weight[3*stride:].reshape(param_shape))
-
-        # WQ_B.set_value(np.zeros(self._embed_dim))
-        # WK_B.set_value(np.zeros(self._embed_dim))
-        # WV_B.set_value(np.zeros(self._embed_dim))
-        # WO_B.set_value(np.zeros(self._embed_dim))
-
         WQ_P = self.weight[:stride].reshape(param_shape)
         WK_P = self.weight[stride:2 * stride].reshape(param_shape)
         WV_P = self.weight[2 * stride:3 * stride].reshape(param_shape)
@@ -283,14 +258,6 @@ class CUDNNMultiHeadAttention(Layer):
     def _merge_WQKVO_to_W(self, WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
         W = np.concatenate(
             [WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten()])
-        # W = np.concatenate([WQ_P.flatten(),
-        #                     WQ_B.flatten(),
-        #                     WK_P.flatten(),
-        #                     WK_B.flatten(),
-        #                     WV_P.flatten(),
-        #                     WV_B.flatten(),
-        #                     WO_P.flatten(),
-        #                     WO_B.flatten()])
         return W
 
     @staticmethod
