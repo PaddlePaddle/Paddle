@@ -128,9 +128,12 @@ class FetchV2Kernel {
     if (fetch_var->IsType<framework::LoDTensor>()) {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
       auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item.place()), true,
-                        platform::errors::InvalidArgument(
-                            "Tensor's place of input(X) must be CPUPlace."));
+      bool check_place = platform::is_cpu_place(src_item.place()) ||
+                         platform::is_cuda_pinned_place(src_item.place());
+      PADDLE_ENFORCE_EQ(
+          check_place, true,
+          platform::errors::InvalidArgument("Tensor's place of input(X) must "
+                                            "be CPUPlace or CUDAPinnedPlace."));
       if (deepcopy) {
         DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
@@ -188,8 +191,11 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
-                               ops::FetchV2Kernel, int, ops::FetchV2Kernel,
-                               int64_t, ops::FetchV2Kernel, bool,
-                               ops::FetchV2Kernel, plat::float16,
-                               ops::FetchV2Kernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(
+    fetch_v2, float, ops::FetchV2Kernel, double, ops::FetchV2Kernel, int8_t,
+    ops::FetchV2Kernel, uint8_t, ops::FetchV2Kernel, int, ops::FetchV2Kernel,
+    int64_t, ops::FetchV2Kernel, bool, ops::FetchV2Kernel,
+    paddle::platform::bfloat16, ops::FetchV2Kernel,
+    paddle::platform::complex<float>, ops::FetchV2Kernel,
+    paddle::platform::complex<double>, ops::FetchV2Kernel, plat::float16,
+    ops::FetchV2Kernel, int16_t, ops::FetchV2Kernel);
