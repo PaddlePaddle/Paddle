@@ -238,13 +238,14 @@ void InterpreterCore::BuildInplace() {
     auto& outputs = instr.Outputs();
     for (auto& pair : in_to_outs) {
       auto iter = inputs.find(pair.first);
-      if (iter != inputs.end()) {
+      if (iter != inputs.end() && !iter->second.empty()) {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
-          if (iterout != outputs.end()) {
+          if (iterout != outputs.end() && !iterout->second.empty()) {
             auto invar = global_scope_->Var(iter->second[0]);
             auto outvar = global_scope_->Var(iterout->second[0]);
-            if (invar && outvar) {
+            if (invar && outvar && invar->IsType<LoDTensor>() &&
+                outvar->IsType<LoDTensor>()) {
               instr.AddInplace(invar, outvar);
               VLOG(3) << "inplace " << op_base->Type() << " "
                       << global_scope_->VarDesc(iter->second[0])->Name()

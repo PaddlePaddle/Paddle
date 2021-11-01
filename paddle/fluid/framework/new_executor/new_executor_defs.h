@@ -474,6 +474,15 @@ struct VariableMetaInfo {
 // TODO(Aurelius84): Consider inherit ScopeBase to unify interface.
 class VariableScope {
  public:
+  VariableScope() {
+    // for @EMPTY@ variable
+    var_list_.push_back(nullptr);
+    name2id_[kEmptyVarName] = 0;
+    VariableMetaInfo info;
+    info.var_ref_count_ = 0;
+    info.vardesc_ = nullptr;
+    vec_meta_info_.push_back(info);
+  }
   Variable* FindVar(const std::string& name) const {
     if (!HasVar(name)) {
       return nullptr;
