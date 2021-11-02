@@ -66,7 +66,7 @@ INSTANTIATION(EigenSlice, int64_t);
 INSTANTIATION(EigenSlice, float);
 INSTANTIATION(EigenSlice, double);
 INSTANTIATION(EigenSlice, platform::float16);
-INSTANTIATION(EigenSlice, platform::bfloat16);
+INSTANTIATION(EigenSlice, Eigen::bfloat16);
 INSTANTIATION(EigenSlice, platform::complex<float>);
 INSTANTIATION(EigenSlice, platform::complex<double>);
 #undef INSTANTIATION

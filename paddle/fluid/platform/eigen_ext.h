@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/bfloat16.h"
+// #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -27,38 +27,39 @@ using float16 = paddle::platform::float16;
 template <typename T>
 using complex = paddle::platform::complex<T>;
 
-template <typename T>
-struct NumTraits;
+// template <typename T>
+// struct NumTraits;
 
-template <>
-struct NumTraits<paddle::platform::bfloat16>
-    : GenericNumTraits<paddle::platform::bfloat16> {
-  enum {
-    IsSigned = true,
-    IsInteger = false,
-    IsComplex = false,
-    RequireInitialization = false
-  };
+// template <>
+// struct NumTraits<paddle::platform::bfloat16>
+//     : GenericNumTraits<paddle::platform::bfloat16> {
+//   enum {
+//     IsSigned = true,
+//     IsInteger = false,
+//     IsComplex = false,
+//     RequireInitialization = false
+//   };
 
-  HOSTDEVICE static inline paddle::platform::bfloat16 epsilon() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x3400);
-  }
-  HOSTDEVICE static inline paddle::platform::bfloat16 dummy_precision() {
-    return paddle::platform::bfloat16(1e-5f);
-  }
-  HOSTDEVICE static inline paddle::platform::bfloat16 highest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f7f);
-  }
-  HOSTDEVICE static inline paddle::platform::bfloat16 lowest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xff7f);
-  }
-  HOSTDEVICE static inline paddle::platform::bfloat16 infinity() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f80);
-  }
-  HOSTDEVICE static inline paddle::platform::bfloat16 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
-  }
-};
+//   HOSTDEVICE static inline paddle::platform::bfloat16 epsilon() {
+//     return paddle::platform::raw_uint16_to_bfloat16(0x3400);
+//   }
+
+// HOSTDEVICE static inline paddle::platform::bfloat16 dummy_precision() {
+//   return paddle::platform::bfloat16(1e-5f);
+// }
+//   HOSTDEVICE static inline paddle::platform::bfloat16 highest() {
+//     return paddle::platform::raw_uint16_to_bfloat16(0x7f7f);
+//   }
+//   HOSTDEVICE static inline paddle::platform::bfloat16 lowest() {
+//     return paddle::platform::raw_uint16_to_bfloat16(0xff7f);
+//   }
+//   HOSTDEVICE static inline paddle::platform::bfloat16 infinity() {
+//     return paddle::platform::raw_uint16_to_bfloat16(0x7f80);
+//   }
+//   HOSTDEVICE static inline paddle::platform::bfloat16 quiet_NaN() {
+//     return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
+//   }
+// };
 
 template <>
 struct NumTraits<complex<float>> : GenericNumTraits<std::complex<float>> {
@@ -135,97 +136,97 @@ namespace numext {
 
 //////////// bfloat methods /////////////
 
+// template <>
+// HOSTDEVICE inline bool(isnan)(const paddle::platform::bfloat16& a) {
+//   return (paddle::platform::isnan)(a);
+// }
+
+// template <>
+// HOSTDEVICE inline bool(isinf)(const paddle::platform::bfloat16& a) {
+//   return (paddle::platform::isinf)(a);
+// }
+
+// template <>
+// HOSTDEVICE inline bool(isfinite)(const paddle::platform::bfloat16& a) {
+//   return (paddle::platform::isfinite)(a);
+// }
+
 template <>
-HOSTDEVICE inline bool(isnan)(const paddle::platform::bfloat16& a) {
-  return (paddle::platform::isnan)(a);
+HOSTDEVICE inline bfloat16 exp(
+    const bfloat16& a) {
+  return bfloat16(::expf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline bool(isinf)(const paddle::platform::bfloat16& a) {
-  return (paddle::platform::isinf)(a);
+HOSTDEVICE inline bfloat16 expm1(
+    const bfloat16& a) {
+  return bfloat16(::expm1f(static_cast<float>(a)));
+}
+
+// template <>
+// HOSTDEVICE inline bfloat16 erf(
+//     const bfloat16& a) {
+//   return bfloat16(::erff(static_cast<float>(a)));
+// }
+
+template <>
+HOSTDEVICE inline bfloat16 log(
+    const bfloat16& a) {
+  return bfloat16(::logf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline bool(isfinite)(const paddle::platform::bfloat16& a) {
-  return (paddle::platform::isfinite)(a);
+HOSTDEVICE inline bfloat16 tanh(
+    const bfloat16& a) {
+  return bfloat16(::tanhf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 exp(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::expf(static_cast<float>(a)));
+HOSTDEVICE inline bfloat16 sqrt(
+    const bfloat16& a) {
+  return bfloat16(::sqrtf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 expm1(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::expm1f(static_cast<float>(a)));
+HOSTDEVICE inline bfloat16 ceil(
+    const bfloat16& a) {
+  return bfloat16(::ceilf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 erf(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::erff(static_cast<float>(a)));
+HOSTDEVICE inline bfloat16 floor(
+    const bfloat16& a) {
+  return bfloat16(::floorf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 log(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::logf(static_cast<float>(a)));
+HOSTDEVICE inline bfloat16 round(
+    const bfloat16& a) {
+  return bfloat16(::roundf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 tanh(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::tanhf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline paddle::platform::bfloat16 sqrt(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::sqrtf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline paddle::platform::bfloat16 ceil(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::ceilf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline paddle::platform::bfloat16 floor(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::floorf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline paddle::platform::bfloat16 round(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::roundf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline paddle::platform::bfloat16 pow(
-    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
-  return paddle::platform::bfloat16(
+HOSTDEVICE inline bfloat16 pow(
+    const bfloat16& a, const bfloat16& b) {
+  return bfloat16(
       ::powf(static_cast<float>(a), static_cast<float>(b)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 abs(
-    const paddle::platform::bfloat16& a) {
-  return paddle::platform::bfloat16(::fabs(static_cast<float>(a)));
+HOSTDEVICE inline bfloat16 abs(
+    const bfloat16& a) {
+  return bfloat16(::fabs(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 mini(
-    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
+HOSTDEVICE inline bfloat16 mini(
+    const bfloat16& a, const bfloat16& b) {
   return b < a ? b : a;
 }
 
 template <>
-HOSTDEVICE inline paddle::platform::bfloat16 maxi(
-    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
+HOSTDEVICE inline bfloat16 maxi(
+    const bfloat16& a, const bfloat16& b) {
   return a < b ? b : a;
 }
 
