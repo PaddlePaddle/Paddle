@@ -2293,11 +2293,11 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, Avin0323 16167147
+    # Xreki 12538138, luotao1 6836917, Avin0323 23427135
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
-        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 16167147 12538138 6836917)
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 23427135 12538138 6836917)
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
             echo "==================================="
@@ -2385,6 +2385,25 @@ function find_temporary_files() {
     then
 	echo ${result}
 	exit 65
+    fi
+}
+
+function trt_convert_test() {
+    set +e
+    cd ${PADDLE_ROOT}
+    result_num=0
+    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python
+    for file_name in `find python/ -name 'test_trt_convert*'`;do
+        echo "----- test trt ut: $file_name -----"
+        python $file_name
+        res=$?
+        if [ "$res" != "0" ];then
+            echo "$file_name convert test failed " >&2
+            result_num=11
+        fi
+    done
+    if [ "$result_num" != "0" ];then
+        exit 11
     fi
 }
 
@@ -2655,6 +2674,10 @@ function main() {
         ;;
       test_model_benchmark)
         test_model_benchmark
+        ;;
+      trt_convert_test)
+        # only test trt convert.
+        trt_convert_test
         ;;
       *)
         print_usage

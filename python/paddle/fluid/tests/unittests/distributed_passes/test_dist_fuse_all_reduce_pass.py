@@ -39,11 +39,8 @@ class TestFuseAllReducePass(DistPassTestBase):
         with open('program_{}_fused.txt'.format(rank), "w") as f:
             f.write(str(main_prog))
 
-    # def test_bs_32(self):
-    #    self.check_main(batch_size=32)
-
-    def test_bs_4(self):
-        self.check_main(batch_size=4)
+    def test_bs_32(self):
+        self.check_main(batch_size=32)
 
     def get_model(self, place, batch_size):
         print('batch_size = {}'.format(batch_size))
