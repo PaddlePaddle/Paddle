@@ -45,6 +45,16 @@ from .resnext import resnext152_32x4d  # noqa: F401
 from .resnext import resnext152_64x4d  # noqa: F401
 from .inceptionv3 import InceptionV3  # noqa: F401
 from .inceptionv3 import inception_v3  # noqa: F401
+from .googlenet import GoogLeNet  # noqa: F401
+from .googlenet import googlenet  # noqa: F401
+from .shufflenetv2 import ShuffleNetV2  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x0_25  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x0_33  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x0_5  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x1_0  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x1_5  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x2_0  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_swish  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -79,5 +89,15 @@ __all__ = [ #noqa
     'resnext152_32x4d',
     'resnext152_64x4d',
     'InceptionV3',
-    'inception_v3'
+    'inception_v3',
+    'GoogLeNet',
+    'googlenet',
+    'ShuffleNetV2',
+    'shufflenet_v2_x0_25',
+    'shufflenet_v2_x0_33',
+    'shufflenet_v2_x0_5',
+    'shufflenet_v2_x1_0',
+    'shufflenet_v2_x1_5',
+    'shufflenet_v2_x2_0',
+    'shufflenet_v2_swish'
 ]

@@ -475,23 +475,25 @@ class ConvMKLDNNHandlerT
     }
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
+    constexpr float scale = 1.0f;
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "relu6") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale,
                                      mkldnn::algorithm::eltwise_bounded_relu,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "swish") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "hard_swish") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(
           scale, mkldnn::algorithm::eltwise_hardswish, fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "hard_sigmoid") {
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_linear,
+                                     fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_clip,
+                                     0.0f, 1.0f);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;

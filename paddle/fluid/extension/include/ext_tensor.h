@@ -16,8 +16,15 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+using gpuStream_t = cudaStream_t;
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+using gpuStream_t = hipStream_t;
 #endif
 
 #include "ext_dll_decl.h"  // NOLINT
@@ -126,11 +133,9 @@ class PD_DLL_DECL Tensor {
   /// \brief Check Tensor is initialized
   bool is_initialized() const;
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /// \bref Get current stream of Tensor
-  cudaStream_t stream() const;
-#elif defined(PADDLE_WITH_HIP)
-  hipStream_t stream() const;
+  gpuStream_t stream() const;
 #endif
 
  private:

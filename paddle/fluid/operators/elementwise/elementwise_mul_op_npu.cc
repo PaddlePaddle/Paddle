@@ -143,8 +143,16 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(elementwise_mul, ops::ElementwiseMulNPUKernel<float>,
-                       ops::ElementwiseMulNPUKernel<paddle::platform::float16>);
+                       ops::ElementwiseMulNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ElementwiseMulNPUKernel<int64_t>,
+#endif
+                       ops::ElementwiseMulNPUKernel<int>);
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_mul_grad, ops::ElementwiseMulGradNPUKernel<float>,
-    ops::ElementwiseMulGradNPUKernel<paddle::platform::float16>);
+    ops::ElementwiseMulGradNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::ElementwiseMulGradNPUKernel<int64_t>,
+#endif
+    ops::ElementwiseMulGradNPUKernel<int>);

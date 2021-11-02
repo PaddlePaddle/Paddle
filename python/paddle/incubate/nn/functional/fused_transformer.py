@@ -194,24 +194,27 @@ def fused_multi_head_attention(x,
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
-    if pre_layer_norm:
-    	out = layer_norm(x);
-        out = linear(out) + qkv)bias
-    else:
-	out = linear(x) + bias;
-    out = transpose(out, perm=[2, 0, 3, 1, 4]);
-    # extract q, k and v from out.
-    q = out[0:1,::]
-    k = out[1:2,::]
-    v = out[2:3,::]
-    out = q * k^t;
-    out = attn_mask + out;
-    out = softmax(out);
-    out = dropout(out);
-    out = out * v;
-    out = transpose(out, perm=[0, 2, 1, 3]);
-    out = out_linear(out);
-    out = layer_norm(x + dropout(linear_bias + out));
+
+    .. code-block:: python
+
+    	if pre_layer_norm:
+    	    out = layer_norm(x)
+            out = linear(out) + qkv) + bias
+    	else:
+	    out = linear(x) + bias
+    	out = transpose(out, perm=[2, 0, 3, 1, 4])
+    	# extract q, k and v from out.
+    	q = out[0:1,::]
+    	k = out[1:2,::]
+    	v = out[2:3,::]
+    	out = q * k^t
+    	out = attn_mask + out
+    	out = softmax(out)
+    	out = dropout(out)
+    	out = out * v
+    	out = transpose(out, perm=[0, 2, 1, 3])
+    	out = out_linear(out)
+    	out = layer_norm(x + dropout(linear_bias + out))
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
@@ -244,6 +247,9 @@ def fused_multi_head_attention(x,
             0 for no dropout. Default 0.5.
         ln_epsilon (float, optional): Small float value added to denominator of layer_norm
             to avoid dividing by zero. Default is 1e-5.
+
+    Returns:
+        Tensor: The output Tensor, the data type and shape is same as `x`.
 
     Examples:
 

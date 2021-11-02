@@ -19,62 +19,32 @@ from ..collective import _new_ring_id
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.layers.tensor import fill_constant
 
-LOGICAL_PROCESS_TO_PHYSICAL_PROCESS_MAP = None
-PROCESSOR_TO_PHYSICAL_PROCESS_MAP = None
-
-
-def get_all_logical_process_set():
-    from .interface import _g_process_mesh_map
-    all_logical_process_set = set(_g_process_mesh_map[0].process_group)
-    return all_logical_process_set
-
-
-def get_logical_process_to_physical_process_map():
-    global LOGICAL_PROCESS_TO_PHYSICAL_PROCESS_MAP
-    return LOGICAL_PROCESS_TO_PHYSICAL_PROCESS_MAP
-
-
-def set_logical_process_to_physical_process_map(mapping):
-    global LOGICAL_PROCESS_TO_PHYSICAL_PROCESS_MAP
-    LOGICAL_PROCESS_TO_PHYSICAL_PROCESS_MAP = mapping
-
-
-def get_processor_to_physical_process_map():
-    global PROCESSOR_TO_PHYSICAL_PROCESS_MAP
-    return PROCESSOR_TO_PHYSICAL_PROCESS_MAP
-
-
-def set_processor_to_physical_process_map(mapping):
-    global PROCESSOR_TO_PHYSICAL_PROCESS_MAP
-    PROCESSOR_TO_PHYSICAL_PROCESS_MAP = mapping
-
-
-PROCESS_GROUP_MAP = {}
+_g_process_group_map = {}
 
 
 def get_all_process_groups():
-    global PROCESS_GROUP_MAP
-    return PROCESS_GROUP_MAP.values()
+    global _g_process_group_map
+    return _g_process_group_map.values()
 
 
 def new_process_group(ranks):
-    global PROCESS_GROUP_MAP
-    if not PROCESS_GROUP_MAP:
+    global _g_process_group_map
+    if not _g_process_group_map:
         genv = _get_global_env()
-        PROCESS_GROUP_MAP["global_group"] = ProcessGroup(
+        _g_process_group_map["global_group"] = ProcessGroup(
             0, list(range(genv.world_size)))
     # A key constructed from ranks is used in the global process group map
     key = ''.join(map(str, sorted(ranks)))
-    if key not in PROCESS_GROUP_MAP:
-        num_groups = len(PROCESS_GROUP_MAP)
+    if key not in _g_process_group_map:
+        num_groups = len(_g_process_group_map)
         # Note: our process group may interfere with the original implementation
         # so the created group id should start from the original _new_ring_id()
         group_id = _new_ring_id() + num_groups + 1
         pg = ProcessGroup(group_id, ranks)
-        PROCESS_GROUP_MAP[key] = pg
+        _g_process_group_map[key] = pg
         return pg
     else:
-        pg = PROCESS_GROUP_MAP[key]
+        pg = _g_process_group_map[key]
         return pg
 
 
