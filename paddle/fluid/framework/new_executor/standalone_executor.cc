@@ -29,14 +29,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   // init scope
   BuildVariableOuterScope(startup_prog, &global_scope_, scope);
 
-  auto& global_block = main_prog.Block(0);
   if (outer_scope_ != nullptr) {
     auto name_list = outer_scope_->LocalVarNames();
     for (auto name : name_list) {
       auto v = outer_scope_->Var(name);
       if (!global_scope_.HasVar(name)) {
         global_scope_.AddVar(name, *v);
-        global_scope_.SetVarDescByName(name, global_block.FindVar(name));
       }
     }
   }
