@@ -100,6 +100,7 @@ from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
+from .layer.loss import AdaptiveLogSoftmaxWithLoss # noqa: F401
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
