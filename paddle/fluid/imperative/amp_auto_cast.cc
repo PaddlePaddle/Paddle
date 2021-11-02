@@ -261,6 +261,10 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
     dst_type = framework::proto::VarType::FP32;
   }
   for (auto& pair : new_ins) {
+    if (op_type == "run_program") {
+      continue;
+    }
+
     if ((op_type == "batch_norm" || op_type == "layer_norm" ||
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
