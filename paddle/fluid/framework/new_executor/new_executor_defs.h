@@ -480,8 +480,16 @@ struct VariableMetaInfo {
 //                   access machanism.
 class VariableScope : public ScopeBase {
  public:
-  VariableScope() { scope_ptr_.reset(new Scope()); }
-
+  VariableScope() {
+    // for @EMPTY@ variable
+    var_list_.push_back(nullptr);
+    name2id_[kEmptyVarName] = 0;
+    VariableMetaInfo info;
+    info.var_ref_count_ = 0;
+    info.vardesc_ = nullptr;
+    vec_meta_info_.push_back(info);
+    scope_ptr_.reset(new Scope());
+  }
   const Scope* GetScope() const { return scope_ptr_.get(); }
 
   Variable* FindVar(const std::string& name) const {
