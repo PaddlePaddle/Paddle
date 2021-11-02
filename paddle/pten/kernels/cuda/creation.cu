@@ -27,6 +27,13 @@ void FillAnyLike(const CUDAContext& dev_ctx,
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<float>());
 }
 
+template <typename T>
+void FillConstant(const CUDAContext& dev_ctx,
+                  const Scalar& val,
+                  DenseTensor* out) {
+  eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
+}
+
 }  // namespace pten
 
 PT_REGISTER_MODULE(CreationCUDA);
@@ -41,3 +48,21 @@ PT_REGISTER_KERNEL("fill_any_like",
                    int64_t,
                    bool,
                    paddle::platform::float16) {}
+
+/*
+PT_REGISTER_KERNEL("fill_constant.Scalar",
+                   CUDA,
+                   ANY,
+                   pt::FillConstant,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
+*/

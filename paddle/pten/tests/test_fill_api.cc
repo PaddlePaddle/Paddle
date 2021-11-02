@@ -132,3 +132,29 @@ TEST(API, ones_like) {
     ASSERT_EQ(actual_result[i], 1);
   }
 }
+
+TEST(API, full) {
+  // 1. create tensor
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+
+  float val = 1.0;
+
+  // 2. test API
+  auto out = paddle::experimental::full({3, 2}, val, pten::DataType::FLOAT32);
+
+  // 3. check result
+  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.initialized(), true);
+
+  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto* actual_result = dense_out->data<float>();
+  for (auto i = 0; i < 6; i++) {
+    ASSERT_NEAR(actual_result[i], val, 1e-6f);
+  }
+}

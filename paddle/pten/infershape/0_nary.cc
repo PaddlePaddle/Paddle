@@ -12,9 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-// See Note: [ How do we organize the kernel directory ]
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infershape/0_nary.h"
-#include "paddle/pten/infershape/binary.h"
-#include "paddle/pten/infershape/unary.h"
+
+namespace pten {
+
+DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
+                               DataType dtype,
+                               DataLayout layout) {
+  const auto& out_dims = paddle::framework::make_ddim(shape);
+  return {dtype, out_dims, layout};
+}
+
+}  // namespace pten
