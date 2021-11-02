@@ -74,8 +74,8 @@ class TileXPUKernel : public framework::OpKernel<T> {
             "The rank (%d) of the input 'x' and the rank (%d) of the input "
             "'repeat_times' for tile op must match after promotion.",
             vec_in_dims.size(), repeat_times.size()));
-    auto* out0 = context.Output<framework::Tensor>("Out");
 
+    auto* out0 = context.Output<framework::Tensor>("Out");
     framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
     framework::DDim out_dims(new_in_dims);
 
