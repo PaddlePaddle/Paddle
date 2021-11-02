@@ -19,7 +19,6 @@ from typing import Type, Any, Callable, Union, List, Optional
 import paddle
 import paddle.nn as nn
 from paddle import Tensor
-
 from paddle.utils.download import get_weights_path_from_url
 
 __all__ = []
@@ -35,11 +34,6 @@ model_urls = {
                   '02f35f034ca3858e1e54d4036443c92d'),
     'resnet152': ('https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
                   '7ad16a2f1e7333859ff986138630fd7a'),
-    # # copied from python/paddle/vision/models/resnext.py, Wrong !!!
-    # # some weights are not found
-    # 'resnext50_32x4d': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ResNeXt50_32x4d_pretrained.pdparams',
-    #                     'bf04add2f7fd22efcbe91511bcd1eebe'),
-
 }
 
 
@@ -104,12 +98,13 @@ class BasicBlock(nn.Layer):
 
 
 class BottleneckBlock(nn.Layer):
-    # Bottleneck places the stride for downsampling at 3x3 convolution(self.conv2)
-    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
-    # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
-    # This variant is also known as ResNet V1.5 and improves accuracy according to
-    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
-
+    """
+    BottleneckBlock places the stride for downsampling at 3x3 convolution(self.conv2)
+    while original implementation places the stride at the first 1x1 convolution(self.conv1)
+    according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
+    This variant is also known as ResNet V1.5 and improves accuracy according to
+    https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
+    """
     expansion: int = 4
 
     def __init__(
@@ -240,7 +235,6 @@ class ResNet(nn.Layer):
                                        dilate=replace_stride_with_dilation[2])
         if with_pool:
             self.avgpool = nn.AdaptiveAvgPool2D((1, 1))
-
         if num_classes > 0:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -288,6 +282,7 @@ class ResNet(nn.Layer):
 
         return x
 
+
 def _resnet(
     arch: str,
     block: Type[Union[BasicBlock, BottleneckBlock]],
@@ -300,8 +295,7 @@ def _resnet(
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
         weights_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
-
+                                                 model_urls[arch][1])
         param = paddle.load(weights_path)
         model.set_dict(param)
 
@@ -413,30 +407,6 @@ def resnet152(pretrained: bool = False, **kwargs: Any) -> ResNet:
     return _resnet('resnet152', BottleneckBlock, 152, pretrained, **kwargs)
 
 
-# def resnext50_32x4d(pretrained: bool = False, **kwargs: Any) -> ResNet:
-#     r"""ResNeXt-50 32x4d model from
-#     `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-#
-#     Args:
-#         pretrained (bool): If True, returns a model pre-trained on ImageNet
-#     """
-#     kwargs['groups'] = 32
-#     kwargs['width_per_group'] = 4
-#     return _resnet('resnext50_32x4d', BottleneckBlock, 50, pretrained, **kwargs)
-#
-#
-# def resnext101_32x8d(pretrained: bool = False, **kwargs: Any) -> ResNet:
-#     r"""ResNeXt-101 32x8d model from
-#     `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-#
-#     Args:
-#         pretrained (bool): If True, returns a model pre-trained on ImageNet
-#     """
-#     kwargs['groups'] = 32
-#     kwargs['width_per_group'] = 8
-#     return _resnet('resnext101_32x8d', BottleneckBlock, 101, pretrained, **kwargs)
-
-
 def wide_resnet50_2(pretrained: bool = False, **kwargs: Any) -> ResNet:
     r"""Wide ResNet-50-2 model from
     `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_.
@@ -467,21 +437,3 @@ def wide_resnet101_2(pretrained: bool = False, **kwargs: Any) -> ResNet:
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet101_2', BottleneckBlock, 101, pretrained, **kwargs)
-
-
-
-#########test
-# if __name__ == '__main__':
-#     import numpy as np
-#     import paddle
-#     from paddle.static import InputSpec
-#     x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
-#
-#     net = wide_resnet50_2()
-#     input = InputSpec([None, 3, 224, 224], 'float32', 'image')
-#     model = paddle.Model(net, input)
-#     model.prepare()
-#
-#     y = model.predict_batch(x)
-#     print(type(y), len(y))
-#     print(type(y[0]), y[0].shape)
