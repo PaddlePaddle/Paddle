@@ -122,6 +122,14 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     key_set.dtype = x.type();
   }
 
+  void operator()(const std::vector<Tensor>& x) {
+    key_set.backend_set =
+        key_set.backend_set | detail::GetTensorBackendSet(x[0]);
+    // TODO(chenweihang): selecte multi layout and dtype
+    key_set.layout = x[0].layout();
+    key_set.dtype = x[0].type();
+  }
+
   // skip other type args, these args don't used in kernel selection
   template <typename T>
   void operator()(const T& x) {
