@@ -65,24 +65,11 @@ class KernelSignatureMap {
  public:
   static KernelSignatureMap& Instance();
 
-  bool Has(const std::string& op_type) const {
-    return map_.find(op_type) != map_.end();
-  }
+  bool Has(const std::string& op_type) const;
 
-  void Emplace(const std::string& op_type, KernelSignature&& signature) {
-    if (!Has(op_type)) {
-      map_.emplace(op_type, signature);
-    }
-  }
+  void Emplace(const std::string& op_type, KernelSignature&& signature);
 
-  const KernelSignature& Get(const std::string& op_type) const {
-    auto it = map_.find(op_type);
-    PADDLE_ENFORCE_NE(
-        it, map_.end(),
-        platform::errors::NotFound(
-            "Operator `%s`'s kernel signature is not registered.", op_type));
-    return it->second;
-  }
+  const KernelSignature& Get(const std::string& op_type) const;
 
  private:
   KernelSignatureMap() = default;
