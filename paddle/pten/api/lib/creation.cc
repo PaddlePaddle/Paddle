@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/hapi/include/creation.h"
+#include "paddle/pten/api/include/creation.h"
 
 #include <memory>
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/api/include/infershape.h"
-#include "paddle/pten/hapi/lib/kernel_dispatch.h"
-#include "paddle/pten/hapi/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/kernel_dispatch.h"
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/infershape.h"
 
 namespace paddle {
 namespace experimental {
