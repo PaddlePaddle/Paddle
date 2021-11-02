@@ -63,21 +63,21 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   program.Proto()->SerializeToString(&graph_key);
   VLOG(4) << "Add a graph into CinnCompiler, which is:\n"
           << ReadableProtoStr(graph_key);
-  if (!graphs_.count(graph_key)) {
-    graphs_[graph_key] = std::move(graph);
-  } else {
-    LOG(WARNING)
-        << "The graph being added is already in CinnCompiler. Its key is:\n"
-        << ReadableProtoStr(graph_key);
-  }
+
+  PADDLE_ENFORCE_EQ(
+      graphs_.count(graph_key), 0,
+      platform::errors::PreconditionNotMet(
+          "The graph to be added is already in CinnCompiler, which is:\n",
+          ReadableProtoStr(graph_key).c_str()));
+  graphs_[graph_key] = std::move(graph);
   return graph_key;
 }
 
 const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
-  PADDLE_ENFORCE_NE(
-      graphs_.count(graph_key), 0,
-      platform::errors::InvalidArgument("Can not find the target graph:\n%s",
-                                        ReadableProtoStr(graph_key).c_str()));
+  PADDLE_ENFORCE_NE(graphs_.count(graph_key), 0,
+                    platform::errors::PreconditionNotMet(
+                        "Can not find the target graph:\n%s",
+                        ReadableProtoStr(graph_key).c_str()));
   return *graphs_.at(graph_key);
 }
 
