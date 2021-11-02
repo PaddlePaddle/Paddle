@@ -288,9 +288,7 @@ class HeterServer {
   void Stop() {
     std::unique_lock<std::mutex> lock(mutex_);
     if (stoped_ == true) return;
-
     if (!IsExit()) service_.ForceExit();
-
     VLOG(3) << "HeterServer Stop()";
     stoped_ = true;
     cv_.notify_all();
