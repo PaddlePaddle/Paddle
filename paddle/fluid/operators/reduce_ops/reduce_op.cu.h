@@ -730,8 +730,8 @@ __global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
                                       const kps::DimConfig dim) {
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
-  // auto block = ReduceIndexMapping<false>(dim);
-  // int idx = block.BlockIdX() * block.BlockDimX();
+  auto block = ReduceIndexMapping<false>(dim);
+  int idx = block.BlockIdX() * block.BlockDimX();
   int size = left_num - dim.rem_x;
   int stride = dim.split_num_x * dim.deal_size_x;
   for (; idx < size; idx += stride) {
