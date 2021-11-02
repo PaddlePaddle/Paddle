@@ -63,7 +63,7 @@ class CostModel():
             os.path.dirname(__file__), "static_op_benchmark.json")
         with open(static_cost_data_path, 'r') as load_f:
             load_dict = json.load(load_f)
-        self.static_cost_data = load_dict
+        self._static_cost_data = load_dict
         # return all static cost data
         return load_dict
 
@@ -75,7 +75,7 @@ class CostModel():
             )
 
         op_cost = {}
-        for op_data in self.static_cost_data:
+        for op_data in self._static_cost_data:
             if (op_data["op"] == op_name) and (dtype in op_data["config"]):
                 if (forward == True):
                     op_cost["op_time"] = op_data["paddle_gpu_time"]
@@ -84,6 +84,3 @@ class CostModel():
                 op_cost["config"] = op_data["config"]
 
         return op_cost
-
-
-cost_model = CostModel()
