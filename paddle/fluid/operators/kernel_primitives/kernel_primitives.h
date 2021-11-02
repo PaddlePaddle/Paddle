@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
+#include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
+#ifdef PADDLE_WITH_XPU2
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives_xpu2.h"
 #include "paddle/fluid/operators/kernel_primitives/datamover_primitives_xpu2.h"
 #define THREAD_ID_X core_id()
@@ -50,8 +52,6 @@
 #define GRID_NUM_Y gridDim.y
 #define GRID_NUM_Z gridDim.z
 #endif
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
 
 namespace paddle {
 namespace operators {

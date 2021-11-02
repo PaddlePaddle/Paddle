@@ -268,7 +268,7 @@ __device__ __forceinline__ void LoadData(
   if (!IsBroadcast) {
     kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num);
   } else {
-    if (IsBroadcast && need_broadcast) {
+    if (need_broadcast) {
       kps::ReadDataBc<T, VecSize, 1, 1, Rank, IsBoundary>(
           dst, src, block_offset, config, numel);
     } else {
@@ -314,18 +314,18 @@ __global__ void ElementwiseKernel(
     framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_tid, Functor func) {
   int main_offset = main_tid * BLOCK_NUM_X * VecSize;
-  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
+  int offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
-  for (int offset = data_offset; offset < numel; offset += stride) {
-    if (offset < main_offset) {
-      ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank,
-                            IsBroadcast, false>(ins, out, use_broadcast, numel,
-                                                configs, offset, func);
-    } else {
-      ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank,
-                            IsBroadcast, true>(ins, out, use_broadcast, numel,
-                                               configs, offset, func);
-    }
+  for (; offset < main_offset; offset += stride) {
+    ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, IsBroadcast,
+                          false>(ins, out, use_broadcast, numel, configs,
+                                 offset, func);
+  }
+
+  if (offset < numel) {
+    ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, IsBroadcast,
+                          true>(ins, out, use_broadcast, numel, configs, offset,
+                                func);
   }
 }
 
