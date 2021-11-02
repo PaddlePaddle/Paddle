@@ -31,6 +31,8 @@ namespace pten {
 using DDim = paddle::framework::DDim;
 using LoD = std::vector<std::vector<size_t>>;
 
+class CompatibleDenseTensorMetaUtils;
+
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
@@ -45,6 +47,8 @@ struct DenseTensorMeta {
                   const DDim& dims,
                   DataLayout layout,
                   const std::vector<std::vector<size_t>>& lod);
+
+  friend class CompatibleDenseTensorMetaUtils;
 
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.

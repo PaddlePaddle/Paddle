@@ -291,8 +291,14 @@ static void BuildDygraphPtenKernelContext(
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
     if (ins_vector.size() == 1UL) {
-      kernel_ctx->EmplaceBackInput(experimental::MakePtenTensorBaseFromVar(
-          ins_vector[0]->Var(), in_def));
+      if (kernel_ctx->InputsSize() > i) {
+        experimental::ReMakePtenDenseTensorFromVar(
+            ins_vector[0]->Var(), in_def,
+            kernel_ctx->MutableInputAt<pten::DenseTensor>(i));
+      } else {
+        kernel_ctx->EmplaceBackInput(experimental::MakePtenTensorBaseFromVar(
+            ins_vector[0]->Var(), in_def));
+      }
     } else {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (const auto& var : ins_vector) {
@@ -308,8 +314,14 @@ static void BuildDygraphPtenKernelContext(
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
     if (outs_vector.size() == 1UL) {
-      kernel_ctx->EmplaceBackOutput(experimental::MakePtenTensorBaseFromVar(
-          outs_vector[0]->MutableVar(), out_def));
+      if (kernel_ctx->OutputsSize() > i) {
+        experimental::ReMakePtenDenseTensorFromVar(
+            outs_vector[0]->MutableVar(), out_def,
+            kernel_ctx->MutableOutputAt<pten::DenseTensor>(i));
+      } else {
+        kernel_ctx->EmplaceBackOutput(experimental::MakePtenTensorBaseFromVar(
+            outs_vector[0]->MutableVar(), out_def));
+      }
     } else {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
       for (auto& var : outs_vector) {
@@ -427,8 +439,6 @@ static void PreparedOpRunPtImpl(
                                          kernel_ctx);
 
   pt_kernel(kernel_ctx);
-
-  kernel_ctx->Clear();
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later

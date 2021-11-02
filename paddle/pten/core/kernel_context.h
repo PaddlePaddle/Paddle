@@ -113,6 +113,11 @@ class KernelContext {
   }
 
   template <typename TensorType>
+  TensorType* MutableInputAt(size_t idx) {
+    return static_cast<TensorType*>(inputs_.at(idx).get());
+  }
+
+  template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
     return static_cast<TensorType*>(outputs_.at(idx).get());
   }
@@ -144,6 +149,9 @@ class KernelContext {
     input_range_.clear();
     output_range_.clear();
   }
+
+  size_t InputsSize() const { return inputs_.size(); }
+  size_t OutputsSize() const { return outputs_.size(); }
 
  private:
   bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
