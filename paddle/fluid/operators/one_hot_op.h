@@ -46,7 +46,7 @@ struct OneHotOpFunctor {
     if (allow_out_of_range_) {
       for (int i = 0; i < numel; ++i) {
         if (p_in_data[i] >= 0 && p_in_data[i] < depth_) {
-          *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
+          *(p_out_data + i * depth_ + p_in_data[i]) = Eigen::bfloat16(1.0);
         }
       }
     } else {
@@ -65,7 +65,7 @@ struct OneHotOpFunctor {
                 "but received input (%d) not less than depth (%d)",
                 p_in_data[i], depth_));
 
-        *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
+        *(p_out_data + i * depth_ + p_in_data[i]) = Eigen::bfloat16(1.0);
       }
     }
   }
