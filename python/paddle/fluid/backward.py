@@ -1314,8 +1314,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
-                    # skip if_op
-                    if parent_op and parent_op.type() != 'if': continue
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
                     in recurrent op. The input of this op does not even exist in 
@@ -1324,7 +1322,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     would be pruned, and the calculation result would be wrong. 
                     Maybe we should re-design this op later...  
                     '''
-                    if op_desc.type() not in ['rnn_memory_helper_grad']:
+                    if op_desc.type() not in ['rnn_memory_helper_grad', 'if']:
                         ops_to_remove.append(op_idx)
                         continue
 
