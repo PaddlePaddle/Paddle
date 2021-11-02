@@ -126,9 +126,9 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(elt_act_onednn_fuse_pass,
+REGISTER_PASS(elt_act_mkldnn_fuse_pass,
               paddle::framework::ir::ElementwiseActivationOneDNNPass);
-REGISTER_PASS_CAPABILITY(elt_act_onednn_fuse_pass)
+REGISTER_PASS_CAPABILITY(elt_act_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 1)
