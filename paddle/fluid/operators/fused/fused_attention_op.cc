@@ -27,8 +27,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionOp");
-    // OP_INOUT_CHECK(ctx->HasInput("SrcMask"), "Input", "SrcMask",
-    //                "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("QKVW"), "Input", "QKVW", "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("QKVBias"), "Input", "QKVBias",
                    "FusedAttentionOp");
@@ -59,7 +57,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                    "FusedAttentionOp");
 
     if (ctx->HasInput("SrcMask")) {
-      std::cout << "limin: has input srcmask\n";
       OP_INOUT_CHECK(ctx->HasOutput("SrcMaskOut"), "Output", "SrcMaskOut",
                      "FusedAttentionOp");
     }
@@ -125,7 +122,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
 
     if (ctx->HasInput("SrcMask")) {
-      std::cout << "limin: has input srcmask\n";
       ctx->SetOutputDim("SrcMaskOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
     }
     // the same as QKOut's shape.
@@ -328,7 +324,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
 	{
             out = transpose(out, perm=[2, 0, 3, 1, 4]);
             out = q * k^t;
-            out = attn_mark + out;
+            out = attn_mask + out;
             out = softmax(out);
             out = dropout(out);
             out = out * v;
@@ -376,8 +372,6 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                    "FusedAttentionGrad");
     OP_INOUT_CHECK(ctx->HasInput("QKVBias"), "Input", "QKVBias",
                    "FusedAttentionGrad");
-    // OP_INOUT_CHECK(ctx->HasInput("SrcMask"), "Input", "SrcMask",
-    //                "FusedAttentionGrad");
     OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
                    "FusedAttentionGrad");
     OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
@@ -461,7 +455,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("QKVBias", this->Input("QKVBias"));
 
     if (this->HasInput("SrcMask")) {
-      std::cout << "limin: has srcmask\n";
       op->SetInput("SrcMask", this->Input("SrcMask"));
       op->SetInput("SrcMaskOut", this->Output("SrcMaskOut"));
       op->SetOutput(framework::GradVarName("SrcMaskOut"),

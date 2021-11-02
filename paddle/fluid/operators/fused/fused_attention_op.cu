@@ -64,9 +64,6 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *src_mask_out = ctx.Output<Tensor>("SrcMaskOut");
     auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
 
-    std::cout << "limin: .cu, src_mask == nullptr " << (src_mask == nullptr)
-              << std::endl;
-
     auto *out_linear_weight = ctx.Input<Tensor>("OutLinearW");
     auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
     auto *out_linear_out = ctx.Output<Tensor>("OutLinearOut");

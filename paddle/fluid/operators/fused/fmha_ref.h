@@ -113,8 +113,6 @@ class FMHARef {
                      stride_b);
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
-      std::cout << "i am here: src_mask_tensor != nullptr\n";
-
       std::vector<const Tensor*> ins;
       std::vector<Tensor*> outs;
       ins.emplace_back(qk_out_tensor);
@@ -127,7 +125,6 @@ class FMHARef {
       SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
                                         softmax_axis, softmax_out_tensor);
     } else {
-      std::cout << "i am here\n";
       SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out_tensor, softmax_axis,
                                         softmax_out_tensor);
     }
