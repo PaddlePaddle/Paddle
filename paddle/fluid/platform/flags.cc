@@ -738,7 +738,8 @@ PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
  * Name: FLAGS_deny_cinn_ops
  * Since Version: 2.3
  * Value Range: string, default=""
- * Example: FLAGS_deny_cinn_ops="mul" would block `mul` op when using CINN
+ * Example: FLAGS_deny_cinn_ops="mul;relu" would block `mul` and `relu` two ops
+ * when using CINN
  */
 PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
                               "It controls the cinn op subset to be not used.");

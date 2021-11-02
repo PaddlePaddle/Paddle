@@ -100,9 +100,9 @@ const CinnCompiledObject& CinnCompiler::Compile(
     exist = cache_.count(cur_key) != 0;
   }
   if (!exist) {
+    real_compiled_num_++;
     auto compiled_res = CompileGraph(graph, input_tensors, target);
     AutoWRLock w_guard{&rwlock_};
-    real_compiled_num_++;
     cache_[cur_key] = std::move(compiled_res);
   }
   AutoRDLock guard{&rwlock_};

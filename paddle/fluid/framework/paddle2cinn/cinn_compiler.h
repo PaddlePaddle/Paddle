@@ -17,7 +17,6 @@
 #include <atomic>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -67,16 +66,15 @@ class CinnCompiler {
   const ir::Graph& FindGraph(const std::string& key) const;
 
   void Clear() {
-    AutoWRLock guard{&rwlock_};
-    graphs_.clear();
-    cache_.clear();
+    {
+      AutoWRLock guard{&rwlock_};
+      graphs_.clear();
+      cache_.clear();
+    }
     real_compiled_num_ = 0;
   }
 
-  std::int64_t real_compiled_num() const {
-    AutoRDLock guard{&rwlock_};
-    return real_compiled_num_;
-  }
+  std::int64_t real_compiled_num() const { return real_compiled_num_; }
 
   ~CinnCompiler() = default;
 
@@ -91,7 +89,7 @@ class CinnCompiler {
   std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,
                      CinnCacheKey::Hash>
       cache_;
-  std::int64_t real_compiled_num_{0};
+  std::atomic_int64_t real_compiled_num_{0};
   mutable RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
