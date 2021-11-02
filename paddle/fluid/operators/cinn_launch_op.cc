@@ -13,22 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
+#include "cinn/frontend/var_type_utils.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
 
 namespace details {
 
-const cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
+const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
-    return cinn::common::DefaultHostTarget();
+    return ::cinn::common::DefaultHostTarget();
   } else if (platform::is_gpu_place(place)) {
-    return cinn::common::DefaultNVGPUTarget();
+    return ::cinn::common::DefaultNVGPUTarget();
   }
 
   PADDLE_THROW(platform::errors::InvalidArgument(
       "CINN is not supported on current place:%s", place));
-  return cinn::common::UnkTarget();
+  return ::cinn::common::UnkTarget();
 }
 
 void DebugCinnCompiledResult(const CinnCompiledObject& result) {
@@ -111,7 +114,18 @@ void CheckTensorEquivalent(const std::string& paddle_name,
                         "is not equivalent, paddle is [%s] "
                         "but cinn is [%s].",
                         paddle_name, paddle_tensor->dims(), cinn_dims));
-  // TODO(CtfGo): check the underlying data type
+
+  // check data type
+  auto converted_cinn_var_dtype =
+      framework::paddle2cinn::TransformVarDataTypeToCinn(paddle_tensor->type());
+  auto converted_cinn_common_type =
+      ::cinn::frontend::utils::CppVarType2CommonType(converted_cinn_var_dtype);
+  PADDLE_ENFORCE_EQ(converted_cinn_common_type, cinn_tensor->type(),
+                    platform::errors::InvalidArgument(
+                        "The data type in variable(%s) "
+                        "is not equivalent, paddle is [%s] "
+                        "but cinn is [%s].",
+                        converted_cinn_common_type, cinn_tensor->type()));
 }
 
 void TensorMutableDataWithCinnInfo(const platform::Place& place,

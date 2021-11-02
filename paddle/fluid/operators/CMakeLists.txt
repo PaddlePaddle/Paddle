@@ -169,7 +169,7 @@ if (WITH_ASCEND_CL)
 endif()
 
 if (WITH_CINN)
-  op_library(cinn_launch_op SRCS cinn_launch_op.cc cinn_launch_op.cu.cc DEPS cinn_compiler cinn ${OP_HEADER_DEPS})
+  op_library(cinn_launch_op SRCS cinn_launch_op.cc cinn_launch_op.cu.cc DEPS transform_desc cinn_compiler cinn ${OP_HEADER_DEPS})
   cc_test(cinn_launch_op_test SRCS cinn_launch_op_test.cc DEPS cinn_compiler cinn_launch_op elementwise_add_op)
 endif()
 

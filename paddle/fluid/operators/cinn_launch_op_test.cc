@@ -177,13 +177,13 @@ namespace details {
 // Testing helper function used on CinnLaunchOpKernel in the following:
 // firstly build test data, then check both expected and illegal situations
 
-using CinnShape = cinn::hlir::framework::Shape;
+using CinnShape = ::cinn::hlir::framework::Shape;
 
 TEST(CinnLaunchOpHelperTest, TestPlaceToCinnTarget) {
   ASSERT_EQ(PlaceToCinnTarget(platform::CPUPlace()),
-            cinn::common::DefaultHostTarget());
+            ::cinn::common::DefaultHostTarget());
   ASSERT_EQ(PlaceToCinnTarget(platform::CUDAPlace(0)),
-            cinn::common::DefaultNVGPUTarget());
+            ::cinn::common::DefaultNVGPUTarget());
   ASSERT_THROW(PlaceToCinnTarget(platform::XPUPlace()),
                paddle::platform::EnforceNotMet);
 }
@@ -226,13 +226,19 @@ TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
   cinn_scope.Var<CinnTensor>("cinn_var1");
   auto cinn_tensor1 = cinn_scope.GetTensor("cinn_var1");
   cinn_tensor1->Resize(CinnShape({5, 8}));
+  cinn_tensor1->set_type(::cinn::common::type_of<float>());
 
   ASSERT_NO_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1));
-  cinn_tensor1->Resize(CinnShape({5, 7}));
-  ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
-               paddle::platform::EnforceNotMet);
   auto tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
   ASSERT_THROW(CheckTensorEquivalent("var2", tensor2, cinn_tensor1),
+               paddle::platform::EnforceNotMet);
+
+  cinn_tensor1->set_type(::cinn::common::type_of<double>());
+  ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
+               paddle::platform::EnforceNotMet);
+  cinn_tensor1->set_type(::cinn::common::type_of<float>());
+  cinn_tensor1->Resize(CinnShape({5, 7}));
+  ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
                paddle::platform::EnforceNotMet);
 }
 

@@ -24,7 +24,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -34,15 +33,15 @@ static constexpr char kOutputs[] = "Out";
 static constexpr char kCompilationKey[] = "compilation_key";
 
 using LoDTensor = framework::LoDTensor;
-using CinnTensor = cinn::hlir::framework::Tensor;
-using CinnScope = cinn::hlir::framework::Scope;
+using CinnTensor = ::cinn::hlir::framework::Tensor;
+using CinnScope = ::cinn::hlir::framework::Scope;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
 namespace details {
 
 // Tranform Paddle place to CINN target
-const cinn::common::Target& PlaceToCinnTarget(const platform::Place& place);
+const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place);
 
 // Print detailed compilation result of graph for debug
 void DebugCinnCompiledResult(const CinnCompiledObject& result);
