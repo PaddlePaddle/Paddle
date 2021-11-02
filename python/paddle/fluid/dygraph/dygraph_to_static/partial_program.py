@@ -138,7 +138,7 @@ class PartialProgramLayer:
                  **kwargs):
         super(PartialProgramLayer, self).__init__()
         self._inputs = NestSequence(inputs)
-        self._pure_fp16_inputs = None
+        # self._pure_fp16_inputs = None
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
 
@@ -205,17 +205,17 @@ class PartialProgramLayer:
             cast_model_to_fp16(
                 infer_pure_fp16_program, self._amp_list, use_fp16_guard=False)
 
-            pure_fp16_raw_inputs = self._inputs.tolist()
-            for i, var in enumerate(pure_fp16_raw_inputs):
-                name = var.name
-                if (isinstance(var, framework.Variable) and
-                        infer_pure_fp16_program.global_block().has_var(name) and
-                        infer_pure_fp16_program.global_block().var(name).dtype
-                        == paddle.float16):
-                    pure_fp16_raw_inputs[i] = var.astype('float16')
-                    pure_fp16_raw_inputs[i].name = name
+            # pure_fp16_raw_inputs = self._inputs.tolist()
+            # for i, var in enumerate(pure_fp16_raw_inputs):
+            #     name = var.name
+            #     if (isinstance(var, framework.Variable) and
+            #             infer_pure_fp16_program.global_block().has_var(name) and
+            #             infer_pure_fp16_program.global_block().var(name).dtype
+            #             == paddle.float16):
+            #         pure_fp16_raw_inputs[i] = var.astype('float16')
+            #         pure_fp16_raw_inputs[i].name = name
 
-            self._pure_fp16_inputs = NestSequence(pure_fp16_raw_inputs)
+            # self._pure_fp16_inputs = NestSequence(pure_fp16_raw_inputs)
 
         return infer_pure_fp16_program
 
@@ -331,7 +331,6 @@ class PartialProgramLayer:
                  0, 'end_op_index', self._get_end_op_index(), 'is_test',
                  not self.training, 'program_id', self.program_id)
 
-        # must after calling self.program
         self._cast_fp16_if_pure_fp16(in_vars)
 
         _C_ops.run_program(
@@ -343,13 +342,23 @@ class PartialProgramLayer:
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
+    # def _cast_fp16_if_pure_fp16(self, in_vars):
+    #     if _in_pure_fp16_guard():
+    #         for i, var in enumerate(in_vars):
+    #             for it in self._pure_fp16_inputs.tolist():
+    #                 if var.name == it.name and it.dtype == paddle.float16:
+    #                     in_vars[i] = var.astype('float16')
+    #                     in_vars[i].name = it.name
+
     def _cast_fp16_if_pure_fp16(self, in_vars):
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
-                for it in self._pure_fp16_inputs.tolist():
-                    if var.name == it.name and it.dtype == paddle.float16:
-                        in_vars[i] = var.astype('float16')
-                        in_vars[i].name = it.name
+                name = var.name
+                if (self.program.global_block().has_var(name) and
+                        self.program.global_block().var(name).dtype ==
+                        paddle.float16):
+                    in_vars[i] = var.astype('float16')
+                    in_vars[i].name = name
 
     def drop_scope_if_no_grad(self):
         tracer = framework._dygraph_tracer()
