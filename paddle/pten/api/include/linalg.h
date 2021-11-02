@@ -15,5 +15,24 @@
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
+#include "paddle/pten/api/include/infershape.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 #include "paddle/pten/kernels/cpu/linalg.h"
 #include "paddle/pten/kernels/cuda/linalg.h"
+
+namespace pten {
+
+template <typename T, typename ContextT>
+DenseTensor Dot(const ContextT& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y) {
+  auto out_meta = DotInferShape(x.meta(), y.meta());
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
+  Dot<T>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+}  // namespace pten

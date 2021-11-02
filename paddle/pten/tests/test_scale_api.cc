@@ -32,45 +32,47 @@ PT_DECLARE_MODULE(MathCUDA);
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
-// TODO(chenweihang): Remove this test after the API is used in the dygraph
-TEST(API, mean) {
+TEST(DEV_API, scale) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 4}),
-                            pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  pten::DenseTensor dense_x(alloc,
+                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                                  framework::make_ddim({3, 4}),
+                                                  pten::DataLayout::NCHW));
 
-  float sum = 0.0;
+  auto* dense_x_data = dense_x.mutable_data<float>();
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
-    sum += i * 1.0;
   }
+  float scale = 2;
+  float bias = 1;
+  bool bias_after_scale = true;
 
-  paddle::experimental::Tensor x(dense_x);
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto out = paddle::experimental::mean(x);
+  auto out = pten::Scale<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      dense_x,
+      scale,
+      bias,
+      bias_after_scale);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 1);
-  ASSERT_EQ(out.shape()[0], 1);
-  ASSERT_EQ(out.numel(), 1);
-  ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.numel(), 12);
+  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
-  auto expect_result = sum / 12;
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
-  auto actual_result = dense_out->data<float>()[0];
+  auto expect_result = 23;
+  auto actual_result = out.data<float>()[11];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }
 
-TEST(DEV_API, mean) {
+TEST(DEV_API, scale_host) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -79,26 +81,38 @@ TEST(DEV_API, mean) {
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x.mutable_data<float>();
-
-  float sum = 0.0;
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
-    sum += i * 1.0;
   }
+  const auto alloc2 = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  pten::DenseTensor scale(alloc2,
+                          pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                                framework::make_ddim({1}),
+                                                pten::DataLayout::NCHW));
+  scale.mutable_data<float>()[0] = 2;
+  float bias = 1;
+  bool bias_after_scale = true;
+
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
   // 2. test API
-  auto out = pten::Mean<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+  auto out = pten::Scale<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      dense_x,
+      scale,
+      bias,
+      bias_after_scale);
 
   // 3. check result
-  ASSERT_EQ(out.dims().size(), 1);
-  ASSERT_EQ(out.numel(), 1);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.numel(), 12);
   ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
-  auto expect_result = sum / 12;
-  auto actual_result = out.data<float>()[0];
+  auto expect_result = 23;
+  auto actual_result = out.data<float>()[11];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }
