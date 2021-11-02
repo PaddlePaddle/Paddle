@@ -284,7 +284,7 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     a, b = update(state, phi, A, B, c, ifcond, iter_count)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
-    S2_or_S3 = paddle.logical_or(S2_cond, S3_cond)
+    S2_or_S3 = S2_cond | S3_cond
     a = paddle.where(S2_or_S3, a, A)
     b = paddle.where(S2_or_S3, b, B)
 
@@ -320,27 +320,27 @@ def stopping_condition(state, phi, c, phiprime_0,
        phi_c, phiprime_c = vjp(phi, c)
     
     # T1 (Wolfe). 
-    #   T1.1            phi(c) - phi(0) <= c * phi'(0)
+    #   T1.1            phi(c) - phi(0) <= delta * c * phi'(0)
     #   T1.2            phi'(c) >= sigma * phi'(0)
     #
     # T2 (Approximate Wolfe).
-    #   T2.1            phi'(c) <= (2*sigma - 1) * phi'(0)
+    #   T2.1            phi'(c) <= (2*delta - 1) * phi'(0)
     #   T2.2            (T1.2)
     #   T2.3            phi(c) - phi(0) <= epsilon_k
 
-    phi_dy = phi_c - phi_0
-    T11_cond = phi_dy <= c * phiprime_0 
+    phi_diff = phi_c - phi_0
+    T11_cond = phi_diff <= delta * c * phiprime_0 
     T12_cond = phiprime_c >= sigma * phiprime_0    
     
-    wolfe_cond = paddle.logical_and(T11_cond, T12_cond)
+    wolfe_cond = T11_cond & T12_cond
 
-    T21_cond = phiprime_c <= (2 * sigma - 1) * phiprime_0 
+    T21_cond = phiprime_c <= (2 * delta - 1) * phiprime_0 
     T22_cond = T12_cond
-    T23_cond = phi_dy <= epsilon_k
+    T23_cond = phi_diff <= epsilon_k
 
-    approx_wolfe_cond = paddle.logical_and(T21_cond, T22_cond, T23_cond)
+    approx_wolfe_cond = T21_cond & T22_cond & T23_cond
     
-    stopping = paddle.logical_or(wolfe_cond, approx_wolfe_cond)
+    stopping = wolfe_cond | approx_wolfe_cond
 
     return stopping
 
@@ -625,7 +625,7 @@ def hz_linesearch(state,
     #
     # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
 
-    # Initializes a bounded counter
+    # Initializes a stop counter
     iter_count = StopCounter(max_iters)
 
     stopped = make_const(fk, False, dtype='bool')
@@ -648,6 +648,7 @@ def hz_linesearch(state,
             a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
 
             stopped = stopped | stopping_condition(state, phi, b, deriv)
+            ls_stepsize = paddle.where(stopped, b, ls_stepsize)
 
             # If interval does not shrink enough, then applies bisect
             # repeatedly.
@@ -672,7 +673,8 @@ def hz_linesearch(state,
     state.state = update_state(state.state, ~stopped, 'failed')
 
     # Writes the successfully obtained step sizes back to the search state.
-    state.ak = paddle.where(active_state(state.state), ls_stepsize, state.ak)
+    # state.ak = paddle.where(active_state(state.state), ls_stepsize, state.ak)
+    state.ak = ls_stepsize
 
     return
 

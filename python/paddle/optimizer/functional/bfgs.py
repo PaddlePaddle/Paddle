@@ -255,7 +255,8 @@ def iterates(func,
     # Updates the state tensor on the newly converged elements.
     state.state = update_state(state.state, gnorm < gtol, 'converged')
 
-    try:
+    # try:
+    while True:
         # Starts to count the number of iterations.
         iter_count = StopCounter(iters)
         iter_count.increment()
@@ -284,7 +285,7 @@ def iterates(func,
             next_fk, next_gk = vjp(func, next_xk)
     
             # Calculates the gradient difference y_k = g_k+1 - g_k
-            yk = next_fk - fk
+            yk = next_gk - gk
     
             # Updates the approximate inverse hessian
             next_Hk = update_approx_inverse_hessian(state, Hk, sk, yk)
@@ -309,7 +310,8 @@ def iterates(func,
             yield state
     # except StopCounterException:
     #     pass
-    finally:
+
+    # finally:
         return
 
 
