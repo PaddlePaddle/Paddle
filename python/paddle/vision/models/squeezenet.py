@@ -82,7 +82,7 @@ class SqueezeNet(nn.Layer):
 
     Examples:
         .. code-block:: python
-
+            import paddle
             from paddle.vision.models import SqueezeNet
 
             # build v1.0 model
