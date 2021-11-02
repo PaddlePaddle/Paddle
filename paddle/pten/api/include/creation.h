@@ -21,6 +21,8 @@
 
 namespace pten {
 
+// TODO(YuanRisheng) This function name should be same as User API name.
+// TODO(zyfncg) Automatic code generation
 template <typename T, typename ContextT>
 DenseTensor FillAnyLike(const ContextT& dev_ctx,
                         const DenseTensor& x,

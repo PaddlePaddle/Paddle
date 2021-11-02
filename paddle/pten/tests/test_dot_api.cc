@@ -85,6 +85,8 @@ TEST(API, dot) {
   ASSERT_NEAR(expect_result[2], actual_result2, 1e-6f);
 }
 
+// TODO(YuanRisheng) This unitest should be created in other file.
+//                   It is convenient to make compilation decoupling.
 TEST(DEV_API, dot) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
