@@ -52,15 +52,15 @@ class BasicBlock(nn.Layer):
     expansion: int = 1
 
     def __init__(
-        self,
-        inplanes: int,
-        planes: int,
-        stride: int = 1,
-        downsample: Optional[nn.Layer] = None,
-        groups: int = 1,
-        base_width: int = 64,
-        dilation: int = 1,
-        norm_layer: Optional[Callable[..., nn.Layer]] = None
+            self,
+            inplanes: int,
+            planes: int,
+            stride: int = 1,
+            downsample: Optional[nn.Layer] = None,
+            groups: int = 1,
+            base_width: int = 64,
+            dilation: int = 1,
+            norm_layer: Optional[Callable[..., nn.Layer]] = None
     ) -> None:
         super(BasicBlock, self).__init__()
         if norm_layer is None:
@@ -76,7 +76,7 @@ class BasicBlock(nn.Layer):
         self.conv2 = conv3x3(planes, planes)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
-        self.stride = stride   #TODO: this line can be deleted
+        self.stride = stride  # TODO: this line can be deleted
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
@@ -108,15 +108,15 @@ class BottleneckBlock(nn.Layer):
     expansion: int = 4
 
     def __init__(
-        self,
-        inplanes: int,
-        planes: int,
-        stride: int = 1,
-        downsample: Optional[nn.Layer] = None,
-        groups: int = 1,
-        base_width: int = 64,
-        dilation: int = 1,
-        norm_layer: Optional[Callable[..., nn.Layer]] = None
+            self,
+            inplanes: int,
+            planes: int,
+            stride: int = 1,
+            downsample: Optional[nn.Layer] = None,
+            groups: int = 1,
+            base_width: int = 64,
+            dilation: int = 1,
+            norm_layer: Optional[Callable[..., nn.Layer]] = None
     ) -> None:
         super(BottleneckBlock, self).__init__()
         if norm_layer is None:
@@ -131,7 +131,7 @@ class BottleneckBlock(nn.Layer):
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU()
         self.downsample = downsample
-        self.stride = stride     #TODO: this line can be deleted
+        self.stride = stride  # TODO: this line can be deleted
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
@@ -180,15 +180,15 @@ class ResNet(nn.Layer):
     """
 
     def __init__(
-        self,
-        block: Type[Union[BasicBlock, BottleneckBlock]],
-        depth: int,
-        num_classes: int = 1000,
-        groups: int = 1,
-        width_per_group: int = 64,
-        replace_stride_with_dilation: Optional[List[bool]] = None,
-        norm_layer: Optional[Callable[..., nn.Layer]] = None,
-        with_pool: bool = True
+            self,
+            block: Type[Union[BasicBlock, BottleneckBlock]],
+            depth: int,
+            num_classes: int = 1000,
+            groups: int = 1,
+            width_per_group: int = 64,
+            replace_stride_with_dilation: Optional[List[bool]] = None,
+            norm_layer: Optional[Callable[..., nn.Layer]] = None,
+            with_pool: bool = True
     ) -> None:
         super(ResNet, self).__init__()
         layer_cfg = {
@@ -284,11 +284,11 @@ class ResNet(nn.Layer):
 
 
 def _resnet(
-    arch: str,
-    block: Type[Union[BasicBlock, BottleneckBlock]],
-    depth: int,
-    pretrained: bool,
-    **kwargs: Any
+        arch: str,
+        block: Type[Union[BasicBlock, BottleneckBlock]],
+        depth: int,
+        pretrained: bool,
+        **kwargs: Any
 ) -> ResNet:
     model = ResNet(block, depth, **kwargs)
     if pretrained:
