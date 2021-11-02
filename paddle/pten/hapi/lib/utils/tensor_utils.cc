@@ -45,6 +45,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
   SetLoD(&meta.lod, src.lod());
   auto shared_storage =
       pten::make_intrusive<SharedStorage>(src.Holder(), src.offset());
+
   return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
                                              std::move(meta));
 }
