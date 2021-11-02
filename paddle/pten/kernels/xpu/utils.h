@@ -30,3 +30,5 @@ void Copy(const XPUDeviceContext& dev_ctx,
           DenseTensor* dst);
 
 }  // namespace pten
+
+#endif
