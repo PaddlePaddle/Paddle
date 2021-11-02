@@ -252,7 +252,11 @@ struct ReduceIndexMapping {
 
   __device__ __forceinline__ int numPerThread() {
 #ifdef PADDLE_WITH_XPU2
-    return deal_size_y;
+    if (ReduceLastDim) {
+      return dim.deal_size_y;
+    } else {
+      return dim.deal_size_x;
+    }
 #else
     return 1;
 #endif
@@ -267,19 +271,6 @@ struct OneDimIndexCal {
   __device__ inline int operator()(int index) const { return index * stride; }
   int stride;
 };
-#ifdef PADDLE_WITH_XPU2
-struct dim3 {
-  int x;
-  int y;
-  int z;
-
-  dim3(int xx, int yy 1, int zz = 1) {
-    x = xx;
-    y = yy;
-    z = zz;
-  }
-}
-#endif
 
 // reduce config
 template <typename Ty>
@@ -551,6 +542,7 @@ struct ReduceConfig {
       grid_dim->y = details::AlignUp(reduce_num, blocking_size);
     }
   }
+
   void SetBlockDim() {
     // init
     int block_num = details::GetBlockDim(reduce_num);
@@ -603,16 +595,17 @@ struct ReduceConfig {
   dim3 block;
   dim3 grid;
 };
+
 /* size : how many colonms left have to be reduced
  * loop : how many rows data have to be reduced
  * block_size: max rows this block to reduce
  */
 template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
           typename TransformOp, bool IsBoundary = false>
-__device__ void HigherDimDealSegment(const Tx* x, Ty* y, ReduceOp reducer,
-                                     TransformOp transformer, MPType init,
-                                     int reduce_num, int left_num,
-                                     int block_size, kps::DimConfig dim) {
+__device__ void ReduceHigherImpl(const Tx* x, Ty* y, ReduceOp reducer,
+                                 TransformOp transformer, MPType init,
+                                 int reduce_num, int left_num, int block_size,
+                                 kps::DimConfig dim) {
   auto block = ReduceIndexMapping<false>(dim);
   const int NY = 1;
   int idx = block.blockIdX() * block.blockDimX();
@@ -750,37 +743,19 @@ __global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
                                       TransformOp transformer, MPType init,
                                       int reduce_num, int left_num,
                                       int blocking_size, kps::DimConfig dim) {
-  //  // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
-  //  // function will be used
-  //  // eg: x_dim = {nz, ny, nx}, nx != 1, axis can be 0 or 1
-  //  //     if axis = 1 then grid.z = nz, grid.y = ny / block_size, grid.x = nx
-  //  /
-  //  //     32
-  //  //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
-  //  for (int
-  //  int idx = blockIdx.x * blockDim.x;
-  //  int size = left_num - idx;
-  //  if (size >= blockDim.x) {  // complete segment
-  //    HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp>(
-  //        x, y, reducer, transformer, init, reduce_num, left_num,
-  //        blocking_size,dim);
-  //  } else {
-  //    HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp, true>(
-  //        x, y, reducer, transformer, init, reduce_num, left_num,
-  //        blocking_size,dim);
-  //  }
-  //
+  // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
+  // function will be used
   int idx = BLOCK_ID_X * BLOCK_NUM_X;
   int size = left_num - dim.rem_x;
   int stride = dim.split_num_x * dim.deal_size_x;
   for (; idx < size; idx += stride) {
-    HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp>(
+    ReduceHigherImpl<Tx, Ty, MPType, ReduceOp, TransformOp>(
         x, y, reducer, transformer, init, reduce_num, left_num, blocking_size,
         dim);
   }
 
   if (idx < left_num) {
-    HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp, true>(
+    ReduceHigherImpl<Tx, Ty, MPType, ReduceOp, TransformOp, true>(
         x, y, reducer, transformer, init, reduce_num, left_num, blocking_size,
         dim);
   }
@@ -802,7 +777,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
     kps::DimConfig dim =
         kps::DimConfig(config.grid.x, config.grid.y, config.grid.z,
                        config.block.x, config.block.y, 0);
-    dim.setRem(config.reduce_num % config.block.x, 0, 0);
+    dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
 #ifdef PADDLE_WITH_XPU2
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
@@ -830,7 +805,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
     kps::DimConfig dim =
         kps::DimConfig(config.grid.x, config.grid.y, config.grid.z,
                        config.block.x, config.block.y, 0);
-    dim.setRem(config.reduce_num % config.block.x, 0, 0);
+    dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
 #ifdef PADDLE_WITH_XPU2
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
@@ -862,21 +837,20 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
     auto first_index = OneDimIndexCal(config.left_num);
     kps::DimConfig dim =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
-    dim.setRem(config.left_num % block.x, 0, 0);
+    dim.SetRem(config.left_num % block.x, 0, 0);
 #ifdef PADDLE_WITH_XPU2
-    ReduceHigherDimKernel<
-        Ty, Ty, MPType, ReduceOp,
-        kps::details::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
+    ReduceHigherDimKernel<Ty, Ty, MPType, ReduceOp,
+                          kps::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
         config.output_data, y_data, reducer,
-        kps::details::IdentityFunctor<Ty, MPType>(config.grid.y), init,
-        config.grid.y, config.left_num, config.grid.y, dim);
+        kps::IdentityFunctor<Ty, MPType>(config.grid.y), init, config.grid.y,
+        config.left_num, config.grid.y, dim);
 #else
     ReduceHigherDimKernel<
         Ty, Ty, MPType, ReduceOp,
-        kps::details::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+        kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
-        kps::details::IdentityFunctor<Ty, MPType>(config.grid.y), init,
-        config.grid.y, config.left_num, config.grid.y, dim);
+        kps::IdentityFunctor<Ty, MPType>(config.grid.y), init, config.grid.y,
+        config.left_num, config.grid.y, dim);
 #endif
   }
 }
@@ -951,7 +925,7 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
     kps::DimConfig dim =
         kps::DimConfig(config.grid.x, config.grid.y, config.grid.z,
                        config.block.x, config.blocking_size, 0);
-    dim.setRem(config.left_num % config.block.x,
+    dim.SetRem(config.left_num % config.block.x,
                config.reduce_num % config.blocking_size, 0);
 
 #ifdef PADDLE_WITH_XPU2
@@ -974,23 +948,22 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
       dim3 grid = dim3(config.grid.x, 1, config.grid.z);
       kps::DimConfig dim2 =
           kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
-      dim2.setRem(config.left_num % config.block.x, 0, 0);
+      dim2.SetRem(config.left_num % config.block.x, 0, 0);
 
 #ifdef PADDLE_WITH_XPU2
       ReduceHigherDimKernel<
           Ty, Ty, MPType, ReduceOp<Tx, MPType>,
-          kps::details::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
+          kps::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
           config.output_data, y_data, reducer,
-          kps::details::IdentityFunctor<Ty, MPType>(config.grid.y),
-          reducer.initial(), config.grid.y, config.left_num, config.grid.y,
-          dim2);
+          kps::IdentityFunctor<Ty, MPType>(config.grid.y), reducer.initial(),
+          config.grid.y, config.left_num, config.grid.y, dim2);
 #else
       ReduceHigherDimKernel<
-          Tx, Ty, MPType, ReduceOp<Tx, MPType>,
-          TransformOp><<<config.grid, config.block, 0, stream>>>(
-          x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-          reducer.initial(), config.reduce_num, config.left_num,
-          config.blocking_size, dim);
+          Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+          kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+          config.output_data, y_data, reducer,
+          kps::IdentityFunctor<Ty, MPType>(config.grid.y), reducer.initial(),
+          config.grid.y, config.left_num, config.grid.y, dim2);
 #endif
     }
     return;

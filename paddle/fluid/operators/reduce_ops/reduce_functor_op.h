@@ -24,11 +24,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace kpds = paddle::operators::kernel_primitives::details;
+namespace kps = paddle::operators::kernel_primitives;
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMin {
-  using Transformer = kpds::IdentityFunctor<Tx>;
+  using Transformer = kps::IdentityFunctor<Tx>;
 
   inline Ty initial() {
     return static_cast<Ty>(std::numeric_limits<Ty>::max());
@@ -41,7 +41,7 @@ struct CustomMin {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMax {
-  using Transformer = kpds::IdentityFunctor<Tx>;
+  using Transformer = kps::IdentityFunctor<Tx>;
 
   inline Ty initial() {
     return static_cast<Ty>(std::numeric_limits<Ty>::lowest());
@@ -55,7 +55,7 @@ struct CustomMax {
 // for cub::Reduce
 template <typename Tx, typename Ty = Tx>
 struct CustomSum {
-  using Transformer = kpds::IdentityFunctor<Tx, Ty>;
+  using Transformer = kps::IdentityFunctor<Tx, Ty>;
 
   inline Ty initial() { return static_cast<Ty>(0.0f); }
 
@@ -66,7 +66,7 @@ struct CustomSum {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMean {
-  using Transformer = kpds::DivideFunctor<Tx>;
+  using Transformer = kps::DivideFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(0.0f); }
 
@@ -77,7 +77,7 @@ struct CustomMean {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMul {
-  using Transformer = kpds::IdentityFunctor<Tx>;
+  using Transformer = kps::IdentityFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(1.0f); }
 
@@ -88,7 +88,7 @@ struct CustomMul {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomLogicalOr {
-  using Transformer = kpds::IdentityFunctor<Tx>;
+  using Transformer = kps::IdentityFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(false); }
 
@@ -99,7 +99,7 @@ struct CustomLogicalOr {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomLogicalAnd {
-  using Transformer = kpds::IdentityFunctor<Tx>;
+  using Transformer = kps::IdentityFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(true); }
 
