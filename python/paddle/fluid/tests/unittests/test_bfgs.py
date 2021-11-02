@@ -41,12 +41,14 @@ import paddle
 from paddle.optimizer.functional import bfgs_iterates, bfgs_optimize
 
 input_shape = [10]
-minimum = paddle.rand(input_shape, dtype='float')
+minimum = paddle.rand(input_shape)
 scales = paddle.exp(paddle.rand(input_shape))
 
 def f(x):
     return paddle.sum(scales * paddle.square(x - minimum))
 
-x0 = paddle.ones_like(minimum, dtype='float')
+x0 = paddle.ones_like(minimum)
 
-result = bfgs_optimize(f, x0, dtype='float')
+result = bfgs_optimize(f, x0)
+print(minimum)
+print(result)

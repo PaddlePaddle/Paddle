@@ -109,14 +109,14 @@ class SearchState(object):
         kw = {
             'converged' : converged_state(self.state),
             'failed' : failed_state(self.state),
-            'function_evals' : self.state.nf,
-            'gradient_evals' : self.state.ng,
+            'function_evals' : self.nf,
+            'gradient_evals' : self.ng,
             'location' : self.xk,
             'function_value' : self.fk,
             'gradient' : self.gk,
             'inverse_hessian' : self.Hk
         }
-        return BfgsResult(kw)
+        return BfgsResult(**kw)
 
 
 def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
