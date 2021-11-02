@@ -966,7 +966,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
       var->GetMutable<LoDTensor>()->Resize(dim);
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
-      var->GetMutable<framework::SelectedRows>()->mutable_value()->Resize(dim);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Variable type error, expect LoDTensor or SelectedRows, but received "
