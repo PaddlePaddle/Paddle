@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
@@ -228,6 +229,108 @@ PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value) {
           "tp_alloc return null, can not new a PyObject."));
     }
     PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
+  }
+
+  return result;
+}
+
+template <typename Tuple, size_t N>
+struct TupleEagerTensorResult {
+  static void Run(const Tuple& out, PyObject* result) {
+    TupleEagerTensorResult<Tuple, N - 1>::Run(out, result);
+    PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
+  }
+};
+
+template <typename Tuple>
+struct TupleEagerTensorResult<Tuple, 1> {
+  static void Run(const Tuple& out, PyObject* result) {
+    PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
+  }
+};
+
+template <typename... Args>
+PyObject* ToPyObject(const std::tuple<Args...>& out) {
+  auto len = sizeof...(Args);
+  PyObject* result = PyTuple_New(len);
+
+  TupleEagerTensorResult<decltype(out), sizeof...(Args)>::Run(out, result);
+
+  return result;
+}
+
+egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
+                                        const std::string& arg_name,
+                                        PyObject* args, ssize_t arg_idx,
+                                        bool dispensable) {
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (PyTuple_Check(obj)) {
+    obj = PyTuple_GET_ITEM(obj, 0);
+  }
+
+  if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be Tensor, but got None",
+          op_type, arg_name, arg_idx));
+    }
+    egr::EagerTensor emptytensor;
+    return emptytensor;
+  }
+
+  return reinterpret_cast<EagerTensorObject*>(obj)->eagertensor;
+}
+
+std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+          "None",
+          op_type, arg_name, arg_idx));
+    }
+    return {};
+  }
+
+  std::vector<egr::EagerTensor> result;
+
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          reinterpret_cast<EagerTensorObject*>(PyList_GetItem(list, i))
+              ->eagertensor);
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          reinterpret_cast<EagerTensorObject*>(PyTuple_GetItem(list, i))
+              ->eagertensor);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s",
+        op_type, arg_name, arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
   }
 
   return result;

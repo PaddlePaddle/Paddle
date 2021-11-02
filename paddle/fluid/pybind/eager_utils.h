@@ -44,6 +44,16 @@ PyObject* ToPyObject(const std::vector<int64_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
+template <typename... Args>
+PyObject* ToPyObject(const std::tuple<Args...>& out);
+
+egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
+                                        const std::string& arg_name,
+                                        PyObject* args, ssize_t arg_idx,
+                                        bool dispensable = false);
+std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable = false);
 
 }  // namespace pybind
 }  // namespace paddle

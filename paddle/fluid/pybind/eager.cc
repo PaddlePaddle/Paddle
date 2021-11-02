@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
@@ -129,6 +131,7 @@ void BindEager(pybind11::module* module) {
   }
 
   BindFunctions(m.ptr());
+  BindEagerOpFunctions(&m);
 }
 
 }  // namespace pybind
