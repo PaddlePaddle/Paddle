@@ -152,9 +152,8 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         exe.run(real_startup)
         fleet.init_worker()
 
-        #thread_num = int(os.getenv("CPU_NUM", 2))
-        thread_num = 1
-        batch_size = 2
+        thread_num = int(os.getenv("CPU_NUM", 2))
+        batch_size = 128
 
         block_size = len(train_file_list) // fleet.worker_num()
         worker_id = fleet.worker_index()
@@ -166,7 +165,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
-        #dataset = paddle.distributed.QueueDataset()
         dataset.set_batch_size(batch_size)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python3 ctr_dataset_reader.py'
@@ -202,9 +200,8 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         #exe.run(fluid.default_startup_program())
         #fleet.init_worker()
 
-        #thread_num = int(os.getenv("CPU_NUM", 2))
-        thread_num = 1
-        batch_size = 2
+        thread_num = int(os.getenv("CPU_NUM", 2))
+        batch_size = 128
 
         #filelist = fleet.util.get_file_shard(train_file_list)
         block_size = len(train_file_list) // fleet.worker_num()
@@ -212,7 +209,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         print("filelist: {}".format(filelist))
 
         # config dataset
-        #dataset = paddle.distributed.QueueDataset()
         dataset = fluid.DatasetFactory().create_dataset()
         dataset.set_batch_size(batch_size)
         dataset.set_use_var(self.feeds)
