@@ -137,10 +137,10 @@ void HeterParallelContext::Init() {
                     platform::errors::Unavailable(
                         "The heter parallel context has not been initialized."
                     ));
-  // NOTE(liubo48): call Init() to create ring_id(0) for compatibility.
+  // NOTE(liubo48): call Init() to create ring_id(0) for parameters synchonization.
   heter_parallel_ctx_->Init();
 
-  // create another ring for internal communication. (might not need this additional ring?)
+  // create another ring for internal communication.
   heter_parallel_ctx_->InitWithRingID(1);
 
   if (gloo_ctx_ != nullptr) {
@@ -160,16 +160,16 @@ void HeterParallelContext::AllReduceByStream(
     bool use_calc_stream) {
   // step 1: call reduce within node
   heter_parallel_ctx_->InterReduce(src, dst, 1);
-  heter_parallel_ctx_->WaitComm(0);
+  heter_parallel_ctx_->WaitComm(1);
 
   // step 2: call allreduce between nodes with gloo
-  // if ((nodes_ips_.size() == 1) &&
-  //     (node_strategy_.local_rank_ % node_strategy_.nranks_ == 0)) {
-  if (gloo_ctx_ != nullptr) {
-    auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
-    PADDLE_ENFORCE_EQ(gloo_ptr->IsInitialized(), true,
-                      paddle::platform::errors::Unavailable(
-                          "Gloo context is not initialized."));
+  if ((nodes_ips_.size() == 1) &&
+      (node_strategy_.local_rank_ % node_strategy_.nranks_ == 0)) {
+  // if (gloo_ctx_ != nullptr) {
+  //   auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
+  //   PADDLE_ENFORCE_EQ(gloo_ptr->IsInitialized(), true,
+  //                     paddle::platform::errors::Unavailable(
+  //                         "Gloo context is not initialized."));
 
     auto src_dev_tensor = src.Get<framework::LoDTensor>();
     auto *dst_dev_tensor = dst->GetMutable<framework::LoDTensor>();
@@ -205,22 +205,23 @@ void HeterParallelContext::AllReduceByStream(
     dev_ctx->Wait();
 
     // step 2.2: call gloo->AllReduce between cpus
-    std::vector<float> send_vector;
-    framework::TensorToVector<float>(src_cpu_tensor, &send_vector);
-    auto recv_vector = gloo_ptr->AllReduce<float>(send_vector);
-    framework::TensorFromVector<float>(recv_vector, &dst_cpu_tensor);
+    // std::vector<float> send_vector;
+    // framework::TensorToVector<float>(src_cpu_tensor, &send_vector);
+    // auto recv_vector = gloo_ptr->AllReduce<float>(send_vector);
+    // framework::TensorFromVector<float>(recv_vector, &dst_cpu_tensor);
 
     // step 2.3: CPU Tensor to Dev tensor
     std::cout << "/// DEBUG /// step 2.3: CPU Tensor to Dev tensor... " << std::endl;
-    framework::TensorCopy(dst_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
+    // framework::TensorCopy(dst_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
+    framework::TensorCopy(src_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
     dev_ctx->Wait();
 
-    gloo_ptr->Barrier();
+    // gloo_ptr->Barrier();
   }
 
   // step 3: call broadcast within node
   heter_parallel_ctx_->InterBroadCast(dst, 1);
-  heter_parallel_ctx_->WaitComm(0);
+  heter_parallel_ctx_->WaitComm(1);
 }
 
 void HeterParallelContext::InterReduce(
@@ -241,18 +242,15 @@ paddle::platform::DeviceContext *HeterParallelContext::GetDeviceContext(
 }
 
 void HeterParallelContext::WaitCompute(int ring_id) {
-  // no need to implement.
-  return;
+  heter_parallel_ctx_->WaitCompute(ring_id);
 }
 
 void HeterParallelContext::WaitComm(int ring_id) {
-  // no need to implement.
-  return;
+  heter_parallel_ctx_->WaitComm(ring_id);
 }
 
 void HeterParallelContext::SynchronizeCompute() {
-  // no need to implement.
-  return;
+  heter_parallel_ctx_->SynchronizeCompute();
 }
 
 }  //  namespace imperative
