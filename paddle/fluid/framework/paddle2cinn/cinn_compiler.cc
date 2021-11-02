@@ -63,18 +63,15 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   program.Proto()->SerializeToString(&graph_key);
   VLOG(4) << "Add a graph into CinnCompiler, which is:\n"
           << ReadableProtoStr(graph_key);
-  bool exist = false;
   {
-    AutoRDLock r_guard{&rwlock_};
-    exist = graphs_.count(graph_key) != 0;
-  }
-  if (!exist) {
-    AutoWRLock w_guard{&rwlock_};
-    graphs_[graph_key] = std::move(graph);
-  } else {
-    LOG(WARNING)
-        << "The graph being added is already in CinnCompiler. Its key is:\n"
-        << ReadableProtoStr(graph_key);
+    AutoWRLock guard{&rwlock_};
+    if (!graphs_.count(graph_key)) {
+      graphs_[graph_key] = std::move(graph);
+    } else {
+      LOG(WARNING)
+          << "The graph being added is already in CinnCompiler. Its key is:\n"
+          << ReadableProtoStr(graph_key);
+    }
   }
   return graph_key;
 }
@@ -103,7 +100,9 @@ const CinnCompiledObject& CinnCompiler::Compile(
     real_compiled_num_++;
     auto compiled_res = CompileGraph(graph, input_tensors, target);
     AutoWRLock w_guard{&rwlock_};
-    cache_[cur_key] = std::move(compiled_res);
+    if (!cache_.count(cur_key)) {
+      cache_[cur_key] = std::move(compiled_res);
+    }
   }
   AutoRDLock guard{&rwlock_};
   const auto& cached_boj = *cache_[cur_key];
