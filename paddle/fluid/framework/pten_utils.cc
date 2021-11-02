@@ -59,6 +59,19 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
+KernelSignatureMap* KernelSignatureMap::kernel_signature_map_ = nullptr;
+std::mutex KernelSignatureMap::mutex_;
+
+KernelSignatureMap& KernelSignatureMap::Instance() {
+  if (kernel_signature_map_ == nullptr) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (kernel_signature_map_ == nullptr) {
+      kernel_signature_map_ = new KernelSignatureMap;
+    }
+  }
+  return *kernel_signature_map_;
+}
+
 const paddle::SmallVector<std::string>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -62,10 +63,7 @@ struct KernelSignature {
 // TODO(chenweihang): we can generate this map by proto info in compile time
 class KernelSignatureMap {
  public:
-  static KernelSignatureMap& Instance() {
-    static KernelSignatureMap g_kernel_signature_map;
-    return g_kernel_signature_map;
-  }
+  static KernelSignatureMap& Instance();
 
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();
@@ -88,9 +86,13 @@ class KernelSignatureMap {
 
  private:
   KernelSignatureMap() = default;
-  paddle::flat_hash_map<std::string, KernelSignature> map_;
-
   DISABLE_COPY_AND_ASSIGN(KernelSignatureMap);
+
+ private:
+  static KernelSignatureMap* kernel_signature_map_;
+  static std::mutex mutex_;
+
+  paddle::flat_hash_map<std::string, KernelSignature> map_;
 };
 
 class KernelArgsNameMaker {
