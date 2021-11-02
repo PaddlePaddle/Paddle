@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 
-// #include "paddle/fluid/pybind/eager_op_function_impl.h"
+#include "paddle/fluid/pybind/eager_op_function_impl.h"
 namespace paddle {
 namespace pybind {
 
@@ -130,7 +130,7 @@ void BindEager(pybind11::module* module) {
   }
 
   BindFunctions(m.ptr());
-  // BindEagerOpFunctions(&m);
+  BindEagerOpFunctions(&m);
 }
 
 }  // namespace pybind
