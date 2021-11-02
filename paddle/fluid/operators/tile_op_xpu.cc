@@ -83,7 +83,6 @@ class TileXPUKernel : public framework::OpKernel<T> {
       out_dims[i] *= repeat_times[i];
     }
     auto vec_out_dims = framework::vectorize<int>(out_dims);
-
     out0->Resize(out_dims);
     out0->mutable_data<T>(context.GetPlace());
 
