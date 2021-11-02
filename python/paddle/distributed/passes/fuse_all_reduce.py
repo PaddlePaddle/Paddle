@@ -122,7 +122,6 @@ def insert_fuse_all_reduce_ops(block, reversed_op_indices, input_var_names,
     for op_idx in reversed_op_indices:
         block._remove_op(op_idx)
 
-    print('insert fused all reduce ops for ring_id ', attrs["ring_id"])
     return coalesce_tensor_op_kwargs
 
 
@@ -134,10 +133,14 @@ def has_same_attrs(op1, op2, attr_names):
 
 
 def filter_all_collective_op_indices(block):
+    # NOTE: should add more collective ops
     all_collective_ops = {
         "c_allreduce_sum",
+        "c_allreduce_prod",
         "c_allreduce_max",
-        # should add more
+        "c_allreduce_min",
+        "c_allgather",
+        "c_broadcast",
     }
 
     match_op_indices = []

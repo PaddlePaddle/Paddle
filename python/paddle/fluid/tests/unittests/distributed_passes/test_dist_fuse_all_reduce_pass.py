@@ -31,19 +31,15 @@ class TestFuseAllReducePass(DistPassTestBase):
 
     def apply_passes(self, main_prog, startup_prog):
         pass_manager = PassManager([
-            new_pass("fuse_all_reduce",
-                     {"max_memory_size": 1024 * 1024 * 1024})
+            new_pass("fuse_elewise_add_act"),
+            new_pass("fuse_all_reduce", {"max_memory_size": 1024 * 1024})
         ])
         pass_manager.apply([main_prog], [startup_prog])
-        rank = paddle.distributed.get_rank()
-        with open('program_{}_fused.txt'.format(rank), "w") as f:
-            f.write(str(main_prog))
 
     def test_bs_32(self):
         self.check_main(batch_size=32)
 
     def get_model(self, place, batch_size):
-        print('batch_size = {}'.format(batch_size))
         image = paddle.static.data(
             shape=[batch_size, 3, 224, 224], dtype='float32', name='image')
         label = paddle.static.data(
@@ -57,7 +53,6 @@ class TestFuseAllReducePass(DistPassTestBase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False
         dist_strategy.without_graph_optimization = True
-        dist_strategy._calc_comm_same_stream = True
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(loss)
@@ -65,19 +60,15 @@ class TestFuseAllReducePass(DistPassTestBase):
         rank = paddle.distributed.get_rank()
 
         def reader():
-            np.random.seed(self.seed)
+            np.random.seed(self.seed + rank)
             for _ in range(10):
-                image_np = np.random.random(
-                    size=image.shape).astype('float32') + rank
+                image_np = np.random.random(size=image.shape).astype('float32')
                 label_np = np.random.randint(
-                    low=0, high=100, size=label.shape).astype('int64') + rank
+                    low=0, high=1000, size=label.shape).astype('int64')
                 yield image_np, label_np
 
         main_program = paddle.static.default_main_program()
         startup_program = paddle.static.default_startup_program()
-        with open('program_{}.txt'.format(rank), "w") as f:
-            f.write(str(main_program))
-
         return main_program, startup_program, [image, label], [loss], reader
 
 
