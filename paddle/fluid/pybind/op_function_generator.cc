@@ -40,6 +40,7 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
+    {"bincount", {"X", "Weights"}},
     {"fused_attention",
      {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "SrcMask", "OutLinearW",
       "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
@@ -71,6 +72,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"fused_feedforward",
+     {"Dropout1Seed", "Dropout2Seed", "Linear1Bias", "Linear2Bias", "Ln1Scale",
+      "Ln1Bias", "Ln2Scale", "Ln2Bias"}},
     {"faster_tokenizer", {"Text", "Vocab", "TextPair"}},
     {"matrix_rank", {"X", "TolTensor"}},
     {"adam",
@@ -563,7 +567,9 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    if (!all_kernels.count(op_type)) {
+    // if the pten lib contains op kernel, we still generate ops method
+    if (!all_kernels.count(op_type) &&
+        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 

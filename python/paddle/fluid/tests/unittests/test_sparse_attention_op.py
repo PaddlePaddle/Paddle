@@ -128,8 +128,8 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2"
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
 )
 class TestSparseAttentionOp(OpTest):
     def config(self):
@@ -190,8 +190,8 @@ class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2"
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
 )
 class TestSparseAttentionAPI(unittest.TestCase):
     def setUp(self):

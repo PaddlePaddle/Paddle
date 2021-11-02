@@ -148,11 +148,20 @@ void TensorRTEngine::FreezeNetwork() {
       // and outputs have scales,
       // this layer's precision and output type are set to float32.
       // This step has no effect if this layer is fused during TRT optimization.
+      int layers_no_int8 = 0;
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
         if (!is_layer_int8(layer)) {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
+          ++layers_no_int8;
         }
+      }
+      // Disable int8 or build engine failed if all layers aren't int8
+      if (layers_no_int8 == network()->getNbLayers()) {
+        nvinfer1::BuilderFlags flags = infer_builder_config_->getFlags();
+        flags = flags & ~(1U << static_cast<int>(nvinfer1::BuilderFlag::kINT8));
+        // reset flags
+        infer_builder_config_->setFlags(flags);
       }
 #else
       LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "
@@ -233,11 +242,11 @@ void TensorRTEngine::FreezeNetwork() {
       *network(), *infer_builder_config_));
 #else
   infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
-  infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
+  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-  infer_engine_.reset(
-      runtime->deserializeCudaEngine(plan->data(), plan->size()));
+  infer_engine_.reset(runtime->deserializeCudaEngine(ihost_memory_->data(),
+                                                     ihost_memory_->size()));
 #endif
 
   PADDLE_ENFORCE_NOT_NULL(

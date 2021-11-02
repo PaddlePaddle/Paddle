@@ -44,6 +44,12 @@ from .models import vgg13  # noqa: F401
 from .models import vgg16  # noqa: F401
 from .models import vgg19  # noqa: F401
 from .models import LeNet  # noqa: F401
+from .models import DenseNet  # noqa: F401
+from .models import densenet121  # noqa: F401
+from .models import densenet161  # noqa: F401
+from .models import densenet169  # noqa: F401
+from .models import densenet201  # noqa: F401
+from .models import densenet264  # noqa: F401
 from .models import AlexNet  # noqa: F401
 from .models import alexnet  # noqa: F401
 from .models import ResNeXt  # noqa: F401
@@ -55,6 +61,8 @@ from .models import resnext152_32x4d  # noqa: F401
 from .models import resnext152_64x4d  # noqa: F401
 from .models import InceptionV3  # noqa: F401
 from .models import inception_v3  # noqa: F401
+from .models import GoogLeNet  # noqa: F401
+from .models import googlenet  # noqa: F401
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
 from .transforms import Resize  # noqa: F401
