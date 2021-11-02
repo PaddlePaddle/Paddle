@@ -560,6 +560,7 @@ class VariableScope : public ScopeBase {
 
   void AddVar(const std::string& name, Variable& var) {  // NOLINT
     // must copy.
+    VLOG(4) << "Add variable: " << name << " through AddVar()";
     auto v = scope_ptr_->Var(name);
     *v = var;
     name2id_[name] = VarSize();
