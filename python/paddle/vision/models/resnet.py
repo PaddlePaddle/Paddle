@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import division
 from __future__ import print_function
 
@@ -38,47 +37,55 @@ model_urls = {
 
 
 def conv3x3(in_planes: int,
-            out_planes: int,
-            stride: int = 1,
-            groups: int = 1,
-            dilation: int = 1) -> nn.Conv2D:
-    """3x3 convolution with padding"""
-    return nn.Conv2D(in_planes,
-                     out_planes,
-                     kernel_size=3,
-                     stride=stride,
-                     padding=dilation,
-                     groups=groups,
-                     dilation=dilation,
-                     bias_attr=False)
+        out_planes: int,
+        stride: int=1,
+        groups: int=1,
+        dilation: int=1) -> nn.Conv2D:
+    """3x3 convolution with padding."""
+    return nn.Conv2D(
+        in_planes,
+        out_planes,
+        kernel_size=3,
+        stride=stride,
+        padding=dilation,
+        groups=groups,
+        dilation=dilation,
+        bias_attr=False)
 
 
 def conv1x1(in_planes: int,
-            out_planes: int,
-            stride: int = 1) -> nn.Conv2D:
+        out_planes: int,
+        stride: int=1) -> nn.Conv2D:
     """1x1 convolution"""
-    return nn.Conv2D(in_planes, out_planes, kernel_size=1, stride=stride, bias_attr=False)
+    return nn.Conv2D(
+        in_planes,
+        out_planes,
+        kernel_size=1,
+        stride=stride,
+        bias_attr=False)
 
 
 class BasicBlock(nn.Layer):
     expansion: int = 1
 
     def __init__(self,
-                 inplanes: int,
-                 planes: int,
-                 stride: int = 1,
-                 downsample: Optional[nn.Layer] = None,
-                 groups: int = 1,
-                 base_width: int = 64,
-                 dilation: int = 1,
-                 norm_layer: Optional[Callable[..., nn.Layer]] = None) -> None:
+            inplanes: int,
+            planes: int,
+            stride: int=1,
+            downsample: Optional[nn.Layer]=None,
+            groups: int=1,
+            base_width: int=64,
+            dilation: int=1,
+            norm_layer: Optional[Callable[..., nn.Layer]]=None) -> None:
         super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2D
         if groups != 1 or base_width != 64:
-            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+            raise ValueError(
+                'BasicBlock only supports groups=1 and base_width=64')
         if dilation > 1:
-            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+            raise NotImplementedError(
+                "Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = norm_layer(planes)
@@ -118,14 +125,14 @@ class BottleneckBlock(nn.Layer):
     expansion: int = 4
 
     def __init__(self,
-                 inplanes: int,
-                 planes: int,
-                 stride: int = 1,
-                 downsample: Optional[nn.Layer] = None,
-                 groups: int = 1,
-                 base_width: int = 64,
-                 dilation: int = 1,
-                 norm_layer: Optional[Callable[..., nn.Layer]] = None) -> None:
+            inplanes: int,
+            planes: int,
+            stride: int=1,
+            downsample: Optional[nn.Layer]=None,
+            groups: int=1,
+            base_width: int=64,
+            dilation: int=1,
+            norm_layer: Optional[Callable[..., nn.Layer]]=None) -> None:
         super(BottleneckBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2D
@@ -188,14 +195,14 @@ class ResNet(nn.Layer):
     """
 
     def __init__(self,
-                 block: Type[Union[BasicBlock, BottleneckBlock]],
-                 depth: int,
-                 num_classes: int = 1000,
-                 groups: int = 1,
-                 width_per_group: int = 64,
-                 replace_stride_with_dilation: Optional[List[bool]] = None,
-                 norm_layer: Optional[Callable[..., nn.Layer]] = None,
-                 with_pool: bool = True) -> None:
+            block: Type[Union[BasicBlock, BottleneckBlock]],
+            depth: int,
+            num_classes: int=1000,
+            groups: int=1,
+            width_per_group: int=64,
+            replace_stride_with_dilation: Optional[List[bool]]=None,
+            norm_layer: Optional[Callable[..., nn.Layer]]=None,
+            with_pool: bool=True) -> None:
         super(ResNet, self).__init__()
         layer_cfg = {
             18: [2, 2, 2, 2],
@@ -217,9 +224,11 @@ class ResNet(nn.Layer):
             # each element in the tuple indicates if we should replace
             # the 2x2 stride with a dilated convolution instead
             replace_stride_with_dilation = [False, False, False]
-        if not isinstance(replace_stride_with_dilation, (tuple, list)) or len(replace_stride_with_dilation) != 3:
+        if not isinstance(replace_stride_with_dilation, (
+                tuple, list)) or len(replace_stride_with_dilation) != 3:
             raise ValueError("replace_stride_with_dilation should be None "
-                             "or a 3-element tuple/list, got {}".format(replace_stride_with_dilation))
+                      "or a 3-element tuple/list, got {}".format(
+                           replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
         self.conv1 = nn.Conv2D(
@@ -233,20 +242,35 @@ class ResNet(nn.Layer):
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
+        self.layer2 = self._make_layer(
+            block,
+            128,
+            layers[1],
+            stride=2,
+            dilate=replace_stride_with_dilation[0])
+        self.layer3 = self._make_layer(
+            block,
+            256,
+            layers[2],
+            stride=2,
+            dilate=replace_stride_with_dilation[1])
+        self.layer4 = self._make_layer(
+            block,
+            512,
+            layers[3],
+            stride=2,
+            dilate=replace_stride_with_dilation[2])
         if with_pool:
             self.avgpool = nn.AdaptiveAvgPool2D((1, 1))
         if num_classes > 0:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self,
-                    block: Type[Union[BasicBlock, BottleneckBlock]],
-                    planes: int,
-                    blocks: int,
-                    stride: int = 1,
-                    dilate: bool = False) -> nn.Sequential:
+            block: Type[Union[BasicBlock, BottleneckBlock]],
+            planes: int,
+            blocks: int,
+            stride: int=1,
+            dilate: bool=False) -> nn.Sequential:
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -256,7 +280,7 @@ class ResNet(nn.Layer):
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 conv1x1(self.inplanes, planes * block.expansion, stride),
-                norm_layer(planes * block.expansion),)
+                 norm_layer(planes * block.expansion),)
 
         layers = []
         layers.append(
@@ -295,8 +319,7 @@ class ResNet(nn.Layer):
         return x
 
 
-def _resnet(
-        arch: str,
+def _resnet(arch: str,
         block: Type[Union[BasicBlock, BottleneckBlock]],
         depth: int,
         pretrained: bool,
@@ -305,16 +328,15 @@ def _resnet(
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
-        weights_path = get_weights_path_from_url(
-            model_urls[arch][0],
-            model_urls[arch][1])
+        weights_path = get_weights_path_from_url(model_urls[arch][0],
+                               model_urls[arch][1])
         param = paddle.load(weights_path)
         model.set_dict(param)
 
     return model
 
 
-def resnet18(pretrained: bool = False, **kwargs: Any) -> ResNet:
+def resnet18(pretrained: bool=False, **kwargs: Any) -> ResNet:
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
@@ -335,7 +357,7 @@ def resnet18(pretrained: bool = False, **kwargs: Any) -> ResNet:
     return _resnet('resnet18', BasicBlock, 18, pretrained, **kwargs)
 
 
-def resnet34(pretrained: bool = False, **kwargs: Any) -> ResNet:
+def resnet34(pretrained: bool=False, **kwargs: Any) -> ResNet:
     r"""ResNet-34 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
     
@@ -356,7 +378,7 @@ def resnet34(pretrained: bool = False, **kwargs: Any) -> ResNet:
     return _resnet('resnet34', BasicBlock, 34, pretrained, **kwargs)
 
 
-def resnet50(pretrained: bool = False, **kwargs: Any) -> ResNet:
+def resnet50(pretrained: bool=False, **kwargs: Any) -> ResNet:
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
@@ -377,7 +399,7 @@ def resnet50(pretrained: bool = False, **kwargs: Any) -> ResNet:
     return _resnet('resnet50', BottleneckBlock, 50, pretrained, **kwargs)
 
 
-def resnet101(pretrained: bool = False, **kwargs: Any) -> ResNet:
+def resnet101(pretrained: bool=False, **kwargs: Any) -> ResNet:
     r"""ResNet-101 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
@@ -398,7 +420,7 @@ def resnet101(pretrained: bool = False, **kwargs: Any) -> ResNet:
     return _resnet('resnet101', BottleneckBlock, 101, pretrained, **kwargs)
 
 
-def resnet152(pretrained: bool = False, **kwargs: Any) -> ResNet:
+def resnet152(pretrained: bool=False, **kwargs: Any) -> ResNet:
     r"""ResNet-152 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
@@ -419,7 +441,7 @@ def resnet152(pretrained: bool = False, **kwargs: Any) -> ResNet:
     return _resnet('resnet152', BottleneckBlock, 152, pretrained, **kwargs)
 
 
-def wide_resnet50_2(pretrained: bool = False, **kwargs: Any) -> ResNet:
+def wide_resnet50_2(pretrained: bool=False, **kwargs: Any) -> ResNet:
     r"""Wide ResNet-50-2 model from
     `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_.
 
@@ -430,12 +452,20 @@ def wide_resnet50_2(pretrained: bool = False, **kwargs: Any) -> ResNet:
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.vision.models import wide_resnet50_2
+
+            # build model
+            model = wide_resnet50_2()
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet50_2', BottleneckBlock, 50, pretrained, **kwargs)
 
 
-def wide_resnet101_2(pretrained: bool = False, **kwargs: Any) -> ResNet:
+def wide_resnet101_2(pretrained: bool=False, **kwargs: Any) -> ResNet:
     r"""Wide ResNet-101-2 model from
     `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_.
 
@@ -446,6 +476,14 @@ def wide_resnet101_2(pretrained: bool = False, **kwargs: Any) -> ResNet:
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.vision.models import wide_resnet101_2
+
+            # build model
+            model = wide_resnet101_2()
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet101_2', BottleneckBlock, 101, pretrained, **kwargs)
