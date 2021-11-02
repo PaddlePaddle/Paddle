@@ -1,0 +1,5 @@
+cc_test(test_mean_api SRCS test_mean_api.cc DEPS math_api pten_hapi_utils)
+cc_test(test_dot_api SRCS test_dot_api.cc DEPS linalg_api pten_hapi_utils)
+cc_test(test_matmul_api SRCS test_matmul_api.cc DEPS linalg_api pten_hapi_utils)
+cc_test(test_fill_api SRCS test_fill_api.cc DEPS creation_api pten_hapi_utils)
+cc_test(test_flatten_api SRCS test_flatten_api.cc DEPS utils_cpu manipulation_api pten_hapi_utils)

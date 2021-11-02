@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
+
 #include "paddle/pten/common/layout.h"
 
 TEST(DataLayout, OStream) {

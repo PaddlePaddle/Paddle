@@ -29,7 +29,7 @@ using DDim = paddle::framework::DDim;
 // TODO(YuanRisheng): This TEST file need to be refactored after 'copy' realized
 // in
 // 'paddle/api',
-TEST(API, copy) {
+TEST(DEV_API, copy) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
