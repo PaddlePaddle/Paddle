@@ -145,8 +145,7 @@ def init_parallel_env():
     nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "2"))
     print("### DEBUG ### backend is: ", backend)
     is_cpu_only = _is_cpuonly(backend)
-    #enable_gloo = is_cpu_only or (backend == "heter")
-    enable_gloo = False
+    enable_gloo = is_cpu_only or (backend == "heter")
 
     # 2. Check device
     if not (is_cpu_only or core.is_compiled_with_cuda() or
