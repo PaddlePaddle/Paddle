@@ -26,9 +26,9 @@ namespace operators {
 
 using framework::DataLayout;
 using framework::Tensor;
-using dnnl::memory;
-using dnnl::primitive;
-using dnnl::stream;
+using mkldnn::memory;
+using mkldnn::primitive;
+using mkldnn::stream;
 
 template <typename T, dnnl::algorithm BINARY_OP>
 class EltwiseMKLDNNKernel : public framework::OpKernel<T> {

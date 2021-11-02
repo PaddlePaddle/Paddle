@@ -25,7 +25,7 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   LayerNormMKLDNNHandler(const std::vector<int64_t>& dims, const float& epsilon,
                          const dnnl::normalization_flags& flags,
                          const bool& is_test, const MKLDNNMemoryFormat fmt,
-                         const dnnl::engine engine, platform::Place cpu_place)
+                         const mkldnn::engine engine, platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
             engine, cpu_place) {
     auto md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
@@ -131,7 +131,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       args.insert({DNNL_ARG_VARIANCE, *variance_memory});
     }
 
-    std::shared_ptr<dnnl::memory> scaleshift_memory;
+    std::shared_ptr<mkldnn::memory> scaleshift_memory;
     if (with_scaleshift) {
       auto scale_tz = paddle::framework::vectorize(scale->dims());
       const unsigned int C = scale_tz[0];

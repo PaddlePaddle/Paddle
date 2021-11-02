@@ -74,7 +74,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = framework::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
     platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
                                                    x_type, onednn_engine);
 
@@ -197,7 +197,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  static dnnl::memory::format_tag getPlainFormatTag(const Tensor* tensor) {
+  static mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) {
     auto tensor_dims_size = tensor->dims().size();
     PADDLE_ENFORCE_EQ(
         tensor_dims_size <= 6 && tensor_dims_size >= 1, true,
@@ -206,17 +206,17 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     switch (tensor_dims_size) {
       case 1:
-        return dnnl::memory::format_tag::a;
+        return mkldnn::memory::format_tag::a;
       case 2:
-        return dnnl::memory::format_tag::ab;
+        return mkldnn::memory::format_tag::ab;
       case 3:
-        return dnnl::memory::format_tag::abc;
+        return mkldnn::memory::format_tag::abc;
       case 4:
-        return dnnl::memory::format_tag::abcd;
+        return mkldnn::memory::format_tag::abcd;
       case 5:
-        return dnnl::memory::format_tag::abcde;
+        return mkldnn::memory::format_tag::abcde;
       default:
-        return dnnl::memory::format_tag::abcdef;
+        return mkldnn::memory::format_tag::abcdef;
     }
   }
 
@@ -324,7 +324,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     auto dout_vec_dims = framework::vectorize(dout->dims());
 
-    dnnl::memory::data_type dout_type =
+    mkldnn::memory::data_type dout_type =
         framework::ToMKLDNNDataType(dout->type());
     platform::ReorderMKLDNNHandler reorder_handler(dout_vec_dims, dout->type(),
                                                    dout_type, onednn_engine);

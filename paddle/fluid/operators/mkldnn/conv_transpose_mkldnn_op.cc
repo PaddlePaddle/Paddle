@@ -25,7 +25,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 using framework::DataLayout;
 
-inline dnnl::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
+inline mkldnn::memory::dims GetWeightsTz(const Tensor* filter,
+                                         const int groups) {
   auto iohw_weights_tz = framework::vectorize(filter->dims());
   auto weights_tz = iohw_weights_tz;
 
@@ -39,15 +40,15 @@ inline dnnl::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
 
 template <typename T, typename K, typename T_out>
 class ConvTransposeMKLDNNHandlerT
-    : public platform::MKLDNNHandlerT<T, dnnl::deconvolution_forward> {
+    : public platform::MKLDNNHandlerT<T, mkldnn::deconvolution_forward> {
  public:
   ConvTransposeMKLDNNHandlerT(const framework::ExecutionContext& ctx,
                               const platform::MKLDNNDeviceContext& dev_ctx,
-                              const dnnl::engine mkldnn_engine,
+                              const mkldnn::engine mkldnn_engine,
                               platform::Place cpu_place, const Tensor* input,
                               const Tensor* filter, const Tensor* bias,
                               Tensor* output, const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, dnnl::deconvolution_forward>(
+      : platform::MKLDNNHandlerT<T, mkldnn::deconvolution_forward>(
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
@@ -106,13 +107,14 @@ class ConvTransposeMKLDNNHandlerT
       }
 
       std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
-      dnnl::memory::dims strides(begin(strides_temp), end(strides_temp));
+      mkldnn::memory::dims strides(begin(strides_temp), end(strides_temp));
 
       std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
-      dnnl::memory::dims paddings(begin(paddings_temp), end(paddings_temp));
+      mkldnn::memory::dims paddings(begin(paddings_temp), end(paddings_temp));
 
       std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
-      dnnl::memory::dims dilations(begin(dilations_temp), end(dilations_temp));
+      mkldnn::memory::dims dilations(begin(dilations_temp),
+                                     end(dilations_temp));
 
       int groups = ctx.Attr<int>("groups");
       std::string padding_algorithm =
@@ -153,10 +155,10 @@ class ConvTransposeMKLDNNHandlerT
       const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
       const float fuse_beta = ctx.Attr<float>("fuse_beta");
 
-      auto data_type = dnnl::memory::data_type::f32;
+      auto data_type = mkldnn::memory::data_type::f32;
       if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
           std::is_same<T_out, platform::bfloat16>::value)
-        data_type = dnnl::memory::data_type::bf16;
+        data_type = mkldnn::memory::data_type::bf16;
 
       const auto src_md =
           platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
@@ -165,10 +167,10 @@ class ConvTransposeMKLDNNHandlerT
       const auto dst_md = platform::MKLDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
 
-      const dnnl::primitive_attr conv_trans_attr =
+      const mkldnn::primitive_attr conv_trans_attr =
           CreatePostOps(fuse_activation, fuse_alpha, fuse_beta);
-      auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
-                                   : dnnl::prop_kind::forward_training;
+      auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
+                                   : mkldnn::prop_kind::forward_training;
       if (bias) {
         std::vector<int64_t> bias_tz = framework::vectorize(bias->dims());
         const auto bias_md =
@@ -186,32 +188,33 @@ class ConvTransposeMKLDNNHandlerT
     }
   }
 
-  dnnl::primitive_attr CreatePostOps(const std::string& fuse_activation,
-                                     const float& fuse_alpha,
-                                     const float& fuse_beta) {
-    dnnl::primitive_attr conv_attr;
-    dnnl::post_ops post_operations;
+  mkldnn::primitive_attr CreatePostOps(const std::string& fuse_activation,
+                                       const float& fuse_alpha,
+                                       const float& fuse_beta) {
+    mkldnn::primitive_attr conv_attr;
+    mkldnn::post_ops post_operations;
 
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
       constexpr float scale = 1.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_relu,
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "relu6") {
       constexpr float scale = 1.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_bounded_relu, fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(scale,
+                                     mkldnn::algorithm::eltwise_bounded_relu,
+                                     fuse_alpha, fuse_beta);
     } else if (fuse_activation == "swish") {
       constexpr float scale = 1.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_swish,
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemoryWithReorder(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
     const std::string user_key_suffix{"@src_mem_p_user"};
@@ -234,7 +237,7 @@ class ConvTransposeMKLDNNHandlerT
     }
   }
 
-  std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
+  std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryWithReorder(
       const framework::Tensor* filter, const int& groups, const bool& is_test) {
     // This is workaround to make execution faster, delete
     // if statement after including md inside Tensor
@@ -279,7 +282,7 @@ class ConvTransposeMKLDNNHandlerT
     }
   }
 
-  std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
+  std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
       const framework::Tensor* bias, const bool& is_test) {
     auto bias_mem_p = this->AcquireMemory("@bias_mem_p_target");
     if (is_test && bias_mem_p) {
@@ -344,13 +347,13 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
     auto conv_p = handler.AcquireForwardPrimitive();
 
     std::unordered_map<int, dnnl::memory> args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_WEIGHTS, *weights_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
+        {MKLDNN_ARG_SRC, *src_memory_p},
+        {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
+        {MKLDNN_ARG_DST, *dst_memory_p}};
 
     if (bias) {
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias, is_test);
-      args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+      args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     conv_p->execute(astream, args);

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "mkldnn.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
@@ -93,7 +93,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       int mask = 0;
       attri.set_output_scales(mask, {reorder_scale});
       if (with_shift) {
-        dnnl::post_ops post_operations;
+        mkldnn::post_ops post_operations;
         post_operations.append_sum();
         attri.set_post_ops(post_operations);
         uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());

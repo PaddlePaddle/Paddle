@@ -90,7 +90,7 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = framework::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
