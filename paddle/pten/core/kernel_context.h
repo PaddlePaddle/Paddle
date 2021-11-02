@@ -97,7 +97,7 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  std::vector<TensorType> InputAt(size_t start, size_t end) const {
+  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
       auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
@@ -121,7 +121,7 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  std::vector<TensorType*> MutableOutputAt(size_t start, size_t end) {
+  std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
     std::vector<TensorType*> v;
     for (size_t i = start; i < end; ++i) {
       v.emplace_back(static_cast<TensorType*>(outputs_.at(i).get()));
