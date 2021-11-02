@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/utils/small_vector.h"

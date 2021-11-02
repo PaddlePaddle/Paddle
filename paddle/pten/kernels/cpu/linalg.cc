@@ -21,6 +21,8 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/complex.h"
 
+#include "paddle/pten/kernels/functions/math/matmul_func.h"
+
 namespace pten {
 
 template <typename T>
@@ -45,6 +47,27 @@ void Dot(const CPUContext& dev_ctx,
   }
 }
 
+template <typename T>
+void Matmul(const CPUContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            bool transpose_x,
+            bool transpose_y,
+            DenseTensor* out) {
+  PADDLE_ENFORCE_NE(paddle::framework::product(x.dims()),
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The Input(X) dims size must not be equal 0,"
+                        " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_NE(paddle::framework::product(y.dims()),
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The Input(Y) dims size must not be equal 0,"
+                        " but reviced dims size is 0. "));
+  math::MatMulFunction<CPUContext, T>(
+      dev_ctx, x, y, out, transpose_x, transpose_y);
+}
+
 }  // namespace pten
 
 PT_REGISTER_MODULE(LinalgCPU);
@@ -62,3 +85,7 @@ PT_REGISTER_KERNEL("dot",
                    int64_t,
                    complex64,
                    complex128) {}
+
+PT_REGISTER_KERNEL(
+    "matmul_v2", CPU, ANY, pten::Matmul, float, double, complex64, complex128) {
+}
