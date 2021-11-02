@@ -51,7 +51,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                           kCompilationKey));
     const auto& compilation_key =
         ctx.template Attr<std::string>(kCompilationKey);
-    VLOG(2) << "CinnLaunchOp compilation_key:" << compilation_key;
+    VLOG(2) << "CinnLaunchOp compilation_key:\n"
+            << ReadableProtoStr(compilation_key);
 
     const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
     auto input_variable_names = ctx.InputNames(kX);

@@ -29,11 +29,13 @@
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/pass.h"
 #include "cinn/hlir/pass/use_pass.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -59,22 +61,32 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   ProgramDesc program;
   GraphToProgram(*graph, &program);
   program.Proto()->SerializeToString(&graph_key);
-  if (!graphs_.count(graph_key)) {
+  VLOG(4) << "Add a graph into CinnCompiler, which is:\n"
+          << ReadableProtoStr(graph_key);
+  bool exist = false;
+  {
+    AutoRDLock r_guard{&rwlock_};
+    exist = graphs_.count(graph_key) != 0;
+  }
+  if (!exist) {
+    AutoWRLock w_guard{&rwlock_};
     graphs_[graph_key] = std::move(graph);
   } else {
     LOG(WARNING)
         << "The graph being added is already in CinnCompiler. Its key is:\n"
-        << graph_key;
+        << ReadableProtoStr(graph_key);
   }
   return graph_key;
 }
 
 const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
+  AutoRDLock guard{&rwlock_};
   PADDLE_ENFORCE_NE(
       graphs_.count(graph_key), 0,
-      platform::errors::InvalidArgument("Can not find the target graph: %s",
-                                        graph_key.c_str()));
-  return *graphs_.at(graph_key);
+      platform::errors::InvalidArgument("Can not find the target graph:\n%s",
+                                        ReadableProtoStr(graph_key).c_str()));
+  const auto& graph = *graphs_.at(graph_key);
+  return graph;
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(
@@ -82,17 +94,28 @@ const CinnCompiledObject& CinnCompiler::Compile(
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
   CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
-  if (!cache_.count(cur_key)) {
-    real_compiled_num_++;
-    cache_[cur_key] = CompileGraph(graph, input_tensors, target);
+  bool exist = false;
+  {
+    AutoRDLock r_guard{&rwlock_};
+    exist = cache_.count(cur_key) != 0;
   }
-  return *cache_[cur_key];
+  if (!exist) {
+    auto compiled_res = CompileGraph(graph, input_tensors, target);
+    AutoWRLock w_guard{&rwlock_};
+    real_compiled_num_++;
+    cache_[cur_key] = std::move(compiled_res);
+  }
+  AutoRDLock guard{&rwlock_};
+  const auto& cached_boj = *cache_[cur_key];
+  return cached_boj;
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
+  VLOG(4) << "The graph to be compiled is:\n"
+          << ReadableProtoStr(compilation_key);
   const auto& graph = FindGraph(compilation_key);
   return Compile(graph, input_tensors, target);
 }
@@ -123,6 +146,12 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
   return compiled_obj;
+}
+
+std::string ReadableProtoStr(const std::string& bytes) {
+  proto::ProgramDesc program_desc;
+  program_desc.ParseFromString(bytes);
+  return program_desc.DebugString();
 }
 
 }  // namespace paddle2cinn

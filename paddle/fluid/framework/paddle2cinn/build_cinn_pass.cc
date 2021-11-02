@@ -26,6 +26,8 @@ limitations under the License. */
 
 #include "cinn/frontend/op_mapper_registry.h"
 #include "cinn/frontend/op_mappers/use_op_mappers.h"
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -34,7 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/string/string_helper.h"
 
 DECLARE_string(allow_cinn_ops);
 DECLARE_string(deny_cinn_ops);
@@ -377,6 +378,8 @@ void SearchAllSubgraphs(Graph* graph) {
     // return true only when it is registered in CINN
     return registered;
   };
+  VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
+  VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
 
@@ -409,7 +412,7 @@ void SearchAllSubgraphs(Graph* graph) {
     // save it in CinnCompiler
     std::string compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
         cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
-    VLOG(4) << "Compilation Key: " << compilation_key;
+    VLOG(4) << "Compilation Key:\n" << ReadableProtoStr(compilation_key);
 
     // Replace the found cluster to a new cinn op node
     ReplaceSubGraphWithCinnOpNode(cluster_set, cluster_inputs, cluster_outputs,

@@ -24,6 +24,8 @@
 #include <vector>
 
 #include "cinn/common/target.h"
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -34,6 +36,9 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+
+DECLARE_string(allow_cinn_ops);
+DECLARE_string(deny_cinn_ops);
 
 namespace paddle {
 namespace framework {
@@ -62,6 +67,17 @@ std::vector<std::string> GetCompilationKeys(const Graph& graph) {
     }
   }
   return compilation_keys;
+}
+
+// Extract op types from a graph
+std::unordered_set<std::string> ExtractOpTypes(const Graph& graph) {
+  std::unordered_set<std::string> op_types;
+  for (auto& node : graph.Nodes()) {
+    if (node->IsOp()) {
+      op_types.emplace(node->Name());
+    }
+  }
+  return op_types;
 }
 
 // Get inputs info
@@ -163,6 +179,49 @@ std::unique_ptr<Graph> CreateGraph() {
 
 }  // namespace
 
+TEST(CinnCompilerTest, FlagController) {
+  // init
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  auto cinn_pass = ir::PassRegistry::Instance().Get("build_cinn_pass");
+  // apply build_cinn_pass & FLAGS_allow_cinn_ops="add"
+  {
+    FLAGS_allow_cinn_ops = "add";
+    auto graph = CreateGraph();
+    cinn_compiler->Clear();
+    cinn_pass->Apply(graph.get());
+    auto compilation_keys = GetCompilationKeys(*graph);
+    ASSERT_EQ(compilation_keys.size(), 0);
+  }
+  // apply build_cinn_pass & FLAGS_allow_cinn_ops="mul;relu"
+  {
+    FLAGS_allow_cinn_ops = "mul;relu";
+    auto graph = CreateGraph();
+    cinn_compiler->Clear();
+    cinn_pass->Apply(graph.get());
+    auto compilation_keys = GetCompilationKeys(*graph);
+    ASSERT_EQ(compilation_keys.size(), 2);
+  }
+  // apply build_cinn_pass & FLAGS_allow_cinn_ops="" &
+  // FLAGS_deny_cinn_ops="relu"
+  {
+    FLAGS_allow_cinn_ops = "";
+    FLAGS_deny_cinn_ops = "elementwise_add;relu";
+    auto graph = CreateGraph();
+    cinn_compiler->Clear();
+    cinn_pass->Apply(graph.get());
+    auto compilation_keys = GetCompilationKeys(*graph);
+    ASSERT_EQ(compilation_keys.size(), 1);
+    const auto& compiling_graph = cinn_compiler->FindGraph(compilation_keys[0]);
+    auto op_types = ExtractOpTypes(compiling_graph);
+    ASSERT_EQ(op_types.size(), 2);
+    ASSERT_EQ(op_types.count("feed"), 1);
+    ASSERT_EQ(op_types.count("mul"), 1);
+  }
+  // recover flags
+  FLAGS_allow_cinn_ops = "";
+  FLAGS_deny_cinn_ops = "";
+}
+
 TEST(CinnCompilerTest, Compile) {
   auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
   auto cinn_pass = ir::PassRegistry::Instance().Get("build_cinn_pass");
@@ -183,6 +242,7 @@ TEST(CinnCompilerTest, Compile) {
   ASSERT_EQ(compilation_keys.size(), 1);
 
   const auto& compilation_key = compilation_keys[0];
+  VLOG(4) << "Compilation Key:\n" << ReadableProtoStr(compilation_key);
   auto* cinn_compiler = CinnCompiler::GetInstance();
   const auto& compiling_graph = cinn_compiler->FindGraph(compilation_key);
   viz_graph("compiling_graph.dot", const_cast<Graph*>(&compiling_graph));

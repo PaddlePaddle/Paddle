@@ -17,6 +17,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -25,6 +26,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -64,7 +66,17 @@ class CinnCompiler {
 
   const ir::Graph& FindGraph(const std::string& key) const;
 
-  std::int64_t real_compiled_num() const { return real_compiled_num_; }
+  void Clear() {
+    AutoWRLock guard{&rwlock_};
+    graphs_.clear();
+    cache_.clear();
+    real_compiled_num_ = 0;
+  }
+
+  std::int64_t real_compiled_num() const {
+    AutoRDLock guard{&rwlock_};
+    return real_compiled_num_;
+  }
 
   ~CinnCompiler() = default;
 
@@ -79,10 +91,13 @@ class CinnCompiler {
   std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,
                      CinnCacheKey::Hash>
       cache_;
-  std::atomic_int64_t real_compiled_num_{0};
+  std::int64_t real_compiled_num_{0};
+  mutable RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };
+
+extern std::string ReadableProtoStr(const std::string& bytes);
 
 }  // namespace paddle2cinn
 }  // namespace framework
