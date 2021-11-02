@@ -183,28 +183,11 @@ void HeterParallelContext::AllReduceByStream(
                                        platform::CPUPlace());
 
     auto &place = src_dev_tensor.place();
-    platform::DeviceContext* dev_ctx{nullptr};
-    if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_NCCL
-    dev_ctx = static_cast<platform::CUDADeviceContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-#endif
-    } else if (platform::is_npu_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    dev_ctx = static_cast<platform::NPUDeviceContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-#endif
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-        "Heter allreduce not supported on place (%s)", place));
-    }
-
     auto cpu_place = new platform::CPUPlace();
-    framework::TensorCopy(src_dev_tensor, *cpu_place, *dev_ctx,
-                          &src_cpu_tensor);
-    dev_ctx->Wait();
+    framework::TensorCopySync(src_dev_tensor, *cpu_place, &src_cpu_tensor);
 
-    // step 2.2: call gloo->AllReduce between cpus
+    // step 2.2: call gloo->AllReduce between cpus of nodes
+    // std::cout << "/// DEBUG /// step 2.2: gloo allreduce between nodes... " << std::endl;
     // std::vector<float> send_vector;
     // framework::TensorToVector<float>(src_cpu_tensor, &send_vector);
     // auto recv_vector = gloo_ptr->AllReduce<float>(send_vector);
@@ -212,9 +195,8 @@ void HeterParallelContext::AllReduceByStream(
 
     // step 2.3: CPU Tensor to Dev tensor
     std::cout << "/// DEBUG /// step 2.3: CPU Tensor to Dev tensor... " << std::endl;
-    // framework::TensorCopy(dst_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
-    framework::TensorCopy(src_cpu_tensor, place, *dev_ctx, dst_dev_tensor);
-    dev_ctx->Wait();
+    //framework::TensorCopySync(dst_cpu_tensor, place, dst_dev_tensor);
+    framework::TensorCopySync(src_cpu_tensor, place, dst_dev_tensor);
 
     // gloo_ptr->Barrier();
   }

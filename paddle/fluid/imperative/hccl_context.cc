@@ -169,6 +169,15 @@ void HCCLParallelContext::InterReduce(const framework::Variable &src,
     aclrtStream stream = comm->stream();
     // no Reduce, use AllReduce instead
     AllReduce(src_tensor, dst_tensor, stream, comm);
+    if (comm->rank() != 0) {
+      auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
+      memory::Copy(
+          npu_place,
+          reinterpret_cast<void*>(dst_tensor->data<float>()),
+          npu_place,
+          reinterpret_cast<void*>(const_cast<float*>(src_tensor.data<float>())),
+          src_tensor.numel() * sizeof(float), stream);
+    }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
