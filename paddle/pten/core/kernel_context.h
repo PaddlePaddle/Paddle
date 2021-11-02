@@ -59,6 +59,7 @@ class KernelContext {
 
   void EmplaceBackInputs(
       paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
+    int index = inputs_.size();
     // Record the start and end index of the input
     input_range_.emplace_back(
         std::pair<int, int>(index, index + inputs.size()));
@@ -76,6 +77,7 @@ class KernelContext {
 
   void EmplaceBackOutputs(
       paddle::SmallVector<std::shared_ptr<TensorBase>> outputs) {
+    int index = inputs_.size();
     // Record the start and end index of the input
     output_range_.emplace_back(
         std::pair<int, int>(index, index + outputs.size()));
