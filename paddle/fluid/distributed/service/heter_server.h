@@ -126,6 +126,12 @@ class HeterService : public ::paddle::distributed::PsService {
     handler_map_[message_name] = func;
   }
 
+  int32_t ForceExit() {
+    VLOG(3) << "heter service force exit";
+    is_exit_ = true;
+    return 0;
+  }
+
   void SetEndpoint(const std::string& end_point) { endpoint_ = end_point; }
   void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
   bool IsExit() { return is_exit_; }
@@ -280,12 +286,24 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
-    VLOG(3) << "HeterServer Stop()";
     std::unique_lock<std::mutex> lock(mutex_);
+    if (stoped_ == true) return;
+
+    if (!IsExit()) service_.ForceExit();
+
+    VLOG(3) << "HeterServer Stop()";
     stoped_ = true;
     cv_.notify_all();
     server_.Stop(1000);
     server_.Join();
+  }
+
+  bool IsStop() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (stoped_ == true)
+      return true;
+    else
+      return false;
   }
 
   bool IsExit() { return service_.IsExit(); }

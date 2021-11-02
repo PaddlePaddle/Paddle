@@ -101,7 +101,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   }
 
   while (true) {
-    if (rpc_service_->IsExit()) {
+    if (rpc_service_->IsExit() || rpc_service_->IsStop()) {
       rpc_service_->Stop();
       VLOG(0) << "get exit. rpc_processor stop!";
       break;

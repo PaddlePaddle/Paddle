@@ -31,7 +31,7 @@ heter_worker_port_1=$(( PADDLE_DIST_UT_PORT + 9 ))
 
 function test_launch_ps(){
 
-    python -m paddle.distributed.fleet.launch \
+    python3 -m paddle.distributed.fleet.launch \
         --servers="127.0.0.1:${server_port_00},127.0.0.1:${server_port_10}" \
         --workers="127.0.0.1:${worker_port_00},127.0.0.1:${worker_port_10}" \
         fleet_ps_training.py 2> ut.elog
@@ -44,15 +44,16 @@ function test_launch_ps(){
 }
 
 function test_launch_ps_heter(){
-    python -m paddle.distributed.fleet.launch \
+    python3 -m paddle.distributed.fleet.launch \
         --servers="127.0.0.1:${server_port_01},127.0.0.1:${server_port_11}" \
         --workers="127.0.0.1:${worker_port_01},127.0.0.1:${worker_port_11}" \
         --heter_workers="127.0.0.1:${heter_worker_port_0},127.0.0.1:${heter_worker_port_1}" \
+        --heter_devices="gpu" \
         fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
-        echo "test heter pserver launch succeed"
+        echo "test heter trainer launch succeed"
     else
-        echo "test pserver launch failed"
+        echo "test heter trainer launch failed"
         exit -1
     fi
 }

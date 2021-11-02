@@ -202,9 +202,13 @@ void HeterPipelineTrainer::Run() {
     th.join();
   }
   threads_.clear();
+  VLOG(3) << "Epoch Trainging done";
 }
 
 void HeterPipelineTrainer::Finalize() {
+  VLOG(3) << "HeterPipelineTrainer Finalize";
+  auto heter_server = paddle::distributed::HeterServer::GetInstance();
+  heter_server->Stop();
   if (listen_ptr_) {
     (listen_ptr_.get())->join();
     listen_ptr_.reset(nullptr);

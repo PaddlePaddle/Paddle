@@ -124,6 +124,11 @@ class FleetDistHeterRunnerBase(object):
             "launch_barrier": True,
             "heter_worker_device_guard": 'gpu'
         }
+        self.strategy.pipeline = True
+        self.strategy.pipeline_configs = {
+            "accumulate_steps": 1,
+            "micro_batch_size": 2048
+        }
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):

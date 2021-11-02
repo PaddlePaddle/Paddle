@@ -999,8 +999,11 @@ class Executor(object):
               exe.close()
         """
         if not self._closed:
-            self._default_executor.close()
             self._closed = True
+            for k, trainer_instance in self.trainer_caches.items():
+                self._default_executor.release_trainer(trainer_instance)
+                del trainer_instance
+            self._default_executor.close()
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):

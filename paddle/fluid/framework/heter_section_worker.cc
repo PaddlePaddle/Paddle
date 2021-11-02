@@ -11,6 +11,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_PSCORE)
 #include <float.h>
+#include "paddle/fluid/distributed/service/heter_server.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -243,9 +244,16 @@ void HeterSectionWorker::Run() {
       micro_ids.push_back(i);
     }
     // backward
-    MiniBatchBarrier(micro_ids);
+    if (micro_ids.size() > 0) {
+      MiniBatchBarrier(micro_ids);
+    }
   } else {  // for heter worker
     while (true) {
+      auto heter_server = paddle::distributed::HeterServer::GetInstance();
+      if (heter_server->IsStop()) {
+        epoch_finish_ = true;
+        break;
+      }
       auto task = (*thread_queue_).Pop();
       auto message_name = task.first;
       auto micro_id = task.second;
