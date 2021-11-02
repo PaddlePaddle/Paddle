@@ -69,9 +69,9 @@ struct CastDataType {
 };
 
 template <typename T>
-void DeviceCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
-                int64_t ele_size) {
-#if defined(PADDLE_WITH_CUDA)
+void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
+             int64_t ele_size) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   int device_num = paddle::platform::GetCurrentDeviceId();
   platform::CUDAPlace gpu_place(device_num);
@@ -90,29 +90,11 @@ void DeviceCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
     PADDLE_THROW(platform::errors::Unavailable(
         "Only GPU related Copy can reach this func."));
   }
-#elif defined(PADDLE_WITH_HIP)
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  int device_num = paddle::platform::GetCurrentDeviceId();
-  platform::CUDAPlace gpu_place(device_num);
-  auto *dev_ctx =
-      static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
-  if ((src_plc == PlaceType::kHIP) && (dst_plc == PlaceType::kCPU)) {
-    memory::Copy(platform::CPUPlace(), static_cast<void *>(dst), gpu_place, src,
-                 ele_size, dev_ctx->stream());
-  } else if ((src_plc == PlaceType::kHIP) && (dst_plc == PlaceType::kHIP)) {
-    memory::Copy(gpu_place, static_cast<void *>(dst), gpu_place, src, ele_size,
-                 dev_ctx->stream());
-  } else if ((src_plc == PlaceType::kCPU) && (dst_plc == PlaceType::kHIP)) {
-    memory::Copy(gpu_place, static_cast<void *>(dst), platform::CPUPlace(), src,
-                 ele_size, dev_ctx->stream());
-  } else {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Only GPU related Copy can reach this func."));
-  }
+#ifdef PADDLE_WITH_HIP
+  hipStreamSynchronize(dev_ctx->stream());
 #else
-  PADDLE_THROW(platform::errors::Unavailable(
-      "This function can only be used if compiled with"
-      "either -DWITH_ROCM=ON or -DWITH_GPU=ON"));
+  cudaStreamSynchronize(dev_ctx->stream());
+#endif
 #endif
 }
 
@@ -175,13 +157,8 @@ T *Tensor::mutable_data() {
     case static_cast<int>(PlaceType::kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case static_cast<int>(PlaceType::kGPU): {
-      int device_num = platform::GetCurrentDeviceId();
-      return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
-    }
-#elif defined(PADDLE_WITH_HIP)
-    case static_cast<int>(PlaceType::kHIP): {
       int device_num = platform::GetCurrentDeviceId();
       return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
     }
@@ -245,23 +222,17 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
   target.reshape(shape());
   auto *p_target_data = target.template mutable_data<T>();
 
-  bool supported_gpu_transform = false;
-#if defined(PADDLE_WITH_CUDA)
-  supported_gpu_transform =
-      (src_place == PlaceType::kGPU && target_place == PlaceType::kCPU) ||
-      (src_place == PlaceType::kCPU && target_place == PlaceType::kGPU) ||
-      (src_place == PlaceType::kGPU && target_place == PlaceType::kGPU);
-#elif defined(PADDLE_WITH_HIP)
-  supported_gpu_transform =
-      (src_place == PlaceType::kHIP && target_place == PlaceType::kCPU) ||
-      (src_place == PlaceType::kCPU && target_place == PlaceType::kHIP) ||
-      (src_place == PlaceType::kHIP && target_place == PlaceType::kHIP);
-#endif
-
   if ((src_place == PlaceType::kCPU) && (target_place == PlaceType::kCPU)) {
     std::memcpy(static_cast<void *>(p_target_data), p_src_data, ele_size);
-  } else if (supported_gpu_transform) {
-    DeviceCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
+  } else if ((src_place == PlaceType::kGPU) &&
+             (target_place == PlaceType::kCPU)) {
+    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
+  } else if ((src_place == PlaceType::kCPU) &&
+             (target_place == PlaceType::kGPU)) {
+    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
+  } else if ((src_place == PlaceType::kGPU) &&
+             (target_place == PlaceType::kGPU)) {
+    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Not supported place transform of place: %d to place: %d",
@@ -363,18 +334,15 @@ const PlaceType &Tensor::place() const {
   GET_CASTED_TENSOR;
   if (platform::is_cpu_place(tensor->place())) {
     place_ = PlaceType::kCPU;
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (platform::is_gpu_place(tensor->place())) {
     place_ = PlaceType::kGPU;
-#elif defined(PADDLE_WITH_HIP)
-  } else if (platform::is_gpu_place(tensor->place())) {
-    place_ = PlaceType::kHIP;
 #endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Current Tensor hold unsupported Place Type, Please Init it"
         "using Tensor::mutable_data<T>(PaddlePlace) with T among:"
-        "Place::kCPU or Place::kGPU or Place::kHIP"));
+        "Place::kCPU or Place::kGPU"));
   }
   return place_;
 }
@@ -456,21 +424,16 @@ bool Tensor::is_initialized() const {
   }
 }
 
-#define DEFINE_STREAM(_stream_t_)                               \
-  _stream_t_ Tensor::stream() const {                           \
-    if (!stream_.IsStreamSet()) {                               \
-      PADDLE_THROW(platform::errors::PreconditionNotMet(        \
-          "Stream is not Set, only input tensor will have "     \
-          "stream which is set by framework "));                \
-    } else {                                                    \
-      return reinterpret_cast<_stream_t_>(stream_.GetStream()); \
-    }                                                           \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+gpuStream_t Tensor::stream() const {
+  if (!stream_.IsStreamSet()) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Stream is not Set, only input tensor will have "
+        "stream which is set by framework "));
+  } else {
+    return reinterpret_cast<gpuStream_t>(stream_.GetStream());
   }
-
-#if defined(PADDLE_WITH_CUDA)
-DEFINE_STREAM(cudaStream_t)
-#elif defined(PADDLE_WITH_HIP)
-DEFINE_STREAM(hipStream_t)
+}
 #endif
 
 namespace framework {
