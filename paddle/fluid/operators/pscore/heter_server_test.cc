@@ -244,8 +244,10 @@ TEST(SENDANDRECV, CPU) {
   LOG(INFO) << "client wait for Pop";
   auto task = (*task_queue_)[0]->Pop();
   LOG(INFO) << "client get from task queue";
-  PADDLE_ENFORCE_EQ(task.first, "x",
-                    platform::errors::InvalidArgument("message not match"));
+  PADDLE_ENFORCE_EQ(
+      task.first, "x",
+      platform::errors::InvalidArgument(
+          "Recv message and Send message namenot match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
   LOG(INFO) << "before SendAndRecvAsync 2";
@@ -255,8 +257,10 @@ TEST(SENDANDRECV, CPU) {
   LOG(INFO) << "after SendAndRecvAsync 2";
 
   auto task2 = (*task_queue_)[0]->Pop();
-  PADDLE_ENFORCE_EQ(task2.first, "y",
-                    platform::errors::InvalidArgument("message not match"));
+  PADDLE_ENFORCE_EQ(
+      task2.first, "y",
+      platform::errors::InvalidArgument(
+          "Recv message and Send message namenot match, Check your Code"));
 
   rpc_client->FinalizeWorker();
   b_rpc_service->Stop();

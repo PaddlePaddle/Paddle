@@ -208,16 +208,20 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
                                "forward");
   auto task = (*task_queue_)[0]->Pop();
-  PADDLE_ENFORCE_EQ(task.first, "x",
-                    platform::errors::InvalidArgument("message not match"));
+  PADDLE_ENFORCE_EQ(
+      task.first, "x",
+      platform::errors::InvalidArgument(
+          "Recv message and Send message namenot match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
   LOG(INFO) << "before SendAndRecvAsync 2";
   rpc_client->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name, send_var,
                                recv_var, "backward");
   auto task2 = (*task_queue_)[0]->Pop();
-  PADDLE_ENFORCE_EQ(task2.first, "x",
-                    platform::errors::InvalidArgument("message not match"));
+  PADDLE_ENFORCE_EQ(
+      task2.first, "x",
+      platform::errors::InvalidArgument(
+          "Recv message and Send message namenot match, Check your Code"));
 
   rpc_client->Stop();
   LOG(INFO) << "end server Stop";
