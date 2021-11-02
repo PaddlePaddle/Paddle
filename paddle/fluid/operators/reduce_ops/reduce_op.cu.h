@@ -170,6 +170,7 @@ struct ReduceIndexMapping {
   const kps::DimConfig dim;
   HOSTDEVICE explicit ReduceIndexMapping(const kps::DimConfig& dims)
       : dim(dims) {}
+
   __device__ __forceinline__ int blockIdX() {
 #ifdef PADDLE_WITH_XPU2
     if (ReduceLastDim) {
