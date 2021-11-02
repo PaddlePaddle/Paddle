@@ -130,9 +130,9 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       args.insert({DNNL_ARG_VARIANCE, *variance_memory});
     }
 
-    std::shared_ptr<mkldnn::memory> scaleshift_memory;
     if (with_scaleshift) {
-      scaleshift_memory = handler.AcquireScaleShiftMemory(scale, bias);
+      std::shared_ptr<mkldnn::memory> scaleshift_memory =
+          handler.AcquireScaleShiftMemory(scale, bias);
       args.insert({DNNL_ARG_SCALE_SHIFT, *scaleshift_memory});
     }
 
