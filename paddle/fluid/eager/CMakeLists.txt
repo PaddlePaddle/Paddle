@@ -8,7 +8,7 @@ set(eager_deps eager_api utils function_api backward autograd_meta grad_node_inf
 set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memcpy)
 set(generated_deps dygraph_function dygraph_node)
 
-add_subdirectory(generated)
+add_subdirectory(generated2)
 add_subdirectory(tests)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS pten)
