@@ -158,7 +158,7 @@ def update_state(input_state, predicate, new_state):
     """
     assert new_state in ('converged', 'failed')
         
-    if new_state is 'converge':
+    if new_state is 'converged':
         increments = paddle.to_tensor(predicate, dtype='int32')
     else:
         increments = paddle.to_tensor(predicate, dtype='int32') * 2

@@ -15,6 +15,7 @@
 import contextlib
 import collections
 import paddle
+from paddle import einsum
 from .bfgs_utils import vjp
 from .bfgs_utils import make_state, make_const, update_state
 from .bfgs_utils import active_state, any_active, any_active_with_predicates
@@ -157,25 +158,23 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     #              - rho * H_k * y_k * T(s_k)    ----- (2)
     #              - rho * s_k * T(y_k) * H_k    ----- (3)
     #              + rho * s_k * T(s_k)                            ----- (4)
-    #              + rho * rho * (T(y_k) * H_y * y_k) s_k * T(s_k) ----- (5)
+    #              + rho * rho * (T(y_k) * H_k * y_k) s_k * T(s_k) ----- (5)
     #
     # Since H_k is symmetric, (3) is (2)'s transpose.
-    prod_H_y = paddle.matmul(Hk, yk.unsqueeze(-1))
+    # prod_H_y = paddle.matmul(Hk, yk.unsqueeze(-1))
+    prod_H_y = einsum('...ij, ...j', Hk, yk)
     
-    term23 = prod_H_y * sk
-    
-    perm = list(range(Hk.dim()))
-    perm[-1], perm[-2] = perm[-2], perm[-1] 
-    
-    # Sums terms (2) and (3) forgoing rho
-    term23 += term23.transpose(perm)
+    # term23 = prod_H_y * sk
+    term2 = einsum('...i, ...j', prod_H_y, sk)
+    term3 = einsum('...ij->...ji', term2)
 
     # Merges terms (4) and (5) forgoing rho
-    term45 = sk + rho_k * paddle.dot(prod_H_y.unsqueeze(-1), yk) * sk
-    term45 *= sk.unsqueeze(-1)
+    term45 = sk + rho_k * paddle.dot(prod_H_y, yk) * sk
+    term45 = sk + rho_k * einsum('...i, ...i, ...j', prod_H_y, yk, sk)
+    term45 = einsum('...i,...j', term45, sk)
 
     # Updates H_k and obtain H_k+1
-    new_Hk = Hk + rho_k * (term45 - term23)
+    new_Hk = Hk + rho_k * (term45 - term2 - term3)
 
     return new_Hk
 
