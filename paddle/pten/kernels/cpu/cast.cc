@@ -70,5 +70,10 @@ PT_REGISTER_KERNEL("cast",
                    double,
                    int,
                    int64_t,
+                   int16_t,
                    bool,
-                   paddle::platform::float16) {}
+                   uint8_t,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}

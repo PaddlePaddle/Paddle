@@ -28,9 +28,9 @@ struct CastOpTransformFunctor {
 };
 
 template <typename InT, typename OutT>
-void cast_cpu_kernel(const CPUContext& dev_ctx,
-                     const DenseTensor& x,
-                     DenseTensor* out) {
+void cast_cuda_kernel(const CUDAContext& dev_ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out) {
   auto* in_begin = x.data<InT>();
   auto numel = x.numel();
   auto* in_end = in_begin + numel;
@@ -53,8 +53,9 @@ void Cast(const CUDAContext& dev_ctx,
           DataType out_dtype,
           DataType in_dtype,
           DenseTensor* out) {
-  PTEN_DISPATCH_ALL_TYPES(out_dtype, "cast_cpu_kernel", ([&] {
-                            detail::cast_cpu_kernel<T, data_t>(dev_ctx, x, out);
+  PTEN_DISPATCH_ALL_TYPES(out_dtype, "cast_cuda_kernel", ([&] {
+                            detail::cast_cuda_kernel<T, data_t>(
+                                dev_ctx, x, out);
                           }));
 }
 
@@ -70,5 +71,10 @@ PT_REGISTER_KERNEL("cast",
                    double,
                    int,
                    int64_t,
+                   int16_t,
                    bool,
-                   paddle::platform::float16) {}
+                   uint8_t,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}

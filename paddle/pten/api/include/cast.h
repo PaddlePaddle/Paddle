@@ -14,24 +14,5 @@
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/fluid/platform/device_context.h"
-
-namespace pten {
-
-using CUDAContext = paddle::platform::CUDADeviceContext;
-
-template <typename T>
-void Cast(const CUDAContext& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DataType in_dtype,
-          DenseTensor* out);
-
-}  // namespace pten
-
-#endif
+#include "paddle/pten/kernels/cpu/cast.h"
+#include "paddle/pten/kernels/cuda/cast.h"
