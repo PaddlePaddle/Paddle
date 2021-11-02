@@ -421,7 +421,7 @@ std::future<int32_t> BrpcPsClient::flush() {
   std::promise<int> promise;
   std::future<int32_t> fut = promise.get_future();
   do {
-    VLOG(0) << "wait _async_call_num:" << _async_call_num;
+    VLOG(3) << "wait _async_call_num:" << _async_call_num;
     usleep(100000);  // sleep 100ms wait async end
   } while (_async_call_num > 0);
   VLOG(1) << "flush _async_call_num = 0";

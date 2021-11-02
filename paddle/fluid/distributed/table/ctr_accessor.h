@@ -61,14 +61,7 @@ class CtrCommonAccessor : public ValueAccessor {
     float& embed_g2sum(float* val) { return val[embed_g2sum_index()]; }
     float& embedx_w(float* val) { return val[embedx_w_index()]; }
     float& embedx_g2sum(float* val) { return val[embedx_g2sum_index()]; }
-    float show_const(const float* val) {
-      float s = val[show_index()];
-      return s;
-    }
-    float click_const(const float* val) {
-      float c = val[click_index()];
-      return c;
-    }
+
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
@@ -102,14 +95,6 @@ class CtrCommonAccessor : public ValueAccessor {
     }
     static float& click(float* val) {
       return val[CtrCommonPushValue::click_index()];
-    }
-    static float show_const(const float* val) {
-      float s = val[show_index()];
-      return s;
-    }
-    static float click_const(const float* val) {
-      float c = val[click_index()];
-      return c;
     }
     static float& embed_g(float* val) {
       return val[CtrCommonPushValue::embed_g_index()];
