@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
 #include "cinn/frontend/var_type_utils.h"
-#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -115,23 +114,13 @@ void CheckTensorEquivalent(const std::string& paddle_name,
                         "but cinn is [%s].",
                         paddle_name, paddle_tensor->dims(), cinn_dims));
 
-  // check data type
-  auto converted_cinn_var_dtype =
-      framework::paddle2cinn::TransformVarDataTypeToCinn(paddle_tensor->type());
-  auto converted_cinn_common_type =
-      ::cinn::frontend::utils::CppVarType2CommonType(converted_cinn_var_dtype);
-  PADDLE_ENFORCE_EQ(converted_cinn_common_type, cinn_tensor->type(),
-                    platform::errors::InvalidArgument(
-                        "The data type in variable(%s) "
-                        "is not equivalent, paddle is [%s] "
-                        "but cinn is [%s].",
-                        converted_cinn_common_type, cinn_tensor->type()));
+  // TODO(CtfGo): check the underlying data type after CINN ready
 }
 
 void TensorMutableDataWithCinnInfo(const platform::Place& place,
                                    const CinnTensor& cinn_tensor,
                                    LoDTensor* paddle_tensor) {
-  // TODO(CtfGo): support mutable corresponding c++ type
+  // TODO(CtfGo): support mutable corresponding c++ type after CINN ready
   paddle_tensor->mutable_data<float>(
       framework::make_ddim(cinn_tensor->shape().data()), place);
 }

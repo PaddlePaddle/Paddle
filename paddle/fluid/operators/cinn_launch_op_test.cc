@@ -233,10 +233,6 @@ TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
   ASSERT_THROW(CheckTensorEquivalent("var2", tensor2, cinn_tensor1),
                paddle::platform::EnforceNotMet);
 
-  cinn_tensor1->set_type(::cinn::common::type_of<double>());
-  ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
-               paddle::platform::EnforceNotMet);
-  cinn_tensor1->set_type(::cinn::common::type_of<float>());
   cinn_tensor1->Resize(CinnShape({5, 7}));
   ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
                paddle::platform::EnforceNotMet);
