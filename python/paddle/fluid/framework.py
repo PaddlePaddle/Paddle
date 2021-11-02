@@ -40,6 +40,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+from paddle import _C_ops
 
 __all__ = [
     'Program',
@@ -85,10 +86,12 @@ _eager_mode_ = False
 def eager_guard():
     global _eager_mode_
     _eager_mode_ = True
+    _C_ops.switch_to_eager_ops()
     try:
         yield
     finally:
         _eager_mode_ = False
+        _C_ops.switch_to_core_ops()
 
 
 def in_eager_mode():

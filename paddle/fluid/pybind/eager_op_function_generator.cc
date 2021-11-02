@@ -511,8 +511,9 @@ int main(int argc, char* argv[]) {
   ascend_ptr->InitGEForUT();
 #endif
 
-  std::vector<std::string> headers{"\"pybind11/detail/common.h\"",
-                                   "<Python.h>"};
+  std::vector<std::string> headers{
+      "\"pybind11/detail/common.h\"",
+      "\"paddle/fluid/pybind/op_function_common.h\"", "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
 

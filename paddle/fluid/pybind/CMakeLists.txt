@@ -252,12 +252,13 @@ if(WITH_PYTHON)
   add_custom_target(eager_op_function_generator_cmd ALL DEPENDS ${eager_impl_file})
 
   list(APPEND PYBIND_DEPS interpretercore standalone_executor)
-
+  cc_library(op_function_common SRCS op_function_common.cc)
   cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward function_api grad_node_info pten)
+    DEPS eager_api autograd_meta backward function_api grad_node_info pten op_function_common)
   add_dependencies(paddle_eager eager_op_function_generator_cmd)
   list(APPEND PYBIND_DEPS paddle_eager)
+  list(APPEND PYBIND_DEPS op_function_common)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
