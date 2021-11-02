@@ -57,16 +57,6 @@ Call communication stream synchronization.
   }
 };
 
-static void PrintOutputVars(const framework::ExecutionContext& ctx) {
-  auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-  auto out_names = ctx.OutputNames("Out");
-  size_t n = outs.size();
-  for (size_t i = 0; i < n; ++i) {
-    VLOG(10) << out_names[i] << ": " << outs[i]->data<void>() << " "
-             << outs[i]->place();
-  }
-}
-
 template <typename T>
 class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
@@ -96,7 +86,6 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
-    PrintOutputVars(ctx);
   }
 };
 

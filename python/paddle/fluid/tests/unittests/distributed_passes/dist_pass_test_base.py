@@ -78,9 +78,6 @@ class DistPassTestBase(unittest.TestCase):
     def get_model(self, place, **kwargs):
         raise NotImplementedError()
 
-    def new_passes(self):
-        raise NotImplementedError()
-
     def apply_passes(self, main_prog, startup_prog):
         raise NotImplementedError()
 
