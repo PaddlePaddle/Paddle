@@ -58,11 +58,11 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                       Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   ParseDumpConfig(trainer_desc);
-  for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
-       i++) {
-    need_merge_var_names_.push_back(
-        trainer_desc.downpour_param().stat_var_names(i));
-  }
+  // for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
+  //     i++) {
+  //  need_merge_var_names_.push_back(
+  //      trainer_desc.downpour_param().stat_var_names(i));
+  //}
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -201,7 +201,9 @@ void HeterPipelineTrainer::Run() {
   for (auto& th : threads_) {
     th.join();
   }
-  threads_.clear();
+  if (threads_.size() > 0) {
+    threads_.clear();
+  }
   VLOG(3) << "Epoch Trainging done";
 }
 

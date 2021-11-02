@@ -883,9 +883,9 @@ class TheOnePSRuntime(RuntimeBase):
     def _init_heter_worker(self):
         executor = self._get_executor()
         startup_program = fluid.default_startup_program()
-        real_startup_program = startup_program._heter_pipeline_opt[
-            "startup_program"]
-        executor.run(real_startup_program)
+        #real_startup_program = startup_program._heter_pipeline_opt[
+        #    "startup_program"]
+        executor.run(startup_program)
         self._init_worker()
 
     def _run_heter_worker(self, dataset):
