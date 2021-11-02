@@ -1003,10 +1003,8 @@ def _get_sub_block_path(sub_block,
     Return:
         The forward op path of sub-block corresponding to backward op.
     """
-    # for block_attr_name in ['sub_block', 'true_block', 'false_block']:
-    #     if sub_block_op_desc.has_attr(block_attr_name):
-    #         assert sub_block.idx == sub_block_op_desc._block_attr_id(
-    #                 block_attr_name)
+    if sub_block_op_desc.has_attr('sub_block'):
+        assert sub_block.idx == sub_block_op_desc._block_attr_id('sub_block')
 
     assert isinstance(sub_block_target_names, (set, type(None)))
 
@@ -1315,8 +1313,9 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     if block.desc.has_var_recursive(cpt.to_bytes(var)) or
                     var in parent_op_vars
                 ]
-                if not existing_grad_var_ins and (parent_op and
-                                                  parent_op.type() != 'if'):
+                if not existing_grad_var_ins:
+                    # skip if_op
+                    if parent_op and parent_op.type() != 'if': continue
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
                     in recurrent op. The input of this op does not even exist in 
