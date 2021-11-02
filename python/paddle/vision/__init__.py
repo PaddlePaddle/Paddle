@@ -53,6 +53,8 @@ from .models import resnext101_32x4d  # noqa: F401
 from .models import resnext101_64x4d  # noqa: F401
 from .models import resnext152_32x4d  # noqa: F401
 from .models import resnext152_64x4d  # noqa: F401
+from .wideresnet import WideResNet  # noqa: F401
+from .wideresnet import wideresnet  # noqa: F401
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
 from .transforms import Resize  # noqa: F401
