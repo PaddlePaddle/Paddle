@@ -12,22 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include <vector>
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "gtest/gtest.h"
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/core/storage.h"
+#include "paddle/pten/tests/core/allocator.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 namespace pten {
+namespace tests {
 
-using CUDAContext = paddle::platform::CUDADeviceContext;
+TEST(host_storage, internal) {
+  // TODO(Shixiaowei02): Here we need to consider the case
+  // where the size is zero.
+  const size_t size{100};
+  const auto a = std::make_shared<FancyAllocator>();
+  TensorStorage storage(a, size);
+  CHECK_EQ(storage.size(), size);
+  CHECK(paddle::platform::is_cpu_place(storage.place()));
+  CHECK(storage.OwnsMemory());
+  CHECK(storage.allocator() == a);
+  storage.Realloc(size + 100);
+  CHECK_EQ(storage.size(), size + 100);
+}
 
-void Copy(const CUDAContext& dev_ctx, const DenseTensor& src, DenseTensor* dst);
-
+}  // namespace tests
 }  // namespace pten
-
-#endif
