@@ -36,4 +36,9 @@ namespace pten {
 DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
                               const DenseTensorMeta& y_meta);
 
+DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
+                                 const DenseTensorMeta& y_meta,
+                                 bool trans_x,
+                                 bool trans_y);
+
 }  // namespace pten
