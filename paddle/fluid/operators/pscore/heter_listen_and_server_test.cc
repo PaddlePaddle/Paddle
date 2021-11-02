@@ -211,7 +211,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   PADDLE_ENFORCE_EQ(
       task.first, "x",
       platform::errors::InvalidArgument(
-          "Recv message and Send message namenot match, Check your Code"));
+          "Recv message and Send message name not match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
   LOG(INFO) << "before SendAndRecvAsync 2";
@@ -221,7 +221,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   PADDLE_ENFORCE_EQ(
       task2.first, "x",
       platform::errors::InvalidArgument(
-          "Recv message and Send message namenot match, Check your Code"));
+          "Recv message and Send message name not match, Check your Code"));
 
   rpc_client->Stop();
   LOG(INFO) << "end server Stop";
