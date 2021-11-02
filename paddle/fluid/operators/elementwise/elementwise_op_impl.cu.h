@@ -354,9 +354,9 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
     }
   }
 
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU2
   int cluster_num = 8;
-  int blocks = 64;
+  int blocks = 128;
   int main_tid = numel / (VecSize * blocks);
   ElementwiseKernel<InT, OutT, Functor, VecSize, Arity, Rank,
                     IsBroadcast><<<cluster_num, blocks, stream>>>(
