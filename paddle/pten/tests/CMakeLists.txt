@@ -1,3 +1,6 @@
+add_subdirectory(core)
+add_subdirectory(utils)
+
 cc_test(pten_backend_test SRCS backend_test.cc DEPS gtest)
 cc_test(pten_data_layout_test SRCS data_layout_test.cc DEPS gtest)
 cc_test(pten_data_type_test SRCS data_type_test.cc DEPS gtest)
