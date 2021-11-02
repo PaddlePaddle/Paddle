@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/operators/controlflow/if_op.h"
 
+#include <algorithm>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -38,11 +40,25 @@ class IfOp : public IfBaseOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    auto &out_var_names = Outputs(IfBaseOp::kOutputs);
-
+               const platform::Place &place) const override {
+    // Step 1. Prepare pred/Input/Output
     bool is_true_branch = IsTrueBranch(scope);
-    // Prepare scope and executor
+    bool is_grad = Attr<bool>("is_grad");
+    const auto &input_names = Inputs(IfBaseOp::kInputs);
+    auto &out_names = Outputs(IfBaseOp::kOutputs);
+
+    std::string branch_name =
+        is_true_branch ? IfBaseOp::kTrueOutVars : IfBaseOp::kFalseOutVars;
+    auto &branch_out_names = Attr<std::vector<std::string>>(branch_name);
+
+    std::string branch_block_name =
+        is_true_branch ? "true_block" : "false_block";
+    auto *block = Attr<framework::BlockDesc *>(branch_block_name);
+    VLOG(3) << "IfOp block.idx = " << block->ID();
+    auto &skip_vars =
+        Attr<std::vector<std::string>>(IfOp::kSkipEagerDeletionVars);
+
+    // Step 2. Prepare scope
     auto *scope_var = scope.FindVar(Output(IfOp::kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
@@ -50,28 +66,53 @@ class IfOp : public IfBaseOp {
             "Expect Scope variable to be set in IfOp, but "
             "got a null Scope variable. Please set the Scope variable."));
     auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-    scopes->resize(1);
-    scopes->front() = &scope.NewScope();
+    if (!is_grad) {
+      scopes->resize(1);
+      scopes->front() = &scope.NewScope();
+    }
+    PADDLE_ENFORCE_EQ(
+        scopes->size(), 1U,
+        platform::errors::PreconditionNotMet(
+            "Expected scopes.size() == 1, but received %d .", scopes->size()));
     auto &cur_scope = *scopes->front();
+    if (is_grad) {
+      auto start_idx = input_names.size() - branch_out_names.size();
+      std::vector<std::string> in_grad_names(input_names.begin() + start_idx,
+                                             input_names.end());
+      ShareBetweenScope(in_grad_names, branch_out_names, &scope, &cur_scope);
+    }
 
-    std::string branch_block_name =
-        is_true_branch ? "true_block" : "false_block";
-    auto *block = Attr<framework::BlockDesc *>(branch_block_name);
-    VLOG(3) << "IfOp block.idx = " << block->ID() << ", scope = " << &cur_scope;
-    auto &skip_vars =
-        Attr<std::vector<std::string>>(IfOp::kSkipEagerDeletionVars);
-
-    framework::Executor exec(dev_place);
+    // Step 3. Prepare Executor and Execute it.
+    framework::Executor exec(place);
     exec.Run(*block->Program(), &cur_scope, block->ID(), false, true, skip_vars,
              /* force_disable_gc */ false,
-             /* keep_kid_scopes */ true);
+             /* keep_kid_scopes */ !is_grad);
 
-    // Share sub_block variable to outer scope variable.
-    std::string out_branch_name =
-        is_true_branch ? IfBaseOp::kTrueOutVars : IfBaseOp::kFalseOutVars;
-    auto &inner_var_names = Attr<std::vector<std::string>>(out_branch_name);
-    ShareInnerOutVarsIntoOuterScope(inner_var_names, out_var_names, &cur_scope,
-                                    const_cast<framework::Scope *>(&scope));
+    // Step 4. Share into outer scope.
+    if (is_grad) {
+      auto zero_grad_names =
+          ShareBetweenScope(out_names, out_names, &cur_scope,
+                            const_cast<framework::Scope *>(&scope), true);
+      AssignZeroToOutsideTensor(place, zero_grad_names, scope);
+    } else {
+      ShareBetweenScope(branch_out_names, out_names, &cur_scope,
+                        const_cast<framework::Scope *>(&scope));
+    }
+  }
+
+  void AssignZeroToOutsideTensor(const platform::Place &place,
+                                 const std::vector<std::string> &var_names,
+                                 const framework::Scope &outer_scope) const {
+    for (auto &var_name : var_names) {
+      VLOG(4) << "Assigning zero to " << var_name;
+      auto *var = outer_scope.FindVar(var_name);
+      // TODO(Aurelius84): how to know the ddims?
+      auto *outside_tensor = var->GetMutable<framework::LoDTensor>();
+      outside_tensor->mutable_data(place, outside_tensor->saved_type());
+      const platform::DeviceContext *dev_ctx =
+          platform::DeviceContextPool::Instance().Get(place);
+      math::set_constant(*dev_ctx, outside_tensor, 0.0f);
+    }
   }
 };
 
@@ -81,87 +122,6 @@ class IfOpInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInputs(IfBaseOp::kCondition), true,
         platform::errors::InvalidArgument("IfOp must have condition input."));
-  }
-};
-
-class IfGradOp : public IfBaseOp {
- public:
-  IfGradOp(const std::string &type, const framework::VariableNameMap &inputs,
-           const framework::VariableNameMap &outputs,
-           const framework::AttributeMap &attrs)
-      : IfBaseOp(type, inputs, outputs, attrs) {}
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    bool is_true_branch = IsTrueBranch(scope);
-    const auto &input_names = Inputs(IfBaseOp::kInputs);
-    const auto &outside_grad_names =
-        Outputs(framework::GradVarName(IfBaseOp::kInputs));
-
-    // TODO(Aurelius84): Maybe we can use outside_grad_names directly?
-    std::vector<std::string> inside_grad_names;
-    inside_grad_names.reserve(outside_grad_names.size());
-    for (auto &name : input_names) {
-      inside_grad_names.emplace_back(framework::GradVarName(name));
-    }
-
-    std::string out_branch_name =
-        is_true_branch ? IfBaseOp::kTrueOutVars : IfBaseOp::kFalseOutVars;
-    auto &inner_var_names = Attr<std::vector<std::string>>(out_branch_name);
-    std::vector<std::string> branch_grad_names;
-    for (auto &name : inner_var_names) {
-      branch_grad_names.emplace_back(framework::GradVarName(name));
-    }
-
-    auto *scope_var = scope.FindVar(Input(IfBaseOp::kScope));
-    PADDLE_ENFORCE_NOT_NULL(
-        scope_var,
-        platform::errors::PreconditionNotMet(
-            "Expect Scope variable to be set in IfOp, but "
-            "got a null Scope variable. Please set the Scope variable."));
-    auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
-    PADDLE_ENFORCE_GT(
-        scopes.size(), 0,
-        platform::errors::InvalidArgument(
-            "Expect Scope variable contains at least 1 scope, but got: %d",
-            scopes.size()));
-    framework::Scope &cur_scope = *scopes[0];
-
-    std::string branch_block_name =
-        is_true_branch ? "true_block" : "false_block";
-    auto *block = Attr<framework::BlockDesc *>(branch_block_name);
-    VLOG(3) << "IfGrad block.idx = " << block->ID()
-            << ", scope = " << &cur_scope;
-
-    // share Out@Grad into inside_grad_names
-    const auto &input_grad_names =
-        Inputs(framework::GradVarName(IfBaseOp::kOutputs));
-    ShareInnerOutVarsIntoOuterScope(input_grad_names, branch_grad_names, &scope,
-                                    &cur_scope);
-
-    framework::Executor exec(dev_place);
-    exec.Run(*block->Program(), &cur_scope, block->ID(), false, true,
-             inside_grad_names, /* force_disable_gc */ false,
-             /* keep_kid_scopes */ false);
-
-    ShareInnerOutVarsIntoOuterScope({inside_grad_names[1]},
-                                    {outside_grad_names[1]}, &cur_scope,
-                                    const_cast<framework::Scope *>(&scope));
-    AssignZeroToOutsideTensor(dev_place, inside_grad_names[0], scope);
-  }
-
- private:
-  void AssignZeroToOutsideTensor(const platform::Place &place,
-                                 const std::string &var_name,
-                                 const framework::Scope &outer_scope) const {
-    VLOG(4) << "Assigning zero to " << var_name;
-    auto *var = outer_scope.FindVar(var_name);
-    auto *outside_tensor = var->GetMutable<framework::LoDTensor>();
-    outside_tensor->mutable_data(place, outside_tensor->saved_type());
-    const platform::DeviceContext *dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
-    math::set_constant(*dev_ctx, outside_tensor, 0.0f);
   }
 };
 
@@ -186,23 +146,44 @@ class IfGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("if_grad");
+    grad_op->SetType("if");
     grad_op->SetInput(IfBaseOp::kCondition, this->Input(IfBaseOp::kCondition));
-    grad_op->SetInput(IfBaseOp::kInputs, this->Input(IfBaseOp::kInputs));
-    grad_op->SetInput(IfBaseOp::kOutputs, this->Output(IfBaseOp::kOutputs));
-    grad_op->SetInput(framework::GradVarName(IfBaseOp::kOutputs),
-                      this->OutputGrad(IfBaseOp::kOutputs));
-    grad_op->SetInput(IfBaseOp::kScope, this->Output(IfBaseOp::kScope));
-    grad_op->SetOutput(framework::GradVarName(IfBaseOp::kInputs),
+    // [x, y, out1, out2, out1@GRAD, out2@GRAD]
+    auto input_names = this->Input(IfBaseOp::kInputs);
+    auto out_names = this->Output(IfBaseOp::kOutputs);
+    auto out_grad_name = this->OutputGrad(IfBaseOp::kOutputs);
+    input_names.insert(input_names.end(), out_names.begin(), out_names.end());
+    input_names.insert(input_names.end(), out_grad_name.begin(),
+                       out_grad_name.end());
+    grad_op->SetInput(IfBaseOp::kInputs, input_names);
+
+    grad_op->SetOutput(IfBaseOp::kScope, this->Output(IfBaseOp::kScope));
+    grad_op->SetOutput(IfBaseOp::kOutputs,
                        this->InputGrad(IfBaseOp::kInputs, false));
     grad_op->SetBlockAttr("true_block", this->grad_block_[0]);
     grad_op->SetBlockAttr("false_block", this->grad_block_[1]);
     grad_op->SetAttr("is_scalar_condition",
                      this->GetAttr("is_scalar_condition"));
-    grad_op->SetAttr(IfBaseOp::kTrueOutVars,
-                     this->GetAttr(IfBaseOp::kTrueOutVars));
-    grad_op->SetAttr(IfBaseOp::kFalseOutVars,
-                     this->GetAttr(IfBaseOp::kFalseOutVars));
+    grad_op->SetAttr("is_grad", true);
+    auto true_out_names = BOOST_GET_CONST(
+        std::vector<std::string>, this->GetAttr(IfBaseOp::kTrueOutVars));
+    std::vector<std::string> true_out_grad_names;
+    std::for_each(true_out_names.begin(), true_out_names.end(),
+                  [&](std::string &name) {
+                    true_out_grad_names.emplace_back(name + "@GRAD");
+                  });
+    grad_op->SetAttr(IfBaseOp::kTrueOutVars, true_out_grad_names);
+
+    auto false_out_names = BOOST_GET_CONST(
+        std::vector<std::string>, this->GetAttr(IfBaseOp::kFalseOutVars));
+    std::vector<std::string> false_out_grad_names;
+    std::for_each(false_out_names.begin(), false_out_names.end(),
+                  [&](std::string &name) {
+                    false_out_grad_names.emplace_back(name + "@GRAD");
+                  });
+    grad_op->SetAttr(IfBaseOp::kFalseOutVars, false_out_grad_names);
+    grad_op->SetAttr(IfBaseOp::kSkipEagerDeletionVars,
+                     this->InputGrad(IfBaseOp::kInputs, false));
   }
 };
 
@@ -212,4 +193,3 @@ class IfGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(if, ops::IfOp, ops::IfOpInferShape, ops::IfOpProtoMaker,
                   ops::IfGradMaker<paddle::framework::OpDesc>);
-REGISTER_OPERATOR(if_grad, ops::IfGradOp, ops::IfGradInferShape);

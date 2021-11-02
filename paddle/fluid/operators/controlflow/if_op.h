@@ -54,6 +54,40 @@ class IfBaseOp : public framework::OperatorBase {
     }
   }
 
+  bool ScalarCondition(
+      const std::vector<const framework::LoDTensor *> &ips) const {
+    PADDLE_ENFORCE_EQ(
+        ips.size() == 1UL && ips[0]->IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "condition should have one initialized input as condition"));
+
+    PADDLE_ENFORCE_EQ(ips[0]->type() == framework::proto::VarType::BOOL &&
+                          ips[0]->numel() == 1,
+                      true, platform::errors::InvalidArgument(
+                                "condition input's data type should be bool, "
+                                "numel should be 1, actual numel is %d",
+                                ips[0]->numel()));
+    bool res = false;
+    if (platform::is_gpu_place(ips[0]->place())) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      framework::LoDTensor cpu_tensor;
+      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
+      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      res = cpu_tensor.data<bool>()[0];
+#endif
+    } else if (platform::is_npu_place(ips[0]->place())) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      framework::LoDTensor cpu_tensor;
+      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
+      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      res = cpu_tensor.data<bool>()[0];
+#endif
+    } else {
+      res = ips[0]->data<bool>()[0];
+    }
+    return res;
+  }
+
   std::vector<const framework::LoDTensor *> OutVarsFromBranch(
       const std::string &name, const framework::Scope &scope) const {
     auto inner_var_names = Attr<std::vector<std::string>>(name);
@@ -92,40 +126,6 @@ class IfBaseOp : public framework::OperatorBase {
     return retv;
   }
 
-  bool ScalarCondition(
-      const std::vector<const framework::LoDTensor *> &ips) const {
-    PADDLE_ENFORCE_EQ(
-        ips.size() == 1UL && ips[0]->IsInitialized(), true,
-        platform::errors::InvalidArgument(
-            "condition should have one initialized input as condition"));
-
-    PADDLE_ENFORCE_EQ(ips[0]->type() == framework::proto::VarType::BOOL &&
-                          ips[0]->numel() == 1,
-                      true, platform::errors::InvalidArgument(
-                                "condition input's data type should be bool, "
-                                "numel should be 1, actual numel is %d",
-                                ips[0]->numel()));
-    bool res = false;
-    if (platform::is_gpu_place(ips[0]->place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      framework::LoDTensor cpu_tensor;
-      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
-      res = cpu_tensor.data<bool>()[0];
-#endif
-    } else if (platform::is_npu_place(ips[0]->place())) {
-#ifdef PADDLE_WITH_ASCEND_CL
-      framework::LoDTensor cpu_tensor;
-      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
-      res = cpu_tensor.data<bool>()[0];
-#endif
-    } else {
-      res = ips[0]->data<bool>()[0];
-    }
-    return res;
-  }
-
   // all input vars should be LoDTensor & is initialized
   void CheckVarStatus(const framework::Variable *var,
                       const std::string &var_name) const {
@@ -146,11 +146,11 @@ class IfBaseOp : public framework::OperatorBase {
                                           var_name));
   }
 
-  void ShareInnerOutVarsIntoOuterScope(
+  std::vector<std::string> ShareBetweenScope(
       const std::vector<std::string> &inner_var_names,
       const std::vector<std::string> &out_var_names,
-      const framework::Scope *local_scope,
-      framework::Scope *outer_scope) const {
+      const framework::Scope *local_scope, framework::Scope *outer_scope,
+      bool is_grad = false) const {
     auto num = inner_var_names.size();
     PADDLE_ENFORCE_EQ(out_var_names.size(), num,
                       platform::errors::PreconditionNotMet(
@@ -158,11 +158,17 @@ class IfBaseOp : public framework::OperatorBase {
                           "out_var_names.size(), but received %d != %d .",
                           num, out_var_names.size()));
 
+    std::vector<std::string> zero_grad_names;
     for (size_t i = 0; i < num; ++i) {
-      auto *inner_var = local_scope->FindVar(inner_var_names[i]);
+      auto *inner_var = local_scope->FindLocalVar(inner_var_names[i]);
       auto *out_var = outer_scope->Var(out_var_names[i]);
       VLOG(3) << "start share " << inner_var_names[i] << " -> "
               << out_var_names[i];
+      if (nullptr == inner_var && is_grad) {
+        zero_grad_names.push_back(inner_var_names[i]);
+        VLOG(3) << "find zero_grad_var: " << inner_var_names[i];
+        continue;
+      }
       CheckVarStatus(inner_var, inner_var_names[i]);
       PADDLE_ENFORCE_NOT_NULL(
           out_var, platform::errors::PreconditionNotMet(
@@ -172,6 +178,7 @@ class IfBaseOp : public framework::OperatorBase {
       lod_tensor->ShareDataWith(inner_var->Get<framework::LoDTensor>());
       lod_tensor->set_lod(inner_var->Get<framework::LoDTensor>().lod());
     }
+    return zero_grad_names;
   }
 };
 
@@ -197,6 +204,7 @@ class IfOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "The conditional variable (Cond) is used as scalar "
                   "condition.")
         .SetDefault(false);
+    AddAttr<bool>("is_grad", "whether is grad.").SetDefault(false);
     AddAttr<std::vector<std::string>>(IfBaseOp::kTrueOutVars,
                                       "Output Variable names in true sub block")
         .SetDefault(std::vector<std::string>());

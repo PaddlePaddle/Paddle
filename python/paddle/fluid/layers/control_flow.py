@@ -2437,6 +2437,7 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
             'false_block': false_block,
             'true_outs': true_out_names,
             'false_outs': false_out_names,
+            'is_grad': False,
             'is_scalar_condition': True,
             'skip_eager_deletion_vars': true_out_names + false_out_names
         })

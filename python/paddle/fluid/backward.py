@@ -1315,7 +1315,8 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     if block.desc.has_var_recursive(cpt.to_bytes(var)) or
                     var in parent_op_vars
                 ]
-                if not existing_grad_var_ins and parent_op.type() != 'if_grad':
+                if not existing_grad_var_ins and (parent_op and
+                                                  parent_op.type() != 'if'):
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
                     in recurrent op. The input of this op does not even exist in 
