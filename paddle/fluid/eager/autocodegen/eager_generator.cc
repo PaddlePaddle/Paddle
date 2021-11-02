@@ -852,11 +852,18 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       std::string arg_str =
           paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, outnum);
       dygraph_function_args_str += arg_str;
+      const char* FWD_OUTS_CONTENT_TEMPLATE =
+          "{ \"%s\", egr::ConstructDuplicableOutput(%s) },";
+      outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
+                                                   output_name, outnum);
+    } else {
+      const char* FWD_OUTS_CONTENT_TEMPLATE =
+          "{ \"%s\", "
+          "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance()."
+          "GenerateUniqueName())}},";
+      outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
+                                                   output_name, outnum);
     }
-    const char* FWD_OUTS_CONTENT_TEMPLATE =
-        "{ \"%s\", egr::ConstructDuplicableOutput(%s) },";
-    outs_contents_str +=
-        paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE, output_name, outnum);
   }
   if (outs_contents_str.size() > 0)
     outs_contents_str.pop_back();  // Remove trailing ","
