@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <string>
 #ifndef _WIN32
 #include <unistd.h>
@@ -29,6 +30,9 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
+
+std::set<std::string> gen_list = {"elementwise_add", "reduce_sum", "matmul_v2",
+                                  "sigmoid"};
 
 // NOTE(zhiqiu): Commonly, the inputs in auto-generated OP function are
 // determined by the OP`s proto automatically, i.e., all the inputs registered
@@ -486,7 +490,9 @@ GenerateOpFunctions() {
         !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
-
+    if (!gen_list.count(op_type)) {
+      continue;
+    }
     std::string func_name = "eager_api_" + op_type;
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
 
@@ -529,7 +535,6 @@ int main(int argc, char* argv[]) {
 
   out << "namespace paddle {\n"
       << "namespace pybind {\n\n";
-  out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
