@@ -272,15 +272,15 @@ TEST(CinnLaunchOpHelperTest, TestShareTensorWithCinnBuffer) {
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
   tensor1->mutable_data<float>(framework::make_ddim({5, 6}), place);
   auto* data1 = tensor1->data<float>();
-  data1[0] = 9.99;
-  data1[10] = 19.99;
+  data1[0] = 9.99f;
+  data1[10] = 19.99f;
 
   auto cinn_buffer = ShareTensorWithCinnBuffer(tensor1);
   ASSERT_NE(cinn_buffer->memory, nullptr);
   ASSERT_EQ(cinn_buffer->num_elements(), 30);
   auto* shadow_data = reinterpret_cast<float*>(cinn_buffer->memory);
-  EXPECT_FLOAT_EQ(shadow_data[0], 9.99);
-  EXPECT_FLOAT_EQ(shadow_data[10], 19.99);
+  EXPECT_FLOAT_EQ(shadow_data[0], 9.99f);
+  EXPECT_FLOAT_EQ(shadow_data[10], 19.99f);
 }
 
 TEST(CinnLaunchOpHelperTest, TestCheckArgumentsNotMissed) {

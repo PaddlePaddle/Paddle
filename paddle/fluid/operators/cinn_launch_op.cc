@@ -32,14 +32,14 @@ const cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
 }
 
 void DebugCinnCompiledResult(const CinnCompiledObject& result) {
-  if (!VLOG_IS_ON(2)) {
+  if (!VLOG_IS_ON(4)) {
     return;
   }
   const auto& cinn_runtime_program = result.runtime_program;
   const auto& cinn_scope = *(result.scope);
   const auto& paddle2cinn_varmap = result.paddle2cinn_varmap;
 
-  VLOG(2) << "Compiled runtime_program instrunction size:["
+  VLOG(4) << "Compiled runtime_program instrunction size:["
           << cinn_runtime_program->size() << "]";
 
   std::vector<std::string> infos;
@@ -48,7 +48,7 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
   std::transform(cinn_var_names.begin(), cinn_var_names.end(),
                  std::back_inserter(infos),
                  [](const auto& name_view) { return name_view.data(); });
-  VLOG(2) << "Compiled scope variable names:["
+  VLOG(4) << "Compiled scope variable names:["
           << string::join_strings(infos, ',') << "]";
 
   infos.clear();
@@ -57,7 +57,7 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
                  std::back_inserter(infos), [](const auto& paddle2cinn) {
                    return paddle2cinn.first + "->" + paddle2cinn.second;
                  });
-  VLOG(2) << "Compiled paddle2cinn_varmap:[" << string::join_strings(infos, ',')
+  VLOG(4) << "Compiled paddle2cinn_varmap:[" << string::join_strings(infos, ',')
           << "]";
 }
 

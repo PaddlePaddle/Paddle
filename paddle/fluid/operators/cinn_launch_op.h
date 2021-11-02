@@ -98,7 +98,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                           kCompilationKey));
     const auto& compilation_key =
         ctx.template Attr<std::string>(kCompilationKey);
-    VLOG(2) << "CinnLaunchOp attribute(" << kCompilationKey << ") "
+    VLOG(4) << "CinnLaunchOp attribute(" << kCompilationKey << ") "
             << "value:" << compilation_key;
 
     const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
@@ -125,7 +125,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 3. Initialize all variables needed for cinn compiled runtime
     //         program execution, and share buffers of their tensors into
     //         cinn buffers through execution arguments passed.
-    VLOG(2) << "CinnLaunchOp initialize variables and prepare arguments";
+    VLOG(4) << "CinnLaunchOp initialize variables and prepare arguments";
     std::map<std::string, cinn_pod_value_t> name2argument;
     // because a cinn_pod_value_t does not own the cinn_buffer_t object,
     // an extra stroage is necessary to keep the object and it can
@@ -146,7 +146,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       details::CheckTensorEquivalent(var_name, tensor,
                                      input_cinn_tensors.at(i));
 
-      VLOG(2) << "Prepare input argument-" << i << ":"
+      VLOG(4) << "Prepare input argument-" << i << ":"
               << "name(" << var_name << "->" << cinn_name << "), "
               << "tensor(type:" << tensor->type() << ","
               << "dims:" << tensor->dims() << ").";
@@ -179,7 +179,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                                                tensor);
       }
 
-      VLOG(2) << "Prepare outnput argument-" << i << ":"
+      VLOG(4) << "Prepare outnput argument-" << i << ":"
               << "name(" << var_name << "->" << cinn_name << "), "
               << "tensor(type:" << tensor->type() << ","
               << "dims:" << tensor->dims() << ").";
@@ -203,7 +203,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         details::TensorMutableDataWithCinnInfo(place, temp_cinn_tensors.at(i),
                                                tensor);
 
-        VLOG(2) << "Prepare temporary argument-" << i << ":"
+        VLOG(4) << "Prepare temporary argument-" << i << ":"
                 << "name(" << var_name << "->" << var_name << "), "
                 << "tensor(type:" << tensor->type() << ","
                 << "dims:" << tensor->dims() << ").";
@@ -216,7 +216,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 4. Launch CINN to execute the compiled runtime program
     details::CheckArgumentsNotMissed(cinn_scope, name2argument);
     cinn_runtime_program->Execute(&name2argument);
-    VLOG(2) << "CinnLaunchOp launch execution done.";
+    VLOG(4) << "CinnLaunchOp launch execution done.";
   }
 };
 
