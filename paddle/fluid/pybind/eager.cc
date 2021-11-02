@@ -45,7 +45,7 @@ PyObject* eagertensor_new(PyTypeObject* type, PyObject* args,
 }
 
 static void eagertensor_dealloc(EagerTensorObject* self) {
-  // TODO(wanghuancoder): Call destructor here.
+  self->eagertensor.~EagerTensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
