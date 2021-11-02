@@ -125,8 +125,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                             "equal to the output tensor number."));
       int64_t accumulated_ranks = 0;
       for (size_t i = 0; i < in_tensors.size(); ++i) {
-        framework::DDim dim(concated_shapes.data() + accumulated_ranks,
-                            concated_ranks[i]);
+        framework::DDim dims(concated_shapes.data() + accumulated_ranks,
+                             concated_ranks[i]);
         if (!in_tensors[i]->IsInitialized()) {
           PADDLE_ENFORCE_EQ(
               in_tensors[i], out_tensors[i],
@@ -134,14 +134,15 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                   "The %d-th output tensor and %d-th input tensor when the "
                   "%d-th input tensor is not initialized.",
                   i, i, i));
-          out_tensors[i]->Resize(dim);
-          out_tensors[i]->mutable_data<T>(context.GetPlace());
+          out_tensors[i]->Resize(dims);
         } else {
-          PADDLE_ENFORCE_EQ(in_tensors[i]->dims(), dim,
-                            "The %d-th input tensor shape does not match the "
-                            "attribute(concated_shapes) and "
-                            "attribute(concated_ranks).",
-                            i);
+          PADDLE_ENFORCE_EQ(
+              in_tensors[i]->dims(), dims,
+              platform::errors::InvalidArgument(
+                  "The %d-th input tensor shape does not match the "
+                  "attribute(concated_shapes) and "
+                  "attribute(concated_ranks).",
+                  i));
         }
         accumulated_ranks += concated_ranks[i];
         PADDLE_ENFORCE_LE(accumulated_ranks, concated_shapes.size(),
@@ -189,8 +190,11 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
 
     // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
-    fused_tensor->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
-        .mutable_data(context.GetPlace(), dtype);
+    void *fused_tensor_ptr =
+        fused_tensor
+            ->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
+            .mutable_data(context.GetPlace(), dtype);
+    VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
 
     // Init the continuous space
     size_t offset = 0;
@@ -285,10 +289,6 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     std::stringstream ss;
     ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < var_names.size(); ++i) {
-      PADDLE_ENFORCE_EQ(lod_tensors[i]->IsInitialized(), true,
-                        platform::errors::InvalidArgument(
-                            "Tensor `%s` is not initialized.", var_names[i]));
-
       auto size = lod_tensors[i]->numel();
       PADDLE_ENFORCE_GT(
           size, 0,
@@ -300,11 +300,13 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                                     place, align_size) /
                     size_of_dtype
               : static_cast<size_t>(size);
+      const void *ptr = lod_tensors[i]->IsInitialized()
+                            ? lod_tensors[i]->data<void>()
+                            : nullptr;
       VLOG(4) << size << " " << len;
       ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
          << ") "
-         << " addres:" << lod_tensors[i]->data<void>() << " len: " << len
-         << ", ";
+         << " addres:" << ptr << " len: " << len << ", ";
       *numel += len;
     }
     VLOG(10) << ss.str();

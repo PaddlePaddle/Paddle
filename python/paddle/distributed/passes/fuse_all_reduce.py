@@ -14,7 +14,7 @@
 
 from paddle.framework import core
 from paddle.fluid import unique_name
-from .pass_base import PassBase
+from .pass_base import CommOptPass, register_pass
 from collections import OrderedDict
 import numpy as np
 
@@ -55,19 +55,20 @@ def insert_fuse_all_reduce_ops(block, reversed_op_indices, input_var_names,
         ring_id = attrs["ring_id"]
         new_op_indices = list(reversed_op_indices)
 
-        for op_idx in reversed_op_indices[1:]:
+        for i, op_idx in enumerate(reversed_op_indices):
             prev_op_idx = op_idx - 1
             while prev_op_idx >= 0 and block.ops[
                     prev_op_idx].type == "c_sync_calc_stream":
                 new_op_indices.append(prev_op_idx)
                 prev_op_idx -= 1
 
-            next_op_idx = op_idx + 1
-            n = len(block.ops)
-            while next_op_idx < n and block.ops[
-                    next_op_idx].type == "c_sync_comm_stream":
-                assert block.ops[next_op_idx].attr("ring_id") == ring_id
-                new_op_indices.append(next_op_idx)
+            if i > 0:
+                next_op_idx = op_idx + 1
+                n = len(block.ops)
+                while next_op_idx < n and block.ops[
+                        next_op_idx].type == "c_sync_comm_stream":
+                    assert block.ops[next_op_idx].attr("ring_id") == ring_id
+                    new_op_indices.append(next_op_idx)
 
         new_op_indices = list(set(new_op_indices))
         new_op_indices.sort(reverse=True)
@@ -106,7 +107,8 @@ def insert_fuse_all_reduce_ops(block, reversed_op_indices, input_var_names,
             insert_idx,
             type="c_sync_calc_stream",
             inputs={"X": fused_var},
-            outputs={"Out": fused_var})
+            outputs={"Out": fused_var,
+                     op_role_key: attrs[op_role_key]})
         insert_idx += 1
 
     # c_allreduce_sum should insert  
@@ -120,6 +122,7 @@ def insert_fuse_all_reduce_ops(block, reversed_op_indices, input_var_names,
     for op_idx in reversed_op_indices:
         block._remove_op(op_idx)
 
+    print('insert fused all reduce ops for ring_id ', attrs["ring_id"])
     return coalesce_tensor_op_kwargs
 
 
@@ -153,6 +156,8 @@ def find_all_fuse_all_reduce_groups(block):
             return False
         in_var_name = op.input("X")[0]
         out_var_name = op.output("Out")[0]
+        if in_var_name != out_var_name:
+            return False
         in_var = block._find_var_recursive(in_var_name)
         assert in_var is not None
         if in_var.type != core.VarDesc.VarType.LOD_TENSOR:
@@ -320,18 +325,26 @@ def insert_fuse_all_reduce_by_memory_size(block, groups, max_memory_size):
     insert_coalesce_tensor_ops(block, coalesce_ops_kwargs)
 
 
-class FuseAllReducePass(PassBase):
-    def check_before_apply(self, context):
-        max_memory_size = self.get_attr("max_memory_size", -1)
+@register_pass("fuse_all_reduce")
+class FuseAllReducePass(CommOptPass):
+    def __init__(self):
+        super(FuseAllReducePass, self).__init__()
+        self.set_attr("max_memory_size", -1)
+
+    def _check_self(self):
+        max_memory_size = self.get_attr("max_memory_size")
         return max_memory_size > 0
+
+    def _check_conflict(self, other_pass):
+        return True
 
     # NOTE: why FuseAllReducePass can override apply_single_impl instead of 
     # apply_impl? AllReduce is a collective operation, so the program of each 
     # rank inside the same communication group should have the same 
     # c_allreduce_sum operations. Therefore, FuseAllReducePass can override 
     # apply_single_impl directly.  
-    def apply_single_impl(self, main_program, startup_program, context):
-        max_memory_size = self.get_attr("max_memory_size", 0)
+    def _apply_single_impl(self, main_program, startup_program, context):
+        max_memory_size = self.get_attr("max_memory_size")
         op_deps = main_program.desc.get_op_deps()
         num_blocks = main_program.num_blocks
         for i in range(num_blocks):
