@@ -20,7 +20,7 @@
 
 namespace paddle {
 namespace platform {
-struct bfloat16;
+// struct bfloat16;
 struct float16;
 }  // namespace platform
 }  // namespace paddle
