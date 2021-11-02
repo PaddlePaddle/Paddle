@@ -474,6 +474,15 @@ struct VariableMetaInfo {
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
 class VariableScope : public ScopeBase {
  public:
+  VariableScope() {
+    // for @EMPTY@ variable
+    var_list_.push_back(nullptr);
+    name2id_[kEmptyVarName] = 0;
+    VariableMetaInfo info;
+    info.var_ref_count_ = 0;
+    info.vardesc_ = nullptr;
+    vec_meta_info_.push_back(info);
+  }
   Variable* FindVar(const std::string& name) const {
     auto it = name2id_.find(name);
     if (it != name2id_.end()) {
