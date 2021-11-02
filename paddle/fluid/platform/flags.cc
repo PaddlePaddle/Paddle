@@ -742,18 +742,6 @@ PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
  */
 PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
                               "It controls the cinn op subset to be not used.");
-
-/*
- * CINN related FLAG
- * Name: FLAGS_cinn_ops_delim
- * Since Version: 2.3
- * Value Range: string, default=";"
- * Example: FLAGS_cinn_ops_delim=";" would use `;` to split the two lists
- * (FLAGS_allow_cinn_ops & FLAGS_deny_cinn_ops)
- */
-PADDLE_DEFINE_EXPORTED_string(cinn_ops_delim, ";",
-                              "The delim of cinn ops used in "
-                              "FLAGS_allow_cinn_ops & FLAGS_deny_cinn_ops.");
 #endif
 
 DEFINE_int32(record_pool_max_size, 2000000,

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 #include <memory>
+#include <regex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -37,7 +38,6 @@ limitations under the License. */
 
 DECLARE_string(allow_cinn_ops);
 DECLARE_string(deny_cinn_ops);
-DECLARE_string(cinn_ops_delim);
 
 namespace paddle {
 namespace framework {
@@ -51,6 +51,20 @@ using GraphNodeSet = std::unordered_set<Node*>;
 using GraphNodeMap = std::unordered_map<Node*, Node*>;
 
 namespace {
+// The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
+// & FLAGS_deny_cinn_ops.
+constexpr char kDelim[] = ";";
+
+std::unordered_set<std::string> StringSplit(const std::string& str,
+                                            const std::string& delim) {
+  std::regex reg(delim);
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(str.begin(), str.end(), reg, -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+  return elems;
+}
+
 int ExtractOpRole(const GraphNodeSet& cluster) {
   std::unordered_set<int> op_roles;
   std::string attr_name = OpProtoAndCheckerMaker::OpRoleAttrName();
@@ -349,21 +363,15 @@ void SearchAllSubgraphs(Graph* graph) {
                           node->Name()) != nullptr;
     // if the op type is registered in CINN and allow_ops is not empty, return
     // true only when it is in allow_ops
-    auto allow_ops =
-        string::split_string(FLAGS_allow_cinn_ops, FLAGS_cinn_ops_delim);
+    auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
     if (allow_ops.size()) {
-      return registered &&
-             std::find(allow_ops.begin(), allow_ops.end(), node->Name()) !=
-                 allow_ops.end();
+      return registered && allow_ops.count(node->Name());
     }
     // if the op type is registered in CINN and deny_ops is not empty, return
     // true only when it is not in deny_ops
-    auto deny_ops =
-        string::split_string(FLAGS_deny_cinn_ops, FLAGS_cinn_ops_delim);
+    auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
     if (deny_ops.size()) {
-      return registered &&
-             std::find(deny_ops.begin(), deny_ops.end(), node->Name()) ==
-                 deny_ops.end();
+      return registered && !deny_ops.count(node->Name());
     }
     // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
     // return true only when it is registered in CINN
