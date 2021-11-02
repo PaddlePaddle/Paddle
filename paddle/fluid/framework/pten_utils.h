@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -62,35 +63,23 @@ struct KernelSignature {
 // TODO(chenweihang): we can generate this map by proto info in compile time
 class KernelSignatureMap {
  public:
-  static KernelSignatureMap& Instance() {
-    static KernelSignatureMap g_kernel_signature_map;
-    return g_kernel_signature_map;
-  }
+  static KernelSignatureMap& Instance();
 
-  bool Has(const std::string& op_type) const {
-    return map_.find(op_type) != map_.end();
-  }
+  bool Has(const std::string& op_type) const;
 
-  void Emplace(const std::string& op_type, KernelSignature&& signature) {
-    if (!Has(op_type)) {
-      map_.emplace(op_type, signature);
-    }
-  }
+  void Emplace(const std::string& op_type, KernelSignature&& signature);
 
-  const KernelSignature& Get(const std::string& op_type) const {
-    auto it = map_.find(op_type);
-    PADDLE_ENFORCE_NE(
-        it, map_.end(),
-        platform::errors::NotFound(
-            "Operator `%s`'s kernel signature is not registered.", op_type));
-    return it->second;
-  }
+  const KernelSignature& Get(const std::string& op_type) const;
 
  private:
   KernelSignatureMap() = default;
-  paddle::flat_hash_map<std::string, KernelSignature> map_;
-
   DISABLE_COPY_AND_ASSIGN(KernelSignatureMap);
+
+ private:
+  static KernelSignatureMap* kernel_signature_map_;
+  static std::mutex mutex_;
+
+  paddle::flat_hash_map<std::string, KernelSignature> map_;
 };
 
 class KernelArgsNameMaker {
