@@ -80,6 +80,7 @@ def train(dot_save_dir, prefix, seed=1234):
     paddle.seed(seed)
     if paddle.is_compiled_with_cuda():
         paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     img, label, loss = build_program(main_program, startup_program)
