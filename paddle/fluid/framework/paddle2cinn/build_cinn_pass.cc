@@ -359,18 +359,18 @@ void ReplaceSubGraphWithCinnOpNode(const GraphNodeSet& cluster,
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
 void SearchAllSubgraphs(Graph* graph) {
-  auto teller = [](const Node* node) {
+  auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
+  auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
+  auto teller = [&allow_ops, &deny_ops](const Node* node) {
     bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
                           node->Name()) != nullptr;
     // if the op type is registered in CINN and allow_ops is not empty, return
     // true only when it is in allow_ops
-    auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
     if (allow_ops.size()) {
       return registered && allow_ops.count(node->Name());
     }
     // if the op type is registered in CINN and deny_ops is not empty, return
     // true only when it is not in deny_ops
-    auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
     if (deny_ops.size()) {
       return registered && !deny_ops.count(node->Name());
     }
