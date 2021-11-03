@@ -171,10 +171,9 @@ class DistPassTestBase(unittest.TestCase):
                 module = prepare_python_path_and_return_module(type(self))
                 name = type(self).__name__
                 f.write('''
-import six
+from {0} import {1} as __test_class
 import paddle
 import pickle
-from {0} import {1} as __test_class
 
 def run_main(): 
     __test_obj = __test_class()
@@ -193,11 +192,23 @@ if __name__ == "__main__":
     run_main()
 '''.format(module, name, input_dump_file, apply_pass, file_prefix))
 
+            py_script = '''
+import os
+from paddle.distributed.fleet import launch
+from paddle.distributed.fleet.launch_utils import run_with_coverage
+
+if __name__ == "__main__":
+    if os.environ.get("WITH_COVERAGE", "OFF") == "ON": 
+        run_with_coverage(True)   
+    launch.launch()
+'''
+
             cmd = [
                 sys.executable,
-                '-m',
-                'paddle.distributed.launch',
-                '--log_dir',
+                "-u",
+                "-c",
+                py_script,
+                "--log_dir",
                 file_prefix,
                 tmp_py_file,
             ]
