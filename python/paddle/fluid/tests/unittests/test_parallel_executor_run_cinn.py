@@ -40,9 +40,9 @@ def set_cinn_flag(val):
 
 
 def reader(limit):
-    for i in range(limit):
-        yield np.ones([1, 28]).astype('float32') * (i * 3.14 / (i + 1)), \
-            np.array([i + 1]).astype('int64')
+    for _ in range(limit):
+        yield np.random.random([1, 28]).astype('float32'), \
+            np.random.randint(0, 2, size=[1]).astype('int64')
 
 
 def rand_data(img, label, loop_num=10):
@@ -62,7 +62,7 @@ def build_program(main_program, startup_program):
             shape=[1, 28],
             dtype="float32",
             attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(
-                np.ones([1, 28]).astype(np.float32))))
+                np.random.rand(1, 28).astype(np.float32))))
         label = paddle.static.data(name="label", shape=[1], dtype='int64')
 
         hidden = paddle.add(img, param)
@@ -75,7 +75,11 @@ def build_program(main_program, startup_program):
     return img, label, avg_loss
 
 
-def train(dot_save_dir, prefix):
+def train(dot_save_dir, prefix, seed=1234):
+    np.random.seed(seed)
+    paddle.seed(seed)
+    if paddle.is_compiled_with_cuda():
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     img, label, loss = build_program(main_program, startup_program)
