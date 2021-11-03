@@ -146,7 +146,7 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
       if (nullptr == var_desc_tmp) {
         VLOG(3) << "update var:" << var_name << " desc from nullptr into "
                 << var_desc;
-        var_scope->VarMetaInfo(var_name).vardesc_ = var_desc;
+        var_scope->SetVarDesc(var_name, var_desc);
       }
     }
   }
