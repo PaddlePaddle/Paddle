@@ -581,50 +581,6 @@ struct ReduceConfig {
   dim3 grid;
 };
 
-/* size : how many colonms left have to be reduced
- * loop : how many rows data have to be reduced
- * block_size: max rows this block to reduce
- */
-template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
-          typename TransformOp, bool IsBoundary = false>
-__device__ void ReduceHigherImpl(const Tx* x, Ty* y, ReduceOp reducer,
-                                 TransformOp transformer, MPType init,
-                                 int reduce_num, int left_num, int block_size,
-                                 const kps::DimConfig& dim) {
-  auto block = ReduceIndexMapping<false>(dim);
-  const int NY = 1;
-  int idx = block.BlockIdX() * block.BlockDimX();
-  int idy = block.BlockIdY() * block_size;
-  // block_offset of rows
-  Tx reduce_input[NY];
-  MPType reduce_compute[NY];
-  MPType result = init;
-  // the offset of this block
-  int block_offset = idy * left_num + idx + BLOCK_ID_Z * reduce_num * left_num;
-  const Tx* input = x + block_offset;
-  int store_offset = block.BlockIdY() * left_num +
-                     BLOCK_ID_Z * block.GridDimY() * left_num + idx;
-
-  // how many columns left
-  int size = left_num - idx;
-  // how many rows have to be reduced
-  int loop = reduce_num - idy;
-  loop = loop > block_size ? block_size : loop;
-
-  for (int loop_index = 0; loop_index < loop; loop_index += NY) {
-    kps::ReadData<Tx, Tx, 1, NY, 1, IsBoundary>(
-        &reduce_input[0], input + loop_index * left_num, size, NY, 1, left_num);
-    kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
-        &reduce_compute[0], &reduce_input[0], transformer);
-    kps::Reduce<MPType, NY, 1, 1, ReduceOp,
-                kps::details::ReduceMode::kLocalMode>(
-        &result, &reduce_compute[0], reducer, false);
-  }
-
-  Ty temp_data = static_cast<Ty>(result);
-  kps::WriteData<Ty, 1, 1, 1, IsBoundary>(y + store_offset, &temp_data, size);
-}
-
 // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
 // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
 // function will be used
@@ -716,19 +672,50 @@ __global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
   auto block = ReduceIndexMapping<false>(dim);
+  int idy = block.BlockIdY() * blocking_size;
   int idx = block.BlockIdX() * block.BlockDimX();
-  int size = left_num - dim.rem_x;
   int stride = dim.split_num_x * dim.deal_size_x;
+  int size = left_num - dim.rem_x;
+  int loop_size = min(reduce_num - idy, blocking_size);
+  int store_offset =
+      block.BlockIdY() * left_num + BLOCK_ID_Z * block.GridDimY() * left_num;
+  int block_offset = idy * left_num + idx + BLOCK_ID_Z * reduce_num * left_num;
+  const Tx* input = x + block_offset;
+  Tx reduce_input;
   for (; idx < size; idx += stride) {
-    ReduceHigherImpl<Tx, Ty, MPType, ReduceOp, TransformOp>(
-        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size,
-        dim);
+    MPType reduce_var = init;
+    MPType reduce_compute = init;
+    for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
+      kps::ReadData<Tx, Tx, 1, 1, 1, false>(&reduce_input,
+                                            input + loop_idx * left_num + idx,
+                                            block.BlockDimX(), 1, 1, left_num);
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+          &reduce_compute, &reduce_input, transformer);
+      kps::Reduce<MPType, 1, 1, 1, ReduceOp,
+                  kps::details::ReduceMode::kLocalMode>(
+          &reduce_var, &reduce_compute, reducer, false);
+    }
+    Ty result = static_cast<Ty>(reduce_var);
+    kps::WriteData<Ty, 1, 1, 1, false>(y + store_offset + idx, &result,
+                                       block.BlockDimX());
   }
 
   if (idx < left_num) {
-    ReduceHigherImpl<Tx, Ty, MPType, ReduceOp, TransformOp, true>(
-        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size,
-        dim);
+    MPType reduce_var = init;
+    MPType reduce_compute = init;
+    for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
+      kps::ReadData<Tx, Tx, 1, 1, 1, true>(&reduce_input,
+                                           input + loop_idx * left_num + idx,
+                                           dim.rem_x, 1, 1, left_num);
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+          &reduce_compute, &reduce_input, transformer);
+      kps::Reduce<MPType, 1, 1, 1, ReduceOp,
+                  kps::details::ReduceMode::kLocalMode>(
+          &reduce_var, &reduce_compute, reducer, false);
+    }
+    Ty result = static_cast<Ty>(reduce_var);
+    kps::WriteData<Ty, 1, 1, 1, true>(y + store_offset + idx, &result,
+                                      dim.rem_x);
   }
 }
 
