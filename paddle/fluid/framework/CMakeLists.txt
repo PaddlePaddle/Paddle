@@ -197,10 +197,12 @@ cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_va
 
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
+    pten pten_utils kernel_factory)
 ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
+    pten pten_utils kernel_factory)
 ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -394,6 +396,8 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
+cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows place pten var_type_traits pten_hapi_utils)
+
 # Get the current working branch
 execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD
@@ -456,3 +460,4 @@ if(WITH_TESTING AND TEST selected_rows_test)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
+cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
