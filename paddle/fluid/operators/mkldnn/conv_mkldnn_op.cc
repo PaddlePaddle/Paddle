@@ -834,7 +834,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
       auto p_scales_tuple = handler.get_int8_bias_scales(ctx);
 
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-          bias, is_test, std::get<1>(*p_scales_tupple),
+          bias, is_test, std::get<1>(*p_scales_tuple),
           std::get<0>(*p_scales_tuple));
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
