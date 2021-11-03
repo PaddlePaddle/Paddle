@@ -477,7 +477,7 @@ static void PreparedOpRunPtImpl(
   pt_kernel(kernel_ctx);
 
   // Ensure that it does not affect the VarBase life cycle management
-  kernel_ctx->ClearAllAllocation();
+  kernel_ctx->ClearData();
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later

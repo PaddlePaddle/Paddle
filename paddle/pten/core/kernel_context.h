@@ -155,7 +155,7 @@ class KernelContext {
 
   // Temporary method: For compatible with fluid Tensor and improve performance
   // Only deal with DenseTensor now
-  void ClearAllAllocation() {
+  void ClearData() {
     for (auto& in : inputs_) {
       CompatibleDenseTensorUtils::ClearStorage(
           static_cast<DenseTensor*>(in.get()));
@@ -164,10 +164,12 @@ class KernelContext {
       CompatibleDenseTensorUtils::ClearStorage(
           static_cast<DenseTensor*>(out.get()));
     }
+    attrs_.clear();
   }
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
+  size_t AttrsSize() const { return attrs_.size(); }
 
  private:
   bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
