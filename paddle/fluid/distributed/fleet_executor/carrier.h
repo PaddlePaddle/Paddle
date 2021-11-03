@@ -19,6 +19,7 @@
 #include <unordered_map>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace distributed {

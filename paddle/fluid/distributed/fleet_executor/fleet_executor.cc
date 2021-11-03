@@ -39,5 +39,13 @@ void FleetExecutor::Release() {
   // Release
 }
 
+std::shared_ptr<Carrier> FleetExecutor::GetCarrier() {
+  // get carrier
+}
+
+std::shared_ptr<MessageBus> FleetExecutor::GetMessageBus() {
+  // get message bus
+}
+
 }  // namespace distributed
 }  // namespace paddle
