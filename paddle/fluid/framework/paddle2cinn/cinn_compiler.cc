@@ -129,9 +129,11 @@ std::string CinnCompiler::VizGraph(const std::string& key) const {
   for (const Node* n : graph.Nodes()) {
     std::string node_id = "Node" + std::to_string(id++);
     if (n->IsOp()) {
-      dot.AddNode(node_id, {Dot::Attr("shape", "box"),
-                            Dot::Attr("style", "rounded,filled,bold")},
-                  n->Name());
+      dot.AddNode(
+          node_id,
+          {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
+           Dot::Attr("color", "#303A3A"), Dot::Attr("fontcolor", "#ffffff")},
+          n->Name());
     } else if (n->IsVar()) {
       auto label = n->Name();
       if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
@@ -141,9 +143,13 @@ std::string CinnCompiler::VizGraph(const std::string& key) const {
                        [](const auto& val) { return std::to_string(val); });
         label += "\n" + string::join_strings(shape_str, ',');
       }
-      dot.AddNode(node_id, {Dot::Attr("shape", "box"),
-                            Dot::Attr("style", "rounded,bold")},
-                  label);
+      dot.AddNode(
+          node_id,
+          {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
+           Dot::Attr("color", n->Var()->IsParameter() ? "#148b97" : "#dddddd"),
+           Dot::Attr("fontcolor",
+                     n->Var()->IsParameter() ? "#ffffff" : "#000000")},
+          label);
     }
     node2dot[n] = node_id;
   }
