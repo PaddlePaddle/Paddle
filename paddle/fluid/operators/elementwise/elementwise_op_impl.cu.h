@@ -257,26 +257,6 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
   }
 };
 
-template <typename T, int VecSize, int Rank, bool IsBroadcast,
-          bool IsBoundary = false>
-__device__ __forceinline__ void LoadData(
-    T *dst, const T *__restrict__ src, uint32_t block_offset,
-    const kps::details::BroadcastConfig<Rank> &config, int numel, int num,
-    bool need_broadcast) {
-  // numel : whole num of output
-  // num: how many data will be deal with in this time
-  if (!IsBroadcast) {
-    kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num);
-  } else {
-    if (need_broadcast) {
-      kps::ReadDataBc<T, VecSize, 1, 1, Rank, IsBoundary>(
-          dst, src, block_offset, config, numel);
-    } else {
-      kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num);
-    }
-  }
-}
-
 template <typename InT, typename OutT, typename Functor, int VecSize, int Arity,
           int Rank, bool IsBroadcast, bool IsBoundary = false>
 __device__ void ElementwiseKernelImpl(
@@ -292,9 +272,14 @@ __device__ void ElementwiseKernelImpl(
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
-    LoadData<InT, VecSize, Rank, IsBroadcast, IsBoundary>(
-        args[i], ins[i], block_offset, configs[i], numel, num,
-        use_broadcast[i]);
+    if (IsBroadcast && use_broadcast[i]) {
+      kps::ReadDataBc<InT, VecSize, 1, 1, Rank, IsBoundary>(
+          args[i], ins[i], block_offset, configs[i], numel);
+
+    } else {
+      kps::ReadData<InT, VecSize, 1, 1, IsBoundary>(args[i],
+                                                    ins[i] + block_offset, num);
+    }
   }
 
   const bool kCallElementwiseAny =
