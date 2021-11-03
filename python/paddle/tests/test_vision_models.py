@@ -35,7 +35,6 @@ class TestVisonModels(unittest.TestCase):
             net = models.__dict__[arch](pretrained=pretrained, batch_norm=True)
         else:
             net = models.__dict__[arch](pretrained=pretrained)
-
         input = InputSpec([None, 3, 224, 224], 'float32', 'image')
         model = paddle.Model(net, input)
         model.prepare()
