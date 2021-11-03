@@ -155,7 +155,7 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
     InitDumpEnv();
   }
 
-#ifdef PADDLE_WTIH_PSCORE
+#ifdef PADDLE_WITH_PSCORE
   // pull dense param first
   auto communicator = paddle::distributed::Communicator::GetInstance();
   auto& recv_ctx = communicator->GetRecvCtxMap();
