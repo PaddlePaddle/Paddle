@@ -505,6 +505,17 @@ static int GetNCCLVersion() {
 }
 #endif
 
+template <typename PlaceType>
+static void TensorCopyFrom(framework::Tensor *dst, const framework::Tensor &src,
+                           const PlaceType &place, int64_t batch_size) {
+  if (batch_size < 0) {
+    framework::TensorCopy(src, place, dst);
+  } else {
+    auto sliced = src.Slice(0, batch_size);
+    framework::TensorCopy(sliced, place, dst);
+  }
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -754,16 +765,17 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
-      .def("_copy_from",
-           [](framework::Tensor &self, const framework::Tensor &other,
-              const platform::Place &place, int64_t batch_size) {
-             if (batch_size < 0) {
-               framework::TensorCopy(other, place, &self);
-             } else {
-               auto sliced = other.Slice(0, batch_size);
-               framework::TensorCopy(sliced, place, &self);
-             }
-           },
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::NPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
