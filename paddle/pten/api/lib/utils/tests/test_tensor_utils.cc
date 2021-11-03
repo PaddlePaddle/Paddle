@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {

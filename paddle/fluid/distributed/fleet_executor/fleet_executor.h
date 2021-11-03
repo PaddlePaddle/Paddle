@@ -13,21 +13,32 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/scalar.h"
+#include <memory>
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
-namespace experimental {
+namespace framework {
+class ProgramDesc;
+}
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 DataType dtype = DataType::UNDEFINED);
+namespace distributed {
+class RuntimeGraph;
 
-Tensor ones_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
+class FleetExecutor final {
+ public:
+  FleetExecutor() = delete;
+  FleetExecutor(const std::string& exe_desc_str);
+  ~FleetExecutor();
+  void Init(const paddle::framework::ProgramDesc& program_desc);
+  void Run();
+  void Release();
 
-Tensor zeros_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
+ private:
+  DISABLE_COPY_AND_ASSIGN(FleetExecutor);
+  FleetExecutorDesc exe_desc_;
+  std::unique_ptr<RuntimeGraph> runtime_graph_;
+};
 
-}  // namespace experimental
+}  // namespace distributed
 }  // namespace paddle

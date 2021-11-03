@@ -14,20 +14,21 @@
 
 #pragma once
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/scalar.h"
-
 namespace paddle {
-namespace experimental {
+namespace framework {
+class ProgramDesc;
+}
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 DataType dtype = DataType::UNDEFINED);
+namespace distributed {
 
-Tensor ones_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
+class RuntimeGraph final {
+ public:
+  RuntimeGraph() = default;
+  explicit RuntimeGraph(const paddle::framework::ProgramDesc &program) {}
+  ~RuntimeGraph() = default;
 
-Tensor zeros_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
+  DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
+};
 
-}  // namespace experimental
+}  // namespace distributed
 }  // namespace paddle

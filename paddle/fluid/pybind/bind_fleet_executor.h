@@ -14,20 +14,12 @@
 
 #pragma once
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/scalar.h"
+#include <pybind11/pybind11.h>
 
 namespace paddle {
-namespace experimental {
+namespace pybind {
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 DataType dtype = DataType::UNDEFINED);
+void BindFleetExecutor(pybind11::module* m);
 
-Tensor ones_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
-
-Tensor zeros_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
-
-}  // namespace experimental
+}  // namespace pybind
 }  // namespace paddle
