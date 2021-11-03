@@ -18,7 +18,11 @@
 #include <thread>
 #include <unordered_map>
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "brpc/channel.h"
 #include "brpc/server.h"
+#endif
+
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -53,8 +57,10 @@ class MessageBus final {
   // check whether the dst is the same rank or different rank with src
   bool DstIsSameRank(int64_t src_id, int64_t dst_id);
 
+#ifdef PADDLE_WITH_DISTRIBUTE
   // send the message inter rank (dst is different rank with src)
   bool SendInterRank(const InterceptorMessage& interceptor_message);
+#endif
 
   // send the message intra rank (dst is the same rank with src)
   bool SendIntraRank(const InterceptorMessage& interceptor_message);
@@ -68,8 +74,10 @@ class MessageBus final {
   // the ip needs to be listened
   std::string addr_;
 
+#ifdef PADDLE_WITH_DISTRIBUTE
   // brpc server
   brpc::Server server_;
+#endif
 
   // thread keeps listening to the port to receive remote message
   // this thread runs ListenPort() function

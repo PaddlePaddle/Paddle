@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#ifdef PADDLE_WITH_DISTRIBUTE
 #pragma once
 
 #include "brpc/server.h"
@@ -32,3 +32,4 @@ class InterceptorMessageServiceImpl : public TheInterceptorMessageService {
 
 }  // namespace distributed
 }  // namespace paddle
+#endif

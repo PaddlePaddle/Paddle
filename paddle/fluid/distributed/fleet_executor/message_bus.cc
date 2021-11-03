@@ -36,10 +36,12 @@ bool MessageBus::DstIsSameRank(int64_t src_id, int64_t dst_id) {
   return true;
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
 bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   // send the message inter rank (dst is different rank with src)
   return true;
 }
+#endif
 
 bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
