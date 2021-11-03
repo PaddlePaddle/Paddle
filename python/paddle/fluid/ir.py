@@ -299,9 +299,9 @@ class PassDesc(object):
             if isinstance(value, int):
                 op_desc_attr.type = framework_pb2.AttrType.INT
                 op_desc_attr.i = value
-            elif isinstance(value, str):
-                op_desc_attr.type = framework_pb2.AttrType.STRING
-                op_desc_attr.s = value
+            # elif isinstance(value, str):
+            #     op_desc_attr.type = framework_pb2.AttrType.STRING
+            #     op_desc_attr.s = value
             else:
                 raise NotImplementedError("Unimplemented transform operation.")
 
@@ -480,7 +480,9 @@ class PassDesc(object):
 
         def SetOutputs(self, **kwargs):
             for param, arg in kwargs.items():
-                if arg is not None:
+                if arg is None:
+                    self._desc.remove_output(param)
+                else:
                     self._desc.set_output(param, [arg.name])
 
     OP = OpHelper()

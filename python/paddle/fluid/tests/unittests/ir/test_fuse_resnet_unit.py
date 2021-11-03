@@ -21,6 +21,7 @@ from paddle.vision.models import ResNet
 from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
 
 paddle.enable_static()
+np.random.seed(0)
 
 
 @unittest.skipIf(paddle.get_cudnn_version() < 8000,
@@ -32,13 +33,15 @@ class TestFuseResNetUnit(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.amp.fp16_guard():
             with paddle.static.program_guard(program, startup_program):
-                x = paddle.static.data("x", [-1, 3, 224, 224])
-                resnet50 = ResNet(BottleneckBlock, 50)
-                out = resnet50(x)
+                x = paddle.static.data("x", [1, 64, 64, 8])
+                conv2d = paddle.nn.Conv2D(
+                    8, 32, 1, bias_attr=False, data_format='NHWC')
+                batch_norm = paddle.nn.BatchNorm(
+                    32, act='relu', data_layout='NHWC')
+                out = batch_norm(conv2d(x))
         graph = core.Graph(program.desc)
-        core.get_pass("fuse_resenet_unit").apply(graph)
-        # after_program = paddle.fluid.framework.IrGraph(graph).to_program()
-        after_program = program
+        core.get_pass("fuse_resnet_unit").apply(graph)
+        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
         params = paddle.static.amp.cast_model_to_fp16(program)
         after_params = paddle.static.amp.cast_model_to_fp16(after_program)
         exe = paddle.static.Executor(place)
@@ -47,7 +50,7 @@ class TestFuseResNetUnit(unittest.TestCase):
             place, program, to_fp16_var_names=params)
         paddle.static.amp.cast_parameters_to_fp16(
             place, after_program, to_fp16_var_names=after_params)
-        feed = {"x": np.random.random([5, 3, 224, 224]).astype("float16")}
+        feed = {"x": np.random.randn(1, 64, 64, 8).astype("float16")}
         before_out = exe.run(program, feed=feed, fetch_list=[out.name])
         after_out = exe.run(after_program, feed=feed, fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out, after_out))
+        self.assertTrue(np.allclose(before_out[0], after_out[0], atol=5e-3))

@@ -20,14 +20,14 @@ def set_resnet_unit_attrs(resnet_unit, has_shortcut):
     resnet_unit.SetAttr("fuse_add", False)
     resnet_unit.SetAttr("act_type", "relu")
     resnet_unit.SetAttr("has_shortcut", has_shortcut)
+    resnet_unit.SetAttr("data_format", 'NHWC')
+    resnet_unit.SetAttr("dilation", 1)
     resnet_unit.Attr("stride").MappedPattern(
         op="conv2d", name="strides", element_index=0)
     resnet_unit.Attr("padding").MappedPattern(
         op="conv2d", name="paddings", element_index=0)
     resnet_unit.Attr("group").MappedPattern(op="conv2d", name="groups")
     resnet_unit.Attr("op_device").MappedPattern(op="conv2d", name="op_device")
-    resnet_unit.Attr("data_format").MappedPattern(
-        op="conv2d", name="data_format")
     resnet_unit.Attr("op_namescope").MappedPattern(
         op="conv2d", name="op_namescope")
     resnet_unit.Attr("momentum").MappedPattern(op="batch_norm", name="momentum")
@@ -44,16 +44,13 @@ def set_resnet_unit_outputs(resnet_unit, meanX, varX, meanZ=None, varZ=None):
         RunningVarZ=varZ)
 
 
-def generate_passes(data_format):
+@ir.RegisterPass
+def fuse_resnet_unit():
     def pattern_conv_bn(x, filter, scale, bias, mean, var):
-        if data_format == "NCHW":
-            filter.Attr("shape")[0].Mod(32).EQ(0)
-            filter.Attr("shape")[1].Mod(8).EQ(0)
-        else:
-            filter.Attr("shape")[0].Mod(32).EQ(0)
-            filter.Attr("shape")[1].Mod(8).EQ(0)
+        filter.Attr("shape")[0].Mod(32).EQ(0)
+        filter.Attr("shape")[1].Mod(8).EQ(0)
         conv2d = ir.PassDesc.OP.conv2d(Input=x, Filter=filter)
-        conv2d.Attr("data_format").EQ(data_format)
+        conv2d.SetAttr("data_format", 'NHWC')
         bn = ir.PassDesc.OP.batch_norm(
             X=conv2d, Bias=bias, Mean=mean, Scale=scale, Variance=var)
         return bn
@@ -68,8 +65,7 @@ def generate_passes(data_format):
             X=x, FilterX=filter, ScaleX=scale, BiasX=bias, MeanX=mean, VarX=var)
         set_resnet_unit_attrs(resnet_unit, False)
         set_resnet_unit_outputs(resnet_unit, mean, var)
-        out = resnet_unit.Output("Y")
-        return out
+        return resnet_unit.Output("Y")
 
     def pattern_two_input(x, filterX, scaleX, biasX, meanX, varX, z, filterZ,
                           scaleZ, biasZ, meanZ, varZ):
@@ -101,11 +97,3 @@ def generate_passes(data_format):
 
     return (pattern_one_input, replace_one_input), (pattern_two_input,
                                                     replace_two_input)
-
-
-@ir.RegisterPass
-def fuse_resenet_unit():
-    passes = list()
-    passes.extend(generate_passes('NCHW'))
-    passes.extend(generate_passes('NHCW'))
-    return passes
