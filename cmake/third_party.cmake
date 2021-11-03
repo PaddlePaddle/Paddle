@@ -378,4 +378,9 @@ if (WITH_POCKETFFT)
     add_definitions(-DPADDLE_WITH_POCKETFFT)
 endif (WITH_POCKETFFT)
 
+if (WIN32)
+    include(external/dirent)
+    list(APPEND third_party_deps extern_dirent)
+endif (WIN32)
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
