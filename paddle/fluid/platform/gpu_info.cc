@@ -648,9 +648,9 @@ class RecordedCudaMallocHelper {
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
-  CUresult cuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
-                       const CUmemAllocationProp *prop,
-                       unsigned long long flags) {  // NOLINT
+  CUresult MemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+                     const CUmemAllocationProp *prop,
+                     unsigned long long flags) {  // NOLINT
     auto result =
         paddle::platform::dynload::cuMemCreate(handle, size, prop, flags);
     if (result == CUDA_SUCCESS) {
@@ -659,7 +659,7 @@ class RecordedCudaMallocHelper {
     return result;
   }
 
-  CUresult cuMemRelease(CUmemGenericAllocationHandle handle, size_t size) {
+  CUresult MemRelease(CUmemGenericAllocationHandle handle, size_t size) {
     auto result = paddle::platform::dynload::cuMemRelease(handle);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_sub(size);
@@ -698,13 +698,13 @@ void RecordedCudaFree(void *p, size_t size, int dev_id) {
 CUresult RecordedCuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
                              const CUmemAllocationProp *prop,
                              unsigned long long flags, int dev_id) {  // NOLINT
-  return RecordedCudaMallocHelper::Instance(dev_id)->cuMemCreate(handle, size,
-                                                                 prop, flags);
+  return RecordedCudaMallocHelper::Instance(dev_id)->MemCreate(handle, size,
+                                                               prop, flags);
 }
 
 CUresult RecordedCuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
                               int dev_id) {
-  return RecordedCudaMallocHelper::Instance(dev_id)->cuMemRelease(handle, size);
+  return RecordedCudaMallocHelper::Instance(dev_id)->MemRelease(handle, size);
 }
 #endif
 #endif
