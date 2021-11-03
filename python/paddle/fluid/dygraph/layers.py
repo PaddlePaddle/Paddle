@@ -1576,40 +1576,57 @@ class Layer(core.Layer):
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
-            # 1. Copy param / Tensor to cpu
-            t_cpu = t._copy_to(paddle.CPUPlace(),
-                               blocking)  # k-v type will error
 
-            # 2. Release mem of t
-            t.value().get_tensor()._clear()
+            # 1. gpu place need to determine whether the memory is sufficient for allocation:
+            if t.place.is_gpu_place():
+                gpu_memory_available = core.gpu_memory_available()
+                # for gpu, minimum memory allocation unit is 256 bytes.
+                if type(dtype) is str:
+                    size_dtype = core.size_of_dtype(
+                        convert_np_dtype_to_dtype_(dtype))
+                else:
+                    size_dtype = core.size_of_dtype(dtype)
+                waiting_alloc_memory = (
+                    (t.numel().numpy()[0] * size_dtype) / 256 + 1) * 256 * 1.2
+                if gpu_memory_available < waiting_alloc_memory:
+                    # Copy param / Tensor to cpu
+                    t_used = t._copy_to(paddle.CPUPlace(),
+                                        blocking)  # k-v type will error
+                    # Release mem of t
+                    t.value().get_tensor()._clear()
+                else:
+                    t_used = t
+            else:
+                t_used = t
 
-            # 3. In cpu, cast param / Tensor to dtype
-            if dtype is not None and dtype != t_cpu.dtype:
-                if isinstance(t, framework.ParamBase):
+            # 2. cast param / Tensor to dtype
+            if dtype is not None and dtype != t_used.dtype:
+                if isinstance(t_used, framework.ParamBase):
                     from paddle.fluid.layer_helper import LayerHelper
                     helper = LayerHelper("cast", **locals())
-                    t_cpu_casted = helper.create_variable_for_type_inference(
+                    t_casted = helper.create_variable_for_type_inference(
                         dtype=dtype)
                     framework._dygraph_tracer().trace_op(
                         type='cast',
-                        inputs={'X': t_cpu},
-                        outputs={'Out': t_cpu_casted},
+                        inputs={'X': t_used},
+                        outputs={'Out': t_casted},
                         attrs={
-                            'in_dtype': t_cpu.dtype,
+                            'in_dtype': t_used.dtype,
                             'out_dtype': convert_np_dtype_to_dtype_(dtype)
                         })
                 else:
-                    t_cpu_casted = t_cpu.cast(dtype=dtype)
+                    t_casted = t_used.cast(dtype=dtype)
             else:
-                t_cpu_casted = t_cpu
+                t_casted = t_used
 
-            # 4. Copy casted cpu param / Tensor to device
-            new_t = t_cpu_casted._copy_to(device, blocking)
+            # 3. Copy casted cpu param / Tensor to device
+            new_t = t_casted._copy_to(device, blocking)
 
-            # 5. share Tensor to origin param / Tensor
+            # 4. share Tensor to origin param / Tensor
             dst_tensor = t.value().get_tensor()
             src_tensor = new_t.value().get_tensor()
             dst_tensor._share_data_with(src_tensor)
+
             return t
 
         with warnings.catch_warnings():
