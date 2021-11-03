@@ -16,27 +16,26 @@ from __future__ import print_function
 
 import unittest
 
+import copy
 import paddle
 import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.context import DistributedContext
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.completion import complete_backward_annotation
 from paddle.distributed.auto_parallel.reshard import reshard
 from paddle.distributed.auto_parallel.cost_model import estimate_cost
 import paddle.fluid.core as core
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"
-ROOT_MESH = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]])
-_global_process_mesh = auto.ProcessMesh(
-    [[[0, 1], [4, 5]], [[2, 3], [6, 7]]], parent=ROOT_MESH)
-PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]], parent=ROOT_MESH)
-PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], parent=ROOT_MESH)
+PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]])
+PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]])
 NUM_RANKS = 8
 STAGE_0_CNT = 5
 STAGE_1_CNT = 10
@@ -69,9 +68,13 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         if self.is_distributed:
             auto.shard_tensor(
-                self.linear0.weight, PP_MESH_0, dim_mapping=[-1, 1])
+                self.linear0.weight,
+                dist_attr={"process_mesh": PP_MESH_0,
+                           "dims_mapping": [-1, 1]})
             auto.shard_tensor(
-                self.linear1.weight, PP_MESH_1, dim_mapping=[1, -1])
+                self.linear1.weight,
+                dist_attr={"process_mesh": PP_MESH_1,
+                           "dims_mapping": [1, -1]})
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -119,8 +122,14 @@ def mlp_forward(train_program, start_program, is_distributed=True):
                 name="label", shape=[batch_size, 1], dtype='float32')
 
         if is_distributed:
-            auto.shard_tensor(input, PP_MESH_0, dim_mapping=[0, -1])
-            auto.shard_tensor(label, PP_MESH_1, dim_mapping=[0, -1])
+            auto.shard_tensor(
+                input,
+                dist_attr={"process_mesh": PP_MESH_0,
+                           "dims_mapping": [0, -1]})
+            auto.shard_tensor(
+                label,
+                dist_attr={"process_mesh": PP_MESH_1,
+                           "dims_mapping": [0, -1]})
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -136,33 +145,27 @@ def mlp_forward(train_program, start_program, is_distributed=True):
 
 
 def get_dist_prog(train_program, startup_program, dist_context, rank_id):
-    global _global_process_mesh
-    dist_context.set_process_mesh(_global_process_mesh)
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
+
+    dist_strategy = fleet.DistributedStrategy()
 
     # auto completion
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
+    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    # logical partition
+    auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
+        complete_train_program, startup_program)
+    dist_params_grads = partitioner.apply_backward(
+        loss, complete_train_program, startup_program, auto_parallel_main_prog,
+        auto_parallel_startup_prog)
+    optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
+                                         auto_parallel_main_prog,
+                                         auto_parallel_startup_prog)
 
-    dist_strategy = fleet.DistributedStrategy()
-    dist_main_prog = []
-    dist_startup_prog = []
-    for rank_id in range(NUM_RANKS):
-        partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-        # logical partition
-        auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
-            complete_train_program, startup_program)
-        dist_params_grads = partitioner.apply_backward(
-            loss, complete_train_program, startup_program,
-            auto_parallel_main_prog, auto_parallel_startup_prog)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer()
-        opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                             auto_parallel_main_prog,
-                                             auto_parallel_startup_prog)
-        dist_main_prog.append(auto_parallel_main_prog)
-        dist_startup_prog.append(auto_parallel_startup_prog)
-    return dist_main_prog, dist_startup_prog
+    return auto_parallel_main_prog, auto_parallel_startup_prog
 
 
 def check_runtime_estimation(cost):
@@ -210,20 +213,20 @@ class TestCostModel(unittest.TestCase):
         self.assertTrue(check_empty_program_memory(cost))
 
     def test_auto_parallel_cost_model(self):
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        dist_context = DistributedContext()
         standalone_cost_data = get_single_node_data()
-        distributed_program, dist_startup_prog = get_dist_prog(
-            train_program, startup_program, dist_context, 0)
+        dist_program = []
         for rank_id in range(NUM_RANKS):
-            complete_backward_annotation(distributed_program[rank_id],
-                                         dist_context)
-            reshard(distributed_program[rank_id], dist_startup_prog[rank_id],
-                    rank_id, dist_context)
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            dist_context = DistributedContext()
+            distributed_program, dist_startup_prog = get_dist_prog(
+                train_program, startup_program, dist_context, rank_id)
+            reshard(distributed_program, dist_startup_prog, rank_id,
+                    dist_context)
+            dist_program.append(distributed_program)
         cluster = None
         cost = estimate_cost(
-            distributed_program,
+            dist_program,
             cluster=cluster,
             pipeline_config=pp_cfg,
             standalone_cost_data=standalone_cost_data,

@@ -38,7 +38,7 @@ void TestCopyTensor() {
   for (int64_t i = 0; i < t1.size(); i++) {
     CHECK_EQ(t1_cpu_cp.template data<T>()[i], T(5));
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(2) << "Do GPU copy test";
   auto t1_gpu_cp = t1_cpu_cp.template copy_to<T>(paddle::PlaceType::kGPU);
   CHECK((paddle::PlaceType::kGPU == t1_gpu_cp.place()));
@@ -50,33 +50,16 @@ void TestCopyTensor() {
   for (int64_t i = 0; i < t1.size(); i++) {
     CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
   }
-#elif defined(PADDLE_WITH_HIP)
-  VLOG(2) << "Do HIP copy test";
-  auto t1_gpu_cp = t1_cpu_cp.template copy_to<T>(paddle::PlaceType::kHIP);
-  CHECK((paddle::PlaceType::kHIP == t1_gpu_cp.place()));
-  auto t1_gpu_cp_cp = t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kHIP);
-  CHECK((paddle::PlaceType::kHIP == t1_gpu_cp_cp.place()));
-  auto t1_gpu_cp_cp_cpu =
-      t1_gpu_cp_cp.template copy_to<T>(paddle::PlaceType::kCPU);
-  CHECK((paddle::PlaceType::kCPU == t1_gpu_cp_cp_cpu.place()));
-  for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
-  }
 #endif
 }
 
 void TestAPIPlace() {
   std::vector<int64_t> tensor_shape = {5, 5};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto t1 = paddle::Tensor(paddle::PlaceType::kGPU);
   t1.reshape(tensor_shape);
   t1.mutable_data<float>();
   CHECK((paddle::PlaceType::kGPU == t1.place()));
-#elif defined(PADDLE_WITH_HIP)
-  auto t1 = paddle::Tensor(paddle::PlaceType::kHIP);
-  t1.reshape(tensor_shape);
-  t1.mutable_data<float>();
-  CHECK((paddle::PlaceType::kHIP == t1.place()));
 #endif
   auto t2 = paddle::Tensor(paddle::PlaceType::kCPU);
   t2.reshape(tensor_shape);
@@ -97,7 +80,7 @@ void TestAPISlice() {
   std::vector<int64_t> tensor_shape_sub1 = {3, 5};
   std::vector<int64_t> tensor_shape_origin2 = {5, 5, 5};
   std::vector<int64_t> tensor_shape_sub2 = {1, 5, 5};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto t1 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin1);
   t1.mutable_data<float>();
   CHECK(t1.slice(0, 5).shape() == tensor_shape_origin1);
@@ -144,7 +127,7 @@ void TestCast(paddle::DataType data_type) {
   t1.template mutable_data<T>();
   auto t2 = t1.cast(data_type);
   CHECK(t2.type() == data_type);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto tg1 = paddle::Tensor(paddle::PlaceType::kGPU);
   tg1.reshape(tensor_shape);
   tg1.template mutable_data<T>();
