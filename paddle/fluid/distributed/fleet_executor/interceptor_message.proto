@@ -26,13 +26,13 @@ enum MessageType {
 message InterceptorMessage {
   optional int64 src_interceptor_id = 1 [ default = 0 ];
   optional int64 dst_interceptor_id = 2 [ default = 0 ];
-  optional MessageType message_type = 3 [ default = OK ];
+  optional MessageType message_type = 3 [ default = RESET ];
   optional bool ctrl_message = 4 [ default = false ];
 }
 
 message InterceptorResponse { optional bool rst = 1 [ default = false ]; }
 
-service InterceptorMessageService {
+service TheInterceptorMessageService {
   rpc InterceptorMessageService(InterceptorMessage)
       returns (InterceptorResponse);
 }
