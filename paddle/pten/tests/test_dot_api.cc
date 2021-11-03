@@ -15,13 +15,13 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/hapi/include/linalg.h"
+#include "paddle/pten/api/include/linalg.h"
 
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/hapi/lib/utils/allocator.h"
 
-#include "paddle/pten/api/include/linalg.h"
+#include "paddle/pten/include/linalg.h"
 
 PT_DECLARE_MODULE(LinalgCPU);
 
