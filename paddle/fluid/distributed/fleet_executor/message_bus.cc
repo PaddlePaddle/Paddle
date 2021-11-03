@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 namespace paddle {
 namespace distributed {
 
-~MessageBus::MessageBus() {
+MessageBus::~MessageBus() {
   // destroy
 }
 
@@ -43,7 +41,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   return true;
 }
 
-bool SendIntraRank(const InterceptorMessage& interceptor_message) {
+bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
   return true;
 }

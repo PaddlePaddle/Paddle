@@ -28,7 +28,7 @@ class InterceptorMessageServiceImpl : public InterceptorMessageService {
   virtual void InterceptorMessageService(
       google::protobuf::RpcController* control_base,
       const InterceptorMessage* request, InterceptorResponse* response,
-      google::protobuf::Closure* done) {}
+      google::protobuf::Closure* done);
 };
 
 }  // namespace distributed

@@ -16,7 +16,6 @@ syntax = "proto2";
 package paddle.distributed;
 
 enum MessageType {
-  OK = 0;              // interceptor has been created
   STOP = 1;            // STOP an Interceptor
   DATA_IS_READY = 2;   // upstream data is ready
   DATE_IS_USELESS = 3; // downstream has used the data
