@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/api/lib/utils/allocator.h"
 
-// user apis
-#include "paddle/pten/hapi/include/creation.h"
-#include "paddle/pten/hapi/include/linalg.h"
-#include "paddle/pten/hapi/include/manipulation.h"
-#include "paddle/pten/hapi/include/math.h"
-#include "paddle/pten/hapi/include/tensor.h"
+namespace paddle {
+namespace experimental {
+
+memory::Allocator::AllocationDeleter DefaultAllocator::deleter_;
+
+}  // namespace experimental
+}  // namespace paddle

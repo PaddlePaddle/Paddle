@@ -14,12 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/hapi/include/tensor.h"
-
-namespace paddle {
-namespace experimental {
-
-Tensor flatten(const Tensor& x, int start_axis, int stop_axis);
-
-}  // namespace experimental
-}  // namespace paddle
+// develop apis
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/creation.h"
+#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/linalg.h"
+#include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/include/math.h"

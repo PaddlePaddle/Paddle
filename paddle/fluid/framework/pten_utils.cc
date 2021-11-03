@@ -59,6 +59,43 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
+KernelSignatureMap* KernelSignatureMap::kernel_signature_map_ = nullptr;
+std::mutex KernelSignatureMap::mutex_;
+
+KernelSignatureMap& KernelSignatureMap::Instance() {
+  if (kernel_signature_map_ == nullptr) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (kernel_signature_map_ == nullptr) {
+      kernel_signature_map_ = new KernelSignatureMap;
+    }
+  }
+  return *kernel_signature_map_;
+}
+
+bool KernelSignatureMap::Has(const std::string& op_type) const {
+  return map_.find(op_type) != map_.end();
+}
+
+void KernelSignatureMap::Emplace(const std::string& op_type,
+                                 KernelSignature&& signature) {
+  if (!Has(op_type)) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!Has(op_type)) {
+      map_.emplace(op_type, signature);
+    }
+  }
+}
+
+const KernelSignature& KernelSignatureMap::Get(
+    const std::string& op_type) const {
+  auto it = map_.find(op_type);
+  PADDLE_ENFORCE_NE(
+      it, map_.end(),
+      platform::errors::NotFound(
+          "Operator `%s`'s kernel signature is not registered.", op_type));
+  return it->second;
+}
+
 const paddle::SmallVector<std::string>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {

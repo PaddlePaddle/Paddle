@@ -12,28 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/hapi/include/creation.h"
+#include "paddle/pten/api/include/math.h"
 
 #include <memory>
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/api/include/infershape.h"
-#include "paddle/pten/hapi/lib/kernel_dispatch.h"
-#include "paddle/pten/hapi/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/kernel_dispatch.h"
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/infershape/unary.h"
 
 namespace paddle {
 namespace experimental {
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 paddle::experimental::DataType dtype) {
+Tensor mean(const Tensor& x) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "fill_any_like", kernel_key);
+      "mean", kernel_key);
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
@@ -42,17 +41,12 @@ Tensor full_like(const Tensor& x,
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
-  kernel_context.EmplaceBackAttr(value);
 
   // 4. InferShape
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  auto out_meta = ReductionInferShape(dense_x->meta());
 
   // 5. Prepare outputs
   Tensor out;
-  // InferDataType
-  if (dtype != pten::DataType::UNDEFINED) {
-    const_cast<pten::DenseTensorMeta::DataType&>(out_meta.type) = dtype;
-  }
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           pten::TransToFluidPlace(kernel_key.backend()));
@@ -64,14 +58,6 @@ Tensor full_like(const Tensor& x,
   kernel(&kernel_context);
 
   return out;
-}
-
-Tensor ones_like(const Tensor& x, DataType dtype) {
-  return full_like(x, 1, dtype);
-}
-
-Tensor zeros_like(const Tensor& x, DataType dtype) {
-  return full_like(x, 0, dtype);
 }
 
 }  // namespace experimental
