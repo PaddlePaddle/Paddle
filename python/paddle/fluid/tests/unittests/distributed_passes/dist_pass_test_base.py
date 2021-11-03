@@ -23,6 +23,7 @@ import shutil
 import inspect
 import numpy as np
 from collections import OrderedDict
+from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 def prepare_python_path_and_return_module(py_obj):
@@ -68,7 +69,6 @@ class DistPassTestBase(unittest.TestCase):
         self.rtol = 1e-5
         self.atol = 1e-8
         self.equal_nan = False
-        np.random.seed(seed)
 
         self.init()
 
@@ -158,59 +158,39 @@ class DistPassTestBase(unittest.TestCase):
         gpus = ','.join([str(gpu_id) for gpu_id in gpus])
 
         pid = os.getpid()
-        tmp_py_file = 'pass_test_{}.py'.format(pid)
-        file_prefix = 'results_' + str(pid)
-        input_dump_file = 'inputs_' + str(pid)
-        print('View log at directory: {}'.format(file_prefix))
+        output_file_prefix = 'pass_test_outputs_' + str(pid)
+        input_dump_file = 'pass_test_inputs_' + str(pid)
+        print('View log at directory: {}'.format(output_file_prefix))
+
+        if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
+            run_with_coverage(True)
+            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+        else:
+            coverage_args = []
+
+        file_dir = os.path.dirname(os.path.abspath(__file__))
 
         try:
             with open(input_dump_file, 'wb') as f:
                 pickle.dump(kwargs, f)
 
-            with open(tmp_py_file, 'w') as f:
-                module = prepare_python_path_and_return_module(type(self))
-                name = type(self).__name__
-                f.write('''
-from {0} import {1} as __test_class
-import paddle
-import pickle
-
-def run_main(): 
-    __test_obj = __test_class()
-    __rank = paddle.distributed.get_rank()
-    with open("{2}", "rb") as f:
-        __kwargs = pickle.load(f)
-    try:
-        __test_obj.setUpClass()
-        __test_obj.setUp()
-        __test_obj._run_gpu_main({3}, "{4}/%d.bin" % __rank, **__kwargs)
-    finally:
-        __test_obj.tearDown()
-        __test_obj.tearDownClass()
-
-if __name__ == "__main__":
-    run_main()
-'''.format(module, name, input_dump_file, apply_pass, file_prefix))
-
-            py_script = '''
-import os
-from paddle.distributed.fleet import launch
-from paddle.distributed.fleet.launch_utils import run_with_coverage
-
-if __name__ == "__main__":
-    if os.environ.get("WITH_COVERAGE", "OFF") == "ON": 
-        run_with_coverage(True)   
-    launch.launch()
-'''
-
+            module_name = prepare_python_path_and_return_module(type(self))
             cmd = [
                 sys.executable,
                 "-u",
-                "-c",
-                py_script,
+            ] + coverage_args + [
+                "-m",
+                "launch",
                 "--log_dir",
-                file_prefix,
-                tmp_py_file,
+                output_file_prefix,
+                "--gpus",
+                gpus,
+                os.path.join(file_dir, 'run_main.py'),
+                module_name,
+                type(self).__name__,
+                str(apply_pass),
+                input_dump_file,
+                output_file_prefix,
             ]
             cmd = [shlex.quote(c) for c in cmd]
             exitcode = os.system(' '.join(cmd))
@@ -220,7 +200,7 @@ if __name__ == "__main__":
 
             results = []
             for i in range(num_gpus):
-                dump_file = '{0}/{1}.bin'.format(file_prefix, i)
+                dump_file = '{0}/{1}.bin'.format(output_file_prefix, i)
                 self.assertTrue(
                     os.path.exists(dump_file),
                     "Pass failed with apply_pass = {}".format(apply_pass))
@@ -229,6 +209,5 @@ if __name__ == "__main__":
             return results
         finally:
             if int(os.environ.get("DEBUG", 0)) == 0:
-                remove_path_if_exists(file_prefix)
-                remove_path_if_exists(tmp_py_file)
+                remove_path_if_exists(output_file_prefix)
                 remove_path_if_exists(input_dump_file)
