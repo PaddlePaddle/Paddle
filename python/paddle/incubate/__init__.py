@@ -23,6 +23,8 @@ from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
 
+from . import nn  #noqa: F401
+
 __all__ = [
     'LookAhead',
     'ModelAverage',

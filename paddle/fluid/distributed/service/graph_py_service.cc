@@ -107,6 +107,7 @@ void GraphPyServer::start_server(bool block) {
   empty_vec.push_back(empty_prog);
   pserver_ptr->configure(server_proto, _ps_env, rank, empty_vec);
   pserver_ptr->start(ip, port);
+  pserver_ptr->build_peer2peer_connection(rank);
   std::condition_variable* cv_ = pserver_ptr->export_cv();
   if (block) {
     std::mutex mutex_;

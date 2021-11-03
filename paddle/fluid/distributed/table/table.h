@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/table/graph/graph_node.h"
@@ -103,10 +104,10 @@ class Table {
   virtual int32_t flush() = 0;
   virtual int32_t shrink(const std::string &param) = 0;
 
-  //指定加载路径
+  // 指定加载路径
   virtual int32_t load(const std::string &path,
                        const std::string &converter) = 0;
-  //指定保存路径
+  // 指定保存路径
   virtual int32_t save(const std::string &path,
                        const std::string &converter) = 0;
 
@@ -137,6 +138,7 @@ class Table {
   TableParameter _config;
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
+  AfsClient _afs_client;
 };
 REGISTER_PSCORE_REGISTERER(Table);
 
