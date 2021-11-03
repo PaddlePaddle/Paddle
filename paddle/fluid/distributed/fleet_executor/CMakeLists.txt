@@ -1,5 +1,5 @@
+proto_library(fleet_executor_desc_proto SRCS fleet_executor_desc.proto)
 if(WITH_DISTRIBUTE)
-  proto_library(fleet_executor_desc_proto SRCS fleet_executor_desc.proto)
   proto_library(interceptor_message_proto SRCS interceptor_message.proto)
   cc_library(fleet_executor SRCS fleet_executor.cc carrier.cc
           interceptor.cc interceptor_message_service.cc message_bus.cc
