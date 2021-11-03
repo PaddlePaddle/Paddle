@@ -27,7 +27,9 @@ class TestVisonModels(unittest.TestCase):
     unit tests of all models in paddle.vision.models
     """
     def models_infer(self, arch, pretrained=False, batch_norm=False):
-
+        """
+        arch: the name of the model to be tested
+        """
         x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
         if batch_norm:
             net = models.__dict__[arch](pretrained=pretrained, batch_norm=True)
