@@ -83,21 +83,21 @@ TEST(API, zeros_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = paddle::experimental::zeros_like(x, pten::DataType::FLOAT32);
+  auto out = paddle::experimental::zeros_like(x, pten::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.type(), pten::DataType::INT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
-  auto* actual_result = dense_out->data<float>();
+  auto* actual_result = dense_out->data<int32_t>();
   for (auto i = 0; i < 6; i++) {
-    ASSERT_NEAR(actual_result[i], 0, 1e-6f);
+    ASSERT_EQ(actual_result[i], 0);
   }
 }
 

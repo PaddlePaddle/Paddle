@@ -68,7 +68,10 @@ Tensor full_like(const Tensor& x,
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "fill_any_like", kernel_key);
+      "fill_any_like",
+      {kernel_key.backend(),
+       kernel_key.layout(),
+       dtype == DataType::UNDEFINED ? kernel_key.dtype() : dtype});
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());

@@ -48,7 +48,6 @@ void FillAnyLike(const CPUContext& dev_ctx,
           static_cast<CommonType>(std::numeric_limits<T>::lowest()),
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
-
   eigen::fill<CPUContext, T>(dev_ctx, out, value);
 }
 
