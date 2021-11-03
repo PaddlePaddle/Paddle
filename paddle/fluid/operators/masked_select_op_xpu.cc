@@ -52,6 +52,9 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
                           "XPU nonzero_count kernel return wrong value[%d %s]",
                           ret, XPUAPIErrorMsg[ret]));
 
+    if (dev_ctx.x_context()->xpu_stream) {
+      dev_ctx.Wait();
+    }
     xpu_memcpy(static_cast<void*>(&out_size_cpu),
                static_cast<const void*>(out_size), sizeof(int32_t),
                XPU_DEVICE_TO_HOST);

@@ -321,7 +321,14 @@ XPUOpMap& get_kl1_ops() {
       {"momuntem", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"iou_similarity",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})}
+      {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"tile", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                             pOpKernelType(vartype::INT64, XPUPlace()),
+                             pOpKernelType(vartype::BOOL, XPUPlace()),
+                             pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"where_index", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                                    pOpKernelType(vartype::BOOL, XPUPlace()),
+                                    pOpKernelType(vartype::FP32, XPUPlace())})},
       // AddMore
   };
 

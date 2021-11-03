@@ -46,6 +46,9 @@ class WhereIndexXPUKernel : public framework::OpKernel<T> {
             "XPU nonzero_count kernel return wrong value[%d %s] in WhereIndex",
             ret, XPUAPIErrorMsg[ret]));
 
+    if (dev_ctx.x_context()->xpu_stream) {
+      dev_ctx.Wait();
+    }
     xpu_memcpy(static_cast<void*>(&true_num_cpu),
                static_cast<const void*>(true_num), sizeof(int32_t),
                XPU_DEVICE_TO_HOST);
