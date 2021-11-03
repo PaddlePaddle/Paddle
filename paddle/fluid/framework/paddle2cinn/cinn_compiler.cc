@@ -66,6 +66,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
+  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
   bool exist = false;
   {
@@ -89,7 +90,6 @@ const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
-  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(compilation_key);
   const auto& graph = FindGraph(compilation_key);
   return Compile(graph, input_tensors, target);
 }
@@ -120,10 +120,14 @@ const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
   return *graphs_.at(graph_key);
 }
 
-std::string CinnCompiler::VizGraph(const std::string& key) const {
+std::string CinnCompiler::VizGraph(const std::string& graph_key) const {
+  const Graph& graph = FindGraph(graph_key);
+  return VizGraph(graph);
+}
+
+std::string CinnCompiler::VizGraph(const Graph& graph) const {
   Dot dot;
   std::unordered_map<const Node*, std::string> node2dot;
-  const Graph& graph = FindGraph(key);
   int id = 0;
   // Create nodes
   for (const Node* n : graph.Nodes()) {
@@ -164,9 +168,10 @@ std::string CinnCompiler::VizGraph(const std::string& key) const {
   return dot.Build();
 }
 
-std::string CinnCompiler::ReadableKey(const std::string& key) const {
+std::string CinnCompiler::ReadableKey(
+    const std::string& compilation_key) const {
   proto::ProgramDesc desc;
-  desc.ParseFromString(key);
+  desc.ParseFromString(compilation_key);
   return desc.DebugString();
 }
 

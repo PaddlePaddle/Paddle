@@ -63,11 +63,13 @@ class CinnCompiler {
 
   std::string AddGraph(std::unique_ptr<ir::Graph> graph);
 
-  const ir::Graph& FindGraph(const std::string& key) const;
+  const ir::Graph& FindGraph(const std::string& graph_key) const;
 
-  std::string VizGraph(const std::string& key) const;
+  std::string VizGraph(const std::string& graph_key) const;
 
-  std::string ReadableKey(const std::string& key) const;
+  std::string VizGraph(const ir::Graph& graph) const;
+
+  std::string ReadableKey(const std::string& compilation_key) const;
 
   void Clear();
 
