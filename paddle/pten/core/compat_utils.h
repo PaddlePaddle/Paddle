@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/tensor_meta.h"
-#include "paddle/pten/hapi/lib/utils/storage.h"
 
 namespace pten {
 

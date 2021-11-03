@@ -28,7 +28,7 @@
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace imperative {
