@@ -29,7 +29,7 @@ class FusedGatherScatterOP : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Gather_index"), true,
         platform::errors::InvalidArgument(
-            "Input(Gather_indx) of FusedGatherScatterOp should not be null."));
+            "Input(Gather_index) of FusedGatherScatterOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Scatter_index"), true,
                       platform::errors::InvalidArgument(
                           "Input(Scatter_index) of FusedGatherScatterOp should "
@@ -43,14 +43,14 @@ class FusedGatherScatterOP : public framework::OperatorWithKernel {
     if (gather_index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(gather_index_dims[1], 1,
                         platform::errors::InvalidArgument(
-                            "The last dim of gather_index should be 1 when it "
+                            "The last dim of Gather_index should be 1 when it "
                             "is 2D, but we get %d",
                             gather_index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
           gather_index_dims.size(), 1,
           platform::errors::InvalidArgument(
-              "The gather_index should be 1D, when it is not 2D, but we get %d",
+              "The Gather_index should be 1D, when it is not 2D, but we get %d",
               gather_index_dims.size()));
     }
 
@@ -58,17 +58,19 @@ class FusedGatherScatterOP : public framework::OperatorWithKernel {
     if (scatter_index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(scatter_index_dims[1], 1,
                         platform::errors::InvalidArgument(
-                            "The last dim of scatter_index should be 1 when it "
+                            "The last dim of Scatter_index should be 1 when it "
                             "is 2D, but we get %d",
                             scatter_index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
           scatter_index_dims.size(), 1,
-          platform::errors::InvalidArgument("The scatter_index should be 1D, "
+          platform::errors::InvalidArgument("The Scatter_index should be 1D, "
                                             "when it is not 2D, but we get %d",
                                             scatter_index_dims.size()));
     }
 
+    // TODO(daisiming): If the shape of scatter_index and gather_index should be
+    // same?
     auto dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dims);
   }
@@ -160,17 +162,15 @@ REGISTER_OPERATOR(
     ops::FusedGatherScatterGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedGatherScatterGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_gather_scatter_grad, ops::FusedGatherScatterGradOp);
-REGISTER_OP_CPU_KERNEL(
-    fused_gather_scatter, ops::FusedGatherScatterOpKernel<CPU, float, int>,
-    ops::FusedGatherScatterOpKernel<CPU, float, int64_t>,
-    ops::FusedGatherScatterOpKernel<CPU, double, int>,
-    ops::FusedGatherScatterOpKernel<CPU, double, int64_t>,
-    ops::FusedGatherScatterOpKernel<CPU, int, int>,
-    ops::FusedGatherScatterOpKernel<CPU, int, int64_t>,
-    ops::FusedGatherScatterOpKernel<CPU, int64_t, int>,
-    ops::FusedGatherScatterOpKernel<CPU, int64_t, int64_t>,
-    ops::FusedGatherScatterOpKernel<CPU, paddle::platform::float16, int>,
-    ops::FusedGatherScatterOpKernel<CPU, paddle::platform::float16, int64_t>);
+REGISTER_OP_CPU_KERNEL(fused_gather_scatter,
+                       ops::FusedGatherScatterOpKernel<CPU, float, int>,
+                       ops::FusedGatherScatterOpKernel<CPU, float, int64_t>,
+                       ops::FusedGatherScatterOpKernel<CPU, double, int>,
+                       ops::FusedGatherScatterOpKernel<CPU, double, int64_t>,
+                       ops::FusedGatherScatterOpKernel<CPU, int, int>,
+                       ops::FusedGatherScatterOpKernel<CPU, int, int64_t>,
+                       ops::FusedGatherScatterOpKernel<CPU, int64_t, int>,
+                       ops::FusedGatherScatterOpKernel<CPU, int64_t, int64_t>);
 
 REGISTER_OP_CPU_KERNEL(
     fused_gather_scatter_grad,
@@ -181,7 +181,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::FusedGatherScatterGradOpKernel<CPU, int, int>,
     ops::FusedGatherScatterGradOpKernel<CPU, int, int64_t>,
     ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int64_t>,
-    ops::FusedGatherScatterGradOpKernel<CPU, paddle::platform::float16, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, paddle::platform::float16,
-                                        int64_t>);
+    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int64_t>);

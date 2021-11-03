@@ -73,7 +73,7 @@ void elementwise_inner_operation(const Tensor& src, Tensor* dst,
 }
 
 template <typename T, typename IndexT, typename Functor>
-void gather_scatter_cpu_for_loop(const int& index_size, const int& input_size,
+void gather_scatter_cpu_for_loop(const int& input_size, const int& index_size,
                                  const IndexT* g_index, const IndexT* s_index,
                                  const Tensor& src, Tensor* dst,
                                  const std::string& pool_type) {
@@ -134,6 +134,7 @@ class FusedGatherScatterOpKernel : public framework::OpKernel<T> {
     auto* Y = ctx.Output<Tensor>("Out");
 
     const int& index_size = gather_index->dims()[0];
+    if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
     const auto& src_dims = X->dims();
