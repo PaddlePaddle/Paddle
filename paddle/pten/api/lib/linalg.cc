@@ -12,66 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/hapi/include/creation.h"
+#include "paddle/pten/api/include/linalg.h"
 
 #include <memory>
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/api/include/infershape.h"
-#include "paddle/pten/hapi/lib/kernel_dispatch.h"
-#include "paddle/pten/hapi/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/kernel_dispatch.h"
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/infershape.h"
 
 namespace paddle {
 namespace experimental {
 
-Tensor full(const std::vector<int64_t>& shape,
-            const Scalar& value,
-            DataType dtype,
-            Backend backend,
-            DataLayout layout) {
-  // 1. Get kernel signature and kernel
-  pten::KernelKey kernel_key{backend, layout, dtype};
-  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "fill_constant.Scalar", kernel_key);
-
-  // 2. Get Device Context
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-  auto kernel_context = pten::KernelContext(*dev_ctx);
-
-  // 3. Auto data transform
-  kernel_context.EmplaceBackAttr(value);
-
-  // 4. InferShape
-  auto out_meta = pten::FullInferShape(shape, dtype, layout);
-
-  // 5. Prepare outputs
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(kernel_key.backend()));
-  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
-  kernel_context.EmplaceBackOutput(dense_out);
-  Tensor out;
-  out.set_impl(dense_out);
-
-  // 6. Call kernel
-  kernel(&kernel_context);
-
-  return out;
-}
-
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 paddle::experimental::DataType dtype) {
+Tensor dot(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "fill_any_like",
-      {kernel_key.backend(),
-       kernel_key.layout(),
-       dtype == DataType::UNDEFINED ? kernel_key.dtype() : dtype});
+      "dot", kernel_key);
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
@@ -80,20 +43,17 @@ Tensor full_like(const Tensor& x,
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
-  kernel_context.EmplaceBackAttr(value);
+  auto dense_y = std::dynamic_pointer_cast<pten::DenseTensor>(y.impl());
+  kernel_context.EmplaceBackInput(dense_y);
+  // TODO(chenweihang): add transform impl
 
   // 4. InferShape
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  auto out_meta = DotInferShape(dense_x->meta(), dense_y->meta());
 
   // 5. Prepare outputs
   Tensor out;
-  // InferDataType
-  if (dtype != pten::DataType::UNDEFINED) {
-    const_cast<pten::DenseTensorMeta::DataType&>(out_meta.type) = dtype;
-  }
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(kernel_key.backend()));
+  const auto allocator = std::make_shared<DefaultAllocator>(
+      pten::TransToFluidPlace(kernel_key.backend()));
   auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
@@ -104,12 +64,46 @@ Tensor full_like(const Tensor& x,
   return out;
 }
 
-Tensor ones_like(const Tensor& x, DataType dtype) {
-  return full_like(x, 1, dtype);
-}
+Tensor matmul(const Tensor& x,
+              const Tensor& y,
+              bool transpose_x,
+              bool transpose_y) {
+  // 1. Get kernel signature and kernel
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x, y);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      "matmul_v2", kernel_key);
 
-Tensor zeros_like(const Tensor& x, DataType dtype) {
-  return full_like(x, 0, dtype);
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(*dev_ctx);
+
+  // 3. Auto data transform
+  auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+  auto dense_y = std::dynamic_pointer_cast<pten::DenseTensor>(y.impl());
+  kernel_context.EmplaceBackInput(dense_x);
+  kernel_context.EmplaceBackInput(dense_y);
+  kernel_context.EmplaceBackAttr(transpose_x);
+  kernel_context.EmplaceBackAttr(transpose_y);
+  // TODO(chenweihang): add transform impl
+
+  // 4. InferShape
+  auto out_meta = MatmulInferShape(
+      dense_x->meta(), dense_y->meta(), transpose_x, transpose_y);
+
+  // 5. Prepare outputs
+  const auto allocator = std::make_shared<DefaultAllocator>(
+      pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  kernel_context.EmplaceBackOutput(dense_out);
+
+  Tensor out;
+  out.set_impl(dense_out);
+
+  // 6. Call kernel
+  kernel(&kernel_context);
+
+  return out;
 }
 
 }  // namespace experimental
