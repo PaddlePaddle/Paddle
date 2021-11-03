@@ -328,9 +328,9 @@ std::vector<OpFuncNode> apply_data_transform(
     VariableValueMap& ins_map_temp, VariableScope* var_scope,
     OpFuncNode& op_func_node) {
   auto& op_base = op_func_node.operator_base_;
-  PADDLE_ENFORCE_NOT_NULL(
-      op_base,
-      "op_base is null, please pass a valid op_base in apply_data_transform.");
+  PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
+                                       "op_base is null, please pass a valid "
+                                       "op_base in apply_data_transform."));
   auto inputs_names = op_base->Inputs();
 
   std::unordered_set<int>
