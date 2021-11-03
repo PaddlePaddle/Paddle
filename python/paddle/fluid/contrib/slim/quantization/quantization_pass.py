@@ -1294,6 +1294,8 @@ class QuantizationFreezePass(object):
             var_dtype=output_var_node.dtype())
         if op_node.op().has_attr("x_num_col_dims"):
             x_num_col_dims = op_node.op().attr("x_num_col_dims")
+        elif op_node.name() in ['matmul', 'matmul_v2']:
+            x_num_col_dims = len(op_node.outputs[0].shape()) - 1
         else:
             x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
