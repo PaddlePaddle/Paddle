@@ -493,7 +493,7 @@ int32_t GraphTable::random_sample_neighboors(
       uint64_t id;
       float weight;
       char *buffer_addr = new char[actual_size];
-      buffer.reset(buffer_addr);
+      buffer.reset(buffer_addr, char_del);
       for (int &x : res) {
         id = node->get_neighbor_id(x);
         weight = node->get_neighbor_weight(x);
