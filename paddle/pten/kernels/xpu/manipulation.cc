@@ -19,7 +19,7 @@
 namespace pten {
 
 template <typename T>
-void Flatten(const XPUDeviceContext& dev_ctx,
+void Flatten(const XPUContext& dev_ctx,
              const DenseTensor& x,
              int start_axis,
              int stop_axis,
@@ -33,14 +33,14 @@ void Flatten(const XPUDeviceContext& dev_ctx,
 // Output Tensor，
 // is there a more flexible way to deal with this case?
 template <typename T>
-void FlattenWithXShape(const XPUDeviceContext& dev_ctx,
+void FlattenWithXShape(const XPUContext& dev_ctx,
                        const DenseTensor& x,
                        int start_axis,
                        int stop_axis,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  const auto& in_dims = x.meta().dims;
+  const auto& in_dims = x.dims();
   std::vector<int64_t> xshape_dims(in_dims.size() + 1);
   xshape_dims[0] = 0;
   for (int i = 0; i < in_dims.size(); ++i) {

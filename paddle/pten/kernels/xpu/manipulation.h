@@ -24,10 +24,10 @@ limitations under the License. */
 
 namespace pten {
 
-using XPUDeviceContext = paddle::platform::XPUDeviceContext;
+using XPUContext = paddle::platform::XPUDeviceContext;
 
 template <typename T>
-void Flatten(const XPUDeviceContext& dev_ctx,
+void Flatten(const XPUContext& dev_ctx,
              const DenseTensor& x,
              int start_axis,
              int stop_axis,
