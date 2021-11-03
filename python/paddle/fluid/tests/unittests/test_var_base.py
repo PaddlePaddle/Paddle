@@ -1254,5 +1254,18 @@ class TestVarBaseNumel(unittest.TestCase):
         self.assertEqual(x_actual_numel, x_expected_numel)
 
 
+class TestVarBaseCopyGradientWith(unittest.TestCase):
+    def test_copy_gradient_with(self):
+        paddle.disable_static()
+        np_x = np.random.random((2, 2))
+        np_y = np.random.random((2, 2))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64")
+        out = x + x
+        out.backward()
+        x._copy_gradient_with(y)
+        self.assertEqual(x.grad.numpy().all(), np_y.all())
+
+
 if __name__ == '__main__':
     unittest.main()

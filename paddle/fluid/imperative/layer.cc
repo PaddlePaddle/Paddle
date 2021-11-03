@@ -356,8 +356,10 @@ void VarBase::BumpInplaceVersion() {
   MutableVar()->BumpInplaceVersion();
 }
 
-// NOTE(weilong wu): This func try to share grad_var_ data with target varbase
-void VarBase::_ShareDataWith(const VarBase& src) {
+// NOTE(weilong wu):
+// This function try to copy the data from target varbase,
+// and fill into the grad_var_ of the current varbase.
+void VarBase::_CopyGradientWith(const VarBase& src) {
   if (Var().IsInitialized()) {
     PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
                       platform::errors::PreconditionNotMet(
@@ -369,7 +371,7 @@ void VarBase::_ShareDataWith(const VarBase& src) {
                           "ShareGradientDataWith cannot be performed!",
                           Name(), src.Name()));
   }
-  VLOG(4) << " VarBase ShareDataWith " << src.Name();
+  VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
     auto& src_tensor = src.Var().Get<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
@@ -379,7 +381,9 @@ void VarBase::_ShareDataWith(const VarBase& src) {
     PADDLE_ENFORCE_EQ(grad_t->IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "tensor %s has not been initialized", Name()));
+    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
     grad_t->ShareDataWith(src_tensor);
+    grad_t->Resize(var_->dims());
   }
 }
 
