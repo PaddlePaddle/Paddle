@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
-#include "cinn/frontend/var_type_utils.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
