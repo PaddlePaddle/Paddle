@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/api/include/manipulation.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/manipulation.h"
 
 namespace paddle {
 namespace operators {
