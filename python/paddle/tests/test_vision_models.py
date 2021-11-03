@@ -39,7 +39,6 @@ class TestVisonModels(unittest.TestCase):
         input = InputSpec([None, 3, 224, 224], 'float32', 'image')
         model = paddle.Model(net, input)
         model.prepare()
-
         model.predict_batch(x)
 
     def test_mobilenetv2_pretrained(self):
