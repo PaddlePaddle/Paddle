@@ -231,16 +231,16 @@ bool need_place_transform_for_var(const OpKernelType kernel_type_for_var,
 
 bool need_dtype_transform_for_var(const OpKernelType kernel_type_for_var,
                                   const OpKernelType expected_kernel_key) {
-  return false;  // TODO(@xiongkun) add dtype judgement here)
+  return false;  // TODO(@xiongkun) add dtype judgement here
 }
 
 bool need_layout_transform_for_var(const OpKernelType kernel_type_for_var,
                                    const OpKernelType expected_kernel_key) {
-  return false;  // TODO(@xiongkun) add layout judgement here)
+  return false;  // TODO(@xiongkun) add layout judgement here
 }
 
 // NOTE(@xiongkun03)
-// the different of var_name and outer_name :
+// the difference between var_name and outer_name :
 // if "X": ["var1", "var2"], then X is the outer name,
 // var1 and var2 is the var_name
 std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
@@ -328,7 +328,9 @@ std::vector<OpFuncNode> apply_data_transform(
     VariableValueMap& ins_map_temp, VariableScope* var_scope,
     OpFuncNode& op_func_node) {
   auto& op_base = op_func_node.operator_base_;
-  PADDLE_ENFORCE_NOT_NULL(op_base, "op_base is null!");
+  PADDLE_ENFORCE_NOT_NULL(
+      op_base,
+      "op_base is null, please pass a valid op_base in apply_data_transform.");
   auto inputs_names = op_base->Inputs();
 
   std::unordered_set<int>
@@ -364,15 +366,15 @@ std::vector<OpFuncNode> apply_data_transform(
         var_name_item.second[i] = var_scope->Var(new_var_name);
       } else if (need_dtype_transform_for_var(kernel_type_for_var,
                                               expected_kernel_key)) {
-        // TODO(@xiongkun) add dtype judgement here)
+        // TODO(@xiongkun) add dtype judgement here
       } else if (need_layout_transform_for_var(kernel_type_for_var,
                                                expected_kernel_key)) {
-        // TODO(@xiongkun) add layout judgement here)
+        // TODO(@xiongkun) add layout judgement here
       } else {
         // record no need data transformer input var_id
         VLOG(3) << op_base->Type()
                 << " found no data_transform var: " << var_name
-                << " with id: " << var_name;
+                << " with id: " << var_scope->VarId(var_name);
         no_data_transform_index.emplace(var_scope->VarId(var_name));
       }
     }
