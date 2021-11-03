@@ -137,13 +137,11 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void NCCLParallelContext::InterReduce(const framework::Variable &src,
                                       framework::Variable *dst, int ring_id) {
-  // std::cout << "/// DEBUG /// start inter reduce with ring_id: " << ring_id
-  // << std::endl;
+  VLOG(3) << "/// DEBUG /// start inter reduce with ring_id: " << ring_id;
   const framework::Tensor &src_tensor = src.Get<framework::LoDTensor>();
   framework::Tensor *dst_tensor = dst->GetMutable<framework::LoDTensor>();
 
   const auto &place = src_tensor.place();
-  // check success
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = comm->stream();
@@ -160,11 +158,9 @@ void NCCLParallelContext::InterReduce(const framework::Variable &src,
 
 void NCCLParallelContext::InterBroadCast(framework::Variable *src,
                                          int ring_id) {
-  // std::cout << "/// DEBUG /// start inter broadcast with ring_id: " <<
-  // ring_id << std::endl;
+  VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
   framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
   const auto &place = src_tensor->place();
-  // check success
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = comm->stream();

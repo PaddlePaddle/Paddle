@@ -277,13 +277,15 @@ def launch_collective(args):
         logger.debug("get cluster from cloud:{}".format(cluster))
     elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
-        # cluster, pod = ascend_utils.get_cloud_cluster(
-        #     rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-        #     device_mode=device_mode,
-        #     start_port=start_port)
-        # NOTE(liubo48): local test, not use cloud cluster for ascend now
-        cluster, pod = get_cluster_from_args(args, device_mode,
-                                             devices_per_proc)
+        if args.backend == 'heter':
+            # NOTE(liubo48): local test, not use cloud cluster now.
+            cluster, pod = get_cluster_from_args(args, device_mode,
+                                                 devices_per_proc)
+        else:
+            cluster, pod = ascend_utils.get_cloud_cluster(
+                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+                device_mode=device_mode,
+                start_port=start_port)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,

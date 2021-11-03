@@ -203,14 +203,14 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
 
 void GLOOParallelContext::InterReduce(const framework::Variable &src,
                                       framework::Variable *dst, int ring_id) {
-  // no need to implement.
-  return;
+  PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unimplemented inter-reduce for CPU now."));
 }
 
 void GLOOParallelContext::InterBroadCast(framework::Variable *src,
                                          int ring_id) {
-  // no need to implement.
-  return;
+  PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unimplemented inter-broadcast for CPU now."));
 }
 
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(

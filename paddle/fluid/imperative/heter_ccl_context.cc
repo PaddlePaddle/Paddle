@@ -63,10 +63,10 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
                     platform::errors::InvalidArgument(
                         "The number of local nranks should not be zero."
                     ));
-  PADDLE_ENFORCE_GT(nodes_ips_.size(), 1,
-                    platform::errors::InvalidArgument(
-                        "The number of nodes should be greater than 1."
-                    ));
+  // PADDLE_ENFORCE_GT(nodes_ips_.size(), 1,
+  //                   platform::errors::InvalidArgument(
+  //                       "The number of nodes should be greater than 1."
+  //                   ));
   PADDLE_ENFORCE_EQ(nodes_ips_.size() * strategy_.local_nranks_,
                     strategy_.trainer_endpoints_.size(),
                     platform::errors::InvalidArgument(
@@ -78,13 +78,18 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   node_strategy_.local_rank_ = strategy_.local_rank_ % local_nranks;
   node_strategy_.current_endpoint_ = strategy_.current_endpoint_;
 
-  // nodes with different ips
-  std::string curr_ep = strategy_.current_endpoint_;
-  std::string curr_ep_ip = paddle::string::Split(curr_ep, ':')[0];
-  for (auto ep : global_eps) {
-    std::string ip = paddle::string::Split(ep, ':')[0];
-    if (ip == curr_ep_ip) {
-      node_strategy_.trainer_endpoints_.push_back(ep);
+  if (nodes_ips_.size() == 1) {
+    // NOTE(liubo48): this branch is only used for unittest with single node.
+    node_strategy_.trainer_endpoints_ = strategy_.trainer_endpoints_;
+  } else {
+    // nodes with different ips
+    std::string curr_ep = strategy_.current_endpoint_;
+    std::string curr_ep_ip = paddle::string::Split(curr_ep, ':')[0];
+    for (auto ep : global_eps) {
+      std::string ip = paddle::string::Split(ep, ':')[0];
+      if (ip == curr_ep_ip) {
+        node_strategy_.trainer_endpoints_.push_back(ep);
+      }
     }
   }
 
@@ -144,24 +149,24 @@ void HeterParallelContext::Init() {
     gloo_ctx_->Init();
   }
 
-  std::cout << "/// DEBUG /// heter parallel env init done..." << std::endl;
+  VLOG(3) << "/// DEBUG /// heter parallel env init done..." << std::endl;
 }
 
 void HeterParallelContext::InitWithRingID(int ring_id) {
-  // no need to implement.
-  return;
+  PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unimplemented InitWithRingID from heter ctx."));
 }
 
 void HeterParallelContext::AllReduceByStream(
     const framework::Variable &src, framework::Variable *dst, int ring_id,
     bool use_calc_stream) {
   // step 1: call reduce within node
-  std::cout << "/// DEBUG /// step 1: reduce within node... " << std::endl;
+  VLOG(3) << "/// DEBUG /// step 1: reduce within node... ";
   heter_parallel_ctx_->InterReduce(src, dst, 1);
   heter_parallel_ctx_->WaitComm(1);
 
   // step 2: call allreduce between nodes with gloo
-  if (node_strategy_.local_rank_ % node_strategy_.nranks_ == 0) {
+  if (gloo_ctx_ != nullptr) {
     auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(gloo_ptr->IsInitialized(), true,
                       paddle::platform::errors::Unavailable(
@@ -172,7 +177,7 @@ void HeterParallelContext::AllReduceByStream(
     dst_dev_tensor->Resize(src_dev_tensor.dims());
 
     // step 2.1: Dev Tensor to CPU Tensor
-    std::cout << "/// DEBUG /// step 2.1: Dev Tensor to CPU Tensor... " << std::endl;
+    VLOG(3) << "/// DEBUG /// step 2.1: Dev Tensor to CPU Tensor... ";
     framework::Tensor src_cpu_tensor;
     framework::Tensor dst_cpu_tensor;
     src_cpu_tensor.mutable_data<float>(src_dev_tensor.dims(),
@@ -183,51 +188,55 @@ void HeterParallelContext::AllReduceByStream(
     framework::TensorCopySync(src_dev_tensor, *cpu_place, &src_cpu_tensor);
 
     // step 2.2: call gloo->AllReduce between cpus of nodes
-    std::cout << "/// DEBUG /// step 2.2: gloo allreduce between nodes... " << std::endl;
+    VLOG(3) << "/// DEBUG /// step 2.2: gloo allreduce between nodes... ";
     std::vector<float> send_vector;
     framework::TensorToVector<float>(src_cpu_tensor, &send_vector);
     auto recv_vector = gloo_ptr->AllReduce<float>(send_vector);
     framework::TensorFromVector<float>(recv_vector, &dst_cpu_tensor);
 
     // step 2.3: CPU Tensor to Dev tensor
-    std::cout << "/// DEBUG /// step 2.3: CPU Tensor to Dev tensor... " << std::endl;
+    VLOG(3) << "/// DEBUG /// step 2.3: CPU Tensor to Dev tensor... ";
     framework::TensorCopySync(dst_cpu_tensor, place, dst_dev_tensor);
 
     gloo_ptr->Barrier();
   }
 
   // step 3: call broadcast within node
-  std::cout << "/// DEBUG /// step 3: broadcast within node... " << std::endl;
+  VLOG(3) << "/// DEBUG /// step 3: broadcast within node... ";
   heter_parallel_ctx_->InterBroadCast(dst, 1);
   heter_parallel_ctx_->WaitComm(1);
 }
 
 void HeterParallelContext::InterReduce(
     const framework::Variable &src, framework::Variable *dst, int ring_id) {
-  // no need to implement.
-  return;
+  PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unimplemented InterReduce from heter ctx."));
 }
 
 void HeterParallelContext::InterBroadCast(framework::Variable * src,
                                           int ring_id) {
-  // no need to implement.
-  return;
+  PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unimplemented InterBroadCast from heter ctx."));
 }
 
 paddle::platform::DeviceContext *HeterParallelContext::GetDeviceContext(
     int ring_id) {
+  // directly call the implementation of target parallel ctx.
   return heter_parallel_ctx_->GetDeviceContext(ring_id);
 }
 
 void HeterParallelContext::WaitCompute(int ring_id) {
+  // directly call the implementation of target parallel ctx.
   heter_parallel_ctx_->WaitCompute(ring_id);
 }
 
 void HeterParallelContext::WaitComm(int ring_id) {
+  // directly call the implementation of target parallel ctx.
   heter_parallel_ctx_->WaitComm(ring_id);
 }
 
 void HeterParallelContext::SynchronizeCompute() {
+  // directly call the implementation of target parallel ctx.
   heter_parallel_ctx_->SynchronizeCompute();
 }
 

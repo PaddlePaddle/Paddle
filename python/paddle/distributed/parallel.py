@@ -141,9 +141,10 @@ def init_parallel_env():
 
     # 1. Check backend
     backend = os.getenv("PADDLE_DISTRI_BACKEND", "auto")
-    # NOTE(liubo48): this new env should be set/detect in distributed.launch.
-    nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "2"))
     print("### DEBUG ### backend is: ", backend)
+    # NOTE(liubo48): this env should be set/detected in distributed.launch.
+    nranks_per_node = int(os.getenv("PADDLE_LOCAL_TRAINERS_NUM", "2"))
+    assert nranks_per_node != 0, "The nranks of node must not be zero."
     is_cpu_only = _is_cpuonly(backend)
     enable_gloo = is_cpu_only or (backend == "heter")
 
@@ -175,7 +176,7 @@ def init_parallel_env():
             gloo_worker_size = int(parallel_env.world_size / nranks_per_node)
         else:
             gloo_worker_size = parallel_env.world_size
-        assert gloo_worker_size >= 2, 'size of gloo worker should be >= 2.'
+        assert gloo_worker_size >= 2, 'size of gloo workers should be >= 2.'
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
         manager = Manager()
         # glboal dict to store status
@@ -223,6 +224,8 @@ def init_parallel_env():
         parallel_helper._set_parallel_ctx(
             core.GLOOParallelContext(strategy, place))
     elif (backend == "heter"):
+        # NOTE(liubo48): The construction of heter parallel context will
+        # detect the target place by checking the compilation option.
         parallel_helper._set_parallel_ctx(
             core.HeterParallelContext(strategy, parallel_env.device_id))
     elif core.is_compiled_with_cuda():
@@ -235,9 +238,9 @@ def init_parallel_env():
         parallel_helper._set_parallel_ctx(
             core.HCCLParallelContext(strategy, place))
 
-    # NOTE(liubo48): [in gloo rendezvous stage]
-    # other gloo participants do not need to wait for rank 0,
-    # rank 0 here do not need to wait for all other endpoints either.
+    # NOTE(liubo48): During the gloo rendezvous stage,
+    # other participants do not need to wait for rank 0;
+    # and rank 0 here do not need to wait for other endpoints either.
     # other_endpoints = strategy.trainer_endpoints[:]
     # other_endpoints.remove(strategy.current_endpoint)
     # if not is_cpu_only and strategy.local_rank == 0:

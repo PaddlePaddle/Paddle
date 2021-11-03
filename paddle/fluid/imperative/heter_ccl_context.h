@@ -21,7 +21,6 @@
 #include "paddle/fluid/imperative/nccl_context.h"
 #endif
 
-// TODO(liubo48)
 #ifdef PADDLE_WITH_BKCL
 #endif
 

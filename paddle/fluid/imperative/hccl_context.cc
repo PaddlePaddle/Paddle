@@ -85,7 +85,7 @@ void HCCLParallelContext::Init() {
         BOOST_GET_CONST(platform::NPUPlace, place_).device));
   }
 
-  std::cout << "/// DEBUG /// HCCLParallelContext init done..." << std::endl;
+  VLOG(3) << "/// DEBUG /// HCCLParallelContext init done...";
 }
 
 void HCCLParallelContext::InitWithRingID(int ring_id) {
@@ -157,8 +157,7 @@ void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void HCCLParallelContext::InterReduce(const framework::Variable &src,
                                       framework::Variable *dst, int ring_id) {
-  std::cout << "/// DEBUG /// start inter reduce with ring_id: " << ring_id
-            << std::endl;
+  VLOG(3) << "/// DEBUG /// start inter reduce with ring_id: " << ring_id;
   if (src.IsType<framework::LoDTensor>()) {
     const framework::Tensor &src_tensor = src.Get<framework::LoDTensor>();
     framework::Tensor *dst_tensor = dst->GetMutable<framework::LoDTensor>();
@@ -188,8 +187,7 @@ void HCCLParallelContext::InterReduce(const framework::Variable &src,
 
 void HCCLParallelContext::InterBroadCast(framework::Variable *src,
                                          int ring_id) {
-  std::cout << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id
-            << std::endl;
+  VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
   if (src->IsType<framework::LoDTensor>()) {
     framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
     const auto &place = src_tensor->place();
