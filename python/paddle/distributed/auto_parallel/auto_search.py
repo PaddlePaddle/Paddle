@@ -16,6 +16,7 @@ import copy
 from itertools import chain, product
 from functools import reduce
 from collections import OrderedDict
+import math
 
 import numpy as np
 
@@ -344,11 +345,11 @@ def mcmc_search_strategy(program,
                     selected_op, selected_op_dist_attr)
                 for var_name in selected_op.output_arg_names:
                     new_dist_context.get_tensor_distributed_attr_for_program(
-                    ).set_process_mesh(new_process_mesh)
+                        vars[var_name]).set_process_mesh(new_process_mesh)
                     dims_mapping = selected_op_dist_attr.get_output_dims_mapping(
                         var_name)
                     new_dist_context.get_tensor_distributed_attr_for_program(
-                    ).set_dims_mapping(dims_mapping)
+                        vars[var_name]).set_dims_mapping(dims_mapping)
 
                 # change the pre op stage
                 for idx in range(random_selected_idx - 1, -1, -1):
@@ -432,10 +433,8 @@ def mcmc_search_strategy(program,
                     else:
                         break
     else:
-        # 设置被选中的op的dist attr，在new_dist_context里设置op的
         new_dist_context.set_op_distributed_attr_for_program(
             selected_op, selected_op_dist_attr)
-        # tensor的dist attr用
         for var_name in selected_op.output_arg_names:
             process_mesh = selected_op_dist_attr.get_process_mesh(var_name)
             new_dist_context.get_tensor_distributed_attr_for_program(vars[
@@ -616,6 +615,55 @@ def init(op_valid_dist_attr_dict, program):
     return new_dist_context
 
 
+def mcmc(train_program,
+         start_program,
+         op_valid_dist_attr_dict,
+         init_dist_context,
+         cluster=None,
+         max_search_times=15,
+         pipeline_process_mesh_list=None):
+    times = 0
+    MAX_SEARCH_TIMES = max_search_times
+    while times < MAX_SEARCH_TIMES:
+        times += 1
+        standalone_cost_data = get_single_node_data(
+            train_program,
+            start_program,
+            op_valid_dist_attr_dict,
+            pipeline_process_mesh_list=pipeline_process_mesh_list)
+        cost = estimate_searched_strategy_cost(
+            train_program,
+            start_program,
+            init_dist_context,
+            loss,
+            optimizer,
+            standalone_cost_data,
+            pipeline_process_mesh_list,
+            cluster=None).runtime
+        MINNUM_COST = cost
+        BEST_DIST_CONTEXT = init_dist_context
+        new_dist_context = mcmc_search_strategy(
+            train_program, op_valid_dist_attr_dict, init_dist_context,
+            pipeline_process_mesh_list)
+        cur_cost = estimate_searched_strategy_cost(
+            train_program,
+            start_program,
+            new_dist_context,
+            loss,
+            optimizer,
+            standalone_cost_data,
+            pipeline_process_mesh_list,
+            cluster=None).runtime
+        alpha = min(1, math.exp(0.05 * (MINNUM_COST - cur_cost)))
+        accp = np.random.uniform(low=0.0, high=1.0)
+
+        if alpha < accp:
+            BEST_DIST_CONTEXT = new_dist_context
+            MINNUM_COST = cur_cost
+            i = 0
+    return BEST_DIST_CONTEXT
+
+
 def auto_search(serial_main_program,
                 serial_startup_program,
                 search_algorithm="mcmc",
@@ -645,46 +693,12 @@ def auto_search(serial_main_program,
         train_program, [2, 4], dist_context, False)[0]
     init_dist_context = init(op_valid_dist_attr_dict, train_program)
     optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
-
-    i = 0
-    while i < 15:
-        i += 1
-        standalone_cost_data = get_single_node_data(
-            train_program,
-            start_program,
-            op_valid_dist_attr_dict,
-            pipeline_process_mesh_list=None)
-        cost = estimate_searched_strategy_cost(
-            train_program,
-            start_program,
-            init_dist_context,
-            loss,
-            optimizer,
-            standalone_cost_data,
-            pipeline_process_mesh_list=None,
-            cluster=None).runtime
-        MINNUM_COST = cost
-        BEST_DIST_CONTEXT = init_dist_context
-        new_dist_context = mcmc_search_strategy(
-            train_program,
-            op_valid_dist_attr_dict,
-            init_dist_context,
-            pipeline_process_mesh_list=None)
-        cur_cost = estimate_searched_strategy_cost(
-            train_program,
-            start_program,
-            new_dist_context,
-            loss,
-            optimizer,
-            standalone_cost_data,
-            pipeline_process_mesh_list=None,
-            cluster=None).runtime
-
-        alpha = min(1, math.exp(0.05 * (MINNUM_COST - cur_cost)))
-        accp = np.random.uniform(low=0.0, high=1.0)
-
-        if alpha < accp:
-            BEST_DIST_CONTEXT = new_dist_context
-            MINNUM_COST = cur_cost
-            i = 0
-    return BEST_DIST_CONTEXT
+    best_dist_context = mcmc(
+        train_program,
+        start_program,
+        op_valid_dist_attr_dict,
+        init_dist_context=init_dist_context,
+        cluster=None,
+        max_search_times=15,
+        pipeline_process_mesh_list=pipeline_process_mesh_list)
+    return best_dist_context
