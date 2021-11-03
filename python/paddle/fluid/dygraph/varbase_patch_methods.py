@@ -357,6 +357,49 @@ def monkey_patch_varbase():
         helper = TensorHookRemoveHelper(self, hook_id)
         return helper
 
+    @framework.dygraph_only
+    def _to(self, device=None, dtype=None, blocking=None):
+
+        if device is None and dtype is None and blocking is None:
+            return self
+
+        if device is not None:
+            if isinstance(device, str):
+                device = paddle.device._convert_to_place(device)
+            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
+                                     core.CUDAPinnedPlace, core.XPUPlace)):
+                pass
+            else:
+                raise ValueError(
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    + type(device).__name__)
+
+        if blocking is None:
+            blocking = True
+        else:
+            assert isinstance(
+                blocking,
+                bool), "blocking value error, must be the True, False or None"
+
+        def transform(t, device, dtype, blocking):
+            if device is None:
+                device = t.place
+            if dtype is None:
+                dtype = t.dtype
+
+            new_t = t._copy_to(device, blocking)
+
+            if dtype is not None and dtype != t.dtype:
+                new_t = new_t.cast(dtype=dtype)
+
+            return new_t
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            return transform(self, device, dtype, blocking)
+
+        return self
+
     @property
     def grad(self):
         """
@@ -650,7 +693,7 @@ def monkey_patch_varbase():
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
-        ("__setitem__", __setitem__)):
+        ("__setitem__", __setitem__), ("_to", _to)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.

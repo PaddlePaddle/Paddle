@@ -356,67 +356,30 @@ void VarBase::BumpInplaceVersion() {
   MutableVar()->BumpInplaceVersion();
 }
 
-std::shared_ptr<VarBase> VarBase::To(const platform::Place& dst_place,
-                                     framework::proto::VarType::Type data_type,
-                                     const bool blocking) const {
-  PADDLE_ENFORCE_EQ(
-      Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
-                                Var().IsType<framework::SelectedRows>()),
-      true, platform::errors::InvalidArgument(
-                "Variable is not initialized or Variable's type is not "
-                "LoDTensor or SelectedRows when getting numpy tensor"));
-
-  if (Var().IsType<framework::LoDTensor>()) {
-    auto& src_tensor = Var().Get<framework::LoDTensor>();
-    // TODO(Jiabin): change this after move unique_name generator to CXX
-    auto new_var = std::make_shared<VarBase>(
-        true, Name() + std::to_string(copied_counter_++));
-
-    new_var->SetPersistable(Persistable());
-    new_var->SetDataType(data_type);
-    new_var->SetType(Type());
-    auto* dst_tensor =
-        new_var->MutableVar()->GetMutable<framework::LoDTensor>();
-    dst_tensor->set_lod(src_tensor.lod());
-    framework::TensorCopy(src_tensor, dst_place, dst_tensor);
-    if (blocking) {
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
-      auto src_place = src_tensor.place();
-      if (!(src_place == dst_place)) {
-        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
-      }
-    }
-    VLOG(4) << "copy tensor " << Name() << " from " << Place() << " to "
-            << dst_place;
-    VLOG(4) << "copy tensor " << Name() << " from " << DataType() << " to "
-            << data_type;
-
-    return new_var;
-  } else {
-    auto& src_selected_rows = Var().Get<framework::SelectedRows>();
-    auto new_var = std::make_shared<VarBase>(
-        false, "Itmp" + std::to_string(copied_counter_++));
-    new_var->SetType(framework::proto::VarType::SELECTED_ROWS);
-    new_var->SetDataType(data_type);
-    auto* dst_selected_rows =
-        new_var->MutableVar()->GetMutable<framework::SelectedRows>();
-
-    framework::TensorCopy(src_selected_rows.value(), dst_place,
-                          dst_selected_rows->mutable_value());
-    if (blocking) {
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
-      auto src_place = src_selected_rows.place();
-      if (!(src_place == dst_place)) {
-        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
-      }
-    }
-    dst_selected_rows->set_height(src_selected_rows.height());
-    dst_selected_rows->set_rows(src_selected_rows.rows());
-    VLOG(4) << "copy tensor " << Name() << " from " << Place() << " to "
-            << dst_place;
-    VLOG(4) << "copy tensor " << Name() << " from " << DataType() << " to "
-            << data_type;
-    return new_var;
+// NOTE(weilong wu): This func try to share grad_var_ data with target varbase
+void VarBase::_ShareDataWith(const VarBase& src) {
+  if (Var().IsInitialized()) {
+    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different data type with Tensor %s",
+                          Name(), src.Name()));
+    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different type with Tensor %s, Tensor "
+                          "ShareGradientDataWith cannot be performed!",
+                          Name(), src.Name()));
+  }
+  VLOG(4) << " VarBase ShareDataWith " << src.Name();
+  if (grad_var_) {
+    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "tensor has not been initialized", src.Name()));
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(grad_t->IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "tensor %s has not been initialized", Name()));
+    grad_t->ShareDataWith(src_tensor);
   }
 }
 

@@ -230,6 +230,8 @@ class VarBase {
 
   void BumpInplaceVersion();
 
+  void _ShareDataWith(const imperative::VarBase& src);
+
   /* Hook related method: now only used for GradVarBase */
   bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
 
@@ -251,10 +253,6 @@ class VarBase {
     var_->AddVoidHook(
         std::forward<std::shared_ptr<std::function<void()>>>(hook));
   }
-
-  std::shared_ptr<VarBase> To(const platform::Place& dst_place,
-                              framework::proto::VarType::Type data_type,
-                              const bool blocking) const;
 
  private:
   /**

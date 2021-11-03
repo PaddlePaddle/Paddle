@@ -282,6 +282,27 @@ static void InitVarBaseFromTensorWithArgDefault(
   }
 }
 
+template <typename P>
+static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
+                                         const framework::Tensor &tensor,
+                                         const P &place) {
+  VLOG(4) << "Init VarBase";
+  new (self) imperative::VarBase(
+      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
+  self->SetPersistable(false);
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+  self->SetDataType(tensor.type());
+  auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  // Same place，share data directly
+  if (platform::is_same_place(place, tensor.place())) {
+    new_tensor->ShareDataWith(tensor);
+    VLOG(4) << "Same place, do ShareDataWith";
+  } else {
+    framework::TensorCopy(tensor, place, new_tensor);
+    VLOG(4) << "Different place, do TensorCopy";
+  }
+}
+
 static std::string GetTypeName(const imperative::VarBase &var) {
   if (var.Type() == framework::proto::VarType::RAW) {
     return "RAW";
@@ -899,6 +920,16 @@ void BindImperative(py::module *m_ptr) {
            py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
+           py::arg("tensor"), py::arg("place"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def(
           "__setitem_varbase__",
@@ -1909,7 +1940,7 @@ void BindImperative(py::module *m_ptr) {
                                    "tensor has not been initialized"));
              return t->IsSharedBufferWith(*t_t);
            })
-      .def("_Slice",
+      .def("_slice",
            [](const std::shared_ptr<imperative::VarBase> &self,
               int64_t begin_idx, int64_t end_idx) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -1918,28 +1949,17 @@ void BindImperative(py::module *m_ptr) {
                                    "tensor has not been initialized"));
              return t->Slice(begin_idx, end_idx);
            })
-      .def("_To",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::Place &place,
-              framework::proto::VarType::Type data_type, bool blocking) {
-             auto new_var = self->To(place, data_type, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("_To",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::CPUPlace &place,
-              framework::proto::VarType::Type data_type, bool blocking) {
-             auto new_var = self->To(place, data_type, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
+      .def("_share_data_with",
+           [](std::shared_ptr<imperative::VarBase> &self,
+              const imperative::VarBase &src) { self->_ShareDataWith(src); })
+      .def("_numel",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->numel();
+           })
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property("stop_gradient",

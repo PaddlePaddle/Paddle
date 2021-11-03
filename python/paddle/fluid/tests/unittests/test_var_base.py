@@ -1154,5 +1154,105 @@ class TestVarBaseInplaceVersion(unittest.TestCase):
         self.assertEqual(var.inplace_version, 2)
 
 
+class TestVarBaseSlice(unittest.TestCase):
+    def test_slice(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        actual_x = x._slice(0, 1)
+        actual_x = paddle.to_tensor(actual_x)
+        self.assertEqual(actual_x.numpy().all(), np_x[0:1].all())
+
+
+class TestVarBaseClear(unittest.TestCase):
+    def test_clear(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        x._clear()
+        self.assertEqual(str(x), "Tensor(Not initialized)")
+
+
+class TestVarBaseOffset(unittest.TestCase):
+    def test_offset(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        expected_offset = 0
+        actual_x = x._slice(expected_offset, 1)
+        actual_x = paddle.to_tensor(actual_x)
+        self.assertEqual(actual_x._offset(), expected_offset)
+
+
+class TestVarBaseShareBufferWith(unittest.TestCase):
+    def test_share_buffer_with(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        np_y = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        y = paddle.to_tensor(np_y, dtype="float64")
+        x._share_buffer_with(y)
+        self.assertEqual(x._is_shared_buffer_with(y), True)
+
+
+class TestVarBaseTo(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.np_x = np.random.random((3, 8, 8))
+        self.x = paddle.to_tensor(self.np_x, dtype="float64")
+
+    def test_to_api(self):
+        x_double = self.x._to(dtype='double')
+        self.assertEqual(x_double.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(np.allclose(self.np_x, x_double))
+
+        x_ = self.x._to()
+        self.assertEqual(self.x.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(np.allclose(self.np_x, x_))
+
+        if paddle.fluid.is_compiled_with_cuda():
+            x_gpu = self.x._to(device=paddle.CUDAPlace(0))
+            self.assertTrue(x_gpu.place.is_gpu_place())
+            self.assertEqual(x_gpu.place.gpu_device_id(), 0)
+
+            x_gpu0 = self.x._to(device='gpu:0')
+            self.assertTrue(x_gpu0.place.is_gpu_place())
+            self.assertEqual(x_gpu0.place.gpu_device_id(), 0)
+
+        x_cpu = self.x._to(device=paddle.CPUPlace())
+        self.assertTrue(x_cpu.place.is_cpu_place())
+
+        x_cpu0 = self.x._to(device='cpu')
+        self.assertTrue(x_cpu0.place.is_cpu_place())
+
+
+class TestVarBaseInitVarBaseFromTensorWithDevice(unittest.TestCase):
+    def test_varbase_init(self):
+        paddle.disable_static()
+        t = fluid.Tensor()
+        np_x = np.random.random((3, 8, 8))
+        t.set(np_x, fluid.CPUPlace())
+
+        if paddle.fluid.is_compiled_with_cuda():
+            device = paddle.CUDAPlace(0)
+            tmp = fluid.core.VarBase(t, device)
+            self.assertTrue(tmp.place.is_gpu_place())
+            self.assertEqual(tmp.numpy().all(), np_x.all())
+
+        device = paddle.CPUPlace()
+        tmp = fluid.core.VarBase(t, device)
+        self.assertEqual(tmp.numpy().all(), np_x.all())
+
+
+class TestVarBaseNumel(unittest.TestCase):
+    def test_numel(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        x_actual_numel = x._numel()
+        x_expected_numel = np.product((3, 8, 8))
+        self.assertEqual(x_actual_numel, x_expected_numel)
+
+
 if __name__ == '__main__':
     unittest.main()
