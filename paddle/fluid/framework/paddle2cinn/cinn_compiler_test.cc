@@ -242,8 +242,9 @@ TEST(CinnCompilerTest, Compile) {
   ASSERT_EQ(compilation_keys.size(), 1);
 
   const auto& compilation_key = compilation_keys[0];
-  VLOG(4) << "Compilation Key:\n" << ReadableProtoStr(compilation_key);
   auto* cinn_compiler = CinnCompiler::GetInstance();
+  VLOG(4) << "The graph to be compiled:\n"
+          << cinn_compiler->VizGraph(compilation_key);
   const auto& compiling_graph = cinn_compiler->FindGraph(compilation_key);
   viz_graph("compiling_graph.dot", const_cast<Graph*>(&compiling_graph));
 

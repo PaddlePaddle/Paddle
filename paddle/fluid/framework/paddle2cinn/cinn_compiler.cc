@@ -14,14 +14,15 @@
 
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
 #include "cinn/frontend/decomposer/use_decomposer.h"
-#include "cinn/frontend/net_builder.h"  // need to remove after
 #include "cinn/frontend/pass/use_program_pass.h"
 #include "cinn/frontend/program_pass.h"
 #include "cinn/frontend/syntax.h"
@@ -32,18 +33,23 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
 using ir::Graph;
+using ir::Node;
+using inference::analysis::Dot;
 using ::cinn::common::Target;
 using ::cinn::common::Float;
 using ::cinn::hlir::framework::GraphCompiler;
@@ -54,31 +60,6 @@ using ::cinn::hlir::framework::ApplyPass;
 CinnCompiler* CinnCompiler::GetInstance() {
   static CinnCompiler instance;
   return &instance;
-}
-
-std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
-  std::string graph_key;
-  ProgramDesc program;
-  GraphToProgram(*graph, &program);
-  program.Proto()->SerializeToString(&graph_key);
-  VLOG(4) << "Add a graph into CinnCompiler, which is:\n"
-          << ReadableProtoStr(graph_key);
-
-  PADDLE_ENFORCE_EQ(
-      graphs_.count(graph_key), 0,
-      platform::errors::PreconditionNotMet(
-          "The graph to be added is already in CinnCompiler, which is:\n",
-          ReadableProtoStr(graph_key).c_str()));
-  graphs_[graph_key] = std::move(graph);
-  return graph_key;
-}
-
-const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
-  PADDLE_ENFORCE_NE(graphs_.count(graph_key), 0,
-                    platform::errors::PreconditionNotMet(
-                        "Can not find the target graph:\n%s",
-                        ReadableProtoStr(graph_key).c_str()));
-  return *graphs_.at(graph_key);
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(
@@ -108,10 +89,88 @@ const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
-  VLOG(4) << "The graph to be compiled is:\n"
-          << ReadableProtoStr(compilation_key);
+  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(compilation_key);
   const auto& graph = FindGraph(compilation_key);
   return Compile(graph, input_tensors, target);
+}
+
+std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
+  std::string graph_key;
+  ProgramDesc program;
+  GraphToProgram(*graph, &program);
+  program.Proto()->SerializeToString(&graph_key);
+
+  PADDLE_ENFORCE_EQ(
+      graphs_.count(graph_key), 0,
+      platform::errors::PreconditionNotMet(
+          "The graph to be added is already in CinnCompiler, which is:\n",
+          VizGraph(graph_key).c_str()));
+  graphs_[graph_key] = std::move(graph);
+  VLOG(4) << "-- Add a graph into CinnCompiler, which is:\n"
+          << VizGraph(graph_key);
+  return graph_key;
+}
+
+const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
+  PADDLE_ENFORCE_NE(
+      graphs_.count(graph_key), 0,
+      platform::errors::PreconditionNotMet(
+          "Can not find the target graph, of which the key is:\n%s",
+          ReadableKey(graph_key).c_str()));
+  return *graphs_.at(graph_key);
+}
+
+std::string CinnCompiler::VizGraph(const std::string& key) const {
+  Dot dot;
+  std::unordered_map<const Node*, std::string> node2dot;
+  const Graph& graph = FindGraph(key);
+  int id = 0;
+  // Create nodes
+  for (const Node* n : graph.Nodes()) {
+    std::string node_id = "Node" + std::to_string(id++);
+    if (n->IsOp()) {
+      dot.AddNode(node_id, {Dot::Attr("shape", "box"),
+                            Dot::Attr("style", "rounded,filled,bold")},
+                  n->Name());
+    } else if (n->IsVar()) {
+      auto label = n->Name();
+      if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
+        auto shape = n->Var()->GetShape();
+        std::vector<std::string> shape_str(shape.size());
+        std::transform(shape.begin(), shape.end(), shape_str.begin(),
+                       [](const auto& val) { return std::to_string(val); });
+        label += "\n" + string::join_strings(shape_str, ',');
+      }
+      dot.AddNode(node_id,
+                  {Dot::Attr("shape", "ellipse"), Dot::Attr("style", "bold")},
+                  label);
+    }
+    node2dot[n] = node_id;
+  }
+  // Create edges
+  for (const Node* n : graph.Nodes()) {
+    const auto& src_id = node2dot.at(n);
+    for (auto* out : n->outputs) {
+      const auto& dest_id = node2dot.at(out);
+      dot.AddEdge(src_id, dest_id, {});
+    }
+  }
+  return dot.Build();
+}
+
+std::string CinnCompiler::ReadableKey(const std::string& key) const {
+  proto::ProgramDesc desc;
+  desc.ParseFromString(key);
+  return desc.DebugString();
+}
+
+void CinnCompiler::Clear() {
+  {
+    AutoWRLock guard{&rwlock_};
+    graphs_.clear();
+    cache_.clear();
+  }
+  real_compiled_num_ = 0;
 }
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
@@ -124,7 +183,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
   auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
       frontend_program, target);
-  VLOG(4) << "The " << real_compiled_num_ << "-th compilation ("
+  VLOG(4) << "-- The " << real_compiled_num_ << "-th compilation ("
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
   ApplyPass(cinn_graph.get(), "OpFusion");
@@ -140,12 +199,6 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
   return compiled_obj;
-}
-
-std::string ReadableProtoStr(const std::string& bytes) {
-  proto::ProgramDesc program_desc;
-  program_desc.ParseFromString(bytes);
-  return program_desc.DebugString();
 }
 
 }  // namespace paddle2cinn

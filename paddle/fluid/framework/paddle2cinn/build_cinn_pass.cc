@@ -412,7 +412,8 @@ void SearchAllSubgraphs(Graph* graph) {
     // save it in CinnCompiler
     std::string compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
         cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
-    VLOG(4) << "Compilation Key:\n" << ReadableProtoStr(compilation_key);
+    VLOG(4) << "Compilation Key:\n"
+            << cinn_compiler->ReadableKey(compilation_key);
 
     // Replace the found cluster to a new cinn op node
     ReplaceSubGraphWithCinnOpNode(cluster_set, cluster_inputs, cluster_outputs,

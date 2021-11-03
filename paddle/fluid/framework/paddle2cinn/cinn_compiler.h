@@ -65,14 +65,11 @@ class CinnCompiler {
 
   const ir::Graph& FindGraph(const std::string& key) const;
 
-  void Clear() {
-    {
-      AutoWRLock guard{&rwlock_};
-      graphs_.clear();
-      cache_.clear();
-    }
-    real_compiled_num_ = 0;
-  }
+  std::string VizGraph(const std::string& key) const;
+
+  std::string ReadableKey(const std::string& key) const;
+
+  void Clear();
 
   std::int64_t real_compiled_num() const { return real_compiled_num_; }
 
@@ -94,8 +91,6 @@ class CinnCompiler {
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };
-
-extern std::string ReadableProtoStr(const std::string& bytes);
 
 }  // namespace paddle2cinn
 }  // namespace framework
