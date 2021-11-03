@@ -17,9 +17,9 @@ limitations under the License. */
 
 #include "paddle/pten/include/creation.h"
 
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/hapi/lib/utils/allocator.h"
 
 PT_DECLARE_MODULE(CreationCPU);
 
