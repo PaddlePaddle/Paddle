@@ -14,6 +14,8 @@
 
 syntax = "proto2";
 package paddle.distributed;
+option cc_generic_services = true;
+option cc_enable_arenas = true;
 
 enum MessageType {
   STOP = 1;            // STOP an Interceptor
