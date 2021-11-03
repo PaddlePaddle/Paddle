@@ -221,7 +221,7 @@ class TestTileOpInt64_t(XPUOpTest):
 
 
 # Situation 6: input x is Bool
-class TestTileOpInt64_t(XPUOpTest):
+class TestTileOpBool(XPUOpTest):
     def setUp(self):
         self.set_xpu()
         self.place = paddle.XPUPlace(0)
