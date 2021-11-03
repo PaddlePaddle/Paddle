@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+unit tests of all models in paddle.vision.models
+"""
 import unittest
 import numpy as np
 
@@ -20,6 +23,9 @@ import paddle.vision.models as models
 
 
 class TestVisonModels(unittest.TestCase):
+    """
+    unit tests of all models in paddle.vision.models
+    """
     def models_infer(self, arch, pretrained=False, batch_norm=False):
 
         x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
