@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "paddle/pten/api/include/backend_set.h"
+#include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/hapi/include/backend_set.h"
-#include "paddle/pten/hapi/include/tensor.h"
 
 // TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
 #include "paddle/pten/core/convert_utils.h"
@@ -120,6 +120,14 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // TODO(chenweihang): selecte multi layout and dtype
     key_set.layout = x.layout();
     key_set.dtype = x.type();
+  }
+
+  void operator()(const std::vector<Tensor>& x) {
+    key_set.backend_set =
+        key_set.backend_set | detail::GetTensorBackendSet(x[0]);
+    // TODO(chenweihang): selecte multi layout and dtype
+    key_set.layout = x[0].layout();
+    key_set.dtype = x[0].type();
   }
 
   // skip other type args, these args don't used in kernel selection

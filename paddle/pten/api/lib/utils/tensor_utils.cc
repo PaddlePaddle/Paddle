@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {
@@ -45,6 +45,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
   SetLoD(&meta.lod, src.lod());
   auto shared_storage =
       pten::make_intrusive<SharedStorage>(src.Holder(), src.offset());
+
   return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
                                              std::move(meta));
 }

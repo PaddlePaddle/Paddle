@@ -5,4 +5,4 @@ if(WITH_GPU OR WITH_ROCM)
   set(PTEN_DEPS ${PTEN_DEPS} math_cuda linalg_cuda creation_cuda manipulation_cuda cast_cuda)
 endif()
 
-cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})
+cc_library(pten_hapi SRCS all.cc DEPS linalg_api math_api creation_api)

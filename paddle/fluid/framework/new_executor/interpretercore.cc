@@ -241,13 +241,14 @@ void InterpreterCore::BuildInplace() {
     auto& outputs = instr.Outputs();
     for (auto& pair : in_to_outs) {
       auto iter = inputs.find(pair.first);
-      if (iter != inputs.end()) {
+      if (iter != inputs.end() && !iter->second.empty()) {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
-          if (iterout != outputs.end()) {
+          if (iterout != outputs.end() && !iterout->second.empty()) {
             auto invar = global_scope_->Var(iter->second[0]);
             auto outvar = global_scope_->Var(iterout->second[0]);
-            if (invar && outvar) {
+            if (invar && outvar && invar->IsType<LoDTensor>() &&
+                outvar->IsType<LoDTensor>()) {
               instr.AddInplace(invar, outvar);
               VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
                       << " " << global_scope_->GetNameById(iter->second[0])
@@ -501,11 +502,11 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   for (auto var_id : instr.GCCheckVars()) {
     bool is_ready =
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
-    if (is_ready && var_scope.VarDesc(var_id) &&
-        !var_scope.VarDesc(var_id)->Persistable()) {
-      gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
-              &instr.DeviceContext());
-    } else if (is_ready && var_scope.VarDesc(var_id) == nullptr) {
+    // ignore all persistable var while GC
+    if (var_scope.VarDesc(var_id) && var_scope.VarDesc(var_id)->Persistable()) {
+      continue;
+    }
+    if (is_ready) {
       gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
               &instr.DeviceContext());
     }
