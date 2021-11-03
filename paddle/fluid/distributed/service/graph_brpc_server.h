@@ -46,6 +46,9 @@ class GraphBrpcServer : public PSServer {
   virtual int32_t port();
 
   std::condition_variable *export_cv() { return &cv_; }
+  // Table *get_table(size_t table_id){
+  //   return _server->table(table_id);
+  // }
 
  private:
   virtual int32_t initialize();
