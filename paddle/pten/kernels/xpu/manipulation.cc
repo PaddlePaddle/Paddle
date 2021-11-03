@@ -55,8 +55,6 @@ void FlattenWithXShape(const XPUDeviceContext& dev_ctx,
 // TODO(chenweihang): replace by better impl
 PT_REGISTER_MODULE(ManipulationXPU);
 
-using float16 = paddle::platform::float16;
-
 // TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
 // architecture, kernel_name should be "flatten".
 PT_REGISTER_KERNEL("flatten_contiguous_range",
