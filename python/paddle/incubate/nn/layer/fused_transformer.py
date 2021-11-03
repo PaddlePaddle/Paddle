@@ -43,7 +43,7 @@ class FusedMultiHeadAttention(Layer):
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
             `embed_dim`. Default None.
-        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm 
+        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm
             (True) or post_layer_norm architecture (False). Default False.
         need_weights (bool, optional): Indicate whether to return the attention
             weights. Now, only False is supported. Default False.
@@ -73,7 +73,7 @@ class FusedMultiHeadAttention(Layer):
                  embed_dim,
                  num_heads,
                  dropout_rate=0.5,
-                 attn_dropout_rate=0.5,
+                 attn_dropout_rate=None,
                  kdim=None,
                  vdim=None,
                  normalize_before=False,
@@ -401,6 +401,7 @@ class FusedTransformerEncoderLayer(Layer):
             d_model,
             dim_feedforward,
             dropout_rate=dropout_rate,
+            activation=activation,
             act_dropout_rate=act_dropout_rate,
             normalize_before=self.normalize_before,
             weight_attr=weight_attrs[1],
