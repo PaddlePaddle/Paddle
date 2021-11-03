@@ -299,9 +299,6 @@ class PassDesc(object):
             if isinstance(value, int):
                 op_desc_attr.type = framework_pb2.AttrType.INT
                 op_desc_attr.i = value
-            # elif isinstance(value, str):
-            #     op_desc_attr.type = framework_pb2.AttrType.STRING
-            #     op_desc_attr.s = value
             else:
                 raise NotImplementedError("Unimplemented transform operation.")
 
