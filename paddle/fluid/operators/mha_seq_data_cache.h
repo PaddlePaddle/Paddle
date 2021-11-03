@@ -16,11 +16,12 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include <unordered_map>
+namespace paddle {
 
 class MHASeqData {
 public:
-    std::vector<int> qkvo_seq_len;
-    std::vector<int> lo_hi_windows;
+    memory::allocation::AllocationPtr qkvo_seq_len = nullptr;
+    memory::allocation::AllocationPtr lo_hi_windows = nullptr;
 };
 
 class MHASeqDataSingleton {
@@ -39,3 +40,5 @@ private:
     MHASeqDataSingleton() {}
     std::unordered_map<std::string, MHASeqData> map_;
 };
+
+} // namespace paddle
