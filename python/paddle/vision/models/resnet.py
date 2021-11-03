@@ -445,7 +445,7 @@ def wide_resnet50_2(pretrained: bool=False, **kwargs: Any) -> ResNet:
     channels, and in Wide ResNet-50-2 has 2048-1024-2048.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, return a model pre-trained on ImageNet
 
     Examples:
         .. code-block:: python
