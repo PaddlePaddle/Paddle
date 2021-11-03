@@ -68,7 +68,7 @@ class CostModel():
         return load_dict
 
     def get_static_op_time(self, op_name, forward=True, dtype="float32"):
-
+        # if forward is True, return op forward time, otherwise return op backward time.
         if op_name == None:
             raise ValueError(
                 'op_name should not be empty when you want to get static op time'
@@ -77,7 +77,7 @@ class CostModel():
         op_cost = {}
         for op_data in self._static_cost_data:
             if (op_data["op"] == op_name) and (dtype in op_data["config"]):
-                if (forward == True):
+                if (forward):
                     op_cost["op_time"] = op_data["paddle_gpu_time"]
                 else:
                     op_cost["op_time"] = op_data["paddle_gpu_time_backward"]
