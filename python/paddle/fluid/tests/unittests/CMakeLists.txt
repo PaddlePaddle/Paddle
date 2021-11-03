@@ -176,7 +176,6 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
     LIST(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
-    LIST(REMOVE_ITEM TEST_OPS test_fleet_executor)
 
     # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
