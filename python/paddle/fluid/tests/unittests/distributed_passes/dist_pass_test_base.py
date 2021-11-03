@@ -26,8 +26,7 @@ from collections import OrderedDict
 from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
-def prepare_python_path_and_return_module(py_obj):
-    path = os.path.abspath(inspect.getfile(py_obj))
+def prepare_python_path_and_return_module(path):
     dirname, filename = os.path.split(path)
     py_suffix = ".py"
     assert filename.endswith(py_suffix), filename
@@ -158,10 +157,11 @@ class DistPassTestBase(unittest.TestCase):
         gpus = ','.join([str(gpu_id) for gpu_id in gpus])
 
         pid = os.getpid()
-        output_file_prefix = 'pass_test_outputs_' + str(pid)
-        input_dump_file = 'pass_test_inputs_' + str(pid)
-        print('View log at directory: {}'.format(output_file_prefix))
+        output_dir = 'pass_test_' + str(pid)
+        remove_path_if_exists(output_dir)
+        os.makedirs(output_dir, mode=777)
 
+        input_dump_file = os.path.join(output_dir, 'inputs')
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             run_with_coverage(True)
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
@@ -174,7 +174,6 @@ class DistPassTestBase(unittest.TestCase):
             with open(input_dump_file, 'wb') as f:
                 pickle.dump(kwargs, f)
 
-            module_name = prepare_python_path_and_return_module(type(self))
             cmd = [
                 sys.executable,
                 "-u",
@@ -182,17 +181,23 @@ class DistPassTestBase(unittest.TestCase):
                 "-m",
                 "launch",
                 "--log_dir",
-                output_file_prefix,
+                output_dir,
                 "--gpus",
                 gpus,
-                os.path.join(file_dir, 'run_main.py'),
-                module_name,
+                os.path.join(file_dir, "pass_run_main.py"),
+                "--file_path",
+                inspect.getfile(type(self)),
+                "--class_name",
                 type(self).__name__,
+                "--apply_pass",
                 str(apply_pass),
+                "--input_file",
                 input_dump_file,
-                output_file_prefix,
+                "--output_dir",
+                output_dir,
             ]
             cmd = [shlex.quote(c) for c in cmd]
+            prepare_python_path_and_return_module(__file__)
             exitcode = os.system(' '.join(cmd))
             self.assertEqual(
                 exitcode, 0,
@@ -200,7 +205,7 @@ class DistPassTestBase(unittest.TestCase):
 
             results = []
             for i in range(num_gpus):
-                dump_file = '{0}/{1}.bin'.format(output_file_prefix, i)
+                dump_file = '{0}/{1}.bin'.format(output_dir, i)
                 self.assertTrue(
                     os.path.exists(dump_file),
                     "Pass failed with apply_pass = {}".format(apply_pass))
@@ -209,5 +214,4 @@ class DistPassTestBase(unittest.TestCase):
             return results
         finally:
             if int(os.environ.get("DEBUG", 0)) == 0:
-                remove_path_if_exists(output_file_prefix)
-                remove_path_if_exists(input_dump_file)
+                remove_path_if_exists(output_dir)
