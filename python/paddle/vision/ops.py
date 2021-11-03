@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from ..fluid.layer_helper import LayerHelper
+from ..fluid.layer_helper import LayerHelper, unique_name
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import core, layers
 from ..fluid.layers import nn, utils
@@ -896,19 +896,74 @@ def file_label_reader(file_root, batch_size, name=None):
 
     inputs = dict()
     attrs = {
-        'root_dir': root_dir,
+        'root_dir': file_root,
         'batch_size': batch_size,
         'files': samples,
         'labels': targets
     }
 
     helper = LayerHelper("file_label_reader", **locals())
-    out = helper.create_variable_for_type_inference('uint8')
+    # out = helper.create_variable_for_type_inference('uint8')
+    out = helper.create_variable(
+        name=unique_name.generate("file_label_reader"),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype='uint8')
     helper.append_op(
         type="file_label_reader",
         inputs=inputs,
         attrs=attrs,
         outputs={"Out": out})
+
+    return out
+
+
+def image_decode(x, mode='unchanged', name=None):
+    """
+    Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
+    Optionally converts the image to the desired format. 
+    The values of the output tensor are uint8 between 0 and 255.
+
+    Args:
+        x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
+            of the JPEG image.
+        mode (str): The read mode used for optionally converting the image. 
+            Default: 'unchanged'.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+
+    Examples:
+        .. code-block:: python
+            import cv2
+            import paddle
+
+            fake_img = (np.random.random(
+                        (400, 300, 3)) * 255).astype('uint8')
+
+            cv2.imwrite('fake.jpg', fake_img)
+
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
+            img = paddle.vision.ops.decode_jpeg(img_bytes)
+
+            print(img.shape)
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.decode(x, "mode", mode)
+
+    inputs = {'X': x}
+    attrs = {"mode": mode}
+
+    helper = LayerHelper("image_decode", **locals())
+    out = helper.create_variable(
+        name=unique_name.generate("image_decode"),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=x.dtype)
+    # out = helper.create_variable_for_type_inference('uint8')
+    helper.append_op(
+        type="decode", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
     return out
 

@@ -189,35 +189,19 @@ FileDataReaderWrapper reader_wrapper;
 template <typename T>
 class CPUFileLabelKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    if (reader_wrapper.reader == nullptr) {
-      // create reader
-      reader_wrapper.SetUp(ctx);
-    }
-    LoDTensorArray samples = reader_wrapper.reader->Next();
-    auto* out = ctx.OutputVar("Out");
-    auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
-    out_array.resize(samples.size());
-    for (size_t i = 0; i < samples.size(); ++i) {
-      copy_tensor(samples[i], &out_array[i]);
-    }
-  }
-
- private:
-  void copy_tensor(const framework::LoDTensor& lod_tensor,
-                   framework::LoDTensor* out) const {
-    if (lod_tensor.numel() == 0) return;
-    auto& out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
-    out_tensor.set_lod(lod_tensor.lod());
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
-class FileLabelReaderOp : public framework::OperatorWithKernel {
+class FileLabelReaderOp : public framework::OperatorBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  // using framework::OperatorWithKernel::OperatorWithKernel;
+  FileLabelReaderOp(const std::string& type,
+                    const framework::VariableNameMap& inputs,
+                    const framework::VariableNameMap& outputs,
+                    const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReadFileOp is null."));
@@ -225,21 +209,40 @@ class FileLabelReaderOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext& ctx) const {
     return framework::OpKernelType(framework::proto::VarType::UINT8,
                                    platform::CPUPlace());
   }
-};
 
-class FileLabelReaderInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY,
-                       framework::ALL_ELEMENTS);
-    // ctx->SetOutputType("SentenceScores",
-    // framework::proto::VarType::LOD_TENSOR,
-    //                    framework::ALL_ELEMENTS);
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(dev_place);
+    framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
+    framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx);
+    if (reader_wrapper.reader == nullptr) {
+      // create reader
+      reader_wrapper.SetUp(ctx);
+    }
+    LoDTensorArray samples = reader_wrapper.reader->Next();
+    auto* out = scope.FindVar(Output("Out"));
+    auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
+    out_array.resize(samples.size());
+    for (size_t i = 0; i < samples.size(); ++i) {
+      copy_tensor(samples[i], &out_array[i]);
+    }
   }
+
+  void copy_tensor(const framework::LoDTensor& lod_tensor,
+                   framework::LoDTensor* out) const {
+    if (lod_tensor.numel() == 0) return;
+    auto& out_tensor = *out;
+    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
+    out_tensor.set_lod(lod_tensor.lod());
+  }
+
+  // std::shared_ptr<FileDataReader> reader=nullptr;
 };
 
 class FileLabelReaderOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -261,6 +264,22 @@ This operator read a file.
   }
 };
 
+class FileLabelReaderInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* context) const override {
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
+                   "FileLabelReader");
+  }
+};
+
+class FileLabelReaderInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY,
+                       framework::ALL_ELEMENTS);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -268,7 +287,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
     file_label_reader, ops::FileLabelReaderOp, ops::FileLabelReaderOpMaker,
-    ops::FileLabelReaderInferVarType,
+    ops::FileLabelReaderInferShape, ops::FileLabelReaderInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
