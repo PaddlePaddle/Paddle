@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/hapi/lib/utils/storage.h"
 
 namespace pten {
 
@@ -36,6 +37,13 @@ class CompatibleDenseTensorUtils {
 
   static DenseTensorMeta* GetMutableMeta(DenseTensor* tensor) {
     return &(tensor->meta_);
+  }
+
+  // only can deal with SharedStorage now
+  static void ClearStorage(DenseTensor* tensor) {
+    // use static_cast to improve performance, replace by dynamic_cast later
+    static_cast<paddle::experimental::SharedStorage*>(tensor->storage_.get())
+        ->Reset();
   }
 };
 

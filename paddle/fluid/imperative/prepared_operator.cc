@@ -295,18 +295,36 @@ static void BuildDygraphPtenKernelContext(
         experimental::ReMakePtenDenseTensorFromVar(
             ins_vector[0]->Var(), in_def,
             kernel_ctx->MutableInputAt<pten::DenseTensor>(i));
+        kernel_ctx->MutableInputRangeAt(i) = std::make_pair(i, i + 1);
       } else {
         kernel_ctx->EmplaceBackInput(experimental::MakePtenTensorBaseFromVar(
             ins_vector[0]->Var(), in_def));
       }
     } else {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
-      for (const auto& var : ins_vector) {
-        const auto& variable = var->Var();
-        tmp_inputs.emplace_back(
-            experimental::MakePtenTensorBaseFromVar(variable, in_def));
+      if (kernel_ctx->InputsSize() <= i) {
+        paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
+        for (const auto& var : ins_vector) {
+          const auto& variable = var->Var();
+          tmp_inputs.emplace_back(
+              experimental::MakePtenTensorBaseFromVar(variable, in_def));
+        }
+        kernel_ctx->EmplaceBackInputs(std::move(tmp_inputs));
+      } else {
+        size_t input_size = kernel_ctx->InputsSize();
+        for (size_t j = 0; j < ins_vector.size(); ++j) {
+          if (input_size > i + j) {
+            experimental::ReMakePtenDenseTensorFromVar(
+                ins_vector[j]->Var(), in_def,
+                kernel_ctx->MutableInputAt<pten::DenseTensor>(i + j));
+          } else {
+            kernel_ctx->EmplaceBackInput(
+                experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
+                                                        in_def));
+          }
+        }
+        kernel_ctx->MutableInputRangeAt(i) =
+            std::make_pair(i, i + ins_vector.size());
       }
-      kernel_ctx->EmplaceBackInputs(std::move(tmp_inputs));
     }
   }
 
@@ -318,18 +336,36 @@ static void BuildDygraphPtenKernelContext(
         experimental::ReMakePtenDenseTensorFromVar(
             outs_vector[0]->MutableVar(), out_def,
             kernel_ctx->MutableOutputAt<pten::DenseTensor>(i));
+        kernel_ctx->MutableOutputRangeAt(i) = std::make_pair(i, i + 1);
       } else {
         kernel_ctx->EmplaceBackOutput(experimental::MakePtenTensorBaseFromVar(
             outs_vector[0]->MutableVar(), out_def));
       }
     } else {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
-      for (auto& var : outs_vector) {
-        auto* variable = var->MutableVar();
-        tmp_outputs.emplace_back(
-            experimental::MakePtenTensorBaseFromVar(variable, out_def));
+      if (kernel_ctx->OutputsSize() <= i) {
+        paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
+        for (auto& var : outs_vector) {
+          auto* variable = var->MutableVar();
+          tmp_outputs.emplace_back(
+              experimental::MakePtenTensorBaseFromVar(variable, out_def));
+        }
+        kernel_ctx->EmplaceBackOutputs(std::move(tmp_outputs));
+      } else {
+        size_t output_size = kernel_ctx->OutputsSize();
+        for (size_t j = 0; j < outs_vector.size(); ++j) {
+          if (output_size > i + j) {
+            experimental::ReMakePtenDenseTensorFromVar(
+                outs_vector[j]->MutableVar(), out_def,
+                kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
+          } else {
+            kernel_ctx->EmplaceBackOutput(
+                experimental::MakePtenTensorBaseFromVar(
+                    outs_vector[j]->MutableVar(), out_def));
+          }
+        }
+        kernel_ctx->MutableOutputRangeAt(i) =
+            std::make_pair(i, i + outs_vector.size());
       }
-      kernel_ctx->EmplaceBackOutputs(std::move(tmp_outputs));
     }
   }
 
@@ -439,6 +475,9 @@ static void PreparedOpRunPtImpl(
                                          kernel_ctx);
 
   pt_kernel(kernel_ctx);
+
+  // Ensure that it does not affect the VarBase life cycle management
+  kernel_ctx->ClearAllAllocation();
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later

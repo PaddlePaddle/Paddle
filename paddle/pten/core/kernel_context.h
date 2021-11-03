@@ -17,6 +17,7 @@
 #include <iterator>
 #include <utility>
 
+#include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/small_vector.h"
@@ -114,6 +115,14 @@ class KernelContext {
     return output_range_.at(idx);
   }
 
+  std::pair<int, int>& MutableInputRangeAt(size_t idx) {
+    return input_range_[idx];
+  }
+
+  std::pair<int, int>& MutableOutputRangeAt(size_t idx) {
+    return output_range_[idx];
+  }
+
   template <typename TensorType>
   TensorType* MutableInputAt(size_t idx) {
     return static_cast<TensorType*>(inputs_.at(idx).get());
@@ -144,12 +153,17 @@ class KernelContext {
     }
   }
 
-  void Clear() {
-    inputs_.clear();
-    outputs_.clear();
-    attrs_.clear();
-    input_range_.clear();
-    output_range_.clear();
+  // Temporary method: For compatible with fluid Tensor and improve performance
+  // Only deal with DenseTensor now
+  void ClearAllAllocation() {
+    for (auto& in : inputs_) {
+      CompatibleDenseTensorUtils::ClearStorage(
+          static_cast<DenseTensor*>(in.get()));
+    }
+    for (auto& out : outputs_) {
+      CompatibleDenseTensorUtils::ClearStorage(
+          static_cast<DenseTensor*>(out.get()));
+    }
   }
 
   size_t InputsSize() const { return inputs_.size(); }

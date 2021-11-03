@@ -205,6 +205,7 @@ void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
   // KernelContext to original tensor
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
+    // TODO(chenweihang): use original var type if arg_def.dtype is UNDEFINED
     tensor->mutable_data(pten::TransToFluidPlace(arg_def.backend),
                          pten::TransToProtoVarType(arg_def.dtype));
     ReMakePtenDenseTensor(*tensor, dst);

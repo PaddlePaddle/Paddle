@@ -75,7 +75,7 @@ class SharedStorage : public pten::Storage {
     return allocation_;
   }
 
-  // For compatible with fluid Tensor and improve performance
+  // Temporary method: For compatible with fluid Tensor and improve performance
   void ResetAllocation(std::shared_ptr<paddle::memory::Allocation> allocation,
                        size_t offset) {
     allocation_ = allocation;
@@ -84,6 +84,13 @@ class SharedStorage : public pten::Storage {
                                 offset),
         allocation->place());
     size_ = allocation->size();
+  }
+
+  // Temporary method: For compatible with fluid Tensor and improve performance
+  void Reset() {
+    allocation_.reset();
+    data_.Clear();
+    size_ = 0;
   }
 
  private:
