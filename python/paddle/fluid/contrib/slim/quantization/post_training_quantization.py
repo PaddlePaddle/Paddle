@@ -149,7 +149,7 @@ class PostTrainingQuantization(object):
                  weight_quantize_type='channel_wise_abs_max',
                  optimize_model=False,
                  is_use_cache_file=False,
-                 profiling=True,
+                 profiling=False,
                  cache_dir=None):
         '''
         Constructor.
@@ -404,7 +404,7 @@ class PostTrainingQuantization(object):
         if self._algo in ["KL", "hist"]:
             self._calculate_kl_hist_threshold()
         if self._profiling:
-            _logger.info("calculating the cos-similarity") 
+            _logger.info("calculating the cos-similarity")
             if self._algo in ["KL", "hist"]:
                 scale_dict = self._quantized_var_threshold
             else:
@@ -588,7 +588,7 @@ class PostTrainingQuantization(object):
                     x[i] = np.round(x[i] / s * bnt) * s / bnt
                 else:
                     x[:, i] = _clip(x[:, i], s)
-                    x[:, i] = np.round(x[:, i] / s * bnt) *s /bnt
+                    x[:, i] = np.round(x[:, i] / s * bnt) * s / bnt
         else:
             scale = 1e-8 if scale == 0.0 else scale
             x = _clip(x, scale)
@@ -601,7 +601,8 @@ class PostTrainingQuantization(object):
         if var_name in self._quantized_weight_var_name and \
            self._weight_op_pairs[var_name] in _channelwise_quant_axis1_ops:
             quant_axis = 1
-        qdq_var = self._qdq(var_tensor, scale, self._activation_bits, quant_axis)
+        qdq_var = self._qdq(var_tensor, scale, self._activation_bits,
+                            quant_axis)
         from numpy import inner
         from numpy.linalg import norm
         cos_sim = inner(var_tensor.flatten(), qdq_var.flatten()) \
