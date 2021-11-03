@@ -169,7 +169,6 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     term3 = einsum('...ij->...ji', term2)
 
     # Merges terms (4) and (5) forgoing rho
-    term45 = sk + rho_k * paddle.dot(prod_H_y, yk) * sk
     term45 = sk + rho_k * einsum('...i, ...i, ...j', prod_H_y, yk, sk)
     term45 = einsum('...i,...j', term45, sk)
 
@@ -254,8 +253,7 @@ def iterates(func,
     # Updates the state tensor on the newly converged elements.
     state.state = update_state(state.state, gnorm < gtol, 'converged')
 
-    # try:
-    while True:
+    try:
         # Starts to count the number of iterations.
         iter_count = StopCounter(iters)
         iter_count.increment()
@@ -307,10 +305,9 @@ def iterates(func,
             iter_count.increment()
 
             yield state
-    # except StopCounterException:
-    #     pass
-
-    # finally:
+    except StopCounterException:
+        pass
+    finally:
         return
 
 

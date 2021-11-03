@@ -19,9 +19,9 @@ from paddle.optimizer.functional import bfgs_iterates, bfgs_optimize
 
 class TestBFGS(unittest.TestCase):
     
-    def test_quadratic(self, dtype):
+    def _partial_quadratic(self, dtype):
         
-        input_shape = [10, 10]
+        input_shape = [2, 10]
         minimum = paddle.rand(input_shape, dtype=dtype)
         scales = paddle.exp(paddle.rand(input_shape, dtype=dtype))
 
@@ -30,9 +30,15 @@ class TestBFGS(unittest.TestCase):
 
         x0 = paddle.ones_like(minimum, dtype=dtype)
 
-        result = bfgs_optimize(f, x0, dtype=dtype)
+        result = bfgs_optimize(quadratic, x0, dtype=dtype)
 
-        self.assertTrue(result.converged)
+        print(result)
+
+        self.assertTrue(paddle.all(result.converged))
         self.assertTrue(paddle.allclose(result.location, minimum, rtol=1e-8))
 
-    
+    def test_quadratic_float32(self):
+        self._partial_quadratic('float32')
+
+    def test_quadratic_float64(self):
+        self._partial_quadratic('float64')

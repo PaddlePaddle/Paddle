@@ -31,7 +31,7 @@ def vjp(f, x):
     """
     assert isinstance(x, paddle.Tensor)
     fval, gval = _vjp(f, x)
-    assert len(fval) == 1
+    assert isinstance(fval, paddle.Tensor)
 
     return fval[0], gval[0]
 
