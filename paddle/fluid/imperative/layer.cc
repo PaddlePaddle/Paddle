@@ -359,7 +359,7 @@ void VarBase::BumpInplaceVersion() {
 // NOTE(weilong wu):
 // This function try to copy the data from target varbase,
 // and fill into the grad_var_ of the current varbase.
-void VarBase::_CopyGradientWith(const VarBase& src) {
+void VarBase::_CopyGradientFrom(const VarBase& src) {
   if (Var().IsInitialized()) {
     PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
                       platform::errors::PreconditionNotMet(

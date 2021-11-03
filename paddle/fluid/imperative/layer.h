@@ -230,7 +230,7 @@ class VarBase {
 
   void BumpInplaceVersion();
 
-  void _CopyGradientWith(const imperative::VarBase& src);
+  void _CopyGradientFrom(const imperative::VarBase& src);
 
   /* Hook related method: now only used for GradVarBase */
   bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }

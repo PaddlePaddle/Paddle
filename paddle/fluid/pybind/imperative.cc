@@ -1949,9 +1949,9 @@ void BindImperative(py::module *m_ptr) {
                                    "tensor has not been initialized"));
              return t->Slice(begin_idx, end_idx);
            })
-      .def("_copy_gradient_with",
+      .def("_copy_gradient_from",
            [](std::shared_ptr<imperative::VarBase> &self,
-              const imperative::VarBase &src) { self->_CopyGradientWith(src); })
+              const imperative::VarBase &src) { self->_CopyGradientFrom(src); })
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
