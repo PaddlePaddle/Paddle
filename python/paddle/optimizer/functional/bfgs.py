@@ -144,7 +144,7 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     Args:
         
     """
-    rho_k = .1 / paddle.dot(sk, yk)
+    rho_k = .1 / einsum('...i, ...i', sk, yk)
 
     # Enforces the curvature condition before updating the inverse Hessian.
     if enforce_curvature:

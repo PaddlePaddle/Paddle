@@ -19,36 +19,20 @@ from paddle.optimizer.functional import bfgs_iterates, bfgs_optimize
 
 class TestBFGS(unittest.TestCase):
     
-    def test_quadratic(self):
+    def test_quadratic(self, dtype):
         
-        input_shape = [10]
-        minimum = paddle.rand(input_shape, dtype='float')
-        scales = paddle.exp(paddle.rand(input_shape))
+        input_shape = [10, 10]
+        minimum = paddle.rand(input_shape, dtype=dtype)
+        scales = paddle.exp(paddle.rand(input_shape, dtype=dtype))
 
-        def f(x):
-            return paddle.sum(scales * paddle.square(x - minimum))
+        def quadratic(x):
+            return paddle.sum(scales * paddle.square(x - minimum), axis=-1)
 
-        x0 = paddle.ones_like(minimum, dtype='float')
+        x0 = paddle.ones_like(minimum, dtype=dtype)
 
-        result = bfgs_optimize(f, x0, dtype='float')
-
-        print(result)
+        result = bfgs_optimize(f, x0, dtype=dtype)
 
         self.assertTrue(result.converged)
+        self.assertTrue(paddle.allclose(result.location, minimum, rtol=1e-8))
 
-
-import paddle
-from paddle.optimizer.functional import bfgs_iterates, bfgs_optimize
-
-input_shape = [10]
-minimum = paddle.rand(input_shape)
-scales = paddle.exp(paddle.rand(input_shape))
-
-def f(x):
-    return paddle.sum(scales * paddle.square(x - minimum))
-
-x0 = paddle.ones_like(minimum)
-
-result = bfgs_optimize(f, x0)
-print(minimum)
-print(result)
+    

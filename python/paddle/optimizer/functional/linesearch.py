@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle import einsum
 from .bfgs_utils import vjp
 from .bfgs_utils import (StopCounter,
                          StopCounterException,
@@ -45,7 +46,7 @@ hz_default_params = {
 
 
 def initial(state):
-    r"""Generates initial step size.
+    r"""Generates the initial step size.
     
     Args:
         state (Tensor): the search state tensor.
@@ -119,9 +120,11 @@ def bracket(state, phi, c, iter_count):
     prev_c = make_const(c, .0)
 
     # f = phi(c), g = phi'(c)
-    iter_count.increment()
     f, g = vjp(phi, c)
-    
+    iter_count.increment()
+    state.nf += 1
+    state.ng += 1
+
     # Initialize B3 condition
     B3_cond = make_const(c, True, dtype='bool')
 
@@ -134,8 +137,10 @@ def bracket(state, phi, c, iter_count):
         c = paddle.where(B3_cond, rho * c, c)
 
         # Calculates function values and gradients for the new step size.
-        iter_count.increment()
         f, g = vjp(phi, c)
+        iter_count.increment()
+        state.nf += 1
+        state.ng += 1
 
         expanding = any_active_with_predicates(state.state, B3_cond)
 
@@ -190,8 +195,10 @@ def bisect(state, phi, a, b, ifcond, iter_count):
     while True: 
         d = (1 - theta) * a + theta * b
 
-        iter_count.increment()
         f, g = vjp(phi, d)
+        iter_count.increment()
+        state.nf += 1
+        state.ng += 1
         
         falling = falling & (g < .0)
 
@@ -317,7 +324,9 @@ def stopping_condition(state, phi, c, phiprime_0,
     phi_0 = state.fk
 
     if phi_c is None or phiprime_c is None:
-       phi_c, phiprime_c = vjp(phi, c)
+        phi_c, phiprime_c = vjp(phi, c)
+        state.nf += 1
+        state.ng += 1
     
     # T1 (Wolfe). 
     #   T1.1            phi(c) - phi(0) <= delta * c * phi'(0)
@@ -373,8 +382,10 @@ def update(state, phi, a, b, c, ifcond, iter_count):
     #
     # U3. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
     #     return Bisect([a, c])
-    iter_count.increment()
     f, g = vjp(phi, c)
+    iter_count.increment()
+    state.nf += 1
+    state.ng += 1
 
     # Early returns on U0
     U0_cond = (c > a) == (c > b)
@@ -610,10 +621,10 @@ def hz_linesearch(state,
 
     # deriv is the directional derivative of f at x_k on the direction of p_k.
     # It's also the gradient of phi    
-    deriv = paddle.dot(gk, pk)
+    deriv = einsum('...i, ...i', gk, pk)                # dot(gk, pk)
 
     # Marks inputs with invalid function values and non-negative derivatives 
-    invalid_input = paddle.logical_or(paddle.isinf(fk), deriv >= .0)
+    invalid_input = paddle.isinf(fk) | (deriv >= .0)
     state.state = update_state(state.state, invalid_input, 'failed')
 
     # L0. c = initial(k), [a0, b0] = bracket(c), and j = 0
@@ -634,10 +645,10 @@ def hz_linesearch(state,
         # Generates initial step sizes
         c = initial(state)
         ls_stepsize = c
+        iter_count.increment()
         
         # Initial stopping test, unlikely to succeed though
         stopped = stopping_condition(state, phi, c, deriv)
-        iter_count.increment()
 
         # Obtains the first interval with opposite slopes at end points
         a_j, b_j = bracket(state, phi, c, iter_count)
