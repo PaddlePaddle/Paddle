@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/pten/hapi/lib/utils/allocator.h"
-#include "paddle/pten/hapi/lib/utils/storage.h"
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 
 namespace paddle {
 namespace experimental {

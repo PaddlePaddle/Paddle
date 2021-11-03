@@ -12,19 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/pten/hapi/include/tensor.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
-namespace experimental {
+namespace distributed {
 
-Tensor dot(const Tensor& x, const Tensor& y);
+FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
+  // Initialize Executor
+}
 
-Tensor matmul(const Tensor& x,
-              const Tensor& y,
-              bool transpose_x,
-              bool transpose_y);
+FleetExecutor::~FleetExecutor() {
+  // Destroy Executor
+}
 
-}  // namespace experimental
+void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
+  // Compile and Initialize
+}
+
+void FleetExecutor::Run() {
+  // Run
+}
+
+void FleetExecutor::Release() {
+  // Release
+}
+
+}  // namespace distributed
 }  // namespace paddle
