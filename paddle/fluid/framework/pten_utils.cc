@@ -117,7 +117,7 @@ KernelSignatureMap& KernelSignatureMap::Instance() {
 }
 
 bool KernelSignatureMap::Has(const std::string& op_type) const {
-  return map_.count(op_type) > 0;
+  return map_.find(op_type) != map_.end();
 }
 
 const KernelSignature& KernelSignatureMap::Get(
