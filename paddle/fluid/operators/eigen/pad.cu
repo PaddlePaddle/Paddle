@@ -59,7 +59,7 @@ INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);
 INSTANTIATION(EigenPad, double);
 INSTANTIATION(EigenPad, platform::float16);
-INSTANTIATION(EigenPad, platform::bfloat16);
+INSTANTIATION(EigenPad, Eigen::bfloat16);
 INSTANTIATION(EigenPad, platform::complex<float>);
 INSTANTIATION(EigenPad, platform::complex<double>);
 #undef INSTANTIATION
