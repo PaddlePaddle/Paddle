@@ -29,10 +29,11 @@ import paddle.distributed.auto_parallel as auto
 
 from paddle.distributed import fleet
 from paddle.fluid.initializer import NumpyArrayInitializer
-from paddle.distributed.auto_parallel.utils import save_distributed_checkpoint, load_checkpoint_into_program
+from paddle.distributed.auto_parallel.utils import save_distributed_checkpoint, load_distributed_checkpoint, load_checkpoint_into_program
+from paddle.distributed.auto_parallel.utils import get_dist_attr, merge_and_slice_parameter, load_parameter_into_program
+from paddle.distributed.auto_parallel.reshard import HAS_SENT, HAS_RECV, HAS_ALLGATHER
 
 paddle.enable_static()
-paddle.distributed.init_parallel_env()
 _global_parallel_strategy = None
 _global_process_mesh = None
 PP_MESH_0 = None
@@ -254,6 +255,134 @@ class TestMLPAutoConvert(unittest.TestCase):
 
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
+
+
+class TestMLPAutoConvert2(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2021)
+        random.seed(2021)
+        np.random.seed(2021)
+        HAS_SENT.clear()
+        HAS_RECV.clear()
+        HAS_ALLGATHER.clear()
+
+    def tearDown(self):
+        os.remove("./model_state_rank{}.pdmodel".format(
+            str(paddle.distributed.get_rank())))
+        os.remove("./dist_attr_rank{}.pdattr".format(
+            str(paddle.distributed.get_rank())))
+
+    def test_mlp_mp2pp(self):
+        global _global_parallel_strategy
+        _global_parallel_strategy = "mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh([0, 1])
+
+        input = np.random.random(size=(80, 64)).astype('float32')
+        label = np.random.random(size=(80, 1)).astype('float32')
+
+        dist_main_prog, dist_start_prog, loss = get_distributed_program()
+        place = paddle.set_device("gpu")
+        exe = paddle.static.Executor(place)
+        exe.run(dist_start_prog)
+
+        for step in range(20):
+            if step == 10:
+                add_info = {"batch": step, "batch_size": 4}
+                save_distributed_checkpoint(
+                    dist_main_prog,
+                    ".",
+                    addition_info=add_info,
+                    dist_attr_path=".")
+
+            res = exe.run(dist_main_prog,
+                          feed={
+                              "input": input[step * 4:(step + 1) * 4, :],
+                              "label": label[step * 4:(step + 1) * 4, :]
+                          },
+                          fetch_list=[loss])
+        last_res = res[0]
+
+        _global_parallel_strategy = "pp"
+        _global_process_mesh = auto.ProcessMesh([0, 1])
+        global PP_MESH_0
+        PP_MESH_0 = auto.ProcessMesh(mesh=[0])
+        global PP_MESH_1
+        PP_MESH_1 = auto.ProcessMesh(mesh=[1])
+
+        dist_main_prog_load, dist_start_prog_load, loss_load = get_distributed_program(
+        )
+        place = paddle.set_device("gpu")
+        exe = paddle.static.Executor(place)
+        exe.run(dist_start_prog_load)
+
+        ckpt_path = [
+            "./model_state_rank0.pdmodel", "./model_state_rank1.pdmodel"
+        ]
+        dist_attr_path = [
+            "./dist_attr_rank0.pdattr", "./dist_attr_rank1.pdattr"
+        ]
+        param_dict, pre_dist_attr, add_info = load_distributed_checkpoint(
+            ckpt_path, dist_attr_path)
+        batch = add_info["batch"]
+        batch_size = add_info["batch_size"]
+        start_index = batch * batch_size
+        input = input[start_index:, :]
+        label = label[start_index:, :]
+
+        cur_dist_attr = get_dist_attr(dist_main_prog_load)
+        sliced_param_dict = merge_and_slice_parameter(param_dict, pre_dist_attr,
+                                                      cur_dist_attr)
+        load_parameter_into_program(sliced_param_dict, dist_main_prog_load)
+
+        for step in range(10):
+            if paddle.distributed.get_rank() in [0]:
+                res = exe.run(dist_main_prog_load,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              })
+            else:
+                res = exe.run(dist_main_prog_load,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              },
+                              fetch_list=[loss_load])
+
+        if paddle.distributed.get_rank() in [1]:
+            self.assertEqual(last_res, res[0])
+
+
+class TestMLPAutoConvertInvalid(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2021)
+        random.seed(2021)
+        np.random.seed(2021)
+
+    def test_input_invalid(self):
+        global _global_parallel_strategy
+        _global_parallel_strategy = "mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh([0, 1])
+        dist_main_prog, _, _ = get_distributed_program()
+
+        with self.assertRaises(TypeError):
+            save_distributed_checkpoint(dist_main_prog, "", addition_info=[0])
+        with self.assertRaises(ValueError):
+            save_distributed_checkpoint(
+                dist_main_prog, "", addition_info={"step": 0})
+        with self.assertRaises(ValueError):
+            save_distributed_checkpoint(
+                dist_main_prog, "", addition_info={"bath": 0.0})
+        with self.assertRaises(ValueError):
+            load_checkpoint_into_program([], dist_main_prog)
+        with self.assertRaises(ValueError):
+            load_checkpoint_into_program("", dist_main_prog)
+        with self.assertRaises(ValueError):
+            load_distributed_checkpoint("./model_state_rank.pdmodel")
+        with self.assertRaises(TypeError):
+            load_distributed_checkpoint({"path": "./model_state_rank.pdmodel"})
 
 
 if __name__ == "__main__":

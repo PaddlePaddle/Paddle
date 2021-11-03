@@ -20,8 +20,8 @@ import warnings
 import logging
 
 import paddle.fluid.core as core
-from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.framework.io import _to_LodTensor
+from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 
 
 def is_valid_list_index(list, index):
@@ -363,33 +363,29 @@ def make_data_unshard(dist_main_prog, dist_startup_prog, dist_context=None):
 
 
 def _check_addition_info(addition_info):
-    """
-    Validity check of additional information
-    """
-    if addition_info is None:
+    """ Validity check of additional information """
+    if not addition_info:
         return addition_info
     elif not isinstance(addition_info, dict):
         raise TypeError(
-            "The type of 'addition_info' should be 'dict', but got {}".format(
-                str(type(addition_info))))
+            "The type of 'addition_info' should be 'dict', but got '{}'.".
+            format(str(type(addition_info))))
     else:
         for item, value in addition_info.items():
             if item not in ["epoch", "batch", "batch_size"]:
                 raise ValueError(
-                    "The key of 'addition_info' should be one of the \
-                    '['epoch', 'batch', 'batch_size']'")
+                    "The key of 'addition_info' should be one of the ['epoch', 'batch', 'batch_size']."
+                )
             if not isinstance(value, int):
                 raise ValueError(
-                    "The value of 'addition_info' should be 'int', \
-                    but got '{}'".format(str(type(value))))
+                    "The value of 'addition_info' should be 'int', but got '{}'.".
+                    format(str(type(value))))
         return addition_info
 
 
 def _check_valid_path(file_path):
-    """
-    Validity check of input file path
-    """
-    if file_path is None:
+    """ Validity check of input file path """
+    if not file_path:
         return file_path
     elif isinstance(file_path, str):
         if not os.path.exists(file_path):
@@ -399,7 +395,7 @@ def _check_valid_path(file_path):
     elif isinstance(file_path, list):
         for file in file_path:
             if not isinstance(file, str):
-                raise ValueError(
+                raise TypeError(
                     "The type of path should be 'str', but got '{}'.".format(
                         str(type(file))))
             if not os.path.exists(file):
@@ -440,6 +436,9 @@ def save_distributed_checkpoint(program,
                                         addition_info=add_info, 
                                         dist_attr_path=path)
     """
+    assert isinstance(program, paddle.fluid.framework.Program)
+    addition_info = _check_addition_info(addition_info)
+
     if not is_integrated:
         rank = paddle.distributed.get_rank()
         ckpt_file_name = os.path.join(checkpoint_path,
@@ -448,7 +447,7 @@ def save_distributed_checkpoint(program,
         state_dict = {
             "model": program.state_dict(),
             "world_size": paddle.distributed.get_world_size(),
-            "addition_info": _check_addition_info(addition_info)
+            "addition_info": addition_info
         }
         paddle.save(state_dict, ckpt_file_name)
         logging.info("Already saved model to {}".format(checkpoint_path))
