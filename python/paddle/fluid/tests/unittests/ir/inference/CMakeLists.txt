@@ -72,3 +72,5 @@ set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
 endif()
+
+add_subdirectory(auto_scan_test)
