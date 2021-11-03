@@ -75,6 +75,7 @@ class TestElasticManager(unittest.TestCase):
             scale = None
             force = None
 
+        os.environ['PADDLE_ELASTIC_TIMEOUT'] = "60"
         args = Argument()
         elastic = ElasticManager(args, self.etcd_client)
         hosts = ["10.10.10.1", "10.10.10.2"]
@@ -167,6 +168,19 @@ class TestElasticManager(unittest.TestCase):
                          "10.10.10.3,10.10.10.1,10.10.10.2")
         self.assertEqual(
             os.getenv('PADDLE_TRAINERS'), "10.10.10.3,10.10.10.1,10.10.10.2")
+
+        ############
+        os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.1"
+        os.environ[
+            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:8001,10.10.10.1:8002,10.10.10.1:8003,10.10.10.1:8004"
+        elastic = ElasticManager(args, self.etcd_client)
+        # remove 10.10.10.1
+        elastic.host = "10.10.10.1"
+        os.environ['PADDLE_TRAINER_ID'] = "-1"
+        elastic.hosts = ["10.10.10.1", "10.10.10.1"]
+        elastic._update_hosts()
+        self.assertEqual(elastic.lastest_trainers, "10.10.10.1,10.10.10.1")
+        self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.1")
 
 
 if __name__ == "__main__":

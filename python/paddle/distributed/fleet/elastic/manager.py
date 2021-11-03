@@ -120,6 +120,8 @@ class ElasticManager(object):
         scale = args.scale or int(os.getenv('PADDLE_ELASTIC_SCALE', 0))
         force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
 
+        self.elastic_timeout = int(
+            os.getenv('PADDLE_ELASTIC_TIMEOUT', ELASTIC_TIMEOUT))
         self.endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
         self.trainers = os.getenv('PADDLE_TRAINERS', '')
         self.lastest_trainers = self.trainers
@@ -145,8 +147,6 @@ class ElasticManager(object):
             server = '{}:{}'.format(
                 os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_HOST'),
                 os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_PORT'))
-
-        #elastic_timeout = os.getenv('PADDLE_ELASTIC_TIMEOUT',1)
 
         logger.debug('init with server {} host {}'.format(server, host))
 
@@ -315,24 +315,26 @@ class ElasticManager(object):
 
         if self.elastic_level == ElasticLevel.ELASTIC:
             # FIXME(xym) add freeze status
+            self.np = len(self.hosts)
             if not self.elastic_startup_time:
                 self.elastic_startup_time = time.time()
             hosts_num = len(self.hosts)
-            if hosts_num >= self.min_np and hosts_num <= self.max_np:
+            if hosts_num == self.max_np:
+                self.elastic_startup_time = None
+                return True
+            elif hosts_num >= self.min_np and hosts_num < self.max_np:
                 interval_time = time.time() - self.elastic_startup_time
-                if interval_time <= ELASTIC_TIMEOUT:
-                    print(
-                        f"current interval_time={interval_time} hosts_num={hosts_num} reached the min_np={self.min_np}, ELASTIC_TIMEOUT={ELASTIC_TIMEOUT}"
-                    )
+                if interval_time <= self.elastic_timeout:
                     logger.info(
-                        f"current interval_time={interval_time} hosts_num={hosts_num} reached the min_np={self.min_np}, wait for timeout"
+                        f"wait for timeout, hosts_num={hosts_num}, min_np={self.min_np}, \
+                            interval_time={interval_time}, elastic_timeout={self.elastic_timeout}"
                     )
                     return False
 
-                self.elastic_startup_time = time.time()
+                self.elastic_startup_time = None
                 return True
             else:
-                self.elastic_startup_time = time.time()
+                self.elastic_startup_time = None
                 return False
 
     def _update_hosts(self):
@@ -396,7 +398,7 @@ class ElasticManager(object):
                 unsorted_host = []
                 for id, host in enumerate(self.hosts):
                     idx = trainers.index(host)
-                    if idx <= len(self.hosts) - 1:
+                    if idx <= len(self.hosts) - 1 and not hosts_dict.get(idx):
                         hosts_dict[idx] = host
                     else:
                         unsorted_host.append(host)
@@ -404,7 +406,7 @@ class ElasticManager(object):
                 idle_index = 0
                 sorted_hosts = []
                 for idx in range(len(self.hosts)):
-                    if not hosts_dict.get(idx):
+                    if not hosts_dict.get(idx) and len(unsorted_host) > 0:
                         hosts_dict[idx] = unsorted_host[idle_index]
                         idle_index += 1
 
@@ -413,9 +415,10 @@ class ElasticManager(object):
                 logger.info(f"elastic scale down, sorted_hosts={sorted_hosts}")
                 hosts = ','.join(sorted_hosts)
                 self.args.ips = hosts
+                if rank < 0:
+                    os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+                        sorted_hosts.index(self.host))
                 os.environ['PADDLE_TRAINERS'] = hosts
-                os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
-                    sorted_hosts.index(self.host))
                 self.lastest_trainers = hosts
 
     def wait(self):
