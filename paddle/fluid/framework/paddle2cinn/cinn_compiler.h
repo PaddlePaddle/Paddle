@@ -33,6 +33,7 @@ namespace framework {
 namespace paddle2cinn {
 
 struct CinnCompiledObject {
+  std::unique_ptr<::cinn::hlir::framework::GraphCompiler> compiler;
   std::unique_ptr<::cinn::hlir::framework::Program> runtime_program;
   std::shared_ptr<::cinn::hlir::framework::Scope> scope;
   std::unordered_map<std::string, std::string> paddle2cinn_varmap;

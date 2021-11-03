@@ -52,6 +52,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     ResolveOptionConfliction();
 
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
+
+#ifdef PADDLE_WITH_CINN
+    if (FLAGS_use_cinn) {
+      // Note: This pass is used to enable cinn.
+      AppendPass("build_cinn_pass");
+      AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
+    }
+#endif
+
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
@@ -73,13 +82,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "modify_op_lock_and_record_event_pass");
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
-
-#ifdef PADDLE_WITH_CINN
-    if (FLAGS_use_cinn) {
-      // Note: This pass is used to enable cinn.
-      AppendPass("build_cinn_pass");
-    }
-#endif
 
     SetCollectiveContext();
   }

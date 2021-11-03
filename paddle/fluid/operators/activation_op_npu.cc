@@ -503,7 +503,6 @@ class SwishGradNPUKernel : public framework::OpKernel<T> {
     beta_x.mutable_data<T>(x->dims(), ctx.GetPlace());
     sigmoid_out.mutable_data<T>(x->dims(), ctx.GetPlace());
     swish_out.mutable_data<T>(x->dims(), ctx.GetPlace());
-
     const auto& muls_runner =
         NpuOpRunner("Muls", {*x}, {beta_x}, {{"value", beta}});
     muls_runner.Run(stream);
@@ -515,6 +514,9 @@ class SwishGradNPUKernel : public framework::OpKernel<T> {
     const auto& mul_runner =
         NpuOpRunner("Mul", {sigmoid_out, *x}, {swish_out}, {});
     mul_runner.Run(stream);
+    const auto& muls_runner2 =
+        NpuOpRunner("Muls", {swish_out}, {swish_out}, {{"value", beta}});
+    muls_runner2.Run(stream);
 
     const auto& mul_runner1 =
         NpuOpRunner("Mul", {sigmoid_out, swish_out}, {*dx}, {});

@@ -37,15 +37,47 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
       auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
       scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
     }
-
+    if (isinf(scale)) {
+      if (signbit(scale)) {
+        scale = -std::numeric_limits<float>::max();
+      } else {
+        scale = std::numeric_limits<float>::max();
+      }
+    }
     if (!bias_after_scale) {
       bias *= scale;
     }
     out->mutable_data<T>(ctx.GetPlace());
-    const auto& runner =
-        NpuOpRunner("Power", {*x}, {*out},
-                    {{"power", power}, {"scale", scale}, {"shift", bias}});
-    runner.Run(stream);
+
+    framework::NPUAttributeMap attrs = {
+        {"power", power}, {"scale", scale}, {"shift", bias}};
+    const auto& dev_ctx =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>();
+    auto op_func = [](const std::vector<Tensor>& inputs,
+                      const std::vector<Tensor>& outputs,
+                      const NPUAttributeMap& attrs,
+                      const platform::NPUDeviceContext& dev_ctx) {
+      const auto& muls_runner = NpuOpRunner("Muls", {inputs[0]}, {outputs[0]},
+                                            {{"value", attrs.at("scale")}});
+      muls_runner.Run(dev_ctx.stream());
+
+      const auto& adds_runner = NpuOpRunner("Adds", {outputs[0]}, {outputs[0]},
+                                            {{"value", attrs.at("shift")}});
+      adds_runner.Run(dev_ctx.stream());
+    };
+
+    if (x->type() == framework::proto::VarType::INT32) {
+      NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
+                               {framework::proto::VarType::INT32},
+                               {framework::proto::VarType::INT32});
+    } else if (x->type() == framework::proto::VarType::INT64) {
+      NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
+                               {framework::proto::VarType::INT32},
+                               {framework::proto::VarType::INT32});
+    } else {
+      const auto& runner = NpuOpRunner("Power", {*x}, {*out}, attrs);
+      runner.Run(stream);
+    }
   }
 };
 
@@ -54,4 +86,6 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
 
 REGISTER_OP_NPU_KERNEL(
     scale, paddle::operators::ScaleNPUKernel<float>,
-    paddle::operators::ScaleNPUKernel<paddle::platform::float16>);
+    paddle::operators::ScaleNPUKernel<paddle::platform::float16>,
+    paddle::operators::ScaleNPUKernel<int64_t>,
+    paddle::operators::ScaleNPUKernel<int>);
