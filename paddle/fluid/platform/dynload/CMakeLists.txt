@@ -7,7 +7,7 @@ if (NOT WITH_NV_JETSON)
 endif()
 
 if (WITH_ROCM)
-  list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc)
+  list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
 endif()
 
 # There is no macOS version of NCCL.
@@ -49,3 +49,9 @@ endif()
 cc_library(dynload_lapack SRCS lapack.cc DEPS dynamic_loader)
 add_dependencies(dynload_lapack extern_lapack)
 # TODO(TJ): add iomp, mkldnn?
+
+if (MKL_FOUND AND WITH_ONEMKL)
+  message("ONEMKL INCLUDE directory is ${MKL_INCLUDE}")
+  cc_library(dynload_mklrt SRCS mklrt.cc DEPS dynamic_loader)
+  target_include_directories(dynload_mklrt PRIVATE ${MKL_INCLUDE})
+endif()

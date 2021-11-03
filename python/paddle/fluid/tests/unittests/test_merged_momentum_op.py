@@ -102,7 +102,7 @@ def run_momentum_op(params,
                     'Param': p,
                     'Grad': g,
                     'Velocity': v,
-                    'LearningRate': lr_var
+                    'LearningRate': lr_var,
                 }
                 outputs = {'ParamOut': p, 'VelocityOut': v}
                 if multi_precision:
@@ -115,7 +115,7 @@ def run_momentum_op(params,
                 'Param': param_vars,
                 'Grad': grad_vars,
                 'Velocity': velocity_vars,
-                'LearningRate': lr_var
+                'LearningRate': lr_var,
             }
             outputs = {'ParamOut': param_vars, 'VelocityOut': velocity_vars}
             if multi_precision:
@@ -176,7 +176,10 @@ class TestMergedMomentum(unittest.TestCase):
         outs2 = run_op(False)
         self.assertEqual(len(outs1), len(outs2))
         for i, (out1, out2) in enumerate(zip(outs1, outs2)):
-            self.assertTrue(np.allclose(out1, out2, atol=1e-7))
+            if isinstance(place, paddle.CUDAPlace):
+                self.assertTrue(np.array_equal(out1, out2))
+            else:
+                self.assertTrue(np.allclose(out1, out2, atol=1e-7))
 
     def get_places(self):
         places = [paddle.CPUPlace()]

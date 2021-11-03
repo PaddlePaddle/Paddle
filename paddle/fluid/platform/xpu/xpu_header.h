@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/float16.h"
 #include "xpu/runtime.h"
@@ -66,6 +67,12 @@ template <>
 class XPUTypeTrait<paddle::platform::float16> {
  public:
   using Type = float16;
+};
+
+template <>
+class XPUTypeTrait<paddle::platform::bfloat16> {
+ public:
+  using Type = bfloat16;
 };
 
 #endif

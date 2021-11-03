@@ -105,3 +105,29 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
                         jacobian_pos[0][i][0][p] - jacobian_neg[0][i][0][p]
                     ) / delta / 2.
     return hessian
+
+
+def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
+    xs = _tensors(xs, "xs")
+    jacobian = np.array(_compute_numerical_jacobian(func, xs, delta, np_dtype))
+    flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
+    vjp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]
+    for j in range(len(xs)):
+        for q in range(_product(xs[j].shape)):
+            vjp[j][q] = np.sum(jacobian[:, j, :, q].reshape(flat_v.shape) *
+                               flat_v)
+    vjp = [vjp[j].reshape(xs[j].shape) for j in range(len(xs))]
+    return vjp
+
+
+def _compute_numerical_vhp(func, xs, v, delta, np_dtype):
+    xs = _tensors(xs, "xs")
+    hessian = np.array(_compute_numerical_hessian(func, xs, delta, np_dtype))
+    flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
+    vhp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]
+    for j in range(len(xs)):
+        for q in range(_product(xs[j].shape)):
+            vhp[j][q] = np.sum(hessian[:, j, :, q].reshape(flat_v.shape) *
+                               flat_v)
+    vhp = [vhp[j].reshape(xs[j].shape) for j in range(len(xs))]
+    return vhp

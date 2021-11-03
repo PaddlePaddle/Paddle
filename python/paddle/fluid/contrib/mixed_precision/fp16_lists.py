@@ -104,7 +104,7 @@ black_list = {
     'reduce_sum',
 }
 
-# This set contains two types of ops. All ops supported fp16 calculation. One 
+# This set contains two types of ops. All ops supported fp16 calculation. One
 # of two types is considered numerically-safe, but may be made unsafe by an
 # upstream blacklist op. Another type do not have numerically-significant
 # effects, like stack, flatten2.
@@ -153,6 +153,8 @@ gray_list = {
     'c_allreduce_sum',
     'concat',
     'split',
+    'fused_feedforward',
+    'fused_attention',
 }
 
 # The set of ops that don't support fp16 calculation
