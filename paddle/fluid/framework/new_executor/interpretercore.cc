@@ -316,16 +316,15 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   VLOG(4) << place << " " << op->DebugStringEx(global_scope_);
 
-  auto op =
-      dynamic_cast<const framework::OperatorWithKernel*>(instr_node.OpBase());
+  auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     platform::RecordEvent infershape_event("InferShape");
     // If it is OperatorBase, InferShape do nothing.
-    if (op != nullptr)
-      op->InferShape(instr_node.InnerInferShapeContext().get());
+    if (op_with_kernel != nullptr)
+      op_with_kernel->InferShape(instr_node.InnerInferShapeContext().get());
   }
 
-  if (op != nullptr &&
+  if (op_with_kernel != nullptr &&
       FLAGS_new_executor_use_inplace) {  // TODO(xiongkun03) Does operator
                                          // base support
                                          // inplace ?
@@ -340,7 +339,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
   {
     platform::RecordEvent compute_event("Compute");
-    if (op == nullptr)
+    if (op_with_kernel == nullptr)
       instr_node.OpBase()->Run(*global_scope_->GetScope(), place_);
     else
       instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
