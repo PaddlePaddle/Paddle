@@ -28,9 +28,9 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 
 namespace pten {
 

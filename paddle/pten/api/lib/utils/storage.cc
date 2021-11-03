@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/hapi/lib/utils/storage.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 
 namespace paddle {
 namespace experimental {
