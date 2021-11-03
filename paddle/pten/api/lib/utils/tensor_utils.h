@@ -19,11 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
 
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/hapi/lib/utils/allocator.h"
-#include "paddle/pten/hapi/lib/utils/storage.h"
 
 namespace paddle {
 namespace experimental {
