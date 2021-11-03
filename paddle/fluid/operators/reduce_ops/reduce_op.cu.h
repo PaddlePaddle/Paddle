@@ -674,12 +674,12 @@ __global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
   auto block = ReduceIndexMapping<false>(dim);
   int idy = block.BlockIdY() * blocking_size;
   int idx = block.BlockIdX() * block.BlockDimX();
+  int idz = BLOCK_ID_Z * left_num;
   int stride = dim.split_num_x * dim.deal_size_x;
   int size = left_num - dim.rem_x;
   int loop_size = min(reduce_num - idy, blocking_size);
-  int store_offset =
-      block.BlockIdY() * left_num + BLOCK_ID_Z * block.GridDimY() * left_num;
-  int block_offset = idy * left_num + idx + BLOCK_ID_Z * reduce_num * left_num;
+  int store_offset = block.BlockIdY() * left_num + idz * block.GridDimY();
+  int block_offset = idy * left_num + idz * reduce_num;
   const Tx* input = x + block_offset;
   Tx reduce_input;
   for (; idx < size; idx += stride) {
