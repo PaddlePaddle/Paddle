@@ -255,7 +255,7 @@ if(WITH_PYTHON)
   cc_library(op_function_common SRCS op_function_common.cc)
   cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward function_api grad_node_info pten op_function_common)
+    DEPS eager_api autograd_meta backward function_api grad_node_info pten pten_hapi op_function_common dygraph_function dygraph_node math_cpu linalg_cpu creation_cpu utils_cpu manipulation_cpu reduce_cpu elementwise_cpu grad_elementwise_cpu grad_reduce_cpu grad_linalg_cpu math_api linalg_api creation_api manipulation_api reduce_api elementwise_api grad_elementwise_api grad_linalg_api grad_reduce_api)
   add_dependencies(paddle_eager eager_op_function_generator_cmd)
   list(APPEND PYBIND_DEPS paddle_eager)
   list(APPEND PYBIND_DEPS op_function_common)

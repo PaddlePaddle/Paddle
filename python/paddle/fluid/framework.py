@@ -83,12 +83,33 @@ _eager_mode_ = False
 
 
 @signature_safe_contextmanager
-def eager_guard():
+def eager_mode_place_guard(place):
+    if place is not None:
+        expected_place = _get_paddle_place(place)
+    else:
+        expected_place = _current_expected_place()
+
+    global _global_expected_place_
+    tmp_place = _global_expected_place_
+    _global_expected_place_ = expected_place
+
+    _set_expected_place(expected_place)
+
+    try:
+        yield
+    finally:
+        _global_expected_place_ = tmp_place
+        _set_expected_place(tmp_place)
+
+
+@signature_safe_contextmanager
+def eager_guard(place=None):
     global _eager_mode_
     _eager_mode_ = True
     _C_ops.switch_to_eager_ops()
     try:
-        yield
+        with eager_mode_place_guard(place):
+            yield
     finally:
         _eager_mode_ = False
         _C_ops.switch_to_core_ops()
