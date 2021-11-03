@@ -149,6 +149,7 @@ class PostTrainingQuantization(object):
                  weight_quantize_type='channel_wise_abs_max',
                  optimize_model=False,
                  is_use_cache_file=False,
+                 profiling=True,
                  cache_dir=None):
         '''
         Constructor.
@@ -309,6 +310,7 @@ class PostTrainingQuantization(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._is_full_quantize = is_full_quantize
+        self._profiling = profiling
         if is_full_quantize:
             self._quantizable_op_type = self._support_quantize_op_type
         else:
@@ -393,13 +395,26 @@ class PostTrainingQuantization(object):
             if self._batch_nums and batch_id >= self._batch_nums:
                 break
         _logger.info("Finish sampling stage, all batch: " + str(batch_id))
-        self._reset_activation_persistable()
+        if not self._profiling:
+            self._reset_activation_persistable()
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
                 self._quantized_threshold[var_name] = \
                 np.array(self._quantized_var_avg[var_name]).mean()
         if self._algo in ["KL", "hist"]:
             self._calculate_kl_hist_threshold()
+        if self._profiling:
+            _logger.info("calculating the cos-similarity") 
+            if self._algo in ["KL", "hist"]:
+                scale_dict = self._quantized_var_threshold
+            else:
+                scale_dict = self._quantized_threshold
+            for name, scale in scale_dict.items():
+                cos_sim = self._cal_quant_error(scale, name)
+                if cos_sim < 0.99:
+                    _logger.info(name + ':  ' + str(cos_sim))
+            self._reset_activation_persistable()
+
         if self._algo in ["KL", "abs_max", "hist", "avg", "mse"]:
             self._update_program()
         else:
@@ -554,6 +569,44 @@ class PostTrainingQuantization(object):
             self._sample_mse()
         elif self._algo in ["KL", "hist"]:
             self._sample_histogram()
+
+    def _qdq(self, x, scale, num_bits, quant_axis):
+        assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
+        bnt = (1 << (num_bits - 1)) - 1
+
+        def _clip(x, scale):
+            x[x > scale] = scale
+            x[x < -scale] = -scale
+            return x
+
+        if isinstance(scale, list):
+            for i, s in enumerate(scale):
+                if s == 0.0:
+                    s = 1e-8
+                if quant_axis == 0:
+                    x[i] = _clip(x[i], s)
+                    x[i] = np.round(x[i] / s * bnt) * s / bnt
+                else:
+                    x[:, i] = _clip(x[:, i], s)
+                    x[:, i] = np.round(x[:, i] / s * bnt) *s /bnt
+        else:
+            scale = 1e-8 if scale == 0.0 else scale
+            x = _clip(x, scale)
+            x = np.round(x / scale * bnt) * scale / bnt
+        return x
+
+    def _cal_quant_error(self, scale, var_name):
+        var_tensor = _load_variable_data(self._scope, var_name)
+        quant_axis = 0
+        if var_name in self._quantized_weight_var_name and \
+           self._weight_op_pairs[var_name] in _channelwise_quant_axis1_ops:
+            quant_axis = 1
+        qdq_var = self._qdq(var_tensor, scale, self._activation_bits, quant_axis)
+        from numpy import inner
+        from numpy.linalg import norm
+        cos_sim = inner(var_tensor.flatten(), qdq_var.flatten()) \
+                  / (norm(var_tensor.flatten()) * norm(qdq_var.flatten()))
+        return cos_sim
 
     def _sample_mse(self):
         if self._quantized_threshold == {}:
