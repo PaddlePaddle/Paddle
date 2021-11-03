@@ -34,6 +34,7 @@ Carrier::~Carrier() {
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // enqueue message to interceptor
+  return true;
 }
 
 void Carrier::CreateInterceptor() {

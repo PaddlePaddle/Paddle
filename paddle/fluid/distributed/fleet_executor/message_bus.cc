@@ -26,6 +26,7 @@ namespace distributed {
 
 bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
   // called by Interceptor, send InterceptorMessage to dst
+  return true;
 }
 
 void MessageBus::ListenPort() {
@@ -34,14 +35,17 @@ void MessageBus::ListenPort() {
 
 bool MessageBus::DstIsSameRank(int64_t src_id, int64_t dst_id) {
   // check whether the dst is the same rank or different rank with src
+  return true;
 }
 
 bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   // send the message inter rank (dst is different rank with src)
+  return true;
 }
 
 bool SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
+  return true;
 }
 
 }  // namespace distributed

@@ -72,11 +72,11 @@ class Interceptor {
 
   // remote mailbox, written by EnqueueRemoteMessage()
   // read by FetchRemoteMailbox()
-  std::queue<const InterceptorMessage> remote_mailbox_;
+  std::queue<InterceptorMessage> remote_mailbox_;
 
   // local mailbox, written by FetchRemoteMailbox()
   // read by PoolTheMailbox()
-  std::queue<const InterceptorMessage> local_mailbox_;
+  std::queue<InterceptorMessage> local_mailbox_;
 };
 
 }  // namespace distributed

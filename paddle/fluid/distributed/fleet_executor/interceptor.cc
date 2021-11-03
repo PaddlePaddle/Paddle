@@ -25,11 +25,13 @@ Interceptor::Interceptor(int64_t logic_interceptor_id, TaskNode* node) {
 
 int64_t Interceptor::GetInterceptorId() const {
   // return the logic interceptor id
+  return 0;
 }
 
 bool Interceptor::EnqueueRemoteInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
+  return true;
 }
 
 void Interceptor::PoolTheMailbox() {
@@ -39,6 +41,7 @@ void Interceptor::PoolTheMailbox() {
 bool Interceptor::FetchRemoteMailbox() {
   // fetch all Message from remote mailbox to local mailbox
   // return true if remote mailbox not empty, otherwise return false
+  return true;
 }
 
 }  // namespace distributed
