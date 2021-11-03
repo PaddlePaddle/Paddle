@@ -23,147 +23,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-// TODO(chenweihang, shixiaowei): adapt SelectedRows
-template <>
-std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, LoDTensor>(
-    const LoDTensor& tensor, pten::Backend backend,
-    paddle::experimental::DataType dtype,
-    paddle::experimental::DataLayout layout) {
-  auto holder = tensor.Holder();
-  auto tensor_impl = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(tensor.dims(), backend, dtype, layout, tensor.offset()),
-      pten::TensorStatus());
-
-  if (holder != nullptr) {
-    tensor_impl->ShareAllocation(tensor.Holder());
-  }
-  return tensor_impl;
-}
-
-template <>
-std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor, Tensor>(
-    const Tensor& tensor, pten::Backend backend,
-    paddle::experimental::DataType dtype,
-    paddle::experimental::DataLayout layout) {
-  auto holder = tensor.Holder();
-  auto tensor_impl = std::make_shared<pten::DenseTensor>(
-      pten::TensorMeta(tensor.dims(), backend, dtype, layout, tensor.offset()),
-      pten::TensorStatus());
-
-  if (holder != nullptr) {
-    tensor_impl->ShareAllocation(tensor.Holder());
-  }
-  return tensor_impl;
-}
-
-template <>
-std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor>(
-    const LoDTensor& tensor, const platform::Place& place,
-    proto::VarType::Type type) {
-  return MakeTensorImpl<pten::DenseTensor, LoDTensor>(
-      tensor, pten::TransToPtenBackend(place), pten::TransToPtenDataType(type),
-      pten::TransToPtenDataLayout(tensor.layout()));
-}
-
-template <>
-std::shared_ptr<pten::DenseTensor> MakeTensorImpl<pten::DenseTensor>(
-    const Tensor& tensor, const platform::Place& place,
-    proto::VarType::Type type) {
-  return MakeTensorImpl<pten::DenseTensor, Tensor>(
-      tensor, pten::TransToPtenBackend(place), pten::TransToPtenDataType(type),
-      pten::TransToPtenDataLayout(tensor.layout()));
-}
-
-template <>
-void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
-                                        LoDTensor* out) {
-  out->ResetHolderWithType(tensor_impl->allocation(),
-                           pten::TransToProtoVarType(tensor_impl->data_type()));
-}
-
-template <>
-void ShareTensorImpl<pten::DenseTensor>(pten::DenseTensor* tensor_impl,
-                                        Tensor* out) {
-  out->ResetHolderWithType(tensor_impl->allocation(),
-                           pten::TransToProtoVarType(tensor_impl->data_type()));
-}
-
-std::shared_ptr<pten::TensorBase> InputVariableToPtenTensor(
-    const framework::Variable& variable, const pten::TensorArgDef& arg_def) {
-  auto expected_place = pten::TransToFluidPlace(arg_def.backend);
-
-  if (variable.template IsType<framework::LoDTensor>()) {
-    const auto& tensor = variable.template Get<framework::LoDTensor>();
-    if (!platform::is_same_place(tensor.place(), expected_place)) {
-      framework::LoDTensor tmp_tensor;
-      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
-      auto pt_in =
-          framework::MakeTensorImpl<pten::DenseTensor, framework::LoDTensor>(
-              tmp_tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
-      return pt_in;
-    } else {
-      auto pt_in =
-          framework::MakeTensorImpl<pten::DenseTensor, framework::LoDTensor>(
-              tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
-      return pt_in;
-    }
-  } else if (variable.template IsType<framework::SelectedRows>()) {
-    // TODO(chenweihang): now we don't deal with row and height
-    // by xiaowei's advice
-    const auto& tensor = variable.template Get<framework::SelectedRows>();
-    if (!platform::is_same_place(tensor.value().place(), expected_place)) {
-      framework::Tensor tmp_tensor;
-      TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
-      // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-      auto pt_in =
-          framework::MakeTensorImpl<pten::DenseTensor, framework::Tensor>(
-              tmp_tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
-      return pt_in;
-    } else {
-      auto pt_in =
-          framework::MakeTensorImpl<pten::DenseTensor, framework::Tensor>(
-              tensor.value(), arg_def.backend, arg_def.dtype, arg_def.layout);
-      return pt_in;
-    }
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported shared input `%s` type now when call pt kernel.",
-        framework::ToTypeName(variable.Type())));
-  }
-  return nullptr;
-}
-
-std::shared_ptr<pten::TensorBase> OutputVariableToPtenTensor(
-    framework::Variable* variable, const pten::TensorArgDef& arg_def) {
-  // mutable_data before run kernel, to avoid share output form
-  // KernelContext to original tensor
-  if (variable->template IsType<framework::LoDTensor>()) {
-    auto* tensor = variable->template GetMutable<framework::LoDTensor>();
-    tensor->mutable_data(pten::TransToFluidPlace(arg_def.backend),
-                         pten::TransToProtoVarType(arg_def.dtype));
-    auto pt_out =
-        framework::MakeTensorImpl<pten::DenseTensor, framework::LoDTensor>(
-            *tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
-    return pt_out;
-  } else if (variable->template IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->template GetMutable<framework::SelectedRows>();
-    tensor->mutable_value()->mutable_data(
-        pten::TransToFluidPlace(arg_def.backend),
-        pten::TransToProtoVarType(arg_def.dtype));
-    // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
-    // here the row and height will lost in output!
-    auto pt_out =
-        framework::MakeTensorImpl<pten::DenseTensor, framework::Tensor>(
-            tensor->value(), arg_def.backend, arg_def.dtype, arg_def.layout);
-    return pt_out;
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported shared output `%s` type now when call pt kernel.",
-        framework::ToTypeName(variable->Type())));
-  }
-
-  return nullptr;
-}
 
 OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
@@ -200,9 +59,41 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
+KernelSignatureMap* KernelSignatureMap::kernel_signature_map_ = nullptr;
+std::mutex KernelSignatureMap::mutex_;
+
 KernelSignatureMap& KernelSignatureMap::Instance() {
-  static KernelSignatureMap g_kernel_signature_map;
-  return g_kernel_signature_map;
+  if (kernel_signature_map_ == nullptr) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (kernel_signature_map_ == nullptr) {
+      kernel_signature_map_ = new KernelSignatureMap;
+    }
+  }
+  return *kernel_signature_map_;
+}
+
+bool KernelSignatureMap::Has(const std::string& op_type) const {
+  return map_.find(op_type) != map_.end();
+}
+
+void KernelSignatureMap::Emplace(const std::string& op_type,
+                                 KernelSignature&& signature) {
+  if (!Has(op_type)) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!Has(op_type)) {
+      map_.emplace(op_type, signature);
+    }
+  }
+}
+
+const KernelSignature& KernelSignatureMap::Get(
+    const std::string& op_type) const {
+  auto it = map_.find(op_type);
+  PADDLE_ENFORCE_NE(
+      it, map_.end(),
+      platform::errors::NotFound(
+          "Operator `%s`'s kernel signature is not registered.", op_type));
+  return it->second;
 }
 
 const paddle::SmallVector<std::string>&
@@ -265,20 +156,12 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return std::make_pair(
-      op_proto_->type(),
-      std::make_tuple(GetInputArgsNames(), GetAttrsArgsNames(),
-                      GetOutputArgsNames()));
-}
-
-std::string KernelSignatureToString(const KernelSignature& signature) {
   std::stringstream os;
-  os << "Kernel Signature - name: " << signature.first << "; inputs: "
-     << string::join_strings(std::get<0>(signature.second), ", ")
+  os << "Kernel Signature - name: " << signature.name
+     << "; inputs: " << string::join_strings(std::get<0>(signature.args), ", ")
      << "; attributes: "
-     << string::join_strings(std::get<1>(signature.second), ", ")
-     << "; outputs: "
-     << string::join_strings(std::get<2>(signature.second), ", ");
+     << string::join_strings(std::get<1>(signature.args), ", ") << "; outputs: "
+     << string::join_strings(std::get<2>(signature.args), ", ");
   return os.str();
 }
 

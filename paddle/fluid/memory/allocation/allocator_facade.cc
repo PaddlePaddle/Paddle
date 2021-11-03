@@ -202,7 +202,7 @@ class AllocatorFacadePrivate {
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, size_t size) {
-    VLOG(4) << "GetAllocator"
+    VLOG(6) << "GetAllocator"
             << " " << place << " " << size;
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_

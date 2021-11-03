@@ -51,7 +51,7 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
-DECLARE_bool(run_pt_kernel);
+DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 namespace framework {
@@ -63,7 +63,7 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-static DDim GetDimsDebug(const Scope& scope, const std::string& name,
+static DDim GetDimsDebug(const ScopeBase& scope, const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -86,13 +86,13 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
   }
 }
 
-static bool VarInited(const Scope& scope, const std::string& name) {
+static bool VarInited(const ScopeBase& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) return false;
   return var->IsInitialized();
 }
 
-static std::string GetDtype(const Scope& scope, const std::string& name) {
+static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return "";
@@ -118,7 +118,7 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
   }
 }
 
-static std::string GetPlace(const Scope& scope, const std::string& name) {
+static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return "";
@@ -147,7 +147,7 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   }
 }
 
-static int GetRowSize(const Scope& scope, const std::string& name) {
+static int GetRowSize(const ScopeBase& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return -1;
@@ -160,7 +160,7 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
+static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
 
@@ -309,7 +309,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
   return it->second;
 }
 
-std::string OperatorBase::DebugStringEx(const Scope* scope) const {
+std::string OperatorBase::DebugStringEx(const ScopeBase* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
 
@@ -1130,14 +1130,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
-  if (FLAGS_run_pt_kernel &&
+  if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtenKernel(exe_ctx);
     }
-    run_pt_kernel_ = pt_kernel_->IsValid();
+    run_pten_kernel_ = pt_kernel_->IsValid();
   }
-  if (!run_pt_kernel_) {
+  if (!run_pten_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
     }
@@ -1178,7 +1178,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
-    if (run_pt_kernel_) {
+    if (run_pten_kernel_) {
       auto op_kernel_ctx = BuildPtenKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
     } else {
@@ -1278,7 +1278,7 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->first);
+  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->name);
   auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(
       new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
@@ -1763,14 +1763,13 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  if (KernelSignatureMap::Instance().Has(Type())) {
-    return *(KernelSignatureMap::Instance().GetNullable(Type()));
-  } else {
+  if (!KernelSignatureMap::Instance().Has(Type())) {
+    // TODO(chenweihang): we can generate this map by proto info in compile time
     KernelArgsNameMakerByOpProto maker(Info().proto_);
-    auto signature = std::move(maker.GetKernelSignature());
-    KernelSignatureMap::Instance().Insert(Type(), signature);
-    return signature;
+    KernelSignatureMap::Instance().Emplace(
+        Type(), std::move(maker.GetKernelSignature()));
   }
+  return KernelSignatureMap::Instance().Get(Type());
 }
 
 pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
@@ -1784,9 +1783,9 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
   // 5. kernel input is not DenseTensor
   pten::KernelContext op_kernel_ctx(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature_->second);
-  auto& attr_names = std::get<1>(pt_kernel_signature_->second);
-  auto& output_names = std::get<2>(pt_kernel_signature_->second);
+  auto& input_names = std::get<0>(pt_kernel_signature_->args);
+  auto& attr_names = std::get<1>(pt_kernel_signature_->args);
+  auto& output_names = std::get<2>(pt_kernel_signature_->args);
 
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
@@ -1819,10 +1818,10 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
 
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
     for (auto var : ins_vector) {
-      auto pt_in = framework::InputVariableToPtenTensor(*var, in_def);
-      tmp_inputs.emplace_back(pt_in);
+      tmp_inputs.emplace_back(
+          experimental::MakePtenTensorBaseFromVar(*var, in_def));
     }
-    op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
+    op_kernel_ctx.EmplaceBackInputs(std::move(tmp_inputs));
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -1831,10 +1830,10 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
 
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
-      auto pt_out = framework::OutputVariableToPtenTensor(var, out_def);
-      tmp_outputs.emplace_back(pt_out);
+      tmp_outputs.emplace_back(
+          experimental::MakePtenTensorBaseFromVar(var, out_def));
     }
-    op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
+    op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
@@ -1845,7 +1844,7 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
-            pten::Scalar(BOOST_GET_CONST(float, attr)));
+            std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "

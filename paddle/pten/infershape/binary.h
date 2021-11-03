@@ -21,15 +21,24 @@ namespace pten {
 
 // Common InferShape Functions for binary operators, The format like:
 //
-//   1. TensorMeta [OpName]InferShape(const TensorMeta& x_meta, ...) {}
-//   2. std::pair<TensorMeta, TensorMeta> [OpName]InferShape(const TensorMeta&
+//   1. DenseTensorMeta [OpName]InferShape(const DenseTensorMeta& x_meta, ...)
+//   {}
+//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferShape(const
+//   DenseTensorMeta&
 //   x_meta, ...) {}
-//   3. std::tuple<TensorMeta, TensorMeta, TensorMeta> [OpName]InferShape(const
-//   TensorMeta& x_meta, ...)
+//   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
+//   [OpName]InferShape(const
+//   DenseTensorMeta& x_meta, ...)
 //  NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-TensorMeta DotInferShape(const TensorMeta& x_meta, const TensorMeta& y_meta);
+DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
+                              const DenseTensorMeta& y_meta);
+
+DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
+                                 const DenseTensorMeta& y_meta,
+                                 bool trans_x,
+                                 bool trans_y);
 
 }  // namespace pten

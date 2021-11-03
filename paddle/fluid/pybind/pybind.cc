@@ -227,6 +227,23 @@ bool SupportsBfloat16FastPerformance() {
 #endif
 }
 
+bool SupportsInt8() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return (platform::MayIUse(platform::cpu_isa_t::avx2) ||
+          platform::MayIUse(platform::cpu_isa_t::avx512f));
+#endif
+}
+
+bool SupportsVNNI() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
+#endif
+}
+
 // According to the input `place` and `dtype`, this function returns a tuple
 // consists of three sets:
 // 1) All operators registered in the Paddle framework.
@@ -1711,6 +1728,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+  m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
+    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+  });
+  m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
+    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+  });
 #endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -2040,7 +2065,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2060,10 +2085,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](StandaloneExecutor &self,
-              const std::unordered_map<std::string, framework::Tensor>
+              const std::unordered_map<std::string, framework::LoDTensor>
                   &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2081,7 +2106,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2115,6 +2140,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
+  m.def("supports_int8", SupportsInt8);
+  m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);

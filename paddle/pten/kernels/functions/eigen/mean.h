@@ -25,8 +25,6 @@ namespace eigen {
 
 template <typename DevCtx, typename T>
 void Mean(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  out->mutable_data<T>();
-
   // TODO(chenweihang): if we design new tensor, we should support
   // the low-level calc functor use new tensor as input,
   // which may be a big project!

@@ -74,18 +74,11 @@ class ScaleOp : public framework::OperatorWithKernel {
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
     if (ctx.HasInput("ScaleTensor")) {
-      return std::make_pair(
-          "scale.host",
-          std::make_tuple(
-              paddle::SmallVector<std::string>({"X", "ScaleTensor"}),
-              paddle::SmallVector<std::string>({"bias", "bias_after_scale"}),
-              paddle::SmallVector<std::string>({"Out"})));
+      return framework::KernelSignature("scale.host", {"X", "ScaleTensor"},
+                                        {"bias", "bias_after_scale"}, {"Out"});
     } else {
-      return std::make_pair(
-          "scale", std::make_tuple(paddle::SmallVector<std::string>({"X"}),
-                                   paddle::SmallVector<std::string>(
-                                       {"scale", "bias", "bias_after_scale"}),
-                                   paddle::SmallVector<std::string>({"Out"})));
+      return framework::KernelSignature(
+          "scale", {"X"}, {"scale", "bias", "bias_after_scale"}, {"Out"});
     }
   }
 };

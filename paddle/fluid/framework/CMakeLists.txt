@@ -26,7 +26,9 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
-add_subdirectory(paddle2cinn)
+if (WITH_CINN)
+  add_subdirectory(paddle2cinn)
+endif()
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -115,7 +117,7 @@ cc_test(reader_test SRCS reader_test.cc DEPS reader)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto)
+cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto scope)
 if (WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -195,10 +197,12 @@ cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_va
 
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils pten pten_utils)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
+    pten pten_utils kernel_factory)
 ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils pten pten_utils)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
+    pten pten_utils kernel_factory)
 ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -353,7 +357,7 @@ target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_h
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
         graph build_strategy bind_threaded_ssa_graph_executor collective_helper
-        fast_threaded_ssa_graph_executor variable_helper cinn_runner)
+        fast_threaded_ssa_graph_executor variable_helper)
 
 cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
 if(WITH_PSCORE)
@@ -392,7 +396,7 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows place pten var_type_traits)
+cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows place pten var_type_traits pten_hapi_utils)
 
 # Get the current working branch
 execute_process(

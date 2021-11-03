@@ -52,42 +52,44 @@ class KernelContext {
   }
 
   void EmplaceBackInput(std::shared_ptr<TensorBase> input) {
-    inputs_.emplace_back(input);
-    // Record the start and end index of the input
     int index = inputs_.size();
+    inputs_.emplace_back(std::move(input));
+    // Record the start and end index of the input
     input_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
   void EmplaceBackInputs(
       const paddle::SmallVector<std::shared_ptr<TensorBase>>& inputs) {
+    int index = inputs_.size();
     for (auto in : inputs) {
-      inputs_.emplace_back(in);
+      inputs_.emplace_back(std::move(in));
     }
     // Record the start and end index of the input
-    int index = inputs_.size();
     input_range_.emplace_back(
         std::pair<int, int>(index, index + inputs.size()));
   }
 
   void EmplaceBackOutput(std::shared_ptr<TensorBase> output) {
-    outputs_.emplace_back(output);
-    // Record the start and end index of the input
     int index = outputs_.size();
+    outputs_.emplace_back(std::move(output));
+    // Record the start and end index of the input
     output_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
   void EmplaceBackOutputs(
       const paddle::SmallVector<std::shared_ptr<TensorBase>>& outputs) {
+    int index = outputs_.size();
     for (auto out : outputs) {
-      outputs_.emplace_back(out);
+      outputs_.emplace_back(std::move(out));
     }
     // Record the start and end index of the input
-    int index = outputs_.size();
     output_range_.emplace_back(
         std::pair<int, int>(index, index + outputs.size()));
   }
 
-  void EmplaceBackAttr(paddle::any attr) { attrs_.emplace_back(attr); }
+  void EmplaceBackAttr(paddle::any attr) {
+    attrs_.emplace_back(std::move(attr));
+  }
 
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
@@ -95,8 +97,37 @@ class KernelContext {
   }
 
   template <typename TensorType>
+  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+    std::vector<TensorType> v;
+    for (size_t i = start; i < end; ++i) {
+      auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
+      v.emplace_back(std::move(*t.get()));
+    }
+
+    return v;
+  }
+
+  const std::pair<int, int>& InputRangeAt(size_t idx) const {
+    return input_range_.at(idx);
+  }
+
+  const std::pair<int, int>& OutputRangeAt(size_t idx) const {
+    return output_range_.at(idx);
+  }
+
+  template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
     return static_cast<TensorType*>(outputs_.at(idx).get());
+  }
+
+  template <typename TensorType>
+  std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
+    std::vector<TensorType*> v;
+    for (size_t i = start; i < end; ++i) {
+      v.emplace_back(static_cast<TensorType*>(outputs_.at(i).get()));
+    }
+
+    return v;
   }
 
   template <typename AttrType>
@@ -118,18 +149,19 @@ class KernelContext {
 
   // TODO(chenweihang): Tensor -> Tensor*, Tensor should by managed `scope`
   // Note: can't use API Tensor here, the inference don't use this API Tensor
-  paddle::SmallVector<std::shared_ptr<TensorBase>> inputs_{};
-  paddle::SmallVector<std::shared_ptr<TensorBase>> outputs_{};
-  paddle::SmallVector<paddle::any> attrs_{};
+
+  paddle::SmallVector<std::shared_ptr<TensorBase>> inputs_;
+  paddle::SmallVector<std::shared_ptr<TensorBase>> outputs_;
+  paddle::SmallVector<paddle::any> attrs_;
 
   // Only contains input like list[Tensor] need `range`
-  paddle::SmallVector<std::pair<int, int>> input_range_{{}};
-  paddle::SmallVector<std::pair<int, int>> output_range_{{}};
+  paddle::SmallVector<std::pair<int, int>> input_range_;
+  paddle::SmallVector<std::pair<int, int>> output_range_;
 
   // Only static graph need `name`
   // TODO(chenweihang): replaced by paddle::string_view
-  paddle::SmallVector<std::string> input_names_{{}};
-  paddle::SmallVector<std::string> output_names_{{}};
+  paddle::SmallVector<std::string> input_names_;
+  paddle::SmallVector<std::string> output_names_;
 };
 
 }  // namespace pten

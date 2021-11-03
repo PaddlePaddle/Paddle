@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -190,7 +191,7 @@ class PreparedOp {
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
-  bool run_pt_kernel_{false};
+  bool run_pten_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
   pten::Kernel pt_kernel_;
 };

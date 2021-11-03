@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-DISTRIBUTED_OPERATORS = {}
+_g_distributed_operator_impl_registries = {}
 
 
-class DistributedOperator:
+class DistributedOperatorImplContainer:
     def __init__(self):
         self._impls = []
         self._name = None
@@ -47,67 +47,60 @@ class DistributedOperatorImpl:
     def get_name(self):
         return self._name
 
-    def is_process_mesh_compatible(self, op_dist_attr):
+    def is_input_compatible(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
-    def is_input_compatible(self, op_dist_attr):
+    def is_output_compatible(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
-    def is_output_compatible(self, op_dist_attr):
-        raise NotImplementedError("Please Implement this method in Subclass.")
+    def is_compatible(self, dist_op):
+        return self.is_input_compatible(dist_op) and \
+            self.is_output_compatible(dist_op)
 
-    def is_compatible(self, op_dist_attr):
-        return self.is_process_mesh_compatible(op_dist_attr) \
-            and self.is_input_compatible(op_dist_attr) \
-            and self.is_output_compatible(op_dist_attr)
-
-    def update_dims_mapping(self, op_dist_attr):
+    def update_dims_mapping(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
 
-def register_distributed_operator(name, dist_op):
-    global DISTRIBUTED_OPERATORS
-    DISTRIBUTED_OPERATORS[name] = dist_op
+def register_distributed_operator_impl_container(name, dist_op_impl_container):
+    global _g_distributed_operator_impl_registries
+    _g_distributed_operator_impl_registries[name] = dist_op_impl_container
 
 
-def get_distributed_operator(name):
-    global DISTRIBUTED_OPERATORS
-    return DISTRIBUTED_OPERATORS.get(name, None)
+def get_distributed_operator_impl_container(name):
+    global _g_distributed_operator_impl_registries
+    return _g_distributed_operator_impl_registries.get(name, None)
 
 
 def register_distributed_operator_impl(name, dist_impl):
-    dist_op = get_distributed_operator(name)
-    if dist_op is not None:
-        dist_op.register_impl(dist_impl)
+    dist_op_impl_container = get_distributed_operator_impl_container(name)
+    if dist_op_impl_container is not None:
+        dist_op_impl_container.register_impl(dist_impl)
     else:
-        assert False, "Must register distributed operator first."
+        assert False, "Must register distributed operator registry first."
 
 
 def get_distributed_operator_impl(name, impl_idx):
-    global DISTRIBUTED_OPERATORS
-    return DISTRIBUTED_OPERATORS[name].get_impl(impl_idx)
+    global _g_distributed_operator_impl_registries
+    return _g_distributed_operator_impl_registries[name].get_impl(impl_idx)
 
 
-def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
-                                                   fwd=True):
+def find_best_compatible_distributed_operator_impl(name, dist_op, fwd=True):
     """
     Here just return the first compatible implemention. 
     This will be improved by cost model in the future.
     """
-    dist_op = get_distributed_operator(name)
-    if dist_op is None:
+    dist_op_impl_container = get_distributed_operator_impl_container(name)
+    if dist_op_impl_container is None:
         return None, -1
     compatible_impls = []
-    impls = dist_op.get_impls()
+    impls = dist_op_impl_container.get_impls()
     if fwd:
         for idx, impl in enumerate(impls):
-            if impl.is_process_mesh_compatible(op_dist_attr) \
-                and impl.is_input_compatible(op_dist_attr):
+            if impl.is_input_compatible(dist_op):
                 compatible_impls.append((impl, idx))
     else:
         for idx, impl in enumerate(impls):
-            if impl.is_process_mesh_compatible(op_dist_attr) \
-                and impl.is_output_compatible(op_dist_attr):
+            if impl.is_output_compatible(dist_op):
                 compatible_impls.append((impl, idx))
 
     if compatible_impls:
@@ -118,48 +111,37 @@ def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
     return best_compatible_impl, idx
 
 
-def copy_distributed_attr_for_var(src_op_dist_attr, var, src_var):
+def copy_distributed_attr_for_var(dist_context, dst_var, src_var):
     """
     copy src var's dist_attr to dst var
     """
-    import copy
-
-    auto_paralle_context = src_op_dist_attr.get_owner_context()
-    dist_attr = copy.deepcopy(
-        auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
-    dist_attr._owner_tensor = var
-    dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
-        src_var)._owner_context
-    auto_paralle_context.set_tensor_distributed_attr_for_program(var, dist_attr)
+    dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
+    dist_context.set_tensor_dist_attr_for_program(dst_var, dist_attr)
 
 
-def copy_distributed_attr_for_dist_op(dist_op, dst_block, src_op_dist_attr):
+def copy_distributed_attr_for_dist_op(dist_context, dist_op, dst_block,
+                                      src_op_dist_attr):
     """
     copy src op's dist_attr to dst dist op
     """
-    from ..attribute import OperatorDistributedAttribute
+    from ..dist_attribute import OperatorDistributedAttribute
+    # need check dist op attr and its inputs and outputs
 
-    auto_paralle_context = src_op_dist_attr.get_owner_context()
-    op_dist_attr = OperatorDistributedAttribute(dist_op, auto_paralle_context)
-    auto_paralle_context._copy_distributed_attr_from_op_desc(dist_op.desc,
-                                                             op_dist_attr)
-    auto_paralle_context.set_op_distributed_attr_for_program(dist_op,
-                                                             op_dist_attr)
-
-    op_dist_attr.set_process_mesh(src_op_dist_attr.get_process_mesh())
-    op_dist_attr.set_impl_idx(src_op_dist_attr.get_impl_idx())
+    op_dist_attr = OperatorDistributedAttribute()
+    op_dist_attr.process_mesh = src_op_dist_attr.process_mesh
+    op_dist_attr.impl_idx = src_op_dist_attr.impl_idx
 
     for input_varname in dist_op.desc.input_arg_names():
         input_var = dst_block.var(input_varname)
-        tensor_dist_attr = auto_paralle_context.get_tensor_distributed_attr_for_program(
+        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
             input_var)
-        tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
-        op_dist_attr.set_input_dims_mapping(input_varname, tensor_dims_mapping)
+        op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
 
     for output_varname in dist_op.desc.output_arg_names():
         output_var = dst_block.var(output_varname)
-        tensor_dist_attr = auto_paralle_context.get_tensor_distributed_attr_for_program(
+        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
             output_var)
-        tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
-        op_dist_attr.set_output_dims_mapping(output_varname,
-                                             tensor_dims_mapping)
+        op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+
+    dist_context.set_op_dist_attr_for_program(dist_op, op_dist_attr)
+    op_dist_attr = dist_context.get_op_dist_attr_for_program(dist_op)

@@ -19,6 +19,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/hapi/lib/kernel_dispatch.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 #include "paddle/pten/infershape/unary.h"
 
 namespace paddle {
@@ -46,8 +47,9 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
 
   // 5. Prepare outputs
   Tensor out;
-  auto dense_out =
-      std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());
+  const auto allocator = std::make_shared<DefaultAllocator>(
+      pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 

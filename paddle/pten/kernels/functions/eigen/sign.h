@@ -25,11 +25,7 @@ namespace eigen {
 
 template <typename DevCtx, typename T>
 void Sign(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  VLOG(1) << "enter module::Sign";
-  // out->mutable_data<T>(x.place());
   out->mutable_data<T>();
-
-  VLOG(1) << "module::Sign, calc by eigen.";
   // TODO(chenweihang): if we design new tensor, we should support
   // the low-level calc functor use new tensor as input,
   // which may be a big project!

@@ -24,8 +24,8 @@ using DDim = paddle::framework::DDim;
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
-using DenseTensor = pten::candidate::DenseTensor;
-using DenseTensorMeta = pten::candidate::DenseTensorMeta;
+using DenseTensor = pten::DenseTensor;
+using DenseTensorMeta = pten::DenseTensorMeta;
 
 TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   const DDim dims({2, 1});
@@ -56,7 +56,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   CHECK(lod_tensor.data<float>()[0] == 1.0f);
   CHECK(lod_tensor.data<float>()[1] == 2.1f);
 
-  auto dense_tensor_1 = MakeSharedDenseTensor(lod_tensor);
+  auto dense_tensor_1 = MakePtenDenseTensor(lod_tensor);
   CHECK(dense_tensor_1->dims() == dims);
   CHECK(dense_tensor_1->data_type() == dtype);
   CHECK(dense_tensor_1->layout() == layout);
@@ -90,13 +90,34 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   CHECK(tensor.data<float>()[0] == 1.0f);
   CHECK(tensor.data<float>()[1] == 2.1f);
 
-  auto dense_tensor_1 = MakeSharedDenseTensor(tensor);
+  auto dense_tensor_1 = MakePtenDenseTensor(tensor);
   CHECK(dense_tensor_1->dims() == dims);
   CHECK(dense_tensor_1->data_type() == dtype);
   CHECK(dense_tensor_1->layout() == layout);
   const float* data_1 = dense_tensor_1->data<float>();
   CHECK(data_1[0] == 1.0f);
   CHECK(data_1[1] == 2.1f);
+}
+
+TEST(PtenUtils, VarToPtTensor) {
+  // 1. create Variable
+  paddle::framework::Variable v;
+  auto selected_rows = v.GetMutable<paddle::framework::SelectedRows>();
+  paddle::framework::Tensor* value = selected_rows->mutable_value();
+  auto* data = value->mutable_data<int>(paddle::framework::make_ddim({1, 1}),
+                                        paddle::platform::CPUPlace());
+  data[0] = 123;
+  pten::Backend expect_backend = pten::Backend::CPU;
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  expect_backend = pten::Backend::CUDA;
+#endif
+  auto tensor_def = pten::TensorArgDef(
+      expect_backend, pten::DataLayout::NCHW, pten::DataType::INT32);
+  // 2. test API
+  auto tensor_x = MakePtenTensorBaseFromVar(v, tensor_def);
+  // 3. check result
+  ASSERT_EQ(tensor_x->data_type(), pten::DataType::INT32);
 }
 
 }  // namespace tests

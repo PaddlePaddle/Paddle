@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/api/include/infershape.h"
 #include "paddle/pten/hapi/lib/kernel_dispatch.h"
+#include "paddle/pten/hapi/lib/utils/allocator.h"
 
 namespace paddle {
 namespace experimental {
@@ -50,10 +51,12 @@ Tensor full_like(const Tensor& x,
   Tensor out;
   // InferDataType
   if (dtype != pten::DataType::UNDEFINED) {
-    out_meta.type = dtype;
+    const_cast<pten::DenseTensorMeta::DataType&>(out_meta.type) = dtype;
   }
-  auto dense_out =
-      std::make_shared<pten::DenseTensor>(out_meta, pten::TensorStatus());
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 

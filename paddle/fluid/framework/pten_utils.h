@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -25,40 +26,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/include/core.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace paddle {
 namespace framework {
-
-/* tensor translate */
-
-template <typename PtenTensorImplT, typename VariableT>
-std::shared_ptr<PtenTensorImplT> MakeTensorImpl(
-    const VariableT& tensor, pten::Backend backend,
-    paddle::experimental::DataType dtype,
-    paddle::experimental::DataLayout layout);
-
-template <typename PtenTensorImplT>
-std::shared_ptr<PtenTensorImplT> MakeTensorImpl(const LoDTensor& tensor,
-                                                const platform::Place& place,
-                                                proto::VarType::Type type);
-
-template <typename PtenTensorImplT>
-std::shared_ptr<PtenTensorImplT> MakeTensorImpl(const Tensor& tensor,
-                                                const platform::Place& place,
-                                                proto::VarType::Type type);
-
-template <typename PtenTensorImplT>
-void ShareTensorImpl(PtenTensorImplT* tensor_impl, LoDTensor* out);
-
-template <typename PtenTensorImplT>
-void ShareTensorImpl(PtenTensorImplT* tensor_impl, Tensor* out);
-
-std::shared_ptr<pten::TensorBase> InputVariableToPtenTensor(
-    const framework::Variable& variable, const pten::TensorArgDef& arg_def);
-std::shared_ptr<pten::TensorBase> OutputVariableToPtenTensor(
-    framework::Variable* variable, const pten::TensorArgDef& arg_def);
 
 /* Kernel Key translate */
 
@@ -69,35 +42,44 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
 
 /* Kernel Args parse */
 
+struct KernelSignature {
+  std::string name;
+  KernelArgsTuple args;
+
+  KernelSignature() = default;
+  KernelSignature(std::string&& kernel_name,
+                  paddle::SmallVector<std::string>&& inputs,
+                  paddle::SmallVector<std::string>&& attrs,
+                  paddle::SmallVector<std::string>&& outputs)
+      : name(std::move(kernel_name)),
+        args(std::make_tuple(inputs, attrs, outputs)) {}
+  KernelSignature(const std::string& kernel_name,
+                  const paddle::SmallVector<std::string>& inputs,
+                  const paddle::SmallVector<std::string>& attrs,
+                  const paddle::SmallVector<std::string>& outputs)
+      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+};
+
 // TODO(chenweihang): we can generate this map by proto info in compile time
 class KernelSignatureMap {
  public:
   static KernelSignatureMap& Instance();
 
-  bool Has(const std::string& op_type) const {
-    return map_.find(op_type) != map_.end();
-  }
+  bool Has(const std::string& op_type) const;
 
-  void Insert(const std::string& op_type, const KernelSignature& signature) {
-    if (!Has(op_type)) {
-      map_.insert({op_type, signature});
-    }
-  }
+  void Emplace(const std::string& op_type, KernelSignature&& signature);
 
-  const KernelSignature* GetNullable(const std::string& op_type) const {
-    auto it = map_.find(op_type);
-    if (it == map_.end()) {
-      return nullptr;
-    } else {
-      return &it->second;
-    }
-  }
+  const KernelSignature& Get(const std::string& op_type) const;
 
  private:
   KernelSignatureMap() = default;
-  paddle::flat_hash_map<std::string, KernelSignature> map_;
-
   DISABLE_COPY_AND_ASSIGN(KernelSignatureMap);
+
+ private:
+  static KernelSignatureMap* kernel_signature_map_;
+  static std::mutex mutex_;
+
+  paddle::flat_hash_map<std::string, KernelSignature> map_;
 };
 
 class KernelArgsNameMaker {

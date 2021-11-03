@@ -20,6 +20,7 @@ limitations under the License. */
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/include/core.h"
 #include "paddle/pten/api/include/math.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -60,16 +61,13 @@ class ScaleKernel : public framework::OpKernel<T> {
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
-
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     out->mutable_data<T>(in->place());
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    auto pt_x = framework::MakeTensorImpl<pten::DenseTensor>(*in, in->place(),
-                                                             in->type());
-    auto pt_out = framework::MakeTensorImpl<pten::DenseTensor>(
-        *out, in->place(), in->type());
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
     pten::Scale<T>(dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,

@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -152,7 +153,7 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const Scope* scope) const;
+  virtual std::string DebugStringEx(const ScopeBase* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
@@ -600,7 +601,7 @@ class OperatorWithKernel : public OperatorBase {
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
-  mutable bool run_pt_kernel_ = false;
+  mutable bool run_pten_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
