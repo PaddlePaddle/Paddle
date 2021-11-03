@@ -197,6 +197,7 @@ from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
+from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
@@ -397,6 +398,7 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
+           'triangular_solve'
 ]
 
 #this list used in math_op_patch.py for magic_method bind

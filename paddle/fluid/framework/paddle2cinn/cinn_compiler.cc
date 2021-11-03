@@ -112,12 +112,15 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
           << cinn_graph->Visualize();
   ApplyPass(cinn_graph.get(), "OpFusion");
   auto scope = BuildScope(target, cinn_graph);
-  GraphCompiler graph_compiler(target, scope, cinn_graph);
+
+  auto graph_compiler =
+      std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
-  auto compiled_res = graph_compiler.Build(options);
+  auto compiled_res = graph_compiler->Build(options);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
-  *compiled_obj = {std::move(compiled_res.runtime_program), scope,
+  *compiled_obj = {std::move(graph_compiler),
+                   std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
   return compiled_obj;
 }

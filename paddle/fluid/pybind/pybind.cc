@@ -81,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
 #include "paddle/fluid/pybind/bind_cost_model.h"
+#include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -223,6 +224,23 @@ bool SupportsBfloat16FastPerformance() {
     return true;
   else
     return false;
+#endif
+}
+
+bool SupportsInt8() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return (platform::MayIUse(platform::cpu_isa_t::avx2) ||
+          platform::MayIUse(platform::cpu_isa_t::avx512f));
+#endif
+}
+
+bool SupportsVNNI() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
 #endif
 }
 
@@ -2046,7 +2064,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2066,10 +2084,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](StandaloneExecutor &self,
-              const std::unordered_map<std::string, framework::Tensor>
+              const std::unordered_map<std::string, framework::LoDTensor>
                   &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2087,7 +2105,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::Tensor> feed_tensors;
+             std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2121,6 +2139,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
+  m.def("supports_int8", SupportsInt8);
+  m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
@@ -2197,6 +2217,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
   BindProcessMeshDesc(&m);
+  BindFleetExecutor(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
