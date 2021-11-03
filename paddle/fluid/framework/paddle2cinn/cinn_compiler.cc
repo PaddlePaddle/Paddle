@@ -141,8 +141,8 @@ std::string CinnCompiler::VizGraph(const std::string& key) const {
                        [](const auto& val) { return std::to_string(val); });
         label += "\n" + string::join_strings(shape_str, ',');
       }
-      dot.AddNode(node_id,
-                  {Dot::Attr("shape", "ellipse"), Dot::Attr("style", "bold")},
+      dot.AddNode(node_id, {Dot::Attr("shape", "box"),
+                            Dot::Attr("style", "rounded,bold")},
                   label);
     }
     node2dot[n] = node_id;
