@@ -171,6 +171,8 @@ CUDA_ATOMIC_WRAPPER(Max, unsigned long long int) {  // NOLINT
 
     old = atomicCAS(address, assumed, val);
   } while (assumed != old);
+
+  return old;
 }
 #endif
 
@@ -178,9 +180,17 @@ CUDA_ATOMIC_WRAPPER(Max, int64_t) {
   // Here, we check long long int must be int64_t.
   static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
                 "long long should be int64");
-  return CudaAtomicMax(
-      reinterpret_cast<unsigned long long int *>(address),  // NOLINT
-      static_cast<unsigned long long int>(val));            // NOLINT
+  long long int res = *address;  // NOLINT
+  while (val > res) {
+    long long int old = res;                                           // NOLINT
+    res = (long long int)atomicCAS((unsigned long long int *)address,  // NOLINT
+                                   (unsigned long long int)old,        // NOLINT
+                                   (unsigned long long int)val);       // NOLINT
+    if (res == old) {
+      break;
+    }
+  }
+  return res;
 }
 
 CUDA_ATOMIC_WRAPPER(Max, float) {
@@ -247,6 +257,8 @@ CUDA_ATOMIC_WRAPPER(Min, unsigned long long int) {  // NOLINT
 
     old = atomicCAS(address, assumed, val);
   } while (assumed != old);
+
+  return old;
 }
 #endif
 
@@ -254,9 +266,18 @@ CUDA_ATOMIC_WRAPPER(Min, int64_t) {
   // Here, we check long long int must be int64_t.
   static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
                 "long long should be int64");
-  return CudaAtomicMin(
-      reinterpret_cast<unsigned long long int *>(address),  // NOLINT
-      static_cast<unsigned long long int>(val));            // NOLINT
+
+  long long int res = *address;  // NOLINT
+  while (val < res) {
+    long long int old = res;                                           // NOLINT
+    res = (long long int)atomicCAS((unsigned long long int *)address,  // NOLINT
+                                   (unsigned long long int)old,        // NOLINT
+                                   (unsigned long long int)val);       // NOLINT
+    if (res == old) {
+      break;
+    }
+  }
+  return res;
 }
 
 CUDA_ATOMIC_WRAPPER(Min, float) {
