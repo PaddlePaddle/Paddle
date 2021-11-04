@@ -551,7 +551,8 @@ PYBIND11_MODULE(core_noavx, m) {
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def("replay", &platform::CUDAGraph::Replay)
-      .def("reset", &platform::CUDAGraph::Reset);
+      .def("reset", &platform::CUDAGraph::Reset)
+      .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
