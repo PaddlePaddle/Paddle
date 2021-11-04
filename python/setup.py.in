@@ -334,6 +334,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.amp',
+          'paddle.cost_model',
           'paddle.hapi',
           'paddle.vision',
           'paddle.vision.models',
@@ -404,6 +405,7 @@ if os.name != 'nt':
 else:
     package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
+package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
 

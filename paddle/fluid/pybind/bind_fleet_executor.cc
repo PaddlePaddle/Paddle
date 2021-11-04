@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/pybind/bind_fleet_executor.h"
+#include <pybind11/stl.h>
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/framework/program_desc.h"
 
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/hapi/include/tensor.h"
+namespace py = pybind11;
 
 namespace paddle {
-namespace experimental {
+namespace pybind {
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 DataType dtype = DataType::UNDEFINED);
+using paddle::distributed::FleetExecutor;
 
-Tensor ones_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
-
-Tensor zeros_like(const Tensor& x, DataType dtype = DataType::UNDEFINED);
-
-}  // namespace experimental
+void BindFleetExecutor(py::module* m) {
+  py::class_<FleetExecutor>(*m, "FleetExecutor")
+      .def(py::init<const std::string&>())
+      .def("init", &FleetExecutor::Init)
+      .def("run", &FleetExecutor::Run);
+}
+}  // namespace pybind
 }  // namespace paddle

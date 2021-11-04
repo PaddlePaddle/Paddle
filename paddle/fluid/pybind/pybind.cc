@@ -81,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
 #include "paddle/fluid/pybind/bind_cost_model.h"
+#include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -2216,6 +2217,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
   BindProcessMeshDesc(&m);
+  BindFleetExecutor(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {

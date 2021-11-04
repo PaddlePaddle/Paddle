@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "paddle/pten/api/include/backend_set.h"
+#include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/hapi/include/backend_set.h"
-#include "paddle/pten/hapi/include/tensor.h"
 
 // TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
 #include "paddle/pten/core/convert_utils.h"
