@@ -179,7 +179,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                                                tensor);
       }
 
-      VLOG(4) << "Prepare outnput argument-" << i << ":"
+      VLOG(4) << "Prepare output argument-" << i << ":"
               << "name(" << var_name << "->" << cinn_name << "), "
               << "tensor(type:" << tensor->type() << ","
               << "dims:" << tensor->dims() << ").";
@@ -188,9 +188,12 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       hold_buffers.emplace_back(std::move(buffer));
     }
 
-    // 3.3 Prepare temporary variables: Create a temporary scope
-    //     to keep temporary variables needed by compiled runtime program
-    //     in addition, they directly use the names from CinnScope.
+    // 3.3 Prepare internal or temporary variables: Create a temporary
+    //     scope to keep internal variables within graph or temporary
+    //     variables needed by the compiled runtime program in addition.
+    //     Here we directly use the names from CinnScope as Paddle variable
+    //     names, because they will not be used outside the graph
+    //     and should be destructed after computation finished.
     auto temp_variable_names = details::SeperateTempVar(
         cinn_scope, input_cinn_names, output_cinn_names);
     auto temp_scope = scope.NewTmpScope();
