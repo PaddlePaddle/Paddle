@@ -367,7 +367,7 @@ class GraphTable : public SparseTable {
                                   int &actual_size, bool need_feature,
                                   int step);
 
-  virtual int32_t random_sample_neighboors(
+  virtual int32_t random_sample_neighbors(
       uint64_t *node_ids, int sample_size,
       std::vector<std::shared_ptr<char>> &buffers,
       std::vector<int> &actual_sizes);
@@ -427,7 +427,7 @@ class GraphTable : public SparseTable {
 
   size_t get_server_num() { return server_num; }
 
-  virtual int32_t make_neigh_sample_cache(size_t size_limit, size_t ttl) {
+  virtual int32_t make_neighbor_sample_cache(size_t size_limit, size_t ttl) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (use_cache == false) {

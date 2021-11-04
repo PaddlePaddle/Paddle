@@ -111,7 +111,7 @@ void testFeatureNodeSerializeFloat64() {
 void testSingleSampleNeighboor(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
-  auto pull_status = worker_ptr_->batch_sample_neighboors(
+  auto pull_status = worker_ptr_->batch_sample_neighbors(
       0, std::vector<uint64_t>(1, 37), 4, vs);
   pull_status.wait();
 
@@ -127,7 +127,7 @@ void testSingleSampleNeighboor(
   s.clear();
   s1.clear();
   vs.clear();
-  pull_status = worker_ptr_->batch_sample_neighboors(
+  pull_status = worker_ptr_->batch_sample_neighbors(
       0, std::vector<uint64_t>(1, 96), 4, vs);
   pull_status.wait();
   s1 = {111, 48, 247};
@@ -139,7 +139,7 @@ void testSingleSampleNeighboor(
     ASSERT_EQ(true, s1.find(g) != s1.end());
   }
   vs.clear();
-  pull_status = worker_ptr_->batch_sample_neighboors(0, {96, 37}, 4, vs, 0);
+  pull_status = worker_ptr_->batch_sample_neighbors(0, {96, 37}, 4, vs, 0);
   pull_status.wait();
   ASSERT_EQ(vs.size(), 2);
 }
@@ -199,7 +199,7 @@ void testBatchSampleNeighboor(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
   std::vector<std::uint64_t> v = {37, 96};
-  auto pull_status = worker_ptr_->batch_sample_neighboors(0, v, 4, vs);
+  auto pull_status = worker_ptr_->batch_sample_neighbors(0, v, 4, vs);
   pull_status.wait();
   std::unordered_set<uint64_t> s;
   std::unordered_set<uint64_t> s1 = {112, 45, 145};
@@ -435,24 +435,24 @@ void RunBrpcPushSparse() {
   sleep(5);
   testSingleSampleNeighboor(worker_ptr_);
   testBatchSampleNeighboor(worker_ptr_);
-  pull_status = worker_ptr_->batch_sample_neighboors(
+  pull_status = worker_ptr_->batch_sample_neighbors(
       0, std::vector<uint64_t>(1, 10240001024), 4, vs);
   pull_status.wait();
   ASSERT_EQ(0, vs[0].size());
   paddle::distributed::GraphTable* g =
       (paddle::distributed::GraphTable*)pserver_ptr_->table(0);
   size_t ttl = 6;
-  g->make_neigh_sample_cache(4, ttl);
+  g->make_neighbor_sample_cache(4, ttl);
   int round = 5;
   while (round--) {
     vs.clear();
-    pull_status = worker_ptr_->batch_sample_neighboors(
+    pull_status = worker_ptr_->batch_sample_neighbors(
         0, std::vector<uint64_t>(1, 37), 1, vs);
     pull_status.wait();
 
     for (int i = 0; i < ttl; i++) {
       std::vector<std::vector<std::pair<uint64_t, float>>> vs1;
-      pull_status = worker_ptr_->batch_sample_neighboors(
+      pull_status = worker_ptr_->batch_sample_neighbors(
           0, std::vector<uint64_t>(1, 37), 1, vs1);
       pull_status.wait();
       ASSERT_EQ(vs[0].size(), vs1[0].size());
@@ -559,13 +559,13 @@ void RunBrpcPushSparse() {
     ASSERT_EQ(count_item_nodes.size(), 12);
   }
 
-  vs = client1.batch_sample_neighboors(std::string("user2item"),
-                                       std::vector<uint64_t>(1, 96), 4);
+  vs = client1.batch_sample_neighbors(std::string("user2item"),
+                                      std::vector<uint64_t>(1, 96), 4);
   ASSERT_EQ(vs[0].size(), 3);
   std::vector<uint64_t> node_ids;
   node_ids.push_back(96);
   node_ids.push_back(37);
-  vs = client1.batch_sample_neighboors(std::string("user2item"), node_ids, 4);
+  vs = client1.batch_sample_neighbors(std::string("user2item"), node_ids, 4);
 
   ASSERT_EQ(vs.size(), 2);
   std::vector<uint64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
