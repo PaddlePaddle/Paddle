@@ -169,7 +169,7 @@ class TestElasticManager(unittest.TestCase):
         self.assertEqual(
             os.getenv('PADDLE_TRAINERS'), "10.10.10.3,10.10.10.1,10.10.10.2")
 
-        ############
+        # two worker in the same machine
         os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.1"
         os.environ[
             'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:8001,10.10.10.1:8002,10.10.10.1:8003,10.10.10.1:8004"
