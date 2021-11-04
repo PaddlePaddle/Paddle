@@ -466,19 +466,15 @@ class ElasticManager(object):
                 completed = True if ret == 0 else False
                 self.exit(completed=completed)
                 if completed:
-                    #logger.info(":watch, job completed")
                     return ElasticStatus.COMPLETED
                 if self.elastic_level == ElasticLevel.FAULT_TOLERANCE or \
                     self.elastic_level == ElasticLevel.ELASTIC:
-                    #logger.info(":watch, job restart")
                     return ElasticStatus.RESTART
                 else:
-                    #logger.info(":watch, job error")
                     return ElasticStatus.ERROR
 
             if not self._completed() and (not self._match() or self.need_sync):
                 self.launcher.stop()
-                #logger.info(":watch, job hold")
                 return ElasticStatus.HOLD
 
             time.sleep(2)
@@ -486,7 +482,6 @@ class ElasticManager(object):
         if self.launcher:
             self.launcher.stop()
 
-        #logger.info(":watch, job exit")
         return ElasticStatus.EXIT
 
     def signal_handler(self, sigint, frame):
