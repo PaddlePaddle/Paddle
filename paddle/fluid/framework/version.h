@@ -53,8 +53,6 @@ bool IsProgramVersionSupported(int64_t version);
 // WARNING: DO NOT use this interface, it may be discarded.
 bool IsTensorVersionSupported(uint32_t version);
 
-bool garbage = true;
-
 std::string DumpVersion(const int64_t version);
 
 }  // namespace framework
