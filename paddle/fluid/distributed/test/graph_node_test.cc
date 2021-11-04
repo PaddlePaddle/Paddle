@@ -401,7 +401,6 @@ void RunClient(
 }
 
 void RunBrpcPushSparse() {
-  std::cout << "in test cache";
   testCache();
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
@@ -635,8 +634,7 @@ void RunBrpcPushSparse() {
 
 void testCache() {
   ::paddle::distributed::ScaledLRU<::paddle::distributed::SampleKey,
-                                   ::paddle::distributed::SampleResult,
-                                   ::paddle::distributed::SampleKeyHash>
+                                   ::paddle::distributed::SampleResult>
       st(1, 2, 4);
   char* str = new char[7];
   strcpy(str, "54321");
