@@ -623,8 +623,7 @@ class HeterSectionWorker : public DeviceWorker {
   void PrintFetchVars() override {}
   const platform::Place& place() const { return place_; }
 
-  void SetDeviceIndex(int tid) override {}
-  void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
+  void SetDeviceIndex(int tid) override { thread_id_ = tid; }
   void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }

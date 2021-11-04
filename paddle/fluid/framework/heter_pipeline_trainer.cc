@@ -102,7 +102,7 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     this_worker->SetDumpFieldVector(dump_fields_);
     this_worker->SetDumpParamVector(dump_param_);
     this_worker->InitRandomDumpConfig(trainer_desc);
-    this_worker->SetThreadIndex(i);
+    this_worker->SetDeviceIndex(i);
     if (pipeline_stage_ == 0) {
       this_worker->SetDataFeed(readers[cnt]);
     }
