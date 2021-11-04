@@ -17,6 +17,7 @@
 #include "paddle/fluid/operators/matmul_v2_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/operators/matmul_utils.h"
 
 namespace paddle {
 namespace operators {

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/matmul_utils.h"
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
 
 namespace {
@@ -29,82 +30,6 @@ using paddle::framework::vectorize;
 using paddle::framework::make_ddim;
 using paddle::framework::GradVarName;
 
-// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
-// original x_dim is returned.
-paddle::framework::DDim RowMatrixFromVector(
-    const paddle::framework::DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
-}
-
-// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
-// original y_dim is returned.
-paddle::framework::DDim ColumnMatrixFromVector(
-    const paddle::framework::DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
-}
-
-std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
-                               const std::vector<int>& axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(in_rank, axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank, axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
-paddle::framework::DDim GetDimForInput(const ExecutionContext& ctx,
-                                       const char input_letter) {
-  PADDLE_ENFORCE((input_letter == 'X' || input_letter == 'Y'),
-                 paddle::platform::errors::InvalidArgument(
-                     "Input name should be a single character 'X' or 'Y'."));
-  std::string input_name{input_letter};
-  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-  auto dim = ctx.Input<Tensor>(input_name)->dims();
-  if (!shape.empty() && !axis.empty()) {
-    PADDLE_ENFORCE_GE(
-        shape.size(), 2,
-        paddle::platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_LE(
-        shape.size(), 4,
-        paddle::platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_EQ(
-        shape.size(), axis.size(),
-        paddle::platform::errors::InvalidArgument(
-            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
-            "must be equal.",
-            input_name, input_name));
-    dim = dim.reshape(shape).transpose(axis);
-  }
-  return dim;
-}
-
 std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
                                      const char input_letter) {
   PADDLE_ENFORCE((input_letter == 'X' || input_letter == 'Y'),
@@ -119,8 +44,9 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
-  auto& MatrixDimsFromVector =
-      input_letter == 'X' ? RowMatrixFromVector : ColumnMatrixFromVector;
+  auto& MatrixDimsFromVector = input_letter == 'X'
+                                   ? paddle::operators::RowMatrixFromVector
+                                   : paddle::operators::ColumnMatrixFromVector;
   paddle::operators::math::MatDescriptor mat_dim =
       paddle::operators::math::CreateMatrixDescriptor(
           MatrixDimsFromVector(new_dims), 0,
@@ -135,7 +61,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
       strides.insert(strides.begin(),
                      strides.front() * static_cast<int64_t>(shape2[i]));
     }
-    strides = Transpose(strides, axis);
+    strides = paddle::operators::TransposeVector(strides, axis);
     if (shape.size() == 2)
       strides.insert(strides.begin(),
                      static_cast<int64_t>(shape[0] * shape[1]));
@@ -356,8 +282,8 @@ class MatMulV2MKLDNNKernel
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
-    auto x_dims = vectorize(GetDimForInput(ctx, 'X'));
-    auto y_dims = vectorize(GetDimForInput(ctx, 'Y'));
+    auto x_dims = vectorize(paddle::operators::GetDimForInput(ctx, 'X'));
+    auto y_dims = vectorize(paddle::operators::GetDimForInput(ctx, 'Y'));
     auto out_dims = vectorize(out->dims());
 
     int ndims = std::max(x_dims.size(), y_dims.size());
@@ -523,7 +449,6 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
   }
 };
 }  // anonymous namespace
-namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(matmul_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    MatMulV2MKLDNNKernel<float>,

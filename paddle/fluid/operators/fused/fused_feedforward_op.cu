@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/matmul_utils.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
 
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
