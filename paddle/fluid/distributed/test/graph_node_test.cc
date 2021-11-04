@@ -440,6 +440,29 @@ void RunBrpcPushSparse() {
       0, std::vector<uint64_t>(1, 10240001024), 4, vs);
   pull_status.wait();
   ASSERT_EQ(0, vs[0].size());
+  paddle::distributed::GraphTable* g =
+      (paddle::distributed::GraphTable*)pserver_ptr_->table(0);
+  size_t ttl = 6;
+  g->make_neigh_sample_cache(4, ttl);
+  int round = 5;
+  while (round--) {
+    vs.clear();
+    pull_status = worker_ptr_->batch_sample_neighboors(
+        0, std::vector<uint64_t>(1, 37), 1, vs);
+    pull_status.wait();
+
+    for (int i = 0; i < ttl; i++) {
+      std::vector<std::vector<std::pair<uint64_t, float>>> vs1;
+      pull_status = worker_ptr_->batch_sample_neighboors(
+          0, std::vector<uint64_t>(1, 37), 1, vs1);
+      pull_status.wait();
+      ASSERT_EQ(vs[0].size(), vs1[0].size());
+
+      for (int j = 0; j < vs[0].size(); j++) {
+        ASSERT_EQ(vs[0][j].first, vs1[0][j].first);
+      }
+    }
+  }
 
   std::vector<distributed::FeatureNode> nodes;
   pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, 1, nodes);
@@ -611,58 +634,51 @@ void RunBrpcPushSparse() {
 }
 
 void testCache() {
-  ::paddle::distributed::ScaledLRU<
-      ::paddle::distributed::SampleKey,
-      std::shared_ptr<::paddle::distributed::SampleResult>,
-      ::paddle::distributed::SampleKeyHash>
+  ::paddle::distributed::ScaledLRU<::paddle::distributed::SampleKey,
+                                   ::paddle::distributed::SampleResult,
+                                   ::paddle::distributed::SampleKeyHash>
       st(1, 2, 4);
-  std::shared_ptr<::paddle::distributed::SampleResult> sp;
-  char* str = (char*)"54321";
+  char* str = new char[7];
+  strcpy(str, "54321");
   ::paddle::distributed::SampleResult* result =
       new ::paddle::distributed::SampleResult(5, str);
   ::paddle::distributed::SampleKey skey = {6, 1};
-  sp.reset(result);
   std::vector<std::pair<::paddle::distributed::SampleKey,
-                        std::shared_ptr<::paddle::distributed::SampleResult>>>
+                        paddle::distributed::SampleResult>>
       r;
   st.query(0, &skey, 1, r);
   ASSERT_EQ((int)r.size(), 0);
 
-  st.insert(0, &skey, &sp, 1);
+  st.insert(0, &skey, result, 1);
   for (int i = 0; i < st.get_ttl(); i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
-    char* p = (char*)r[0].second.get()->buffer;
-    for (int j = 0; j < r[0].second.get()->actual_size; j++)
-      ASSERT_EQ(p[j], str[j]);
+    char* p = (char*)r[0].second.buffer.get();
+    for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
   st.query(0, &skey, 1, r);
   ASSERT_EQ((int)r.size(), 0);
-  str = (char*)"342cd4321";
+  str = new char[10];
+  strcpy(str, "54321678");
   result = new ::paddle::distributed::SampleResult(strlen(str), str);
-  std::shared_ptr<::paddle::distributed::SampleResult> sp1;
-  sp1.reset(result);
-  st.insert(0, &skey, &sp1, 1);
+  st.insert(0, &skey, result, 1);
   for (int i = 0; i < st.get_ttl() / 2; i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
-    char* p = (char*)r[0].second.get()->buffer;
-    for (int j = 0; j < r[0].second.get()->actual_size; j++)
-      ASSERT_EQ(p[j], str[j]);
+    char* p = (char*)r[0].second.buffer.get();
+    for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
-  str = (char*)"343332d4321";
+  str = new char[18];
+  strcpy(str, "343332d4321");
   result = new ::paddle::distributed::SampleResult(strlen(str), str);
-  std::shared_ptr<::paddle::distributed::SampleResult> sp2;
-  sp2.reset(result);
-  st.insert(0, &skey, &sp2, 1);
+  st.insert(0, &skey, result, 1);
   for (int i = 0; i < st.get_ttl(); i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
-    char* p = (char*)r[0].second.get()->buffer;
-    for (int j = 0; j < r[0].second.get()->actual_size; j++)
-      ASSERT_EQ(p[j], str[j]);
+    char* p = (char*)r[0].second.buffer.get();
+    for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
   st.query(0, &skey, 1, r);

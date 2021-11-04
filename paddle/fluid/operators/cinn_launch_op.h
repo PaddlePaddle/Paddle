@@ -197,7 +197,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     if (!temp_variable_names.empty()) {
       auto temp_cinn_tensors = details::GetCinnTensorsFromCompiledScope(
           temp_variable_names, cinn_scope);
-      for (auto i = 0; i < output_variable_names.size(); ++i) {
+      for (auto i = 0; i < temp_variable_names.size(); ++i) {
         const auto& var_name = temp_variable_names.at(i);
         auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
         details::TensorMutableDataWithCinnInfo(place, temp_cinn_tensors.at(i),
