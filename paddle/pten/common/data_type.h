@@ -26,7 +26,7 @@ namespace experimental {
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 using float16 = ::paddle::platform::float16;
-using bfloat16 = Eigen::bfloat16;
+using bfloat16 = ::paddle::platform::bfloat16;
 
 enum class DataType {
   UNDEFINED = 0,

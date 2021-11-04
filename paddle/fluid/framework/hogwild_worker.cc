@@ -97,8 +97,10 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 template <typename T>
 void HogwildWorker::SetZero(LoDTensor *tensor, LoDTensor *root_tensor,
                             int tensor_dim) {
-  T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
-  memset(ptr, 0, sizeof(T) * tensor_dim);
+  if (!std::is_same<T, platform::bfloat16>::value) {
+    T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
+    memset(ptr, 0, sizeof(T) * tensor_dim);
+  }
 }
 
 void HogwildWorker::BindingDataFeedMemory() {

@@ -25,7 +25,7 @@ __global__ void FillOutputKernel(const InT* p_in_data, OutT* p_out_data,
                                  const int64_t numel, const int depth) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < numel && p_in_data[idx] >= 0 && p_in_data[idx] < depth) {
-    *(p_out_data + (idx * depth) + p_in_data[idx]) = 1.0;
+    *(p_out_data + (idx * depth) + p_in_data[idx]) = static_cast<OutT>(1.0);
   }
 }
 

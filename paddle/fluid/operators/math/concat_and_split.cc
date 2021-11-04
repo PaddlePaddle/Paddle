@@ -20,7 +20,6 @@ class Tensor;
 }  // namespace framework
 namespace platform {
 class CPUDeviceContext;
-// struct bfloat16;
 struct float16;
 }  // namespace platform
 }  // namespace paddle
