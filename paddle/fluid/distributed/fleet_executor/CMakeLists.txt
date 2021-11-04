@@ -3,9 +3,16 @@ if(WITH_PYTHON)
   py_proto_compile(fleet_executor_desc_py_proto SRCS fleet_executor_desc.proto)
 endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
+
+if(WITH_DISTRIBUTE)
+  set(BRPC_DEPS brpc)
+else()
+  set(BRPC_DEPS "")
+endif()
+
 cc_library(fleet_executor SRCS fleet_executor.cc carrier.cc
         interceptor.cc interceptor_message_service.cc message_bus.cc
-        DEPS fleet_executor_desc_proto interceptor_message_proto)
+        DEPS fleet_executor_desc_proto interceptor_message_proto ${BRPC_DEPS})
 
 if(WITH_DISTRIBUTE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
