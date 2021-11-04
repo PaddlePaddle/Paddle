@@ -82,6 +82,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "conv2d_fusion",
                                                   "pool2d",
                                                   "relu",
+                                                  "gelu",
                                                   "depthwise_conv2d",
                                                   "softmax",
                                                   "sigmoid",
