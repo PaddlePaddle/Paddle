@@ -17,6 +17,7 @@ import unittest
 import abc
 import os
 import enum
+import time
 import logging
 import shutil
 import paddle
@@ -438,6 +439,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
             use_static=True,
             use_calib_mode=False)
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
+        self.num_percent_cases = float(
+            os.getenv(
+                'TEST_NUM_PERCENT_CASES', default='1.0'))
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
@@ -499,8 +503,22 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     def run_test(self, quant=False, *args, **kwargs):
         status = True
+        # Choose different tests by week
+        np.random.seed(int(time.strftime("%W")))
+        run_flags = []
+        for prog_config in self.sample_program_configs():
+            # In CI, only run 10% cases
+            if np.random.rand() < self.num_percent_cases:
+                run_flags.append(True)
+            else:
+                run_flags.append(False)
+        np.random.seed(1024)
 
-        for prog_config in self.sample_program_configs(*args, **kwargs):
+        for prog_config, run_flags in zip(self.sample_program_configs(),
+                                          run_flags):
+            if not run_flags:
+                continue
+
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
