@@ -156,26 +156,5 @@ class CUDAGraphCaptureModeGuard {
 };
 #endif
 
-class SkipCUDAGraphCaptureGuard {
-  DISABLE_COPY_AND_ASSIGN(SkipCUDAGraphCaptureGuard);
-
- public:
-  SkipCUDAGraphCaptureGuard() {
-#if CUDA_VERSION >= 10010
-    if (UNLIKELY(CUDAGraph::IsCapturing())) {
-      CUDAGraph::EndSegmentCapture();
-    }
-#endif
-  }
-
-  ~SkipCUDAGraphCaptureGuard() {
-#if CUDA_VERSION >= 10010
-    if (UNLIKELY(CUDAGraph::IsCapturing())) {
-      CUDAGraph::BeginSegmentCapture();
-    }
-#endif
-  }
-};
-
 }  // namespace platform
 }  // namespace paddle
