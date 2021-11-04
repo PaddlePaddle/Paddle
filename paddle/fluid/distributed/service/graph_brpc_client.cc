@@ -556,7 +556,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
         index += node.get_size(false);
         res.push_back(node);
       }
-      delete buffer;
+      delete[] buffer;
     }
     closure->set_promise_value(ret);
   });
