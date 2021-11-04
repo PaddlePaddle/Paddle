@@ -142,4 +142,6 @@ REGISTER_PASS_CAPABILITY(elt_act_mkldnn_fuse_pass)
             .LE("sqrt", 0)
             .LE("abs", 0)
             .LE("clip", 1)
-            .LE("gelu", 0));
+            .LE("gelu", 0)
+            .LE("relu6", 0)
+            .LE("sigmoid", 0));
