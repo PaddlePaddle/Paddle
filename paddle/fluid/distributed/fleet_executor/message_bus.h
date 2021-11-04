@@ -55,7 +55,7 @@ class MessageBus final {
   void ListenPort();
 
   // check whether the dst is the same rank or different rank with src
-  bool DstIsSameRank(int64_t src_id, int64_t dst_id);
+  bool IsSameRank(int64_t src_id, int64_t dst_id);
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   // send the message inter rank (dst is different rank with src)

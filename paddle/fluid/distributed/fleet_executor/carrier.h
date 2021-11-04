@@ -32,8 +32,7 @@ class Carrier final {
  public:
   Carrier() = delete;
 
-  Carrier(
-      const std::unordered_map<int64_t, TaskNode*>& interceptor_idx_to_node);
+  Carrier(const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node);
 
   ~Carrier();
 
@@ -44,13 +43,13 @@ class Carrier final {
 
  private:
   // create each Interceptor
-  void CreateInterceptor();
+  void CreateInterceptors();
 
   // get interceptor based on the interceptor id
   Interceptor* GetInterceptor(int64_t interceptor_id);
 
   // interceptor logic id to the Nodes info
-  std::unordered_map<int64_t, TaskNode*> interceptor_idx_to_node_;
+  std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
 
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>

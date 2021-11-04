@@ -17,12 +17,12 @@
 namespace paddle {
 namespace distributed {
 
-Interceptor::Interceptor(int64_t logic_interceptor_id, TaskNode* node) {
+Interceptor::Interceptor(int64_t interceptor_id_, TaskNode* node) {
   // init
 }
 
 int64_t Interceptor::GetInterceptorId() const {
-  // return the logic interceptor id
+  // return the interceptor id
   return 0;
 }
 

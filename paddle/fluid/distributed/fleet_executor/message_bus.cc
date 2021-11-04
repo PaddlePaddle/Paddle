@@ -31,7 +31,7 @@ void MessageBus::ListenPort() {
   // function keep listen the port and handle the message
 }
 
-bool MessageBus::DstIsSameRank(int64_t src_id, int64_t dst_id) {
+bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
   // check whether the dst is the same rank or different rank with src
   return true;
 }

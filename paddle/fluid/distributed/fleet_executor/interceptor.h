@@ -33,11 +33,11 @@ class Interceptor {
  public:
   Interceptor() = delete;
 
-  Interceptor(int64_t logic_interceptor_id, TaskNode* node);
+  Interceptor(int64_t interceptor_id_, TaskNode* node);
 
   virtual ~Interceptor() = default;
 
-  // return the logic interceptor id
+  // return the interceptor id
   int64_t GetInterceptorId() const;
 
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
@@ -54,8 +54,8 @@ class Interceptor {
   // return true if remote mailbox not empty, otherwise return false
   bool FetchRemoteMailbox();
 
-  // logic interceptor id, handed from above layer
-  int64_t logic_interceptor_id_;
+  // interceptor id, handed from above layer
+  int64_t interceptor_id_;
 
   // node need to be handled by this interceptor
   TaskNode* node_;
