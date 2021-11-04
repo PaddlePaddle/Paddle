@@ -14,11 +14,13 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestStack2DOneDNNOp(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -49,7 +51,6 @@ class TestStack2DOneDNNOp(OpTest):
         input_names = self.getInputNames()
         for i in range(self.num_inputs):
             input_list.append((input_names[i], self.op_inputs[i]))
-
 
         self.inputs = {'X': input_list}
         self.outputs = {'Y': np.stack(self.op_inputs, axis=self.axis)}
