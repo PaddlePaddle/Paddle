@@ -49,6 +49,9 @@ def parse_table_class(varname, o_main_program):
         if param_name == varname and op.type == "lookup_table" or op.type == "lookup_table_v2":
             if op.has_attr('table_class') and op.attr("table_class") != "none":
                 return op.attr('table_class')
+            elif op.has_attr('is_distributed') and op.attr(
+                    'is_distributed') == False:
+                return "CommonSparseTable"
             else:
                 return "MemorySparseTable"
 
@@ -940,8 +943,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         print("sever_proto =", proto_txt)
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("server: \n{}".format(proto_txt))
+        #        if debug:
+        print("server: \n{}".format(proto_txt))
 
         string_hosts = []
         for idx, ep in enumerate(endpoints):

@@ -327,6 +327,8 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                         })
 
     def _push_sparse_fuse(_program, push_sparse_ops, use_ps_gpu):
+        if len(push_sparse_ops) == 0:
+            return
         show = None
         clk = None
         use_entry = False

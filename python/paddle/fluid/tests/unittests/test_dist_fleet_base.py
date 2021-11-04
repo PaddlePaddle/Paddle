@@ -84,18 +84,22 @@ class FleetDistRunnerBase(object):
         if args.mode == "sync":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.a_sync = False
+            self.strategy.adam_d2sum = False
         elif args.mode == "async":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.a_sync = True
+            self.strategy.adam_d2sum = False
         elif args.mode == "geo":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.a_sync = True
             self.strategy.a_sync_configs = {
                 "k_steps": args.geo_sgd_need_push_nums
             }
+            self.strategy.adam_d2sum = False
         elif args.mode == "auto":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.auto = True
+            self.strategy.adam_d2sum = False
 
         self.dump_param = os.getenv("dump_param", "").split(",")
         self.dump_fields = os.getenv("dump_fields", "").split(",")
@@ -333,6 +337,10 @@ class TestFleetBase(unittest.TestCase):
             ps_cmd += " --model_dir {}".format(self._model_dir)
 
         # Run dist train to compare with local results
+        print('ps_cmd')
+        print(ps_cmd)
+        print('tr_cmd')
+        print(tr_cmd)
         ps0, ps1 = self._start_pserver(ps_cmd, env)
         tr0, tr1 = self._start_trainer(tr_cmd, env)
 
