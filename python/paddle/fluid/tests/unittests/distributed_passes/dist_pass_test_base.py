@@ -157,7 +157,10 @@ class DistPassTestBase(unittest.TestCase):
         gpus = ','.join([str(gpu_id) for gpu_id in gpus])
 
         pid = os.getpid()
-        output_dir = 'pass_test_' + str(pid)
+        if apply_pass:
+            output_dir = "test_with_pass_{}".format(pid)
+        else:
+            output_dir = "test_without_pass_{}".format(pid)
         remove_path_if_exists(output_dir)
         os.makedirs(output_dir, mode=777)
 
@@ -189,13 +192,11 @@ class DistPassTestBase(unittest.TestCase):
                 inspect.getfile(type(self)),
                 "--class_name",
                 type(self).__name__,
-                "--apply_pass",
-                str(apply_pass),
                 "--input_file",
                 input_dump_file,
                 "--output_dir",
                 output_dir,
-            ]
+            ] + (["--apply_pass"] if apply_pass else [])
             cmd = [shlex.quote(c) for c in cmd]
             prepare_python_path_and_return_module(__file__)
             exitcode = os.system(' '.join(cmd))
