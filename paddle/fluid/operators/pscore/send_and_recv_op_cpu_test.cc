@@ -52,7 +52,7 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   return block;
 }
 
-void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
+void CreateVarsOnScope(framework::Scope* scope) {
   auto w_var = scope->Var("w");
   w_var->GetMutable<framework::SelectedRows>();
 
@@ -72,9 +72,24 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   res_var->GetMutable<framework::LoDTensor>();
 }
 
+void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+                         int64_t rows_numel) {
+  CreateVarsOnScope(scope);
+  auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
+  auto w_value = w->mutable_value();
+  w_value->Resize({rows_numel, 10});
+  for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
+
+  auto ptr = w_value->mutable_data<float>(*place);
+
+  for (int64_t i = 0; i < w_value->numel(); ++i) {
+    ptr[i] = static_cast<float>(i / 10);
+  }
+}
+
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
-  CreateVarsOnScope(scope, place);
+  CreateVarsOnScope(scope);
   auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
   int64_t* ids_ptr =
       ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
@@ -95,21 +110,6 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   float* res_ptr =
       res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
-}
-
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
-                         int64_t rows_numel) {
-  CreateVarsOnScope(scope, place);
-  auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
-  auto w_value = w->mutable_value();
-  w_value->Resize({rows_numel, 10});
-  for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
-
-  auto ptr = w_value->mutable_data<float>(*place);
-
-  for (int64_t i = 0; i < w_value->numel(); ++i) {
-    ptr[i] = static_cast<float>(i / 10);
-  }
 }
 
 void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
