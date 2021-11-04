@@ -28,6 +28,10 @@ PADDLE_DEFINE_EXPORTED_string(
     "between XPU devices, use XPU_VISIBLE_DEVICES can only use"
     "share-memory only.");
 
+DECLARE_uint64(initial_xpu_memory_in_mb);
+DECLARE_uint64(xpu_memory_limit_mb);
+DECLARE_uint64(reallocate_xpu_memory_in_mb);
+
 namespace paddle {
 namespace platform {
 
@@ -118,6 +122,51 @@ XPUVersion get_xpu_version(int dev_id) {
     VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
     return XPU2;
   }
+}
+
+size_t get_xpu_device_mem_capacity(int dev_id) {
+  uint64_t v = 0;
+  int ret = xpu_device_get_attr(&v, XPUATTR_MEM_MAIN_CAPACITY, dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "xpu_device_get_attr return wrong value[%d]", ret));
+  return v;
+}
+
+size_t XPUMaxAllocSize(int dev_id) {
+  size_t max_device_capacity = get_xpu_device_mem_capacity(dev_id);
+  size_t xpu_memory_limit = FLAGS_xpu_memory_limit_mb << 20;
+  size_t max_alloc_size = xpu_memory_limit >= max_device_capacity
+                              ? max_device_capacity
+                              : xpu_memory_limit;
+  VLOG(10) << "XPU max alloc size is" << max_alloc_size / 1024.0 / 1024.0
+           << " M.";
+  return max_alloc_size;
+}
+
+//! Get the initial allocation size of current XPU device.
+size_t XPUInitAllocSize() {
+  size_t init_chunk_size = FLAGS_initial_xpu_memory_in_mb;
+  VLOG(10) << "XPU init chunk size " << init_chunk_size << "M";
+  return init_chunk_size << 20;
+}
+
+//! Get the re-allocation size of current XPU device.
+size_t XPUReallocSize() {
+  size_t realloc_size = FLAGS_reallocate_xpu_memory_in_mb;
+  VLOG(10) << "XPU realloc chunk size " << realloc_size << "M";
+  return realloc_size << 20;
+}
+
+size_t XPUMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 256 bytes.
+  return 1 << 8;
+}
+
+size_t XPUMaxChunkSize(int dev_id) {
+  size_t max_chunk_size = XPUMaxAllocSize(dev_id);
+  VLOG(10) << "XPU max chunk size " << (max_chunk_size >> 20) << "M";
+  return max_chunk_size << 20;
 }
 
 }  // namespace platform

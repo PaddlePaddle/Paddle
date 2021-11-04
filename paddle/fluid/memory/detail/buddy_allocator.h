@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 
 namespace paddle {
 namespace memory {

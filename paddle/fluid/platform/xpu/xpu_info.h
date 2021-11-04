@@ -54,6 +54,23 @@ class XPUDeviceGuard {
 enum XPUVersion { XPU1, XPU2 };
 XPUVersion get_xpu_version(int dev_id);
 
+size_t get_xpu_device_mem_capacity(int dev_id);
+
+//! Get the maximum allocation size of current XPU device.
+size_t XPUMaxAllocSize(int dev_id);
+
+//! Get the initial allocation size of current XPU device.
+size_t XPUInitAllocSize();
+
+//! Get the re-allocation size of current XPU device.
+size_t XPUReallocSize();
+
+//! Get the minimum chunk size for XPU buddy allocator.
+size_t XPUMinChunkSize();
+
+//! Get the minimum chunk size for XPU buddy allocator.
+size_t XPUMaxChunkSize(int dev_id);
+
 }  // namespace platform
 }  // namespace paddle
 #endif

@@ -35,6 +35,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
+#endif
+
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -363,6 +368,54 @@ void NPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
 }
 
 bool NPUPinnedAllocator::UseGpu() const { return false; }
+
+#endif
+
+#ifdef PADDLE_WITH_XPU
+void* XPUAllocator::Alloc(size_t* index, size_t size) {
+  if (size <= 0) return nullptr;
+
+  size_t usable = paddle::platform::XPUMaxAllocSize(xpu_id_) - xpu_alloc_size_;
+
+  if (size > usable) {
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB xpu memory."
+                 << ", available " << usable / 1024.0 / 1024.0 << " MB";
+    return nullptr;
+  }
+
+  void* p = nullptr;
+  platform::XPUDeviceGuard guard(xpu_id_);
+  auto ret = xpu_malloc(reinterpret_cast<void**>(&p), size);
+  if (ret != XPU_SUCCESS) {
+    std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
+    xpu_wait();
+    ret = xpu_malloc(reinterpret_cast<void**>(&p), size);
+  }
+
+  if (ret != XPU_SUCCESS) {
+    LOG(WARNING) << "xpu memory malloc(" << size << ") failed!";
+    return nullptr;
+  }
+  xpu_alloc_size_ += size;
+  return p;
+}
+
+void XPUAllocator::Free(void* p, size_t size, size_t index) {
+  VLOG(4) << "Free " << p << " size " << size;
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_GE(xpu_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated gpu memory (%d)",
+                        size, xpu_alloc_size_));
+  platform::XPUDeviceGuard guard(xpu_id_);
+  xpu_free(p);
+  xpu_alloc_size_ -= size;
+}
+
+bool XPUAllocator::UseGpu() const { return true; }
 
 #endif
 
