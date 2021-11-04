@@ -46,9 +46,6 @@ void CUDAGraph::Replay() {
                     errors::PermissionDenied(
                         "Cannot replay the CUDA Graph after reset is called."));
   for (auto exec_graph : exec_graphs_) {
-    PADDLE_ENFORCE_NOT_NULL(
-        exec_graph, errors::PermissionDenied(
-                        "CUDA Graph must be captured before replaying."));
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphLaunch(exec_graph, stream_));
   }
 #endif
