@@ -19,7 +19,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-@skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 class TestStack2DOneDNNOp(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -57,7 +56,7 @@ class TestStack2DOneDNNOp(OpTest):
         self.attrs = {'axis': self.axis, 'use_mkldnn': True}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output_with_place(core.CPUPlace())
 
     # JUST FOR CI TO PASS, GRAD IS NOT IMPLEMENTED YET
     def test_check_grad(self):
