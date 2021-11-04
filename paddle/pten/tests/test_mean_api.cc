@@ -15,11 +15,13 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/hapi/include/math.h"
+#include "paddle/pten/api/include/math.h"
 
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/hapi/lib/utils/allocator.h"
+
+#include "paddle/pten/include/math.h"
 
 PT_DECLARE_MODULE(MathCPU);
 
@@ -65,5 +67,38 @@ TEST(API, mean) {
   auto expect_result = sum / 12;
   auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
   auto actual_result = dense_out->data<float>()[0];
+  ASSERT_NEAR(expect_result, actual_result, 1e-6f);
+}
+
+TEST(DEV_API, mean) {
+  // 1. create tensor
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  pten::DenseTensor dense_x(alloc,
+                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                                  framework::make_ddim({3, 4}),
+                                                  pten::DataLayout::NCHW));
+  auto* dense_x_data = dense_x.mutable_data<float>();
+
+  float sum = 0.0;
+  for (size_t i = 0; i < 12; ++i) {
+    dense_x_data[i] = i * 1.0;
+    sum += i * 1.0;
+  }
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  // 2. test API
+  auto out = pten::Mean<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+
+  // 3. check result
+  ASSERT_EQ(out.dims().size(), 1);
+  ASSERT_EQ(out.numel(), 1);
+  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+
+  auto expect_result = sum / 12;
+  auto actual_result = out.data<float>()[0];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }

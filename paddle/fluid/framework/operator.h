@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace framework {
@@ -154,7 +154,7 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const Scope* scope) const;
+  virtual std::string DebugStringEx(const ScopeBase* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }

@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+// CUDA and HIP use same api
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
@@ -26,3 +29,5 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 void Copy(const CUDAContext& dev_ctx, const DenseTensor& src, DenseTensor* dst);
 
 }  // namespace pten
+
+#endif

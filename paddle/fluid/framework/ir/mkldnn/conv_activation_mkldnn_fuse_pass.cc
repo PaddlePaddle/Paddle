@@ -88,6 +88,13 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     desc->SetAttr("fuse_beta",
                   activation->Op()->GetAttrIfExists<float>("beta"));
 
+    if (activation_type() == "hard_sigmoid") {
+      desc->SetAttr("fuse_alpha",
+                    activation->Op()->GetAttrIfExists<float>("slope"));
+      desc->SetAttr("fuse_beta",
+                    activation->Op()->GetAttrIfExists<float>("offset"));
+    }
+
     GraphSafeRemoveNodes(graph, {activation, conv_out});
 
     PADDLE_ENFORCE_GT(subgraph.count(conv_input), 0UL,
@@ -213,6 +220,26 @@ Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
       .End();
 }
 
+Conv2DHardSigmoidFusePass::Conv2DHardSigmoidFusePass() {
+  AddOpCompat(OpCompat("hard_sigmoid"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // optional, default=0.2
+      .AddAttr("slope")
+      .IsOptional()
+      .IsType<float>()
+      .End()
+      // optional, default=0.5
+      .AddAttr("offset")
+      .IsOptional()
+      .IsType<float>()
+      .End();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
@@ -259,3 +286,11 @@ REGISTER_PASS_CAPABILITY(conv_hard_swish_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
             .EQ("hard_swish", 0));
+
+REGISTER_PASS(conv_hard_sigmoid_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DHardSigmoidFusePass);
+REGISTER_PASS_CAPABILITY(conv_hard_sigmoid_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("hard_sigmoid", 0));

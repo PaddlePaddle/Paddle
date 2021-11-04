@@ -14,6 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/kernels/cpu/math.h"
-#include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/api/include/tensor.h"
+
+namespace paddle {
+namespace experimental {
+
+// TODO(chenweihang): add scale API
+// TODO(chenweihang): move mean API into stat.h/cc
+Tensor mean(const Tensor& x);
+
+}  // namespace experimental
+}  // namespace paddle

@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/api/include/creation.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/creation.h"
 
 namespace paddle {
 namespace operators {

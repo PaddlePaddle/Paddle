@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -62,35 +63,21 @@ struct KernelSignature {
 // TODO(chenweihang): we can generate this map by proto info in compile time
 class KernelSignatureMap {
  public:
-  static KernelSignatureMap& Instance() {
-    static KernelSignatureMap g_kernel_signature_map;
-    return g_kernel_signature_map;
-  }
+  static KernelSignatureMap& Instance();
 
-  bool Has(const std::string& op_type) const {
-    return map_.find(op_type) != map_.end();
-  }
+  bool Has(const std::string& op_type) const;
 
-  void Emplace(const std::string& op_type, KernelSignature&& signature) {
-    if (!Has(op_type)) {
-      map_.emplace(op_type, signature);
-    }
-  }
-
-  const KernelSignature& Get(const std::string& op_type) const {
-    auto it = map_.find(op_type);
-    PADDLE_ENFORCE_NE(
-        it, map_.end(),
-        platform::errors::NotFound(
-            "Operator `%s`'s kernel signature is not registered.", op_type));
-    return it->second;
-  }
+  const KernelSignature& Get(const std::string& op_type) const;
 
  private:
   KernelSignatureMap() = default;
-  paddle::flat_hash_map<std::string, KernelSignature> map_;
-
   DISABLE_COPY_AND_ASSIGN(KernelSignatureMap);
+
+ private:
+  static KernelSignatureMap* kernel_signature_map_;
+  static std::once_flag init_flag_;
+
+  paddle::flat_hash_map<std::string, KernelSignature> map_;
 };
 
 class KernelArgsNameMaker {
@@ -99,27 +86,6 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetInputArgsNames() = 0;
   virtual const paddle::SmallVector<std::string>& GetOutputArgsNames() = 0;
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
-};
-
-class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
- public:
-  explicit KernelArgsNameMakerByOpProto(framework::proto::OpProto* op_proto)
-      : op_proto_(op_proto) {}
-
-  ~KernelArgsNameMakerByOpProto() {}
-
-  const paddle::SmallVector<std::string>& GetInputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetOutputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetAttrsArgsNames() override;
-
-  KernelSignature GetKernelSignature();
-
- private:
-  framework::proto::OpProto* op_proto_;
-
-  paddle::SmallVector<std::string> input_names_;
-  paddle::SmallVector<std::string> output_names_;
-  paddle::SmallVector<std::string> attr_names_;
 };
 
 std::string KernelSignatureToString(const KernelSignature& signature);

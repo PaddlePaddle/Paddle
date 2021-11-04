@@ -474,6 +474,15 @@ struct VariableMetaInfo {
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
 class VariableScope : public ScopeBase {
  public:
+  VariableScope() {
+    // for @EMPTY@ variable
+    var_list_.push_back(nullptr);
+    name2id_[kEmptyVarName] = 0;
+    VariableMetaInfo info;
+    info.var_ref_count_ = 0;
+    info.vardesc_ = nullptr;
+    vec_meta_info_.push_back(info);
+  }
   Variable* FindVar(const std::string& name) const {
     auto it = name2id_.find(name);
     if (it != name2id_.end()) {
@@ -555,6 +564,11 @@ class VariableScope : public ScopeBase {
     vec_meta_info_.push_back(info);
   }
 
+  void SetVarDesc(const std::string& name, framework::VarDesc* var_desc) {
+    CheckExist(name);
+    vec_meta_info_[VarId(name)].vardesc_ = var_desc;
+  }
+
   paddle::framework::VarDesc* VarDesc(const std::string& name) const {
     return VarDesc(VarId(name));
   }
@@ -562,10 +576,6 @@ class VariableScope : public ScopeBase {
   paddle::framework::VarDesc* VarDesc(int id) const {
     CheckExist(id);
     return vec_meta_info_[id].vardesc_;
-  }
-
-  VariableMetaInfo& VarMetaInfo(const std::string& name) {
-    return vec_meta_info_[VarId(name)];
   }
 
   void CheckExist(int id) const {
