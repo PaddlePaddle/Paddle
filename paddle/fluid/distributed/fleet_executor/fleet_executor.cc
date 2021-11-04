@@ -41,12 +41,12 @@ void FleetExecutor::Release() {
 
 std::shared_ptr<Carrier> FleetExecutor::GetCarrier() {
   // get carrier
-  return global_carrier_;
+  return nullptr;
 }
 
 std::shared_ptr<MessageBus> FleetExecutor::GetMessageBus() {
   // get message bus
-  return global_message_bus_;
+  return nullptr;
 }
 
 }  // namespace distributed
