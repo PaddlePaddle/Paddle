@@ -12,41 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
-#include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
-#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 
 namespace paddle {
 namespace distributed {
 
-FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
-  // Initialize Executor
+Interceptor::Interceptor(int64_t interceptor_id_, TaskNode* node) {
+  // init
 }
 
-FleetExecutor::~FleetExecutor() {
-  // Destroy Executor
+int64_t Interceptor::GetInterceptorId() const {
+  // return the interceptor id
+  return 0;
 }
 
-void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
-  // Compile and Initialize
+bool Interceptor::EnqueueRemoteInterceptorMessage(
+    const InterceptorMessage& interceptor_message) {
+  // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
+  return true;
 }
 
-void FleetExecutor::Run() {
-  // Run
+void Interceptor::PoolTheMailbox() {
+  // pool the local mailbox, parse the Message
 }
 
-void FleetExecutor::Release() {
-  // Release
-}
-
-std::shared_ptr<Carrier> FleetExecutor::GetCarrier() {
-  // get carrier
-  return nullptr;
-}
-
-std::shared_ptr<MessageBus> FleetExecutor::GetMessageBus() {
-  // get message bus
-  return nullptr;
+bool Interceptor::FetchRemoteMailbox() {
+  // fetch all Message from remote mailbox to local mailbox
+  // return true if remote mailbox not empty, otherwise return false
+  return true;
 }
 
 }  // namespace distributed
