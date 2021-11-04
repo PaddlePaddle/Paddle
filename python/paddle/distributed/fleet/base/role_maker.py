@@ -371,12 +371,6 @@ class RoleMakerBase(object):
         self._role = None
         self._current_id = -1
 
-    def _heter_device_type(self):
-        """
-        return device type that current heter worker is using
-        """
-        raise NotImplementedError("Please implement this method in child class")
-
     def _is_worker(self):
         """
         return is_worker() of current process

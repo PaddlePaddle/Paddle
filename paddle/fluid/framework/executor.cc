@@ -380,7 +380,11 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
                         "program.size() which is %d",
                         static_cast<size_t>(block_id), program.Size()));
   auto& block = program.Block(block_id);
+
+  std::cout << "*******DEBUG**before push back op" << std::endl;
   for (auto& op_desc : block.AllOps()) {
+    std::cout << "*******DEBUG**** in push op: " << op_desc->Type()
+              << std::endl;
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
   ctx->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
