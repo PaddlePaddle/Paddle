@@ -411,10 +411,17 @@ class ConvMKLDNNHandlerT
 
     bool is_multi_channel = scale_weights_data.size() > 1;
     int mask_reorder = is_multi_channel ? 1 << 0 : 1;
-    const int count =
-        is_multi_channel
-            ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
-            : 1;
+
+    int count;
+    if (is_multi_channel) {
+      if (groups > 1) {
+        count = (weights_tz)[1] * (weights_tz)[0];
+      } else {
+        count = (weights_tz)[0];
+      }
+    } else {
+      count = 1;
+    }
 
     bias_scale_tuple =
         std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
