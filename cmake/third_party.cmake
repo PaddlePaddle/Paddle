@@ -328,12 +328,10 @@ if (WITH_DISTRIBUTE OR WITH_PSCORE)
 
     include(external/brpc)
     list(APPEND third_party_deps extern_brpc)
-endif()
 
-if (WITH_PSCORE)
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
-    
+
     if (WITH_HETERPS)
         include(external/rocksdb)     # download, build, install libmct
         list(APPEND third_party_deps extern_rocksdb)
