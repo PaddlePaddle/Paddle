@@ -91,7 +91,7 @@ class TestFusedFFNOp(OpTest):
     def Base(self):
         paddle.disable_static()
         tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
-        residual = paddle.to_tensor(self.src)
+        residual = tensor_src
         if self.pre_layer_norm:
             ln1_out = self.norm1(tensor_src)
             linear2_out = self.linear2(
