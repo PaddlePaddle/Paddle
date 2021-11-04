@@ -319,15 +319,17 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
     endif()
 endif ()
 
+if (WITH_DISTRIBUTE OR WITH_PSCORE)
+    include(external/brpc)
+    list(APPEND third_party_deps extern_brpc)
+endif()
+
 if (WITH_PSCORE)
     include(external/snappy)
     list(APPEND third_party_deps extern_snappy)
 
     include(external/leveldb)
     list(APPEND third_party_deps extern_leveldb)
-
-    include(external/brpc)
-    list(APPEND third_party_deps extern_brpc)
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
