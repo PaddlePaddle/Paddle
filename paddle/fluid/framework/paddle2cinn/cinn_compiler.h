@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -73,7 +74,7 @@ class CinnCompiler {
 
   void Clear();
 
-  std::int64_t real_compiled_num() const { return real_compiled_num_; }
+  std::int64_t real_compiled_num() const { return real_compiled_num_.load(); }
 
   ~CinnCompiler() = default;
 
@@ -82,13 +83,13 @@ class CinnCompiler {
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target) const;
+      const ::cinn::common::Target& target, std::int64_t compiled_num) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,
                      CinnCacheKey::Hash>
       cache_;
-  std::atomic_int64_t real_compiled_num_{0};
+  std::atomic_int64_t real_compiled_num_{1};
   mutable RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);

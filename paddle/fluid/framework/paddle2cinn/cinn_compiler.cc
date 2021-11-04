@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 
+#include <cstdint>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -74,8 +75,9 @@ const CinnCompiledObject& CinnCompiler::Compile(
     exist = cache_.count(cur_key) != 0;
   }
   if (!exist) {
-    real_compiled_num_++;
-    auto compiled_res = CompileGraph(graph, input_tensors, target);
+    std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
+    auto compiled_res =
+        CompileGraph(graph, input_tensors, target, compiled_num);
     AutoWRLock w_guard{&rwlock_};
     if (!cache_.count(cur_key)) {
       cache_[cur_key] = std::move(compiled_res);
@@ -181,20 +183,19 @@ void CinnCompiler::Clear() {
     graphs_.clear();
     cache_.clear();
   }
-  real_compiled_num_ = 0;
+  real_compiled_num_.store(1);
 }
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) const {
-  CinnGraphSymbolization symbol{real_compiled_num_, graph, target,
-                                input_tensors};
+    const Target& target, std::int64_t compiled_num) const {
+  CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
   ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
   auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
       frontend_program, target);
-  VLOG(4) << "-- The " << real_compiled_num_ << "-th compilation ("
+  VLOG(4) << "-- The " << compiled_num << "-th compilation ("
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
   ApplyPass(cinn_graph.get(), "OpFusion");
