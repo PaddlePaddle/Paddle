@@ -182,8 +182,12 @@ nvinfer1::Dims DeformableConvPlugin::getOutputDimensions(
 
 bool DeformableConvPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
-  return ((type == data_type_ || type == nvinfer1::DataType::kINT32) &&
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+  return (type == data_type_ && format == nvinfer1::TensorFormat::kLINEAR);
+#else
+  return (type != nvinfer1::DataType::kHALF && type == data_type_ &&
           format == nvinfer1::TensorFormat::kLINEAR);
+#endif
 }
 
 size_t DeformableConvPlugin::getWorkspaceSize(int max_batch_size) const
