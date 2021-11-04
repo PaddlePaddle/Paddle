@@ -26,21 +26,21 @@ namespace platform {
 
 TEST(bfloat16, convert_float32_to_bfloat16_on_gpu) {
   // Convert float32 to bfloat16
-  EXPECT_EQ((bfloat16(1.0f)).x, 0x3f80);
-  EXPECT_EQ((bfloat16(0.5f)).x, 0x3f00);
-  EXPECT_EQ((bfloat16(0.33333f)).x, 0x3eab);
-  EXPECT_EQ((bfloat16(0.0f)).x, 0x0000);
-  EXPECT_EQ((bfloat16(-0.0f)).x, 0x8000);
-  EXPECT_EQ((bfloat16(65536.0f)).x, 0x4780);
+  EXPECT_EQ((bfloat16(1.0f)), 0x3f80);
+  EXPECT_EQ((bfloat16(0.5f)), 0x3f00);
+  EXPECT_EQ((bfloat16(0.33333f)), 0x3eab);
+  EXPECT_EQ((bfloat16(0.0f)), 0x0000);
+  EXPECT_EQ((bfloat16(-0.0f)), 0x8000);
+  EXPECT_EQ((bfloat16(65536.0f)), 0x4780);
 }
 
 TEST(bfloat16, assignment_operator_on_gpu) {
   // Assignment operator
   bfloat16 v_assign;
   v_assign = nv_bfloat16(bfloat16(1.0f));
-  EXPECT_EQ(v_assign.x, 0x3f80);
+  EXPECT_EQ(v_assign, 0x3f80);
   v_assign = 0.33333;
-  EXPECT_EQ(v_assign.x, 0x3eab);
+  EXPECT_EQ(v_assign, 0x3eab);
 }
 
 TEST(bfloat16, convert_bfloat16_to_float32_on_gpu) {
@@ -76,13 +76,13 @@ TEST(bfloat16, lod_tensor_on_gpu) {
   const bfloat16 *dst_ptr = dst_tensor.data<bfloat16>();
   ASSERT_NE(src_ptr, dst_ptr);
   for (size_t i = 0; i < 4; ++i) {
-    EXPECT_EQ(src_ptr[i].x, dst_ptr[i].x);
+    EXPECT_EQ(src_ptr[i], dst_ptr[i]);
   }
 }
 
 TEST(bfloat16, isinf) {
   bfloat16 a;
-  a.x = 0x7f80;
+  a = 0x7f80;
   bfloat16 b = bfloat16(INFINITY);
   bfloat16 c = static_cast<bfloat16>(INFINITY);
   EXPECT_EQ(std::isinf(a), true);
@@ -92,7 +92,7 @@ TEST(bfloat16, isinf) {
 
 TEST(bfloat16, isnan) {
   bfloat16 a;
-  a.x = 0x7fff;
+  a = 0x7fff;
   bfloat16 b = bfloat16(NAN);
   bfloat16 c = static_cast<bfloat16>(NAN);
   EXPECT_EQ(std::isnan(a), true);
@@ -102,7 +102,7 @@ TEST(bfloat16, isnan) {
 
 TEST(bfloat16, cast) {
   bfloat16 a;
-  a.x = 0x0070;
+  a = 0x0070;
   auto b = a;
   {
     // change semantic, keep the same value
@@ -114,7 +114,7 @@ TEST(bfloat16, cast) {
     // use uint32 low 16 bit store float16
     uint32_t c = reinterpret_cast<uint32_t &>(b);
     bfloat16 d;
-    d.x = c;
+    d = c;
     EXPECT_EQ(b, d);
   }
 }
