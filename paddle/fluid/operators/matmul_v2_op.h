@@ -26,9 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 // only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/api/include/linalg.h"
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/linalg.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"

@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -64,6 +65,12 @@ class CinnCompiler {
 
   const ir::Graph& FindGraph(const std::string& key) const;
 
+  std::string VizGraph(const std::string& key) const;
+
+  std::string ReadableKey(const std::string& key) const;
+
+  void Clear();
+
   std::int64_t real_compiled_num() const { return real_compiled_num_; }
 
   ~CinnCompiler() = default;
@@ -80,6 +87,7 @@ class CinnCompiler {
                      CinnCacheKey::Hash>
       cache_;
   std::atomic_int64_t real_compiled_num_{0};
+  mutable RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };

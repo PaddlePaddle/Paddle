@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 #include <memory>
+#include <regex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -25,6 +26,8 @@ limitations under the License. */
 
 #include "cinn/frontend/op_mapper_registry.h"
 #include "cinn/frontend/op_mappers/use_op_mappers.h"
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -33,6 +36,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+
+DECLARE_string(allow_cinn_ops);
+DECLARE_string(deny_cinn_ops);
 
 namespace paddle {
 namespace framework {
@@ -46,6 +52,20 @@ using GraphNodeSet = std::unordered_set<Node*>;
 using GraphNodeMap = std::unordered_map<Node*, Node*>;
 
 namespace {
+// The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
+// & FLAGS_deny_cinn_ops.
+constexpr char kDelim[] = ";";
+
+std::unordered_set<std::string> StringSplit(const std::string& str,
+                                            const std::string& delim) {
+  std::regex reg(delim);
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(str.begin(), str.end(), reg, -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+  return elems;
+}
+
 int ExtractOpRole(const GraphNodeSet& cluster) {
   std::unordered_set<int> op_roles;
   std::string attr_name = OpProtoAndCheckerMaker::OpRoleAttrName();
@@ -339,10 +359,27 @@ void ReplaceSubGraphWithCinnOpNode(const GraphNodeSet& cluster,
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
 void SearchAllSubgraphs(Graph* graph) {
-  auto teller = [](const Node* node) {
-    return ::cinn::frontend::OpMapperRegistry::Global()->Find(node->Name()) !=
-           nullptr;
+  auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
+  auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
+  auto teller = [&allow_ops, &deny_ops](const Node* node) {
+    bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
+                          node->Name()) != nullptr;
+    // if the op type is registered in CINN and allow_ops is not empty, return
+    // true only when it is in allow_ops
+    if (allow_ops.size()) {
+      return registered && allow_ops.count(node->Name());
+    }
+    // if the op type is registered in CINN and deny_ops is not empty, return
+    // true only when it is not in deny_ops
+    if (deny_ops.size()) {
+      return registered && !deny_ops.count(node->Name());
+    }
+    // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
+    // return true only when it is registered in CINN
+    return registered;
   };
+  VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
+  VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
 
@@ -375,7 +412,8 @@ void SearchAllSubgraphs(Graph* graph) {
     // save it in CinnCompiler
     std::string compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
         cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
-    VLOG(4) << "Compilation Key: " << compilation_key;
+    VLOG(4) << "Compilation Key:\n"
+            << cinn_compiler->ReadableKey(compilation_key);
 
     // Replace the found cluster to a new cinn op node
     ReplaceSubGraphWithCinnOpNode(cluster_set, cluster_inputs, cluster_outputs,

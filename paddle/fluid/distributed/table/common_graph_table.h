@@ -80,6 +80,10 @@ enum LRUResponse { ok = 0, blocked = 1, err = 2 };
 struct SampleKey {
   uint64_t node_key;
   size_t sample_size;
+  SampleKey(uint64_t _node_key, size_t _sample_size)
+      : node_key(_node_key), sample_size(_sample_size) {
+    // std::cerr<<"in constructor of samplekey\n";
+  }
   bool operator==(const SampleKey &s) const {
     return node_key == s.node_key && sample_size == s.sample_size;
   }
@@ -94,15 +98,13 @@ struct SampleKeyHash {
 class SampleResult {
  public:
   size_t actual_size;
-  char *buffer;
-  SampleResult(size_t _actual_size, char *_buffer) : actual_size(_actual_size) {
-    buffer = new char[actual_size];
-    memcpy(buffer, _buffer, actual_size);
-  }
-  ~SampleResult() {
-    // std::cout<<"in SampleResult deconstructor\n";
-    delete[] buffer;
-  }
+  std::shared_ptr<char> buffer;
+  SampleResult(size_t _actual_size, std::shared_ptr<char> &_buffer)
+      : actual_size(_actual_size), buffer(_buffer) {}
+  SampleResult(size_t _actual_size, char *_buffer)
+      : actual_size(_actual_size),
+        buffer(_buffer, [](char *p) { delete[] p; }) {}
+  ~SampleResult() {}
 };
 
 template <typename K, typename V>
@@ -364,7 +366,7 @@ class ScaledLRU {
 
 class GraphTable : public SparseTable {
  public:
-  GraphTable() {}
+  GraphTable() { use_cache = false; }
   virtual ~GraphTable() {}
   virtual int32_t pull_graph_list(int start, int size,
                                   std::unique_ptr<char[]> &buffer,
@@ -373,7 +375,7 @@ class GraphTable : public SparseTable {
 
   virtual int32_t random_sample_neighboors(
       uint64_t *node_ids, int sample_size,
-      std::vector<std::unique_ptr<char[]>> &buffers,
+      std::vector<std::shared_ptr<char>> &buffers,
       std::vector<int> &actual_sizes);
 
   int32_t random_sample_nodes(int sample_size, std::unique_ptr<char[]> &buffers,
@@ -431,6 +433,18 @@ class GraphTable : public SparseTable {
 
   size_t get_server_num() { return server_num; }
 
+  virtual int32_t make_neigh_sample_cache(size_t size_limit, size_t ttl) {
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (use_cache == false) {
+        scaled_lru.reset(new ScaledLRU<SampleKey, SampleResult, SampleKeyHash>(
+            shard_end - shard_start, size_limit, ttl));
+        use_cache = true;
+      }
+    }
+    return 0;
+  }
+
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
@@ -446,6 +460,9 @@ class GraphTable : public SparseTable {
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
+  std::shared_ptr<ScaledLRU<SampleKey, SampleResult, SampleKeyHash>> scaled_lru;
+  bool use_cache;
+  mutable std::mutex mutex_;
 };
 }  // namespace distributed
 
