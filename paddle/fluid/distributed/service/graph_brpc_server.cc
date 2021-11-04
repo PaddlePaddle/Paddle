@@ -386,7 +386,7 @@ int32_t GraphBrpcService::graph_random_sample_neighboors(
   size_t node_num = request.params(0).size() / sizeof(uint64_t);
   uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
   int sample_size = *(uint64_t *)(request.params(1).c_str());
-  std::vector<std::unique_ptr<char[]>> buffers(node_num);
+  std::vector<std::shared_ptr<char>> buffers(node_num);
   std::vector<int> actual_sizes(node_num, 0);
   ((GraphTable *)table)
       ->random_sample_neighboors(node_data, sample_size, buffers, actual_sizes);
@@ -487,7 +487,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
         request2server.size() - 1;
   }
   size_t request_call_num = request2server.size();
-  std::vector<std::unique_ptr<char[]>> local_buffers;
+  std::vector<std::shared_ptr<char>> local_buffers;
   std::vector<int> local_actual_sizes;
   std::vector<size_t> seq;
   std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
