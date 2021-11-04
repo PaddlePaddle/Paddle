@@ -12,41 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
-#include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
-#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
 namespace distributed {
 
-FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
-  // Initialize Executor
+Carrier::Carrier(
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+  // init
 }
 
-FleetExecutor::~FleetExecutor() {
-  // Destroy Executor
+Carrier::~Carrier() {
+  // destroy
 }
 
-void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
-  // Compile and Initialize
+bool Carrier::EnqueueInterceptorMessage(
+    const InterceptorMessage& interceptor_message) {
+  // enqueue message to interceptor
+  return true;
 }
 
-void FleetExecutor::Run() {
-  // Run
-}
-
-void FleetExecutor::Release() {
-  // Release
-}
-
-std::shared_ptr<Carrier> FleetExecutor::GetCarrier() {
-  // get carrier
-  return nullptr;
-}
-
-std::shared_ptr<MessageBus> FleetExecutor::GetMessageBus() {
-  // get message bus
-  return nullptr;
+void Carrier::CreateInterceptors() {
+  // create each Interceptor
 }
 
 }  // namespace distributed
