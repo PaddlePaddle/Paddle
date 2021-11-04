@@ -398,8 +398,6 @@ def monkey_patch_varbase():
             warnings.filterwarnings("ignore", category=UserWarning)
             return transform(self, device, dtype, blocking)
 
-        return self
-
     @property
     def grad(self):
         """

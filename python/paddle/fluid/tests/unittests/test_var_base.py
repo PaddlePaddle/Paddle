@@ -1225,6 +1225,9 @@ class TestVarBaseTo(unittest.TestCase):
         x_cpu0 = self.x._to(device='cpu')
         self.assertTrue(x_cpu0.place.is_cpu_place())
 
+        self.assertRaises(ValueError, self.x._to, device=1)
+        self.assertRaises(AssertionError, self.x._to, blocking=1)
+
 
 class TestVarBaseInitVarBaseFromTensorWithDevice(unittest.TestCase):
     def test_varbase_init(self):
