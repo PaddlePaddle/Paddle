@@ -33,6 +33,7 @@
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -53,16 +54,19 @@ using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class AsyncWorkQueue {
  public:
-  explicit AsyncWorkQueue(size_t host_num_threads)
+  AsyncWorkQueue(size_t host_num_threads, EventsWaiter* waiter)
       : host_num_thread_(host_num_threads) {
     std::vector<WorkQueueOptions> group_options;
     // for execute host Kernel
     group_options.emplace_back(/*num_threads*/ host_num_threads,
                                /*allow_spinning*/ true,
-                               /*track_task*/ true);
+                               /*track_task*/ true,
+                               /*queue_empty_waiter*/ waiter);
     // for launch device Kernel
     group_options.emplace_back(/*num_threads*/ 1,
-                               /*allow_spinning*/ true, /*track_task*/ true);
+                               /*allow_spinning*/ true,
+                               /*track_task*/ true,
+                               /*queue_empty_waiter*/ waiter);
     queue_group_ = CreateWorkQueueGroup(group_options);
   }
 
@@ -71,11 +75,13 @@ class AsyncWorkQueue {
   AtomicVectorSizeT& PrepareAtomicVarRef(
       const std::vector<VariableMetaInfo>& vec_meta_info);
 
-  void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
+  // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
 
   void AddTask(const OpFuncType& op_func_type, std::function<void()> fn) {
     queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
   }
+
+  void Cancel() { queue_group_->Cancel(); }
 
   AtomicVectorSizeT& AtomicDeps() { return atomic_deps_; }
   AtomicVectorSizeT& AtomicVarRef() { return atomic_var_ref_; }
@@ -95,7 +101,6 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
 
 void build_op_func_list(const platform::Place& place,
                         const framework::ProgramDesc& pdesc,
-                        std::vector<OperatorBase*>* op_list,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope);
 

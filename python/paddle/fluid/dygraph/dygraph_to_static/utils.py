@@ -520,7 +520,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 
 def _inject_import_statements():
     import_statements = [
-        "import paddle", "import paddle.fluid as fluid", "from typing import *",
+        "import paddle", "from paddle import Tensor",
+        "import paddle.fluid as fluid", "from typing import *",
         "import numpy as np"
     ]
     return '\n'.join(import_statements) + '\n'

@@ -49,10 +49,22 @@ class MapMatmul2MulPass : public FusePassBase {
 /*
  * Map matmul_v2 to mul, the same as MapMatmul2MulPass.
  */
-class MapMatmulv2ToMulPass : public FusePassBase {
+class MapMatmulV2ToMulPass : public FusePassBase {
  public:
-  MapMatmulv2ToMulPass();
-  virtual ~MapMatmulv2ToMulPass() {}
+  MapMatmulV2ToMulPass();
+  virtual ~MapMatmulV2ToMulPass() {}
+
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
+
+/*
+ * Map matmul_v2 to matmul, not supoort broadcast.
+ */
+class MapMatmulV2ToMatmulPass : public FusePassBase {
+ public:
+  MapMatmulV2ToMatmulPass();
+  virtual ~MapMatmulV2ToMatmulPass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;

@@ -148,11 +148,20 @@ void TensorRTEngine::FreezeNetwork() {
       // and outputs have scales,
       // this layer's precision and output type are set to float32.
       // This step has no effect if this layer is fused during TRT optimization.
+      int layers_no_int8 = 0;
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
         if (!is_layer_int8(layer)) {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
+          ++layers_no_int8;
         }
+      }
+      // Disable int8 or build engine failed if all layers aren't int8
+      if (layers_no_int8 == network()->getNbLayers()) {
+        nvinfer1::BuilderFlags flags = infer_builder_config_->getFlags();
+        flags = flags & ~(1U << static_cast<int>(nvinfer1::BuilderFlag::kINT8));
+        // reset flags
+        infer_builder_config_->setFlags(flags);
       }
 #else
       LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "
@@ -190,6 +199,19 @@ void TensorRTEngine::FreezeNetwork() {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
+#if IS_TRT_VERSION_LT(7000)
+      // trt6 will check all_of input > 0
+      if (!(std::all_of(input.second.begin(), input.second.end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(max_input_shape_[input.first].begin(),
+                        max_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(optim_input_shape_[input.first].begin(),
+                        optim_input_shape_[input.first].end(),
+                        [](int x) { return x > 0; }))) {
+        continue;
+      }
+#endif
       VLOG(4) << "TRT dynamic_shape set " << input.first
               << " min: " << Vec2Str(input.second)
               << ", max: " << Vec2Str(max_input_shape_[input.first])
@@ -220,11 +242,11 @@ void TensorRTEngine::FreezeNetwork() {
       *network(), *infer_builder_config_));
 #else
   infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
-  infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
+  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-  infer_engine_.reset(
-      runtime->deserializeCudaEngine(plan->data(), plan->size()));
+  infer_engine_.reset(runtime->deserializeCudaEngine(ihost_memory_->data(),
+                                                     ihost_memory_->size()));
 #endif
 
   PADDLE_ENFORCE_NOT_NULL(

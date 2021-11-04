@@ -187,6 +187,20 @@ class MaxPool2dGradFunctor {
                   const std::string data_format, framework::Tensor* input_grad);
 };
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename PoolProcess, typename T>
+class Pool3dDirectCUDAFunctor {
+ public:
+  void operator()(const T* input, const std::vector<int>& input_shape,
+                  const std::vector<int>& output_shape,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, T* output, gpuStream_t stream,
+                  PoolProcess pool_compute);
+};
+#endif
+
 template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool3dFunctor {
  public:
