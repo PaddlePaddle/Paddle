@@ -26,9 +26,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-
-// struct bfloat16;
-using bfloat16 = Eigen::bfloat16;
 template <typename T>
 struct complex;
 struct float16;
