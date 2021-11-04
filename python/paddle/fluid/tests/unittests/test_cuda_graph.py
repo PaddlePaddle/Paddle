@@ -175,9 +175,16 @@ class TestCUDAGraph(unittest.TestCase):
             self.assertTrue(np.array_equal(z.numpy(), xs_np[i]))
 
         output_dir = 'cuda_graph_dot_{}'.format(os.getpid())
-        graph.print_to_dot_files(output_dir)
-        graph.reset()
-        shutil.rmtree(output_dir)
+        try:
+            graph.print_to_dot_files(output_dir)
+            graph.reset()
+            shutil.rmtree(output_dir)
+        except Exception as e:
+            msg = str(e)
+            sub_msg = "The print_to_dot_files() method is only supported when CUDA version >= 11.3"
+            self.assertTrue(sub_msg in msg)
+        finally:
+            graph.reset()
 
 
 if __name__ == "__main__":

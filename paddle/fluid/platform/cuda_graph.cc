@@ -148,7 +148,7 @@ static std::string ConcatPath(const std::string &dirname,
 void CUDAGraph::PrintToDotFiles(const std::string &dirname,
                                 unsigned int flags) {
   ThrowErrorIfNotSupportCUDAGraph();
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= 10030
   for (size_t i = 0; i < graphs_.size(); ++i) {
     auto filename =
         ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
@@ -157,6 +157,10 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaGraphDebugDotPrint(graphs_[i], filename.c_str(), flags));
   }
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The print_to_dot_files() method is only supported when CUDA version >= "
+      "11.3."));
 #endif
 }
 
