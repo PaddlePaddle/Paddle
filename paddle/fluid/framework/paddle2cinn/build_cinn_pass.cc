@@ -56,38 +56,62 @@ namespace {
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
 
-std::unordered_set<std::string> GetDenyVarNamesList(
-    const GraphNodeSet& cluster) {
-  static std::unordered_map<std::string, std::string> deny_param_list = {
-      {"batch_norm", "ReserveSpace"},
-      {"transpose2", "XShape"},
-      {"reshape2", "XShape"}};
+static const std::unordered_map<std::string, std::unordered_set<std::string>>
+    kDenyParamMap = {{"batch_norm", {"ReserveSpace"}},
+                     {"transpose2", {"XShape"}},
+                     {"reshape2", {"XShape"}}};
 
-  std::unordered_set<std::string> deny_var_list;
+std::unordered_set<std::string> GetDenyVarNames(const GraphNodeSet& cluster) {
+  std::unordered_set<std::string> deny_var_set;
+
+  auto get_debug_info = [](const std::unordered_set<std::string>& var_names) {
+    std::string debug_info = "[";
+    for (auto& var : var_names) {
+      debug_info.append(var);
+      debug_info.append(", ");
+    }
+    debug_info.append("]");
+    return debug_info;
+  };
+
   for (auto* op : cluster) {
-    if (deny_param_list.count(op->Name())) {
+    if (kDenyParamMap.count(op->Name())) {
       const auto* desc = op->Op();
-      if (desc == nullptr) {
-        continue;
-      }
+      PADDLE_ENFORCE_NE(desc, nullptr,
+                        platform::errors::PreconditionNotMet(
+                            "The Op %s's OpDesc should not be NULL, which has "
+                            "a parameter in kDenyParamMap.",
+                            op->Name().c_str()));
 
-      auto deny_param_name = deny_param_list.at(op->Name());
-      if (desc->Inputs().count(deny_param_name)) {
-        const auto& arg_names = desc->Input(deny_param_name);
-        for (const auto& arg_name : arg_names) {
-          deny_var_list.insert(arg_name);
+      auto deny_param_names = kDenyParamMap.at(op->Name());
+      VLOG(4) << "We found deny param " << get_debug_info(deny_param_names)
+              << " in op [" << op->Name() << "].";
+
+      for (const auto& param_name : deny_param_names) {
+        if (desc->Inputs().count(param_name)) {
+          const auto& arg_names = desc->Input(param_name);
+          for (const auto& arg_name : arg_names) {
+            deny_var_set.insert(arg_name);
+            VLOG(4) << "deny param [" << param_name << "]'s argument name"
+                    << " is [" << arg_name << "].";
+          }
         }
-      }
 
-      if (desc->HasOutput(deny_param_name)) {
-        const auto& arg_names = desc->Output(deny_param_name);
-        for (const auto& arg_name : arg_names) {
-          deny_var_list.insert(arg_name);
+        if (desc->HasOutput(param_name)) {
+          const auto& arg_names = desc->Output(param_name);
+          for (const auto& arg_name : arg_names) {
+            deny_var_set.insert(arg_name);
+            VLOG(4) << "deny param [" << param_name << "]'s argument name"
+                    << " is [" << arg_name << "].";
+          }
         }
       }
     }
   }
-  return deny_var_list;
+
+  VLOG(4) << "All deny var names are " << get_debug_info(deny_var_set);
+
+  return deny_var_set;
 }
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -334,19 +358,19 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
   cinn_op_desc.SetType(kCinnLaunchOp);
   std::vector<std::string> input_names;
 
-  auto deny_var_list = GetDenyVarNamesList(cluster);
+  auto deny_var_set = GetDenyVarNames(cluster);
 
   std::for_each(cluster_inputs.begin(), cluster_inputs.end(),
-                [&input_names, &deny_var_list](Node* n) {
-                  if (n->Var() != nullptr && !deny_var_list.count(n->Name())) {
+                [&input_names, &deny_var_set](Node* n) {
+                  if (n->Var() != nullptr && !deny_var_set.count(n->Name())) {
                     input_names.emplace_back(n->Name());
                   }
                 });
   cinn_op_desc.SetInput("X", input_names);
   std::vector<std::string> output_names;
   std::for_each(cluster_outputs.begin(), cluster_outputs.end(),
-                [&output_names, &deny_var_list](Node* n) {
-                  if (n->Var() != nullptr && !deny_var_list.count(n->Name())) {
+                [&output_names, &deny_var_set](Node* n) {
+                  if (n->Var() != nullptr && !deny_var_set.count(n->Name())) {
                     output_names.emplace_back(n->Name());
                   }
                 });
