@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/matmul_utils.h"
