@@ -20,12 +20,12 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
-@OpTestTool.skip_if_not_cpu_bf16()
+@OpTestTool.skip_if_not_cpu()
 class TestStack2DOneDNNOp(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
-        self.input_dim = (15, 7)
-        self.axis = 0
+        self.input_dim = (2, 2)
+        self.axis = 1
         self.dtype = np.float32
 
     def initParameters(self):
@@ -61,19 +61,44 @@ class TestStack2DOneDNNOp(OpTest):
 
     # JUST FOR CI TO PASS, GRAD IS NOT IMPLEMENTED YET
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Y')
+        pass
+
+
+class TestStack1DOneDNNOp(TestStack2DOneDNNOp):
+    def initParameters(self):
+        self.input_dim = (100)
+        self.axis = 0
+
+
+class TestStack1DAxis1OneDNNOp(TestStack2DOneDNNOp):
+    def initParameters(self):
+        self.input_dim = (100)
+        self.axis = 1
+
+
+class TestStack2DAxisLastOneDNNOp(TestStack2DOneDNNOp):
+    def initParameters(self):
+        self.input_dim = (13, 24)
+        self.num_inputs = 5
+        self.axis = -1
 
 
 class TestStack3DOneDNNOp(TestStack2DOneDNNOp):
     def initParameters(self):
-        self.input_dim = (6, 7, 8)
-        self.num_inputs = 5
+        self.input_dim = (10, 128, 128)
+        self.axis = -2
+
+
+class TestStack3DOneDNNOp(TestStack2DOneDNNOp):
+    def initParameters(self):
+        self.input_dim = (10, 128, 128)
+        self.num_inputs = 3
         self.axis = 1
 
 
 class TestStack4DOneDNNOp(TestStack2DOneDNNOp):
     def initParameters(self):
-        self.input_dim = (2, 4, 6, 8)
+        self.input_dim = (2, 2, 2, 2)
         self.num_inputs = 3
         self.axis = 4
 

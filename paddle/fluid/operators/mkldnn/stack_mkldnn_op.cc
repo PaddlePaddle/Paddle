@@ -12,12 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
-
 namespace paddle {
 namespace operators {
 
@@ -41,26 +37,47 @@ class StackMKLDNNHandler
                                                            ctx.GetPlace()) {
     int stack_axis = ctx.Attr<int>("axis");
 
+    int ndims = inputs[0]->dims().size();
+
     if (stack_axis < 0) {
-      stack_axis = output->dims().size() + stack_axis;
+      stack_axis = ndims + 1 + stack_axis;
     }
+
+    // in stack op all inputs must have same dims
+    auto input_dims = framework::vectorize<int64_t>(inputs[0]->dims());
 
     memory::data_type dt = framework::ToMKLDNNDataType(inputs[0]->type());
     std::vector<memory::desc> srcs_md;
+    memory::desc dst_md;
+    MKLDNNMemoryFormat dst_fmt;
+
     srcs_md.reserve(inputs.size());
 
-    // in stack op all inputs have same dims
-    auto input_dims = framework::vectorize<int64_t>(inputs[0]->dims());
-    auto extended_input_dims = framework::vectorize<int64_t>(output->dims());
-    extended_input_dims[stack_axis] = 1;
+    // if stack is not done on last(non existing) axis, then we can optimize
+    // concat primitive by not adding additional dimension, since it causes
+    // wrong output format deduction and suboptimal performance as a result
+    if (stack_axis != ndims) {
+      for (size_t i = 0; i < inputs.size(); ++i) {
+        srcs_md.emplace_back(memory::desc(input_dims, dt, inputs[i]->format()));
+      }
 
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      srcs_md.emplace_back(memory::desc(input_dims, dt, inputs[i]->format())
-                               .reshape(extended_input_dims));
+      input_dims[stack_axis] *= inputs.size();
+      dst_md = memory::desc(input_dims, dt, MKLDNNMemoryFormat::any);
+    } else {
+      auto extended_input_dims = framework::vectorize<int64_t>(output->dims());
+      extended_input_dims[stack_axis] = 1;
+
+      for (size_t i = 0; i < inputs.size(); ++i) {
+        srcs_md.emplace_back(memory::desc(input_dims, dt, inputs[i]->format())
+                                 .reshape(extended_input_dims));
+      }
+
+      // concat primitive choses suboptimal format tag because it cannot
+      // distinguish between f.e. abcd and abdc if last dim is equal to 1 so
+      // enforcing is needed for better performance
+      dst_fmt = platform::GetPlainMKLDNNFormat(extended_input_dims.size());
+      dst_md = memory::desc(framework::vectorize(output->dims()), dt, dst_fmt);
     }
-
-    auto dst_dims = framework::vectorize<int64_t>(output->dims());
-    auto dst_md = memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, stack_axis, srcs_md);
   }
@@ -113,7 +130,8 @@ class StackMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
+    output->set_format(platform::GetMKLDNNFormat(
+        dst_mem->get_desc().reshape(framework::vectorize(output->dims()))));
   }
 };
 }  // namespace operators
@@ -122,5 +140,4 @@ class StackMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(stack, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::StackMKLDNNOpKernel<float>,
-                   ops::StackMKLDNNOpKernel<paddle::platform::bfloat16>);
+                   ops::StackMKLDNNOpKernel<float>);
