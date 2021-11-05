@@ -56,12 +56,38 @@ namespace {
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
 
-static std::unordered_map<std::string, std::string> deny_param_list = {
-    {"batch_norm", "ReserveSpace"}};
+std::unordered_set<std::string> GetDenyVarNamesList(
+    const GraphNodeSet& cluster) {
+  static std::unordered_map<std::string, std::string> deny_param_list = {
+      {"batch_norm", "ReserveSpace"},
+      {"transpose2", "XShape"},
+      {"reshape2", "XShape"}};
 
-bool OpHasInput(const OpDesc* op_desc, const std::string& param_name) {
-  const auto& inputs = op_desc->InputNames();
-  return std::find(inputs.cbegin(), inputs.cend(), param_name) != inputs.cend();
+  std::unordered_set<std::string> deny_var_list;
+  for (auto* op : cluster) {
+    if (deny_param_list.count(op->Name())) {
+      const auto* desc = op->Op();
+      if (desc == nullptr) {
+        continue;
+      }
+
+      auto deny_param_name = deny_param_list.at(op->Name());
+      if (desc->Inputs().count(deny_param_name)) {
+        const auto& arg_names = desc->Input(deny_param_name);
+        for (const auto& arg_name : arg_names) {
+          deny_var_list.insert(arg_name);
+        }
+      }
+
+      if (desc->HasOutput(deny_param_name)) {
+        const auto& arg_names = desc->Output(deny_param_name);
+        for (const auto& arg_name : arg_names) {
+          deny_var_list.insert(arg_name);
+        }
+      }
+    }
+  }
+  return deny_var_list;
 }
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -308,28 +334,7 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
   cinn_op_desc.SetType(kCinnLaunchOp);
   std::vector<std::string> input_names;
 
-  std::unordered_set<std::string> deny_var_list;
-  for (auto* op : cluster) {
-    if (deny_param_list.count(op->Name())) {
-      const auto* desc = op->Op();
-      if (desc == nullptr) continue;
-
-      auto deny_param_name = deny_param_list.at(op->Name());
-      if (OpHasInput(desc, deny_param_name)) {
-        const auto& arg_names = desc->Input(deny_param_name);
-        for (const auto& arg_name : arg_names) {
-          deny_var_list.insert(arg_name);
-        }
-      }
-
-      if (desc->HasOutput(deny_param_name)) {
-        const auto& arg_names = desc->Output(deny_param_name);
-        for (const auto& arg_name : arg_names) {
-          deny_var_list.insert(arg_name);
-        }
-      }
-    }
-  }
+  auto deny_var_list = GetDenyVarNamesList(cluster);
 
   std::for_each(cluster_inputs.begin(), cluster_inputs.end(),
                 [&input_names, &deny_var_list](Node* n) {
