@@ -204,6 +204,13 @@ void VarBase::ClearGradient() {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
+#ifdef PADDLE_WITH_MKLDNN
+        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+#endif
+        grad_t->clear();
+      }
+      /*
+      if (grad_t->IsInitialized()) {
         auto* dev_ctx =
             platform::DeviceContextPool::Instance().Get(grad_t->place());
         operators::math::set_constant(*dev_ctx, grad_t, 0.0);
@@ -211,6 +218,7 @@ void VarBase::ClearGradient() {
         if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
       }
+      */
     }
     // TODO(zhouwei): It's better to free memory of grad by grad_t->claer.
     // But will have some bug on mac CPU of yolov3 model, why?

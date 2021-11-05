@@ -1021,16 +1021,21 @@ class Optimizer(object):
                 adam.clear_grad()
 
         """
+        param_list = []
         if self._parameter_list is None or not isinstance(
                 self._parameter_list[0], dict):
             for p in self._parameter_list:
                 if not p.stop_gradient:
-                    p.clear_gradient()
+                    #p.clear_gradient()
+                    param_list.append(p)
         else:
             for param_group in self._param_groups:
                 for p in param_group['params']:
                     if not p.stop_gradient:
-                        p.clear_gradient()
+                        #p.clear_gradient()
+                        param_list.append(p)
+
+        core.clear_gradients(param_list)
 
     @imperative_base.no_grad
     def minimize(self,
