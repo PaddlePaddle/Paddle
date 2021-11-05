@@ -42,6 +42,15 @@ struct BlockAllocation : public Allocation {
   std::list<Block>::iterator block_it_;
 };
 
+/**
+ * Like AutoGrowthBestFitAllocator, VirtualMemoryAutoGrowthBestFitAllocator will
+ * gradually apply to GPU for video memory as the model uses more video memory.
+ * However, the difference is that virtualmemoryautogrowthbestfitallocator uses
+ * nviaid's virtual memory management technology and obtains the virtual memory
+ * address. If the video memory applied for twice is continuous, we can combine
+ * the two video memories later. This combination can greatly reduce
+ * fragmentation.
+ */
 class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
  public:
   VirtualMemoryAutoGrowthBestFitAllocator(

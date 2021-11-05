@@ -62,9 +62,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
     block->is_free_ = true;
     free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
   } else if (block->ptr_ == all_blocks_.front().ptr_) {
-    block++;
-    auto next = block;
-    block--;
+    auto next = std::next(block);
     if (next->is_free_ &&
         reinterpret_cast<uint8_t *>(block->ptr_) + block->size_ == next->ptr_) {
       // merge with next
@@ -78,9 +76,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
       free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
     }
   } else if (block->ptr_ == all_blocks_.back().ptr_) {
-    block--;
-    auto pre = block;
-    block++;
+    auto pre = std::prev(block);
     if (pre->is_free_ &&
         reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == block->ptr_) {
       // merge with pre
@@ -93,12 +89,8 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
       free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
     }
   } else {
-    block--;
-    auto pre = block;
-    block++;
-    block++;
-    auto next = block;
-    block--;
+    auto pre = std::prev(block);
+    auto next = std::next(block);
     if (pre->is_free_ &&
         reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == block->ptr_ &&
         !(next->is_free_ &&
@@ -175,8 +167,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
       } else {
         // insert to middle
         auto next = block_it;
-        block_it--;
-        auto pre = block_it;
+        auto pre = std::prev(block_it);
         if (pre->is_free_ &&
             reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == ptr &&
             !(next->is_free_ &&

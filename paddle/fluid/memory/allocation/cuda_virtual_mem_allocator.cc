@@ -37,11 +37,18 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     : place_(place) {
   CUmemAllocationProp prop = {};
 
+  // Setup the properties common for all the chunks
+  // The allocations will be device pinned memory.
+  // This property structure describes the physical location where the memory
+  // will be allocated via cuMemCreate allong with additional properties In this
+  // case, the allocation will be pinnded device memory local to a given device.
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;
   prop_ = prop;
 
+  // Prepare the access descriptor array indicating where and how the backings
+  // should be visible.
   access_desc_.resize(platform::GetCUDADeviceCount());
   for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
     if (place.device != dev_id) {
@@ -52,11 +59,16 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
         continue;
       }
     }
+    // Specify which device we are adding mappings for.
     access_desc_[dev_id].location.type = CU_MEM_LOCATION_TYPE_DEVICE;
     access_desc_[dev_id].location.id = dev_id;
+
+    // Specify both read and write access.
     access_desc_[dev_id].flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
   }
 
+  // Get the minimum granularity needed for all devices
+  // (the max of the minimum granularity of each participating device)
   granularity_ = 0;
   for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
     size_t granularity;
@@ -71,8 +83,13 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   paddle::platform::CUDADeviceGuard guard(place.device);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
 
-  virtual_mem_size_ = (actual_total + granularity_ - 1) & ~(granularity_ - 1);
+  virtual_mem_size_ = AlignedSize(actual_total, granularity_);
 
+  // Reserve the required contiguous virtual address space for the allocations
+  // The maximum video memory size we can apply for is the video memory size of
+  // GPU,
+  // so the virtual address space size we reserve is equal to the GPU video
+  // memory size
   PADDLE_ENFORCE_CUDA_SUCCESS(paddle::platform::dynload::cuMemAddressReserve(
       &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
@@ -121,7 +138,7 @@ void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
 }
 
 Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
-  size = (size + granularity_ - 1) & ~(granularity_ - 1);
+  size = AlignedSize(size, granularity_);
 
   CUdeviceptr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;
 
@@ -143,6 +160,8 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   CUmemGenericAllocationHandle handle;
 
   paddle::platform::CUDADeviceGuard guard(place_.device);
+
+  // Create physical memory backing allocation.
   auto result =
       platform::RecordedCuMemCreate(&handle, size, &prop_, 0, place_.device);
 
@@ -169,6 +188,9 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
     return nullptr;
   }
 
+  // Assign the chunk to the appropriate VA range and release the handle.
+  // After mapping the memory, it can be referenced by virtual address.
+  // The allocation will be kept live until it is unmapped.
   result = paddle::platform::dynload::cuMemMap(ptr, size, 0, handle, 0);
 
   if (result != CUDA_SUCCESS) {
@@ -177,6 +199,7 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
     return nullptr;
   }
 
+  // Apply the access descriptors to the whole VA range.
   result = paddle::platform::dynload::cuMemSetAccess(
       ptr, size, access_desc_.data(), access_desc_.size());
 

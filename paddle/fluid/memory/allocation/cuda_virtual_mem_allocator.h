@@ -29,6 +29,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// Allocate memory using NVIDIA's virtual memory management technology
 class CUDAVirtualMemAllocator : public Allocator {
  public:
   explicit CUDAVirtualMemAllocator(const platform::CUDAPlace& place);
