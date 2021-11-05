@@ -16,7 +16,7 @@ import contextlib
 import collections
 import paddle
 from paddle import einsum
-from .bfgs_utils import vjp
+from .bfgs_utils import vjp, ternary
 from .bfgs_utils import make_state, make_const, update_state
 from .bfgs_utils import active_state, any_active, any_active_with_predicates
 from .bfgs_utils import converged_state, failed_state
@@ -169,11 +169,11 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     term3 = einsum('...ij->...ji', term2)
 
     # Merges terms (4) and (5) forgoing rho
-    term45 = sk + rho_k * einsum('...i, ...i, ...j', prod_H_y, yk, sk)
+    term45 = sk + einsum('...i, ...i, ...j, ...', prod_H_y, yk, sk, rho_k)
     term45 = einsum('...i,...j', term45, sk)
 
     # Updates H_k and obtain H_k+1
-    new_Hk = Hk + rho_k * (term45 - term2 - term3)
+    new_Hk = Hk + einsum('..., ...ij-> ...ij', rho_k, (term45 - term2 - term3))
 
     return new_Hk
 
@@ -263,7 +263,7 @@ def iterates(func,
  
             # The negative product of inverse Hessian and gradients - H_k * g_k
             # is used as the line search direction. 
-            state.pk = pk = -paddle.matmul(Hk, gk)
+            state.pk = pk = -einsum('...ij, ...j', Hk, gk)
 
             # Performs line search and updates the state
             linesearch(state,
@@ -273,7 +273,7 @@ def iterates(func,
                        max_iters=ls_iters)
         
             # Uses the obtained search steps to generate next iterates.
-            next_xk = xk + state.ak * pk
+            next_xk = xk + einsum('..., ...i -> ...i', state.ak, pk)
     
             # Calculates displacement s_k = x_k+1 - x_k
             sk = next_xk - xk
@@ -289,10 +289,10 @@ def iterates(func,
 
             # Finally transitions to the next state
             p = active_state(state.state)
-            state.xk = paddle.where(p, next_xk, xk)
-            state.fk = paddle.where(p, next_fk, fk)
-            state.gk = paddle.where(p, next_gk, gk)
-            state.Hk = paddle.where(p, next_Hk, Hk)
+            state.xk = ternary(p, next_xk, xk)
+            state.fk = ternary(p, next_fk, fk)
+            state.gk = ternary(p, next_gk, gk)
+            state.Hk = ternary(p, next_Hk, Hk)
             state.k = k + 1
 
             # Calculates the gradient norms

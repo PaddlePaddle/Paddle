@@ -19,6 +19,7 @@ from .bfgs_utils import (StopCounter,
                          StopCounterException,
                          vnorm_inf,
                          vnorm_p,
+                         ternary,
                          make_const,
                          update_state,
                          any_active,
@@ -76,7 +77,7 @@ def initial(state):
 
         if paddle.all(x0 == .0):
             c = psi_0 * paddle.abs(f0) / vnorm_p(g0)**2
-            c = paddle.where(f0 == 0, paddle.ones_like(f0), c)
+            c = ternary(f0 == 0, paddle.ones_like(f0), c)
         else:
             c = psi_0 * vnorm_inf(x0) / vnorm_inf(g0)
     else:
@@ -133,8 +134,8 @@ def bracket(state, phi, c, iter_count):
         B3_cond = B3_cond & (g < .0) & (f <= f0 + epsilon_k)
 
         # Sets [prev_c, c] to [c, rho*c] if B3 is true.
-        prev_c = paddle.where(B3_cond, c, prev_c)
-        c = paddle.where(B3_cond, rho * c, c)
+        prev_c = ternary(B3_cond, c, prev_c)
+        c = ternary(B3_cond, rho * c, c)
 
         # Calculates function values and gradients for the new step size.
         f, g = vjp(phi, c)
@@ -152,10 +153,10 @@ def bracket(state, phi, c, iter_count):
     a, b = bisect(state, phi, make_const(c, .0), c, ifcond, iter_count)
 
     # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
-    a = paddle.where(B21_cond, a, prev_c)
+    a = ternary(B21_cond, a, prev_c)
 
     # Sets [_, b] to [_, c] if B1 holds, [_, b] if B2 holds
-    b = paddle.where(B21_cond, b, c)
+    b = ternary(B21_cond, b, c)
 
     # # Invalidates the state in case neither B1 nor B2 holds.
     # # failed = 
@@ -206,8 +207,8 @@ def bisect(state, phi, a, b, ifcond, iter_count):
         if any_active_with_predicates(state.state, pred):
             hi = f > f0 + epsilon_k
             lo = ~hi
-            a = paddle.where(lo & pred, d, a)
-            b = paddle.where(hi & pred, d, b)
+            a = ternary(lo & pred, d, a)
+            b = ternary(hi & pred, d, b)
         else:
             break
 
@@ -242,7 +243,7 @@ def secant(phi, a, b):
     c = (a * gb - b * ga) / (gb - ga)
     # (TODO) Handles divide by zero
     # if paddle.any(paddle.isinf(c)):
-    #     c = paddle.where(paddle.isinf(c), paddle.zeros_like(c), c)
+    #     c = ternary(paddle.isinf(c), paddle.zeros_like(c), c)
     return c
 
 
@@ -281,19 +282,19 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     S3_cond = c == A
 
     # Generates secant's input in S2 and S3
-    l = paddle.where(S2_cond, b, A)
+    l = ternary(S2_cond, b, A)
     r = B
 
-    l = paddle.where(S3_cond, a, l)
-    r = paddle.where(S3_cond, A, r)
+    l = ternary(S3_cond, a, l)
+    r = ternary(S3_cond, A, r)
 
     # Outputs of S2 and S3
     a, b = update(state, phi, A, B, c, ifcond, iter_count)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
     S2_or_S3 = S2_cond | S3_cond
-    a = paddle.where(S2_or_S3, a, A)
-    b = paddle.where(S2_or_S3, b, B)
+    a = ternary(S2_or_S3, a, A)
+    b = ternary(S2_or_S3, b, B)
 
     return [a, b]   
 
@@ -408,16 +409,16 @@ def update(state, phi, a, b, c, ifcond, iter_count):
 
     # Step 1: branches between U2 and U3 
     U23_cond = f <= f0 + epsilon_k
-    A = paddle.where(U23_cond, c, A)
-    B = paddle.where(U23_cond, b, B)
+    A = ternary(U23_cond, c, A)
+    B = ternary(U23_cond, b, B)
 
     # Step 2: updates for true U1
-    A = paddle.where(U1_cond, a, A)
-    B = paddle.where(U1_cond, c, B)
+    A = ternary(U1_cond, a, A)
+    B = ternary(U1_cond, c, B)
 
     # Step 3: in case c is not in [a, b], keeps [a, b]
-    A = paddle.where(U0_cond, a, A)
-    B = paddle.where(U0_cond, b, B)
+    A = ternary(U0_cond, a, A)
+    B = ternary(U0_cond, b, B)
 
     return [A, B]
 
@@ -614,7 +615,7 @@ def hz_linesearch(state,
     # the p_k is a descending direction. If that's not the case, then sets
     # the line search state as failed for the corresponding batching element.
     if state.pk is None:
-        pk = -paddle.matmul(Hk, gk)
+        pk = -einsum('...ij, ...j', Hk, gk)
         state.pk = pk
     else:
         pk = state.pk
@@ -659,7 +660,7 @@ def hz_linesearch(state,
             a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
 
             stopped = stopped | stopping_condition(state, phi, b, deriv)
-            ls_stepsize = paddle.where(stopped, b, ls_stepsize)
+            ls_stepsize = ternary(stopped, b, ls_stepsize)
 
             # If interval does not shrink enough, then applies bisect
             # repeatedly.
@@ -671,8 +672,8 @@ def hz_linesearch(state,
                 c = 0.5 * (a + b)
         
                 A, B = update(state, phi, a, b, c, L2_cond, iter_count)
-                a = paddle.where(L2_cond, A, a)
-                b = paddle.where(L2_cond, B, b)
+                a = ternary(L2_cond, A, a)
+                b = ternary(L2_cond, B, b)
 
             # Goes to next iteration
             a_j, b_j = a, b
@@ -684,7 +685,7 @@ def hz_linesearch(state,
     state.state = update_state(state.state, ~stopped, 'failed')
 
     # Writes the successfully obtained step sizes back to the search state.
-    # state.ak = paddle.where(active_state(state.state), ls_stepsize, state.ak)
+    # state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
     state.ak = ls_stepsize
 
     return

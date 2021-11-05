@@ -17,6 +17,16 @@ import paddle
 from ...autograd import vjp as _vjp
 
 
+def ternary(cond, x, y):
+    
+    expanding_dim = x.dim() - cond.dim()
+    assert expanding_dim >= 0
+
+    for i in range(expanding_dim):
+        cond = cond.unsqueeze(-1)
+
+    return paddle.where(cond, x, y)
+
 def vjp(f, x):
     r"""A single tensor version of VJP.
     
@@ -29,11 +39,17 @@ def vjp(f, x):
             fval: a tensor that holds the function value.
             gval: a tensor that holds the function gradients.  
     """
-    assert isinstance(x, paddle.Tensor)
+    assert isinstance(x, paddle.Tensor), (
+        f'This BFGS optimizer applies to function of a single input tensor. '
+        f'The input however is a {type(x)}.'
+    )
     fval, gval = _vjp(f, x)
-    assert isinstance(fval, paddle.Tensor)
+    assert isinstance(fval, paddle.Tensor), (
+        f'This BFGS optimizer only supports function returning a single output '
+        f'tensor. However, the function result is a {type(fval)}.'
+    )
 
-    return fval[0], gval[0]
+    return fval, gval[0]
 
 def vnorm_p(x, p=2):
     r"""p vector norm."""
