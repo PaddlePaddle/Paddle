@@ -101,7 +101,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
             << "value:\n"
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
 
-    const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
     auto input_variable_names = ctx.InputNames(kX);
     const auto& input_tensors = ctx.MultiInput<LoDTensor>(kX);
     std::map<std::string, const LoDTensor*> inputs_name2tensor;
@@ -114,8 +113,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
-    const auto& cinn_compiled_object =
-        CinnCompiler::GetInstance()->Compile(graph, inputs_name2tensor, target);
+    const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
+        compilation_key, inputs_name2tensor, target);
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
     const auto& cinn_runtime_program = cinn_compiled_object.runtime_program;
