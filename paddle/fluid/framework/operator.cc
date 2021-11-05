@@ -1815,80 +1815,54 @@ void OperatorWithKernel::BuildPtenKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx.inputs.at(input_names[i]);
-    if (ins_vector.size() == 1UL) {
-      if (pt_kernel_context_->InputsSize() > i) {
-        experimental::ReMakePtenDenseTensorFromVar(
-            *ins_vector[0], in_def,
-            pt_kernel_context_->MutableInputAt<pten::DenseTensor>(i));
-        pt_kernel_context_->MutableInputRangeAt(i) = std::make_pair(i, i + 1);
-      } else {
-        pt_kernel_context_->EmplaceBackInput(
-            experimental::MakePtenTensorBaseFromVar(*ins_vector[0], in_def));
+    if (pt_kernel_context_->InputsSize() <= i) {
+      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
+      for (auto* var : ins_vector) {
+        tmp_inputs.emplace_back(
+            experimental::MakePtenTensorBaseFromVar(*var, in_def));
       }
+      pt_kernel_context_->EmplaceBackInputs(std::move(tmp_inputs));
     } else {
-      if (pt_kernel_context_->InputsSize() <= i) {
-        paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
-        for (auto* var : ins_vector) {
-          tmp_inputs.emplace_back(
-              experimental::MakePtenTensorBaseFromVar(*var, in_def));
+      size_t input_size = pt_kernel_context_->InputsSize();
+      for (size_t j = 0; j < ins_vector.size(); ++j) {
+        if (input_size > i + j) {
+          experimental::ReMakePtenDenseTensorFromVar(
+              *ins_vector[j], in_def,
+              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(i + j));
+        } else {
+          pt_kernel_context_->EmplaceBackInput(
+              experimental::MakePtenTensorBaseFromVar(*ins_vector[j], in_def));
         }
-        pt_kernel_context_->EmplaceBackInputs(std::move(tmp_inputs));
-      } else {
-        size_t input_size = pt_kernel_context_->InputsSize();
-        for (size_t j = 0; j < ins_vector.size(); ++j) {
-          if (input_size > i + j) {
-            experimental::ReMakePtenDenseTensorFromVar(
-                *ins_vector[j], in_def,
-                pt_kernel_context_->MutableInputAt<pten::DenseTensor>(i + j));
-          } else {
-            pt_kernel_context_->EmplaceBackInput(
-                experimental::MakePtenTensorBaseFromVar(*ins_vector[j],
-                                                        in_def));
-          }
-        }
-        pt_kernel_context_->MutableInputRangeAt(i) =
-            std::make_pair(i, i + ins_vector.size());
       }
+      pt_kernel_context_->MutableInputRangeAt(i) =
+          std::make_pair(i, i + ins_vector.size());
     }
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto& out_def = output_defs.at(i);
     auto& outs_vector = ctx.outputs.at(output_names[i]);
-    if (outs_vector.size() == 1UL) {
-      if (pt_kernel_context_->OutputsSize() > i) {
-        experimental::ReMakePtenDenseTensorFromVar(
-            outs_vector[0], out_def,
-            pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(i));
-        pt_kernel_context_->MutableOutputRangeAt(i) = std::make_pair(i, i + 1);
-      } else {
-        pt_kernel_context_->EmplaceBackOutput(
-            experimental::MakePtenTensorBaseFromVar(outs_vector[0], out_def));
+    if (pt_kernel_context_->OutputsSize() <= i) {
+      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
+      for (auto* var : outs_vector) {
+        tmp_outputs.emplace_back(
+            experimental::MakePtenTensorBaseFromVar(var, out_def));
       }
+      pt_kernel_context_->EmplaceBackOutputs(std::move(tmp_outputs));
     } else {
-      if (pt_kernel_context_->OutputsSize() <= i) {
-        paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
-        for (auto* var : outs_vector) {
-          tmp_outputs.emplace_back(
-              experimental::MakePtenTensorBaseFromVar(*var, out_def));
+      size_t output_size = pt_kernel_context_->OutputsSize();
+      for (size_t j = 0; j < outs_vector.size(); ++j) {
+        if (output_size > i + j) {
+          experimental::ReMakePtenDenseTensorFromVar(
+              outs_vector[j], out_def,
+              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(i + j));
+        } else {
+          pt_kernel_context_->EmplaceBackOutput(
+              experimental::MakePtenTensorBaseFromVar(outs_vector[j], out_def));
         }
-        pt_kernel_context_->EmplaceBackOutputs(std::move(tmp_outputs));
-      } else {
-        size_t output_size = pt_kernel_context_->OutputsSize();
-        for (size_t j = 0; j < outs_vector.size(); ++j) {
-          if (output_size > i + j) {
-            experimental::ReMakePtenDenseTensorFromVar(
-                outs_vector[j], out_def,
-                pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(i + j));
-          } else {
-            pt_kernel_context_->EmplaceBackOutput(
-                experimental::MakePtenTensorBaseFromVar(outs_vector[j],
-                                                        out_def));
-          }
-        }
-        pt_kernel_context_->MutableOutputRangeAt(i) =
-            std::make_pair(i, i + outs_vector.size());
       }
+      pt_kernel_context_->MutableOutputRangeAt(i) =
+          std::make_pair(i, i + outs_vector.size());
     }
   }
 
