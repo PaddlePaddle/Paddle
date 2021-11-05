@@ -475,23 +475,25 @@ class ConvMKLDNNHandlerT
     }
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
+    constexpr float scale = 1.0f;
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "relu6") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale,
                                      mkldnn::algorithm::eltwise_bounded_relu,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "swish") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "hard_swish") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(
           scale, mkldnn::algorithm::eltwise_hardswish, fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "hard_sigmoid") {
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_linear,
+                                     fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_clip,
+                                     0.0f, 1.0f);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
@@ -563,7 +565,7 @@ class ConvMKLDNNHandlerT
       const auto target_mem_p = this->AcquireMemory(target_key_suffix);
       user_mem_p->set_data_handle(platform::to_void_cast<T>(in_mem_data));
       if (user_mem_p != target_mem_p) {
-        this->AcquireReorder(user_mem_p, target_mem_p, key_mem);
+        this->AcquireReorder(user_mem_p, target_mem_p);
       }
       return target_mem_p;
     }
@@ -641,7 +643,7 @@ class ConvMKLDNNHandlerT
         platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc())) {
       auto residual_memory_p = this->AcquireResidualMemory(residual_param);
       dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-      this->AcquireReorder(residual_memory_p, dst_memory_p, "@residual_dst");
+      this->AcquireReorder(residual_memory_p, dst_memory_p);
     } else {
       // Changing ShareDataWith to TensorCopy results in performance drop
       // on ResNet architectures

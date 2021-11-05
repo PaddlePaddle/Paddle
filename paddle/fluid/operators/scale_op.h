@@ -14,9 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/framework/pten_utils.h"
+
+// only can include the headers in paddle/top/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
 
 namespace paddle {
 namespace operators {
@@ -33,6 +37,7 @@ static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
   return tensor_data[0];
 }
 
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class ScaleKernel : public framework::OpKernel<T> {
  public:
@@ -40,13 +45,13 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto* in_var = ctx.InputVar("X");
     auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
 
-    auto bias = static_cast<T>(ctx.Attr<float>("bias"));
+    auto bias = ctx.Attr<float>("bias");
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
 
-    auto scale = static_cast<T>(ctx.Attr<float>("scale"));
+    auto scale = ctx.Attr<float>("scale");
     if (ctx.HasInput("ScaleTensor")) {
       auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
-      scale = GetAttrFromTensor<T>(scale_tensor);
+      scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
     }
 
     auto* out_var = ctx.OutputVar("Out");
@@ -56,22 +61,17 @@ class ScaleKernel : public framework::OpKernel<T> {
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
-
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     out->mutable_data<T>(in->place());
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
-                      paddle::platform::errors::InvalidArgument(
-                          "the input and output should have the same dim"
-                          "but input dim is %s, output dim is %s",
-                          in->dims(), out->dims()));
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
-        dev, eigen_out, eigen_in, scale, bias, bias_after_scale);
+    // call new kernel
+    pten::Scale<T>(dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,
+                   pt_out.get());
   }
 };
 
