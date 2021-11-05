@@ -1837,4 +1837,4 @@ class OpTestTool:
     def skip_if_not_cpu(cls):
         return OpTestTool.skip_if(
             not isinstance(_current_expected_place(), core.CPUPlace),
-            "Place does not support BF16 evaluation")
+            "OneDNN supports only CPU for now")
