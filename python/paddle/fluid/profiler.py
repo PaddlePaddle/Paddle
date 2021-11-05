@@ -19,7 +19,10 @@ from .wrapped_decorator import signature_safe_contextmanager
 import os
 import six
 
-__all__ = ['reset_profiler', 'profiler', 'start_profiler', 'stop_profiler']
+__all__ = [
+    'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
+    'stop_profiler'
+]
 
 NVPROF_CONFIG = [
     "gpustarttimestamp",
@@ -30,6 +33,20 @@ NVPROF_CONFIG = [
     "enableonstart 0",
     "conckerneltrace",
 ]
+
+
+@signature_safe_contextmanager
+def cuda_profiler(output_file, output_mode=None, config=None):
+    """
+    API cuda_profiler has been abandoned. If you have relevant requirements, you can use `paddle.utils.profiler.start_profiler` and `paddle.utils.profiler.stop_profiler`. 
+    The relevant reference documents are as follows:
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/start_profiler_en.html#start-profiler>
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/stop_profiler_en.html#stop-profiler>
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/performance_improving/analysis_tools/timeline_en.html>
+    """
+    raise RuntimeError(
+        "API cuda_profiler has been abandoned. If you have relevant requirements, you can use `paddle.utils.profiler.start_profiler` and `paddle.utils.profiler.stop_profiler`.\nThe relevant reference documents are as follows:\n<https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/start_profiler_en.html#start-profiler>\n<https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/stop_profiler_en.html#stop-profiler>\n<https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/performance_improving/analysis_tools/timeline_en.html>"
+    )
 
 
 @signature_safe_contextmanager
