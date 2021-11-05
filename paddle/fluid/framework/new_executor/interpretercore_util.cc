@@ -217,8 +217,8 @@ void apply_device_guard(const OperatorBase* op_base,
 }
 
 // the return value is whether data transformer is needed for this var
-bool need_place_transform_for_var(const OpKernelType kernel_type_for_var,
-                                  const OpKernelType expected_kernel_key) {
+bool need_place_transform_for_var(const OpKernelType& kernel_type_for_var,
+                                  const OpKernelType& expected_kernel_key) {
   if (platform::is_same_place(kernel_type_for_var.place_,
                               expected_kernel_key.place_) ||
       (is_cuda_pinned_place(kernel_type_for_var.place_) &&
@@ -229,13 +229,13 @@ bool need_place_transform_for_var(const OpKernelType kernel_type_for_var,
   }
 }
 
-bool need_dtype_transform_for_var(const OpKernelType kernel_type_for_var,
-                                  const OpKernelType expected_kernel_key) {
+bool need_dtype_transform_for_var(const OpKernelType& kernel_type_for_var,
+                                  const OpKernelType& expected_kernel_key) {
   return false;  // TODO(@xiongkun) add dtype judgement here
 }
 
-bool need_layout_transform_for_var(const OpKernelType kernel_type_for_var,
-                                   const OpKernelType expected_kernel_key) {
+bool need_layout_transform_for_var(const OpKernelType& kernel_type_for_var,
+                                   const OpKernelType& expected_kernel_key) {
   return false;  // TODO(@xiongkun) add layout judgement here
 }
 
@@ -244,10 +244,10 @@ bool need_layout_transform_for_var(const OpKernelType kernel_type_for_var,
 // if "X": ["var1", "var2"], then X is the outer name,
 // var1 and var2 is the var_name
 std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
-    const OpKernelType kernel_type_for_var,
-    const OpKernelType expected_kernel_key, const platform::Place& place,
-    Variable* var, std::string var_name, std::string outer_name,
-    VariableScope* var_scope, OpFuncNode& op_func_node) {
+    const OpKernelType& kernel_type_for_var,
+    const OpKernelType& expected_kernel_key, const platform::Place& place,
+    const std::string& var_name, const std::string& outer_name,
+    const OpFuncNode& op_func_node, Variable* var, VariableScope* var_scope) {
   auto& ins_name2id = op_func_node.input_index;
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -358,8 +358,8 @@ std::vector<OpFuncNode> apply_data_transform(
         OpFuncNode copy_op_func_node;
         std::tie(new_var_name, copy_op_func_node) =
             apply_place_transform_for_var(
-                kernel_type_for_var, expected_kernel_key, place, var, var_name,
-                var_name_item.first, var_scope, op_func_node);
+                kernel_type_for_var, expected_kernel_key, place, var_name,
+                var_name_item.first, op_func_node, var, var_scope);
         op_func_node.input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
         copy_func_nodes.push_back(copy_op_func_node);
