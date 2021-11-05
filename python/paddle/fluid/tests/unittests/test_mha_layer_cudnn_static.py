@@ -24,26 +24,19 @@ from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
 from paddle.nn.layer import CUDNNSeqInfoInfer
 
 
-def is_equal_atol(a, b, atol):
-    a = a.flatten()
-    b = b.flatten()
+def compare(ref, res, atol, rtol):
+    ref = ref.flatten()
+    res = res.flatten()
 
-    a_b_diff = np.abs(a - b)
-    is_error = np.sum(a_b_diff > atol)
-    if is_error:
-        return False
-    return True
+    tmp_ref = ref.astype(np.float)
+    tol = atol + rtol * abs(tmp_ref)
 
+    diff = abs(res - ref)
 
-def is_equal_rtol(a, b, rtol):
-    a = a.flatten()
-    b = b.flatten()
-
-    a_abs = np.abs(a)
-    rel_err = max(np.abs(a - b) / a_abs)
-    if rel_err > rtol:
-        return False
-    return True
+    indices = np.transpose(np.where(diff > tol))
+    if len(indices) == 0:
+        return True
+    return False
 
 
 def _generate_data(batch_size, max_seq_len, vec_size, dtype):
@@ -163,9 +156,8 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
                             "attn_mask": self.attn_mask_for_cudnn},
                         fetch_list=[self.cudnn_mha_loss.name])
 
-        self.assertEqual(
-            is_equal_atol(np.array(ref_out), np.array(cudnn_out), self.atol),
-            True)
+        self.assertTrue(compare(np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
+                        "[Test*CUDNNMHALayer-Static] outputs are miss-matched.")
         print(f'CUDNNMultiHeadAttention Layer [Static] {self.dtype} fwd passed.')
 
 
@@ -196,15 +188,18 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
                             (np.array(wq_grad), np.array(wk_grad), 
                              np.array(wv_grad), np.array(wo_grad)),
                             axis=0)
-        self.assertEqual(
-            is_equal_rtol(ref_weight_grad, cdunn_w_grad, self.rtol), True)
 
-        self.assertEqual(
-            is_equal_rtol(q_input_3dim_grad, q_input_grad, self.rtol), True)
-        self.assertEqual(
-            is_equal_rtol(k_input_3dim_grad, k_input_grad, self.rtol), True)
-        self.assertEqual(
-            is_equal_rtol(v_input_3dim_grad, v_input_grad, self.rtol), True)
+        self.assertTrue(compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
+            "[Test*CUDNNMHALayer-Static] weight_grads are miss-matched.")
+        self.assertTrue(
+            compare(q_input_3dim_grad, q_input_grad, self.atol, self.rtol),
+                    "[Test*CUDNNMHALayer-Static] Q_grads are miss-matched.")
+        self.assertTrue(
+            compare(k_input_3dim_grad, k_input_grad, self.atol, self.rtol),
+                    "[Test*CUDNNMHALayer-Static] K_grads are miss-matched.")
+        self.assertTrue(
+            compare(v_input_3dim_grad, v_input_grad, self.atol, self.rtol),
+                    "[Test*CUDNNMHALayer-Static] V_grads are miss-matched.")
 
         print(f'CUDNNMultiHeadAttention [Static] Layer {self.dtype} bwd passed.')
 
@@ -324,9 +319,8 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
                             "attn_mask": self.attn_mask_for_cudnn},
                         fetch_list=[self.cudnn_mha_loss.name])
 
-        self.assertEqual(
-            is_equal_atol(np.array(ref_out), np.array(cudnn_out), self.atol),
-            True)
+        self.assertTrue(compare(np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
+                "[Test*CUDNNMHALayerWithSeqDataCache-Static] outputs are miss-matched.")
         print(f'CUDNNMHALayerStaticWithSeqDataCache Layer [Static] {self.dtype} fwd passed.')
 
 
@@ -357,15 +351,17 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
                             (np.array(wq_grad), np.array(wk_grad), 
                              np.array(wv_grad), np.array(wo_grad)),
                             axis=0)
-        self.assertEqual(
-            is_equal_rtol(ref_weight_grad, cdunn_w_grad, self.rtol), True)
-
-        self.assertEqual(
-            is_equal_rtol(q_input_3dim_grad, q_input_grad, self.rtol), True)
-        self.assertEqual(
-            is_equal_rtol(k_input_3dim_grad, k_input_grad, self.rtol), True)
-        self.assertEqual(
-            is_equal_rtol(v_input_3dim_grad, v_input_grad, self.rtol), True)
+        self.assertTrue(compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
+            "[Test*CUDNNMHALayerWithSeqDataCache-Static] weight_grads are miss-matched.")
+        self.assertTrue(
+            compare(q_input_3dim_grad, q_input_grad, self.atol, self.rtol),
+                    "[Test*CUDNNMHALayerWithSeqDataCache-Static] Q_grads are miss-matched.")
+        self.assertTrue(
+            compare(k_input_3dim_grad, k_input_grad, self.atol, self.rtol),
+                    "[Test*CUDNNMHALayerWithSeqDataCache-Static] K_grads are miss-matched.")
+        self.assertTrue(
+            compare(v_input_3dim_grad, v_input_grad, self.atol, self.rtol),
+                    "[Test*CUDNNMHALayerWithSeqDataCache-Static] V_grads are miss-matched.")
 
         print(f'UDNNMHALayerStaticWithSeqDataCache [Static] Layer {self.dtype} bwd passed.')
 
