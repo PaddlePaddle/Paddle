@@ -263,9 +263,6 @@ TEST(CinnLaunchOpHelperTest, TestSeperateTempVar) {
       SeperateTempVar(cinn_scope, {"cinn_var1", "cinn_var2"}, {"cinn_var4"});
   ASSERT_EQ(temp_names.size(), 1);
   EXPECT_EQ(temp_names.front(), "cinn_var3");
-  ASSERT_THROW(
-      SeperateTempVar(cinn_scope, {"cinn_var1", "not_exist"}, {"cinn_var4"}),
-      paddle::platform::EnforceNotMet);
 }
 
 TEST(CinnLaunchOpHelperTest, TestShareTensorWithCinnBuffer) {
