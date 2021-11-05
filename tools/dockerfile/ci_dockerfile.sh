@@ -75,7 +75,7 @@ function make_cinn_dockerfile(){
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub " ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
-    RUN apt-get install -y gcc \\
+    RUN apt-get install -y gcc-5 \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
     RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
