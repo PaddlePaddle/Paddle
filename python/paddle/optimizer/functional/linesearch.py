@@ -80,6 +80,8 @@ def initial(state):
             c = ternary(f0 == 0, paddle.ones_like(f0), c)
         else:
             c = psi_0 * vnorm_inf(x0) / vnorm_inf(g0)
+
+        state.ak = c
     else:
         # (TODO) implements quadratic interpolant
         prev_ak = state.ak
@@ -640,6 +642,7 @@ def hz_linesearch(state,
     # Initializes a stop counter
     iter_count = StopCounter(max_iters)
 
+    # Initializes stop flags
     stopped = make_const(fk, False, dtype='bool')
 
     try:
@@ -648,10 +651,11 @@ def hz_linesearch(state,
         ls_stepsize = c
         iter_count.increment()
         
-        # Initial stopping test, unlikely to succeed though
-        stopped = stopping_condition(state, phi, c, deriv)
+        # Initial stopping test. Those already converged instances are likely
+        # to succeed. 
+        stopped = stopped | stopping_condition(state, phi, c, deriv)
 
-        # Obtains the first interval with opposite slopes at end points
+        # Obtains the first interval with opposite slopes
         a_j, b_j = bracket(state, phi, c, iter_count)
 
         # Continues if there's line search still active
@@ -659,8 +663,9 @@ def hz_linesearch(state,
             # Applies secant2 to the located opposite slope interval
             a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
 
-            stopped = stopped | stopping_condition(state, phi, b, deriv)
-            ls_stepsize = ternary(stopped, b, ls_stepsize)
+            new_stopped = ~stopped & stopping_condition(state, phi, b, deriv)
+            stopped = stopped | new_stopped
+            ls_stepsize = ternary(new_stopped, b, ls_stepsize)
 
             # If interval does not shrink enough, then applies bisect
             # repeatedly.
@@ -686,7 +691,7 @@ def hz_linesearch(state,
 
     # Writes the successfully obtained step sizes back to the search state.
     # state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
-    state.ak = ls_stepsize
+    state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
 
     return
 
