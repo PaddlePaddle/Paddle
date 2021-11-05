@@ -83,7 +83,7 @@ class TestStack2DAxisLastOneDNNOp(TestStack2DOneDNNOp):
         self.axis = -1
 
 
-class TestStack3DOneDNNOp(TestStack2DOneDNNOp):
+class TestStack3DAxisNegativeOneDNNOp(TestStack2DOneDNNOp):
     def initParameters(self):
         self.input_dim = (10, 128, 128)
         self.axis = -2
