@@ -512,11 +512,11 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   for (auto var_id : instr.GCCheckVars()) {
     bool is_ready =
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
-    if (is_ready && var_scope.VarDesc(var_id) &&
-        !var_scope.VarDesc(var_id)->Persistable()) {
-      gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
-              &instr.DeviceContext());
-    } else if (is_ready && var_scope.VarDesc(var_id) == nullptr) {
+    // ignore all persistable var while GC
+    if (var_scope.VarDesc(var_id) && var_scope.VarDesc(var_id)->Persistable()) {
+      continue;
+    }
+    if (is_ready) {
       gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
               &instr.DeviceContext());
     }

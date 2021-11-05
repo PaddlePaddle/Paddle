@@ -580,6 +580,11 @@ class VariableScope : public ScopeBase {
     vec_meta_info_.push_back(info);
   }
 
+  void SetVarDesc(const std::string& name, framework::VarDesc* var_desc) {
+    CheckExist(name);
+    vec_meta_info_[VarId(name)].vardesc_ = var_desc;
+  }
+
   paddle::framework::VarDesc* VarDesc(const std::string& name) const {
     return VarDesc(VarId(name));
   }
@@ -587,10 +592,6 @@ class VariableScope : public ScopeBase {
   paddle::framework::VarDesc* VarDesc(int id) const {
     CheckExist(id);
     return vec_meta_info_[id].vardesc_;
-  }
-
-  VariableMetaInfo& VarMetaInfo(const std::string& name) {
-    return vec_meta_info_[VarId(name)];
   }
 
   void CheckExist(int id) const {
