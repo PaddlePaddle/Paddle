@@ -113,6 +113,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::OpKernelType& kernel_type,
                        const framework::KernelSignature& kernel_signature,
                        const pten::Kernel& pt_kernel,
+                       pten::KernelContext* pt_kernel_context,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
@@ -121,7 +122,8 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       dev_ctx_(dev_ctx),
       run_pten_kernel_(true),
       pt_kernel_signature_(kernel_signature),
-      pt_kernel_(pt_kernel) {}
+      pt_kernel_(pt_kernel),
+      pt_kernel_context_(pt_kernel_context) {}
 
 template <typename VarType>
 PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
@@ -129,7 +131,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        const framework::OperatorWithKernel& op,
                        const platform::Place& place,
                        const framework::AttributeMap& attrs,
-                       const framework::AttributeMap& default_attrs) {
+                       const framework::AttributeMap& default_attrs,
+                       pten::KernelContext* pt_kernel_context) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -172,7 +175,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                        pt_kernel, dev_ctx);
+                        pt_kernel, pt_kernel_context, dev_ctx);
     } else {
       VLOG(1) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
               << "` not found.";
@@ -231,8 +234,10 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
                                const framework::AttributeMap& attrs,
-                               const framework::AttributeMap& default_attrs) {
-  return PrepareImpl<VarBase>(ins, outs, op, place, attrs, default_attrs);
+                               const framework::AttributeMap& default_attrs,
+                               pten::KernelContext* pt_kernel_context) {
+  return PrepareImpl<VarBase>(ins, outs, op, place, attrs, default_attrs,
+                              pt_kernel_context);
 }
 
 PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
@@ -240,9 +245,10 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
                                const framework::AttributeMap& attrs,
-                               const framework::AttributeMap& default_attrs) {
+                               const framework::AttributeMap& default_attrs,
+                               pten::KernelContext* pt_kernel_context) {
   return PrepareImpl<VariableWrapper>(ins, outs, op, place, attrs,
-                                      default_attrs);
+                                      default_attrs, pt_kernel_context);
 }
 
 template <typename VarType>
@@ -434,24 +440,23 @@ template <typename VarType>
 static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
     const framework::KernelSignature& pt_kernel_signature,
-    const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
-    const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
-    const framework::AttributeMap& attrs,
+    const pten::Kernel& pt_kernel, pten::KernelContext* pt_kernel_context,
+    platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
+    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
                                                     &default_attrs, op.Type());
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  auto* kernel_ctx = GetCurrentTracer()->GetCurrentKernelContext();
   BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
                                          outs, attrs, default_attrs, dev_ctx,
-                                         kernel_ctx);
+                                         pt_kernel_context);
 
-  pt_kernel(kernel_ctx);
+  pt_kernel(pt_kernel_context);
 
   // Ensure that it does not affect the VarBase life cycle management
-  kernel_ctx->ClearData();
+  pt_kernel_context->ClearData();
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later
@@ -463,7 +468,8 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, pt_kernel_signature_, pt_kernel_,
-                                 dev_ctx_, ins, outs, attrs, default_attrs);
+                                 pt_kernel_context_, dev_ctx_, ins, outs, attrs,
+                                 default_attrs);
   } else {
     PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
                                outs, attrs, default_attrs);
@@ -476,8 +482,8 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(op_, pt_kernel_signature_, pt_kernel_,
-                                         dev_ctx_, ins, outs, attrs,
-                                         default_attrs);
+                                         pt_kernel_context_, dev_ctx_, ins,
+                                         outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
                                        ins, outs, attrs, default_attrs);

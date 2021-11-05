@@ -25,6 +25,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace imperative {
@@ -197,6 +198,9 @@ class OpBase {
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  static pten::KernelContext pt_kernel_context_;
 };
 
 class GradOpNode {
