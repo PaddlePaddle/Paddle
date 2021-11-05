@@ -187,8 +187,8 @@ int32_t GraphBrpcService::initialize() {
   _service_handler_map[PS_STOP_PROFILER] = &GraphBrpcService::stop_profiler;
 
   _service_handler_map[PS_PULL_GRAPH_LIST] = &GraphBrpcService::pull_graph_list;
-  _service_handler_map[PS_GRAPH_SAMPLE_NEIGHBOORS] =
-      &GraphBrpcService::graph_random_sample_neighboors;
+  _service_handler_map[PS_GRAPH_SAMPLE_NEIGHBORS] =
+      &GraphBrpcService::graph_random_sample_neighbors;
   _service_handler_map[PS_GRAPH_SAMPLE_NODES] =
       &GraphBrpcService::graph_random_sample_nodes;
   _service_handler_map[PS_GRAPH_GET_NODE_FEAT] =
@@ -201,8 +201,9 @@ int32_t GraphBrpcService::initialize() {
   _service_handler_map[PS_GRAPH_SET_NODE_FEAT] =
       &GraphBrpcService::graph_set_node_feat;
   _service_handler_map[PS_GRAPH_SAMPLE_NODES_FROM_ONE_SERVER] =
-      &GraphBrpcService::sample_neighboors_across_multi_servers;
-
+      &GraphBrpcService::sample_neighbors_across_multi_servers;
+  _service_handler_map[PS_GRAPH_USE_NEIGHBORS_SAMPLE_CACHE] =
+      &GraphBrpcService::use_neighbors_sample_cache;
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
 
@@ -373,7 +374,7 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
   cntl->response_attachment().append(buffer.get(), actual_size);
   return 0;
 }
-int32_t GraphBrpcService::graph_random_sample_neighboors(
+int32_t GraphBrpcService::graph_random_sample_neighbors(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
@@ -386,10 +387,10 @@ int32_t GraphBrpcService::graph_random_sample_neighboors(
   size_t node_num = request.params(0).size() / sizeof(uint64_t);
   uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
   int sample_size = *(uint64_t *)(request.params(1).c_str());
-  std::vector<std::unique_ptr<char[]>> buffers(node_num);
+  std::vector<std::shared_ptr<char>> buffers(node_num);
   std::vector<int> actual_sizes(node_num, 0);
   ((GraphTable *)table)
-      ->random_sample_neighboors(node_data, sample_size, buffers, actual_sizes);
+      ->random_sample_neighbors(node_data, sample_size, buffers, actual_sizes);
 
   cntl->response_attachment().append(&node_num, sizeof(size_t));
   cntl->response_attachment().append(actual_sizes.data(),
@@ -448,7 +449,7 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
 
   return 0;
 }
-int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
+int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl) {
   // sleep(5);
@@ -456,7 +457,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
   if (request.params_size() < 2) {
     set_response_code(
         response, -1,
-        "graph_random_sample request requires at least 2 arguments");
+        "graph_random_neighbors_sample request requires at least 2 arguments");
     return 0;
   }
   size_t node_num = request.params(0).size() / sizeof(uint64_t),
@@ -487,7 +488,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
         request2server.size() - 1;
   }
   size_t request_call_num = request2server.size();
-  std::vector<std::unique_ptr<char[]>> local_buffers;
+  std::vector<std::shared_ptr<char>> local_buffers;
   std::vector<int> local_actual_sizes;
   std::vector<size_t> seq;
   std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
@@ -519,7 +520,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
         remote_call_num);
     size_t fail_num = 0;
     for (size_t request_idx = 0; request_idx < remote_call_num; ++request_idx) {
-      if (closure->check_response(request_idx, PS_GRAPH_SAMPLE_NEIGHBOORS) !=
+      if (closure->check_response(request_idx, PS_GRAPH_SAMPLE_NEIGHBORS) !=
           0) {
         ++fail_num;
         failed[request2server[request_idx]] = true;
@@ -570,7 +571,7 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
 
   for (int request_idx = 0; request_idx < remote_call_num; ++request_idx) {
     int server_index = request2server[request_idx];
-    closure->request(request_idx)->set_cmd_id(PS_GRAPH_SAMPLE_NEIGHBOORS);
+    closure->request(request_idx)->set_cmd_id(PS_GRAPH_SAMPLE_NEIGHBORS);
     closure->request(request_idx)->set_table_id(request.table_id());
     closure->request(request_idx)->set_client_id(rank);
     size_t node_num = node_id_buckets[request_idx].size();
@@ -590,8 +591,8 @@ int32_t GraphBrpcService::sample_neighboors_across_multi_servers(
   }
   if (server2request[rank] != -1) {
     ((GraphTable *)table)
-        ->random_sample_neighboors(node_id_buckets.back().data(), sample_size,
-                                   local_buffers, local_actual_sizes);
+        ->random_sample_neighbors(node_id_buckets.back().data(), sample_size,
+                                  local_buffers, local_actual_sizes);
   }
   local_promise.get()->set_value(0);
   if (remote_call_num == 0) func(closure);
@@ -636,5 +637,20 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
   return 0;
 }
 
+int32_t GraphBrpcService::use_neighbors_sample_cache(
+    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 2) {
+    set_response_code(response, -1,
+                      "use_neighbors_sample_cache request requires at least 2 "
+                      "arguments[cache_size, ttl]");
+    return 0;
+  }
+  size_t size_limit = *(size_t *)(request.params(0).c_str());
+  size_t ttl = *(size_t *)(request.params(1).c_str());
+  ((GraphTable *)table)->make_neighbor_sample_cache(size_limit, ttl);
+  return 0;
+}
 }  // namespace distributed
 }  // namespace paddle
