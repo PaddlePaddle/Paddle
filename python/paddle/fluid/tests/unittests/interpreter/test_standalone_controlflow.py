@@ -25,10 +25,12 @@ import paddle.fluid.layers as layers
 import numpy as np
 
 paddle.enable_static()
+
+
 #  test the compatibility of new executor: run old
 #  and new executor twice and check the result.
 #  please override the _get_feeds() and build_prgram()
-class TestCompatibility(unittest.TestCase): 
+class TestCompatibility(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
@@ -69,7 +71,7 @@ class TestCompatibility(unittest.TestCase):
         exe.run(startup_program)
         ret = []
         for i in range(self.iter_run):
-            ret.append( exe.run(main_program, feed=feed, fetch_list=fetch_vars) )
+            ret.append(exe.run(main_program, feed=feed, fetch_list=fetch_vars))
         return ret
 
     def run_raw_executor(self, feed):
@@ -92,9 +94,9 @@ class TestCompatibility(unittest.TestCase):
             if isinstance(x, list):
                 for tx, ty in zip(x, y):
                     self.assertTrue(np.array_equal(tx, ty))
-            elif isinstance(x, np.ndarray):   
+            elif isinstance(x, np.ndarray):
                 self.assertTrue(np.array_equal(tx, ty))
-            else: 
+            else:
                 raise Exception("Not Implement!")
 
 
@@ -115,8 +117,10 @@ class TestWhile(TestCompatibility):
         main_program = paddle.static.default_main_program()
         startup_program = paddle.static.default_startup_program()
         with paddle.static.program_guard(main_program, startup_program):
-            i = paddle.full(shape=[1], fill_value=0, dtype='int64')     # loop counter
-            ten = paddle.full(shape=[1], fill_value=10, dtype='int64')  # loop length
+            i = paddle.full(
+                shape=[1], fill_value=0, dtype='int64')  # loop counter
+            ten = paddle.full(
+                shape=[1], fill_value=10, dtype='int64')  # loop length
             i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
 
             exe = paddle.static.Executor(paddle.CPUPlace())
