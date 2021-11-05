@@ -81,10 +81,8 @@ class FillConstantOp : public framework::OperatorWithKernel {
           kt.place_ = platform::CPUPlace();
           break;
         case 1:
-          kt.place_ = platform::CUDAPlace();
-          break;
         case 2:
-          kt.place_ = platform::CUDAPinnedPlace();
+          kt.place_ = platform::CUDAPlace();
           break;
         case 3:
           kt.place_ = platform::XPUPlace();
