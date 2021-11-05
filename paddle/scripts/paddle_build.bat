@@ -634,7 +634,6 @@ echo    ========================================
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
-pip install hypothesis --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
@@ -676,6 +675,8 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
@@ -693,6 +694,8 @@ echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
 goto:eof
