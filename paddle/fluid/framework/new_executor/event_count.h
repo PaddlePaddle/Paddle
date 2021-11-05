@@ -50,10 +50,12 @@
 #include <cstdlib>
 #include <mutex>
 #include <vector>
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 
 namespace paddle {
 namespace framework {
+
+void* AlignedMalloc(size_t size, size_t alignment);
+void AlignedFree(void* memory_ptr);
 
 class EventCount {
  public:

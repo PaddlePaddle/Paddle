@@ -23,6 +23,13 @@ import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
+from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
+    TestMatMulOpTransposeReshapeEmptyFloat,
+    TestMatMulOpTransposeReshapeBasicFloat,
+    TestMatMulOpTransposeReshapeOtherDimFloat,
+    TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException,
+    TestMatMulOpTransposeReshapeTransposeRankNotSupportedException,
+    TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException)
 
 
 def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
@@ -389,6 +396,43 @@ create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp)
+
+
+class TestMatMulV2OpTransposeReshapeEmptyFloat(
+        TestMatMulOpTransposeReshapeEmptyFloat):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeBasicFloat(
+        TestMatMulOpTransposeReshapeBasicFloat):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeOtherDimFloat(
+        TestMatMulOpTransposeReshapeOtherDimFloat):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeTransposeAxisNotSupportedException(
+        TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeRankOfReshapeNotSupportedException(
+        TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
+
+class TestMatMulV2OpTransposeReshapeTransposeRankNotSupportedException(
+        TestMatMulOpTransposeReshapeTransposeRankNotSupportedException):
+    def set_op_type(self):
+        self.op_type = "matmul_v2"
+
 
 if __name__ == "__main__":
     paddle.enable_static()

@@ -90,8 +90,62 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       new_dims.push_back(1);
     }
 
-    auto out_dims = framework::make_ddim(new_dims);
-    ctx->SetOutputDim("Out", out_dims);
+    auto ddim_out = framework::make_ddim(new_dims);
+
+#ifdef PADDLE_WITH_MKLDNN
+    //  if mkldnn matmul_v2+transpose+reshape fuse activated
+    auto reshape_out = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto transpose_out =
+        ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+
+    if (!reshape_out.empty() && !transpose_out.empty()) {
+      auto reshape_out_size = reshape_out.size();
+      auto transpose_out_size = transpose_out.size();
+      PADDLE_ENFORCE_EQ(transpose_out_size, 4,
+                        platform::errors::InvalidArgument(
+                            "transpose_out supported rank is 4, "
+                            "received %d",
+                            transpose_out_size));
+      const std::vector<int> supported_axis{0, 2, 1, 3};
+      const bool supported_transpose_axis = std::equal(
+          transpose_out.begin(), transpose_out.end(), supported_axis.begin());
+      PADDLE_ENFORCE_EQ(
+          supported_transpose_axis, true,
+          platform::errors::InvalidArgument(
+              "supported transpose axis for the fuse are {0, 2, 1, 3}"));
+      PADDLE_ENFORCE_EQ(
+          reshape_out_size, 3,
+          platform::errors::InvalidArgument("reshape_out supported rank is 3, "
+                                            "received %d",
+                                            reshape_out_size));
+
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+
+      // if "-1" is present then one of reshape dims must be infered
+      if (it != reshape_out.end()) {
+        int index = std::distance(reshape_out.begin(), it);
+
+        auto ddim_out_vec = framework::vectorize(ddim_out);
+
+        int ddim_out_product =
+            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
+                            std::multiplies<int>());
+        int reshape_out_product = std::accumulate(
+            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
+
+        reshape_out[index] = ddim_out_product / reshape_out_product;
+      }
+
+      framework::DDim shape_out =
+          ddim_out.transpose(transpose_out).reshape(reshape_out);
+      ctx->SetOutputDim("Out", shape_out);
+    } else {
+      ctx->SetOutputDim("Out", ddim_out);
+    }
+#else
+    ctx->SetOutputDim("Out", ddim_out);
+#endif
+
     ctx->ShareLoD("X", /* --> */ "Out");
   }
 
@@ -139,6 +193,18 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "Set true to transpose the last two dimensions of Y before "
                   "doing multiplication")
         .SetDefault(false);
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Out",
+        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
+              "it's a shape atribute of fused reshape for `Out` output.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "fused_transpose_Out",
+        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
+              "it's a axis atribute of fused transpose for `Out` output.)DOC")
+        .SetDefault({})
+        .AsExtra();
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
@@ -281,6 +347,76 @@ class MatMulV2OpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* context) const override {
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("DOut"), "Input", "DOut",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("DDX"), "Input", "DDX",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("DDY"), "Input", "DDY",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("D_DX"), "Input", "D_DX",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("D_DY"), "Input", "D_DY",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("D_DDOut"), "Input", "D_DDOut",
+                   "matmul_v2_triple_grad");
+
+    if (context->HasOutput("D_X_out")) {
+      context->ShareDim("X", "D_X_out");
+    }
+    if (context->HasOutput("D_Y_out")) {
+      context->ShareDim("Y", "D_Y_out");
+    }
+    if (context->HasOutput("D_DOut_out")) {
+      context->ShareDim("DOut", "D_DOut_out");
+    }
+    if (context->HasOutput("D_DDX_out")) {
+      context->ShareDim("X", "D_DDX_out");
+    }
+    if (context->HasOutput("D_DDY_out")) {
+      context->ShareDim("Y", "D_DDY_out");
+    }
+  }
+};
+
+template <typename T>
+class MatMulV2OpTripleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("matmul_v2_triple_grad");
+
+    // get input from double grad
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->Input("DOut"));
+    op->SetInput("DDX", this->Input("DDX"));
+    op->SetInput("DDY", this->Input("DDY"));
+    op->SetInput("D_DX", this->OutputGrad("DX"));
+    op->SetInput("D_DY", this->OutputGrad("DY"));
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+
+    // set outputs
+    op->SetOutput("D_X_out", this->InputGrad("X"));
+    op->SetOutput("D_Y_out", this->InputGrad("Y"));
+    op->SetOutput("D_DOut_out", this->InputGrad("DOut"));
+    op->SetOutput("D_DDX_out", this->InputGrad("DDX"));
+    op->SetOutput("D_DDY_out", this->InputGrad("DDY"));
+
+    op->SetAttrMap(this->Attrs());
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -293,7 +429,11 @@ REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad);
+REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad,
+                  ops::MatMulV2OpTripleGradMaker<paddle::framework::OpDesc>,
+                  ops::MatMulV2OpTripleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(matmul_v2_triple_grad, ops::MatMulV2OpTripleGrad);
 
 REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
@@ -318,4 +458,13 @@ REGISTER_OP_CPU_KERNEL(
     ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
                                   paddle::platform::complex<float>>,
     ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex<double>>);
+
+REGISTER_OP_CPU_KERNEL(
+    matmul_v2_triple_grad,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex<float>>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
                                   paddle::platform::complex<double>>);

@@ -158,7 +158,8 @@ void BindDistCommunicator(py::module* m) {
       .def("start", &Communicator::Start)
       .def("push_sparse_param", &Communicator::RpcSendSparseParam)
       .def("is_running", &Communicator::IsRunning)
-      .def("init_params", &Communicator::InitParams);
+      .def("init_params", &Communicator::InitParams)
+      .def("pull_dense", &Communicator::PullDense);
   //  .def("recv", &Communicator::RecvNoBarrier);
 }
 
@@ -204,7 +205,8 @@ void BindGraphPyClient(py::module* m) {
       .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
-      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)
+      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighbors)
+      .def("batch_sample_neighbors", &GraphPyClient::batch_sample_neighbors)
       .def("remove_graph_node", &GraphPyClient::remove_graph_node)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
       .def("stop_server", &GraphPyClient::stop_server)
