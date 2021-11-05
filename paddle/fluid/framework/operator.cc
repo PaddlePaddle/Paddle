@@ -1839,10 +1839,6 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
         op_kernel_ctx.EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(double))) {
-        op_kernel_ctx.EmplaceBackAttr(
-            std::move(pten::Scalar(BOOST_GET_CONST(double, attr))));
-      } else if (std::type_index(attr.type()) ==
                  std::type_index(typeid(std::string))) {
         op_kernel_ctx.EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
