@@ -78,10 +78,10 @@ class GraphBrpcService : public PsBaseService {
   int32_t initialize_shard_info();
   int32_t pull_graph_list(Table *table, const PsRequestMessage &request,
                           PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t graph_random_sample_neighboors(Table *table,
-                                         const PsRequestMessage &request,
-                                         PsResponseMessage &response,
-                                         brpc::Controller *cntl);
+  int32_t graph_random_sample_neighbors(Table *table,
+                                        const PsRequestMessage &request,
+                                        PsResponseMessage &response,
+                                        brpc::Controller *cntl);
   int32_t graph_random_sample_nodes(Table *table,
                                     const PsRequestMessage &request,
                                     PsResponseMessage &response,
@@ -116,9 +116,15 @@ class GraphBrpcService : public PsBaseService {
   int32_t print_table_stat(Table *table, const PsRequestMessage &request,
                            PsResponseMessage &response, brpc::Controller *cntl);
 
-  int32_t sample_neighboors_across_multi_servers(
-      Table *table, const PsRequestMessage &request,
-      PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t sample_neighbors_across_multi_servers(Table *table,
+                                                const PsRequestMessage &request,
+                                                PsResponseMessage &response,
+                                                brpc::Controller *cntl);
+
+  int32_t use_neighbors_sample_cache(Table *table,
+                                     const PsRequestMessage &request,
+                                     PsResponseMessage &response,
+                                     brpc::Controller *cntl);
 
  private:
   bool _is_initialize_shard_info;

@@ -1762,12 +1762,6 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  if (!KernelSignatureMap::Instance().Has(Type())) {
-    // TODO(chenweihang): we can generate this map by proto info in compile time
-    KernelArgsNameMakerByOpProto maker(Info().proto_);
-    KernelSignatureMap::Instance().Emplace(
-        Type(), std::move(maker.GetKernelSignature()));
-  }
   return KernelSignatureMap::Instance().Get(Type());
 }
 
