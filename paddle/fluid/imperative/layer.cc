@@ -28,7 +28,7 @@
 #endif
 
 DECLARE_bool(use_mkldnn);
-
+DECLARE_bool(use_release);
 namespace paddle {
 namespace imperative {
 
@@ -186,7 +186,7 @@ size_t VarBase::GradOpNum() const {
   return grad_node_ ? grad_node_->size() : 0;
 }
 
-void VarBase::ClearGradient(bool release) {
+void VarBase::ClearGradient() {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {
@@ -204,7 +204,7 @@ void VarBase::ClearGradient(bool release) {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
-        if (!release) {
+        if (!FLAGS_use_release) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           operators::math::set_constant(*dev_ctx, grad_t, 0.0);
