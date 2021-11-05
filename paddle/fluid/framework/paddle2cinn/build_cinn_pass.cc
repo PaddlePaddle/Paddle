@@ -56,10 +56,9 @@ namespace {
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
 
-static const std::unordered_map<std::string, std::unordered_set<std::string>>
+const std::unordered_map<std::string, std::unordered_set<std::string>>
     kDenyParamMap = {{"batch_norm", {"ReserveSpace"}},
-                     {"transpose2", {"XShape"}},
-                     {"reshape2", {"XShape"}}};
+                     {"batch_norm_grad", {"ReserveSpace"}}};
 
 std::unordered_set<std::string> GetDenyVarNames(const GraphNodeSet& cluster) {
   std::unordered_set<std::string> deny_var_set;
@@ -298,17 +297,24 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 // out-graph should not using this node at all.
 // cluster_inputs & cluster_outputs & cluster_internals == NULL
 // cluster_outputs | cluster_internals == all graph op's outputs node
-void AnalyseClusterVariables(const GraphNodeSet& cluster,
-                             GraphNodeSet* cluster_inputs,
-                             GraphNodeSet* cluster_outputs,
-                             GraphNodeSet* cluster_internals) {
+void AnalyseClusterVariables(
+    const GraphNodeSet& cluster,
+    const std::unordered_set<std::string>& deny_var_set,
+    GraphNodeSet* cluster_inputs, GraphNodeSet* cluster_outputs,
+    GraphNodeSet* cluster_internals) {
   // collecting all input and output of op
   for (auto* op_node : cluster) {
+    const auto& op_name = op_node->Name();
     for (auto* input_var_node : op_node->inputs) {
-      cluster_inputs->insert(input_var_node);
+      if (!deny_var_set.count(input_var_node->Name())) {
+        // ignore deny var node
+        cluster_inputs->insert(input_var_node);
+      }
     }
     for (auto* output_var_node : op_node->outputs) {
-      cluster_outputs->insert(output_var_node);
+      if (!deny_var_set.count(output_var_node->Name())) {
+        cluster_outputs->insert(output_var_node);
+      }
     }
   }
   // remove output node from cluster_inputs,
@@ -352,13 +358,13 @@ void AddLinkToCinnOp(const GraphNodeSet& cluster_inputs,
 void AddCinnOpToGraph(const GraphNodeSet& cluster,
                       const GraphNodeSet& cluster_inputs,
                       const GraphNodeSet& cluster_outputs,
-                      const std::string& compilation_key, Graph* graph) {
+                      const std::string& compilation_key,
+                      const std::unordered_set<std::string>& deny_var_set,
+                      Graph* graph) {
   // Add the cinn launch op
   framework::OpDesc cinn_op_desc;
   cinn_op_desc.SetType(kCinnLaunchOp);
   std::vector<std::string> input_names;
-
-  auto deny_var_set = GetDenyVarNames(cluster);
 
   std::for_each(cluster_inputs.begin(), cluster_inputs.end(),
                 [&input_names, &deny_var_set](Node* n) {
@@ -402,15 +408,14 @@ void RemoveSubGraphFromGraph(const GraphNodeSet& cluster,
 // kCinnLaunchOp, and inputs ares cluster_inputs and outputs are
 // cluster_outputs.
 // Meanwhile, move all links of cluster to the cinn op.
-void ReplaceSubGraphWithCinnOpNode(const GraphNodeSet& cluster,
-                                   const GraphNodeSet& cluster_inputs,
-                                   const GraphNodeSet& cluster_outputs,
-                                   const GraphNodeSet& cluster_internals,
-                                   const std::string& compilation_key,
-                                   Graph* graph) {
+void ReplaceSubGraphWithCinnOpNode(
+    const GraphNodeSet& cluster, const GraphNodeSet& cluster_inputs,
+    const GraphNodeSet& cluster_outputs, const GraphNodeSet& cluster_internals,
+    const std::string& compilation_key,
+    const std::unordered_set<std::string>& deny_var_set, Graph* graph) {
   // Add the cinn op node whose name is "kCinnLaunchOp" into graph
   AddCinnOpToGraph(cluster, cluster_inputs, cluster_outputs, compilation_key,
-                   graph);
+                   deny_var_set, graph);
   // Remove the cinn subgraph from graph
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
@@ -459,9 +464,11 @@ void SearchAllSubgraphs(Graph* graph) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
 
+    auto deny_var_set = GetDenyVarNames(cluster_set);
+
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
-    AnalyseClusterVariables(cluster_set, &cluster_inputs, &cluster_outputs,
-                            &cluster_internals);
+    AnalyseClusterVariables(cluster_set, deny_var_set, &cluster_inputs,
+                            &cluster_outputs, &cluster_internals);
 
     VLOG(4) << "Cluster Ops: " << cluster_debug_info(cluster_set);
     VLOG(4) << "Cluster input vars: " << cluster_debug_info(cluster_inputs);
@@ -478,7 +485,8 @@ void SearchAllSubgraphs(Graph* graph) {
 
     // Replace the found cluster to a new cinn op node
     ReplaceSubGraphWithCinnOpNode(cluster_set, cluster_inputs, cluster_outputs,
-                                  cluster_internals, compilation_key, graph);
+                                  cluster_internals, compilation_key,
+                                  deny_var_set, graph);
   }
 }
 }  // namespace
