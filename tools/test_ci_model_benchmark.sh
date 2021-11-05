@@ -26,9 +26,9 @@ function check_whl {
     unzip -q build/python/dist/*.whl -d /tmp/pr
     rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
 
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
     git checkout .
@@ -39,8 +39,8 @@ function check_whl {
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     unzip -q build/python/dist/*.whl -d /tmp/develop
 
-    sed -i '/version.py/d' /tmp/pr/*/RECORD
-    sed -i '/version.py/d' /tmp/develop/*/RECORD
+    sed -i '/paddle\/version\/__init__.py/d' /tmp/pr/*/RECORD
+    sed -i '/paddle\/version\/__init__.py/d' /tmp/develop/*/RECORD
     diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
     [ $? -ne 0 ] && echo "diff paddle whl failed." && exit 1
     if [ ${diff_whl} -eq 0 ];then
