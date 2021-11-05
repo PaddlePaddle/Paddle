@@ -6,3 +6,4 @@ cc_library(ipu_executor SRCS ipu_executor.cc DEPS ipu_optimizer ipu_utils popart
 cc_library(popart_canonicalization_utils SRCS ${POPART_CANONICALIZATION_SRC} DEPS framework_proto enforce ipu_utils)
 cc_library(ipu_compiler SRCS ipu_compiler.cc DEPS popart graph ipu_utils graph_helper)
 cc_library(ipu_backend SRCS ipu_backend.cc DEPS popart ipu_compiler graph framework_proto enforce ipu_utils ipu_strategy ipu_device ipu_executor graph_helper)
+cc_library(ipu_info SRCS ipu_info.cc DEPS ipu_backend)
