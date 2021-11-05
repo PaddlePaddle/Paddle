@@ -565,7 +565,7 @@ class ConvMKLDNNHandlerT
       const auto target_mem_p = this->AcquireMemory(target_key_suffix);
       user_mem_p->set_data_handle(platform::to_void_cast<T>(in_mem_data));
       if (user_mem_p != target_mem_p) {
-        this->AcquireReorder(user_mem_p, target_mem_p, key_mem);
+        this->AcquireReorder(user_mem_p, target_mem_p);
       }
       return target_mem_p;
     }
@@ -643,7 +643,7 @@ class ConvMKLDNNHandlerT
         platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc())) {
       auto residual_memory_p = this->AcquireResidualMemory(residual_param);
       dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-      this->AcquireReorder(residual_memory_p, dst_memory_p, "@residual_dst");
+      this->AcquireReorder(residual_memory_p, dst_memory_p);
     } else {
       // Changing ShareDataWith to TensorCopy results in performance drop
       // on ResNet architectures
