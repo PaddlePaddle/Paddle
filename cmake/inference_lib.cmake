@@ -217,7 +217,7 @@ copy(inference_lib_dist
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include/*
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/ext/*
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h

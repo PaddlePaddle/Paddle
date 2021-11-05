@@ -25,7 +25,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
@@ -34,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/api/include/tensor.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {

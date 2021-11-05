@@ -15,4 +15,4 @@ limitations under the License. */
 #pragma once
 
 // All paddle apis in C++ frontend
-#include "paddle/extension/include/ext_all.h"
+#include "paddle/pten/api/all.h"

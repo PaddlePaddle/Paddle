@@ -422,27 +422,6 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-# Adapt to custom op mechanism: Include the header files related to the data type
-# to avoid exposing the path of the underlying file
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
-
-if (WITH_GPU)
-  if (WIN32)
-    windows_symbolic(ext_tensor_cu SRCS ext_tensor.cu PATH ../extension/src)
-    nv_library(custom_tensor SRCS ../extension/src/.ext_tensor.cu DEPS lod_tensor memory enforce)
-    add_dependencies(custom_tensor ext_tensor_cu)
-  else()
-    nv_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
-  endif(WIN32)
-elseif (WITH_ROCM)
-  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
-else()
-  cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
-endif()
-
-cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
 
 if(WITH_ROCM)

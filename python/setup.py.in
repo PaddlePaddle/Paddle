@@ -553,9 +553,10 @@ def find_files(pattern, root, recursive=False):
 
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/ext')) +  # extension
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/include')) +  # pten api
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
-    # to `extension/incude`,
+    # to `paddle/pten/api/ext`,
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
@@ -605,7 +606,7 @@ class InstallHeaders(Command):
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
             if 'fluid' in install_dir or 'utils' in install_dir:
-                install_dir = "paddle/extension/include/"
+                install_dir = "paddle/pten/api/ext"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

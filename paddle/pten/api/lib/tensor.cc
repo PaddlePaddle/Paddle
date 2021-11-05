@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/extension/include/ext_tensor.h"
+#include "paddle/pten/api/include/tensor.h"
 
 #include <utility>
 
@@ -35,7 +35,8 @@ struct CastDataTypeFunctor {
 
 template <typename InType>
 struct CastDataType {
-  CastDataType(const framework::Tensor &in, framework::Tensor *out,
+  CastDataType(const framework::Tensor &in,
+               framework::Tensor *out,
                const platform::DeviceContext *ctx)
       : in_(in), out_(out), ctx_(ctx) {}
   const framework::Tensor in_;
@@ -51,13 +52,19 @@ struct CastDataType {
     if (platform::is_cpu_place(in_.place())) {
       platform::Transform<platform::CPUDeviceContext> trans;
       auto *context = static_cast<const platform::CPUDeviceContext *>(ctx_);
-      trans(*context, in_begin, in_end, out_begin,
+      trans(*context,
+            in_begin,
+            in_end,
+            out_begin,
             CastDataTypeFunctor<InType, OutType>());
 #if defined(__NVCC__) || defined(__HIPCC__)
     } else if (platform::is_gpu_place(in_.place())) {
       platform::Transform<platform::CUDADeviceContext> trans;
       auto *context = static_cast<const platform::CUDADeviceContext *>(ctx_);
-      trans(*context, in_begin, in_end, out_begin,
+      trans(*context,
+            in_begin,
+            in_end,
+            out_begin,
             CastDataTypeFunctor<InType, OutType>());
       context->Wait();
 #endif
@@ -69,8 +76,8 @@ struct CastDataType {
 };
 
 template <typename T>
-void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
-             int64_t ele_size) {
+void GpuCopy(
+    T *src, T *dst, PlaceType src_plc, PlaceType dst_plc, int64_t ele_size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   int device_num = paddle::platform::GetCurrentDeviceId();
@@ -78,14 +85,26 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
   auto *dev_ctx =
       static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
   if ((src_plc == PlaceType::kGPU) && (dst_plc == PlaceType::kCPU)) {
-    memory::Copy(platform::CPUPlace(), static_cast<void *>(dst), gpu_place, src,
-                 ele_size, dev_ctx->stream());
+    memory::Copy(platform::CPUPlace(),
+                 static_cast<void *>(dst),
+                 gpu_place,
+                 src,
+                 ele_size,
+                 dev_ctx->stream());
   } else if ((src_plc == PlaceType::kGPU) && (dst_plc == PlaceType::kGPU)) {
-    memory::Copy(gpu_place, static_cast<void *>(dst), gpu_place, src, ele_size,
+    memory::Copy(gpu_place,
+                 static_cast<void *>(dst),
+                 gpu_place,
+                 src,
+                 ele_size,
                  dev_ctx->stream());
   } else if ((src_plc == PlaceType::kCPU) && (dst_plc == PlaceType::kGPU)) {
-    memory::Copy(gpu_place, static_cast<void *>(dst), platform::CPUPlace(), src,
-                 ele_size, dev_ctx->stream());
+    memory::Copy(gpu_place,
+                 static_cast<void *>(dst),
+                 platform::CPUPlace(),
+                 src,
+                 ele_size,
+                 dev_ctx->stream());
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Only GPU related Copy can reach this func."));
@@ -148,7 +167,8 @@ template <typename T>
 T *Tensor::mutable_data() {
   GET_CASTED_TENSOR
   PADDLE_ENFORCE_GT(
-      tensor->numel(), 0,
+      tensor->numel(),
+      0,
       platform::errors::PreconditionNotMet(
           "You should call Tensor::Reshape(const std::vector<int> "
           "&shape)"
@@ -210,7 +230,8 @@ DataType Tensor::type() const {
 template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
   GET_CASTED_TENSOR;
-  PADDLE_ENFORCE_GE(tensor->numel(), 0,
+  PADDLE_ENFORCE_GE(tensor->numel(),
+                    0,
                     platform::errors::PreconditionNotMet(
                         "You should call Tensor::Reshape(const "
                         "std::vector<int> &shape)"
@@ -236,7 +257,8 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Not supported place transform of place: %d to place: %d",
-        static_cast<int>(src_place), static_cast<int>(target_place)));
+        static_cast<int>(src_place),
+        static_cast<int>(target_place)));
   }
   return target;
 }
