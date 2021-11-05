@@ -29,6 +29,9 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
+egr::EagerTensor CastPyArg2EagerTensor(PyObject* obj, ssize_t arg_pos);
+std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
+                                                            ssize_t arg_pos);
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(bool value);
