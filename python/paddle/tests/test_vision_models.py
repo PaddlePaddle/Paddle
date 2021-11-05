@@ -28,7 +28,7 @@ class TestVisonModels(unittest.TestCase):
     """
     def models_infer(self, arch, pretrained=False, batch_norm=False):
         """
-        arch:the name of the model to be tested
+        arch: the name of the model to be tested
         """
         x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
         if batch_norm:
