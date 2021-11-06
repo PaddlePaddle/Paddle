@@ -325,6 +325,7 @@ class FusedFeedForward(Layer):
             ln1_epsilon=self._epsilon,
             ln2_epsilon=self._epsilon,
             pre_layer_norm=self._normalize_before,
+            training=self.training,
             name=self.name)
         return out
 

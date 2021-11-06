@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid import core, dygraph_utils
 from paddle import _C_ops
@@ -43,6 +43,8 @@ def fused_feedforward(x,
                       ln1_epsilon=1e-5,
                       ln2_epsilon=1e-5,
                       pre_layer_norm=False,
+                      training=True,
+                      mode='upscale_in_train',
                       name=None):
     """
     This is a fusion operator to compute feed forward layer in transformer model architecture.
@@ -98,13 +100,27 @@ def fused_feedforward(x,
     _verify_dropout_rate(dropout1_rate)
     _verify_dropout_rate(dropout2_rate)
 
+    seed = None
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
     if in_dygraph_mode():
+        if default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
         out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
             x, None, None, linear1_weight, linear1_bias, linear2_weight,
             linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias,
             'pre_layer_norm', pre_layer_norm, 'ln1_epsilon', ln1_epsilon,
             'ln2_epsilon', ln2_epsilon, 'act_method', activation,
-            'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate)
+            'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate,
+            "dropout1_is_test", not training, "dropout2_is_test", not training,
+            "dropout1_fix_seed", seed is not None, "dropout2_fix_seed",
+            seed is not None, "dropout1_seed", seed
+            if seed is not None else 0, "dropout2_seed", seed
+            if seed is not None else 0, 'dropout1_implementation', mode,
+            'dropout2_implementation', mode)
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -135,6 +151,9 @@ def fused_feedforward(x,
         x.dtype, stop_gradient=True)
     dropout2_out = helper.create_variable_for_type_inference(
         x.dtype, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
 
     helper.append_op(
         type='fused_feedforward',
@@ -169,6 +188,14 @@ def fused_feedforward(x,
             'pre_layer_norm': pre_layer_norm,
             'ln1_epsilon': ln1_epsilon,
             'ln2_epsilon': ln2_epsilon,
+            'dropout1_is_test': not training,
+            'dropout2_is_test': not training,
+            'dropout1_fix_seed': seed is not None,
+            'dropout2_fix_seed': seed is not None,
+            'dropout1_seed': seed if seed is not None else 0,
+            'dropout2_seed': seed if seed is not None else 0,
+            'dropout1_implementation': mode,
+            'dropout2_implementation': mode
         })
     return out
 
