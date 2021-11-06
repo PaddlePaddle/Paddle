@@ -275,13 +275,25 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
+    snake_shape = int(os.environ.get("FLAGS_snakeshape_communication_group", 0))
+    num_pp = int(os.environ.get("FLAGS_snakeshape_communication_num_pp", 1))
+    if num_pp > 8 and snake_shape:
+        assert num_pp % 8 == 0, "num_pp must be divided by 8"
+    min2max_sorted_devices_per_proc = devices_per_proc
+
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
         pod.device_mode = device_mode
-
-        cur_node_endpoints = trainer_endpoints[node_rank]
+        if snake_shape == 1 and device_mode == DeviceMode.ASCEND_NPU and (
+                trainer_rank % num_pp // len(trainer_endpoints[node_rank])
+        ) % 2 == 0:
+            devices_per_proc = min2max_sorted_devices_per_proc[::-1]
+            cur_node_endpoints = trainer_endpoints[node_rank][::-1]
+        else:
+            devices_per_proc = min2max_sorted_devices_per_proc
+            cur_node_endpoints = trainer_endpoints[node_rank]
         # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
         assert len(cur_node_endpoints) >= len(
             devices_per_proc
