@@ -284,25 +284,46 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         assert len(cur_node_endpoints) >= len(
             devices_per_proc
         ), "current trainer_endpoints size should be greater equal than acclerators size."
-        for i in range(len(devices_per_proc)):
-            trainer = Trainer()
-            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
-                if isinstance(devices_per_proc[i], (list, tuple)):
-                    trainer.accelerators.extend(devices_per_proc[i])
-                    pod.accelerators.extend(devices_per_proc[i])
-                else:
-                    trainer.accelerators.append(devices_per_proc[i])
-                    pod.accelerators.append(devices_per_proc[i])
-            elif device_mode == DeviceMode.XPU:
-                if isinstance(devices_per_proc[i], (list, tuple)):
-                    trainer.accelerators.extend(devices_per_proc[i])
-                else:
-                    trainer.accelerators.append(devices_per_proc[i])
-            trainer.endpoint = "%s" % (cur_node_endpoints[i])
-            trainer.rank = trainer_rank
-            trainer_rank += 1
 
-            pod.trainers.append(trainer)
+        # Change devices ranks to solve the communication group problems for ModelArts in NPU.
+        if os.getenv("Sshaped_communication_group", False):
+            assert device_mode == DeviceMode.ASCEND_NPU, "Must use NPU mode"
+            # Even:0-7, Odd:7-0
+            devices_per_proc = sorted(
+                devices_per_proc,
+                reverse=True) if node_rank % 2 != 0 else devices_per_proc
+
+            for dev in devices_per_proc:
+                trainer = Trainer()
+                trainer.accelerators.append(dev)
+                pod.accelerators.append(dev)
+
+                trainer.endpoint = "%s" % (cur_node_endpoints[int(dev)])
+                trainer.rank = trainer_rank
+                trainer_rank += 1
+
+                pod.trainers.append(trainer)
+        else:
+
+            for i in range(len(devices_per_proc)):
+                trainer = Trainer()
+                if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
+                    if isinstance(devices_per_proc[i], (list, tuple)):
+                        trainer.accelerators.extend(devices_per_proc[i])
+                        pod.accelerators.extend(devices_per_proc[i])
+                    else:
+                        trainer.accelerators.append(devices_per_proc[i])
+                        pod.accelerators.append(devices_per_proc[i])
+                elif device_mode == DeviceMode.XPU:
+                    if isinstance(devices_per_proc[i], (list, tuple)):
+                        trainer.accelerators.extend(devices_per_proc[i])
+                    else:
+                        trainer.accelerators.append(devices_per_proc[i])
+                trainer.endpoint = "%s" % (cur_node_endpoints[i])
+                trainer.rank = trainer_rank
+                trainer_rank += 1
+
+                pod.trainers.append(trainer)
         cluster.pods.append(pod)
 
     pod_rank = node_ips.index(node_ip)
