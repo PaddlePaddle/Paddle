@@ -94,7 +94,12 @@ class FusedMultiHeadAttention(Layer):
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
 
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
+        self.kdim = kdim
+        self.vdim = vdim
+        self.need_weights = need_weights
         assert self.head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
         assert need_weights == False, "Only support need_weight is False now."
 
@@ -186,14 +191,22 @@ class FusedMultiHeadAttention(Layer):
             pre_ln_bias=self.pre_ln_bias,
             ln_scale=self.ln_scale,
             ln_bias=self.ln_bias,
-            pre_ln_epsilon=1e-05,
+            pre_ln_epsilon=self._epsilon,
             qkv_bias=self.qkv_bias,
             linear_bias=self.linear_bias,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
             attn_dropout_rate=self.attn_dropout_rate,
-            ln_epsilon=1e-05)
+            ln_epsilon=self._epsilon,
+            name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}{}'.format(
+            self.embed_dim, self.num_heads, self.dropout_rate,
+            self.attn_dropout_rate, self.kdim, self.vdim, self.normalize_before,
+            self.need_weights, self._dtype, name_str)
 
 
 class FusedFeedForward(Layer):
@@ -239,7 +252,8 @@ class FusedFeedForward(Layer):
                  act_dropout_rate=None,
                  normalize_before=False,
                  weight_attr=None,
-                 bias_attr=None):
+                 bias_attr=None,
+                 name=None):
 
         super(FusedFeedForward, self).__init__()
         assert d_model > 0, (
@@ -292,14 +306,34 @@ class FusedFeedForward(Layer):
             default_initializer=Constant(1.0))
         self._ln2_bias = self.create_parameter(
             shape=[d_model], attr=None, is_bias=True)
+        self.name = name
 
     def forward(self, src, cache=None):
         out = incubate_f.fused_feedforward(
-            src, self._linear1_weight, self._linear2_weight, self._linear1_bias,
-            self._linear2_bias, self._ln1_scale, self._ln1_bias,
-            self._ln2_scale, self._ln2_bias, self._dropout_rate,
-            self._act_dropout_rate, self._act_method, self._normalize_before)
+            src,
+            self._linear1_weight,
+            self._linear2_weight,
+            self._linear1_bias,
+            self._linear2_bias,
+            self._ln1_scale,
+            self._ln1_bias,
+            self._ln2_scale,
+            self._ln2_bias,
+            dropout1_rate=self._dropout_rate,
+            dropout2_rate=self._act_dropout_rate,
+            activation=self._act_method,
+            ln1_epsilon=self._epsilon,
+            ln2_epsilon=self._epsilon,
+            pre_layer_norm=self._normalize_before,
+            name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'd_model={}, dim_feedforward={}, dropout_rate={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}{}'.format(
+            self._d_model, self._dim_feedforward, self._dropout_rate,
+            self._act_dropout_rate, self._act_method, self._normalize_before,
+            self._dtype, name_str)
 
 
 class FusedTransformerEncoderLayer(Layer):
