@@ -25,6 +25,8 @@ def ternary(cond, x, y):
     for i in range(expanding_dim):
         cond = cond.unsqueeze(-1)
 
+    cond = cond.broadcast_to(x.shape)
+
     return paddle.where(cond, x, y)
 
 def vjp(f, x):

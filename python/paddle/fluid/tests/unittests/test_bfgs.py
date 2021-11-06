@@ -21,7 +21,7 @@ class TestBFGS(unittest.TestCase):
     
     def _partial_quadratic(self, dtype):
         
-        input_shape = [2, 10]
+        input_shape = [10, 10]
         minimum = paddle.rand(input_shape, dtype=dtype)
         scales = paddle.exp(paddle.rand(input_shape, dtype=dtype))
 
@@ -32,26 +32,15 @@ class TestBFGS(unittest.TestCase):
 
         result = bfgs_optimize(quadratic, x0, dtype=dtype)
 
-        print(result)
-
         self.assertTrue(paddle.all(result.converged))
         self.assertTrue(paddle.allclose(result.location, minimum, rtol=1e-8))
 
     def test_quadratic_float32(self):
+        paddle.seed(12345)
         self._partial_quadratic('float32')
 
     def test_quadratic_float64(self):
+        paddle.seed(12345)
         self._partial_quadratic('float64')
 
-paddle.seed(12345)
-input_shape = [2, 1]
-dtype = 'float32'
-minimum = paddle.rand(input_shape, dtype=dtype)
-scales = paddle.exp(paddle.rand(input_shape, dtype=dtype))
 
-def quadratic(x):
-    return paddle.sum(scales * paddle.square(x - minimum), axis=-1)
-
-x0 = paddle.ones_like(minimum, dtype=dtype)
-
-result = bfgs_optimize(quadratic, x0, dtype=dtype)
