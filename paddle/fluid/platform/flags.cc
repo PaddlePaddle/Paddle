@@ -722,12 +722,12 @@ DEFINE_bool(enable_ins_parser_file, false,
 
 /**
  * ClearGradient related FLAG
- * Name: use_release
+ * Name: real_release
  * Since Version:
  * Value Range: bool, default=false
  * Example:
  * Note: if true, it means to use real ClearGradient to clear grad_var_ instead
  * of setting 0.0
  */
-PADDLE_DEFINE_EXPORTED_bool(use_release, false,
-                            "Use release to clear gradient");
+PADDLE_DEFINE_EXPORTED_bool(real_release, false,
+                            "release gradient, default false");

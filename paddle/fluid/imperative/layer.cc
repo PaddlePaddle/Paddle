@@ -28,7 +28,7 @@
 #endif
 
 DECLARE_bool(use_mkldnn);
-DECLARE_bool(use_release);
+DECLARE_bool(real_release);
 namespace paddle {
 namespace imperative {
 
@@ -204,7 +204,7 @@ void VarBase::ClearGradient() {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
-        if (!FLAGS_use_release) {
+        if (!FLAGS_real_release) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           operators::math::set_constant(*dev_ctx, grad_t, 0.0);

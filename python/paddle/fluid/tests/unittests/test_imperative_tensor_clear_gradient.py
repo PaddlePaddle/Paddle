@@ -58,7 +58,7 @@ class TestDygraphClearGradient(TestCase):
         linear = paddle.nn.Linear(2, 3)
         out = linear(input)
         out.backward()
-        fluid.set_flags({"FLAGS_use_release": True})
+        fluid.set_flags({"FLAGS_real_release": True})
         linear.weight.clear_gradient()
 
         # actual result
