@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/lodtensor_printer.h"
 
 namespace paddle {
 namespace framework {
@@ -124,10 +125,10 @@ void HeterSectionWorker::RunBackward(int micro_id) {
   }
 }
 
-void HeterSectionWorker::MiniBatchBarrier(const std::vector<int>& barrier_ids) {
+void HeterSectionWorker::MiniBatchBarrier() {
   // get micro id & deserialize data
   std::set<int> micro_ids;
-  while (micro_ids.size() < barrier_ids.size()) {
+  while (micro_ids.size() < micro_ids_.size()) {
     auto task = (*thread_queue_).Pop();
     auto message_name = task.first;
     auto micro_id = task.second;
@@ -231,19 +232,23 @@ void HeterSectionWorker::Run() {
   bool is_first_stage = (pipeline_stage_ == 0);
   bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
   if (is_first_stage) {  // for cpu trainer
-    // forward
-    std::vector<int> micro_ids;
-    for (int i = 0; i < num_microbatches_; i++) {
-      VLOG(5) << "Run " << i << " stage" << std::endl;
-      RunForward(i);
-      if (epoch_finish_ == true) {
-        break;
+    while (!epoch_finish_) {
+      // forward
+      // std::vector<int> micro_ids;
+      for (int i = 0; i < num_microbatches_; i++) {
+        VLOG(5) << "Run " << i << " microbatch";
+        RunForward(i);
+        if (epoch_finish_ == true) {
+          break;
+        }
+        micro_ids_.push_back(i);
       }
-      micro_ids.push_back(i);
-    }
-    // backward
-    if (micro_ids.size() > 0) {
-      MiniBatchBarrier(micro_ids);
+      // backward
+      if (micro_ids_.size() > 0) {
+        MiniBatchBarrier();
+        PrintFetchVars();
+        micro_ids_.clear();
+      }
     }
   } else {  // for heter worker
     while (true) {
@@ -284,6 +289,131 @@ void HeterSectionWorker::TrainFiles() {
     dev_ctx_->Wait();
   }
 }
+
+void HeterSectionWorker::PrintFetchVars() {
+  // call count
+  batch_num_ += micro_ids_.size();
+  int batch_per_print = fetch_config_.print_period();
+  int fetch_var_num = fetch_config_.fetch_var_names_size();
+  if (fetch_var_num == 0) {
+    return;
+  }
+  if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
+    time_t curtime;
+    time(&curtime);
+    char mbstr[80];
+    std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S",
+                  std::localtime(&curtime));
+    std::stringstream ss;
+    ss << "time: [" << mbstr << "], ";
+    ss << "batch: [" << batch_num_ << "], ";
+    for (int i = 0; i < fetch_var_num; ++i) {
+      platform::PrintVar(minibatch_scope_, fetch_config_.fetch_var_names(i),
+                         fetch_config_.fetch_var_str_format(i), &ss);
+      if (i < fetch_var_num - 1) {
+        ss << ", ";
+      }
+    }
+    std::cout << ss.str() << std::endl;
+  }
+}
+
+/*
+void HogwildWorker::TrainFilesWithProfiler() {
+  platform::SetNumThreads(1);
+  device_reader_->Start();
+  std::vector<double> op_total_time;
+  std::vector<std::string> op_name;
+  for (auto &op : ops_) {
+    op_name.push_back(op->Type());
+  }
+  op_total_time.resize(ops_.size());
+  for (size_t i = 0; i < op_total_time.size(); ++i) {
+    op_total_time[i] = 0.0;
+  }
+  platform::Timer timeline;
+  double total_time = 0.0;
+  double read_time = 0.0;
+  int cur_batch;
+  int batch_cnt = 0;
+  timeline.Start();
+  uint64_t total_inst = 0;
+  while ((cur_batch = device_reader_->Next()) > 0) {
+    VLOG(3) << "read a batch in thread " << thread_id_;
+    timeline.Pause();
+    read_time += timeline.ElapsedSec();
+    total_time += timeline.ElapsedSec();
+    for (size_t i = 0; i < ops_.size(); ++i) {
+      bool need_skip = false;
+      for (auto t = 0u; t < skip_ops_.size(); ++t) {
+        if (ops_[i]->Type().find(skip_ops_[t]) != std::string::npos) {
+          need_skip = true;
+          break;
+        }
+      }
+      timeline.Start();
+      VLOG(3) << "Going to run op " << op_name[i];
+      if (!need_skip) {
+        ops_[i]->Run(*thread_scope_, place_);
+#ifdef PADDLE_WITH_HETERPS
+        dev_ctx_->Wait();
+#endif
+      }
+      VLOG(3) << "Op " << op_name[i] << " Finished";
+      timeline.Pause();
+      op_total_time[i] += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
+    }
+
+    if (need_dump_field_) {
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
+    }
+
+    total_inst += cur_batch;
+    ++batch_cnt;
+    PrintFetchVars();
+#ifdef PADDLE_WITH_HETERPS
+    dev_ctx_->Wait();
+    VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+            << " seconds, ins_num: " << total_inst;
+    for (size_t i = 0; i < op_name.size(); ++i) {
+      VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+              << ", mean time: " << op_total_time[i] / total_inst
+              << "s, totol time:" << op_total_time[i] << "sec";
+    }
+#else
+    if (thread_id_ == 0) {
+      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
+        for (size_t i = 0; i < ops_.size(); ++i) {
+          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
+                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+        }
+        fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
+        fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+      }
+    }
+#endif
+    thread_scope_->DropKids();
+    timeline.Start();
+  }
+
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
+  }
+
+#if defined PADDLE_WITH_PSCORE
+  if (thread_barrier_) {
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
+  }
+#endif
+}
+
+*/
+
 }  // namespace framework
 }  // namespace paddle
 #endif

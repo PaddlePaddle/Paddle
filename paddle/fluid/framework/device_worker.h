@@ -620,7 +620,7 @@ class HeterSectionWorker : public DeviceWorker {
 
   void BindingDataFeedMemory() override {}
   void BindingDataFeedMemory(int micro_id);
-  void PrintFetchVars() override {}
+  void PrintFetchVars() override;
   const platform::Place& place() const { return place_; }
 
   void SetDeviceIndex(int tid) override { thread_id_ = tid; }
@@ -644,9 +644,15 @@ class HeterSectionWorker : public DeviceWorker {
   void RunForward(int micro_id);
   void RunBackward(int micro_id);
   void RunListen();
-  void MiniBatchBarrier(const std::vector<int>& barrier_ids);
+  void MiniBatchBarrier();
   void Run();
   Scope* GetThreadScope() override { return minibatch_scope_; }
+
+// multi-stream
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void SetStream(const gpuStream_t stream) override {}
+  void SetEvent(const gpuEvent_t event) override {}
+#endif
 
  protected:
   int trainer_id_;
@@ -660,7 +666,7 @@ class HeterSectionWorker : public DeviceWorker {
 
   std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
   Scope* minibatch_scope_;
-
+  std::vector<int> micro_ids_{};
   std::unique_ptr<OperatorBase> listen_op_{nullptr};
   std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
   std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
