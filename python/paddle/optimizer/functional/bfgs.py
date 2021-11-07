@@ -59,14 +59,14 @@ class BfgsResult(collections.namedtuple('BfgsResult', [
                                             'failed',
                                             'gradient',
                                             'function_value',
-                                            'inverse_hessian'
+                                            'inverse_hessian',
                                             'function_evals',
                                             'gradient_evals',
                                             ])):
     def __repr__(self):
         kvs = [(f, getattr(self, f)) for f in self._fields]
         width = max(len(f) for f in self._fields)
-        return '\n'.join(f'{k:>width} : {repr(v)}' for k, v in kvs)
+        return '\n'.join(f'{k.rjust(width)} : {repr(v)}' for k, v in kvs)
 
 
 class SearchState(object):

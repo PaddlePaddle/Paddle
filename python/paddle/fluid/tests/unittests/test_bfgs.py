@@ -33,19 +33,21 @@ class TestBFGS(unittest.TestCase):
 
         result = bfgs_optimize(f, x0, dtype=dtype)
 
+        print(result)
+
         self.assertTrue(paddle.all(result.converged))
         self.assertTrue(paddle.allclose(result.location, minimum, rtol=1e-8))
 
-    def test_quadratic_float32(self):
-        paddle.seed(12345)
-        self._regular_quadratic('float32')
+    # def test_quadratic_float32(self):
+    #     paddle.seed(12345)
+    #     self._regular_quadratic('float32')
 
-    def test_quadratic_float64(self):
-        paddle.seed(12345)
-        self._regular_quadratic('float64')
+    # def test_quadratic_float64(self):
+    #     paddle.seed(12345)
+    #     self._regular_quadratic('float64')
 
     def _general_quadratic(self, dtype):
-        input_shape = [10, 10]
+        input_shape = [2, 2]
         minimum = paddle.rand(input_shape, dtype=dtype)
         hessian_shape = input_shape + input_shape[-1:]
         rotation = paddle.rand(hessian_shape, dtype=dtype)
@@ -61,6 +63,8 @@ class TestBFGS(unittest.TestCase):
 
         result = bfgs_optimize(f, x0, dtype=dtype)
 
+        print(result)
+
         self.assertTrue(paddle.all(result.converged))
         self.assertTrue(paddle.allclose(result.location, minimum, rtol=1e-8))
 
@@ -68,6 +72,6 @@ class TestBFGS(unittest.TestCase):
         paddle.seed(12345)
         self._general_quadratic('float32')
 
-    def test_general_quadratic_float64(self):
-        paddle.seed(12345)
-        self._general_quadratic('float64')
+    # def test_general_quadratic_float64(self):
+    #     paddle.seed(12345)
+    #     self._general_quadratic('float64')
