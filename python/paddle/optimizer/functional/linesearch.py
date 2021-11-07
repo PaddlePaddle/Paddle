@@ -689,8 +689,7 @@ def hz_linesearch(state,
     # Changes state due to failed line search
     state.state = update_state(state.state, ~stopped, 'failed')
 
-    # Writes the successfully obtained step sizes back to the search state.
-    # state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
+    # Writes back the obtained step size to the search state.
     state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
 
     return

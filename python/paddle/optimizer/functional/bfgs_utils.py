@@ -22,7 +22,7 @@ def ternary(cond, x, y):
     expanding_dim = x.dim() - cond.dim()
     assert expanding_dim >= 0
 
-    for i in range(expanding_dim):
+    for _ in range(expanding_dim):
         cond = cond.unsqueeze(-1)
 
     cond = cond.broadcast_to(x.shape)

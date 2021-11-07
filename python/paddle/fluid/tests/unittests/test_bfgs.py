@@ -16,31 +16,58 @@ import unittest
 
 import paddle
 from paddle.optimizer.functional import bfgs_iterates, bfgs_optimize
+from paddle.optimizer.functional.bfgs import verify_symmetric_positive_definite_matrix
 
 class TestBFGS(unittest.TestCase):
     
-    def _partial_quadratic(self, dtype):
+    def _regular_quadratic(self, dtype):
         
         input_shape = [10, 10]
         minimum = paddle.rand(input_shape, dtype=dtype)
         scales = paddle.exp(paddle.rand(input_shape, dtype=dtype))
 
-        def quadratic(x):
+        def f(x):
             return paddle.sum(scales * paddle.square(x - minimum), axis=-1)
 
         x0 = paddle.ones_like(minimum, dtype=dtype)
 
-        result = bfgs_optimize(quadratic, x0, dtype=dtype)
+        result = bfgs_optimize(f, x0, dtype=dtype)
 
         self.assertTrue(paddle.all(result.converged))
         self.assertTrue(paddle.allclose(result.location, minimum, rtol=1e-8))
 
     def test_quadratic_float32(self):
         paddle.seed(12345)
-        self._partial_quadratic('float32')
+        self._regular_quadratic('float32')
 
     def test_quadratic_float64(self):
         paddle.seed(12345)
-        self._partial_quadratic('float64')
+        self._regular_quadratic('float64')
 
+    def _general_quadratic(self, dtype):
+        input_shape = [10, 10]
+        minimum = paddle.rand(input_shape, dtype=dtype)
+        hessian_shape = input_shape + input_shape[-1:]
+        rotation = paddle.rand(hessian_shape, dtype=dtype)
+        hessian = paddle.einsum('...ik, ...jk', rotation, rotation)
+        
+        verify_symmetric_positive_definite_matrix(hessian)
 
+        def f(x):
+            y = paddle.einsum('...ij, ...j', hessian, x - minimum)
+            return paddle.sum(y, axis=-1)
+        
+        x0 = paddle.ones_like(minimum, dtype=dtype)
+
+        result = bfgs_optimize(f, x0, dtype=dtype)
+
+        self.assertTrue(paddle.all(result.converged))
+        self.assertTrue(paddle.allclose(result.location, minimum, rtol=1e-8))
+
+    def test_general_quadratic_float32(self):
+        paddle.seed(12345)
+        self._general_quadratic('float32')
+
+    def test_general_quadratic_float64(self):
+        paddle.seed(12345)
+        self._general_quadratic('float64')

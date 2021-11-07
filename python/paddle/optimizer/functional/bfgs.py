@@ -53,18 +53,20 @@ def verify_symmetric_positive_definite_matrix(H):
     )
 
 
-BfgsResult = collections.namedtuple(
-    'BfgsResult', [
-        'converged',
-        'failed',
-        'function_evals',
-        'gradient_evals',
-        'location',
-        'function_value',
-        'gradient',
-        'inverse_hessian'
-    ]
-)
+class BfgsResult(collections.namedtuple('BfgsResult', [
+                                            'location',
+                                            'converged',
+                                            'failed',
+                                            'gradient',
+                                            'function_value',
+                                            'inverse_hessian'
+                                            'function_evals',
+                                            'gradient_evals',
+                                            ])):
+    def __repr__(self):
+        kvs = [(f, getattr(self, f)) for f in self._fields]
+        width = max(len(f) for f in self._fields)
+        return '\n'.join(f'{k:>width} : {repr(v)}' for k, v in kvs)
 
 
 class SearchState(object):
@@ -105,16 +107,16 @@ class SearchState(object):
         self.Ck = make_const(fk, 0)
         self.params = None
 
-    def output(self):
+    def result(self):
         kw = {
+            'location' : self.xk,
             'converged' : converged_state(self.state),
             'failed' : failed_state(self.state),
+            'gradient' : self.gk,
+            'function_value' : self.fk,
+            'inverse_hessian' : self.Hk,
             'function_evals' : self.nf,
             'gradient_evals' : self.ng,
-            'location' : self.xk,
-            'function_value' : self.fk,
-            'gradient' : self.gk,
-            'inverse_hessian' : self.Hk
         }
         return BfgsResult(**kw)
 
@@ -187,9 +189,8 @@ def iterates(func,
              xtol=0,
              iters=50,
              ls_iters=50):
-    r"""
-    Returns the iterates on the minimization path of a differentiable
-    function by applying the BFGS quasi-Newton method. 
+    r"""minimizes a differentiable function `func` using the BFGS method,
+    generating one iterate at a time.
 
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
@@ -218,7 +219,7 @@ def iterates(func,
             The default value is 50.
     
     Returns:
-        A generator which returns a SearchState per iteration.
+        A generator which yields the result `SearchState` for each iteration.
     """
     # Proprocesses inputs and control parameters 
     x0 = as_float_tensor(x0, dtype)
@@ -321,17 +322,51 @@ def optimize(func,
              iters=50,
              ls_iters=50,
              summary_only=True):
-    
-    iterate_states = list(iterates(func,
-                                   x0,
-                                   dtype,
-                                   H0,
-                                   gtol,
-                                   xtol,
-                                   iters,
-                                   ls_iters))
-    
-    if summary_only:
-        return iterate_states[-1].output()
+    r"""minimizes a differentiable function `func` using the BFGS method,
+    returning the final result for summary or the list of results including
+    all the intermediates.
 
-    return [x.output() for x in iterate_states]
+    Reference:
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
+        Second Edition, 2006.
+
+    Args:
+        func: the objective function to minimize. ``func`` accepts
+            a multivariate input and returns a scalar, both allowed
+            batching into tensors in shape [..., n] and [...].
+        x0 (Tensor): the starting point of the iterates. The batching
+            form has the shape [..., n].
+        dtype ('float' | 'float32' | 'float64' | 'double'): the data
+            type to be used.
+        H0 (Tensor): the initial inverse hessian approximation. The
+            batching form has the shape [..., n, n], where the
+            batching dimensions have the same shape with ``x0``.
+            The default value is None.
+        gtol (Scalar): terminates if the gradient norm is smaller than
+            this `gtol`. Currently gradient norm uses inf norm.
+            The default value is 1e-8.
+        xtol (Scalar): terminates if the distance of succesive iterates
+            is smaller than this value. The default value is 0.
+        iters (Scalar): the maximum number minimization iterations.
+            The default value is 50.
+        ls_iters (Scalar): the maximum number of line search iterations.
+            The default value is 50.
+        summary_only (boolean, optional): specifies the result type. If True 
+            then returns the final result. Otherwise returns the results of
+            all steps.
+    
+    Returns:
+        summary (BfgsResult): The final optimization results if `summary_only`
+            is set True.
+        results (list[BfgsResult]): the results of all steps if `summary_only`
+            is set False.
+    """
+    states = list(iterates(func, x0, dtype, H0, gtol, xtol, iters, ls_iters))
+
+    if states is []:
+        return None if summary_only else []
+
+    if summary_only:
+        return states[-1].result()
+
+    return [s.result() for s in states]
