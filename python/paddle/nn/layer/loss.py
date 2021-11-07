@@ -29,6 +29,7 @@ from paddle import Tensor
 __all__ = []
 _ASMoutput = namedtuple('_ASMoutput', ['output', 'loss'])
 
+
 class AdaptiveLogSoftmaxWithLoss(Layer):
     r"""Efficient softmax approximation as described in
     `Efficient softmax approximation for GPUs by Edouard Grave, Armand Joulin,
@@ -101,15 +102,13 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     .. _Zipf's law: https://en.wikipedia.org/wiki/Zipf%27s_law
     """
 
-
     def __init__(
             self,
             in_features: int,
             n_classes: int,
             cutoffs: Sequence[int],
-            div_value: float = 4.,
-            head_bias: bool = False,
-    ) -> None:
+            div_value: float=4.,
+            head_bias: bool=False, ) -> None:
         super(AdaptiveLogSoftmaxWithLoss, self).__init__()
 
         cutoffs = list(cutoffs)
@@ -134,18 +133,20 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         self.n_clusters = len(self.cutoffs) - 1
         self.head_size = self.shortlist_size + self.n_clusters
 
-        self.head = Linear(self.in_features, self.head_size, bias_attr=self.head_bias)
+        self.head = Linear(
+            self.in_features, self.head_size, bias_attr=self.head_bias)
         self.tail = LayerList()
 
         for i in range(self.n_clusters):
 
-            hsz = int(self.in_features // (self.div_value ** (i + 1)))
+            hsz = int(self.in_features // (self.div_value**(i + 1)))
             osz = self.cutoffs[i + 1] - self.cutoffs[i]
 
             projection = Sequential(
-                Linear(self.in_features, hsz, bias_attr=False),
-                Linear(hsz, osz, bias_attr=False),
-            )
+                Linear(
+                    self.in_features, hsz, bias_attr=False),
+                Linear(
+                    hsz, osz, bias_attr=False), )
 
             self.tail.append(projection)
 
@@ -172,9 +173,11 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
             if row_indices.numel() == 0:
                 continue
             if i == 0:
-                scatter_output = paddle.scatter_nd(row_indices.unsqueeze(1), target.masked_select(target_mask), gather_inds.shape)
+                scatter_output = paddle.scatter_nd(
+                    row_indices.unsqueeze(1),
+                    target.masked_select(target_mask), gather_inds.shape)
                 # gather_inds = gather_inds * (scatter_output == 0) + scatter_output
-                gather_inds=scatter_output
+                gather_inds = scatter_output
             else:
                 relative_target = target.masked_select(target_mask) - low_idx
                 input_subset = input.index_select(row_indices, 0)
@@ -182,12 +185,20 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
                 cluster_output = self.tail[i - 1](input_subset)
                 cluster_index = self.shortlist_size + i - 1
 
-                scatter_output = paddle.scatter_nd(row_indices.unsqueeze(1), paddle.ones(row_indices.shape)*cluster_index, gather_inds.shape)
-                gather_inds = (gather_inds * (scatter_output != cluster_index) + scatter_output).astype(paddle.int64)
+                scatter_output = paddle.scatter_nd(
+                    row_indices.unsqueeze(1),
+                    paddle.ones(row_indices.shape) * cluster_index,
+                    gather_inds.shape)
+                gather_inds = (gather_inds * (scatter_output != cluster_index) +
+                               scatter_output).astype(paddle.int64)
 
                 cluster_logprob = F.log_softmax(cluster_output, axis=1)
-                local_logprob = (F.one_hot(relative_target, cluster_logprob.shape[-1]) * cluster_logprob).sum(1).unsqueeze(1)
-                scatter_output = paddle.scatter_nd(row_indices.unsqueeze(1), local_logprob.squeeze(1), output.shape)
+                local_logprob = (F.one_hot(relative_target,
+                                           cluster_logprob.shape[-1]) *
+                                 cluster_logprob).sum(1).unsqueeze(1)
+                scatter_output = paddle.scatter_nd(
+                    row_indices.unsqueeze(1),
+                    local_logprob.squeeze(1), output.shape)
                 output = output * (scatter_output == 0) + scatter_output
 
             used_rows += row_indices.numel()
@@ -201,7 +212,8 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
         head_output = self.head(input)
         head_logprob = F.log_softmax(head_output, axis=1)
-        output += (paddle.nn.functional.one_hot(gather_inds, head_logprob.shape[1]) * head_logprob).sum(1)
+        output += (paddle.nn.functional.one_hot(
+            gather_inds, head_logprob.shape[1]) * head_logprob).sum(1)
         loss = (-output).mean()
 
         return _ASMoutput(output, loss)
@@ -215,10 +227,13 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
         out[:, :self.shortlist_size] = head_logprob[:, :self.shortlist_size]
 
-        for i, (start_idx, stop_idx) in enumerate(zip(self.cutoffs, self.cutoffs[1:])):
+        for i, (start_idx,
+                stop_idx) in enumerate(zip(self.cutoffs, self.cutoffs[1:])):
             cluster_output = self.tail[i](input)
             cluster_logprob = F.log_softmax(cluster_output, axis=1)
-            output_logprob = cluster_logprob + head_logprob[:, self.shortlist_size + i].unsqueeze(1)
+            output_logprob = cluster_logprob + head_logprob[:,
+                                                            self.shortlist_size
+                                                            + i].unsqueeze(1)
 
             out[:, start_idx:stop_idx] = output_logprob
 
@@ -267,7 +282,8 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         else:
             log_prob = self._get_full_log_prob(input[not_in_shortlist],
                                                head_output[not_in_shortlist])
-            output[not_in_shortlist] = paddle.argmax(log_prob, axis=1).cast('float32')
+            output[not_in_shortlist] = paddle.argmax(
+                log_prob, axis=1).cast('float32')
             return output
 
 
