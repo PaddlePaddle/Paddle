@@ -179,7 +179,6 @@ void HeterSectionWorker::CreateMicrobatchScopes() {
       minibatch_scope_,
       platform::errors::InvalidArgument(
           "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
-
   microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
   (*microbatch_scopes_).resize(num_microbatches_);
   VLOG(3) << "Create microbatch scopes...";

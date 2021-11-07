@@ -348,7 +348,7 @@ class HeterServer {
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   std::condition_variable condition_ready_;
-  bool stoped_ = false;
+  bool stoped_ = true;
   std::string endpoint_;
 
  protected:

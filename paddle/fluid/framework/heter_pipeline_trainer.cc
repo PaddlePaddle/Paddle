@@ -107,6 +107,7 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
       this_worker->SetDataFeed(readers[cnt]);
     }
     this_worker->SetMicrobatchNum(num_microbatches_);
+
     this_worker->SetPipelineStageNum(num_pipeline_stages_);
     this_worker->SetPipelineStage(pipeline_stage_);
   }
@@ -139,6 +140,7 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
                                            "root_scope_ can not be nullptr"));
+
   // initialize mini_scopes & micro_scopes
   mini_scopes_.reset(new MiniScope{});
   micro_scopes_.reset(new MicroScope{});

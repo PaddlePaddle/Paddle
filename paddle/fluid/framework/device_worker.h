@@ -637,7 +637,7 @@ class HeterSectionWorker : public DeviceWorker {
   SHARED_THREAD_QUEUE GetThreadQueue() { return thread_queue_; }
   void CopyParameters(int microbatch_id, const ProgramDesc& program,
                       const platform::Place& place);
-  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
+  void SetMinibatchScope(Scope* scope) { minibatch_scope_ = scope; }
   void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
   void SetTrainers(int trainers) { this->trainers_ = trainers; }
   void CreateMicrobatchScopes();
@@ -646,6 +646,7 @@ class HeterSectionWorker : public DeviceWorker {
   void RunListen();
   void MiniBatchBarrier(const std::vector<int>& barrier_ids);
   void Run();
+  Scope* GetThreadScope() override { return minibatch_scope_; }
 
  protected:
   int trainer_id_;
@@ -658,7 +659,7 @@ class HeterSectionWorker : public DeviceWorker {
   bool epoch_finish_;
 
   std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
-  const Scope* minibatch_scope_;
+  Scope* minibatch_scope_;
 
   std::unique_ptr<OperatorBase> listen_op_{nullptr};
   std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
