@@ -308,7 +308,8 @@ void HeterSectionWorker::PrintFetchVars() {
     ss << "time: [" << mbstr << "], ";
     ss << "batch: [" << batch_num_ << "], ";
     for (int i = 0; i < fetch_var_num; ++i) {
-      platform::PrintVar(minibatch_scope_, fetch_config_.fetch_var_names(i),
+      platform::PrintVar((*microbatch_scopes_)[0],
+                         fetch_config_.fetch_var_names(i),
                          fetch_config_.fetch_var_str_format(i), &ss);
       if (i < fetch_var_num - 1) {
         ss << ", ";
@@ -319,7 +320,7 @@ void HeterSectionWorker::PrintFetchVars() {
 }
 
 /*
-void HogwildWorker::TrainFilesWithProfiler() {
+void HeterSectionWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
   device_reader_->Start();
   std::vector<double> op_total_time;
