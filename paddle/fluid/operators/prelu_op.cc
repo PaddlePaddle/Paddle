@@ -38,12 +38,6 @@ class PReluOp : public framework::OperatorWithKernel {
                             "But recevied alpha's size: %d.",
                             product(ctx->GetInputDim("Alpha"))));
     } else if (mode == "channel") {
-      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), x_dim[1],
-                        platform::errors::InvalidArgument(
-                            "For mode 'channel', size of weight Alpha must be "
-                            "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[1]: %d",
-                            product(ctx->GetInputDim("Alpha")), x_dim[1]));
       auto x_rank = x_dim.size();
       PADDLE_ENFORCE_GE(x_rank, 2,
                         platform::errors::InvalidArgument(
@@ -51,6 +45,15 @@ class PReluOp : public framework::OperatorWithKernel {
                             "equal or larger than 2. But recevied X's "
                             "rank: %d",
                             x_rank));
+      PADDLE_ENFORCE_EQ(
+          product(ctx->GetInputDim("Alpha")) == x_dim[1] ||
+              product(ctx->GetInputDim("Alpha")) == x_dim[x_rank - 1],
+          true, platform::errors::InvalidArgument(
+                    "For mode 'channel', size of weight Alpha must be "
+                    "equal to the number of channels of input(x). But "
+                    "recevied alpha's size: %d, x_dim[1]: %d, x_dim[%d]: %d",
+                    product(ctx->GetInputDim("Alpha")), x_dim[1], x_rank - 1,
+                    x_dim[x_rank - 1]));
     } else if (mode == "element") {
       auto alpha_dim = ctx->GetInputDim("Alpha");
       auto alpha_rank = alpha_dim.size();

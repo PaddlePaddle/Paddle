@@ -490,8 +490,8 @@ def prelu(x, weight, name=None):
         assert len(
             x.shape
         ) > 1, "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
-        assert weight.shape[0] == x.shape[
-            1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+        assert weight.shape[0] == x.shape[1] or weight.shape[0] == x.shape[
+            -1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
         mode = 'channel'
 
     if in_dygraph_mode():
