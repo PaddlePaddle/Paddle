@@ -985,6 +985,12 @@ void BindImperative(py::module *m_ptr) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});
+
+                // pass the stop_gradient from value to tensor
+                if (!value_tensor->OverridedStopGradient() &&
+                    self->OverridedStopGradient()) {
+                  self->SetOverridedStopGradient(false);
+                }
               } else if (py::isinstance<py::array>(value_obj)) {
                 auto value_tensor = std::shared_ptr<imperative::VarBase>(
                     new imperative::VarBase(false,
