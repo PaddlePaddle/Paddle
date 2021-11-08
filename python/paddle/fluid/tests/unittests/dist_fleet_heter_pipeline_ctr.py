@@ -113,6 +113,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                     name='dnn-fc-%d' % i)
                 dnn_out = fc
 
+        with fluid.device_guard("cpu"):
             merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
             label = fluid.layers.cast(label, dtype="int64")
             predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')

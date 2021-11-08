@@ -482,34 +482,34 @@ class RoleMakerBase(object):
         """
         print("warning: RoleMakerBase does not have barrier worker.")
 
-    def _is_heter_worker(self):
-        """
-        Return is_heter_worker() of current process
-        """
-        raise NotImplementedError("Please implement this method in child class")
+    #def _is_heter_worker(self):
+    #    """
+    #    Return is_heter_worker() of current process
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
-    def _heter_worker_num(self):
-        """
-        Get current total heter-worker number.
+    #def _heter_worker_num(self):
+    #    """
+    #    Get current total heter-worker number.
+    #
+    #    Returns:
+    #        int: heter_worker number
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
-        Returns:
-            int: heter_worker number
-        """
-        raise NotImplementedError("Please implement this method in child class")
+    #def _get_heter_worker_endpoints(self):
+    #    """
+    #    Returns:
+    #        string: all heter_trainers'endpoints
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
-    def _get_heter_worker_endpoints(self):
-        """
-        Returns:
-            string: all heter_trainers'endpoints
-        """
-        raise NotImplementedError("Please implement this method in child class")
-
-    def _get_heter_worker_endpoint(self):
-        """
-        Returns:
-            int: corresponding heter_trainer's endpoint
-        """
-        raise NotImplementedError("Please implement this method in child class")
+    #def _get_heter_worker_endpoint(self):
+    #    """
+    #    Returns:
+    #        int: corresponding heter_trainer's endpoint
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):

@@ -49,6 +49,12 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   auto& out = *root_block->Var("res");
   out.SetType(framework::proto::VarType::LOD_TENSOR);
   out.SetShape({1, 10});
+
+  auto& persistable_var = *root_block->Var("p_var");
+  persistable_var.SetType(framework::proto::VarType::LOD_TENSOR);
+  persistable_var.SetShape({1, 10});
+  persistable_var.SetPersistable(true);
+
   return block;
 }
 
@@ -74,7 +80,7 @@ void GetHeterListenAndServProgram(framework::ProgramDesc* program) {
 
 TEST(HeterPipelineTrainerTest, test1) {
 #ifdef _LINUX
-  TrainerDesc t, t2;
+  TrainerDesc t, t2, t3;
   // t2
   t.set_class_name("HeterPipelineTrainer");
   t.set_device_worker_name("HeterSectionWorker");
@@ -82,8 +88,9 @@ TEST(HeterPipelineTrainerTest, test1) {
   t.set_trainer_id(0);
   t.add_trainers(1);
   t.add_trainers(1);
+  t.add_trainers(1);
   auto* heter_section_param = t.mutable_heter_section_param();
-  heter_section_param->set_num_pipeline_stages(2);
+  heter_section_param->set_num_pipeline_stages(3);
   heter_section_param->set_pipeline_stage(0);
   heter_section_param->set_num_microbatches(1);
   // t2
@@ -93,10 +100,23 @@ TEST(HeterPipelineTrainerTest, test1) {
   t2.set_trainer_id(1);
   t2.add_trainers(1);
   t2.add_trainers(1);
+  t2.add_trainers(1);
   auto* heter_section_param2 = t2.mutable_heter_section_param();
-  heter_section_param2->set_num_pipeline_stages(2);
+  heter_section_param2->set_num_pipeline_stages(3);
   heter_section_param2->set_pipeline_stage(1);
   heter_section_param2->set_num_microbatches(1);
+  // t3
+  t3.set_class_name("HeterPipelineTrainer");
+  t3.set_device_worker_name("HeterSectionWorker");
+  t3.set_thread_num(1);
+  t3.set_trainer_id(1);
+  t3.add_trainers(1);
+  t3.add_trainers(1);
+  t3.add_trainers(1);
+  auto* heter_section_param3 = t3.mutable_heter_section_param();
+  heter_section_param3->set_num_pipeline_stages(3);
+  heter_section_param3->set_pipeline_stage(2);
+  heter_section_param3->set_num_microbatches(1);
 
   std::string str;
   str += "name: \"MultiSlotDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
@@ -127,7 +147,15 @@ TEST(HeterPipelineTrainerTest, test1) {
   proto::ProgramDesc* pd2 = new proto::ProgramDesc(*(p2.Proto()));
   section_config2->set_allocated_program_desc(pd2);
 
-  Scope root_scope, root_scope2;
+  ProgramDesc p3;
+  // construct program
+  // AppendSendAndRecvBlock(&p3);
+  GetHeterListenAndServProgram(&p3);
+  auto* section_config3 = heter_section_param3->mutable_section_config();
+  proto::ProgramDesc* pd3 = new proto::ProgramDesc(*(p3.Proto()));
+  section_config3->set_allocated_program_desc(pd3);
+
+  Scope root_scope, root_scope2, root_scope3;
   paddle::platform::CPUPlace place;
 
   // tmp1
@@ -151,6 +179,22 @@ TEST(HeterPipelineTrainerTest, test1) {
   tmp2->GetWorkerScope(0);
   tmp2->ResetDataset(dataset.get());
   tmp2->Finalize();
+
+  // tmp3
+  std::shared_ptr<TrainerBase> tmp3;
+  tmp3 = TrainerFactory::CreateTrainer(t3.class_name());
+  tmp3->SetScope(&root_scope3);
+  tmp3->Initialize(t3, dataset.get());
+  tmp3->InitTrainerEnv(p3, place);
+  tmp3->InitOtherEnv(p3);
+  tmp3->GetWorkerScope(0);
+  tmp3->ResetDataset(dataset.get());
+  tmp3->Finalize();
+
+  // tmp4 for coverage
+  std::shared_ptr<TrainerBase> tmp4;
+  tmp4 = TrainerFactory::CreateTrainer("MultiTrainer");
+  tmp4->ResetDataset(dataset.get());
 
 #endif
 }
