@@ -268,7 +268,7 @@ TEST_F(CinnGraphSymbolizationTest, sortgraph) {
     sort_names.emplace_back(desc->Type());
   }
   ASSERT_EQ(sort_names,
-            std::vector<std::string>({"feed", "mul", "feed", "add", "relu"}));
+            std::vector<std::string>({"feed", "feed", "mul", "add", "relu"}));
 }
 
 TEST_F(CinnGraphSymbolizationTest, runop) {

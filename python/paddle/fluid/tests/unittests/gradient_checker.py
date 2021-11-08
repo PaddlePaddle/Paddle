@@ -304,7 +304,6 @@ def grad_check(x,
                 if b.has_var(xi.name):
                     clone_x.append(b.var(xi.name))
                     break
-
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
@@ -486,7 +485,6 @@ def triple_grad_check(x,
             var_to_np_array_in_scope(scope, place, v.name)
             for v in x_grads_grads
         ]
-
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init

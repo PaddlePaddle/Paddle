@@ -2068,6 +2068,7 @@ class LarsMomentumOptimizer(Optimizer):
             "lars_coeff": self._lars_coeff,
             "lars_weight_decay": [_lars_weight_decay],
             "multi_precision": find_master,
+            "epsilon": self._epsilon,
             "rescale_grad": self._rescale_grad
         }
 

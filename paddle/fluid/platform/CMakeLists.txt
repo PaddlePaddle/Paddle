@@ -169,7 +169,7 @@ if(WITH_GPU)
   nv_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu)
 
   nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
-  nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
+  nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda pten)
   nv_test(cudnn_desc_test SRCS cudnn_desc_test.cc DEPS dynload_cuda)
   nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 endif()
