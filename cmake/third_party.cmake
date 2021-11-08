@@ -331,7 +331,7 @@ if (WITH_PSCORE)
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
-    
+
     if (WITH_HETERPS)
         include(external/rocksdb)     # download, build, install libmct
         list(APPEND third_party_deps extern_rocksdb)
@@ -359,6 +359,12 @@ if (WITH_LITE)
     message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
+
+if (WITH_CINN)
+    message(STATUS "Compile Paddle with CINN.")
+    include(external/cinn)
+    add_definitions(-DPADDLE_WITH_CINN)
+endif (WITH_CINN)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp

@@ -207,7 +207,7 @@ class MKLDNNHandlerNoCachingT {
   std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
       const mkldnn::memory::desc& user_md,
       const mkldnn::memory::desc& target_md, void* ptr,
-      const std::string& suffix, bool is_persistent = false,
+      bool is_persistent = false,
       std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
     std::shared_ptr<mkldnn::memory> target_memory_p;
     if (custom_reorder_func) {
@@ -500,18 +500,9 @@ class MKLDNNHandlerT {
   }
 
   void AcquireReorder(const std::shared_ptr<mkldnn::memory>& user_memory_p,
-                      const std::shared_ptr<mkldnn::memory>& target_memory_p,
-                      const std::string& suffix) {
-    const auto key_reorder_p = key_ + suffix + "reorder_p";
-
-    auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
-        dev_ctx_.GetBlob(key_reorder_p));
-
-    if (reorder_p == nullptr) {
-      reorder_p =
-          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
-      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
-    }
+                      const std::shared_ptr<mkldnn::memory>& target_memory_p) {
+    auto reorder_p =
+        std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
@@ -578,6 +569,8 @@ class MKLDNNHandlerT {
           std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
       user_memory_p->set_data_handle(ptr);
 
+      // TODO(jczaja): Here we detect if reorder is cached it means it is needed
+      // need to change this to get rid of keys
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
@@ -614,7 +607,8 @@ class BinaryMKLDNNHandler
   BinaryMKLDNNHandler(const dnnl::algorithm algo, const int axis,
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
-                      float scale_x, float scale_y, float scale_z)
+                      float scale_x, float scale_y, float scale_z,
+                      const dnnl::post_ops& post_ops = dnnl::post_ops())
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         x->layout(), DataLayout::kMKLDNN,
@@ -663,10 +657,11 @@ class BinaryMKLDNNHandler
                                      MKLDNNMemoryFormat::any);
 
     auto attributes = CreateAttributes(algo, scale_x, scale_y, scale_z);
+    attributes.set_post_ops(post_ops);
+
     this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                             dst_md);
   }
-
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
