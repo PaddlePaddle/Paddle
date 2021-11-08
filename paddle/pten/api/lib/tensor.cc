@@ -16,15 +16,39 @@ limitations under the License. */
 
 #include <utility>
 
+#include "paddle/pten/core/tensor_base.h"
+
+/**
+ * [ Why still include the fluid headers? ]
+ *
+ * We hope to organize the basic implementation of Tensor and the logic related
+ * to Tensor computation into an independent library, which we call
+ * [Tensor Operation Library, pten], so we extract or rewrite the original
+ * Kernels.
+ *
+ * In the future, the training library, inference library and custom operators
+ * will link to this Tensor Operation library.
+ *
+ * However, if we directly split the link relation, we need to make too many
+ * changes, which will affect the stability of the framework, so here we still
+ * rely on the implementation of the framework, which is a intermediate state.
+ *
+ * In the future, the necessary components will be moved to the this library,
+ * or the corresponding components will be re-implemented.
+ */
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
+namespace experimental {
 
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
@@ -138,10 +162,45 @@ void GpuCopy(
           static_cast<int>(place_)));                 \
   }
 
+/////// Tensor Methods ////////
+
+Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
+    : impl_(std::move(tensor_impl)) {
+  PADDLE_ENFORCE_NOT_NULL(impl_,
+                          platform::errors::InvalidArgument(
+                              "TensorImpl with nullptr is not supported"));
+}
+
+int64_t Tensor::numel() const { return impl_->numel(); }
+
+int64_t Tensor::size() const { return impl_->numel(); }
+
+paddle::framework::DDim dims() const { return impl_->dims(); }
+
+std::vector<int64_t> Tensor::shape() const {
+  return paddle::framework::vectorize<int64_t>(impl_->dims());
+}
+
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  GET_CASTED_TENSOR
-  auto new_dim = framework::make_ddim(shape);
-  tensor->Resize(new_dim);
+  impl_->Resize(framework::make_ddim(shape));
+}
+
+DataType Tensor::dtype() const { return impl_->data_type(); }
+
+DataType Tensor::type() const { return impl_->data_type(); }
+
+DataLayout Tensor::layout() const { return impl_->layout(); }
+
+paddle::platform::Place Tensor::place() const { return impl_->place(); }
+
+bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
+
+bool Tensor::is_cuda() const { return paddle::platform::is_gpu_place(place()); }
+
+std::shared_ptr<pten::TensorBase> Tensor::impl() const { return impl_; }
+
+void Tensor::set_impl(const std::shared_ptr<pten::TensorBase> &impl) {
+  impl_ = impl;
 }
 
 Tensor::Tensor(const PlaceType &place)
@@ -195,36 +254,6 @@ T *Tensor::data() const {
   GET_CASTED_TENSOR;
   auto *res = tensor->data<T>();
   return res;
-}
-
-DataType Tensor::type() const {
-  GET_CASTED_TENSOR;
-  auto type = tensor->type();
-  if (type == framework::proto::VarType::FP32) {
-    return DataType::FLOAT32;
-  } else if (type == framework::proto::VarType::INT64) {
-    return DataType::INT64;
-  } else if (type == framework::proto::VarType::INT32) {
-    return DataType::INT32;
-  } else if (type == framework::proto::VarType::INT16) {
-    return DataType::INT16;
-  } else if (type == framework::proto::VarType::INT8) {
-    return DataType::INT8;
-  } else if (type == framework::proto::VarType::UINT8) {
-    return DataType::UINT8;
-  } else if (type == framework::proto::VarType::FP64) {
-    return DataType::FLOAT64;
-  } else if (type == framework::proto::VarType::BOOL) {
-    return DataType::BOOL;
-  } else if (type == framework::proto::VarType::COMPLEX64) {
-    return DataType::COMPLEX64;
-  } else if (type == framework::proto::VarType::COMPLEX128) {
-    return DataType::COMPLEX128;
-  } else if (type == framework::proto::VarType::FP16) {
-    return DataType::FLOAT16;
-  }
-  // TODO(JiabinYang) Support more dtype here
-  return DataType::FLOAT32;
 }
 
 template <typename T>
@@ -347,11 +376,6 @@ Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 
-std::vector<int64_t> Tensor::shape() const {
-  GET_CASTED_TENSOR
-  return framework::vectorize<int64_t>(tensor->dims());
-}
-
 const PlaceType &Tensor::place() const {
   GET_CASTED_TENSOR;
   if (platform::is_cpu_place(tensor->place())) {
@@ -432,11 +456,6 @@ Tensor Tensor::cast(const DataType &target_type) const {
   return rlt;
 }
 
-int64_t Tensor::size() const {
-  GET_CASTED_TENSOR;
-  return tensor->numel();
-}
-
 bool Tensor::is_initialized() const {
   GET_CASTED_TENSOR;
   if (tensor->IsInitialized()) {
@@ -457,6 +476,7 @@ gpuStream_t Tensor::stream() const {
   }
 }
 #endif
+}  // namespace experimental
 
 namespace framework {
 
@@ -473,6 +493,6 @@ void CustomTensorUtils::ShareDataFrom(const void *src,
   auto *tensor = static_cast<framework::LoDTensor *>(dst.tensor_.get());
   tensor->ShareDataWith(*static_cast<const framework::LoDTensor *>(src));
 }
-
 }  // namespace framework
+
 }  // namespace paddle
