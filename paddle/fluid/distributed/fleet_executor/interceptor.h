@@ -40,6 +40,9 @@ class Interceptor {
   // return the interceptor id
   int64_t GetInterceptorId() const;
 
+  // return the conditional var
+  std::condition_variable& GetCondVar();
+
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   bool EnqueueRemoteInterceptorMessage(
       const InterceptorMessage& interceptor_message);

@@ -26,16 +26,54 @@ Carrier::Carrier(
   CreateInterceptors();
 }
 
-Carrier::~Carrier() {}
+Carrier::~Carrier() {
+  for (auto iter = interceptor_idx_to_interceptor_.begin();
+       iter != interceptor_idx_to_interceptor_.end(); iter++) {
+    Interceptor* ip = iter->second.release();
+    delete ip;
+  }
+}
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // enqueue message to interceptor
-  return true;
+  if (interceptor_message.ctrl_message()) {
+    // handle control message
+    return true;
+  } else {
+    int64_t dst_id = interceptor_message.dst_id();
+    Interceptor* dst_interceptor = GetInterceptor(dst_id);
+    bool rst =
+        dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
+    if (rst) {
+      std::condition_variable& interceptor_cond_var =
+          dst_interceptor->GetCondVar();
+      interceptor_cond_var.notify_all();
+    }
+    return rst;
+  }
+}
+
+Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
+  auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
+  PADDLE_ENFORCE_NE(iter, interceptor_idx_to_interceptor_.end(),
+                    platform::errors::InvalidArgument(
+                        "Cannot find interceptor instance for interceptor "
+                        "id %lld. Wrong dst? Call before init?",
+                        interceptor_id));
+  return iter->second.get();
 }
 
 void Carrier::CreateInterceptors() {
   // create each Interceptor
+  for (auto iter = interceptor_id_to_node_.begin();
+       iter != interceptor_id_to_node_.end(); iter++) {
+    int64_t interceptor_id = iter->first;
+    TaskNode* task_node = iter->second;
+    interceptor_idx_to_interceptor_[interceptor_id] =
+        std::make_unique<Interceptor>(interceptor_id, task_node);
+    VLOG(3) << "Create Interceptor for " << interceptor_id;
+  }
 }
 
 }  // namespace distributed

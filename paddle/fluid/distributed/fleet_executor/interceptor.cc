@@ -21,6 +21,11 @@ Interceptor::Interceptor(int64_t interceptor_id_, TaskNode* node) {
   // init
 }
 
+std::condition_variable& Interceptor::GetCondVar() {
+  // get the conditional var
+  return cond_var_;
+}
+
 int64_t Interceptor::GetInterceptorId() const {
   // return the interceptor id
   return 0;
