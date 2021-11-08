@@ -29,7 +29,7 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
 }
 
 InterpreterCoreGarbageCollector::~InterpreterCoreGarbageCollector() {
-  queue_->Cancel();
+  queue_.reset(nullptr);
 }
 
 void InterpreterCoreGarbageCollector::Add(

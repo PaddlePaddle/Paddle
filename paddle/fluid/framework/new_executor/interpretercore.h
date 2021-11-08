@@ -98,7 +98,7 @@ class InterpreterCore {
   StreamAnalyzer stream_analyzer_;
   EventManager event_manager_;
   EventsWaiter main_thread_blocker_;
-  interpretercore::AsyncWorkQueue async_work_queue_;
+  std::unique_ptr<interpretercore::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
 
