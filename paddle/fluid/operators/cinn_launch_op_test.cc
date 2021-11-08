@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/cinn_launch_op.h"
 #include <stdlib.h>
 #include <random>
 #include <string>
@@ -31,10 +32,8 @@ USE_OP(elementwise_add);
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
 using framework::ir::Graph;
 using framework::ir::Node;
-using framework::paddle2cinn::CinnCompiler;
 
 std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
     const std::string& x_name, const std::string& y_name,
@@ -159,6 +158,7 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
   run_and_check_fn(platform::CPUPlace());
   run_and_check_fn(platform::CPUPlace());
 
+#ifdef PADDLE_WITH_CUDA
   // create an new elementwise_add op
   // because the above one cached the cpu kernel
   LOG(INFO) << "Check compute result on gpu";
@@ -170,7 +170,132 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
       {{"Out", {expected_out_name}}}, {{}});
   run_and_check_fn(platform::CUDAPlace());
   run_and_check_fn(platform::CUDAPlace());
+#endif
 }
+
+namespace details {
+// Testing helper function used on CinnLaunchOpKernel in the following:
+// firstly build test data, then check both expected and illegal situations
+
+using CinnShape = ::cinn::hlir::framework::Shape;
+
+TEST(CinnLaunchOpHelperTest, TestPlaceToCinnTarget) {
+  ASSERT_EQ(PlaceToCinnTarget(platform::CPUPlace()),
+            ::cinn::common::DefaultHostTarget());
+  ASSERT_EQ(PlaceToCinnTarget(platform::CUDAPlace(0)),
+            ::cinn::common::DefaultNVGPUTarget());
+  ASSERT_THROW(PlaceToCinnTarget(platform::XPUPlace()),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchOpHelperTest, TestMapPaddleVariablesToCinn) {
+  std::unordered_map<std::string, std::string> varmap(
+      {{"var1", "cinn_var1"}, {"var2", "cinn_var2"}, {"var3", "cinn_var3"}});
+
+  auto cinn_names = MapPaddleVariablesToCinn({"var1", "var3"}, varmap);
+  ASSERT_EQ(cinn_names.size(), 2);
+  EXPECT_EQ(cinn_names, std::vector<std::string>({"cinn_var1", "cinn_var3"}));
+  ASSERT_THROW(MapPaddleVariablesToCinn({"var1", "not_exist"}, varmap),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchOpHelperTest, TestGetCinnTensorsFromCompiledScope) {
+  CinnScope cinn_scope;
+  cinn_scope.Var<CinnTensor>("cinn_var1");
+  cinn_scope.Var<CinnTensor>("cinn_var2");
+  cinn_scope.Var<CinnTensor>("cinn_var3");
+
+  auto cinn_tensors =
+      GetCinnTensorsFromCompiledScope({"cinn_var1", "cinn_var3"}, cinn_scope);
+  ASSERT_EQ(cinn_tensors.size(), 2);
+  ASSERT_EQ(cinn_tensors.front().get(),
+            cinn_scope.GetTensor("cinn_var1").get());
+  ASSERT_EQ(cinn_tensors.back().get(), cinn_scope.GetTensor("cinn_var3").get());
+  ASSERT_THROW(
+      GetCinnTensorsFromCompiledScope({"cinn_var1", "not_exist"}, cinn_scope),
+      paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
+  platform::CPUPlace place;
+  framework::Scope scope;
+  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  tensor1->mutable_data<float>(framework::make_ddim({5, 8}), place);
+
+  CinnScope cinn_scope;
+  cinn_scope.Var<CinnTensor>("cinn_var1");
+  auto cinn_tensor1 = cinn_scope.GetTensor("cinn_var1");
+  cinn_tensor1->Resize(CinnShape({5, 8}));
+  cinn_tensor1->set_type(::cinn::common::type_of<float>());
+
+  ASSERT_NO_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1));
+  auto tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
+  ASSERT_THROW(CheckTensorEquivalent("var2", tensor2, cinn_tensor1),
+               paddle::platform::EnforceNotMet);
+
+  cinn_tensor1->Resize(CinnShape({5, 7}));
+  ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchOpHelperTest, TestTensorMutableDataWithCinnInfo) {
+  platform::CPUPlace place;
+  framework::Scope scope;
+  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  CinnScope cinn_scope;
+  cinn_scope.Var<CinnTensor>("cinn_var1");
+  auto cinn_tensor1 = cinn_scope.GetTensor("cinn_var1");
+  cinn_tensor1->Resize(CinnShape({5, 8}));
+
+  ASSERT_NO_THROW(TensorMutableDataWithCinnInfo(place, cinn_tensor1, tensor1));
+  ASSERT_TRUE(tensor1->IsInitialized());
+  ASSERT_EQ(tensor1->dims(), framework::make_ddim({5, 8}));
+}
+
+TEST(CinnLaunchOpHelperTest, TestSeperateTempVar) {
+  CinnScope cinn_scope;
+  cinn_scope.Var<CinnTensor>("cinn_var1");
+  cinn_scope.Var<CinnTensor>("cinn_var2");
+  cinn_scope.Var<CinnTensor>("cinn_var3");
+  cinn_scope.Var<CinnTensor>("cinn_var4");
+
+  auto temp_names =
+      SeperateTempVar(cinn_scope, {"cinn_var1", "cinn_var2"}, {"cinn_var4"});
+  ASSERT_EQ(temp_names.size(), 1);
+  EXPECT_EQ(temp_names.front(), "cinn_var3");
+}
+
+TEST(CinnLaunchOpHelperTest, TestShareTensorWithCinnBuffer) {
+  platform::CPUPlace place;
+  framework::Scope scope;
+  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  tensor1->mutable_data<float>(framework::make_ddim({5, 6}), place);
+  auto* data1 = tensor1->data<float>();
+  data1[0] = 9.99f;
+  data1[10] = 19.99f;
+
+  auto cinn_buffer = ShareTensorWithCinnBuffer(tensor1);
+  ASSERT_NE(cinn_buffer->memory, nullptr);
+  ASSERT_EQ(cinn_buffer->num_elements(), 30);
+  auto* shadow_data = reinterpret_cast<float*>(cinn_buffer->memory);
+  EXPECT_FLOAT_EQ(shadow_data[0], 9.99f);
+  EXPECT_FLOAT_EQ(shadow_data[10], 19.99f);
+}
+
+TEST(CinnLaunchOpHelperTest, TestCheckArgumentsNotMissed) {
+  CinnScope cinn_scope;
+  cinn_scope.Var<CinnTensor>("cinn_var1");
+  cinn_scope.Var<CinnTensor>("cinn_var2");
+  std::map<std::string, cinn_pod_value_t> name2argument(
+      {{"cinn_var1", cinn_pod_value_t()}, {"cinn_var2", cinn_pod_value_t()}});
+
+  ASSERT_NO_THROW(CheckArgumentsNotMissed(cinn_scope, name2argument));
+  name2argument.erase("cinn_var2");
+  ASSERT_THROW(CheckArgumentsNotMissed(cinn_scope, name2argument),
+               paddle::platform::EnforceNotMet);
+}
+
+}  // namespace details
 
 }  // namespace operators
 }  // namespace paddle
