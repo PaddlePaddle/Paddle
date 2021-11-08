@@ -20,6 +20,10 @@ from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
+
 
 class TrtConvertTileTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -34,35 +38,34 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
 
         return True
 
-    def sample_program_configs(self):
+    def sample_program_configs(self, *args, **kwargs):
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 2, 3, 4]).astype(np.float32)
 
-        for repeat_times in [[100], [1, 2], [0, 3], [1, 2, 100]]:
-            dics = [{"repeat_times": repeat_times}]
+        dics = [{"repeat_times": kwargs['repeat_times']}]
 
-            ops_config = [{
-                "op_type": "tile",
-                "op_inputs": {
-                    "X": ["input_data"]
-                },
-                "op_outputs": {
-                    "Out": ["tile_output_data"]
-                },
-                "op_attrs": dics[0]
-            }]
-            ops = self.generate_op_config(ops_config)
+        ops_config = [{
+            "op_type": "tile",
+            "op_inputs": {
+                "X": ["input_data"]
+            },
+            "op_outputs": {
+                "Out": ["tile_output_data"]
+            },
+            "op_attrs": dics[0]
+        }]
+        ops = self.generate_op_config(ops_config)
 
-            program_config = ProgramConfig(
-                ops=ops,
-                weights={},
-                inputs={
-                    "input_data": TensorConfig(data_gen=partial(generate_input1,
-                                                                dics))
-                },
-                outputs=["tile_output_data"])
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={
+                "input_data": TensorConfig(data_gen=partial(generate_input1,
+                                                            dics))
+            },
+            outputs=["tile_output_data"])
 
-            yield program_config
+        yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
@@ -109,8 +112,9 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
                                                                      True), 1e-4
 
-    def test(self):
-        self.run_test()
+    @given(repeat_times=st.sampled_from([[100], [1, 2], [0, 3], [1, 2, 100]]))
+    def test(self, *args, **kwargs):
+        self.run_test(*args, **kwargs)
 
 
 if __name__ == "__main__":
