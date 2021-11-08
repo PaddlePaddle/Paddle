@@ -32,3 +32,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(reduce_min, MKLDNN, paddle::platform::CPUPlace,
                    ops::ReduceMinMKLDNNKernel<float>,
                    ops::ReduceMinMKLDNNKernel<paddle::platform::bfloat16>);
+
+namespace ops = paddle::operators;
+REGISTER_OP_KERNEL(reduce_amin, MKLDNN, paddle::platform::CPUPlace,
+                   ops::ReduceMinMKLDNNKernel<float>,
+                   ops::ReduceMinMKLDNNKernel<paddle::platform::bfloat16>);
