@@ -392,7 +392,7 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
   memcpy(pointer, res.data(), actual_size);
   return 0;
 }
-int32_t GraphTable::random_sample_neighboors(
+int32_t GraphTable::random_sample_neighbors(
     uint64_t *node_ids, int sample_size,
     std::vector<std::shared_ptr<char>> &buffers,
     std::vector<int> &actual_sizes) {

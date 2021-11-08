@@ -101,7 +101,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
             << "value:\n"
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
 
-    const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
     auto input_variable_names = ctx.InputNames(kX);
     const auto& input_tensors = ctx.MultiInput<LoDTensor>(kX);
     std::map<std::string, const LoDTensor*> inputs_name2tensor;
@@ -114,8 +113,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
-    const auto& cinn_compiled_object =
-        CinnCompiler::GetInstance()->Compile(graph, inputs_name2tensor, target);
+    const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
+        compilation_key, inputs_name2tensor, target);
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
     const auto& cinn_runtime_program = cinn_compiled_object.runtime_program;
@@ -179,7 +178,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                                                tensor);
       }
 
-      VLOG(4) << "Prepare outnput argument-" << i << ":"
+      VLOG(4) << "Prepare output argument-" << i << ":"
               << "name(" << var_name << "->" << cinn_name << "), "
               << "tensor(type:" << tensor->type() << ","
               << "dims:" << tensor->dims() << ").";
@@ -188,9 +187,12 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       hold_buffers.emplace_back(std::move(buffer));
     }
 
-    // 3.3 Prepare temporary variables: Create a temporary scope
-    //     to keep temporary variables needed by compiled runtime program
-    //     in addition, they directly use the names from CinnScope.
+    // 3.3 Prepare internal or temporary variables: Create a temporary
+    //     scope to keep internal variables within graph or temporary
+    //     variables needed by the compiled runtime program in addition.
+    //     Here we directly use the names from CinnScope as Paddle variable
+    //     names, because they will not be used outside the graph
+    //     and should be destructed after computation finished.
     auto temp_variable_names = details::SeperateTempVar(
         cinn_scope, input_cinn_names, output_cinn_names);
     auto temp_scope = scope.NewTmpScope();

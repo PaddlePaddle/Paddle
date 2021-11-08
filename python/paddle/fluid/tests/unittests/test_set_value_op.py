@@ -1154,6 +1154,18 @@ class TestGradientTruncated(unittest.TestCase):
             msg="The gradient of input should be \n{},\n but reveived {}".
             format(value_grad, value.grad.numpy()))
 
+        # case 6: pass stop_gradient from value to x
+        x = paddle.zeros([8, 8], dtype='float32')
+        value = paddle.to_tensor([10], dtype='float32', stop_gradient=False)
+
+        self.assertTrue(x.stop_gradient)
+        self.assertTrue(x.is_leaf)
+
+        x[0, :] = value
+
+        self.assertTrue(~x.stop_gradient)
+        self.assertTrue(~x.is_leaf)
+
     def test_static_graph(self):
         paddle.enable_static()
 
