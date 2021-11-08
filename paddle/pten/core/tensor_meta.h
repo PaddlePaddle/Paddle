@@ -54,7 +54,7 @@ struct DenseTensorMeta {
   /// marked with `const` are expected to remain unchanged.
   const bool is_scalar{false};
   DDim dims;
-  const DataType type{DataType::FLOAT32};
+  const DataType type{DataType::UNDEFINED};
   const DataLayout layout{DataLayout::NCHW};
   LoD lod;
 };
