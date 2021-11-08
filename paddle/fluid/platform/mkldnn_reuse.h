@@ -205,8 +205,9 @@ class MKLDNNHandlerNoCachingT {
 
   template <typename F = T>
   std::shared_ptr<dnnl::memory> AcquireMemoryWithReorder(
-      const dnnl::memory::desc& user_md, const dnnl::memory::desc& target_md,
-      void* ptr, const std::string& suffix, bool is_persistent = false,
+      const dnnl::memory::desc& user_md,
+      const dnnl::memory::desc& target_md, void* ptr,
+      bool is_persistent = false,
       std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
     std::shared_ptr<dnnl::memory> target_memory_p;
     if (custom_reorder_func) {
@@ -499,18 +500,9 @@ class MKLDNNHandlerT {
   }
 
   void AcquireReorder(const std::shared_ptr<dnnl::memory>& user_memory_p,
-                      const std::shared_ptr<dnnl::memory>& target_memory_p,
-                      const std::string& suffix) {
-    const auto key_reorder_p = key_ + suffix + "reorder_p";
-
-    auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
-        dev_ctx_.GetBlob(key_reorder_p));
-
-    if (reorder_p == nullptr) {
-      reorder_p =
-          std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
-      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
-    }
+                      const std::shared_ptr<dnnl::memory>& target_memory_p) {
+    auto reorder_p =
+        std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
@@ -576,6 +568,8 @@ class MKLDNNHandlerT {
           std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
       user_memory_p->set_data_handle(ptr);
 
+      // TODO(jczaja): Here we detect if reorder is cached it means it is needed
+      // need to change this to get rid of keys
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {

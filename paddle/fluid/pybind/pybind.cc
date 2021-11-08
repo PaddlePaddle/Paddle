@@ -506,6 +506,17 @@ static int GetNCCLVersion() {
 }
 #endif
 
+template <typename PlaceType>
+static void TensorCopyFrom(framework::Tensor *dst, const framework::Tensor &src,
+                           const PlaceType &place, int64_t batch_size) {
+  if (batch_size < 0) {
+    framework::TensorCopy(src, place, dst);
+  } else {
+    auto sliced = src.Slice(0, batch_size);
+    framework::TensorCopy(sliced, place, dst);
+  }
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -755,16 +766,17 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
-      .def("_copy_from",
-           [](framework::Tensor &self, const framework::Tensor &other,
-              const platform::Place &place, int64_t batch_size) {
-             if (batch_size < 0) {
-               framework::TensorCopy(other, place, &self);
-             } else {
-               auto sliced = other.Slice(0, batch_size);
-               framework::TensorCopy(sliced, place, &self);
-             }
-           },
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::NPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
@@ -2381,23 +2393,31 @@ All parameter, weight, gradient are variables in Paddle.
         py::return_value_policy::copy);
 
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
-      .def_readonly("name", &gpuDeviceProp::name)
-      .def_readonly("major", &gpuDeviceProp::major)
-      .def_readonly("minor", &gpuDeviceProp::minor)
-      .def_readonly("is_multi_gpu_board", &gpuDeviceProp::isMultiGpuBoard)
-      .def_readonly("is_integrated", &gpuDeviceProp::integrated)
-      .def_readonly("multi_processor_count",
-                    &gpuDeviceProp::multiProcessorCount)
-      .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
-      .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
-        std::ostringstream stream;
-        stream << "_gpuDeviceProperties(name='" << gpu_device_prop.name
-               << "', major=" << gpu_device_prop.major
-               << ", minor=" << gpu_device_prop.minor << ", total_memory="
-               << gpu_device_prop.totalGlobalMem / (1024 * 1024)
-               << "MB, multi_processor_count="
-               << gpu_device_prop.multiProcessorCount << ")";
-        return stream.str();
+      .def_property_readonly(
+          "name", [](const gpuDeviceProp &prop) { return prop.name; })
+      .def_property_readonly(
+          "major", [](const gpuDeviceProp &prop) { return prop.major; })
+      .def_property_readonly(
+          "minor", [](const gpuDeviceProp &prop) { return prop.minor; })
+      .def_property_readonly(
+          "total_memory",
+          [](const gpuDeviceProp &prop) { return prop.totalGlobalMem; })
+      .def_property_readonly(
+          "multi_processor_count",
+          [](const gpuDeviceProp &prop) { return prop.multiProcessorCount; })
+      .def_property_readonly(
+          "is_multi_gpu_board",
+          [](const gpuDeviceProp &prop) { return prop.isMultiGpuBoard; })
+      .def_property_readonly(
+          "is_integrated",
+          [](const gpuDeviceProp &prop) { return prop.integrated; })
+      .def("__repr__", [](const gpuDeviceProp &prop) {
+        std::stringstream ostr;
+        ostr << "_gpuDeviceProperties(name='" << prop.name
+             << "', major=" << prop.major << ", minor=" << prop.minor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+        return ostr.str();
       });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
