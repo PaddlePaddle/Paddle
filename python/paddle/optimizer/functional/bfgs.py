@@ -363,7 +363,7 @@ def optimize(func,
     """
     states = list(iterates(func, x0, dtype, H0, gtol, xtol, iters, ls_iters))
 
-    if states is []:
+    if len(states) == 0:
         return None if summary_only else []
 
     if summary_only:
