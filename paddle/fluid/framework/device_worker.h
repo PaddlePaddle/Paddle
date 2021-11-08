@@ -620,7 +620,7 @@ class HeterSectionWorker : public DeviceWorker {
 
   void BindingDataFeedMemory() override {}
   void BindingDataFeedMemory(int micro_id);
-  void PrintFetchVars() override;
+  void PrintFetchVars() override {}
   const platform::Place& place() const { return place_; }
 
   void SetDeviceIndex(int tid) override { thread_id_ = tid; }
@@ -648,11 +648,11 @@ class HeterSectionWorker : public DeviceWorker {
   void Run();
   Scope* GetThreadScope() override { return minibatch_scope_; }
 
-// multi-stream
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void SetStream(const gpuStream_t stream) override {}
-  void SetEvent(const gpuEvent_t event) override {}
-#endif
+  // multi-stream
+  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  //  void SetStream(const gpuStream_t stream) override {}
+  //  void SetEvent(const gpuEvent_t event) override {}
+  // #endif
 
  protected:
   int trainer_id_;

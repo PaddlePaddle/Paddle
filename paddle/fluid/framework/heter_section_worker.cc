@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/heter_server.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
@@ -246,7 +247,7 @@ void HeterSectionWorker::Run() {
       // backward
       if (micro_ids_.size() > 0) {
         MiniBatchBarrier();
-        PrintFetchVars();
+        // PrintFetchVars();
         micro_ids_.clear();
       }
     }
@@ -278,6 +279,10 @@ void HeterSectionWorker::Run() {
 }
 
 void HeterSectionWorker::TrainFiles() {
+  total_ins_num_ = 0;
+  platform::SetNumThreads(1);
+  platform::Timer timeline;
+  timeline.Start();
   VLOG(3) << "begin section_worker TrainFiles";
   epoch_finish_ = false;
   bool is_first_stage = (pipeline_stage_ == 0);
@@ -288,8 +293,11 @@ void HeterSectionWorker::TrainFiles() {
     Run();
     dev_ctx_->Wait();
   }
+  timeline.Pause();
+  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+          << " seconds, ins_num: " << total_ins_num_;
 }
-
+/*
 void HeterSectionWorker::PrintFetchVars() {
   // call count
   batch_num_ += micro_ids_.size();
@@ -319,7 +327,6 @@ void HeterSectionWorker::PrintFetchVars() {
   }
 }
 
-/*
 void HeterSectionWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
   device_reader_->Start();
