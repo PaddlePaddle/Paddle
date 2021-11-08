@@ -301,13 +301,15 @@ __global__ void ElementwiseKernel(
   int main_offset = main_tid * BLOCK_NUM_X * VecSize;
   int offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+#ifdef PADDLE_WITH_XPU2
   for (; offset < main_offset; offset += stride) {
+#else
+  for (; offset < 1; offset += stride) {
+#endif
     ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, IsBroadcast,
                           false>(ins, out, use_broadcast, numel, configs,
                                  offset, func);
-#ifdef PADDLE_WITH_CUDA || PADDLE_WITH_HIP
     break;
-#endif
   }
 
   if (offset < numel) {
