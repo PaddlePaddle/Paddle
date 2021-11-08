@@ -488,7 +488,6 @@ class VariableScope : public ScopeBase {
     info.var_ref_count_ = 0;
     info.vardesc_ = nullptr;
     vec_meta_info_.push_back(info);
-
     scope_ptr_.reset(new Scope());
   }
   const Scope* GetScope() const { return scope_ptr_.get(); }
