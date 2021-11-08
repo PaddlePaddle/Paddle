@@ -11,10 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#Taken and modified for fairscale from:
+#    https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py
+#Commit: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
 
 import io
 import copy
+import time
 import logging
+import numpy as np
 from math import inf
 from itertools import chain
 from functools import reduce
@@ -29,22 +34,29 @@ from .sharding_utils import Type
 
 __all__ = ["ShardingOptimizer"]
 
+# CUDA alignment 256 bytes
+alignment = {"gpu": 256, }
+align = {
+    Type.fp16.value: 2,
+    Type.fp32.value: 4,
+}
+
 
 class ShardingOptimizer(Optimizer):
     """
     A wrapper for Sharding Stage2 Optimizer in Dygraph. 
     .. warning: ShardingOptimizer encapsulates the optimization strategy and integrates it into the optimizer.
-    .. this file is inspired by: https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py.
     .. ZeRO: 1.https://arxiv.org/pdf/1910.02054.pdf 2.https://arxiv.org/pdf/1910.02054.pdf.
     """
 
     # TODO (Baibaifan) 
-    # TO support following featrues in future:
+    # Feature Notes:
     # 1. Unified memory for parameters and parameters.grad to InternalStorage.
     # 2. Support the segmentation of optimizer parameters and partial updating of parameters.
     # 3. Dynamically adjust training parameters and models。
     # 4. Support offload function.
     # 5. Support the establishment of independent communication groups.
+    # 6. Broadcast_fp16 is not supported now.
     def __init__(self,
                  params,
                  optim,
@@ -62,6 +74,8 @@ class ShardingOptimizer(Optimizer):
         )  # {dtype:[param1,param2]} device, rank, params
         self._param2rank = {}
         self._segment_params = []
+        self._rank_buffer_size = {}  # {dtype: {rank: numel+alignment}}
+        self._param2align = {}  # {param.name: align}
 
         # Default information
         self._optim_defaults = kw
@@ -107,7 +121,7 @@ class ShardingOptimizer(Optimizer):
                 param_lists[rank].append(param)
 
                 # Statistical real numels
-                sizes[rank] += param.numel() if param.trainable else 0
+                sizes[rank] += np.prod(param.shape) if param.trainable else 0
 
             for rank, params in enumerate(param_lists):
                 # param_group_rank = copy.copy(params)
@@ -128,7 +142,7 @@ class ShardingOptimizer(Optimizer):
         if len(self._param2rank) == 0:
             for rank, params in enumerate(self.segment_params()):
                 for param in params:
-                    self._param2rank[param] = rank
+                    self._param2rank[param.name] = rank
         return self._param2rank
 
     @property
@@ -143,14 +157,42 @@ class ShardingOptimizer(Optimizer):
                     self._dtype_rank_params[
                         param.dtype] = [[] for _ in range(self.world_size)]
                 self._dtype_rank_params[param.dtype][self.param2rank[
-                    param]].append(param)
+                    param.name]].append(param)
 
             # Sort per rank params by size
             for dtype in self._dtype_rank_params.keys():
                 for rank_params in self._dtype_rank_params[dtype]:
-                    rank_params.sort(key=lambda x: x.numel())
+                    rank_params.sort(key=lambda x: np.prod(x.shape))
 
         return self._dtype_rank_params
+
+    @property
+    def rank_buffer_size(self):
+        """
+        Count the memory size of the parameters corresponding to rank under the corresponding dtype.
+        """
+        # CUDA alignment 256 bytes
+        if len(self._rank_buffer_size) == 0:
+            for dtype in self.dtype_rank_params.keys():
+                if dtype not in self._rank_buffer_size.keys():
+                    self._rank_buffer_size[dtype] = {}
+                for dst_rank, per_rank_params in enumerate(
+                        self.dtype_rank_params[dtype]):
+                    if dst_rank not in self._rank_buffer_size[dtype].keys():
+                        self._rank_buffer_size[dtype][dst_rank] = 0
+                    for param in per_rank_params:
+                        if not param.trainable:
+                            continue
+                        size = np.prod(param.shape) * align[dtype]
+                        remaining = size % alignment[self._default_device]
+                        ali = 0 if remaining == 0 else alignment[
+                            self._default_device] - remaining
+                        align_ = ali // align[dtype]
+                        self._rank_buffer_size[dtype][dst_rank] += np.prod(
+                            param.shape) + align_
+                        self._param2align[param.name] = align_
+
+        return self._rank_buffer_size
 
     def _integration_params(self):
         """
@@ -168,16 +210,13 @@ class ShardingOptimizer(Optimizer):
                     trainable_params = list(
                         filter(lambda x: x.trainable, params))
                     if trainable_params:
-                        buffer_size = sum(
-                            map(lambda x: x.numel(), trainable_params))
                         param_storage = ParamStorage(
-                            size=buffer_size,
+                            size=self.rank_buffer_size[dtype][dst_rank],
                             dtype=dtype,
                             device=self._default_device)
 
-                        for param in trainable_params:
-                            param_storage.add_param(param)
-
+                        param_storage.add_rank_params(trainable_params,
+                                                      self._param2align)
                         self.param_storages[dtype][dst_rank] = param_storage
 
         # Clear the InternalStorage keys which are not in use anymore
@@ -197,6 +236,10 @@ class ShardingOptimizer(Optimizer):
         )) == 1 and Type.fp32.value in self.dtype_rank_params.keys():
             self._optim._parameter_list = self.dtype_rank_params[
                 Type.fp32.value][self.rank]
+        elif len(self.dtype_rank_params.keys(
+        )) == 1 and Type.fp16.value in self.dtype_rank_params.keys():
+            self._optim._parameter_list = self.dtype_rank_params[
+                Type.fp16.value][self.rank]
         else:
             self._optim._parameter_list = self.dtype_rank_params[
                 Type.fp16.value][self.rank] + self.dtype_rank_params[
@@ -224,7 +267,7 @@ class ShardingOptimizer(Optimizer):
         """
         for p in self._optim._parameter_list:
             if p.trainable and p.grad is not None:
-                p._clear_gradient()
+                p.clear_gradient()
 
     @paddle.no_grad()
     def _broadcast_params(self):
@@ -238,7 +281,6 @@ class ShardingOptimizer(Optimizer):
             for dst_rank, internal_storage in self.param_storages[
                     Type.fp32.value].items():
                 internal_storage.to(dtype=Type.fp16.value,
-                                    local_rank=dst_rank,
                                     device=self._default_device,
                                     keep_alignment=False)
             paddle.device.cuda.synchronize()
@@ -261,7 +303,6 @@ class ShardingOptimizer(Optimizer):
             for dst_rank, internal_storage in self.param_storages[
                     Type.fp32.value].items():
                 internal_storage.to(dtype=Type.fp32.value,
-                                    local_rank=dst_rank,
                                     device=self._default_device,
-                                    keep_alignment=False)
+                                    keep_alignment=True)
             paddle.device.cuda.synchronize()

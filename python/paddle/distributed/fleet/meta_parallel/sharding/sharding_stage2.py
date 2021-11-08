@@ -11,12 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#Taken and modified for fairscale from:
+#    https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/data_parallel/sharded_ddp.py
+#Commit: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
 
 import os
 import contextlib
 import logging
 import time
 import functools
+import numpy as np
 from itertools import chain
 from functools import reduce
 from collections import deque
@@ -38,12 +42,11 @@ class ShardingStage2(nn.Layer):
     """ 
     A wrapper for Sharding Stage2 Layer in Dygraph. 
     .. warning: ShardingStage2 encapsulates the layer strategy and integrates it into the nn.Layer.
-    .. this file is inspired by: https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/data_parallel/sharded_ddp.py.
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
 
     # TODO (Baibaifan) 
-    # TO support following featrues in future:
+    # Feature Notes::
     # 1. Unified memory for param and param.grad to InternalStorage.
     # 2. Divide param.grad according to rank to centrally apply for and release GPU memory.
     # 3. Dynamically adjust training parameters and models。
@@ -57,9 +60,10 @@ class ShardingStage2(nn.Layer):
             group,
             sync_buffers=False,
             pertrain_sync_models=True,
-            buffer_max_size=2**24,  #16MB param/ranks
+            buffer_max_size=2**29,  #16MB param/ranks 29
             auto_refresh_trainable=True,
             device="gpu",
+            use_grad_storage=True,
             post_hook=False):
         super().__init__()
 
@@ -94,23 +98,18 @@ class ShardingStage2(nn.Layer):
         self._trainable_params = []
         self._grad_reduced = []
         self._trainable_param2rank = {}
+        self._trainable_param2align = {}
         self._trainable_mask = list(map(_trainable, self._all_params))
 
-        # Set grad storage size
-        self._buffer_max_size = buffer_max_size
-        self._use_grad_storage = self._buffer_max_size > 0
+        # Set grad storage size & Display param sizes and model sizes
+        model_size = sum(
+            [np.prod(p.shape) for p in self._layer.parameters()]).item()
+        self._buffer_max_size = self._rank_buffer_size(buffer_max_size,
+                                                       model_size)
+        self._use_grad_storage = use_grad_storage
         self._grad_storages = {}  # {dtype: {rank: GradStorage}}
         self._has_grad_storage = []
         self._grad_storage_list = []
-        model_size = sum([p.numel() for p in self._layer.parameters()]).item()
-        if Type.fp16.value == self._all_params[0].dtype:
-            print(
-                "GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters".
-                format(self._buffer_max_size / 2**20, model_size / 2**19))
-        elif Type.fp32.value == self._all_params[0].dtype:
-            print(
-                "GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters".
-                format(self._buffer_max_size / 2**20, model_size / 2**18))
 
         # Set backward pass hooks
         self._bw_hooks = []
@@ -147,6 +146,7 @@ class ShardingStage2(nn.Layer):
 
         # Normal FW on the base model
         fw = self._layer(*inputs, **kwargs)
+        # self._bw_hooks.append(1)
 
         # Post hook
         if self._post_hook:
@@ -180,7 +180,7 @@ class ShardingStage2(nn.Layer):
         self.fresh_trainable()
 
     def fresh_trainable(self):
-        """ Whether to update training parameters """
+        """ Whether to update training parameters. """
 
         # Make sure that this is not done while gradients are waiting to be reduced (if no_sync context for instance)
         if reduce(lambda x, y: x or y, self._grad_reduced, False):
@@ -188,7 +188,7 @@ class ShardingStage2(nn.Layer):
 
         self._trainable_params = list(
             filter(lambda x: x.trainable, self._all_params))
-        self._trainable_params.sort(key=lambda x: x.numel())
+        self._trainable_params.sort(key=lambda x: np.prod(x.shape))
 
         self._trainable_param2rank = {}
         for optim in self._sharding_optimizers:
@@ -201,10 +201,14 @@ class ShardingStage2(nn.Layer):
             ):  # all the params from all ranks
                 for params in per_rank_params:
                     for param in filter(lambda x: x.trainable, params):
-                        self._trainable_param2rank[param] = optim.param2rank[
-                            param]
+                        self._trainable_param2rank[
+                            param.name] = optim.param2rank[param.name]
+                        self._trainable_param2align[
+                            param.name] = optim._param2align[param.name]
 
         self._setup_use_grad_storage()
+
+        # wait next func hook support
         self._setup_backward_hooks()
 
     @paddle.no_grad()
@@ -230,7 +234,7 @@ class ShardingStage2(nn.Layer):
 
     @paddle.no_grad()
     def _clear_counters(self):
-        """Reset all the grad reduce and call counters"""
+        """Reset all the grad reduce and call counters."""
         if self.training:
             self._grad_reduced = [True for _ in self._trainable_params]
 
@@ -248,19 +252,18 @@ class ShardingStage2(nn.Layer):
         - 2. Use grad_storage Reduce the storage to get the full gradient from different ranks.
         """
 
-        if not self._use_grad_storage or not self._grad_reduced[index]:
+        if not self._use_grad_storage or not self._has_grad_storage[index]:
             # Direct reduction
             @paddle.no_grad()
             def reduce(*_):
                 # Skip gradient reduction, do not change status information
-                if not self._accumulate_grads and self._grad_reduced[index]:
+                if self._grad_reduced[index]:
                     assert param.grad is not None, "Parameter gradient cannot be None"
 
                     # Change reduce information
                     self._grad_reduced[index] = False
-                    paddle.multiply(param.grad,
-                                    paddle.to_tensor(
-                                        [self._world_size_scaling]))
+                    if not self._accumulate_grads:
+                        param.grad.scale_(scale=self._world_size_scaling)
 
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
@@ -283,12 +286,13 @@ class ShardingStage2(nn.Layer):
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     self._clear_task_flow()
+
         else:
             # Buffer reduction
             @paddle.no_grad()
             def reduce(*_):
                 # Skip gradient reduction, do not change status information
-                if not self._accumulate_grads and self._grad_reduced[index]:
+                if self._grad_reduced[index]:
                     assert param.grad is not None, "Parameter gradient cannot be None"
 
                     # Change reduce information
@@ -300,15 +304,16 @@ class ShardingStage2(nn.Layer):
                         assert grad_storage.buffer is not None
 
                         # Normalize all ranks grad_storage
-                        paddle.multiply(grad_storage.buffer,
-                                        paddle.to_tensor(
-                                            [self._world_size_scaling]))
+                        if not self._accumulate_grads:
+                            grad_storage.buffer.scale_(
+                                scale=self._world_size_scaling)
 
                         # Clearing up the grad_storage buffer
                         def cleanup():
                             if dst_rank != self._rank:
                                 for p in grad_storage._params:
                                     p._clear_gradient()
+
                                 grad_storage.buffer.value().get_tensor()._clear(
                                 )
 
@@ -347,7 +352,7 @@ class ShardingStage2(nn.Layer):
             return
 
         for index, param in enumerate(self._trainable_params):
-            dst_rank = self._trainable_param2rank[param]
+            dst_rank = self._trainable_param2rank[param.name]
 
             reduce_function = self._get_reduce_fn(index, param, dst_rank)
 
@@ -378,26 +383,34 @@ class ShardingStage2(nn.Layer):
 
         # According to parameters's numel sort, allocate memory of parameter gradient to continuous memory according to rank
         self._grad_storages = {}
-        self._grad_reduced = [False for _ in self._trainable_params]
+        self._has_grad_storage = [False for _ in self._trainable_params]
 
         for index, param in enumerate(self._trainable_params):
-            dst_rank = self._trainable_param2rank[param]
+            dst_rank = self._trainable_param2rank[param.name]
 
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = {}
 
             if dst_rank not in self._grad_storages[param.dtype].keys():
                 self._grad_storages[param.dtype][dst_rank] = GradStorage(
-                    self._buffer_max_size,
+                    self._buffer_max_size[param.dtype],
                     dtype=param.dtype,
                     device=self._default_device,
-                    destination=dst_rank)
+                    destination=dst_rank,
+                    parm2align=self._trainable_param2align)
 
             # Criteria to decide whether this parameter is to be put in GradStorage
             if self._grad_storages[param.dtype][dst_rank].can_add_grad_view(
-                    param):
-                self._grad_storages[param.dtype][dst_rank].add_grad(param)
-                self._grad_reduced[index] = True
+                    param, self._trainable_param2align[param.name]):
+                self._grad_storages[param.dtype][dst_rank].add_grad(
+                    param, self._trainable_param2align[param.name])
+                self._has_grad_storage[index] = True
+            else:
+                print(
+                    "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, ".
+                    format(param.name, param.shape, self._trainable_param2align[
+                        param.name], self._grad_storages[param.dtype][dst_rank]
+                           ._fill))
 
         self._grad_storage_list = list(
             chain(* [
@@ -405,12 +418,8 @@ class ShardingStage2(nn.Layer):
                 for dtype in self._grad_storages.keys()
             ]))
 
-        # Shrink the grad_storages to remove lost space in the end
-        for grad_storage in self._grad_storage_list:
-            grad_storage.rearrange()
-
     def _clear_task_flow(self):
-        """Try to consume the previous tasks"""
+        """Try to consume the previous tasks."""
         while len(self._tasks_flow) > 0:
             task = self._tasks_flow.popleft()
             if task.callback is not None:
@@ -436,7 +445,7 @@ class ShardingStage2(nn.Layer):
 
     def build_grad_storages(self):
         """
-        Rebuild grad storages
+        Rebuild grad storages.
         """
 
         only_fp32 = False
@@ -449,11 +458,87 @@ class ShardingStage2(nn.Layer):
             # Rebuild fp16 grad storages
             for dst_rank, grad_storage in self._grad_storages[
                     Type.fp16.value].items():
-                grad_storage.manumal_relase()
-                grad_storage.rebuild()
+                if dst_rank != self._rank:
+                    grad_storage.manumal_relase()
+                    grad_storage.rebuild()
 
         # Rebuild fp32 grad storages
         for dst_rank, grad_storage in self._grad_storages[
                 Type.fp32.value].items():
-            grad_storage.manumal_relase()
-            grad_storage.rebuild()
+            if dst_rank != self._rank:
+                grad_storage.manumal_relase()
+                grad_storage.rebuild()
+
+    def _rank_buffer_size(self, buffer_max_size, model_size):
+        """
+        Generate the minimum buffer size for each rank & Display param sizes and model sizes.
+        """
+
+        # Initialize buffer size
+        rank_buffer_size = {}
+        for shard_opt in self._sharding_optimizers:
+            if shard_opt.rank_buffer_size:
+                for dtype in shard_opt.rank_buffer_size.keys():
+                    sizes = max(shard_opt.rank_buffer_size[dtype].values())
+                    rank_buffer_size[dtype] = min(sizes, buffer_max_size)
+
+        if Type.fp16.value in rank_buffer_size.keys():
+            # FP16 GradStorage and model size
+            print(
+                "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
+                format(rank_buffer_size[Type.fp16.value] / 2**19, model_size / 2
+                       **19))
+        if Type.fp32.value in rank_buffer_size.keys():
+            # FP32 GradStorage and model size
+            print(
+                "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
+                format(rank_buffer_size[Type.fp32.value] / 2**18, model_size / 2
+                       **18))
+        return rank_buffer_size
+
+    @paddle.no_grad()
+    def reduce_release(self):
+        for index, param in enumerate(self._trainable_params):
+            dst_rank = self._trainable_param2rank[param.name]
+
+            if self._grad_reduced[index]:
+                assert param.grad is not None, "Parameter gradient cannot be None"
+                # Change reduce information
+                self._grad_reduced[index] = False
+                grad_storage = self._grad_storages[param.dtype][dst_rank]
+                grad_storage.params_checked_in += 1
+
+                if grad_storage.all_checked_in:
+                    assert grad_storage.buffer is not None
+
+                    # Normalize all ranks grad_storage
+                    if not self._accumulate_grads:
+                        paddle.multiply(grad_storage.buffer,
+                                        paddle.to_tensor(
+                                            [self._world_size_scaling]))
+
+                    # Clearing up the grad_storage buffer
+                    def cleanup():
+                        if dst_rank != self._rank:
+                            for p in grad_storage._params:
+                                p._clear_gradient()
+
+                            grad_storage.buffer.value().get_tensor()._clear()
+
+                    # Reduce the bucket
+                    grad_storage.sent = True
+                    self._tasks_flow.append(
+                        Taskflow(
+                            task=dist.reduce(
+                                tensor=grad_storage.buffer,
+                                dst=grad_storage.destination,
+                                group=self._group,
+                                use_calc_stream=True),
+                            callback=cleanup))
+                    dist.wait(
+                        tensor=grad_storage.buffer,
+                        group=self._group,
+                        use_calc_stream=True)
+
+                # Clear the task flow and trigger callback to clear the redundant gradient
+                self._clear_task_flow()

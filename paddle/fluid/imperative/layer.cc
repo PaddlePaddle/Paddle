@@ -242,12 +242,14 @@ void VarBase::_ClearGradient() {
 }
 
 // byf copy from gradient
-void VarBase::_CopyFromGradient(const VarBase& src) {
+void VarBase::_CopyFromGradient(VarBase* src) {
   VLOG(4) << "CopyFromGradient" << Name();
   if (grad_var_) {
-    auto* src_tensor = src.MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* src_tensor = src->MutableVar()->GetMutable<framework::LoDTensor>();
     auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
     grad_t->ShareDataWith(*src_tensor);
+    grad_t->Resize(var_->dims());
   }
 }
 
@@ -255,8 +257,10 @@ void VarBase::_CopyFromGradient(const VarBase& src) {
 void VarBase::use_count() {
   if (grad_var_) {
     VLOG(0) << "VARBASE USE COUNT: "
-            << std::to_string(
-                   Var().Get<framework::LoDTensor>().Holder().use_count());
+            << std::to_string(grad_var_->MutableVar()
+                                  ->GetMutable<framework::LoDTensor>()
+                                  ->Holder()
+                                  .use_count());
   }
 }
 

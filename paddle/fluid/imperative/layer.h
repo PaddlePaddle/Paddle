@@ -226,7 +226,7 @@ class VarBase {
   // byf add func
   void _ClearGradient();
 
-  void _CopyFromGradient(const VarBase& src);
+  void _CopyFromGradient(VarBase* src);
 
   void use_count();
 

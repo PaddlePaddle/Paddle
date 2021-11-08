@@ -20,7 +20,7 @@ from paddle import framework
 from ...utils.log_util import logger
 
 
-def _is_trainable(param: paddle.Tensor) -> bool:
+def _is_trainable(param):
     return not param.stop_gradient
 
 
@@ -41,13 +41,8 @@ class DygraphShardingOptimizer(object):
     # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
-    def __init__(
-            self,
-            hcg,
-            user_defined_strategy,
-            params,
-            inner_optimizer_class,
-            **inner_optimizer_kargs, ):
+    def __init__(self, hcg, user_defined_strategy, params,
+                 inner_optimizer_class, **inner_optimizer_kargs):
 
         if not isinstance(params, list):
             raise TypeError(
@@ -65,8 +60,8 @@ class DygraphShardingOptimizer(object):
         # TODO better way to get the hcg & user_defined_strategy
         self._hcg = hcg
         self._user_defined_strategy = user_defined_strategy
-        self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
-        self._sharding_rank = self._hcg.get_sharding_parallel_rank()
+        self._sharding_world_size = hcg.nranks
+        self._sharding_rank = hcg.rank
 
         # logic partitioning
         self._build_sharding_mapping()
@@ -148,8 +143,8 @@ class DygraphShardingOptimizer(object):
                         param,
                         # the collective API need src rank to be the global rank id 
                         # instead of the relative logic rank id within group 
-                        src=self._hcg.get_sharding_parallel_group().ranks[rank],
-                        group=self._hcg.get_sharding_parallel_group(),
+                        src=rank,
+                        group=self._hcg,
                         use_calc_stream=True)
 
     def _update_trainable(self):

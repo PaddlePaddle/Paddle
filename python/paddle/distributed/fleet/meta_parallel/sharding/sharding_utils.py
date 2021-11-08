@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import contextlib
 from collections import abc
 from enum import Enum
 from math import inf
@@ -77,3 +78,18 @@ def GpuInfo(fn):
         return result
 
     return used
+
+
+@contextlib.contextmanager
+def device_guard(dev_id, device="cpu"):
+    if device == "cpu":
+        paddle.set_device(device)
+    elif device == "gpu":
+        paddle.set_device("gpu:{}".format(dev_id))
+    try:
+        yield
+    finally:
+        if device == "cpu":
+            paddle.set_device("gpu:{}".format(dev_id))
+        elif device == "gpu":
+            paddle.set_device("cpu")
