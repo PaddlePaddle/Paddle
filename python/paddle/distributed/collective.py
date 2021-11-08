@@ -591,7 +591,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     Gather tensors from all participators and all get the result.
 
-    .. image:: https://github.com/PaddlePaddle/docs/blob/develop/docs/guides/images/inference_ecosystem.png
+    .. image:: https://githubraw.bj.bcebos.com/PaddlePaddle/docs/develop/docs/guides/images/inference_ecosystem.png
         :width: 800
         :alt: all_gather
         :align: center
