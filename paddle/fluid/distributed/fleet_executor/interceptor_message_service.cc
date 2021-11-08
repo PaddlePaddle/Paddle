@@ -14,6 +14,7 @@
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "brpc/server.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 
 namespace paddle {

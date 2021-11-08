@@ -36,7 +36,7 @@ MessageBus::MessageBus(
 
 MessageBus::~MessageBus() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
-  server_.Stop();
+  server_.Stop(1000);
   server_.Join();
 #endif
   listen_port_thread_.join();
