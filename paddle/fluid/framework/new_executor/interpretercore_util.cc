@@ -360,8 +360,8 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
 
 std::vector<OpFuncNode> apply_data_transform(
     const OpKernelType& expected_kernel_key, const platform::Place& place,
-    VariableValueMap& ins_map_temp, VariableScope* var_scope,
-    OpFuncNode& op_func_node) {
+    VariableValueMap& ins_map_temp, VariableScope* var_scope,  // NOLINT
+    OpFuncNode& op_func_node) {                                // NOLINT
   auto& op_base = op_func_node.operator_base_;
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base is null, please pass a valid "
@@ -384,6 +384,12 @@ std::vector<OpFuncNode> apply_data_transform(
           static_cast<const framework::OperatorWithKernel*>(op_base)
               ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                     expected_kernel_key);
+      if ((expected_kernel_key.data_type_ != kernel_type_for_var.data_type_) ||
+          NeedTransformLayout(expected_kernel_key.data_layout_,
+                              kernel_type_for_var.data_layout_)) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Unsupported different dtype or data_layout"));
+      }
       if (need_place_transform_for_var(kernel_type_for_var,
                                        expected_kernel_key)) {
         if (op_base->Type() == "fetch_v2") {
