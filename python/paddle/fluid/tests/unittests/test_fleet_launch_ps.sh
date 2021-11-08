@@ -16,7 +16,7 @@
 
 set -e
 
-server_port_00=${PADDLE_DIST_UT_PORT}
+server_port_00=$(( PADDLE_DIST_UT_PORT ))
 server_port_10=$(( PADDLE_DIST_UT_PORT + 1 ))
 worker_port_00=$(( PADDLE_DIST_UT_PORT + 2 ))
 worker_port_10=$(( PADDLE_DIST_UT_PORT + 3 ))
