@@ -73,7 +73,7 @@ PT_REGISTER_KERNEL("fill_any_like",
                    bool,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL("fill_constant.Scalar",
+PT_REGISTER_KERNEL("fill_constant.scalar",
                    CPU,
                    ANY,
                    pten::FillConstant,

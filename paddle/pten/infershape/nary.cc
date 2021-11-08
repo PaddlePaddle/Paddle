@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/infershape/0_nary.h"
+#include "paddle/pten/infershape/nary.h"
 
 namespace pten {
 

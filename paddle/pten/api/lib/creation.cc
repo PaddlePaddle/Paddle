@@ -34,7 +34,7 @@ Tensor full(const std::vector<int64_t>& shape,
   // 1. Get kernel signature and kernel
   pten::KernelKey kernel_key{backend, layout, dtype};
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "fill_constant.Scalar", kernel_key);
+      "fill_constant.scalar", kernel_key);
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());

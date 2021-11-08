@@ -105,10 +105,10 @@ class FillConstantOp : public framework::OperatorWithKernel {
         !ctx.OutputVar("Out")->IsType<framework::SelectedRows>()) {
       const auto& str_value = ctx.Attr<std::string>("str_value");
       std::string value = str_value.empty() ? "value" : "str_value";
-      return framework::KernelSignature("fill_constant.Scalar", {}, {value},
+      return framework::KernelSignature("fill_constant.scalar", {}, {value},
                                         {"Out"});
     }
-    return framework::KernelSignature("fill_constant.Unregistered", {}, {}, {});
+    return framework::KernelSignature("fill_constant.unregistered", {}, {}, {});
   }
 };
 
