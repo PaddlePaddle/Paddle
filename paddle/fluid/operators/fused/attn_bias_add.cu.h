@@ -286,7 +286,6 @@ void Launch2DColumnReduce(const platform::CUDADeviceContext& dev_ctx,
     tmp_sum.Resize({grid.y, left_num});
     tmp_sum.mutable_data<ReduceParamType<T>>(dev_ctx.GetPlace());
 
-    auto dims = tmp_sum.dims();
     BiasAddBw2DReduceKernel<T><<<grid, block, 0, stream>>>(
         d_out, reduce_num, left_num, blocking_size,
         tmp_sum.template data<ReduceParamType<T>>());
