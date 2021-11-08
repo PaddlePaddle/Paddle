@@ -311,10 +311,8 @@ static void BuildDygraphPtenKernelContext(
           experimental::ReMakePtenDenseTensorFromVar(
               ins_vector[j]->Var(), in_def,
               kernel_ctx->MutableInputAt<pten::DenseTensor>(i + j));
-        } else {
-          kernel_ctx->EmplaceBackInput(experimental::MakePtenTensorBaseFromVar(
-              ins_vector[j]->Var(), in_def));
         }
+        // TODO(chenweihang): adapt multi-input case later
       }
       kernel_ctx->MutableInputRangeAt(i) =
           std::make_pair(i, i + ins_vector.size());
@@ -339,10 +337,8 @@ static void BuildDygraphPtenKernelContext(
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j]->MutableVar(), out_def,
               kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
-        } else {
-          kernel_ctx->EmplaceBackOutput(experimental::MakePtenTensorBaseFromVar(
-              outs_vector[j]->MutableVar(), out_def));
         }
+        // TODO(chenweihang): adapt multi-output case later
       }
       kernel_ctx->MutableOutputRangeAt(i) =
           std::make_pair(i, i + outs_vector.size());

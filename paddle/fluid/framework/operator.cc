@@ -1823,10 +1823,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
           experimental::ReMakePtenDenseTensorFromVar(
               *ins_vector[j], in_def,
               pt_kernel_context_->MutableInputAt<pten::DenseTensor>(i + j));
-        } else {
-          pt_kernel_context_->EmplaceBackInput(
-              experimental::MakePtenTensorBaseFromVar(*ins_vector[j], in_def));
         }
+        // TODO(chenweihang): adapt multi-input case later
       }
       pt_kernel_context_->MutableInputRangeAt(i) =
           std::make_pair(i, i + ins_vector.size());
@@ -1850,10 +1848,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j], out_def,
               pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(i + j));
-        } else {
-          pt_kernel_context_->EmplaceBackOutput(
-              experimental::MakePtenTensorBaseFromVar(outs_vector[j], out_def));
         }
+        // TODO(chenweihang): adapt multi-output case later
       }
       pt_kernel_context_->MutableOutputRangeAt(i) =
           std::make_pair(i, i + outs_vector.size());
