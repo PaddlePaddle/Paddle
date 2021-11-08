@@ -18,6 +18,7 @@ from paddle.device.cuda.graphs import CUDAGraph
 import unittest
 import numpy as np
 import os
+import pathlib
 import shutil
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from simple_nets import simple_fc_net_with_inputs
@@ -176,7 +177,7 @@ class TestCUDAGraph(unittest.TestCase):
 
         output_dir = 'cuda_graph_dot_{}'.format(os.getpid())
         try:
-            graph.print_to_dot_files(output_dir)
+            graph.print_to_dot_files(pathlib.Path(output_dir))
             graph.reset()
             shutil.rmtree(output_dir)
         except Exception as e:
