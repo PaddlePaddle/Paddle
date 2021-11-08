@@ -199,9 +199,7 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddComment(R"DOC(
 FetchV2 Operator.
-
 It should not be configured by users directly.
-
 )DOC");
   }
 };
