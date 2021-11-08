@@ -102,7 +102,7 @@ class InterpreterCore {
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
 
-  InterpreterCoreGarbageCollector gc_;
+  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   std::atomic<size_t> op_run_number_{0};
 };

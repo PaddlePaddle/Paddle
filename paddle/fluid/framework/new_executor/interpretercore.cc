@@ -44,6 +44,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       stream_analyzer_(place),
       async_work_queue_(kHostNumThreads, &main_thread_blocker_) {
   is_build_ = false;
+  gc_.reset(new InterpreterCoreGarbageCollector());
 
   feed_names_ = feed_names;
 
@@ -62,7 +63,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 
 InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
-  gc_.~InterpreterCoreGarbageCollector();
+  gc_.reset(nullptr);
 
   async_work_queue_.Cancel();
 }
@@ -514,8 +515,8 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
       continue;
     }
     if (is_ready) {
-      gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
-              &instr.DeviceContext());
+      gc_->Add(var_scope.Var(var_id), gc_event_.at(instr_id),
+               &instr.DeviceContext());
     }
   }
 }
