@@ -13,15 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
-
 #include <unordered_set>
-
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
+
+DECLARE_bool(check_nan_inf);
+DECLARE_bool(benchmark);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 
@@ -76,13 +79,13 @@ void InterpreterCore::AddFetch(const std::vector<std::string>& fetch_names) {
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
-    const std::vector<framework::Tensor>& feed_tensors) {
+    const std::vector<framework::LoDTensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
       auto* feed_var = global_scope_->Var(feed_names_[i]);
-
       auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
+      feed_tensor->set_lod(feed_tensors[i].lod());
     }
   };
 
@@ -238,18 +241,19 @@ void InterpreterCore::BuildInplace() {
     auto& outputs = instr.Outputs();
     for (auto& pair : in_to_outs) {
       auto iter = inputs.find(pair.first);
-      if (iter != inputs.end()) {
+      if (iter != inputs.end() && !iter->second.empty()) {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
-          if (iterout != outputs.end()) {
+          if (iterout != outputs.end() && !iterout->second.empty()) {
             auto invar = global_scope_->Var(iter->second[0]);
             auto outvar = global_scope_->Var(iterout->second[0]);
-            if (invar && outvar) {
+            if (invar && outvar && invar->IsType<LoDTensor>() &&
+                outvar->IsType<LoDTensor>()) {
               instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace " << op_base->Type() << " "
-                      << global_scope_->VarDesc(iter->second[0])->Name()
+              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
+                      << " " << global_scope_->GetNameById(iter->second[0])
                       << " -> "
-                      << global_scope_->VarDesc(iterout->second[0])->Name()
+                      << global_scope_->GetNameById(iterout->second[0])
                       << std::endl;
             }
           }
@@ -308,7 +312,9 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
 }
 
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
-  VLOG(3) << "RunInstruction:  " << instr_node.OpBase()->Type();
+  auto* op = instr_node.OpBase();
+  auto place = instr_node.DeviceContext().GetPlace();
+  VLOG(4) << place << " " << op->DebugStringEx(global_scope_);
 
   {
     platform::RecordEvent infershape_event("InferShape");
@@ -329,6 +335,29 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   {
     platform::RecordEvent compute_event("Compute");
     instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+  }
+
+  VLOG(3) << place << " " << op->DebugStringEx(global_scope_);
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    instr_node.DeviceContext().Wait();
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    VLOG(4) << "Operator(" << op->Type()
+            << "): context wait and get last error";
+#endif
+#if defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+    VLOG(4) << "Operator(" << op->Type()
+            << "): context wait and get last error";
+#endif
+  }
+
+  // for debug nan/inf
+  if (FLAGS_check_nan_inf) {
+    VLOG(4) << "Check nan/inf";
+    framework::details::CheckOpHasNanOrInf(*op, *global_scope_, place);
   }
 }
 
@@ -485,7 +514,7 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
 }
 
 void InterpreterCore::DryRunPrepare(
-    const std::vector<framework::Tensor>& feed_tensors) {
+    const std::vector<framework::LoDTensor>& feed_tensors) {
   auto FeedInput = [&] {
     for (size_t i = 0; i < feed_names_.size(); ++i) {
       auto* feed_var = global_scope_->FindVar(feed_names_[i]);
@@ -494,6 +523,7 @@ void InterpreterCore::DryRunPrepare(
 
       auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
+      feed_tensor->set_lod(feed_tensors[i].lod());
     }
   };
 
@@ -515,7 +545,7 @@ void InterpreterCore::DryRunPrepare(
 }
 
 const CostInfo& InterpreterCore::DryRun(
-    const std::vector<framework::Tensor>& feed_tensors) {
+    const std::vector<framework::LoDTensor>& feed_tensors) {
   DryRunPrepare(feed_tensors);
   // DryRun may be called many times.
   dry_run_profiler_.Reset();
