@@ -115,7 +115,7 @@ void gather_scatter_cpu_for_loop(const int& input_size, const int& index_size,
       count[dst_idx] += 1;
     }
     for (int i = 0; i < input_size; ++i) {
-      if (count[i] == 0) continue;
+      if (count[i] <= 1) continue;
       auto dst_slice = dst->Slice(i, i + 1);
       auto eigen_dst = framework::EigenVector<T>::Flatten(dst_slice);
       eigen_dst = eigen_dst / static_cast<T>(count[i]);
