@@ -156,6 +156,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         return avg_cost
 
     def check_model_right(self, dirname):
+        dirname = dirname + '/dnn_plugin/'
         model_filename = os.path.join(dirname, "__model__")
 
         with open(model_filename, "rb") as f:

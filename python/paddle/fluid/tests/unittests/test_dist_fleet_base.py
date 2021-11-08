@@ -322,12 +322,12 @@ class TestFleetBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        tr_cmd = "{0} -u {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
             self._reader, gloo_path, self._need_test)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        ps_cmd = "{0} -u {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
             self._reader, gloo_path, self._need_test)

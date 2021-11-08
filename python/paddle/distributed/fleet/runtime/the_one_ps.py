@@ -49,9 +49,6 @@ def parse_table_class(varname, o_main_program):
         if param_name == varname and op.type == "lookup_table" or op.type == "lookup_table_v2":
             if op.has_attr('table_class') and op.attr("table_class") != "none":
                 return op.attr('table_class')
-            elif op.has_attr('is_distributed') and op.attr(
-                    'is_distributed') == False:
-                return "CommonSparseTable"
             else:
                 return "MemorySparseTable"
 
@@ -850,13 +847,53 @@ class TheOnePSRuntime(RuntimeBase):
                     else:
                         table.table_class = parse_table_class(
                             common.table_name, self.origin_main_program)
-                    table_proto = self.context[
-                        "user_defined_strategy"].sparse_table_configs
-                    table.shard_num = table_proto.shard_num
-                    from google.protobuf import text_format
-                    table.accessor_proto = text_format.MessageToString(
-                        table_proto.accessor)
-                    print("the_one_ps table_proto:", table.accessor_proto)
+                        table_proto = self.context[
+                            "user_defined_strategy"].sparse_table_configs
+                        table.shard_num = table_proto.shard_num
+                        from google.protobuf import text_format
+                        table.accessor_proto = text_format.MessageToString(
+                            table_proto.accessor)
+
+                        print('table proto:', table_proto)
+                        if table.table_class == 'MemorySparseTable' and table.accessor_proto == '':
+                            table.shard_num = 1950
+                            table.accessor_proto = 'accessor_class: "CtrCommonAccessor"\n' \
+                                                   'embed_sgd_param {\n' \
+                                                   '  name: "SparseAdaGradSGDRule"\n' \
+                                                   '  adagrad {\n' \
+                                                   '    learning_rate: 0.05\n' \
+                                                   '    initial_g2sum: 3.0\n' \
+                                                   '    initial_range: 0.0001\n' \
+                                                   '    weight_bounds: -10.0\n' \
+                                                   '    weight_bounds: 10.0\n' \
+                                                   '  }\n' \
+                                                   '}\n' \
+                                                   'embedx_sgd_param {\n' \
+                                                   '  name: "SparseAdaGradSGDRule"\n' \
+                                                   '  adagrad {\n' \
+                                                   '    learning_rate: 0.05\n' \
+                                                   '    initial_g2sum: 3.0\n' \
+                                                   '    initial_range: 0.0001\n' \
+                                                   '    weight_bounds: -10.0\n' \
+                                                   '    weight_bounds: 10.0\n' \
+                                                   '  }\n' \
+                                                   '}\n' \
+                                                   'fea_dim: 11\n' \
+                                                   'embedx_dim: 8\n' \
+                                                   'embedx_threshold: 10\n' \
+                                                   'ctr_accessor_param {\n' \
+                                                   '  nonclk_coeff: 0.1\n' \
+                                                   '  click_coeff: 1.0\n' \
+                                                   '  base_threshold: 1.5\n' \
+                                                   '  delta_threshold: 0.25\n' \
+                                                   '  delta_keep_days: 16.0\n' \
+                                                   '  show_click_decay_rate: 0.98\n' \
+                                                   '  delete_threshold: 0.8\n' \
+                                                   '  delete_after_unseen_days: 30.0\n' \
+                                                   '  ssd_unseenday_threshold: 1\n' \
+                                                   '}'
+
+                        print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -883,7 +920,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                 #print('debug build_merge_accessor:')
                 #print(str(ctx))
-                if not ctx.is_sparse():
+                if table.table_class != 'MemorySparseTable':
                     accessor = _build_merge_accessor(ctx)
                     table.accessor = accessor
                 tables.append(table)
@@ -943,8 +980,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         print("sever_proto =", proto_txt)
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        #        if debug:
-        print("server: \n{}".format(proto_txt))
+        if debug:
+            print("server: \n{}".format(proto_txt))
 
         string_hosts = []
         for idx, ep in enumerate(endpoints):
