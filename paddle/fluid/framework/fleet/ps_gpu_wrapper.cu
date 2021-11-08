@@ -76,25 +76,35 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
     }
     int x = low;
     int y = i - (x ? len[x - 1] : 0);
-    int mf_dim = ((FeatureValue*)((char*)src + i * max_val_size))->mf_dim;
+    //int mf_dim = ((FeatureValue*)((char*)src + i * (max_val_size + 1)))->mf_dim;
+    FeatureValue* feature_value_ptr =  (FeatureValue*)((char*)src + i * (80)); // for tmp test size = 80
+    //int mf_dim = feature_value_ptr->mf_dim;
+    int mf_dim = 8;
+    /*
+    for (int j = 0; j < 11; j++) {
+        *(dest[x] + y * (mf_dim + 3) + j) = 0;
+      }
+    */
+    
     if (*(keys[x] + y) == 0) {
       *(dest[x] + y * (mf_dim + 3)) = 0;
       *(dest[x] + y * (mf_dim + 3) + 1) = 0;
       *(dest[x] + y * (mf_dim + 3) + 2) = 0;
     } else {
-      *(dest[x] + y * (mf_dim + 3)) = ((FeatureValue*)((char*)src + i * max_val_size))->show;
-      *(dest[x] + y * (mf_dim + 3) + 1) = ((FeatureValue*)((char*)src + i * max_val_size))->clk;
-      *(dest[x] + y * (mf_dim + 3) + 2) = ((FeatureValue*)((char*)src + i * max_val_size))->lr;
+      *(dest[x] + y * (mf_dim + 3)) = feature_value_ptr->show;
+      *(dest[x] + y * (mf_dim + 3) + 1) = feature_value_ptr->clk;
+      *(dest[x] + y * (mf_dim + 3) + 2) = feature_value_ptr->lr;
     }
-    if ((src + i)->mf_size == 0 || *(keys[x] + y) == 0) {
+    if ((feature_value_ptr)->mf_size == 0 || *(keys[x] + y) == 0) {
       for (int j = 0; j < mf_dim; j++) {
         *(dest[x] + y * (mf_dim + 3) + 3 + j) = 0;
       }
     } else {
       for (int j = 0; j < mf_dim; j++) {
-        *(dest[x] + y * (mf_dim + 3) + 3 + j) = ((FeatureValue*)((char*)src + i * max_val_size))->mf[1 + j];
+        *(dest[x] + y * (mf_dim + 3) + 3 + j) = feature_value_ptr->mf[1 + j];
       }
     }
+    
   }
 }
 
@@ -146,7 +156,7 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
 
 __global__ void PushCopyWithPool(FeaturePushValue* dest, float** src, int64_t* len,
                          int slot_num, int total_len, int bs,
-                         int* slot_vector, HBMMemoryPool* pool) {
+                         int* slot_vector, int* mf_dim_vector, HBMMemoryPool* pool) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -159,17 +169,33 @@ __global__ void PushCopyWithPool(FeaturePushValue* dest, float** src, int64_t* l
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    (dest + i)->slot = slot_vector[x];
-    int mf_dim = slot_vector[x + slot_num]; // slot_vector holds both slot and slot:mf_dim information
-
-    (dest + i)->mf_g = (uint64_t)(pool->mem_address(i));
+    FeaturePushValue* cur = (dest + i); 
+    
+    cur->slot = slot_vector[x];
+    int mf_dim = mf_dim_vector[x]; // slot_vector holds both slot and slot:mf_dim information
+    cur->mf_dim = mf_dim;
+    cur->mf_g = (uint64_t)(pool->mem_address(i));
     for (int j = 0; j < mf_dim; j++) {
       //(dest + i)->mf_g[j] = *(src[x] + y * (mf_dim + 2) + 3 + j) * -1. * bs;
-      ((float*)(dest + i)->mf_g)[j] = *(src[x] + y * (mf_dim + 2) + 3 + j) * -1. * bs;
+      ((float*)(cur->mf_g))[j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
     }
-    (dest + i)->show = *(src[x] + y * (mf_dim + 2));
-    (dest + i)->clk = *(src[x] + y * (mf_dim + 2) + 1);
-    (dest + i)->lr_g = *(src[x] + y * (mf_dim + 2) + 2) * -1. * bs;
+    cur->show = *(src[x] + y * (mf_dim + 3));
+    cur->clk = *(src[x] + y * (mf_dim + 3) + 1);
+    cur->lr_g = *(src[x] + y * (mf_dim + 3) + 2) * -1. * bs;
+    
+    /*
+    cur->slot = 0;
+    int mf_dim = 0; // slot_vector holds both slot and slot:mf_dim information
+    cur->mf_dim = 0;
+    cur->mf_g = 0;
+    for (int j = 0; j < mf_dim; j++) {
+      //(dest + i)->mf_g[j] = *(src[x] + y * (mf_dim + 2) + 3 + j) * -1. * bs;
+      ((float*)(cur->mf_g))[j] = 0;
+    }
+    cur->show = 0;
+    cur->clk = 0;
+    cur->lr_g = 0;
+    */
   }
 }
 
@@ -278,10 +304,13 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
       memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
   auto buf_slot_vector =
       memory::AllocShared(place, slot_lengths_lod.size() * sizeof(int));
+  auto buf_mf_dim_vector =
+      memory::AllocShared(place, slot_lengths_lod.size() * sizeof(int));
 
   float** gpu_values = reinterpret_cast<float**>(buf_grad_value->ptr());
   int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
   int* d_slot_vector = reinterpret_cast<int*>(buf_slot_vector->ptr());
+  int* d_mf_dim_vector = reinterpret_cast<int*>(buf_mf_dim_vector->ptr());
 
   cudaMemcpy(gpu_values, grad_values.data(),
              grad_values.size() * sizeof(float*), cudaMemcpyHostToDevice);
@@ -289,11 +318,13 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
              slot_lengths.size() * sizeof(int64_t), cudaMemcpyHostToDevice);
   cudaMemcpy(d_slot_vector, slot_vector_.data(),
              slot_lengths_lod.size() * sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_mf_dim_vector, slot_mf_dim_vector_.data(),
+             slot_lengths_lod.size() * sizeof(int), cudaMemcpyHostToDevice);
 
 
   PushCopyWithPool<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
     total_grad_values_gpu, gpu_values, gpu_len,
-    slot_lengths.size(), total_length, batch_size, d_slot_vector, pool);
+    slot_lengths.size(), total_length, batch_size, d_slot_vector, d_mf_dim_vector, pool);
 
 
   cudaStreamSynchronize(stream);

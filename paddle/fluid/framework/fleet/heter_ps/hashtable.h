@@ -28,7 +28,7 @@ limitations under the License. */
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/type_defs.h"
 
@@ -69,11 +69,7 @@ class HashTable {
               Sgd sgd, gpuStream_t stream);
 
   int size() { 
-    if (!use_ptr_val_) {
-      return container_->size();
-    } else {
-      return ptr_container_->size();
-    }
+    return container_->size();
   }
 
   void set_use_ptr_val (bool use_ptr_val) {use_ptr_val_ = use_ptr_val;}
@@ -84,12 +80,11 @@ class HashTable {
 
  private:
   TableContainer<KeyType, ValType>* container_;
-  TableContainer<KeyType, uint64_t>* ptr_container_;
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
-  bool use_ptr_val_ = false;
-  size_t max_mf_dim_;
+  bool use_ptr_val_ = true;
+  size_t max_mf_dim_ = 8;
 };
 }  // end namespace framework
 }  // end namespace paddle

@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
-#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -119,32 +119,6 @@ class PSGPUWrapper {
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
 
-  void SetDynamicMFDim(const std::unordered_map<int, int> slot_dim_map) {
-    slot_dim_map_ = slot_dim_map;
-    size_t num_of_dim = slot_dim_map_.size();
-    std::unordered_set<int> dims_set;
-    for (auto& it : slot_dim_map_) {
-      dims_set.insert(it.second);
-    }
-    index_dim_vec_.resize(num_of_dim);
-    index_dim_vec_.assign(dims_set.begin(), dims_set.end());
-    std::sort(index_dim_vec_.begin(), index_dim_vec_.end());
-    for (size_t i = 0; i < num_of_dim; i++) {
-      dim_index_map_[index_dim_vec_[i]] = i;
-    }
-    for (size_t i = 0; i < mem_pools_.size(); i++) {
-      mem_pools_[i].resize(num_of_dim);
-      hbm_pools_[i].resize(num_of_dim);
-    }
-    max_mf_dim_ = index_dim_vec_.back();
-    multi_mf_dim_ = (dim_index_map_.size() >= 1) ? dim_index_map_.size() : 0;
-    VLOG(0) << "yxf:: set dynamic mf dim";
-    for (size_t i = 0; i < index_dim_vec_.size(); i++) {
-      VLOG(0) << "yxf:: index_dim_vec: i: " << i << " dim: " << index_dim_vec_[i];
-    }
-
-  }
-
   void InitializeGPU(const std::vector<int>& dev_ids) {
     if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
@@ -152,8 +126,7 @@ class PSGPUWrapper {
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
-      hbm_pools_.resize(resource_->total_gpu());
-      mem_pools_.resize(resource_->total_gpu());
+      batch_grad_pool_.resize(resource_->total_gpu());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -306,7 +279,7 @@ class PSGPUWrapper {
 
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
     slot_mf_dim_vector_ = slot_mf_dim_vector;
-    assert(mf_dim_vector_.size() == slot_vector_.size());
+    assert(slot_mf_dim_vector_.size() == slot_vector_.size());
     for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
@@ -322,16 +295,16 @@ class PSGPUWrapper {
     for (size_t i = 0; i < num_of_dim; i++) {
       dim_index_map_[index_dim_vec_[i]] = i;
     }
-    for (size_t i = 0; i < mem_pools_.size(); i++) {
-      mem_pools_[i].resize(num_of_dim);
-      hbm_pools_[i].resize(num_of_dim);
-    }
+    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map_.size() >= 1) ? dim_index_map_.size() : 0;
+    resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
     VLOG(0) << "yxf:: set dynamic mf dim";
+    /*
     for (size_t i = 0; i < index_dim_vec_.size(); i++) {
       VLOG(0) << "yxf:: index_dim_vec: i: " << i << " dim: " << index_dim_vec_[i];
     }
+    */
     slot_index_vec_.resize(slot_mf_dim_vector_.size());
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
       slot_index_vec_[i] = dim_index_map_[slot_mf_dim_vector_[i]];
@@ -376,9 +349,8 @@ class PSGPUWrapper {
   std::vector<int> index_dim_vec_;
   int multi_mf_dim_{0};
   int max_mf_dim_;
-  std::vector<HBMMemoryPool*> batch_grad_pool_;
-  std::vector<std::vector<HBMMemoryPool*>> hbm_pools_;// in multi mfdim, one table need hbm pools of totol dims number 
-  std::vector<std::vector<MemoryPool*>> mem_pools_;
+  std::vector<HBMMemoryPool*> batch_grad_pool_; 
+  std::vector<HBMMemoryPool*> hbm_pools_; // in multi mfdim, one table need hbm pools of totol dims number
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
@@ -404,6 +376,38 @@ class PSGPUWrapper {
  protected:
   static bool is_initialized_;
 };
+
+/*
+class MemoryPool {
+ public:
+  MemoryPool(size_t capacity, size_t block_size) : _capacity(capacity), _block_size(block_size) {
+    _mem = (char*)malloc(block_size * _capacity);
+  }
+  ~MemoryPool() {
+    free(_mem);
+  }
+  size_t block_size() {
+    return _block_size;
+  }
+  char *mem() {
+    return _mem;
+  }
+  
+  size_t capacity() {
+    return _capacity;
+  }
+  size_t byte_size() {
+    return _capacity * _block_size;
+  }
+  void* mem_address(const uint32_t &idx) {
+    return (void*)&_mem[(idx - 1) * _block_size];
+  }
+ private:
+  char* _mem = NULL;
+  size_t _capacity;
+  size_t _block_size;
+};
+*/
 
 }  // end namespace framework
 }  // end namespace paddle

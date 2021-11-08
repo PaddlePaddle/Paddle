@@ -19,7 +19,7 @@ limitations under the License. */
 #include "hashtable.h"
 #include "heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
-#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
@@ -30,20 +30,26 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
+#define TYPEALIGN(ALIGNVAL, LEN)  \
+  (((uint64_t) (LEN) + ((ALIGNVAL) - 1)) & ~((uint64_t) ((ALIGNVAL) - 1)))
 struct CustomGradMerger {
   template <typename T>
   CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
   operator()(const T& a, const T& b) const {
     T out;
     out.slot = a.slot;
+    out.mf_dim = a.mf_dim;
     out.show = a.show + b.show;
     out.clk = a.clk + b.clk;
     out.lr_g = a.lr_g + b.lr_g;
-    for (int i = 0; i < MF_DIM; ++i) {
-      //out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
-      ((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; // for local test
+    out.mf_g = a.mf_g;
+    float* out_g= (float*)(out.mf_g);
+    /*
+    for (int i = 0; i < 8; ++i) {
+      out_g[i] = 0;
+      //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; // for local test
     }
+    */
     return out;
   }
 };
@@ -95,6 +101,11 @@ class HeterComm {
     nccl_inner_comms_ = inner_comms;
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
+  }
+
+  void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+    multi_mf_dim_ = multi_mf_dim;
+    max_mf_dim_ = max_mf_dim;
   }
 
   bool need_transfer(int send_id, int receive_id) {
@@ -192,8 +203,8 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
-  int multi_mf_dim_{0};
-  int max_mf_dim_;
+  int multi_mf_dim_{8};
+  int max_mf_dim_ = 8;
 };
 
 }  // end namespace framework

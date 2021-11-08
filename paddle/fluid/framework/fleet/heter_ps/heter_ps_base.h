@@ -16,7 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
-#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -41,6 +41,7 @@ class HeterPsBase {
   virtual void set_nccl_comm_and_size(
       const std::vector<ncclComm_t>& inner_comms,
       const std::vector<ncclComm_t>& inter_comms, int comm_size) = 0;
+  virtual void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) = 0;
   virtual void end_pass() = 0;
   virtual void show_one_table(int gpu_num) = 0;
   virtual void push_sparse(int num, FeatureKey* d_keys,

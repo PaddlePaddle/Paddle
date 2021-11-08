@@ -30,15 +30,18 @@ __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
                               const typename Table::mapped_type* const vals,
                               size_t len) {
+  
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
 
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  
   if (i < len) {
     kv.first = keys[i];
     kv.second = vals[i];
     auto it = table->insert(kv, op);
     assert(it != table->end() && "error: insert fails: table is full");
+    printf("yxf::i: %d key: %d second: \n", i, keys[i]);
   }
 }
 
@@ -47,15 +50,26 @@ template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
                               size_t len, HBMMemoryPool* pool, int start_index) {
+  
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
 
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  
   if (i < len) {
+    //printf("yxf::i: %d key: %d second\n", i, keys[i]);
+    /*
+    if (start_index + i >= 146607) {
+      printf("yxf::errrrrr index: %d\n", start_index+i);
+    }
+    */
     kv.first = keys[i];
     kv.second = (uint64_t)pool->mem_address(start_index + i);
+    //kv.second = (uint64_t)pool->mem_address(0);
+    // kv.second = (uint64_t)0;
     auto it = table->insert(kv, op);
     assert(it != table->end() && "error: insert fails: table is full");
+    //printf("yxf::i: %d key: %d second: %d\n", i, keys[i], (uint64_t)pool->mem_address(start_index + i));
   }
 }
 
@@ -82,9 +96,12 @@ __global__ void dy_mf_search_kernel(Table* table,
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     auto it = table->find(keys[i]);
+    
     if (it != table->end()) {
-      *(FeatureValue*)(vals + i * size_val_type)= *(FeatureValue*)(it->second);
+      *(FeatureValue*)(vals + i * 80)= *(FeatureValue*)(it->second); // for tmp test featurevalue size: 80
+      //*(FeatureValue*)(vals)= *(FeatureValue*)(it->second);
     }
+    
   }
 }
 
@@ -119,18 +136,13 @@ __global__ void update_kernel(Table* table,
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
-  if (!use_ptr_val_) {
-    container_ = new TableContainer<KeyType, ValType>(capacity);
-  } else {
-    ptr_container_ = new TableContainer<KeyType, uint64_t>(capacity);
-  }
-  
+  container_ = new TableContainer<KeyType, ValType>(capacity);
   rwlock_.reset(new RWLock);
 }
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
-  delete container_;
+  delete container_;  
 }
 
 template <typename KeyType, typename ValType>
@@ -160,7 +172,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   
-  dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(ptr_container_, d_keys,
+  dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                       d_vals, len, max_mf_dim_);
   
   
@@ -188,7 +200,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len, HBMM
   if (pool == NULL) {
     return;
   }
-  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(ptr_container_, d_keys, len, pool, start_index);
+  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, len, pool, start_index);
 }
 
 
@@ -245,14 +257,8 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  if (!use_ptr_val_) {
-    update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
+  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_grads, len, sgd);
-  } else {
-    update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(ptr_container_, d_keys,
-                                                       d_grads, len, sgd);
-  }
-  
 }
 
 }  // end namespace framework

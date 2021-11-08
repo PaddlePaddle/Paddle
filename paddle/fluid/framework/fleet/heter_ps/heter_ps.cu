@@ -69,6 +69,10 @@ void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
   comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
 }
 
+void HeterPs::set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+  comm_->set_multi_mf_dim(multi_mf_dim, max_mf_dim);
+}
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif
