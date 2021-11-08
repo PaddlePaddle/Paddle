@@ -113,7 +113,11 @@ DataLayout Tensor::layout() const { return impl_->layout(); }
 
 /* Part 3: Device and Backend methods */
 
-paddle::platform::Place Tensor::place() const { return impl_->place(); }
+PlaceType Tensor::place() const {
+  return ConvertInnerPlaceToExtPlace(impl_->place());
+}
+
+paddle::platform::Place Tensor::device() const { return impl_->place(); }
 
 bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
 

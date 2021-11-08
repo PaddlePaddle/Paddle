@@ -424,12 +424,6 @@ configure_file(commit.h.in commit.h)
 
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info)
 
-if(WITH_ROCM)
-  hip_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS pten_tensor glog)
-else()
-  cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS pten_tensor glog)
-endif()
-
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 

@@ -190,10 +190,18 @@ class Tensor final {
 
   /**
    * @brief Return the place (device) of Tensor.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return PlaceType
+   */
+  PlaceType place() const;
+
+  /**
+   * @brief Return the place (device) of Tensor.
    *
    * @return paddle::platform::Place
    */
-  paddle::platform::Place place() const;
+  paddle::platform::Place device() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
@@ -433,5 +441,5 @@ class Tensor final {
 
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface
-using Tensor = experimental::Tensor;
+using Tensor = paddle::experimental::Tensor;
 }  // namespace paddle

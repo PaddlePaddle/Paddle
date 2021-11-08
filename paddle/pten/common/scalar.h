@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <cstdint>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/api/ext/exception.h"
 
 namespace paddle {
 namespace experimental {
@@ -48,8 +48,7 @@ class Scalar {
       case Tag::HAS_B:
         return static_cast<T>(data_.b);
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid enum scalar type tag `%d`.", static_cast<int>(tag)));
+        PD_THROW("Invalid enum scalar type tag `", static_cast<int>(tag), "`.");
     }
   }
 
@@ -71,4 +70,4 @@ class Scalar {
 
 namespace pten {
 using Scalar = paddle::experimental::Scalar;
-}
+}  // namespace pten

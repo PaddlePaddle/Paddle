@@ -3,15 +3,13 @@ add_subdirectory(utils)
 # Adapt to custom op mechanism: Include the header files related to the data type
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/pten/api/ext)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
 
 if (WITH_GPU)
-  nv_library(pten_tensor SRCS tensor.cu DEPS lod_tensor memory enforce)
+  nv_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor tensor_meta pten_api_utils enforce)
 elseif (WITH_ROCM)
-  hip_library(pten_tensor SRCS tensor.cu DEPS lod_tensor memory enforce)
+  hip_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor tensor_meta pten_api_utils enforce)
 else()
-  cc_library(pten_tensor SRCS tensor.cc DEPS lod_tensor memory enforce)
+  cc_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor tensor_meta pten_api_utils enforce)
 endif()
 
 cc_library(op_meta_info SRCS ext_op_meta_info.cc DEPS pten_tensor)

@@ -20,4 +20,3 @@ py_test(test_custom_conj SRCS test_custom_conj.py)
 # other tests
 py_test(test_sysconfig SRCS test_sysconfig.py)
 py_test(test_check_abi SRCS test_check_abi.py)
-cc_test(test_check_error SRCS test_check_error.cc DEPS gtest)
