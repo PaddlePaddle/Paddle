@@ -17,6 +17,13 @@
 namespace paddle {
 namespace distributed {
 
+Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
+    : interceptor_id_(interceptor_id), node_(node) {
+  interceptor_thread_ = std::thread([this]() { PoolTheMailbox(); });
+}
+
+Interceptor::~Interceptor() { interceptor_thread_.join(); }
+
 std::condition_variable& Interceptor::GetCondVar() {
   // get the conditional var
   return cond_var_;

@@ -35,10 +35,9 @@ class Interceptor {
  public:
   Interceptor() = delete;
 
-  Interceptor(int64_t interceptor_id, TaskNode* node)
-      : interceptor_id_(interceptor_id), node_(node) {}
+  Interceptor(int64_t interceptor_id, TaskNode* node);
 
-  virtual ~Interceptor() = default;
+  virtual ~Interceptor();
 
   // return the interceptor id
   int64_t GetInterceptorId() const;
