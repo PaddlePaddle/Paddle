@@ -304,12 +304,11 @@ __global__ void ElementwiseKernel(
 #ifdef PADDLE_WITH_XPU2
   for (; offset < main_offset; offset += stride) {
 #else
-  for (; offset < 1; offset += stride) {
+  if (offset < main_offset) {
 #endif
     ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, IsBroadcast,
                           false>(ins, out, use_broadcast, numel, configs,
                                  offset, func);
-    break;
   }
 
   if (offset < numel) {
