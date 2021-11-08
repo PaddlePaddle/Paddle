@@ -134,8 +134,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_fp32, kernel_fp16, in, &out);
     ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::float16>(in_data_float[i]));
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_float[i]).x);
     }
 
     // transform double to float16
@@ -148,8 +148,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_fp64, kernel_fp16, in, &out);
     ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::float16>(in_data_double[i]));
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_double[i]).x);
     }
 
     // transform int to float16
@@ -162,8 +162,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_int32, kernel_fp16, in, &out);
     ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::float16>(in_data_int[i]));
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_int[i]).x);
     }
 
     // transform int64 to float16
@@ -176,8 +176,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_int64, kernel_fp16, in, &out);
     ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::float16>(in_data_int64[i]));
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_int64[i]).x);
     }
 
     // transform bool to float16
@@ -190,8 +190,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_bool, kernel_fp16, in, &out);
     ptr = out.data<paddle::platform::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::float16>(in_data_bool[i]));
+      EXPECT_EQ(ptr[i].x,
+                static_cast<paddle::platform::float16>(in_data_bool[i]).x);
     }
   }
 
@@ -206,7 +206,7 @@ TEST(DataTypeTransform, CPUTransform) {
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
-      ptr[i] = Eigen::bfloat16(i);
+      ptr[i] = static_cast<paddle::platform::bfloat16>(i);
     }
 
     // transform from bfloat16 to other data types
@@ -250,8 +250,9 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_fp32, kernel_bf16, in, &out);
     ptr = out.data<paddle::platform::bfloat16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::bfloat16>(in_data_float[i]));
+      EXPECT_EQ(
+          ptr[i].value,
+          static_cast<paddle::platform::bfloat16>(in_data_float[i]).value);
     }
 
     // transform double to bfloat16
@@ -264,8 +265,9 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_fp64, kernel_bf16, in, &out);
     ptr = out.data<paddle::platform::bfloat16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::bfloat16>(in_data_double[i]));
+      EXPECT_EQ(
+          ptr[i].value,
+          static_cast<paddle::platform::bfloat16>(in_data_double[i]).value);
     }
 
     // transform int to bfloat16
@@ -278,8 +280,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_int32, kernel_bf16, in, &out);
     ptr = out.data<paddle::platform::bfloat16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::bfloat16>(in_data_int[i]));
+      EXPECT_EQ(ptr[i].value,
+                static_cast<paddle::platform::bfloat16>(in_data_int[i]).value);
     }
 
     // transform int64 to bfloat16
@@ -292,8 +294,9 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_int64, kernel_bf16, in, &out);
     ptr = out.data<paddle::platform::bfloat16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::bfloat16>(in_data_int64[i]));
+      EXPECT_EQ(
+          ptr[i].value,
+          static_cast<paddle::platform::bfloat16>(in_data_int64[i]).value);
     }
 
     // transform bool to bfloat16
@@ -306,8 +309,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::TransDataType(kernel_bool, kernel_bf16, in, &out);
     ptr = out.data<paddle::platform::bfloat16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i],
-                static_cast<paddle::platform::bfloat16>(in_data_bool[i]));
+      EXPECT_EQ(ptr[i].value,
+                static_cast<paddle::platform::bfloat16>(in_data_bool[i]).value);
     }
   }
 
