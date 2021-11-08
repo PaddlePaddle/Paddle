@@ -75,7 +75,7 @@ struct UniqueOpFunctor {
       count_->Resize(framework::make_ddim({static_cast<int64_t>(uniq.size())}));
       IndexT* count_data = count_->mutable_data<IndexT>(platform::CPUPlace());
       // init count_data to 0
-      memset(count_data, 0, uniq.size() * sizeof(IndexT));
+      std::memset(count_data, 0, uniq.size() * sizeof(IndexT));
 
       const auto& index_type = index_->type();
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
