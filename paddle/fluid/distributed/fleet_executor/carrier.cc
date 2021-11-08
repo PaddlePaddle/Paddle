@@ -21,13 +21,12 @@ namespace paddle {
 namespace distributed {
 
 Carrier::Carrier(
-    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
-  // init
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node)
+    : interceptor_id_to_node_(interceptor_id_to_node) {
+  CreateInterceptors();
 }
 
-Carrier::~Carrier() {
-  // destroy
-}
+Carrier::~Carrier() {}
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {

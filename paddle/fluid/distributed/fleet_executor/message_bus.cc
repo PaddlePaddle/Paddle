@@ -34,7 +34,13 @@ MessageBus::MessageBus(
   });
 }
 
-MessageBus::~MessageBus() { listen_port_thread_.join(); }
+MessageBus::~MessageBus() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+  server_.Stop();
+  server_.Join();
+#endif
+  listen_port_thread_.join();
+}
 
 bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
   // called by Interceptor, send InterceptorMessage to dst

@@ -13,6 +13,8 @@
 // limitations under the License.
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
+#include "brpc/server.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 
 namespace paddle {
 namespace distributed {
@@ -21,7 +23,14 @@ void InterceptorMessageServiceImpl::InterceptorMessageService(
     google::protobuf::RpcController* control_base,
     const InterceptorMessage* request, InterceptorResponse* response,
     google::protobuf::Closure* done) {
-  // receive msg
+  brpc::ClosureGuard done_guard(done);
+  VLOG(3) << "Interceptor Message Service receives a message from: "
+          << request->src_id()
+          << ", with the message: " << request->message_type();
+  response->set_rst(true);
+  // call interceptor manager's method to handle the message
+  std::shared_ptr<Carrier> carrier = FleetExecutor::GetCarrier();
+  carrier->EnqueueInterceptorMessage(*request);
 }
 
 }  // namespace distributed
