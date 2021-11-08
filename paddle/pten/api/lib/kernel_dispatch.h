@@ -150,5 +150,41 @@ paddle::platform::DeviceContext* GetDeviceContextByBackend(
   return pool.Get(pten::TransToFluidPlace(backend));
 }
 
+class CustomKernelKeyParser {
+ public:
+  DataType ParseDataType(DataType dtype) { return dtype; }
+
+  DataType ParseDataType(const Tensor& tensor) { return tensor.type(); }
+
+  DataType ParseDataType(const std::vector<Tensor>& tensors) {
+    if (tensors.empty()) {
+      return DataType::UNDEFINED;
+    }
+    DataType dtype = tensors[0].type();
+    auto n = tensors.size();
+    for (auto i = 1; i < n; ++i) {
+      if (tensors[i].type() != dtype) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The data_type of input tensor in list isn't consistent, "
+            "the first tensor is %s, but %dth tensor is %s.",
+            dtype,
+            i,
+            tensors[i].type()));
+      }
+    }
+    return dtype;
+  }
+
+  Backend ParseBackend(Backend backend) { return backend; }
+
+  Backend ParseBackend(const Tensor& tensor) {
+    return pten::TransToPtenBackend(tensor.place());
+  }
+
+  DataLayout ParseLayout(DataLayout layout) { return layout; }
+
+  DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+};
+
 }  // namespace experimental
 }  // namespace paddle
