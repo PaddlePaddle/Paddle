@@ -12,7 +12,7 @@ endif()
 
 cc_library(fleet_executor SRCS fleet_executor.cc carrier.cc
         interceptor.cc interceptor_message_service.cc message_bus.cc
-        DEPS fleet_executor_desc_proto interceptor_message_proto ${BRPC_DEPS})
+        DEPS proto_desc fleet_executor_desc_proto interceptor_message_proto ${BRPC_DEPS})
 
 if(WITH_DISTRIBUTE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
