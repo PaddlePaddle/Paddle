@@ -186,7 +186,7 @@ size_t VarBase::GradOpNum() const {
   return grad_node_ ? grad_node_->size() : 0;
 }
 
-void VarBase::ClearGradient() {
+void VarBase::ClearGradient(bool set_to_zero) {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {
@@ -204,7 +204,7 @@ void VarBase::ClearGradient() {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
-        if (!FLAGS_real_release) {
+        if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           operators::math::set_constant(*dev_ctx, grad_t, 0.0);
@@ -221,6 +221,23 @@ void VarBase::ClearGradient() {
     // After fix this bug, function SetIsEmpty() isn't need
     grad_var_->SharedVar()->SetIsEmpty(true);
   }
+}
+
+void VarBase::_GradientSetEmpty(bool set_is_empty) {
+  VLOG(4) << "Gradient " << Name() << " SetIsEmpty " << set_is_empty;
+  if (grad_var_) {
+    grad_var_->SharedVar()->SetIsEmpty(set_is_empty);
+  }
+}
+
+bool VarBase::_IsGradientSetEmpty() {
+  bool res = true;
+  if (grad_var_) {
+    res = grad_var_->SharedVar()->is_empty_;
+    VLOG(4) << "Check gradient " << Name() << "is empty:" << res;
+    return res;
+  }
+  return res;
 }
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
