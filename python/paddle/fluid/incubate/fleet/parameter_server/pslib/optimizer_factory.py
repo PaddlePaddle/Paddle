@@ -332,8 +332,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if st.get("sparse_accessor_class") is not None:
             accessor = st["sparse_accessor_class"]
 
-        # set sparse_embedx_dim in strategy,
-        # user do not have to set it in config_fleet
+        # set sparse_embedx_dim in the strategy according to accessor and use_cvm config
         if accessor == "DownpourFeatureValueAccessor" \
                 or accessor == "DownpourCtrAccessor" \
                 or accessor == "DownpourDoubleUnitAccessor" \
