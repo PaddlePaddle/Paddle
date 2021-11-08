@@ -34,7 +34,7 @@ message InterceptorMessage {
 
 message InterceptorResponse { optional bool rst = 1 [ default = false ]; }
 
-service TheInterceptorMessageService {
+service InterceptorMessageService {
   rpc InterceptorMessageService(InterceptorMessage)
       returns (InterceptorResponse);
 }
