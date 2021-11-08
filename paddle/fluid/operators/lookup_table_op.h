@@ -51,6 +51,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
     int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
     int64_t ids_numel = ids_t->numel();
 
+    void *ptr;
     if (table_var->IsType<LoDTensor>()) {
       auto *table_t = context.Input<LoDTensor>("W");
       int64_t row_number = table_t->dims()[0];
@@ -60,8 +61,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
       auto *output = output_t->mutable_data<T>(context.GetPlace());
 
       for (int64_t i = 0; i < ids_numel; ++i) {
+        ptr = output + i * row_width;
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-          memset(output + i * row_width, 0, row_width * sizeof(T));
+          memset(ptr, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_LT(
               ids[i], row_number,
@@ -77,8 +79,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
                   row_number, ids[i]));
-          memcpy(output + i * row_width, table + ids[i] * row_width,
-                 row_width * sizeof(T));
+          memcpy(ptr, table + ids[i] * row_width, row_width * sizeof(T));
         }
       }
 
@@ -89,8 +90,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
       auto *output = output_t->mutable_data<T>(context.GetPlace());
       auto input_data_type = table_t.value().type();
       for (int64_t i = 0; i < ids_numel; ++i) {
+        ptr = output + i * row_width;
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-          memset(output + i * row_width, 0, row_width * sizeof(T));
+          memset(ptr, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_GE(
               ids[i], 0,
@@ -105,7 +107,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
               if (input_data_type == framework::proto::VarType::INT8 ||
                   input_data_type == framework::proto::VarType::INT16 ||
                   input_data_type == framework::proto::VarType::BF16) {
-                memcpy(output + i * row_width, table + id_index * row_width,
+                memcpy(ptr, table + id_index * row_width,
                        row_width * sizeof(T));
               } else {
                 auto blas =
@@ -114,7 +116,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
                            output + i * row_width);
               }
             } else {
-              memset(output + i * row_width, 0, row_width * sizeof(T));
+              memset(ptr, 0, row_width * sizeof(T));
             }
           } else {
             auto id_index = table_t.Index(ids[i]);
@@ -133,8 +135,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
             if (input_data_type == framework::proto::VarType::INT8 ||
                 input_data_type == framework::proto::VarType::INT16 ||
                 input_data_type == framework::proto::VarType::BF16) {
-              memcpy(output + i * row_width, table + id_index * row_width,
-                     row_width * sizeof(T));
+              memcpy(ptr, table + id_index * row_width, row_width * sizeof(T));
             } else {
               auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
               blas.VCOPY(row_width, table + id_index * row_width,
@@ -211,9 +212,10 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       int64_t D = table_dim[1];
 
       auto *d_output_data = d_output->data<T>();
-      auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
+      void *zero_data = d_table->mutable_data<T>(context.GetPlace());
+      memset(zero_data, 0, d_table->numel() * sizeof(T));
 
-      memset(d_table_data, 0, d_table->numel() * sizeof(T));
+      T *d_table_data = static_cast<T *>(zero_data);
 
       for (int64_t i = 0; i < ids->numel(); ++i) {
         if (padding_idx != kNoPadding && ids_data[i] == padding_idx) {
