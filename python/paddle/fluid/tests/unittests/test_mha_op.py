@@ -66,7 +66,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
-    W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(dtype)
+    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size,)).astype(dtype)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
@@ -94,7 +94,7 @@ def _generate_varlen_data(seq_lens, vec_size, dtype):
     Q = np.concatenate(Qs, axis=1)
     K = np.concatenate(Ks, axis=1)
     V = np.concatenate(Vs, axis=1)
-    W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(dtype)
+    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size,)).astype(dtype)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
