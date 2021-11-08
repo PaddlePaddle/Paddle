@@ -28,7 +28,6 @@
 #endif
 
 DECLARE_bool(use_mkldnn);
-DECLARE_bool(real_release);
 namespace paddle {
 namespace imperative {
 
