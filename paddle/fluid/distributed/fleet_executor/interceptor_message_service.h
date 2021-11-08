@@ -20,7 +20,7 @@
 namespace paddle {
 namespace distributed {
 
-class InterceptorMessageServiceImpl : public InterceptorMessageService {
+class InterceptorMessageServiceImpl : public TheInterceptorMessageService {
  public:
   InterceptorMessageServiceImpl() {}
   virtual ~InterceptorMessageServiceImpl() {}

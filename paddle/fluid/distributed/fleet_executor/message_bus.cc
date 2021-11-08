@@ -125,7 +125,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   PADDLE_ENFORCE_EQ(
       channel.Init(dst_ip_for_brpc, &options), 0,
       platform::errors::Unavailable("Message bus: init brpc channel error."));
-  InterceptorMessageService_Stub stub(&channel);
+  TheInterceptorMessageService_Stub stub(&channel);
   InterceptorResponse response;
   brpc::Controller ctrl;
   ctrl.set_log_id(0);
