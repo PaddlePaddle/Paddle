@@ -75,7 +75,7 @@ class FusedMultiHeadAttention(Layer):
                  embed_dim,
                  num_heads,
                  dropout_rate=0.5,
-                 attn_dropout_rate=None,
+                 attn_dropout_rate=0.5,
                  kdim=None,
                  vdim=None,
                  normalize_before=False,
@@ -91,7 +91,6 @@ class FusedMultiHeadAttention(Layer):
         assert num_heads > 0, ("Expected nhead to be greater than 0, "
                                "but recieved {}".format(num_heads))
 
-        attn_dropout_rate = dropout_rate if attn_dropout_rate is None else attn_dropout_rate
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
@@ -328,8 +327,8 @@ class FusedFeedForward(Layer):
             self._ln1_bias,
             self._ln2_scale,
             self._ln2_bias,
-            dropout1_rate=self._dropout_rate,
-            dropout2_rate=self._act_dropout_rate,
+            dropout1_rate=self._act_dropout_rate,
+            dropout2_rate=self._dropout_rate,
             activation=self._act_method,
             ln1_epsilon=self._epsilon,
             ln2_epsilon=self._epsilon,
@@ -437,7 +436,8 @@ class FusedTransformerEncoderLayer(Layer):
         self.fused_attn = FusedMultiHeadAttention(
             d_model,
             nhead,
-            dropout_rate=attn_dropout_rate,
+            dropout_rate=dropout_rate,
+            attn_dropout_rate=attn_dropout_rate,
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0])
 
