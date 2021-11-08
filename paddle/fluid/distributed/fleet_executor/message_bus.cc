@@ -35,7 +35,8 @@ MessageBus::MessageBus(
 }
 
 MessageBus::~MessageBus() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
   server_.Stop(1000);
   server_.Join();
 #endif
@@ -53,7 +54,8 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
   } else {
     VLOG(3) << "Send a message from: " << src_id << " to " << dst_id
             << " intre card.";
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
     return SendInterRank(interceptor_message);
 #else
     PADDLE_THROW(platform::errors::Unavailable(
@@ -65,7 +67,8 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
 }
 
 void MessageBus::ListenPort() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
   InterceptorMessageServiceImpl interceptor_message_service;
   PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service,
@@ -112,7 +115,8 @@ bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
   return src_rank->second == dst_rank->second;
 }
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
 bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   // send the message inter rank (dst is different rank with src)
   int64_t dst_id = interceptor_message.dst_id();

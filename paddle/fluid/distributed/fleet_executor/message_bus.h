@@ -18,7 +18,8 @@
 #include <thread>
 #include <unordered_map>
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
 #include "brpc/channel.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
@@ -57,7 +58,8 @@ class MessageBus final {
   // check whether the dst is the same rank or different rank with src
   bool IsSameRank(int64_t src_id, int64_t dst_id);
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
   // send the message inter rank (dst is different rank with src)
   bool SendInterRank(const InterceptorMessage& interceptor_message);
 #endif
@@ -74,7 +76,8 @@ class MessageBus final {
   // the ip needs to be listened
   std::string addr_;
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
   // brpc server
   brpc::Server server_;
 #endif
