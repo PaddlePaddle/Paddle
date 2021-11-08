@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/api/ext/bfloat16.h"
+#include "paddle/pten/api/ext/complex.h"
+#include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/api/ext/float16.h"
 
 namespace paddle {
 namespace experimental {

@@ -16,7 +16,12 @@ limitations under the License. */
 
 #include <utility>
 
+#include "glog/logging.h"
+#include "paddle/pten/api/lib/ext_compat_utils.h"
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 /**
  * [ Why still include the fluid headers? ]
@@ -39,6 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -50,119 +56,9 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-template <typename InType, typename OutType>
-struct CastDataTypeFunctor {
-  HOSTDEVICE inline OutType operator()(InType in) const {
-    return static_cast<OutType>(in);
-  }
-};
-
-template <typename InType>
-struct CastDataType {
-  CastDataType(const framework::Tensor &in,
-               framework::Tensor *out,
-               const platform::DeviceContext *ctx)
-      : in_(in), out_(out), ctx_(ctx) {}
-  const framework::Tensor in_;
-  framework::Tensor *out_;
-  const platform::DeviceContext *ctx_;
-
-  template <typename OutType>
-  void apply() {
-    auto *in_begin = in_.data<InType>();
-    auto *in_end = in_begin + in_.numel();
-    auto *out_begin = out_->mutable_data<OutType>(in_.place());
-
-    if (platform::is_cpu_place(in_.place())) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      auto *context = static_cast<const platform::CPUDeviceContext *>(ctx_);
-      trans(*context,
-            in_begin,
-            in_end,
-            out_begin,
-            CastDataTypeFunctor<InType, OutType>());
-#if defined(__NVCC__) || defined(__HIPCC__)
-    } else if (platform::is_gpu_place(in_.place())) {
-      platform::Transform<platform::CUDADeviceContext> trans;
-      auto *context = static_cast<const platform::CUDADeviceContext *>(ctx_);
-      trans(*context,
-            in_begin,
-            in_end,
-            out_begin,
-            CastDataTypeFunctor<InType, OutType>());
-      context->Wait();
-#endif
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Place type is not supported when casting data type."));
-    }
-  }
-};
-
-template <typename T>
-void GpuCopy(
-    T *src, T *dst, PlaceType src_plc, PlaceType dst_plc, int64_t ele_size) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  int device_num = paddle::platform::GetCurrentDeviceId();
-  platform::CUDAPlace gpu_place(device_num);
-  auto *dev_ctx =
-      static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
-  if ((src_plc == PlaceType::kGPU) && (dst_plc == PlaceType::kCPU)) {
-    memory::Copy(platform::CPUPlace(),
-                 static_cast<void *>(dst),
-                 gpu_place,
-                 src,
-                 ele_size,
-                 dev_ctx->stream());
-  } else if ((src_plc == PlaceType::kGPU) && (dst_plc == PlaceType::kGPU)) {
-    memory::Copy(gpu_place,
-                 static_cast<void *>(dst),
-                 gpu_place,
-                 src,
-                 ele_size,
-                 dev_ctx->stream());
-  } else if ((src_plc == PlaceType::kCPU) && (dst_plc == PlaceType::kGPU)) {
-    memory::Copy(gpu_place,
-                 static_cast<void *>(dst),
-                 platform::CPUPlace(),
-                 src,
-                 ele_size,
-                 dev_ctx->stream());
-  } else {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Only GPU related Copy can reach this func."));
-  }
-#ifdef PADDLE_WITH_HIP
-  hipStreamSynchronize(dev_ctx->stream());
-#else
-  cudaStreamSynchronize(dev_ctx->stream());
-#endif
-#endif
-}
-
-#define GET_CASTED_TENSOR                               \
-  if (!tensor_) {                                       \
-    tensor_ = std::make_shared<framework::LoDTensor>(); \
-  }                                                     \
-  auto *tensor = static_cast<framework::LoDTensor *>(tensor_.get());
-
-#define GET_INNER_PLACE                               \
-  platform::Place place;                              \
-  switch (place_) {                                   \
-    case PlaceType::kCPU:                             \
-      place = platform::CPUPlace();                   \
-      break;                                          \
-    case PlaceType::kGPU:                             \
-      place = platform::CUDAPlace();                  \
-      break;                                          \
-    default:                                          \
-      PADDLE_THROW(platform::errors::Unavailable(     \
-          "Custom operator unsupported place id(%d)", \
-          static_cast<int>(place_)));                 \
-  }
-
 /////// Tensor Methods ////////
+
+/* Part 1: Construction and destruction methods */
 
 Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
     : impl_(std::move(tensor_impl)) {
@@ -170,6 +66,28 @@ Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
                           platform::errors::InvalidArgument(
                               "TensorImpl with nullptr is not supported"));
 }
+
+Tensor::Tensor(const PlaceType &place) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      ConvertExtPlaceToInnerPlace(place));
+  impl_ = std::make_shared<pten::DenseTensor>(
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim({}),
+                            pten::DataLayout::NCHW));
+}
+
+Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      ConvertExtPlaceToInnerPlace(place));
+  impl_ = std::make_shared<pten::DenseTensor>(
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            framework::make_ddim(shape),
+                            pten::DataLayout::NCHW));
+}
+
+/* Part 2: Dimension, DataType and DataLayout methods */
 
 int64_t Tensor::numel() const { return impl_->numel(); }
 
@@ -182,7 +100,9 @@ std::vector<int64_t> Tensor::shape() const {
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  impl_->Resize(framework::make_ddim(shape));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The reshape operation is not supported now, "
+      "and it will be implemented by calling the reshape kernel later."));
 }
 
 DataType Tensor::dtype() const { return impl_->data_type(); }
@@ -191,11 +111,125 @@ DataType Tensor::type() const { return impl_->data_type(); }
 
 DataLayout Tensor::layout() const { return impl_->layout(); }
 
+/* Part 3: Device and Backend methods */
+
 paddle::platform::Place Tensor::place() const { return impl_->place(); }
 
 bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
 
 bool Tensor::is_cuda() const { return paddle::platform::is_gpu_place(place()); }
+
+/* Part 4: Data Access methods */
+
+template <typename T>
+T *Tensor::mutable_data() {
+  if (impl_->type_info().name() == "DenseTensor") {
+    return dynamic_cast<std::shared_ptr<pten::DenseTensor>>(impl_)
+        ->mutable_data<T>();
+  }
+  return nullptr;
+}
+
+template PD_DLL_DECL float *Tensor::mutable_data<float>();
+template PD_DLL_DECL double *Tensor::mutable_data<double>();
+template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>();
+template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>();
+template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>();
+template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>();
+template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>();
+template PD_DLL_DECL bool *Tensor::mutable_data<bool>();
+template PD_DLL_DECL paddle::platform::complex<float>
+    *Tensor::mutable_data<paddle::platform::complex<float>>();
+template PD_DLL_DECL paddle::platform::complex<double>
+    *Tensor::mutable_data<paddle::platform::complex<double>>();
+template PD_DLL_DECL paddle::platform::float16 *
+Tensor::mutable_data<paddle::platform::float16>();
+
+template <typename T>
+T *Tensor::mutable_data(const PlaceType &place) {
+  auto inner_place = ConvertExtPlaceToInnerPlace(place);
+  PADDLE_ENFORCE_EQ(
+      platform::is_same_place(inner_place, place()),
+      true,
+      platform::errors::Unimplemented("Modification of tensor place through "
+                                      "mutable_data is not supported now"));
+  return mutable_data<T>();
+}
+
+template PD_DLL_DECL float *Tensor::mutable_data<float>(const PlaceType &place);
+template PD_DLL_DECL double *Tensor::mutable_data<double>(
+    const PlaceType &place);
+template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>(
+    const PlaceType &place);
+template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
+    const PlaceType &place);
+template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
+template PD_DLL_DECL paddle::platform::complex<float> *
+Tensor::mutable_data<paddle::platform::complex<float>>(const PlaceType &place);
+template PD_DLL_DECL paddle::platform::complex<double> *
+Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
+template PD_DLL_DECL paddle::platform::float16 *
+Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
+
+template <typename T>
+const T *Tensor::data() const {
+  if (impl_->type_info().name() == "DenseTensor") {
+    return dynamic_cast<std::shared_ptr<pten::DenseTensor>>(impl_)->data<T>();
+  }
+  return nullptr;
+}
+
+template PD_DLL_DECL const float *Tensor::data<float>() const;
+template PD_DLL_DECL const double *Tensor::data<double>() const;
+template PD_DLL_DECL const int64_t *Tensor::data<int64_t>() const;
+template PD_DLL_DECL const int32_t *Tensor::data<int32_t>() const;
+template PD_DLL_DECL const uint8_t *Tensor::data<uint8_t>() const;
+template PD_DLL_DECL const int8_t *Tensor::data<int8_t>() const;
+template PD_DLL_DECL const int16_t *Tensor::data<int16_t>() const;
+template PD_DLL_DECL const bool *Tensor::data<bool>() const;
+template PD_DLL_DECL const paddle::platform::complex<float>
+    *Tensor::data<paddle::platform::complex<float>>() const;
+template PD_DLL_DECL const paddle::platform::complex<double>
+    *Tensor::data<paddle::platform::complex<double>>() const;
+template PD_DLL_DECL const paddle::platform::float16 *
+Tensor::data<paddle::platform::float16>() const;
+
+template <typename T>
+T *Tensor::data() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "It is not currently supported to directly obtain the modifiable data "
+      "address through the tensor::data<T>() method, please use the "
+      "tensor::mutable_data<T>() method."));
+  return nullptr;
+}
+
+template PD_DLL_DECL float *Tensor::data<float>() const;
+template PD_DLL_DECL double *Tensor::data<double>() const;
+template PD_DLL_DECL int64_t *Tensor::data<int64_t>() const;
+template PD_DLL_DECL int32_t *Tensor::data<int32_t>() const;
+template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>() const;
+template PD_DLL_DECL int8_t *Tensor::data<int8_t>() const;
+template PD_DLL_DECL int16_t *Tensor::data<int16_t>() const;
+template PD_DLL_DECL bool *Tensor::data<bool>() const;
+template PD_DLL_DECL paddle::platform::complex<float>
+    *Tensor::data<paddle::platform::complex<float>>() const;
+template PD_DLL_DECL paddle::platform::complex<double>
+    *Tensor::data<paddle::platform::complex<double>>() const;
+template PD_DLL_DECL paddle::platform::float16 *
+Tensor::data<paddle::platform::float16>() const;
+
+Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Implement the slice method later"));
+  return Tensor();
+  // return slice_(*this, begin_idx, end_idx);
+}
 
 std::shared_ptr<pten::TensorBase> Tensor::impl() const { return impl_; }
 
@@ -203,130 +237,20 @@ void Tensor::set_impl(const std::shared_ptr<pten::TensorBase> &impl) {
   impl_ = impl;
 }
 
-bool Tensor::defined() const { return impl_ != nullptr; }
-
-bool Tensor::initialized() const { return impl_->initialized(); }
-
-void Tensor::reset() { impl_.reset(); }
-
-Tensor &Tensor::operator=(const Tensor &x) & {
-  impl_ = x.impl_;
-  autograd_meta_ = x.autograd_meta_;
-  return *this;
-}
-
-Tensor &Tensor::operator=(Tensor &&x) & {
-  impl_ = std::move(x.impl_);
-  autograd_meta_ = std::move(x.autograd_meta_);
-  return *this;
-}
-
-AbstractAutogradMeta *Tensor::get_autograd_meta() const {
-  return autograd_meta_.get();
-}
-
-void Tensor::set_autograd_meta(
-    std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
-  autograd_meta_ = std::move(autograd_meta);
-}
-
-Tensor::Tensor(const PlaceType &place)
-    : tensor_(std::make_shared<framework::LoDTensor>()),
-      place_(place),
-      stream_(StreamWrapper()) {}
-
-Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
-    : tensor_(std::make_shared<framework::LoDTensor>()),
-      place_(place),
-      stream_(StreamWrapper()) {
-  GET_CASTED_TENSOR
-  tensor->Resize(framework::make_ddim(shape));
-}
-
-template <typename T>
-T *Tensor::mutable_data(const PlaceType &place) {
-  place_ = place;
-  return mutable_data<T>();
-}
-
-template <typename T>
-T *Tensor::mutable_data() {
-  GET_CASTED_TENSOR
-  PADDLE_ENFORCE_GT(
-      tensor->numel(),
-      0,
-      platform::errors::PreconditionNotMet(
-          "You should call Tensor::Reshape(const std::vector<int> "
-          "&shape)"
-          "function before retrieving mutable_data from input tensor."));
-  switch (static_cast<int>(place_)) {
-    case static_cast<int>(PlaceType::kCPU): {
-      return tensor->mutable_data<T>(platform::CPUPlace());
-    }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case static_cast<int>(PlaceType::kGPU): {
-      int device_num = platform::GetCurrentDeviceId();
-      return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
-    }
+gpuStream_t Tensor::stream() const {
+  return platform::stream::get_current_stream(-1);
+}
 #endif
-    default:
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Custom operator unsupported place id(%d)",
-          static_cast<int>(place_)));
-  }
-}
 
-template <typename T>
-T *Tensor::data() const {
-  GET_CASTED_TENSOR;
-  auto *res = tensor->data<T>();
-  return res;
-}
+/* Part 5: Data Transform methods */
 
 template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  GET_CASTED_TENSOR;
-  PADDLE_ENFORCE_GE(tensor->numel(),
-                    0,
-                    platform::errors::PreconditionNotMet(
-                        "You should call Tensor::Reshape(const "
-                        "std::vector<int> &shape)"
-                        "function before copying data from cpu."));
-  size_t ele_size = tensor->numel() * sizeof(T);
-  auto *p_src_data = tensor->data<T>();
-  auto src_place = place();
-  Tensor target = Tensor(target_place);
-  target.reshape(shape());
-  auto *p_target_data = target.template mutable_data<T>();
-
-  if ((src_place == PlaceType::kCPU) && (target_place == PlaceType::kCPU)) {
-    std::memcpy(static_cast<void *>(p_target_data), p_src_data, ele_size);
-  } else if ((src_place == PlaceType::kGPU) &&
-             (target_place == PlaceType::kCPU)) {
-    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
-  } else if ((src_place == PlaceType::kCPU) &&
-             (target_place == PlaceType::kGPU)) {
-    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
-  } else if ((src_place == PlaceType::kGPU) &&
-             (target_place == PlaceType::kGPU)) {
-    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
-  } else {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not supported place transform of place: %d to place: %d",
-        static_cast<int>(src_place),
-        static_cast<int>(target_place)));
-  }
-  return target;
-}
-
-Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
-  GET_CASTED_TENSOR
-  GET_INNER_PLACE
-  framework::Tensor intermediate = tensor->Slice(begin_idx, end_idx);
-  Tensor target = Tensor(place_);
-  framework::CustomTensorUtils::ShareDataFrom(
-      static_cast<const void *>(&intermediate), target);
-  return target;
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Implement the copy_to method later"));
+  return Tensor();
+  // return copy_to(*this, ConvertExtPlaceToInnerPlace(place));
 }
 
 template PD_DLL_DECL Tensor
@@ -352,174 +276,50 @@ template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<double>>(
 template PD_DLL_DECL Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
 
-template PD_DLL_DECL float *Tensor::data<float>() const;
-template PD_DLL_DECL double *Tensor::data<double>() const;
-template PD_DLL_DECL int64_t *Tensor::data<int64_t>() const;
-template PD_DLL_DECL int32_t *Tensor::data<int32_t>() const;
-template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>() const;
-template PD_DLL_DECL int8_t *Tensor::data<int8_t>() const;
-template PD_DLL_DECL int16_t *Tensor::data<int16_t>() const;
-template PD_DLL_DECL bool *Tensor::data<bool>() const;
-template PD_DLL_DECL paddle::platform::complex<float>
-    *Tensor::data<paddle::platform::complex<float>>() const;
-template PD_DLL_DECL paddle::platform::complex<double>
-    *Tensor::data<paddle::platform::complex<double>>() const;
-template PD_DLL_DECL paddle::platform::float16 *
-Tensor::data<paddle::platform::float16>() const;
-
-template PD_DLL_DECL float *Tensor::mutable_data<float>();
-template PD_DLL_DECL double *Tensor::mutable_data<double>();
-template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>();
-template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>();
-template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>();
-template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>();
-template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>();
-template PD_DLL_DECL bool *Tensor::mutable_data<bool>();
-template PD_DLL_DECL paddle::platform::complex<float>
-    *Tensor::mutable_data<paddle::platform::complex<float>>();
-template PD_DLL_DECL paddle::platform::complex<double>
-    *Tensor::mutable_data<paddle::platform::complex<double>>();
-template PD_DLL_DECL paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>();
-
-template PD_DLL_DECL float *Tensor::mutable_data<float>(const PlaceType &place);
-template PD_DLL_DECL double *Tensor::mutable_data<double>(
-    const PlaceType &place);
-template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>(
-    const PlaceType &place);
-template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>(
-    const PlaceType &place);
-template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>(
-    const PlaceType &place);
-template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>(
-    const PlaceType &place);
-template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
-    const PlaceType &place);
-template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex<float> *
-Tensor::mutable_data<paddle::platform::complex<float>>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex<double> *
-Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
-
-const PlaceType &Tensor::place() const {
-  GET_CASTED_TENSOR;
-  if (platform::is_cpu_place(tensor->place())) {
-    place_ = PlaceType::kCPU;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (platform::is_gpu_place(tensor->place())) {
-    place_ = PlaceType::kGPU;
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Current Tensor hold unsupported Place Type, Please Init it"
-        "using Tensor::mutable_data<T>(PaddlePlace) with T among:"
-        "Place::kCPU or Place::kGPU"));
-  }
-  return place_;
+Tensor Tensor::to(const PlaceType &target_place) const {
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Implement the to method later"));
+  return Tensor();
+  // return copy_to(*this, ConvertExtPlaceToInnerPlace(target_place));
 }
 
 Tensor Tensor::cast(const DataType &target_type) const {
-  GET_CASTED_TENSOR;
-  Tensor rlt = Tensor(place());
-  rlt.reshape(this->shape());
-  auto rlt_tensor_ = static_cast<framework::LoDTensor *>(rlt.tensor_.get());
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto ctx = pool.Get(tensor->place());
-  auto src_type = tensor->type();
-  auto dst_type =
-      framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(target_type);
-  switch (src_type) {
-    case framework::proto::VarType::FP32:
-      framework::VisitDataType(dst_type,
-                               CastDataType<float>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::FP64:
-      framework::VisitDataType(dst_type,
-                               CastDataType<double>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::INT32:
-      framework::VisitDataType(dst_type,
-                               CastDataType<int>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::INT64:
-      framework::VisitDataType(
-          dst_type, CastDataType<int64_t>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::BOOL:
-      framework::VisitDataType(dst_type,
-                               CastDataType<bool>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::INT16:
-      framework::VisitDataType(
-          dst_type, CastDataType<int16_t>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::UINT8:
-      framework::VisitDataType(
-          dst_type, CastDataType<uint8_t>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::COMPLEX64:
-      framework::VisitDataType(dst_type,
-                               CastDataType<paddle::platform::complex<float>>(
-                                   *tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::COMPLEX128:
-      framework::VisitDataType(dst_type,
-                               CastDataType<paddle::platform::complex<double>>(
-                                   *tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::FP16:
-      framework::VisitDataType(
-          dst_type,
-          CastDataType<paddle::platform::float16>(*tensor, rlt_tensor_, ctx));
-      break;
-    // TODO(JiabinYang) Support more dtype here
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Data type (%s) is not supported when casting data type.",
-          framework::DataTypeToString(src_type)));
-  }
-  return rlt;
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Implement the cast method later"));
+  return Tensor();
+  // return cast(*this, target_type);
 }
 
-bool Tensor::is_initialized() const {
-  GET_CASTED_TENSOR;
-  if (tensor->IsInitialized()) {
-    return true;
-  } else {
-    return false;
-  }
+/* Part 6: Status utils methods */
+
+bool Tensor::defined() const { return impl_ != nullptr; }
+
+bool Tensor::initialized() const { return impl_->initialized(); }
+
+void Tensor::reset() { impl_.reset(); }
+
+/* Part 7: Operator overloading */
+
+Tensor &Tensor::operator=(const Tensor &x) & {
+  impl_ = x.impl_;
+  autograd_meta_ = x.autograd_meta_;
+  return *this;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-gpuStream_t Tensor::stream() const {
-  if (!stream_.IsStreamSet()) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Stream is not Set, only input tensor will have "
-        "stream which is set by framework "));
-  } else {
-    return reinterpret_cast<gpuStream_t>(stream_.GetStream());
-  }
+Tensor &Tensor::operator=(Tensor &&x) & {
+  impl_ = std::move(x.impl_);
+  autograd_meta_ = std::move(x.autograd_meta_);
+  return *this;
 }
-#endif
+
+AbstractAutogradMeta *Tensor::get_autograd_meta() const {
+  return autograd_meta_.get();
+}
+
+void Tensor::set_autograd_meta(
+    std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
+  autograd_meta_ = std::move(autograd_meta);
+}
+
 }  // namespace experimental
-
-namespace framework {
-
-void CustomTensorUtils::ShareDataTo(const paddle::Tensor &src, void *dst) {
-  static_cast<framework::LoDTensor *>(dst)->ShareDataWith(
-      *static_cast<framework::LoDTensor *>(src.tensor_.get()));
-}
-
-void CustomTensorUtils::ShareDataFrom(const void *src,
-                                      const paddle::Tensor &dst) {
-  if (!dst.tensor_) {
-    dst.tensor_ = std::make_shared<framework::LoDTensor>();
-  }
-  auto *tensor = static_cast<framework::LoDTensor *>(dst.tensor_.get());
-  tensor->ShareDataWith(*static_cast<const framework::LoDTensor *>(src));
-}
-}  // namespace framework
-
 }  // namespace paddle

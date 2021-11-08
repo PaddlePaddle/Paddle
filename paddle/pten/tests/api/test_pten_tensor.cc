@@ -14,9 +14,8 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/custom_tensor_utils.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/pten/api/ext/ext_all.h"
+#include "paddle/pten/api/ext/all.h"
+#include "paddle/pten/api/lib/ext_compat_utils.h"
 
 template <typename T>
 paddle::Tensor InitCPUTensorForTest() {

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "ext_dtype.h"      // NOLINT
-#include "ext_exception.h"  // NOLINT
+#include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/common/data_type.h"
 
 namespace paddle {
 

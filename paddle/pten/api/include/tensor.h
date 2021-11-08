@@ -28,8 +28,8 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
-#include "paddle/pten/api/ext/ext_dll_decl.h"
-#include "paddle/pten/api/ext/ext_place.h"
+#include "paddle/pten/api/ext/dll_decl.h"
+#include "paddle/pten/api/ext/place.h"
 #include "paddle/pten/common/data_type.h"
 
 namespace pten {
@@ -297,15 +297,25 @@ class Tensor final {
   /* Part 5: Data Transform methods */
 
   /**
-   * @brief Copy the host memory to tensor data.
+   * @brief Copy the current Tensor data to the specified device
+   * and return the new Tensor.
    * It's usually used to set the input tensor data.
+   * This is a deprecated method and may be removed in the future!
    *
    * @tparam T
-   * @param place of target place, of which the tensor will copy to.
+   * @param target_place of target place, of which the tensor will copy to.
    * @return Tensor
    */
   template <typename T>
-  Tensor copy_to(const PlaceType& place) const;
+  Tensor copy_to(const PlaceType& target_place) const;
+
+  /**
+   * @brief Transfer the current Tensor to the specified device and return.
+   *
+   * @param place of target place, of which the tensor will copy to.
+   * @return Tensor
+   */
+  Tensor to(const PlaceType& place) const;
 
   /**
    * @brief Cast datatype from one to another
@@ -363,7 +373,7 @@ class Tensor final {
    *
    * @return AbstractAutogradMeta*
    */
-  AbstractAutogradMeta* get_autograd_meta();
+  AbstractAutogradMeta* get_autograd_meta() const;
 
   /**
    * @brief Set the autograd meta object
@@ -419,4 +429,9 @@ class Tensor final {
 };
 
 }  // namespace experimental
+}  // namespace paddle
+
+namespace paddle {
+// In order to be compatible with the original custom operator Tensor interface
+using Tensor = experimental::Tensor;
 }  // namespace paddle

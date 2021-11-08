@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/pten/api/ext/ext_op_meta_info.h"
+#include "paddle/pten/api/ext/op_meta_info.h"
 
 namespace paddle {
 namespace framework {

@@ -19,10 +19,10 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "any.h"            // NOLINT
-#include "ext_dll_decl.h"   // NOLINT
-#include "ext_exception.h"  // NOLINT
-#include "tensor.h"         // NOLINT
+#include "paddle/pten/api/ext/dll_decl.h"
+#include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/api/include/tensor.h"
+#include "paddle/utils/any.h"
 
 /**
  * Op Meta Info Related Define.
