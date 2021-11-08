@@ -1,5 +1,8 @@
-if(NOT WITH_PSCORE)
+if (WITH_DISTRIBUTE)
     add_subdirectory(fleet_executor)
+endif()
+
+if(NOT WITH_PSCORE)
     return()
 endif()
 
@@ -17,7 +20,6 @@ add_subdirectory(service)
 add_subdirectory(table)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
-add_subdirectory(fleet_executor)
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
