@@ -33,6 +33,11 @@
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
+#if CUDA_VERSION >= 10020
+#include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
+#include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph.h"
 #endif
@@ -50,6 +55,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     use_system_allocator, false,
     "Whether to use system allocator to allocate CPU and GPU memory. "
     "Only used for unittests.");
+
+PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
+                            "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
 DECLARE_string(allocator_strategy);
 
@@ -202,7 +210,7 @@ class AllocatorFacadePrivate {
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, size_t size) {
-    VLOG(4) << "GetAllocator"
+    VLOG(6) << "GetAllocator"
             << " " << place << " " << size;
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
@@ -258,6 +266,40 @@ class AllocatorFacadePrivate {
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p,
                                    bool allow_free_idle_chunk) {
+#if defined(PADDLE_WITH_HIP)
+    auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+#if CUDA_VERSION >= 10020
+    CUdevice device;
+    int val;
+    try {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
+
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          paddle::platform::dynload::cuDeviceGetAttribute(
+              &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+              device));
+    } catch (...) {
+      val = 0;
+    }
+
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+      auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
+      allocators_[p] =
+          std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+              cuda_allocator, platform::GpuMinChunkSize(), p);
+    } else {
+      auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+          cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+    }
+
+#else
     auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
     auto alignment = platform::GpuMinChunkSize();
     bool need_addr_align = true;
@@ -292,6 +334,8 @@ class AllocatorFacadePrivate {
     }
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         underlying_allocator, alignment, 0, allow_free_idle_chunk);
+#endif
+#endif
   }
 #endif
 
