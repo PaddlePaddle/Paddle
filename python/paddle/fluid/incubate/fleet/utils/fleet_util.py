@@ -1051,8 +1051,8 @@ class FleetUtil(object):
         get embedding shards from local files and merge them into a single file with binary format
 
         Args:
-            input_path(str): local input path
-            output_path(str): local output path
+            input_path(str): local or hdfs input path
+            output_path(str): local or hdfs output path
             kwargs(dict): user defined properties
                           feasign_nums(int): initialize number of feasigns for each shard file (initialize reserve vector space)
                           hadoop_fs_name(str): hadoop fs name
