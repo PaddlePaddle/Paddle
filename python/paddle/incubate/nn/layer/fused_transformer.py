@@ -39,6 +39,8 @@ class FusedMultiHeadAttention(Layer):
         attn_dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout in attention.
             0 for no dropout. Default 0.5.
+        epsilon (float, optional): he small value added to the variance to prevent
+            division by zero. Default: 1e-05.
         kdim (int, optional): The feature size in key. If None, assumed equal to
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
@@ -80,6 +82,7 @@ class FusedMultiHeadAttention(Layer):
                  need_weights=False,
                  weight_attr=None,
                  bias_attr=None,
+                 epsilon=1e-5,
                  name=None):
         super(FusedMultiHeadAttention, self).__init__()
 
@@ -93,6 +96,7 @@ class FusedMultiHeadAttention(Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._epsilon = epsilon
 
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -198,15 +202,16 @@ class FusedMultiHeadAttention(Layer):
             dropout_rate=self.dropout_rate,
             attn_dropout_rate=self.attn_dropout_rate,
             ln_epsilon=self._epsilon,
+            training=self.training,
             name=self.name)
         return out
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}{}'.format(
+        return 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}{}'.format(
             self.embed_dim, self.num_heads, self.dropout_rate,
-            self.attn_dropout_rate, self.kdim, self.vdim, self.normalize_before,
-            self.need_weights, self._dtype, name_str)
+            self.attn_dropout_rate, self._epsilon, self.kdim, self.vdim,
+            self.normalize_before, self.need_weights, self._dtype, name_str)
 
 
 class FusedFeedForward(Layer):
@@ -216,6 +221,8 @@ class FusedFeedForward(Layer):
         dim_feedforward (int): The hidden layer size.
         dropout_rate (float, optional): The dropout probability used in pre-process
             and post-precess. Default 0.1
+        epsilon (float, optional): he small value added to the variance to prevent
+            division by zero. Default: 1e-05.
         activation (str, optional): The activation function. Default relu.
         act_dropout_rate (float, optional): The dropout probability after activition.
             If None, use the value of `dropout_rate`. Default None
@@ -248,6 +255,7 @@ class FusedFeedForward(Layer):
                  d_model,
                  dim_feedforward,
                  dropout_rate=0.1,
+                 epsilon=1e-05,
                  activation="relu",
                  act_dropout_rate=None,
                  normalize_before=False,
@@ -270,6 +278,7 @@ class FusedFeedForward(Layer):
         self._act_dropout_rate = dropout_rate if act_dropout_rate is None else act_dropout_rate
         self._act_method = activation
         self._normalize_before = normalize_before
+        self._epsilon = epsilon
 
         self._linear1_weight = self.create_parameter(
             shape=[d_model, dim_feedforward],
@@ -331,10 +340,10 @@ class FusedFeedForward(Layer):
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'd_model={}, dim_feedforward={}, dropout_rate={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}{}'.format(
+        return 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}{}'.format(
             self._d_model, self._dim_feedforward, self._dropout_rate,
-            self._act_dropout_rate, self._act_method, self._normalize_before,
-            self._dtype, name_str)
+            self._epsilon, self._act_dropout_rate, self._act_method,
+            self._normalize_before, self._dtype, name_str)
 
 
 class FusedTransformerEncoderLayer(Layer):
