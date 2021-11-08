@@ -591,6 +591,11 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     Gather tensors from all participators and all get the result.
 
+    .. image:: https://github.com/PaddlePaddle/docs/blob/develop/docs/guides/images/inference_ecosystem.png
+        :width: 800
+        :alt: all_gather
+        :align: center
+
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
