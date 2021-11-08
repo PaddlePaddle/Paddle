@@ -12,23 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/functions/eigen/common.h"
-
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/pten/infershape/nary.h"
 
 namespace pten {
-namespace eigen {
 
-template <typename DeviceContext, typename T, typename VType>
-void fill(const DeviceContext& context, DenseTensor* tensor, VType val) {
-  tensor->mutable_data<T>();
-  auto t = pten::EigenVector<T>::Flatten(*tensor);
-  t.device(*context.eigen_device()) = t.constant(static_cast<T>(val));
+DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
+                               DataType dtype,
+                               DataLayout layout) {
+  const auto& out_dims = paddle::framework::make_ddim(shape);
+  return {dtype, out_dims, layout};
 }
 
-}  // namespace eigen
 }  // namespace pten
