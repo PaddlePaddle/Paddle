@@ -316,13 +316,18 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   VLOG(4) << place << " " << op->DebugStringEx(global_scope_);
 
+  auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     platform::RecordEvent infershape_event("InferShape");
-    static_cast<const framework::OperatorWithKernel*>(instr_node.OpBase())
-        ->InferShape(instr_node.InnerInferShapeContext().get());
+    // If it is OperatorBase, InferShape do nothing.
+    if (op_with_kernel != nullptr)
+      op_with_kernel->InferShape(instr_node.InnerInferShapeContext().get());
   }
 
-  if (FLAGS_new_executor_use_inplace) {
+  if (op_with_kernel != nullptr &&
+      FLAGS_new_executor_use_inplace) {  // TODO(xiongkun03) Does operator
+                                         // base support
+                                         // inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
       const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
@@ -334,7 +339,10 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
   {
     platform::RecordEvent compute_event("Compute");
-    instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+    if (op_with_kernel == nullptr)
+      instr_node.OpBase()->Run(*global_scope_->GetScope(), place_);
+    else
+      instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
   }
 
   VLOG(3) << place << " " << op->DebugStringEx(global_scope_);
@@ -357,7 +365,9 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   // for debug nan/inf
   if (FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
-    framework::details::CheckOpHasNanOrInf(*op, *global_scope_, place);
+    framework::details::CheckOpHasNanOrInf(
+        *op, *global_scope_,
+        place);  // TODO(xiongkun03) change it to inner scope.
   }
 }
 
@@ -502,11 +512,11 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   for (auto var_id : instr.GCCheckVars()) {
     bool is_ready =
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
-    if (is_ready && var_scope.VarDesc(var_id) &&
-        !var_scope.VarDesc(var_id)->Persistable()) {
-      gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
-              &instr.DeviceContext());
-    } else if (is_ready && var_scope.VarDesc(var_id) == nullptr) {
+    // ignore all persistable var while GC
+    if (var_scope.VarDesc(var_id) && var_scope.VarDesc(var_id)->Persistable()) {
+      continue;
+    }
+    if (is_ready) {
       gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
               &instr.DeviceContext());
     }

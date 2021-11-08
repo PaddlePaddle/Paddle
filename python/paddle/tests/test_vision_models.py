@@ -85,6 +85,12 @@ class TestVisonModels(unittest.TestCase):
     def test_densenet264(self):
         self.models_infer('densenet264')
 
+    def test_squeezenet1_0(self):
+        self.models_infer('squeezenet1_0')
+
+    def test_squeezenet1_1(self):
+        self.models_infer('squeezenet1_1')
+
     def test_alexnet(self):
         self.models_infer('alexnet')
 

@@ -27,7 +27,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/include/core.h"
 
 DECLARE_bool(use_mkldnn);
 

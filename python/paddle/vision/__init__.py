@@ -38,6 +38,9 @@ from .models import MobileNetV1  # noqa: F401
 from .models import mobilenet_v1  # noqa: F401
 from .models import MobileNetV2  # noqa: F401
 from .models import mobilenet_v2  # noqa: F401
+from .models import SqueezeNet  # noqa: F401
+from .models import squeezenet1_0  # noqa: F401
+from .models import squeezenet1_1  # noqa: F401
 from .models import VGG  # noqa: F401
 from .models import vgg11  # noqa: F401
 from .models import vgg13  # noqa: F401

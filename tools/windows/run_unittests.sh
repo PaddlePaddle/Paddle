@@ -36,7 +36,7 @@ if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); th
 else
     disable_ut_quickly=''
 fi
-echo on
+
 # check added ut
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     set +e
@@ -79,43 +79,6 @@ disable_wingpu_test="^test_model$|\
 ^test_fuse_bn_add_act_pass$|\
 ^disable_wingpu_test$"
 
-# unittests below is bound to fail in cuda 11.2, to be fixed
-disable_wingpu_cuda112_test="^test_cudnn_bn_add_relu$|\
-^test_adamw_op$|\
-^test_custom_grad_input$|\
-^test_deform_conv2d$|\
-^test_eigh_op$|\
-^test_executor_and_mul$|\
-^test_fused_attention_op$|\
-^test_fused_attention_op_api$|\
-^test_fused_feedforward_op$|\
-^test_fused_multihead_matmul_op$|\
-^test_gru_rnn_op$|\
-^test_inverse_op$|\
-^test_linalg_pinv_op$|\
-^test_matrix_power_op$|\
-^test_tensordot$|\
-^test_basic_api_transformation$|\
-^test_hessian$|\
-^test_jacobian$|\
-^test_vhp$|\
-^test_matmul_v2_mkldnn_op$|\
-^test_imperative_qat_channelwise$|\
-^test_imperative_qat$|\
-^test_addmm_op$|\
-^test_cond$|\
-^test_fc_op$|\
-^test_matmul_op$|\
-^test_ir_fc_fuse_pass$|\
-^test_cycle_gan$|\
-^test_custom_relu_op_setup$"
-
-set +e
-str112=$(nvcc --version | grep '11.2')
-if [[ "${str112}" != "" ]]; then
-    disable_wingpu_test=${disable_wingpu_test}"|"${disable_wingpu_cuda112_test}
-fi
-set -e
 # /*============================================================================*/
 
 # /*==================Fixed Disabled Windows CPU OPENBLAS unittests==============================*/
@@ -390,6 +353,13 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
             echo "========================================"
             exit 8;
         fi
+        set +e
+        str112=$(nvcc --version | grep '11.2')
+        if [[ "${str112}" != "" ]]; then
+            echo "In PR-CI-Windows-Inference, only test added_ut temporarily."
+            exit 0;
+        fi 
+        set -e
     fi
     run_unittest_gpu $cpu_parallel_job 10
     run_unittest_gpu $tetrad_parallel_job 4
