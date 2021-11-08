@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/eigen_ext.h"
+
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {

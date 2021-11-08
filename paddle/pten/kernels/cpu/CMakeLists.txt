@@ -3,3 +3,5 @@ cc_library(linalg_cpu SRCS linalg.cc DEPS dense_tensor kernel_context kernel_fac
 cc_library(creation_cpu SRCS creation.cc DEPS dense_tensor kernel_context kernel_factory eigen_function)
 cc_library(utils_cpu SRCS utils.cc DEPS dense_tensor kernel_context kernel_factory memory convert_utils)
 cc_library(manipulation_cpu SRCS manipulation.cc DEPS dense_tensor kernel_context kernel_factory utils_cpu unary)
+cc_library(nn_cpu SRCS nn.cc DEPS dense_tensor kernel_context kernel_factory blas eigen_function)
+add_subdirectory(funcs)

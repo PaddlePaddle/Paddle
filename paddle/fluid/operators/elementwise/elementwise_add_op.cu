@@ -12,12 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
+
+// only can include the headers in paddle/top/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/nn.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -30,14 +36,18 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    std::vector<const framework::Tensor*> ins;
-    std::vector<framework::Tensor*> outs;
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
+    z->mutable_data<T>(ctx.GetPlace());
 
-    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, AddFunctor<T>());
+    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+    int axis = ctx.Attr<int>("axis");
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+    pten::ElementwiseAdd<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+                            pt_z.get());
   }
 };
 

@@ -29,6 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
+// only can include the headers in paddle/top/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/kernels/cpu/funcs/elementwise.h"
+#include "paddle/pten/kernels/functions/general/elementwise_base.h"
+
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
 #include <cuda.h>
@@ -149,53 +154,18 @@ inline void get_mid_dims(const framework::DDim &x_dims,
                          const framework::DDim &y_dims, const int axis,
                          int *pre, int *n, int *post,
                          int *is_run_common_broadcast) {
-  *pre = 1;
-  *n = 1;
-  *post = 1;
-  *is_run_common_broadcast = 0;
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= x_dims[i];
-  }
-  for (int i = 0; i < y_dims.size(); ++i) {
-    if (x_dims[i + axis] != y_dims[i]) {
-      PADDLE_ENFORCE_EQ(y_dims[i] == 1 || x_dims[i + axis] == 1, true,
-                        platform::errors::InvalidArgument(
-                            "Broadcast dimension mismatch. Operands "
-                            "could not be broadcast together with the shape of "
-                            "X = [%s] and the shape of Y = [%s]. Received [%d] "
-                            "in X is not equal to [%d] in Y.",
-                            x_dims, y_dims, x_dims[i + axis], y_dims[i]));
-      *is_run_common_broadcast = 1;
-      return;
-    }
-    (*n) *= y_dims[i];
-  }
-  for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
-    (*post) *= x_dims[i];
-  }
+  pten::general::get_mid_dims(x_dims, y_dims, axis, pre, n, post,
+                              is_run_common_broadcast);
 }
 
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
                                const int *index_array) {
-  int index_ = 0;
-  for (int i = 0; i < max_dim; i++) {
-    if (x_dims_array[i] > 1) {
-      index_ = index_ * x_dims_array[i] + index_array[i];
-    }
-  }
-  return index_;
+  return pten::GetElementwiseIndex(x_dims_array, max_dim, index_array);
 }
 
 inline void UpdateElementwiseIndexArray(const int *out_dims_array,
                                         const int max_dim, int *index_array) {
-  for (int i = max_dim - 1; i >= 0; --i) {
-    ++index_array[i];
-    if (index_array[i] >= out_dims_array[i]) {
-      index_array[i] -= out_dims_array[i];
-    } else {
-      break;
-    }
-  }
+  pten::UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array);
 }
 
 inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
@@ -203,48 +173,9 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                    int *x_dims_array, int *y_dims_array,
                                    int *out_dims_array, const int max_dim,
                                    const int axis) {
-  PADDLE_ENFORCE_GE(
-      axis, 0,
-      platform::errors::InvalidArgument(
-          "Axis should be great than or equal to 0, but received axis is %d.",
-          axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
-                    platform::errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim, axis));
-  if (x_dims.size() > y_dims.size()) {
-    std::fill(y_dims_array, y_dims_array + axis, 1);
-    if (axis + y_dims.size() < max_dim) {
-      std::fill(y_dims_array + axis + y_dims.size(), y_dims_array + max_dim, 1);
-    }
-    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array);
-    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array + axis);
-  } else {
-    std::fill(x_dims_array, x_dims_array + axis, 1);
-    if (axis + x_dims.size() < max_dim) {
-      std::fill(x_dims_array + axis + x_dims.size(), x_dims_array + max_dim, 1);
-    }
-    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
-    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
-  }
-
-  for (int i = 0; i < max_dim; i++) {
-    PADDLE_ENFORCE_EQ(
-        x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
-            y_dims_array[i] <= 1,
-        true, platform::errors::InvalidArgument(
-                  "Broadcast dimension mismatch. Operands could "
-                  "not be broadcast together with the shape of X = [%s] and "
-                  "the shape of Y = [%s]. Received [%d] in X is not equal to "
-                  "[%d] in Y at i:%d.",
-                  x_dims, y_dims, x_dims_array[i], y_dims_array[i], i));
-    if ((x_dims_array[i] > 1 || y_dims_array[i] > 1) ||
-        (x_dims_array[i] == 1 && y_dims_array[i] == 1)) {
-      out_dims_array[i] = (std::max)(x_dims_array[i], y_dims_array[i]);
-    } else {
-      out_dims_array[i] = -1;
-    }
-  }
+  pten::general::GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array,
+                                        y_dims_array, out_dims_array, max_dim,
+                                        axis);
 }
 
 template <typename Functor, typename T, typename OutType = T>
@@ -255,29 +186,9 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
                                const platform::CPUDeviceContext &ctx,
                                Functor func,
                                const bool is_xsize_larger = true) {
-  std::vector<int> index_array(max_dim, 0);
-  const T *x_data = x->data<T>();
-  const T *y_data = y->data<T>();
-  PADDLE_ENFORCE_NOT_NULL(x_data, platform::errors::InvalidArgument(
-                                      "The input X should not be empty."));
-  PADDLE_ENFORCE_NOT_NULL(y_data, platform::errors::InvalidArgument(
-                                      "The input Y should not be empty."));
-  OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
-
-  const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
-                                       1, std::multiplies<int>());
-  int x_index, y_index;
-  for (int out_index = 0; out_index < out_size; ++out_index) {
-    x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
-    y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
-    if (is_xsize_larger) {
-      out_data[out_index] = func(x_data[x_index], y_data[y_index]);
-    } else {
-      out_data[out_index] = func(y_data[y_index], x_data[x_index]);
-    }
-
-    UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
-  }
+  pten::CommonForwardBroadcastCPU(x, y, z, x_dims_array, y_dims_array,
+                                  out_dims_array, max_dim, ctx, func,
+                                  is_xsize_larger);
 }
 
 template <typename T, typename DX_OP, typename DY_OP>
@@ -1184,22 +1095,7 @@ void CommonGradBroadcastCUDA(
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
-  // Remove trailing dimensions of size 1 for y
-  auto actual_dims_size = dims.size();
-  for (; actual_dims_size != 0; --actual_dims_size) {
-    if (dims[actual_dims_size - 1] != 1) break;
-  }
-  if (actual_dims_size == dims.size()) return dims;
-  std::vector<int> trim_dims;
-  trim_dims.resize(actual_dims_size);
-  for (int i = 0; i < actual_dims_size; ++i) {
-    trim_dims[i] = dims[i];
-  }
-  if (trim_dims.size() == 0) {
-    return framework::DDim(framework::make_dim());
-  }
-  framework::DDim actual_dims = framework::make_ddim(trim_dims);
-  return actual_dims;
+  return pten::general::trim_trailing_singular_dims(dims);
 }
 
 template <typename T, typename DeviceContext>
@@ -1779,28 +1675,14 @@ void CommonElementwiseBroadcastForward(
     const framework::Tensor *y, framework::Tensor *z,
     const framework::DDim &x_dims, const framework::DDim &y_dims, Functor func,
     int axis, const bool is_xsize_larger = true) {
-  int max_dim = (std::max)(x_dims.size(), y_dims.size());
-  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(
-      axis, 0,
-      platform::errors::InvalidArgument(
-          "Axis should be great than or equal to 0, but received axis is %d.",
-          axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
-                    platform::errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim, axis));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
-  GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
-                         y_dims_array.data(), out_dims_array.data(), max_dim,
-                         axis);
-
-  CommonForwardBroadcastCPU<Functor, T, OutType>(
-      x, y, z, x_dims_array.data(), y_dims_array.data(), out_dims_array.data(),
-      max_dim, ctx.template device_context<platform::CPUDeviceContext>(), func,
-      is_xsize_larger);
+  z->mutable_data<OutType>(ctx.GetPlace());
+  auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+  auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+  auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+  const auto &dev_ctx = ctx.template device_context<DeviceContext>();
+  pten::CommonElementwiseBroadcastForward(dev_ctx, *pt_x.get(), *pt_y.get(),
+                                          pt_z.get(), x_dims, y_dims, func,
+                                          axis, is_xsize_larger);
 }
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
@@ -1859,6 +1741,10 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
+  z->mutable_data<OutType>(ctx.GetPlace());
+  auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+  auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+  auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
     std::vector<const framework::Tensor *> ins = {x, y};
@@ -1873,61 +1759,10 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
     return;
   }
 
-  auto x_dims = x->dims();
-  auto y_dims = y->dims();
-  bool is_xsize_larger = true;
-  int max_dim = x_dims.size();
-  if (x_dims.size() < y_dims.size()) {
-    is_xsize_larger = false;
-    max_dim = y_dims.size();
-  }
-  TransformFunctor<Functor, T, DeviceContext, OutType> functor(
-      x, y, z, ctx.template device_context<DeviceContext>(), func,
-      is_xsize_larger);
-  if (x_dims == y_dims) {
-    functor.Run();
-    return;
-  }
-
-  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(
-      axis, 0,
-      platform::errors::InvalidArgument(
-          "Axis should be great than or equal to 0, but received axis is %d.",
-          axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
-                    platform::errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim, axis));
-
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
-  if (is_xsize_larger) {
-    auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
-    axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
-    get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
-                 &is_run_common_broadcast);
-  } else {
-    auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
-    axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
-    get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
-                 &is_run_common_broadcast);
-  }
-  // special case for common implementation.
-  // case 1: x=[2,3,1,5], y=[2,1,4,1]
-  // case 2: x=[2,3,4], y=[1,1,4]
-  if (is_run_common_broadcast == 1) {
-    CommonElementwiseBroadcastForward<Functor, DeviceContext, T, OutType>(
-        ctx, x, y, z, x_dims, y_dims, func, axis, is_xsize_larger);
-    return;
-  }
-
-  if (post == 1) {
-    functor.RunRowWise(n, pre);
-    return;
-  } else {
-    functor.RunMidWise(n, pre, post);
-    return;
-  }
+  const auto &dev_ctx =
+      ctx.template device_context<platform::CPUDeviceContext>();
+  pten::ElementwiseCompute<Functor, T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+                                       func, pt_z.get());
 }
 
 // FusedElemwiseAndAct
