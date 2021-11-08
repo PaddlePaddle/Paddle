@@ -90,9 +90,9 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format_tag format() const { return format_; }
+  inline dnnl::memory::format_tag format() const { return format_; }
 
-  inline void set_format(const mkldnn::memory::format_tag format) {
+  inline void set_format(const dnnl::memory::format_tag format) {
     format_ = format;
   }
 
@@ -106,7 +106,7 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
  public:
