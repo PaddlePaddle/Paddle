@@ -627,6 +627,7 @@ __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
   // calculate the offset, means the addr where each thread really start.
   // 1. reduce for each thread
   MPType input_compute[REDUCE_VEC_SIZE];
+  Tx input_reg[REDUCE_VEC_SIZE];
   for (int i = 0; i < loop_left; i += stride_left) {
     int input_offset = left_index_calculator(left_idx + i);
     const Tx* input = x + input_offset;
@@ -635,11 +636,12 @@ __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
     int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
     for (; input_idx + block_size < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
-      kps::Init<MPType, REDUCE_VEC_SIZE>(&input_compute[0], init);
-      kps::ReadDataReduce<Tx, MPType, 1, REDUCE_VEC_SIZE, 1, 1, Calculator,
-                          TransformOp, false>(
-          &input_compute[0], input, input_idx, reduce_index_calculator, 1,
-          reduce_num, 1, stride, transformer, reduce_last_dim);
+      kps::ReadDataReduce<Tx, Tx, 1, REDUCE_VEC_SIZE, 1, 1, Calculator,
+                          kps::IdentityFunctor<Tx>, false>(
+          &input_reg[0], input, input_idx, reduce_index_calculator, 1,
+          reduce_num, 1, stride, kps::IdentityFunctor<Tx>(), reduce_last_dim);
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+          &input_compute[0], &input_reg[0], transformer);
       kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
                   kps::details::ReduceMode::kLocalMode>(
           &reduce_var, &input_compute[0], reducer, reduce_last_dim);

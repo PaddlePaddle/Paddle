@@ -28,34 +28,34 @@ class ApiMaxTest(unittest.TestCase):
         else:
             self.place = core.CPUPlace()
 
-#    def test_api(self):
-#        paddle.enable_static()
-#        with paddle.static.program_guard(paddle.static.Program(),
-#                                         paddle.static.Program()):
-#            data = paddle.static.data("data", shape=[10, 10], dtype="float32")
-#            result_max = paddle.max(x=data, axis=1)
-#            exe = paddle.static.Executor(self.place)
-#            input_data = np.random.rand(10, 10).astype(np.float32)
-#            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
-#        self.assertEqual((res == np.max(input_data, axis=1)).all(), True)
-#
-#        with paddle.static.program_guard(paddle.static.Program(),
-#                                         paddle.static.Program()):
-#            data = paddle.static.data("data", shape=[10, 10], dtype="int64")
-#            result_max = paddle.max(x=data, axis=0)
-#            exe = paddle.static.Executor(self.place)
-#            input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
-#            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
-#        self.assertEqual((res == np.max(input_data, axis=0)).all(), True)
-#
-#        with paddle.static.program_guard(paddle.static.Program(),
-#                                         paddle.static.Program()):
-#            data = paddle.static.data("data", shape=[10, 10], dtype="int64")
-#            result_max = paddle.max(x=data, axis=(0, 1))
-#            exe = paddle.static.Executor(self.place)
-#            input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
-#            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
-#        self.assertEqual((res == np.max(input_data, axis=(0, 1))).all(), True)
+    def test_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data = paddle.static.data("data", shape=[10, 10], dtype="float32")
+            result_max = paddle.max(x=data, axis=1)
+            exe = paddle.static.Executor(self.place)
+            input_data = np.random.rand(10, 10).astype(np.float32)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
+        self.assertEqual((res == np.max(input_data, axis=1)).all(), True)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data = paddle.static.data("data", shape=[10, 10], dtype="int64")
+            result_max = paddle.max(x=data, axis=0)
+            exe = paddle.static.Executor(self.place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
+        self.assertEqual((res == np.max(input_data, axis=0)).all(), True)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data = paddle.static.data("data", shape=[10, 10], dtype="int64")
+            result_max = paddle.max(x=data, axis=(0, 1))
+            exe = paddle.static.Executor(self.place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
+        self.assertEqual((res == np.max(input_data, axis=(0, 1))).all(), True)
 
     def test_errors(self):
         paddle.enable_static()
