@@ -72,7 +72,7 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
     prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],
-                       input_dims.d[1], numel);
+                       input_dims.d[1], false /*channel_last*/, numel);
   } else if (mode_ == "element") {
     operators::math::PreluElementWiseDirectCUDAFunctor<float>
         prelu_element_wise;
@@ -171,7 +171,7 @@ int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
     prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],
-                       input_dims.d[1], numel);
+                       input_dims.d[1], false /*channel_last*/, numel);
   } else if (mode_ == "element") {
     operators::math::PreluElementWiseDirectCUDAFunctor<float>
         prelu_element_wise;
