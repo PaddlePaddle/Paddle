@@ -47,12 +47,13 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     V = (np.random.random(
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
+    W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=np.single)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
     WK = W[stride:2 * stride].reshape((vec_size, vec_size))
     WV = W[2 * stride:3 * stride].reshape((vec_size, vec_size))
-    WO = W[3 * stride:].reshape((vec_size, vec_size))
+    WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
     return (Q, K, V, W, WQ, WK, WV, WO)
 
@@ -201,10 +202,14 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
 
     def _get_grads_from_ref(self):
         return np.concatenate(
-            (self.ref_mha.q_proj.weight.grad.numpy(),
-             self.ref_mha.k_proj.weight.grad.numpy(),
-             self.ref_mha.v_proj.weight.grad.numpy(),
-             self.ref_mha.out_proj.weight.grad.numpy()),
+            (self.ref_mha.q_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.k_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.v_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.out_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.q_proj.bias.grad.numpy().flatten(),
+             self.ref_mha.k_proj.bias.grad.numpy().flatten(),
+             self.ref_mha.v_proj.bias.grad.numpy().flatten(),
+             self.ref_mha.out_proj.bias.grad.numpy().flatten()),
             axis=0)
 
 
@@ -358,10 +363,14 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
 
     def _get_grads_from_ref(self):
         return np.concatenate(
-            (self.ref_mha.q_proj.weight.grad.numpy(),
-             self.ref_mha.k_proj.weight.grad.numpy(),
-             self.ref_mha.v_proj.weight.grad.numpy(),
-             self.ref_mha.out_proj.weight.grad.numpy()),
+            (self.ref_mha.q_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.k_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.v_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.out_proj.weight.grad.numpy().flatten(),
+             self.ref_mha.q_proj.bias.grad.numpy().flatten(),
+             self.ref_mha.k_proj.bias.grad.numpy().flatten(),
+             self.ref_mha.v_proj.bias.grad.numpy().flatten(),
+             self.ref_mha.out_proj.bias.grad.numpy().flatten()),
             axis=0)
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

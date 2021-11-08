@@ -201,7 +201,7 @@ class MHAKernel : public framework::OpKernel<T> {
     // Setup Attention Desc
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
         MHASingleton::Instance().Data(key).attn_desc,
-        CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler, dtype,
+        CUDNN_ATTN_ENABLE_PROJ_BIASES, attn_heads, attn_sm_scaler, dtype,
         comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
         attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
         attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,

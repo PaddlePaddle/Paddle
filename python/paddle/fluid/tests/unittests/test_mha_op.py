@@ -22,8 +22,8 @@ import paddle.fluid.core as core
 import paddle
 
 
-def _get_attn_output(q, k, v, wq, wk, wv, wo, seq_len, nheads, vec_size,
-                     sm_scaler):
+def _get_attn_output(q, k, v, wq, wk, wv, wo,
+                     seq_len, nheads, vec_size, sm_scaler):
 
     origin_dtype = q.dtype
     np_compute_dtype = np.double if origin_dtype == np.double else np.single
@@ -38,11 +38,11 @@ def _get_attn_output(q, k, v, wq, wk, wv, wo, seq_len, nheads, vec_size,
     wv = wv.astype(np_compute_dtype)
     wo = wo.astype(np_compute_dtype)
 
-    q_bar = np.matmul(q, wq).reshape(
+    q_bar = (np.matmul(q_bar, wq)).reshape(
         (-1, seq_len, nheads, proj_size)).transpose((0, 2, 1, 3))
-    k_bar = np.matmul(k, wk).reshape(
+    k_bar = (np.matmul(k_bar, wk)).reshape(
         (-1, seq_len, nheads, proj_size)).transpose((0, 2, 1, 3))
-    v_bar = np.matmul(v, wv).reshape(
+    v_bar = (np.matmul(v_bar, wv)).reshape(
         (-1, seq_len, nheads, proj_size)).transpose((0, 2, 1, 3))
 
     beta = np.matmul(q_bar, k_bar.transpose((0, 1, 3, 2))) * sm_scaler
@@ -66,13 +66,14 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
-    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size,)).astype(dtype)
+    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
+    W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=dtype)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
     WK = W[stride:2 * stride].reshape((vec_size, vec_size))
     WV = W[2 * stride:3 * stride].reshape((vec_size, vec_size))
-    WO = W[3 * stride:].reshape((vec_size, vec_size))
+    WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
     return (Q, K, V, W, WQ, WK, WV, WO)
 
@@ -94,13 +95,14 @@ def _generate_varlen_data(seq_lens, vec_size, dtype):
     Q = np.concatenate(Qs, axis=1)
     K = np.concatenate(Ks, axis=1)
     V = np.concatenate(Vs, axis=1)
-    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size,)).astype(dtype)
+    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
+    W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=dtype)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
     WK = W[stride:2 * stride].reshape((vec_size, vec_size))
     WV = W[2 * stride:3 * stride].reshape((vec_size, vec_size))
-    WO = W[3 * stride:].reshape((vec_size, vec_size))
+    WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
     return (Q, K, V, W, WQ, WK, WV, WO)
 
@@ -221,11 +223,6 @@ class TestMHAOpPadVarLenFP16(OpTest):
         self.place = core.CUDAPlace(0)
         self.init_dtype_type()
 
-        # batch_size = 32
-        # nheads = 4
-        # max_seq_len = 128
-        # vec_size = 256 
-        # below settings is tested but take too long time
         batch_size = 4
         nheads = 4
         max_seq_len = 4
@@ -262,9 +259,9 @@ class TestMHAOpPadVarLenFP16(OpTest):
 
         O = None
         for sid, slen in enumerate(qo_slen):
-            sub_o = _get_attn_output(Q[sid, :slen, :, :], K[sid, :slen, :, :],
-                                     V[sid, :slen, :, :], WQ, WK, WV, WO, slen,
-                                     nheads, vec_size,
+            sub_o = _get_attn_output(Q[sid, :slen, :, :], K[sid, :slen, :, :], 
+                                     V[sid, :slen, :, :], WQ, WK, WV, WO, 
+                                     slen, nheads, vec_size,
                                      self.attrs["attn_sm_scaler"])
             pad_o = np.zeros([1, max_seq_len, 1, vec_size])
             pad_o[:, :slen, :, :] = sub_o
@@ -370,7 +367,8 @@ class TestMHAOpVarLenFP16(OpTest):
             sub_o = _get_attn_output(Q[0, offset[sid]:offset[sid + 1], :, :],
                                      K[0, offset[sid]:offset[sid + 1], :, :],
                                      V[0, offset[sid]:offset[sid + 1], :, :],
-                                     WQ, WK, WV, WO, slen, nheads, vec_size,
+                                     WQ, WK, WV, WO,
+                                     slen, nheads, vec_size,
                                      self.attrs["attn_sm_scaler"])
             if O is not None:
                 O = np.concatenate((O, sub_o), axis=1)

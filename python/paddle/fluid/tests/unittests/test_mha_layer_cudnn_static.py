@@ -47,12 +47,13 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     V = (np.random.random(
         (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
+    W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=np.single)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
     WK = W[stride:2 * stride].reshape((vec_size, vec_size))
     WV = W[2 * stride:3 * stride].reshape((vec_size, vec_size))
-    WO = W[3 * stride:].reshape((vec_size, vec_size))
+    WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
     return (Q, K, V, W, WQ, WK, WV, WO)
 
@@ -164,7 +165,8 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
     def test_grads(self):
 
         q_input_3dim_grad, k_input_3dim_grad, v_input_3dim_grad, \
-        wq_grad, wk_grad, wv_grad, wo_grad = self.exe.run(self.ref_main_prog,
+        wq_grad, wk_grad, wv_grad, wo_grad, \
+        bq_grad, bk_grad, bv_grad, bo_grad, = self.exe.run(self.ref_main_prog,
                     feed={"q_input_3dim": self.Q.reshape((self.batch_size, self.seq_len, self.vec_size)),
                         "k_input_3dim": self.K.reshape((self.batch_size, self.seq_len, self.vec_size)),
                         "v_input_3dim": self.V.reshape((self.batch_size, self.seq_len, self.vec_size)),
@@ -173,7 +175,11 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
                                 "{}.w_0@GRAD".format(self.ref_mha.q_proj.full_name()),
                                 "{}.w_0@GRAD".format(self.ref_mha.k_proj.full_name()),
                                 "{}.w_0@GRAD".format(self.ref_mha.v_proj.full_name()),
-                                "{}.w_0@GRAD".format(self.ref_mha.out_proj.full_name())])
+                                "{}.w_0@GRAD".format(self.ref_mha.out_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.q_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.k_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.v_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.out_proj.full_name()),])
 
         q_input_grad, k_input_grad, v_input_grad, \
         cdunn_w_grad = self.exe.run(self.cudnn_main_prog,
@@ -185,8 +191,10 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
                             "{}.w_0@GRAD".format(self.cudnn_mha.full_name())])
 
         ref_weight_grad = np.concatenate(
-                            (np.array(wq_grad), np.array(wk_grad), 
-                             np.array(wv_grad), np.array(wo_grad)),
+                            (np.array(wq_grad).flatten(), np.array(wk_grad).flatten(), 
+                             np.array(wv_grad).flatten(), np.array(wo_grad).flatten(),
+                             np.array(bq_grad).flatten(), np.array(bk_grad).flatten(), 
+                             np.array(bv_grad).flatten(), np.array(bo_grad).flatten(),),
                             axis=0)
 
         self.assertTrue(compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
@@ -327,7 +335,8 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
     def test_grads(self):
 
         q_input_3dim_grad, k_input_3dim_grad, v_input_3dim_grad, \
-        wq_grad, wk_grad, wv_grad, wo_grad = self.exe.run(self.ref_main_prog,
+        wq_grad, wk_grad, wv_grad, wo_grad, \
+        bq_grad, bk_grad, bv_grad, bo_grad, = self.exe.run(self.ref_main_prog,
                     feed={"q_input_3dim": self.Q.reshape((self.batch_size, self.seq_len, self.vec_size)),
                         "k_input_3dim": self.K.reshape((self.batch_size, self.seq_len, self.vec_size)),
                         "v_input_3dim": self.V.reshape((self.batch_size, self.seq_len, self.vec_size)),
@@ -336,7 +345,11 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
                                 "{}.w_0@GRAD".format(self.ref_mha.q_proj.full_name()),
                                 "{}.w_0@GRAD".format(self.ref_mha.k_proj.full_name()),
                                 "{}.w_0@GRAD".format(self.ref_mha.v_proj.full_name()),
-                                "{}.w_0@GRAD".format(self.ref_mha.out_proj.full_name())])
+                                "{}.w_0@GRAD".format(self.ref_mha.out_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.q_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.k_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.v_proj.full_name()),
+                                "{}.b_0@GRAD".format(self.ref_mha.out_proj.full_name()),])
 
         q_input_grad, k_input_grad, v_input_grad, \
         cdunn_w_grad = self.exe.run(self.cudnn_main_prog,
@@ -348,8 +361,10 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
                             "{}.w_0@GRAD".format(self.cudnn_mha.full_name())])
 
         ref_weight_grad = np.concatenate(
-                            (np.array(wq_grad), np.array(wk_grad), 
-                             np.array(wv_grad), np.array(wo_grad)),
+                            (np.array(wq_grad).flatten(), np.array(wk_grad).flatten(), 
+                             np.array(wv_grad).flatten(), np.array(wo_grad).flatten(),
+                             np.array(bq_grad).flatten(), np.array(bk_grad).flatten(), 
+                             np.array(bv_grad).flatten(), np.array(bo_grad).flatten(),),
                             axis=0)
         self.assertTrue(compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
             "[Test*CUDNNMHALayerWithSeqDataCache-Static] weight_grads are miss-matched.")

@@ -167,7 +167,7 @@ class CUDNNMultiHeadAttention(Layer):
         self.meta_data.sm_scaler = self.meta_data.proj_size**-0.5
 
         self.weight = self.create_parameter(
-            shape=(embed_dim * embed_dim * 4, ),
+            shape=(embed_dim * embed_dim * 4 + embed_dim * 4,),
             attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False)
@@ -233,18 +233,20 @@ class CUDNNMultiHeadAttention(Layer):
         WQ_P = self.weight[:stride].reshape(param_shape)
         WK_P = self.weight[stride:2 * stride].reshape(param_shape)
         WV_P = self.weight[2 * stride:3 * stride].reshape(param_shape)
-        WO_P = self.weight[3 * stride:].reshape(param_shape)
+        WO_P = self.weight[3 * stride:4 * stride].reshape(param_shape)
 
-        WQ_B = np.zeros(self._embed_dim, dtype=self._dtype)
-        WK_B = np.zeros(self._embed_dim, dtype=self._dtype)
-        WV_B = np.zeros(self._embed_dim, dtype=self._dtype)
-        WO_B = np.zeros(self._embed_dim, dtype=self._dtype)
+        bias_start = 4 * stride
+        WQ_B = self.weight[bias_start: bias_start + self._embed_dim]
+        WK_B = self.weight[bias_start + self._embed_dim: bias_start + 2*self._embed_dim]
+        WV_B = self.weight[bias_start + 2*self._embed_dim:bias_start + 3*self._embed_dim]
+        WO_B = self.weight[bias_start + 3*self._embed_dim :]
 
         return WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B
 
     def _merge_WQKVO_to_W(self, WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
         W = np.concatenate(
-            [WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten()])
+            [WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten(),
+             WQ_B.flatten(), WK_B.flatten(), WV_B.flatten(), WO_B.flatten()])
         return W
 
     @staticmethod
