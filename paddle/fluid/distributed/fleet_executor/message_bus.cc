@@ -62,9 +62,10 @@ void MessageBus::ListenPort() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
   InterceptorMessageServiceImpl interceptor_message_service;
-  PADDLE_ENFORCE_EQ(
-      server_.AddService(&interceptor_message_service), 0,
-      platform::errors::Unavailable("Message bus: init brpc service error."));
+  PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service,
+                                       brpc::SERVER_DOESNT_OWN_SERVICE),
+                    0, platform::errors::Unavailable(
+                           "Message bus: init brpc service error."));
 
   // start the server
   const char* ip_for_brpc = addr_.c_str();
@@ -120,8 +121,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.timeout_ms = 1000;
-  options.max_retry = 10;
-  options.interval_ms = 100;
+  options.max_retry = 5;
   PADDLE_ENFORCE_EQ(
       channel.Init(dst_ip_for_brpc, &options), 0,
       platform::errors::Unavailable("Message bus: init brpc channel error."));
