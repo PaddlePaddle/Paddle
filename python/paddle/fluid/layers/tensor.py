@@ -1648,8 +1648,8 @@ def eye(num_rows,
     This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere. 
 
     Args:
-        num_rows(int): the number of rows in each batch tensor.
-        num_columns(int, optional): the number of columns in each batch tensor.
+        num_rows(int|Tensor): the number of rows in each batch tensor.
+        num_columns(int|Tensor, optional): the number of columns in each batch tensor.
             If None, default: num_rows.
         batch_shape(list, optional): If provided, the returned tensor will have a leading
             batch size of this shape, the data type of ``batch_shape`` is int. Default is None.
@@ -1683,32 +1683,54 @@ def eye(num_rows,
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if num_columns is not None:
-        if not isinstance(num_columns, int) or num_columns < 0:
-            raise TypeError("num_columns should be a non-negative int")
-    else:
-        num_columns = num_rows
 
     if in_dygraph_mode():
-        out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
-                         num_columns)
+        attrs = ()
+        num_rows_tensor = None
+        num_columns_tensor = None
+
+        if isinstance(num_rows, Variable):
+            num_rows_tensor = num_rows
+            num_rows_tensor.stop_gradient = True
+        else:
+            attrs += ('num_rows', num_rows)
+
+        if isinstance(num_columns, Variable):
+            num_columns_tensor = num_columns
+            num_columns_tensor.stop_gradient = True
+        else:
+            attrs += ('num_columns', num_columns)
+
+        out = _C_ops.eye(num_rows_tensor, num_columns_tensor, 'dtype', dtype,
+                         *attrs)
 
     else:
         helper = LayerHelper("eye", **locals())
         check_dtype(dtype, 'dtype',
                     ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
-        if not isinstance(num_rows, int) or num_rows < 0:
-            raise TypeError("num_rows should be a non-negative int")
         out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        inputs = {}
+        attrs = {'dtype': dtype}
+        if isinstance(num_rows, Variable):
+            num_rows.stop_gradient = True
+            inputs['NumRows'] = num_rows
+        else:
+            if not isinstance(num_rows, int) or num_rows < 0:
+                raise TypeError("num_rows should be a non-negative int")
+            attrs["num_rows"] = num_rows
+
+        if isinstance(num_columns, Variable):
+            num_columns.stop_gradient = True
+            inputs['NumColumns'] = num_columns
+        else:
+            attrs["num_columns"] = num_columns
+
         helper.append_op(
             type='eye',
-            inputs={},
+            inputs=inputs,
             outputs={'Out': [out]},
-            attrs={
-                'num_rows': num_rows,
-                'num_columns': num_columns,
-                'dtype': dtype
-            },
+            attrs=attrs,
             stop_gradient=True)
 
     if batch_shape is not None:

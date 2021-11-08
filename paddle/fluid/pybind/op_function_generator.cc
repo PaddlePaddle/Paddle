@@ -51,6 +51,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"reshape2", {"X", "Shape"}},
     {"expand", {"X", "ExpandTimes"}},
     {"slice", {"Input", "StartsTensor", "EndsTensor"}},
+    {"eye", {"NumRows", "NumColumns"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},

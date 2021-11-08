@@ -387,8 +387,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
     Args:
-        num_rows(int): the number of rows in each batch Tensor.
-        num_columns(int, optional): the number of columns in each batch Tensor.
+        num_rows(int|Tensor): the number of rows in each batch Tensor.
+        num_columns(int|Tensor, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
             It should be int32, int64, float16, float32, float64. Default: if None, the data type

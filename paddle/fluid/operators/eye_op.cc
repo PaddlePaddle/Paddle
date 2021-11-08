@@ -26,16 +26,8 @@ class EyeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Output(Out) of EyeOP should not be null."));
     auto num_rows = ctx->Attrs().Get<int64_t>("num_rows");
-    PADDLE_ENFORCE_EQ(
-        num_rows >= 0, true,
-        platform::errors::InvalidArgument(
-            "The value of Input(num_rows) should be non-negative int."));
     auto num_columns = ctx->Attrs().Get<int64_t>("num_columns");
     if (num_columns == -1) num_columns = num_rows;
-    PADDLE_ENFORCE_EQ(
-        num_columns >= 0, true,
-        platform::errors::InvalidArgument(
-            "The value of Input(num_columns) should be non-negative int."));
     ctx->SetOutputDim("Out", {num_rows, num_columns});
   }
 
@@ -45,6 +37,15 @@ class EyeOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "NumRows" || var_name == "NumColumns") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -64,8 +65,19 @@ class EyeOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
+    AddInput("NumRows",
+             "(Tensor<int64_t>, optional) If provided, eye will use this."
+             "It has the highest priority of NumRows "
+             "and attr(num_rows).")
+        .AsDispensable();
+    AddInput("NumColumns",
+             "(Tensor<int64_t>, optional) If provided, eye will use this."
+             "It has the highest priority of NumColumns and "
+             "attr(num_columns).")
+        .AsDispensable();
     AddAttr<int64_t>("num_rows",
-                     "(int64_t) the number of rows in output tensor");
+                     "(int64_t) the number of rows in output tensor")
+        .SetDefault(-1);
     AddAttr<int64_t>("num_columns",
                      "(int64_t) the number of columns in output tensor."
                      "Default -1 means that num_columns=num_rows")
