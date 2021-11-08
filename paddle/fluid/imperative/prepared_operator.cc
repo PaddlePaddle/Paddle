@@ -306,8 +306,13 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
     paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
     for (auto var : outs_vector) {
       auto* variable = var->MutableVar();
+
+      auto tmp_def = out_def;
+      if (out_def.dtype == pten::DataType::UNDEFINED) {
+        tmp_def.dtype = pten::TransToPtenDataType(var->DataType());
+      }
       tmp_outputs.emplace_back(
-          experimental::MakePtenTensorBaseFromVar(variable, out_def));
+          experimental::MakePtenTensorBaseFromVar(variable, tmp_def));
     }
     op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
   }

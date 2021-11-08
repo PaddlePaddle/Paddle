@@ -76,4 +76,6 @@ PT_REGISTER_KERNEL("cast",
                    paddle::platform::float16,
                    paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   paddle::platform::complex<double>) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

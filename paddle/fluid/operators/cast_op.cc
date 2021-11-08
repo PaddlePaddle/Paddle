@@ -107,6 +107,19 @@ class CastOp : public framework::OperatorWithKernel {
   }
 };
 
+class CastVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto var_data_type = static_cast<framework::proto::VarType::Type>(
+        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
+    if (var_data_type < 0) {
+      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
+    } else {
+      ctx->SetOutputDataType("Out", var_data_type);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -115,7 +128,7 @@ using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(cast, ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CastOpProtoMaker);
+                  ops::CastOpProtoMaker, ops::CastVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
     cast, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>,
     ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,
