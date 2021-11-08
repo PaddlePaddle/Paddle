@@ -149,11 +149,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
 bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
   std::shared_ptr<Carrier> carrier = FleetExecutor::GetCarrier();
-  if (carrier) {
-    // TODO(Yuang): waiting for implementation in fleet_executor.cc
-    return carrier->EnqueueInterceptorMessage(interceptor_message);
-  }
-  return true;
+  return carrier->EnqueueInterceptorMessage(interceptor_message);
 }
 
 }  // namespace distributed
