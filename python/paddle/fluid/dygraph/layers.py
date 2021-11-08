@@ -121,9 +121,6 @@ class Layer(core.Layer):
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
-        #self._parameters_transform_map = {}
-        #self._buffers_transform_map = {}
-
         self._casted_by_pure_fp16 = False
 
         self._state_dict_hooks = collections.OrderedDict()
@@ -1473,32 +1470,14 @@ class Layer(core.Layer):
             if param is not None:
                 with no_grad():
                     param_applied = func(param, device, dtype, blocking)
-                    '''
-                    assert param.is_leaf
-                    param_applied.stop_gradient = param.stop_gradient
-                    if hasattr(param_applied, 'is_distributed'):
-                        param_applied.is_distributed = param.is_distributed
-                    self._parameters[key] = param_applied
-                    '''
 
                 if param.grad is not None:
                     with no_grad():
                         grad_applied = func(param._grad_ivar(), device, dtype,
                                             blocking)
-                        '''
-                        grad_applied.stop_gradient = param._grad_ivar(
-                        ).stop_gradient
-                        if hasattr(param._grad_ivar(), 'is_distributed'):
-                            grad_applied.is_distributed = param._grad_ivar(
-                            ).is_distributed
-                        self._parameters[key]._set_grad_ivar(grad_applied)
-                        '''
-
-            #self._parameters_transform_map[id(param)] = [param_applied, key]
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
-            #self._buffers_transform_map[id(buf)] = [self._buffers[key], key]
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
@@ -1586,6 +1565,8 @@ class Layer(core.Layer):
                         convert_np_dtype_to_dtype_(dtype))
                 else:
                     size_dtype = core.size_of_dtype(dtype)
+                # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
+                # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
                 waiting_alloc_memory = (
                     (t.numel().numpy()[0] * size_dtype) / 256 + 1) * 256 * 1.2
                 if gpu_memory_available < waiting_alloc_memory:
