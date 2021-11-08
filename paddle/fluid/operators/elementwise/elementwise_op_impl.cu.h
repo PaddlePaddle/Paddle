@@ -305,6 +305,9 @@ __global__ void ElementwiseKernel(
     ElementwiseKernelImpl<InT, OutT, Functor, VecSize, Arity, Rank, IsBroadcast,
                           false>(ins, out, use_broadcast, numel, configs,
                                  offset, func);
+#ifdef PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+    break;
+#endif
   }
 
   if (offset < numel) {
