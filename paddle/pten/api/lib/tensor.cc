@@ -203,6 +203,33 @@ void Tensor::set_impl(const std::shared_ptr<pten::TensorBase> &impl) {
   impl_ = impl;
 }
 
+bool Tensor::defined() const { return impl_ != nullptr; }
+
+bool Tensor::initialized() const { return impl_->initialized(); }
+
+void Tensor::reset() { impl_.reset(); }
+
+Tensor &Tensor::operator=(const Tensor &x) & {
+  impl_ = x.impl_;
+  autograd_meta_ = x.autograd_meta_;
+  return *this;
+}
+
+Tensor &Tensor::operator=(Tensor &&x) & {
+  impl_ = std::move(x.impl_);
+  autograd_meta_ = std::move(x.autograd_meta_);
+  return *this;
+}
+
+AbstractAutogradMeta *Tensor::get_autograd_meta() const {
+  return autograd_meta_.get();
+}
+
+void Tensor::set_autograd_meta(
+    std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
+  autograd_meta_ = std::move(autograd_meta);
+}
+
 Tensor::Tensor(const PlaceType &place)
     : tensor_(std::make_shared<framework::LoDTensor>()),
       place_(place),

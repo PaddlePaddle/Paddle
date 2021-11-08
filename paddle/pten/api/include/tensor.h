@@ -18,14 +18,29 @@ limitations under the License. */
 #include <memory>
 #include <utility>
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+using gpuStream_t = cudaStream_t;
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+using gpuStream_t = hipStream_t;
+#endif
+
 #include "paddle/pten/api/ext/ext_dll_decl.h"
-#include "paddle/pten/api/ext/ext_dtype.h"
+#include "paddle/pten/api/ext/ext_place.h"
 #include "paddle/pten/common/data_type.h"
+
+namespace pten {
+class TensorBase;
+}  // namespace pten
 
 namespace paddle {
 namespace experimental {
 
 class Tensor;
+class CompatiblePTenTensorUtils;
 
 class AbstractAutogradMeta {
  public:
@@ -269,7 +284,15 @@ class Tensor final {
    */
   void set_impl(const std::shared_ptr<pten::TensorBase>& impl);
 
-  // TODO(chenweihang): slice and split methods use kernels?
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  /**
+   * @brief Get the stream where the tensor is currently located
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return gpuStream_t
+   */
+  gpuStream_t stream() const;
+#endif
 
   /* Part 5: Data Transform methods */
 
@@ -300,7 +323,7 @@ class Tensor final {
    * @return true
    * @return false
    */
-  bool defined() const { return impl_ != nullptr; }
+  bool defined() const;
 
   /**
    * @brief Determine whether Tensor is initialized
@@ -308,12 +331,12 @@ class Tensor final {
    * @return true
    * @return false
    */
-  bool initialized() const { return impl_->initialized(); }
+  bool initialized() const;
 
   /**
    * @brief Reset the Tensor implementation
    */
-  void reset() { impl_.reset(); }
+  void reset();
 
   /* Part 7: Operator overloading */
 
@@ -323,11 +346,7 @@ class Tensor final {
    * @param x
    * @return Tensor&
    */
-  Tensor& operator=(const Tensor& x) & {
-    impl_ = x.impl_;
-    autograd_meta_ = x.autograd_meta_;
-    return *this;
-  }
+  Tensor& operator=(const Tensor& x) &;
 
   /**
    * @brief Move assignment operator
@@ -335,11 +354,7 @@ class Tensor final {
    * @param x
    * @return Tensor&
    */
-  Tensor& operator=(Tensor&& x) & {
-    impl_ = std::move(x.impl_);
-    autograd_meta_ = std::move(x.autograd_meta_);
-    return *this;
-  }
+  Tensor& operator=(Tensor&& x) &;
 
   /* Part 8: Autograd methods */
 
@@ -348,20 +363,19 @@ class Tensor final {
    *
    * @return AbstractAutogradMeta*
    */
-  AbstractAutogradMeta* get_autograd_meta() const {
-    return autograd_meta_.get();
-  }
+  AbstractAutogradMeta* get_autograd_meta();
 
   /**
    * @brief Set the autograd meta object
    *
    * @param autograd_meta
    */
-  void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
-    autograd_meta_ = std::move(autograd_meta);
-  }
+  void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta);
 
   /* Part 9: Auto generated Tensor methods */
+
+ private:
+  friend class CompatiblePTenTensorUtils;
 
  private:
   /**
@@ -399,7 +413,7 @@ class Tensor final {
 
   /**
    * Tensor name: used for adapt original execution mechanism and debug analysis
-   * in the development of new dygraph.
+   * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_;
 };
