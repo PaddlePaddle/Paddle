@@ -58,6 +58,11 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
                                           const platform::DeviceContext* ctx) {
   if (var->IsType<LoDTensor>()) {
     Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
+  } else if (var->IsType<
+                 operators::reader::
+                     OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+    // var->Clear(); // TODO(xiongkun03) can we clear directly? Why we must use
+    // Add interface?
   } else if (var->IsType<SelectedRows>()) {
     Add(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder(),
         event, ctx);
@@ -66,6 +71,10 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }
+  } else if (var->IsType<std::vector<Scope*>>()) {
+    // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
+    // refer to executor.cc to see what old garbage collector does.
+    // do nothing, because the sub scope will be deleted by sub-executor.
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "The variable(%s) is not supported in eager deletion.",
