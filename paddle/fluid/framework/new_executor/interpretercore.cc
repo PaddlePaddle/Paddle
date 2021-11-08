@@ -60,6 +60,13 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   // convert to run graph
 }
 
+InterpreterCore::~InterpreterCore() {
+  // cancle gc's thread
+  gc_.~InterpreterCoreGarbageCollector();
+
+  async_work_queue_.Cancel();
+}
+
 void InterpreterCore::AddFetch(const std::vector<std::string>& fetch_names) {
   auto* fetch_holder = main_program_.MutableBlock(0)->Var("fetch_vars");
   fetch_holder->SetType(proto::VarType::FETCH_LIST);

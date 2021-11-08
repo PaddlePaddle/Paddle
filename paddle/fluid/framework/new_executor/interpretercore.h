@@ -44,6 +44,7 @@ class InterpreterCore {
                   VariableScope* global_scope,
                   const std::vector<std::string>& feed_names,
                   const std::vector<std::string>& fetch_names);
+  ~InterpreterCore();
 
   paddle::framework::FetchList Run(
       const std::vector<framework::LoDTensor>& feed_tensors);
