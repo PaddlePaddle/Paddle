@@ -119,10 +119,23 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
 }
 
 void HeterSectionWorker::RunBackward(int micro_id) {
-  for (auto& op : backward_ops_) {
-    VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
+  for (size_t i = 0; i < backward_ops_.size(); i++) {
+    auto& op = backward_ops_[i];
+    VLOG(3) << "Backward: start to run op " << op->Type() << " for micro-batch "
             << micro_id;
+    if (debug_) {
+      timeline_.Start();
+    }
     op->Run(*((*microbatch_scopes_)[micro_id]), place_);
+    dev_ctx_->Wait();
+    if (debug_) {
+      timeline_.Pause();
+      int offset = forward_ops_.size();
+      op_total_time_[i + offset] += timeline_.ElapsedSec();
+      total_time_ += timeline_.ElapsedSec();
+    }
+    VLOG(3) << "Backward: finish running op " << op->Type()
+            << " for micro-batch " << micro_id;
   }
 }
 
@@ -144,26 +157,49 @@ void HeterSectionWorker::MiniBatchBarrier() {
     // backward data has been deserialized to micro scope
     // now run backward computation
     RunBackward(micro_id);
+    batch_num_++;
+    BatchPostProcess();
   }
+  micro_ids_.clear();
 }
 
 void HeterSectionWorker::RunListen() { listen_op_->Run(*root_scope_, place_); }
 
 void HeterSectionWorker::RunForward(int micro_id) {
-  bool is_first_stage = (pipeline_stage_ == 0);
-  if (is_first_stage) {
+  if (pipeline_stage_ == 0) {
     BindingDataFeedMemory(micro_id);
+    if (debug_) {
+      timeline_.Start();
+    }
     int cur_micro_batch = device_reader_->Next();
     if (cur_micro_batch <= 0) {
       epoch_finish_ = true;
       return;
     }
-    total_ins_num_ += cur_micro_batch;
+    if (debug_) {
+      timeline_.Pause();
+      read_time_ += timeline_.ElapsedSec();
+      total_time_ += timeline_.ElapsedSec();
+      total_ins_num_ += cur_micro_batch;
+    }
+    VLOG(3) << "read a batch in thread " << thread_id_ << " micro " << micro_id;
   }
-  for (auto& op : forward_ops_) {
-    VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
+  for (size_t i = 0; i < forward_ops_.size(); i++) {
+    auto& op = forward_ops_[i];
+    VLOG(3) << "Forward: start to run op " << op->Type() << " for micro-batch "
             << micro_id;
+    if (debug_) {
+      timeline_.Start();
+    }
     op->Run(*((*microbatch_scopes_)[micro_id]), place_);
+    dev_ctx_->Wait();
+    if (debug_) {
+      timeline_.Pause();
+      op_total_time_[i] += timeline_.ElapsedSec();
+      total_time_ += timeline_.ElapsedSec();
+    }
+    VLOG(3) << "Forward: finish running op " << op->Type()
+            << " for micro-batch " << micro_id;
   }
 }
 
@@ -230,12 +266,27 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 }
 
 void HeterSectionWorker::Run() {
+  if (debug_) {
+    size_t total_ops_size = forward_ops_.size() + backward_ops_.size();
+    op_name_.resize(total_ops_size);
+    op_total_time_.resize(total_ops_size);
+    platform::SetNumThreads(1);
+    // forward op + backward op
+    for (auto& op : forward_ops_) {
+      op_name_.push_back(op->Type());
+    }
+    for (auto& op : backward_ops_) {
+      op_name_.push_back(op->Type());
+    }
+    for (size_t i = 0; i < op_total_time_.size(); ++i) {
+      op_total_time_[i] = 0.0;
+    }
+  }
   bool is_first_stage = (pipeline_stage_ == 0);
   bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
   if (is_first_stage) {  // for cpu trainer
     while (!epoch_finish_) {
       // forward
-      // std::vector<int> micro_ids;
       for (int i = 0; i < num_microbatches_; i++) {
         VLOG(5) << "Run " << i << " microbatch";
         RunForward(i);
@@ -247,13 +298,11 @@ void HeterSectionWorker::Run() {
       // backward
       if (micro_ids_.size() > 0) {
         MiniBatchBarrier();
-        PrintFetchVars();
-        micro_ids_.clear();
       }
     }
   } else {  // for heter worker
+    auto heter_server = paddle::distributed::HeterServer::GetInstance();
     while (true) {
-      auto heter_server = paddle::distributed::HeterServer::GetInstance();
       if (heter_server->IsStop()) {
         epoch_finish_ = true;
         break;
@@ -267,40 +316,68 @@ void HeterSectionWorker::Run() {
                               "last stage only receive forward data"));
         RunForward(micro_id);
         RunBackward(micro_id);
+        batch_num_++;
+        BatchPostProcess();
       } else {
         if (message_name.find("forward") != std::string::npos) {
           RunForward(micro_id);
         } else if (message_name.find("backward") != std::string::npos) {
           RunBackward(micro_id);
+          batch_num_++;
+          BatchPostProcess();
         }
       }
     }
   }
 }
 
+void HeterSectionWorker::BatchPostProcess() {
+  PrintFetchVars();
+  // dump param & field
+  if (need_dump_field_) {
+    DumpField(*((*microbatch_scopes_)[0]), dump_mode_, dump_interval_);
+  }
+  if (need_dump_param_ && thread_id_ == 0) {
+    DumpParam(*((*microbatch_scopes_)[0]), batch_num_);
+  }
+  // print each op time
+  if (thread_id_ == 0) {
+    size_t total_ops_size = forward_ops_.size() + backward_ops_.size();
+    if (batch_num_ > 0 && batch_num_ % 100 == 0) {
+      for (size_t i = 0; i < total_ops_size; ++i) {
+        fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
+                op_name_[i].c_str(), op_total_time_[i] / batch_num_);
+      }
+      if (pipeline_stage_ == 0) {
+        fprintf(stderr, "mean read time: %fs\n", read_time_ / batch_num_);
+        fprintf(stderr, "IO percent: %f\n", read_time_ / total_time_ * 100);
+      }
+      fprintf(stderr, "%6.2f instances/s\n", total_ins_num_ / total_time_);
+    }
+  }
+}
+
 void HeterSectionWorker::TrainFiles() {
   total_ins_num_ = 0;
+  batch_num_ = 0;
   platform::SetNumThreads(1);
-  platform::Timer timeline;
-  timeline.Start();
+  timeline_.Start();
   VLOG(3) << "begin section_worker TrainFiles";
   epoch_finish_ = false;
-  bool is_first_stage = (pipeline_stage_ == 0);
-  if (is_first_stage) {
+  if (pipeline_stage_ == 0) {
     device_reader_->Start();
   }
   while (!epoch_finish_) {
     Run();
     dev_ctx_->Wait();
   }
-  timeline.Pause();
-  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+  timeline_.Pause();
+  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline_.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num_;
 }
 
 void HeterSectionWorker::PrintFetchVars() {
   // call count
-  batch_num_ += micro_ids_.size();
   int batch_per_print = fetch_config_.print_period();
   int fetch_var_num = fetch_config_.fetch_var_names_size();
   if (fetch_var_num == 0) {
@@ -327,101 +404,27 @@ void HeterSectionWorker::PrintFetchVars() {
   }
 }
 
-/*
 void HeterSectionWorker::TrainFilesWithProfiler() {
-  platform::SetNumThreads(1);
-  device_reader_->Start();
-  std::vector<double> op_total_time;
-  std::vector<std::string> op_name;
-  for (auto &op : ops_) {
-    op_name.push_back(op->Type());
+  VLOG(3) << "begin section_worker TrainFilesWithProfiler";
+  batch_num_ = 0;
+  epoch_finish_ = false;
+  total_ins_num_ = 0;
+  op_name_.clear();
+  op_total_time_.clear();
+  if (pipeline_stage_ == 0) {
+    device_reader_->Start();
   }
-  op_total_time.resize(ops_.size());
-  for (size_t i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
-  }
-  platform::Timer timeline;
-  double total_time = 0.0;
-  double read_time = 0.0;
-  int cur_batch;
-  int batch_cnt = 0;
-  timeline.Start();
-  uint64_t total_inst = 0;
-  while ((cur_batch = device_reader_->Next()) > 0) {
-    VLOG(3) << "read a batch in thread " << thread_id_;
-    timeline.Pause();
-    read_time += timeline.ElapsedSec();
-    total_time += timeline.ElapsedSec();
-    for (size_t i = 0; i < ops_.size(); ++i) {
-      bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (ops_[i]->Type().find(skip_ops_[t]) != std::string::npos) {
-          need_skip = true;
-          break;
-        }
-      }
-      timeline.Start();
-      VLOG(3) << "Going to run op " << op_name[i];
-      if (!need_skip) {
-        ops_[i]->Run(*thread_scope_, place_);
-#ifdef PADDLE_WITH_HETERPS
-        dev_ctx_->Wait();
-#endif
-      }
-      VLOG(3) << "Op " << op_name[i] << " Finished";
-      timeline.Pause();
-      op_total_time[i] += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
-    }
-
-    if (need_dump_field_) {
-      DumpField(*thread_scope_, dump_mode_, dump_interval_);
-    }
-    if (need_dump_param_ && thread_id_ == 0) {
-      DumpParam(*thread_scope_, batch_cnt);
-    }
-
-    total_inst += cur_batch;
-    ++batch_cnt;
-    PrintFetchVars();
-#ifdef PADDLE_WITH_HETERPS
+  while (!epoch_finish_) {
+    Run();
     dev_ctx_->Wait();
-    VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
-            << " seconds, ins_num: " << total_inst;
-    for (size_t i = 0; i < op_name.size(); ++i) {
-      VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
-              << ", mean time: " << op_total_time[i] / total_inst
-              << "s, totol time:" << op_total_time[i] << "sec";
-    }
-#else
-    if (thread_id_ == 0) {
-      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
-        for (size_t i = 0; i < ops_.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
-        }
-        fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
-        fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+    if (epoch_finish_) {
+      // dump param for debug
+      if (need_dump_field_ || need_dump_param_) {
+        writer_.Flush();
       }
     }
-#endif
-    thread_scope_->DropKids();
-    timeline.Start();
   }
-
-  if (need_dump_field_ || need_dump_param_) {
-    writer_.Flush();
-  }
-
-#if defined PADDLE_WITH_PSCORE
-  if (thread_barrier_) {
-    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
-  }
-#endif
 }
-
-*/
 
 }  // namespace framework
 }  // namespace paddle

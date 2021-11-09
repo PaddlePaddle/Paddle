@@ -58,6 +58,7 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                       Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   ParseDumpConfig(trainer_desc);
+  SetDebug(trainer_desc.debug());
   // for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
   //     i++) {
   //  need_merge_var_names_.push_back(
@@ -97,6 +98,7 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     auto this_worker =
         std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(
             workers_[i]);
+    this_worker->SetDebug(debug_);
     this_worker->SetNeedDumpField(need_dump_field_);
     this_worker->SetNeedDumpParam(need_dump_param_);
     this_worker->SetDumpFieldVector(dump_fields_);
@@ -110,8 +112,6 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     this_worker->SetPipelineStageNum(num_pipeline_stages_);
     this_worker->SetPipelineStage(pipeline_stage_);
   }
-  // set debug here
-  SetDebug(trainer_desc.debug());
 }
 
 void HeterPipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -188,14 +188,24 @@ void HeterPipelineTrainer::Run() {
   if (pipeline_stage_ == 0) {  // for cpu trainer
     for (auto& worker_pair : workers_) {
       auto device_worker = worker_pair.second;
-      threads_.push_back(
-          std::thread(&DeviceWorker::TrainFiles, device_worker.get()));
+      if (!debug_) {
+        threads_.push_back(
+            std::thread(&DeviceWorker::TrainFiles, device_worker.get()));
+      } else {
+        threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                                       device_worker.get()));
+      }
     }
   } else {  // for heter worker
     for (auto& worker_pair : workers_) {
       auto device_worker = worker_pair.second;
-      threads_.push_back(
-          std::thread(&DeviceWorker::TrainFiles, device_worker.get()));
+      if (!debug_) {
+        threads_.push_back(
+            std::thread(&DeviceWorker::TrainFiles, device_worker.get()));
+      } else {
+        threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                                       device_worker.get()));
+      }
     }
   }
   for (auto& th : threads_) {

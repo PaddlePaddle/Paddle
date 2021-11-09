@@ -616,7 +616,7 @@ class HeterSectionWorker : public DeviceWorker {
   void CreateDeviceResource(const ProgramDesc& main_prog) override{};
 
   void TrainFiles() override;
-  void TrainFilesWithProfiler() override{};
+  void TrainFilesWithProfiler() override;
 
   void BindingDataFeedMemory() override {}
   void BindingDataFeedMemory(int micro_id);
@@ -646,6 +646,8 @@ class HeterSectionWorker : public DeviceWorker {
   void RunListen();
   void MiniBatchBarrier();
   void Run();
+  void BatchPostProcess();
+  void SetDebug(bool debug) { debug_ = debug; }
   Scope* GetThreadScope() override { return minibatch_scope_; }
 
   // multi-stream
@@ -670,16 +672,20 @@ class HeterSectionWorker : public DeviceWorker {
   std::unique_ptr<OperatorBase> listen_op_{nullptr};
   std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
   std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
-
   std::shared_ptr<framework::ProgramDesc> program_;
-
   std::shared_ptr<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>
       thread_queue_;
-
   static uint64_t batch_id_;
   uint64_t total_ins_num_ = 0;
   platform::DeviceContext* dev_ctx_ = nullptr;
+
+  bool debug_ = false;
+  std::vector<double> op_total_time_;
+  std::vector<std::string> op_name_;
+  platform::Timer timeline_;
+  double total_time_ = 0.0;
+  double read_time_ = 0.0;
 };
 #endif
 

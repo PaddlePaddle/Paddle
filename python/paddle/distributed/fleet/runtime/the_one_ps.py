@@ -888,10 +888,23 @@ class TheOnePSRuntime(RuntimeBase):
         executor.run(startup_program)
         self._init_worker()
 
-    def _run_heter_worker(self, dataset):
+    def _run_heter_worker(self,
+                          dataset=None,
+                          scope=None,
+                          thread=0,
+                          debug=False,
+                          fetch_list=None,
+                          fetch_info=None,
+                          print_period=100,
+                          fetch_handler=None):
         executor = self._get_executor()
         executor.train_from_dataset(
-            program=fluid.default_main_program(), dataset=dataset, debug=False)
+            program=fluid.default_main_program(),
+            dataset=dataset,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
 
     def _stop_worker(self):
         self._communicator.stop()
