@@ -387,12 +387,46 @@ def monkey_patch_varbase():
             if dtype is None:
                 dtype = t.dtype
 
-            new_t = t._copy_to(device, blocking)
+            # 1. gpu place need to determine whether the memory is sufficient for allocation.
+            if t.place.is_gpu_place():
+                gpu_memory_available = core.gpu_memory_available()
+                # for gpu, minimum memory allocation unit is 256 bytes.
+                if type(dtype) is str:
+                    size_dtype = core.size_of_dtype(
+                        framework.convert_np_dtype_to_dtype_(dtype))
+                else:
+                    size_dtype = core.size_of_dtype(dtype)
+                # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
+                # waiting_alloc_memory will compute the memory space occupied by 't'.
+                # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
+                waiting_alloc_memory = (
+                    (t.numel().numpy()[0] * size_dtype) / 256 + 1) * 256 * 1.2
+                if gpu_memory_available < waiting_alloc_memory:
+                    # Copy Tensor to cpu
+                    t_used = t._copy_to(paddle.CPUPlace(), blocking)
+                    # Release memory of t
+                    t.value().get_tensor()._clear()
+                else:
+                    # Tensor still in GPU
+                    t_used = t
+            else:
+                t_used = t
 
-            if dtype is not None and dtype != t.dtype:
-                new_t = new_t.cast(dtype=dtype)
+            # 2. cast Tensor to dtype
+            if dtype is not None and dtype != t_used.dtype:
+                t_casted = t_used.cast(dtype=dtype)
+            else:
+                t_casted = t_used
 
-            return new_t
+            # 3. Copy casted Tensor(in CPU or GPU) to device
+            new_t = t_casted._copy_to(device, blocking)
+
+            # 4. Share Tensor to origin Tensor
+            dst_tensor = t.value().get_tensor()
+            src_tensor = new_t.value().get_tensor()
+            dst_tensor._share_data_with(src_tensor)
+
+            return t
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
