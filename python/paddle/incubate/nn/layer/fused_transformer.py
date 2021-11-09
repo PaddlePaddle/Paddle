@@ -127,18 +127,29 @@ class FusedMultiHeadAttention(Layer):
             dtype=self._dtype,
             is_bias=True)
 
-        self.pre_ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.pre_ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
-        self.ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+        self.ln_scale = None
+        self.ln_bias = None
+        self.pre_ln_scale = None
+        self.pre_ln_bias = None
+
+        if normalize_before:
+            if weight_attr is not False:
+                self.pre_ln_scale = self.create_parameter(
+                    attr=self._weight_attr,
+                    shape=[embed_dim],
+                    default_initializer=Constant(value=1.0))
+            if bias_attr is not False:
+                self.pre_ln_bias = self.create_parameter(
+                    attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+        else:
+            if weight_attr is not False:
+                self.ln_scale = self.create_parameter(
+                    attr=self._weight_attr,
+                    shape=[embed_dim],
+                    default_initializer=Constant(value=1.0))
+            if bias_attr is not False:
+                self.ln_bias = self.create_parameter(
+                    attr=self._bias_attr, shape=[embed_dim], is_bias=True)
 
         self.dropout_rate = dropout_rate
         self.attn_dropout_rate = attn_dropout_rate
@@ -299,21 +310,30 @@ class FusedFeedForward(Layer):
         self._linear2_bias = self.create_parameter(
             shape=[d_model], attr=bias_attr, dtype=self._dtype, is_bias=True)
 
-        self._ln1_scale = self.create_parameter(
-            shape=[d_model],
-            attr=None,
-            is_bias=False,
-            default_initializer=Constant(1.0))
-        self._ln1_bias = self.create_parameter(
-            shape=[d_model], attr=None, is_bias=True)
-
-        self._ln2_scale = self.create_parameter(
-            shape=[d_model],
-            attr=None,
-            is_bias=False,
-            default_initializer=Constant(1.0))
-        self._ln2_bias = self.create_parameter(
-            shape=[d_model], attr=None, is_bias=True)
+        self._ln1_scale = None
+        self._ln1_bias = None
+        self._ln2_scale = None
+        self._ln2_bias = None
+        if normalize_before:
+            if weight_attr is not False:
+                self._ln1_scale = self.create_parameter(
+                    shape=[d_model],
+                    attr=None,
+                    is_bias=False,
+                    default_initializer=Constant(1.0))
+            if bias_attr is not False:
+                self._ln1_bias = self.create_parameter(
+                    shape=[d_model], attr=None, is_bias=True)
+        else:
+            if weight_attr is not False:
+                self._ln2_scale = self.create_parameter(
+                    shape=[d_model],
+                    attr=None,
+                    is_bias=False,
+                    default_initializer=Constant(1.0))
+            if bias_attr is not False:
+                self._ln2_bias = self.create_parameter(
+                    shape=[d_model], attr=None, is_bias=True)
         self.name = name
 
     def forward(self, src, cache=None):

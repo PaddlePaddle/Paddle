@@ -84,20 +84,26 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         fused_encoder.ffn._linear1_bias.set_value(base_encoder.linear1.bias)
         fused_encoder.ffn._linear2_weight.set_value(base_encoder.linear2.weight)
         fused_encoder.ffn._linear2_bias.set_value(base_encoder.linear2.bias)
-        fused_encoder.ffn._ln1_scale.set_value(base_encoder.norm2.weight)
-        fused_encoder.ffn._ln1_bias.set_value(base_encoder.norm2.bias)
-        fused_encoder.ffn._ln2_scale.set_value(base_encoder.norm2.weight)
-        fused_encoder.ffn._ln2_bias.set_value(base_encoder.norm2.bias)
+        if self.pre_layer_norm:
+            fused_encoder.ffn._ln1_scale.set_value(base_encoder.norm2.weight)
+            fused_encoder.ffn._ln1_bias.set_value(base_encoder.norm2.bias)
+        else:
+            fused_encoder.ffn._ln2_scale.set_value(base_encoder.norm2.weight)
+            fused_encoder.ffn._ln2_bias.set_value(base_encoder.norm2.bias)
 
         fused_encoder.fused_attn.linear_weight.set_value(
             base_encoder.self_attn.out_proj.weight)
         fused_encoder.fused_attn.linear_bias.set_value(
             base_encoder.self_attn.out_proj.bias)
-        fused_encoder.fused_attn.pre_ln_scale.set_value(
-            base_encoder.norm1.weight)
-        fused_encoder.fused_attn.pre_ln_bias.set_value(base_encoder.norm1.bias)
-        fused_encoder.fused_attn.ln_scale.set_value(base_encoder.norm1.weight)
-        fused_encoder.fused_attn.ln_bias.set_value(base_encoder.norm1.bias)
+        if self.pre_layer_norm:
+            fused_encoder.fused_attn.pre_ln_scale.set_value(
+                base_encoder.norm1.weight)
+            fused_encoder.fused_attn.pre_ln_bias.set_value(
+                base_encoder.norm1.bias)
+        else:
+            fused_encoder.fused_attn.ln_scale.set_value(
+                base_encoder.norm1.weight)
+            fused_encoder.fused_attn.ln_bias.set_value(base_encoder.norm1.bias)
 
         q = base_encoder.self_attn.q_proj.weight
         q_bias = base_encoder.self_attn.q_proj.bias
