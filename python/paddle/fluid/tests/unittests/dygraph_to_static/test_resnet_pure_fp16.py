@@ -53,7 +53,11 @@ def train(to_static, build_strategy=None):
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-        resnet, optimizer = paddle.amp.decorate(models=resnet, optimizers=optimizer, level='O2', save_dtype='float32')
+        resnet, optimizer = paddle.amp.decorate(
+            models=resnet,
+            optimizers=optimizer,
+            level='O2',
+            save_dtype='float32')
 
         for epoch in range(epoch_num):
             total_loss = 0.0
@@ -72,7 +76,11 @@ def train(to_static, build_strategy=None):
                 img.stop_gradient = True
                 label.stop_gradient = True
 
-                with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+                with paddle.amp.auto_cast(
+                        enable=True,
+                        custom_white_list=None,
+                        custom_black_list=None,
+                        level='O2'):
                     pred = resnet(img)
                     # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
                     # precision problem, need to figure out the underlying reason.
@@ -111,8 +119,6 @@ class TestResnet(unittest.TestCase):
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
-        print(static_loss)
-        print(dygraph_loss)
         self.assertTrue(
             np.allclose(static_loss, dygraph_loss),
             msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,

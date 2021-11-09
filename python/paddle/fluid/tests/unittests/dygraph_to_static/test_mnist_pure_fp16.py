@@ -46,18 +46,22 @@ class TestAMP(TestMNIST):
     def train(self, to_static=False):
         paddle.seed(SEED)
         mnist = MNIST()
-        
 
         if to_static:
             print("Successfully to apply @to_static.")
             mnist = paddle.jit.to_static(mnist)
 
-        optimizer = AdamOptimizer(learning_rate=0.001, parameter_list=mnist.parameters())
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=mnist.parameters())
         # optimizer = paddle.optimizer.SGD(learning_rate=0.0001, parameters=mnist.parameters()) 
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-        mnist, optimizer = paddle.amp.decorate(models=mnist, optimizers=optimizer, level='O2', save_dtype='float32')
+        mnist, optimizer = paddle.amp.decorate(
+            models=mnist,
+            optimizers=optimizer,
+            level='O2',
+            save_dtype='float32')
 
         loss_data = []
         for epoch in range(self.epoch_num):
@@ -72,7 +76,11 @@ class TestAMP(TestMNIST):
                 label = paddle.to_tensor(y_data)
                 label.stop_gradient = True
 
-                with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+                with paddle.amp.auto_cast(
+                        enable=True,
+                        custom_white_list=None,
+                        custom_black_list=None,
+                        level='O2'):
                     prediction, acc, avg_loss = mnist(img, label=label)
 
                 scaled = scaler.scale(avg_loss)
