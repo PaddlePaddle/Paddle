@@ -117,12 +117,13 @@ class TestResnet(unittest.TestCase):
         return train(to_static)
 
     def test_resnet(self):
-        static_loss = self.train(to_static=True)
-        dygraph_loss = self.train(to_static=False)
-        self.assertTrue(
-            np.allclose(static_loss, dygraph_loss),
-            msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
-                                                             dygraph_loss))
+        if fluid.is_compiled_with_cuda():
+            static_loss = self.train(to_static=True)
+            dygraph_loss = self.train(to_static=False)
+            self.assertTrue(
+                np.allclose(static_loss, dygraph_loss),
+                msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
+                                                                dygraph_loss))
 
 
 if __name__ == '__main__':

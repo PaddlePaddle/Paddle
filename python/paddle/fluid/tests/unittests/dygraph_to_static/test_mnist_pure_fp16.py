@@ -32,16 +32,17 @@ class TestAMP(TestMNIST):
         return self.train(to_static=False)
 
     def test_mnist_to_static(self):
-        dygraph_loss = self.train_dygraph()
-        static_loss = self.train_static()
-        # NOTE(Aurelius84): In static AMP training, there is a grep_list but
-        # dygraph AMP don't. It will bring the numbers of cast_op is different
-        # and leads to loss has a bit diff.
-        self.assertTrue(
-            np.allclose(
-                dygraph_loss, static_loss, atol=1e-3),
-            msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
-                                                            static_loss))
+        if paddle.fluid.is_compiled_with_cuda():
+            dygraph_loss = self.train_dygraph()
+            static_loss = self.train_static()
+            # NOTE(Aurelius84): In static AMP training, there is a grep_list but
+            # dygraph AMP don't. It will bring the numbers of cast_op is different
+            # and leads to loss has a bit diff.
+            self.assertTrue(
+                np.allclose(
+                    dygraph_loss, static_loss, atol=1e-3),
+                msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
+                                                                static_loss))
 
     def train(self, to_static=False):
         paddle.seed(SEED)

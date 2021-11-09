@@ -2471,8 +2471,7 @@ class AdamOptimizer(Optimizer):
             master_weight = None
             _, _, _, _, _, _ = _C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc.astype('float32'), beta2_pow_acc.astype('float32'), 
-                master_weight, param_and_grad[0],
+                beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
                 moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
                 'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
                 'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
