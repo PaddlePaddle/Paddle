@@ -117,13 +117,11 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
           bool IsBoundary>
-__device__ void DealSegment(
+__device__ void ElementVectorizeKernelImpl(
     const framework::Array<const InT *__restrict__, Arity> &in, OutT *out,
-    int num, Functor func) {
+    int num, int data_offset, Functor func) {
   InT args[Arity][VecSize];
   OutT result[VecSize];
-
-  int data_offset = VecSize * blockIdx.x * blockDim.x;
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -143,14 +141,18 @@ __device__ void DealSegment(
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
 __global__ void ElementVectorizeKernel(
     framework::Array<const InT *__restrict__, Arity> ins, OutT *out, int size,
-    Functor func) {
-  int data_offset = VecSize * blockIdx.x * blockDim.x;
+    int main_offset, Functor func) {
+  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
+  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+  for (; data_offset < main_offset; data_offset += stride) {
+    ElementVectorizeKernelImpl<InT, OutT, Functor, Arity, VecSize, false>(
+        ins, out, VecSize * BLOCK_NUM_X, data_offset, func);
+  }
+
   int num = size - data_offset;
-  // the num this time have to deal with
-  if (VecSize * blockDim.x > num) {  // reminder segment
-    DealSegment<InT, OutT, Functor, Arity, VecSize, true>(ins, out, num, func);
-  } else {  // complete segment
-    DealSegment<InT, OutT, Functor, Arity, VecSize, false>(ins, out, num, func);
+  if (num > 0) {
+    ElementVectorizeKernelImpl<InT, OutT, Functor, Arity, VecSize, true>(
+        ins, out, num, data_offset, func);
   }
 }
 
@@ -170,9 +172,19 @@ void ElementwiseCudaKernel(const platform::CUDADeviceContext &ctx,
   for (int i = 0; i < Arity; i++) {
     ins_data[i] = ins[i]->data<InT>();
   }
+#ifdef PADDLE_WITH_XPU2
+  block_size = 128;
+  grid_size = 8;
+  int main_tid = numel / (VecSize * block_size);
+  ElementVectorizeKernel<InT, OutT, Functor, Arity,
+                         VecSize><<<grid_size, block_size, stream>>>(
+      ins_data, out_data, numel, main_tid * block_size * VecSize, func);
+#else
+  int main_tid = numel / (VecSize * block_size);
   ElementVectorizeKernel<InT, OutT, Functor, Arity,
                          VecSize><<<grid_size, block_size, 0, stream>>>(
-      ins_data, out_data, numel, func);
+      ins_data, out_data, numel, main_tid * block_size * VecSize, func);
+#endif
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
