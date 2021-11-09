@@ -27,11 +27,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
+void InitializeVariable(Variable *var, proto::VarType::Type var_type,
+                        proto::VarType::Type dtype) {
   if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
+    var->GetMutable<LoDTensor>()->SetType(dtype);
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<SelectedRows>();
+    var->GetMutable<SelectedRows>()->mutable_value()->SetType(dtype);
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
     var->GetMutable<FeedList>();
   } else if (var_type == proto::VarType::FETCH_LIST) {
