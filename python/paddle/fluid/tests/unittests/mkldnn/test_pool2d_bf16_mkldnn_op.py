@@ -23,8 +23,6 @@ from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import pool2d_backward_
 from paddle import enable_static
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestPoolBf16MklDNNOpGradMixin(TestPool2D_Op_Mixin):
     def init_kernel_type(self):
@@ -67,8 +65,7 @@ class TestPoolBf16MklDNNOpGradMixin(TestPool2D_Op_Mixin):
             core.CPUPlace(), set(['X']), 'Out', user_defined_grads=[x_grad])
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestPoolBf16MklDNNOp(TestPool2D_Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
