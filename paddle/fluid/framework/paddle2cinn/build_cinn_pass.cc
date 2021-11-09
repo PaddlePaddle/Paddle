@@ -56,6 +56,9 @@ namespace {
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
 
+// deny parameter var name map, whose key is op name, value is the
+// op's parameter name. A parameter in map means the parameter is
+// useless for CINN, and should not added into cinn subgraph
 const std::unordered_map<std::string, std::unordered_set<std::string>>
     kDenyParamMap = {{"batch_norm", {"ReserveSpace"}},
                      {"batch_norm_grad", {"ReserveSpace"}}};

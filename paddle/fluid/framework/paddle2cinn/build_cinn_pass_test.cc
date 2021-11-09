@@ -519,6 +519,101 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   }
 }
 
+std::unique_ptr<Graph> BuildGraphWithDenyNode() {
+  ProgramDesc prog;
+  auto g = std::make_unique<Graph>(prog);
+
+  // fake1 --> v1 --
+  //                | --> mul --> v3 --> fake2 --> v4 --> relu --> v5 --> fake3
+  //           v2 --
+
+  OpDesc batch_norm_op;
+  batch_norm_op.SetType("batch_norm");
+
+  batch_norm_op.SetInput("X", {"x"});
+  batch_norm_op.SetInput("Scale", {"weight"});
+  batch_norm_op.SetInput("Bias", {"bias"});
+  batch_norm_op.SetInput("Mean", {"mean"});
+  batch_norm_op.SetInput("Variance", {"variance"});
+
+  batch_norm_op.SetOutput("Y", {"batch_norm_0.tmp_2"});
+  batch_norm_op.SetOutput("MeanOut", {"mean"});
+  batch_norm_op.SetOutput("VarianceOut", {"variance"});
+  batch_norm_op.SetOutput("SavedMean", {"batch_norm_0.tmp_0"});
+  batch_norm_op.SetOutput("SavedVariance", {"batch_norm_0.tmp_1"});
+  batch_norm_op.SetOutput("ReserveSpace", {"batch_norm_0.tmp_3"});
+
+  auto create_param_desc = [&g](const std::string& name) {
+    VarDesc var(name);
+    var.SetPersistable(true);
+    var.SetIsParameter(true);
+    return g->CreateVarNode(&var);
+  };
+  auto v2 = create_param_desc("weight");
+  auto v3 = create_param_desc("bias");
+  auto v4 = create_param_desc("mean");
+  auto v5 = create_param_desc("variance");
+
+  auto create_var_node = [&g](const std::string& name) {
+    VarDesc var(name);
+    return g->CreateVarNode(&var);
+  };
+
+  auto v1 = create_var_node("x");
+  auto v6 = create_var_node("batch_norm_0.tmp_2");
+  auto v7 = create_var_node("mean_out");
+  auto v8 = create_var_node("variance_out");
+  auto v9 = create_var_node("batch_norm_0.tmp_0");
+  auto v10 = create_var_node("batch_norm_0.tmp_1");
+  auto v11 = create_var_node("batch_norm_0.tmp_3");
+
+  ir::Node* batch_norm = g->CreateOpNode(&batch_norm_op);
+
+  auto link_node = [](Node* node) {
+    for (auto* n : node->inputs) {
+      n->outputs.emplace_back(node);
+    }
+    for (auto* n : node->outputs) {
+      n->inputs.emplace_back(node);
+    }
+  };
+
+  batch_norm->inputs = {v1, v2, v3, v4, v5};
+  batch_norm->outputs = {v6, v7, v8, v9, v10, v11};
+  link_node(batch_norm);
+
+  return g;
+}
+
+TEST(BuildCinnPassTest, DenyParamMap) {
+  auto g = BuildGraphWithDenyNode();
+
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
+  pass->Apply(g.get());
+
+  const auto& nodes = g->Nodes();
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
+
+  ASSERT_TRUE(CheckNodeExisted(nodes, "batch_norm_0.tmp_3"));
+  auto reserve_space = GetNode(nodes, "batch_norm_0.tmp_3");
+
+  ASSERT_TRUE(reserve_space->inputs.empty());
+  ASSERT_TRUE(reserve_space->outputs.empty());
+
+  // After search, there should has two cinn subgraphs,
+  // and each of subgraphs just has one node.
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
+  ASSERT_EQ(CountNode(nodes, kCinnLaunchOp), 1);
+
+  auto cinn_node = GetNode(nodes, kCinnLaunchOp);
+  ASSERT_TRUE(cinn_node->IsOp());
+  ASSERT_TRUE(cinn_node->Op());
+
+  ASSERT_FALSE(cinn_node->Op()->Inputs().count("ReserveSpace"));
+  ASSERT_FALSE(cinn_node->Op()->Outputs().count("ReserveSpace"));
+}
+
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle
