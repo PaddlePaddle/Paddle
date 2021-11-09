@@ -64,6 +64,10 @@ void Interceptor::PoolTheMailbox() {
     const MessageType message_type = interceptor_message.message_type();
     VLOG(3) << interceptor_id_ << " has received a message: " << message_type
             << ".";
+    if (message_type == STOP) {
+      // break the pooling thread
+      break;
+    }
   }
 }
 
