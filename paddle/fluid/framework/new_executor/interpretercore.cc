@@ -41,8 +41,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place, BlockDesc* block,
       global_scope_(global_scope),
       stream_analyzer_(place) {
   is_build_ = false;
-  async_work_queue_.reset(new interpretercore::AsyncWorkQueue(
-      kHostNumThreads, &main_thread_blocker_));
+  async_work_queue_.reset(
+      new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
   gc_.reset(new InterpreterCoreGarbageCollector());
 
   feed_names_ = feed_names;
