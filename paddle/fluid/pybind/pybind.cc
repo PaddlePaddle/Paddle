@@ -527,8 +527,13 @@ PYBIND11_MODULE(core_noavx, m) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
+  m.def("gpu_memory_available", []() {
+    size_t available = 0;
+    size_t total = 0;
+    paddle::platform::GpuMemoryUsage(&available, &total);
+    return available;
+  });
 #endif
-
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
 #endif
