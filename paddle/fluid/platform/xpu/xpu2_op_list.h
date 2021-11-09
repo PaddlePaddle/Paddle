@@ -252,8 +252,16 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::COMPLEX128, XPUPlace())})},
       {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                                 pOpKernelType(vartype::FP16, XPUPlace())})},
-      {"softmax_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                                     pOpKernelType(vartype::FP16, XPUPlace())})}
+      {"softmax_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"gather_nd", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                                  pOpKernelType(vartype::INT64, XPUPlace()),
+                                  pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"tile", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                             pOpKernelType(vartype::INT64, XPUPlace()),
+                             pOpKernelType(vartype::BOOL, XPUPlace()),
+                             pOpKernelType(vartype::FP32, XPUPlace())})}
 
       // AddMore
   };
