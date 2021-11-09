@@ -77,7 +77,7 @@ Tensor cast(const Tensor& x, DataType out_dtype) {
   kernel_context.EmplaceBackAttr(dense_x->meta().type);
 
   // 4. InferShape
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  auto out_meta = CastInferShape(dense_x->meta(), out_dtype);
 
   // 5. Prepare outputs
   Tensor out;

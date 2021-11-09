@@ -40,5 +40,6 @@ DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta);
 DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
                                   int start_axis,
                                   int stop_axis);
-
+DenseTensorMeta CastInferShape(const DenseTensorMeta& x_meta,
+                               const DataType out_dtype);
 }  // namespace pten
