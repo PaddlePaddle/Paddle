@@ -223,7 +223,7 @@ class VarBase {
 
   void ClearGradient(bool set_to_zero = true);
 
-  void _GradientSetEmpty(bool set_is_empty = true);
+  void _GradientSetEmpty(bool is_empty = true);
   bool _IsGradientSetEmpty();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,

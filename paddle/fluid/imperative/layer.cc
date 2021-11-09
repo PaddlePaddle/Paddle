@@ -222,19 +222,24 @@ void VarBase::ClearGradient(bool set_to_zero) {
   }
 }
 
-void VarBase::_GradientSetEmpty(bool set_is_empty) {
-  VLOG(4) << "Gradient " << Name() << " SetIsEmpty " << set_is_empty;
+void VarBase::_GradientSetEmpty(bool is_empty) {
+  VLOG(4) << "Set gradient " << Name() << " is_empty:" << is_empty;
   if (grad_var_) {
-    grad_var_->SharedVar()->SetIsEmpty(set_is_empty);
+    auto share_var = grad_var_->SharedVar();
+    if (share_var) {
+      share_var->SetIsEmpty(is_empty);
+    }
   }
 }
 
 bool VarBase::_IsGradientSetEmpty() {
   bool res = true;
   if (grad_var_) {
-    res = grad_var_->SharedVar()->is_empty_;
-    VLOG(4) << "Check gradient " << Name() << "is empty:" << res;
-    return res;
+    auto share_var = grad_var_->SharedVar();
+    if (share_var) {
+      res = share_var->is_empty_;
+      VLOG(4) << "Check gradient " << Name() << " is empty:" << res;
+    }
   }
   return res;
 }
