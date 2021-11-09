@@ -166,6 +166,7 @@ class ResNet(nn.Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import ResNet
             from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
@@ -303,6 +304,7 @@ def resnet18(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import resnet18
 
@@ -329,6 +331,7 @@ def resnet34(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import resnet34
 
@@ -355,6 +358,7 @@ def resnet50(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import resnet50
 
@@ -381,6 +385,7 @@ def resnet101(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import resnet101
 
@@ -407,6 +412,7 @@ def resnet152(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import resnet152
 
@@ -433,6 +439,7 @@ def wide_resnet50_2(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import wide_resnet50_2
 
@@ -460,6 +467,7 @@ def wide_resnet101_2(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
+        
             import paddle
             from paddle.vision.models import wide_resnet101_2
 
