@@ -221,7 +221,7 @@ __global__ void BroadcastKernel(
         block_offset, func);
   }
 
-  if (tail_tid) {
+  if (block_offset < numel) {
     BroadcastKernelImpl<InT, OutT, Functor, Arity, VecSize, Rank, true>(
         ins, out, use_broadcast, numel, configs, tail_tid, block_offset, func);
   }
@@ -263,7 +263,7 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   main_offset = (numel / (VecSize * threads)) * VecSize * threads;
   tail_tid = numel % (VecSize * threads);
   BroadcastKernel<InT, OutT, Functor, Arity, VecSize,
-                  Rank><<<blocks, threads, 0, stream>>>(
+                  Rank><<<blocks, threads, stream>>>(
       ins_data, out_data, use_broadcast, numel, configs, main_offset, tail_tid,
       func);
 #else
