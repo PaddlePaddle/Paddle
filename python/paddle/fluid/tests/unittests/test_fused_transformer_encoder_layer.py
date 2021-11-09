@@ -26,6 +26,9 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
     def setPreLayerNorm(self):
         self.pre_layer_norm = False
 
+    def setAttnMask(self):
+        self.has_attn_mask = True
+
     def setUp(self):
         self.batch_size = np.random.randint(1, 16)
         self.query_length = np.random.randint(1, 512)
@@ -43,6 +46,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         self.dtype = 'float32'
         self.setActivation()
         self.setPreLayerNorm()
+        self.setAttnMask()
 
     def fused_weight(self, weight, num_head):
         a = paddle.transpose(weight, perm=[1, 0])
@@ -62,18 +66,22 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             self.pre_layer_norm)
         src = np.random.rand(self.batch_size, self.query_length,
                              self.embed_dim).astype(self.dtype)
-        attn_mask = np.ones(
-            (self.batch_size, self.num_heads, self.query_length,
-             self.key_length),
-            dtype=self.attn_mask_type)
+
+        if self.has_attn_mask:
+            attn_mask = np.ones(
+                (self.batch_size, self.num_heads, self.query_length,
+                 self.key_length),
+                dtype=self.attn_mask_type)
+            attn_mask_tensor = paddle.to_tensor(attn_mask)
+        else:
+            attn_mask = None
+            attn_mask_tensor = None
 
         dout = np.random.random(src.shape).astype(self.dtype)
 
         base_out = base_encoder(
             paddle.to_tensor(
-                src, stop_gradient=False),
-            paddle.to_tensor(
-                attn_mask, stop_gradient=True))
+                src, stop_gradient=False), attn_mask_tensor)
         paddle.autograd.backward([base_out], [paddle.to_tensor(dout)], True)
 
         fused_encoder = FusedTransformerEncoderLayer(
@@ -84,20 +92,26 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         fused_encoder.ffn._linear1_bias.set_value(base_encoder.linear1.bias)
         fused_encoder.ffn._linear2_weight.set_value(base_encoder.linear2.weight)
         fused_encoder.ffn._linear2_bias.set_value(base_encoder.linear2.bias)
-        fused_encoder.ffn._ln1_scale.set_value(base_encoder.norm2.weight)
-        fused_encoder.ffn._ln1_bias.set_value(base_encoder.norm2.bias)
-        fused_encoder.ffn._ln2_scale.set_value(base_encoder.norm2.weight)
-        fused_encoder.ffn._ln2_bias.set_value(base_encoder.norm2.bias)
+        if self.pre_layer_norm:
+            fused_encoder.ffn._ln1_scale.set_value(base_encoder.norm2.weight)
+            fused_encoder.ffn._ln1_bias.set_value(base_encoder.norm2.bias)
+        else:
+            fused_encoder.ffn._ln2_scale.set_value(base_encoder.norm2.weight)
+            fused_encoder.ffn._ln2_bias.set_value(base_encoder.norm2.bias)
 
         fused_encoder.fused_attn.linear_weight.set_value(
             base_encoder.self_attn.out_proj.weight)
         fused_encoder.fused_attn.linear_bias.set_value(
             base_encoder.self_attn.out_proj.bias)
-        fused_encoder.fused_attn.pre_ln_scale.set_value(
-            base_encoder.norm1.weight)
-        fused_encoder.fused_attn.pre_ln_bias.set_value(base_encoder.norm1.bias)
-        fused_encoder.fused_attn.ln_scale.set_value(base_encoder.norm1.weight)
-        fused_encoder.fused_attn.ln_bias.set_value(base_encoder.norm1.bias)
+        if self.pre_layer_norm:
+            fused_encoder.fused_attn.pre_ln_scale.set_value(
+                base_encoder.norm1.weight)
+            fused_encoder.fused_attn.pre_ln_bias.set_value(
+                base_encoder.norm1.bias)
+        else:
+            fused_encoder.fused_attn.ln_scale.set_value(
+                base_encoder.norm1.weight)
+            fused_encoder.fused_attn.ln_bias.set_value(base_encoder.norm1.bias)
 
         q = base_encoder.self_attn.q_proj.weight
         q_bias = base_encoder.self_attn.q_proj.bias
@@ -116,9 +130,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
 
         fused_out = fused_encoder(
             paddle.to_tensor(
-                src, stop_gradient=False),
-            paddle.to_tensor(
-                attn_mask, stop_gradient=True))
+                src, stop_gradient=False), attn_mask_tensor)
         paddle.autograd.backward([fused_out], [paddle.to_tensor(dout)], True)
 
         np.testing.assert_allclose(
@@ -140,6 +152,21 @@ class TestFusedTransformerEncoderLayerPreLayerNorm(
         TestFusedTransformerEncoderLayer):
     def setPreLayerNorm(self):
         self.pre_layer_norm = True
+
+
+class TestFusedTransformerEncoderLayerAttnMaskIsNone(
+        TestFusedTransformerEncoderLayer):
+    def setAttnMask(self):
+        self.has_attn_mask = False
+
+
+class TestFusedTransformerEncoderLayerPreLnTrueAttnMaskIsNone(
+        TestFusedTransformerEncoderLayer):
+    def setPreLayerNorm(self):
+        self.pre_layer_norm = True
+
+    def setAttnMask(self):
+        self.has_attn_mask = False
 
 
 if __name__ == "__main__":
