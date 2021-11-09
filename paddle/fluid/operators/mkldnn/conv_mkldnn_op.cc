@@ -389,6 +389,49 @@ class ConvMKLDNNHandlerT
     }
   }
 
+  std::shared_ptr<std::tuple<float, std::vector<float>>> get_int8_bias_scales(
+      const framework::ExecutionContext& ctx) {
+    // Get scales int8 bias key
+    const std::string key_bs = this->key_ + "@bs";
+
+    // Scales for int8 bias are to be cached to avoid
+    // computing them each iteration
+    auto bias_scale_tuple =
+        std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
+            this->dev_ctx_.GetBlob(key_bs));
+    if (bias_scale_tuple) return bias_scale_tuple;
+
+    const auto* filter = ctx.Input<Tensor>("Filter");
+    const auto& weights_tz = framework::vectorize(filter->dims());
+    const int groups = std::max(ctx.Attr<int>("groups"), 1);
+
+    const auto& scale_weights_data =
+        ctx.Attr<std::vector<float>>("Scale_weights");
+    const auto& scale_in_data = ctx.Attr<float>("Scale_in");
+
+    bool is_multi_channel = scale_weights_data.size() > 1;
+    int mask_reorder = is_multi_channel ? 1 << 0 : 1;
+
+    int count = 1;
+    if (is_multi_channel) {
+      count *= weights_tz[0];
+      if (groups > 1) {
+        count *= weights_tz[1];
+      }
+    }
+
+    bias_scale_tuple =
+        std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
+            static_cast<float>(mask_reorder), std::vector<float>(count)));
+    for (int i = 0; i < count; i++) {
+      std::get<1>(*bias_scale_tuple)[i] = scale_in_data * scale_weights_data[i];
+    }
+
+    this->dev_ctx_.SetBlob(key_bs, bias_scale_tuple);
+
+    return bias_scale_tuple;
+  }
+
   std::tuple<float, std::vector<float>> get_int8_scales(
       const framework::ExecutionContext& ctx) const {
     const auto* filter = ctx.Input<Tensor>("Filter");
@@ -428,32 +471,6 @@ class ConvMKLDNNHandlerT
     return std::make_tuple(sum_scale, output_shift_scale);
   }
 
-  std::tuple<float, std::vector<float>> get_int8_bias_scales(
-      const framework::ExecutionContext& ctx) const {
-    const auto* filter = ctx.Input<Tensor>("Filter");
-    const auto& weights_tz = framework::vectorize(filter->dims());
-    const int groups = std::max(ctx.Attr<int>("groups"), 1);
-
-    const auto& scale_weights_data =
-        ctx.Attr<std::vector<float>>("Scale_weights");
-    const auto& scale_in_data = ctx.Attr<float>("Scale_in");
-
-    bool is_multi_channel = scale_weights_data.size() > 1;
-    int mask_reorder = is_multi_channel ? 1 << 0 : 1;
-    int count =
-        is_multi_channel
-            ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
-            : 1;
-    std::vector<float> scale_bias_data(count);
-
-#pragma omp parallel for if (count > 50)
-    for (int i = 0; i < count; i++) {
-      scale_bias_data[i] = scale_in_data * scale_weights_data[i];
-    }
-
-    return std::make_tuple(mask_reorder, scale_bias_data);
-  }
-
   mkldnn::primitive_attr CreatePostOps(
       std::string fuse_activation, float fuse_alpha, float fuse_beta,
       bool fuse_residual_conn, const std::vector<float> output_shift_scale = {},
@@ -475,23 +492,25 @@ class ConvMKLDNNHandlerT
     }
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
+    constexpr float scale = 1.0f;
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "relu6") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale,
                                      mkldnn::algorithm::eltwise_bounded_relu,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "swish") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
     } else if (fuse_activation == "hard_swish") {
-      constexpr float scale = 1.0f;
       post_operations.append_eltwise(
           scale, mkldnn::algorithm::eltwise_hardswish, fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "hard_sigmoid") {
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_linear,
+                                     fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_clip,
+                                     0.0f, 1.0f);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
@@ -563,7 +582,7 @@ class ConvMKLDNNHandlerT
       const auto target_mem_p = this->AcquireMemory(target_key_suffix);
       user_mem_p->set_data_handle(platform::to_void_cast<T>(in_mem_data));
       if (user_mem_p != target_mem_p) {
-        this->AcquireReorder(user_mem_p, target_mem_p, key_mem);
+        this->AcquireReorder(user_mem_p, target_mem_p);
       }
       return target_mem_p;
     }
@@ -641,7 +660,7 @@ class ConvMKLDNNHandlerT
         platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc())) {
       auto residual_memory_p = this->AcquireResidualMemory(residual_param);
       dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-      this->AcquireReorder(residual_memory_p, dst_memory_p, "@residual_dst");
+      this->AcquireReorder(residual_memory_p, dst_memory_p);
     } else {
       // Changing ShareDataWith to TensorCopy results in performance drop
       // on ResNet architectures
@@ -816,13 +835,11 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {MKLDNN_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      float mask_reorder;
-      std::vector<float> scale_bias_data;
-      std::tie(mask_reorder, scale_bias_data) =
-          handler.get_int8_bias_scales(ctx);
+      auto p_scales_tuple = handler.get_int8_bias_scales(ctx);
 
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-          bias, is_test, scale_bias_data, mask_reorder);
+          bias, is_test, std::get<1>(*p_scales_tuple),
+          std::get<0>(*p_scales_tuple));
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 

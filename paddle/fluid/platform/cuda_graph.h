@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <vector>
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 #include "paddle/fluid/platform/type_defs.h"
@@ -51,7 +53,10 @@ class CUDAGraph {
   // Since the constructor would throw error is CUDA_VERSION < 10010.
   // The non-static method of CUDAGraph need not check CUDA_VERSION
   // again.
-  CUDAGraph() { ThrowErrorIfNotSupportCUDAGraph(); }
+  CUDAGraph() {
+    ThrowErrorIfNotSupportCUDAGraph();
+    id_ = UniqueID();
+  }
 
  public:
   ~CUDAGraph() { Reset(); }
@@ -67,9 +72,15 @@ class CUDAGraph {
     callbacks_.push_back(std::move(callback));
   }
 
+  void PrintToDotFiles(const std::string &dirname, unsigned int flags);
+
   static void BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
                            cudaStreamCaptureMode mode);
   static std::unique_ptr<CUDAGraph> EndCapture();
+
+  static void BeginSegmentCapture();
+  static void EndSegmentCapture();
+
   static void AddResetCallbackDuringCapturing(std::function<void()> callback) {
     capturing_graph_->AddResetCallback(std::move(callback));
   }
@@ -89,13 +100,20 @@ class CUDAGraph {
   static bool IsValidCapturing();
 
  private:
+  static CUDAGraphID UniqueID() {
+    static std::atomic<CUDAGraphID> id;
+    return id.fetch_add(1);
+  }
+
+ private:
 #if CUDA_VERSION >= 10010
-  cudaGraph_t graph_{nullptr};
-  cudaGraphExec_t exec_graph_{nullptr};
+  std::vector<cudaGraph_t> graphs_;
+  std::vector<cudaGraphExec_t> exec_graphs_;
+  cudaStreamCaptureMode capture_mode_;
 #endif
   cudaStream_t stream_{nullptr};
   platform::CUDAPlace place_;
-  CUDAGraphID id_{0};
+  CUDAGraphID id_;
   std::vector<std::function<void()>> callbacks_;
   bool is_reset_{false};
   std::mutex mtx_;
