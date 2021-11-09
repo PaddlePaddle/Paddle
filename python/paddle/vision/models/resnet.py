@@ -34,11 +34,11 @@ model_urls = {
     'resnet152': ('https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
                   '7ad16a2f1e7333859ff986138630fd7a'),
     'wide_resnet50_2':
-    ('https://bj.bcebos.com/v1/ai-studio-online/93f78b51775a4434bde046e765a206c51b1aa05797c64f96aff33f7791b3de45',
+    ('https://paddle-hapi.bj.bcebos.com/models/wide_resnet50_2.pdparams',
      '0282f804d73debdab289bd9fea3fa6dc'),
     'wide_resnet101_2':
-    ('https://bj.bcebos.com/v1/ai-studio-online/cfb1df23c8604dbfa0c52aacdc841810901fa064ff104abda62bfb112b022245',
-     'd4360a2d23657f059216f5d5a1a9ac93')
+    ('https://paddle-hapi.bj.bcebos.com/models/wide_resnet101_2.pdparams',
+     'd4360a2d23657f059216f5d5a1a9ac93'),
 }
 
 
@@ -467,7 +467,7 @@ def wide_resnet101_2(pretrained=False, **kwargs):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
             from paddle.vision.models import wide_resnet101_2
 
