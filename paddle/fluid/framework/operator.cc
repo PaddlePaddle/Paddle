@@ -1838,6 +1838,10 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::string))) {
+        op_kernel_ctx.EmplaceBackAttr(
+            std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "
