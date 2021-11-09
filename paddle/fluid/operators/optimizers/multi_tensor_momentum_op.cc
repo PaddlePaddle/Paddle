@@ -190,3 +190,13 @@ class MTMomentumOp : public framework::OperatorWithKernel {
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+REGISTER_OPERATOR(
+    mt_momentum, ops::MTMomentumOp, ops::MTMomentumOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(
+    mt_momentum,
+    ops::MTMomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MTMomentumOpKernel<paddle::platform::CPUDeviceContext, double>);

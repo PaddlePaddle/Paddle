@@ -15,3 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/optimizers/multi_tensor_momentum_op.h"
 #include "paddle/fluid/platform/float16.h"
+
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    mt_momentum,
+    ops::MTMomentumOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MTMomentumOpKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MTMomentumOpKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::float16>);
