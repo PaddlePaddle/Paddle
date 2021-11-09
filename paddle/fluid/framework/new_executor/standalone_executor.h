@@ -62,6 +62,7 @@ class StandaloneExecutor : public ExecutorBase {
   Scope* outer_scope_;
   VariableScope global_scope_;
 
+  std::unordered_map<std::string, std::shared_ptr<ProgramDesc>> programs_;
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;
 };

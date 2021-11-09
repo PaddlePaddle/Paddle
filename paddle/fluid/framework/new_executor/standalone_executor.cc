@@ -41,8 +41,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
-  paddle::framework::interpretercore::build_op_func_list(
-      place_, startup_prog, &vec_func_list, &global_scope_);
+  paddle::framework::interpreter::build_op_func_list(
+      place_, startup_prog.Block(0), &vec_func_list, &global_scope_);
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
@@ -96,8 +96,15 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
 
   if (iter == interpretercores_.end()) {
     VLOG(3) << "create interpreter_core for " << oss.str();
-    auto core = std::make_shared<InterpreterCore>(
-        place_, main_prog_, &global_scope_, feed_names, fetch_names);
+    // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy a
+    // new program.
+    auto new_prog = std::make_shared<framework::ProgramDesc>(main_prog_);
+    auto* block = new_prog->MutableBlock(0);
+    interpreter::add_fetch(fetch_names, block);
+
+    auto core = std::make_shared<InterpreterCore>(place_, block, &global_scope_,
+                                                  feed_names);
+    programs_.emplace(oss.str(), new_prog);
     interpretercores_.emplace(oss.str(), core);
     return core;
   } else {
