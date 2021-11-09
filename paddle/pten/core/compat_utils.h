@@ -47,30 +47,4 @@ class CompatibleDenseTensorUtils {
   }
 };
 
-class CompatibleDenseTensorMetaUtils {
- public:
-  static void SetDDim(DenseTensorMeta* meta, const DDim& dims) {
-    meta->dims = dims;
-  }
-
-  static void SetDataType(DenseTensorMeta* meta, DataType type) {
-    // Since the type of DenseTensorMeta is const, const_cast must be used
-    const_cast<DataType&>(meta->type) = type;
-  }
-
-  static void SetDataLayout(DenseTensorMeta* meta, DataLayout layout) {
-    // Since the type of DenseTensorMeta is const, const_cast must be used
-    const_cast<DataLayout&>(meta->layout) = layout;
-  }
-
-  template <typename SrcLoD>
-  static void SetLoD(DenseTensorMeta* meta, const SrcLoD& lod) {
-    meta->lod.reserve(lod.size());
-    meta->lod.clear();
-    for (auto&& v : lod) {
-      meta->lod.emplace_back(v);
-    }
-  }
-};
-
 }  // namespace pten

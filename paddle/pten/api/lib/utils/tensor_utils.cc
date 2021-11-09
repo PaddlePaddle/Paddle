@@ -133,11 +133,12 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
-  pten::CompatibleDenseTensorMetaUtils::SetDDim(meta, src.dims());
-  pten::CompatibleDenseTensorMetaUtils::SetDataType(
-      meta, pten::TransToPtenDataType(src.type()));
-  pten::CompatibleDenseTensorMetaUtils::SetDataLayout(
-      meta, pten::TransToPtenDataLayout(src.layout()));
+  meta->dims = src.dims();
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataType&>(meta->type) = pten::TransToPtenDataType(src.type());
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataLayout&>(meta->layout) =
+      pten::TransToPtenDataLayout(src.layout());
   auto* shared_storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
   PADDLE_ENFORCE_NOT_NULL(
@@ -150,12 +151,13 @@ void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
 void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
                            pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
-  pten::CompatibleDenseTensorMetaUtils::SetDDim(meta, src.dims());
-  pten::CompatibleDenseTensorMetaUtils::SetDataType(
-      meta, pten::TransToPtenDataType(src.type()));
-  pten::CompatibleDenseTensorMetaUtils::SetDataLayout(
-      meta, pten::TransToPtenDataLayout(src.layout()));
-  pten::CompatibleDenseTensorMetaUtils::SetLoD(meta, src.lod());
+  meta->dims = src.dims();
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataType&>(meta->type) = pten::TransToPtenDataType(src.type());
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataLayout&>(meta->layout) =
+      pten::TransToPtenDataLayout(src.layout());
+  SetLoD(&(meta->lod), src.lod());
   auto* shared_storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
   PADDLE_ENFORCE_NOT_NULL(
