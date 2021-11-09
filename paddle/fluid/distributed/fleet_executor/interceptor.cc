@@ -19,7 +19,10 @@ namespace distributed {
 
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
     : interceptor_id_(interceptor_id), node_(node) {
-  interceptor_thread_ = std::thread([this]() { PoolTheMailbox(); });
+  interceptor_thread_ = std::thread([this]() {
+    VLOG(3) << "Start pooling local mailbox's thread.";
+    PoolTheMailbox();
+  });
 }
 
 Interceptor::~Interceptor() { interceptor_thread_.join(); }

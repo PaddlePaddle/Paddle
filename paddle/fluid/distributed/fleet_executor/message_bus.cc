@@ -49,18 +49,19 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
   int64_t dst_id = interceptor_message.dst_id();
   if (IsSameRank(src_id, dst_id)) {
     VLOG(3) << "Send a message from: " << src_id << " to " << dst_id
-            << " intra card.";
+            << " within a same rank.";
     return SendIntraRank(interceptor_message);
   } else {
     VLOG(3) << "Send a message from: " << src_id << " to " << dst_id
-            << " intre card.";
+            << " between different ranks.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
     return SendInterRank(interceptor_message);
 #else
     PADDLE_THROW(platform::errors::Unavailable(
-        "Fleet executor does not support multi ranks when Paddle is compiled"
-        "with npu or isn't compiled with distributed for now."));
+        "Fleet executor does not support sending message between different "
+        "ranks when Paddle is compiled with npu or "
+        "isn't compiled with distributed for now."));
 #endif
   }
   return true;
@@ -84,8 +85,9 @@ void MessageBus::ListenPort() {
       server_.Start(ip_for_brpc, &options), 0,
       platform::errors::Unavailable("Message bus: start brpc service error."));
 #else
-  VLOG(1) << "Fleet executor's ListenPort() is a fake function when Paddle is "
-             "compiled with npu or isn't compiled with distributed for now.";
+  VLOG(3) << "Fleet executor's ListenPort() is a fake function when Paddle is "
+             "compiled with npu or Paddle isn't compiled "
+             "with distributed for now.";
 #endif
 }
 
@@ -96,21 +98,21 @@ bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
   PADDLE_ENFORCE_NE(
       src_rank, interceptor_id_to_rank_.end(),
       platform::errors::NotFound(
-          "Cannot find rank for src interceptor id %lld.", src_id));
+          "Cannot find rank for src interceptor id %lld. Init error.", src_id));
   PADDLE_ENFORCE_NE(
       dst_rank, interceptor_id_to_rank_.end(),
       platform::errors::NotFound(
-          "Cannot find rank for dst interceptor id %lld.", dst_id));
+          "Cannot find rank for dst interceptor id %lld. Init error.", dst_id));
   auto src_ip = rank_to_addr_.find(src_rank->second);
-  PADDLE_ENFORCE_NE(
-      src_ip, rank_to_addr_.end(),
-      platform::errors::NotFound("Cannot find addr for src rank id %lld.",
-                                 src_rank->second));
+  PADDLE_ENFORCE_NE(src_ip, rank_to_addr_.end(),
+                    platform::errors::NotFound(
+                        "Cannot find addr for src rank id %lld. Init error.",
+                        src_rank->second));
   PADDLE_ENFORCE_EQ(
       src_ip->second, addr_,
       platform::errors::Fatal("The src interceptor's addr is %s, while the "
-                              "message bus's addr is %s,"
-                              " which are different.",
+                              "message bus's addr is %s, which are different. "
+                              "Init error.",
                               src_ip->second, addr_));
   return src_rank->second == dst_rank->second;
 }
@@ -122,10 +124,11 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   int64_t dst_id = interceptor_message.dst_id();
   int64_t dst_rank = interceptor_id_to_rank_[dst_id];
   auto dst_ip = rank_to_addr_.find(dst_rank);
-  PADDLE_ENFORCE_NE(
-      dst_ip, rank_to_addr_.end(),
-      platform::errors::InvalidArgument(
-          "Cannot find rank for dst interceptor id %lld.", dst_id));
+  PADDLE_ENFORCE_NE(dst_ip, rank_to_addr_.end(),
+                    platform::errors::InvalidArgument(
+                        "Cannot find rank for dst interceptor id %lld. "
+                        "Init error.",
+                        dst_id));
   const char* dst_ip_for_brpc = dst_ip->second.c_str();
   brpc::Channel channel;
   brpc::ChannelOptions options;
