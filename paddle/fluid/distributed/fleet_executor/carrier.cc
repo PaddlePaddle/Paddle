@@ -61,8 +61,15 @@ void Carrier::CreateInterceptors() {
   for (const auto& item : interceptor_id_to_node_) {
     int64_t interceptor_id = item.first;
     TaskNode* task_node = item.second;
-    interceptor_idx_to_interceptor_[interceptor_id] =
-        std::make_unique<Interceptor>(interceptor_id, task_node);
+    const auto& iter = interceptor_idx_to_interceptor_.find(interceptor_id);
+    PADDLE_ENFORCE_EQ(iter, interceptor_idx_to_interceptor_.end(),
+                      platform::errors::AlreadyExists(
+                          "The interceptor id %lld has already been created! "
+                          "The interceptor is should be unique.",
+                          interceptor_id));
+    interceptor_idx_to_interceptor_.insert(std::make_pair(
+        interceptor_id,
+        std::make_unique<Interceptor>(interceptor_id, task_node)));
     VLOG(3) << "Create Interceptor for " << interceptor_id;
   }
 }
