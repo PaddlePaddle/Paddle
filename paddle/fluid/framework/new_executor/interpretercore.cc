@@ -33,17 +33,15 @@ namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
 static constexpr size_t kHostNumThreads = 4;
 
-InterpreterCore::InterpreterCore(const platform::Place& place, BlockDesc* block,
-                                 VariableScope* global_scope,
-                                 const std::vector<std::string>& feed_names)
+InterpreterCore::InterpreterCore(const platform::Place& place,
+                                 const BlockDesc& block,
+                                 VariableScope* global_scope)
     : place_(place),
       block_(block),
       global_scope_(global_scope),
       stream_analyzer_(place),
       async_work_queue_(kHostNumThreads, &main_thread_blocker_) {
   is_build_ = false;
-
-  feed_names_ = feed_names;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(
       kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
@@ -56,27 +54,12 @@ InterpreterCore::InterpreterCore(const platform::Place& place, BlockDesc* block,
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
+    const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-  auto FeedInput = [&] {
-    for (size_t i = 0; i < feed_names_.size(); ++i) {
-      auto* feed_var = global_scope_->Var(feed_names_[i]);
-      auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
-      feed_tensor->ShareDataWith(feed_tensors[i]);
-      feed_tensor->set_lod(feed_tensors[i].lod());
-    }
-  };
+  bool is_build = is_build_;
+  Prepare(feed_names, feed_tensors, is_build);
 
-  if (is_build_ == false) {
-    paddle::framework::interpreter::build_variable_scope(*block_,
-                                                         global_scope_);
-    FeedInput();
-    paddle::framework::interpreter::build_op_func_list(
-        place_, *block_, &vec_func_list_, global_scope_);
-    is_build_ = true;
-    // convert vec func_list to graph
-    Convert();
-  } else {
-    FeedInput();
+  if (is_build) {
     ExecuteInstructionList(vec_instruction_);
   }
 
@@ -86,9 +69,9 @@ paddle::framework::FetchList InterpreterCore::Run(
 }
 
 void InterpreterCore::Convert() {
+  auto& vec_meta_info = global_scope_->MutableVecMetaInfo();
   auto var_nums = global_scope_->VarSize();
   input_var2op_info_.resize(var_nums);
-  vec_meta_info_.resize(var_nums);
 
   auto op_nums = vec_func_list_.size();
   vec_instruction_.reserve(op_nums);
@@ -127,7 +110,7 @@ void InterpreterCore::Convert() {
     gc_check_input_list.erase(last, gc_check_input_list.end());
 
     for (auto var_id : gc_check_input_list) {
-      vec_meta_info_[var_id].var_ref_count_++;
+      vec_meta_info[var_id].var_ref_count_++;
       instr.AddGCCheckVar(var_id);
     }
   }
@@ -139,7 +122,7 @@ void InterpreterCore::Convert() {
         if (input_var2op_info_.at(id).size() == 0) {
           // output var not be used by any kernel
           vec_instruction_[i].AddGCCheckVar(id);
-          vec_meta_info_[id].var_ref_count_++;
+          vec_meta_info[id].var_ref_count_++;
         }
       }
     }
@@ -171,7 +154,7 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
 
   BuildSkipShareLoDInfo();
@@ -239,16 +222,14 @@ void InterpreterCore::BuildInplace() {
   }
 }
 
-void InterpreterCore::BuildAndCacheInstructionCtx(
-    Instruction* instr_node, const VariableScope& var_scope,
-    const platform::Place& place) {
+void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   VariableValueMap ins_map;
   for (auto& var_name_item : instr_node->Inputs()) {
     std::vector<Variable*> input_vars;
 
     input_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      input_vars.emplace_back(var_scope.Var(id));
+      input_vars.emplace_back(global_scope_->Var(id));
     }
     ins_map.emplace(var_name_item.first, std::move(input_vars));
   }
@@ -259,7 +240,7 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
 
     out_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      out_vars.emplace_back(var_scope.Var(id));
+      out_vars.emplace_back(global_scope_->Var(id));
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
@@ -350,7 +331,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
   async_work_queue_.PrepareAtomicDeps(dependecy_count_);
-  async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
+  async_work_queue_.PrepareAtomicVarRef(global_scope_->VecMetaInfo());
   op_run_number_ = 0;
 
   exception_holder_.Clear();
@@ -443,7 +424,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     auto& instr_node = vec_instruction_.at(instr_id);
     auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(op->Type());
-    event_manager_.WaitEvent(instr_node, place_);
+    interpreter::WaitEvent(instr_node, place_);
 
     try {
       RunInstruction(instr_node);
@@ -470,7 +451,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
       return;
     }
 
-    event_manager_.RecordEvent(instr_node, place_);
+    interpreter::RecordEvent(instr_node, place_);
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
     // GC infomation
@@ -499,11 +480,18 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   }
 }
 
-void InterpreterCore::DryRunPrepare(
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+void InterpreterCore::Prepare(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::LoDTensor>& feed_tensors, bool prepare_feed) {
+  PADDLE_ENFORCE_EQ(feed_names.size(), feed_tensors.size(),
+                    platform::errors::PreconditionNotMet(
+                        "Required feed_names.size() == feed_tensors.size(), "
+                        "but received %d != %d",
+                        feed_names.size(), feed_tensors.size()));
+
   auto FeedInput = [&] {
-    for (size_t i = 0; i < feed_names_.size(); ++i) {
-      auto* feed_var = global_scope_->FindVar(feed_names_[i]);
+    for (size_t i = 0; i < feed_names.size(); ++i) {
+      auto* feed_var = global_scope_->FindVar(feed_names[i]);
       PADDLE_ENFORCE_NOT_NULL(feed_var, platform::errors::NotFound(
                                             "feed_var shall not be nullptr."));
 
@@ -513,35 +501,33 @@ void InterpreterCore::DryRunPrepare(
     }
   };
 
-  if (is_build_ == false) {
-    paddle::framework::interpreter::build_variable_scope(*block_,
-                                                         global_scope_);
+  if (is_build_) {
+    paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
     FeedInput();
     paddle::framework::interpreter::build_op_func_list(
-        place_, *block_, &vec_func_list_, global_scope_);
+        place_, block_, &vec_func_list_, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::build_op_func_list, so we should
-  // call
-  // FeedInput again.
-  FeedInput();
+  // call FeedInput again.
+  if (prepare_feed) FeedInput();
 }
 
-const CostInfo& InterpreterCore::DryRun(
+interpreter::CostInfo InterpreterCore::DryRun(
+    const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-  DryRunPrepare(feed_tensors);
-  // DryRun may be called many times.
-  dry_run_profiler_.Reset();
-  dry_run_profiler_.Start();
-  ExecuteInstructionList(vec_instruction_);
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  Prepare(feed_names, feed_tensors, true);
+  interpreter::CostInfo cost_info;
+  {
+    interpreter::ProfilerGuard(place_, &cost_info);
+    ExecuteInstructionList(vec_instruction_);
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
 
-  dry_run_profiler_.Pause();
-  dry_run_profiler_.TotalCUDAAllocatedMemorySize(place_);
-  return dry_run_profiler_.GetCostInfo();
+  return cost_info;
 }
 
 }  // namespace framework
