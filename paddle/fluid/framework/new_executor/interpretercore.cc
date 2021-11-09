@@ -501,7 +501,7 @@ void InterpreterCore::Prepare(
     }
   };
 
-  if (is_build_) {
+  if (!is_build_) {
     paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
     FeedInput();
     paddle::framework::interpreter::build_op_func_list(
