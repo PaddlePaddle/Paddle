@@ -61,6 +61,135 @@ static mkldnn::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
   return dst_dt;
 }
 
+template <typename T>
+struct remap {
+  // Default: Output type is the same as input type.
+  typedef T type;
+};
+
+template <>
+struct remap<uint8_t> {
+  typedef int8_t type;
+};
+
+template <typename T>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<T>(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx,
+    const std::string& key) const {
+  return std::make_shared<std::tuple<float, std::vector<float>>>(
+      std::make_tuple(0.0f, std::vector<float>(1, 1.0f)));
+}
+
+template <>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<int8_t>(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx,
+    const std::string& key) const {
+  // Get scales int8 bias key
+  const std::string key_bs = key + "@bs";
+
+  // Scales for int8 bias are to be cached to avoid
+  // computing them each iteration
+  auto bias_scale_tuple =
+      std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
+          dev_ctx.GetBlob(key_bs));
+  if (bias_scale_tuple) return bias_scale_tuple;
+
+  const auto* filter = ctx.Input<Tensor>("Filter");
+  const auto& weights_tz = framework::vectorize(filter->dims());
+  const int groups = std::max(ctx.Attr<int>("groups"), 1);
+
+  const auto& scale_weights_data =
+      ctx.Attr<std::vector<float>>("Scale_weights");
+  const auto& scale_in_data = ctx.Attr<float>("Scale_in");
+
+  bool is_multi_channel = scale_weights_data.size() > 1;
+  int mask_reorder = is_multi_channel ? 1 << 0 : 1;
+  const int count =
+      is_multi_channel
+          ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
+          : 1;
+
+  bias_scale_tuple =
+      std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
+          static_cast<float>(mask_reorder), std::vector<float>(count)));
+  for (int i = 0; i < count; i++) {
+    std::get<1>(*bias_scale_tuple)[i] = scale_in_data * scale_weights_data[i];
+  }
+
+  dev_ctx.SetBlob(key_bs, bias_scale_tuple);
+
+  return bias_scale_tuple;
+}
+
+template <typename T>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<T>(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx,
+    const std::string& key) const {
+  return std::make_shared<std::tuple<float, std::vector<float>>>(
+      std::make_tuple(1.0f, std::vector<float>()));
+}
+
+template <>
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
+    const framework::ExecutionContext& ctx,
+    const platform::MKLDNNDeviceContext& dev_ctx,
+    const std::string& key) const {
+  // Get scales int8 bias key
+  const std::string key_s = key + "@s";
+
+  // Scales for int8 bias are to be cached to avoid
+  // computing them each iteration
+  auto scale_tuple =
+      std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
+          dev_ctx.GetBlob(key_s));
+  if (scale_tuple) return scale_tuple;
+
+  const auto* filter = ctx.Input<Tensor>("Filter");
+  const auto& weights_tz = framework::vectorize(filter->dims());
+
+  const bool& force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+  const bool& fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+  const int groups = std::max(ctx.Attr<int>("groups"), 1);
+
+  const auto& scale_in_data = ctx.Attr<float>("Scale_in");
+  const auto& scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
+  auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+  bool is_multi_channel = scale_weights_data.size() > 1;
+  auto scale_out_data = force_fp32_output ? 1.0f : ctx.Attr<float>("Scale_out");
+  float sum_scale =
+      fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+  int count = is_multi_channel ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0]
+                                             : (weights_tz)[0])
+                               : 1;
+  std::vector<float> output_shift_scale(count);
+
+  for (int i = 0; i < count; i++) {
+    if (scale_weights_data[i] == 0.0)
+      // weights data will contain 0 in some models, then weights
+      // scale couldn't be calculated
+      output_shift_scale[i] = scale_out_data;
+    else
+      output_shift_scale[i] =
+          static_cast<float>(static_cast<double>(scale_out_data) /
+                             (static_cast<double>(scale_in_data) *
+                              static_cast<double>(scale_weights_data[i])));
+  }
+
+  scale_tuple =
+      std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
+          static_cast<float>(sum_scale), std::vector<float>(count)));
+  for (int i = 0; i < count; i++) {
+    std::get<1>(*scale_tuple)[i] = scale_in_data * scale_weights_data[i];
+  }
+
+  dev_ctx.SetBlob(key_s, scale_tuple);
+
+  return scale_tuple;
+}
+
 template <typename T, typename K, typename T_out>
 class ConvMKLDNNHandlerT
     : public platform::MKLDNNHandlerNoCachingT<
@@ -202,14 +331,11 @@ class ConvMKLDNNHandlerT
         dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
     const auto fwd_prop_kind = is_test_ ? mkldnn::prop_kind::forward_inference
                                         : mkldnn::prop_kind::forward_training;
-    float sum_scale = 1.0f;
-    std::vector<float> output_shift_scale;
-    if (platform::is_int8<T>())
-      std::tie(sum_scale, output_shift_scale) = get_int8_scales(ctx);
 
+    auto p_tupple = get_scales<typename remap<T>::type>(ctx, dev_ctx, key);
     const mkldnn::primitive_attr conv_attr = CreatePostOps(
         fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
-        output_shift_scale, sum_scale);  // for INT8 only!
+        std::get<1>(*p_tupple), std::get<0>(*p_tupple));
 
     if (bias) {
       auto bias_tz = framework::vectorize(bias->dims());
@@ -363,86 +489,6 @@ class ConvMKLDNNHandlerT
         mkldnn::algorithm::convolution_direct, src_md, diff_weights_md,
         diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
         mkldnn_paddings[1]);
-  }
-
-  std::tuple<float, std::vector<float>> get_int8_scales(
-      const framework::ExecutionContext& ctx) const {
-    const auto* filter = ctx.Input<Tensor>("Filter");
-    const auto& weights_tz = framework::vectorize(filter->dims());
-
-    const bool& force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-    const bool& fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-    const int groups = std::max(ctx.Attr<int>("groups"), 1);
-
-    const auto& scale_in_data = ctx.Attr<float>("Scale_in");
-    const auto& scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
-    auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-    bool is_multi_channel = scale_weights_data.size() > 1;
-    auto scale_out_data =
-        force_fp32_output ? 1.0f : ctx.Attr<float>("Scale_out");
-    float sum_scale =
-        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
-    int count =
-        is_multi_channel
-            ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
-            : 1;
-    std::vector<float> output_shift_scale(count);
-
-#pragma omp parallel for if (count > 50)
-    for (int i = 0; i < count; i++) {
-      if (scale_weights_data[i] == 0.0)
-        // weights data will contain 0 in some models, then weights
-        // scale couldn't be calculated
-        output_shift_scale[i] = scale_out_data;
-      else
-        output_shift_scale[i] =
-            static_cast<float>(static_cast<double>(scale_out_data) /
-                               (static_cast<double>(scale_in_data) *
-                                static_cast<double>(scale_weights_data[i])));
-    }
-
-    return std::make_tuple(sum_scale, output_shift_scale);
-  }
-
-  std::shared_ptr<std::tuple<float, std::vector<float>>> get_int8_bias_scales(
-      const framework::ExecutionContext& ctx,
-      const platform::MKLDNNDeviceContext& dev_ctx,
-      const std::string& key) const {
-    const auto* filter = ctx.Input<Tensor>("Filter");
-    const auto& weights_tz = framework::vectorize(filter->dims());
-    const int groups = std::max(ctx.Attr<int>("groups"), 1);
-
-    // Get scales int8 bias key
-    const std::string key_bs = key + "@bs";
-
-    // Scales for int8 bias are to be cached to avoid
-    // computing them each iteration
-    auto bias_scale_tuple =
-        std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
-            dev_ctx.GetBlob(key_bs));
-    if (bias_scale_tuple) return bias_scale_tuple;
-
-    const auto& scale_weights_data =
-        ctx.Attr<std::vector<float>>("Scale_weights");
-    const auto& scale_in_data = ctx.Attr<float>("Scale_in");
-
-    bool is_multi_channel = scale_weights_data.size() > 1;
-    int mask_reorder = is_multi_channel ? 1 << 0 : 1;
-    const int count =
-        is_multi_channel
-            ? (groups > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
-            : 1;
-
-    bias_scale_tuple =
-        std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
-            static_cast<float>(mask_reorder), std::vector<float>(count)));
-    for (int i = 0; i < count; i++) {
-      std::get<1>(*bias_scale_tuple)[i] = scale_in_data * scale_weights_data[i];
-    }
-
-    dev_ctx.SetBlob(key_bs, bias_scale_tuple);
-
-    return bias_scale_tuple;
   }
 
   mkldnn::primitive_attr CreatePostOps(
@@ -651,12 +697,7 @@ class ConvMKLDNNHandlerT
         MKLDNNMemoryFormat::x);
 
     // Get Bias scales for int8
-    //                                                                                        std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(static_cast<float>(mask_reorder), std::vector<float>(count)));
-    auto p_tupple =
-        platform::is_int8<T>()
-            ? (get_int8_bias_scales(ctx, dev_ctx, key))
-            : std::make_shared<std::tuple<float, std::vector<float>>>(
-                  std::make_tuple(0.0f, std::vector<float>(1, 1.0f)));
+    auto p_tupple = get_bias_scales<typename remap<T>::type>(ctx, dev_ctx, key);
 
     return this->AcquireMemoryWithReorder(
         dev_ctx, user_bias_md, this->fwd_pd_->bias_desc(),
