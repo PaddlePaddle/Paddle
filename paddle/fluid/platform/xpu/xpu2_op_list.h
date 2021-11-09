@@ -261,8 +261,17 @@ XPUOpMap& get_kl2_ops() {
       {"tile", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                              pOpKernelType(vartype::INT64, XPUPlace()),
                              pOpKernelType(vartype::BOOL, XPUPlace()),
-                             pOpKernelType(vartype::FP32, XPUPlace())})}
-
+                             pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"where", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                              pOpKernelType(vartype::INT64, XPUPlace()),
+                              pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"where_index", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                                    pOpKernelType(vartype::BOOL, XPUPlace()),
+                                    pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"masked_select",
+       XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                     pOpKernelType(vartype::INT64, XPUPlace()),
+                     pOpKernelType(vartype::FP32, XPUPlace())})}
       // AddMore
   };
 
