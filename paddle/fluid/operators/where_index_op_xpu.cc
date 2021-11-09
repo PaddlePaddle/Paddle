@@ -46,9 +46,14 @@ class WhereIndexXPUKernel : public framework::OpKernel<T> {
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();
     }
-    xpu_memcpy(static_cast<void*>(&true_num_cpu),
-               static_cast<const void*>(true_num), sizeof(int32_t),
-               XPU_DEVICE_TO_HOST);
+    ret = xpu_memcpy(static_cast<void*>(&true_num_cpu),
+                     static_cast<const void*>(true_num), sizeof(int32_t),
+                     XPU_DEVICE_TO_HOST);
+    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                      platform::errors::External("XPU xpu_memcpy return wrong "
+                                                 "value[%d %s]",
+                                                 ret, XPUAPIErrorMsg[ret]));
+
     out->Resize(
         framework::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());

@@ -12,7 +12,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/operators/masked_select_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -52,9 +51,14 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();
     }
-    xpu_memcpy(static_cast<void*>(&out_size_cpu),
-               static_cast<const void*>(out_size), sizeof(int32_t),
-               XPU_DEVICE_TO_HOST);
+    ret = xpu_memcpy(static_cast<void*>(&out_size_cpu),
+                     static_cast<const void*>(out_size), sizeof(int32_t),
+                     XPU_DEVICE_TO_HOST);
+    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                      platform::errors::External("XPU xpu_memcpy return wrong "
+                                                 "value[%d %s]",
+                                                 ret, XPUAPIErrorMsg[ret]));
+
     framework::DDim out_dim{out_size_cpu};
     out->Resize(out_dim);
     auto out_data = out->mutable_data<T>(context.GetPlace());
