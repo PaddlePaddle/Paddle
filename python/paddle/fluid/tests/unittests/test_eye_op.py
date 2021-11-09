@@ -125,9 +125,9 @@ class TestEyeOp_Row_Tensor_Column_Tensor(OpTest):
         self.attrs = {'dtype': framework.convert_np_dtype_to_dtype_(np.int32)}
 
     def config(self):
-        self.rows = 99
+        self.rows = 56
         self.columns = 2
-        self.outputs = {'Out': np.eye(99, 2, dtype=float)}
+        self.outputs = {'Out': np.eye(56, 2, dtype=float)}
 
     def test_check_output(self):
         self.check_output()
