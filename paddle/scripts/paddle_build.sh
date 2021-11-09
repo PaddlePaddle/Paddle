@@ -202,6 +202,7 @@ function cmake_base() {
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
+        -DWITH_CINN=${WITH_CINN:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -246,6 +247,7 @@ EOF
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
+        -DWITH_CINN=${WITH_CINN:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
