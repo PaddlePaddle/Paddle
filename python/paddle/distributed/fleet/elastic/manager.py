@@ -129,7 +129,7 @@ class ElasticManager(object):
 
         start_port = 6170
         if os.environ.get('FLAGS_START_PORT') is not None:
-            start_port = os.environ.get('FLAGS_START_PORT')
+            start_port = int(os.environ.get('FLAGS_START_PORT'))
         if cloud_utils.use_paddlecloud() and self.max_np != 1:
             start_port = int(os.getenv("PADDLE_PORT", ""))
 
@@ -203,9 +203,6 @@ class ElasticManager(object):
         '''
         self.etcd.put(self.prefix, b'0')
 
-        # host
-        # register self host to etcd
-
         # register callback
         def host_call_back(event):
             self.hosts = [
@@ -252,23 +249,6 @@ class ElasticManager(object):
         keepalived_thread.start()
 
         self.etcd.put(self.host_path, six.b(self.host_port), lease=host_lease)
-
-        # np describes the exact number of nodes to run the job
-        #inp = int(self.etcd.get(self.np_path)[0] or 0)
-        #if scale == 0 and not force:
-        #    assert inp == np or inp == 0, "np {} is not consistent with np in etcd {}".format(
-        #        np, inp)
-        #else:
-        #    assert inp == np or inp == self.np, "np {} scale to {} by {} is not allowed".format(
-        #        inp, self.np, scale)
-        #self.etcd.put(self.np_path, six.b("%d" % (self.np)))
-
-        #def np_call_back(event):
-        #    gnp = int(self.etcd.get(self.np_path)[0])
-        #    if gnp != self.np:
-        #        logger.info("scale np {} to {} ".format(self.np, gnp))
-        #        self.np = gnp
-        #np_watch = self.etcd.add_watch_callback(self.np_path, np_call_back)
 
         # endpoints handle DISTRIBUTED_TRAINER_ENDPOINTS and PADDLE_TRAINERS
         self.etcd.put(self.endpoints_path,
