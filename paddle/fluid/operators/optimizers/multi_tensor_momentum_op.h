@@ -96,14 +96,81 @@ class MTMomentumOpKernel : public framework::OpKernel<T> {
       if (grad_vars[idx]->IsType<framework::LoDTensor>()) {
         if (platform::is_cpu_place(ctx.GetPlace())) {
           CPUDenseMomentumFunctor<MT> functor;
-          functor(params[idx], grads[idx], velocitys[idx], learning_rate, mu,
-                  use_nesterov, regularization_flag, regularization_coeff,
-                  param_out, velocity_out);
+          functor(params[idx], grads[idx], velocitys[idx], learning_rates[idx],
+                  mu, use_nesterov, regularization_flag, regularization_coeff,
+                  param_outs[idx], velocity_outs[idx]);
 
-        } else {  // grad is SelectedRows
-          functor(params[idx], grads[idx], velocitys[idx], learning_rate, mu,
-                  use_nesterov, regularization_flag, regularization_coeff,
-                  param_out, velocity_out);
+        } else if (platform::is_gpu_place(ctx.GetPlace())) {
+          platform::ForRange<DeviceContext> for_range(
+              static_cast<const DeviceContext&>(ctx.device_context()),
+              params[idx]->numel());
+#define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type)           \
+  DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(                \
+      params[idx]->data<T>(), grads[idx]->data<T>(),                          \
+      velocitys[idx]->data<MT>(), learning_rates[idx]->data<MPDType>(),       \
+      master_in_data, mu, rescale_grad, params[idx]->numel(),                 \
+      regularization_coeff, param_outs[idx]->mutable_data<T>(ctx.GetPlace()), \
+      velocity_outs[idx]->mutable_data<MT>(ctx.GetPlace()), master_out_data); \
+  for_range(functor);
+          if (use_nesterov) {
+            if (regularization_flag == RegularizationType::kL2DECAY) {
+              PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(UseNesterov,
+                                                  RegularizationType::kL2DECAY);
+            } else {
+              PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(UseNesterov,
+                                                  RegularizationType::kNONE);
+            }
+          } else {
+            if (regularization_flag == RegularizationType::kL2DECAY) {
+              PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(NoNesterov,
+                                                  RegularizationType::kL2DECAY);
+            } else {
+              PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(NoNesterov,
+                                                  RegularizationType::kNONE);
+            }
+          }
+        }
+      } else if (grad_vars[idx]->IsType<framework::SelectedRows>()) {
+        // sparse update maybe empty.
+        if (grads[idx]->rows().size() == 0) {
+          VLOG(3) << "Grad SelectedRows contains no data!";
+          return;
+        }
+        framework::SelectedRows tmp_merged_grad;
+        framework::SelectedRows* merged_grad = &tmp_merged_grad;
+        math::scatter::MergeAdd<DeviceContext, T> merge_func;
+        merge_func(ctx.template device_context<DeviceContext>(), *grads[idx],
+                   merged_grad);
+
+        const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
+        int64_t row_numel =
+            merged_grad->value().numel() / merged_grad->rows().size();
+        platform::ForRange<DeviceContext> for_range(
+            static_cast<const DeviceContext&>(ctx.device_context()),
+            params[idx]->numel());
+        if (use_nesterov) {
+          SparseMomentumFunctor<T, MT, UseNesterov> functor(
+              params[idx]->data<T>(), merged_grad->value().data<T>(),
+              velocitys[idx]->data<MT>(), learning_rates[idx]->data<MPDType>(),
+              master_in_data, mu, rescale_grad, rows, row_numel,
+              static_cast<int64_t>(merged_grad->rows().size()),
+              regularization_flag, regularization_coeff,
+              param_outs[idx]->mutable_data<T>(ctx.GetPlace()),
+              velocity_outs[idx]->mutable_data<MT>(ctx.GetPlace()),
+              master_out_data);
+          for_range(functor);
+
+        } else {
+          SparseMomentumFunctor<T, MT, NoNesterov> functor(
+              params[idx]->data<T>(), merged_grad->value().data<T>(),
+              velocitys[idx]->data<MT>(), learning_rates[idx]->data<MPDType>(),
+              master_in_data, mu, rescale_grad, rows, row_numel,
+              static_cast<int64_t>(merged_grad->rows().size()),
+              regularization_flag, regularization_coeff,
+              param_outs[idx]->mutable_data<T>(ctx.GetPlace()),
+              velocity_outs[idx]->mutable_data<MT>(ctx.GetPlace()),
+              master_out_data);
+          for_range(functor);
         }
       }
     }
