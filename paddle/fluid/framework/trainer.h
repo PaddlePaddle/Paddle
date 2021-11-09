@@ -71,9 +71,7 @@ class TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id) = 0;
   virtual void InitDumpEnv() = 0;
   virtual void DumpWork(int tid);
-  virtual void ResetDataset(Dataset* dataset_ptr) {
-    dataset_ptr_ = dataset_ptr;
-  }
+  virtual void ResetDataset(Dataset* dataset_ptr) {}
 
  protected:
   virtual std::string GetDumpPath(int tid) = 0;
@@ -265,7 +263,7 @@ class PSGPUTrainer : public TrainerBase {
     new (&program_) ProgramDesc(main_program);
   }
   virtual std::string GetDumpPath(int tid);
-  virtual void InitDumpEnv() override;
+  void InitDumpEnv() override;
   virtual void MergeDenseParam();
 
   template <typename T>
@@ -338,9 +336,9 @@ class HeterPipelineTrainer : public TrainerBase {
   void InitOtherEnv(const ProgramDesc& main_program) override;
   void Run() override;
   void Finalize() override;
-  virtual Scope* GetWorkerScope(int thread_id) override;
+  Scope* GetWorkerScope(int thread_id) override;
   void InitDumpEnv() override;
-  virtual std::string GetDumpPath(int tid) override;
+  std::string GetDumpPath(int tid) override;
   void ResetDataset(Dataset* dataset_ptr) override;
 
  protected:

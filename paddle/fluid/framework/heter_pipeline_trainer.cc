@@ -126,7 +126,9 @@ std::string HeterPipelineTrainer::GetDumpPath(int tid) {
 
 void HeterPipelineTrainer::InitDumpEnv() {
   queue_ = paddle::framework::MakeChannel<std::string>();
-  // TODO(sandyhouse): should make it as a config
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->SetChannelWriter(queue_.get());
+  }
   dump_thread_num_ = 1;
   for (int i = 0; i < dump_thread_num_; i++) {
     dump_thread_.push_back(

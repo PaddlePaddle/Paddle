@@ -14,6 +14,8 @@
 
 #if defined(PADDLE_WITH_PSCORE)
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -113,6 +115,8 @@ TEST(HeterPipelineTrainerTest, test1) {
   t3.add_trainers(1);
   t3.add_trainers(1);
   t3.add_trainers(1);
+  t3.add_dump_fields("hello");
+  t3.add_dump_param("fc_0");
   auto* heter_section_param3 = t3.mutable_heter_section_param();
   heter_section_param3->set_num_pipeline_stages(3);
   heter_section_param3->set_pipeline_stage(2);
@@ -125,7 +129,7 @@ TEST(HeterPipelineTrainerTest, test1) {
   str += "is_dense: false\nis_used: true\n}\n}\n";
   std::shared_ptr<MultiSlotDataset> dataset =
       std::make_shared<MultiSlotDataset>();
-  dataset->SetFileList(std::vector<std::string>());
+  dataset->SetFileList(std::vector<std::string>{"a1.txt", "a2.txt"});
   dataset->SetThreadNum(1);
   dataset->SetTrainerNum(1);
   dataset->SetDataFeedDesc(str);
@@ -187,6 +191,11 @@ TEST(HeterPipelineTrainerTest, test1) {
   tmp3->Initialize(t3, dataset.get());
   tmp3->InitTrainerEnv(p3, place);
   tmp3->InitOtherEnv(p3);
+
+  // tmp3->GetDumpPath(0);
+  // tmp3->InitDumpEnv();
+  // tmp3->FinalizeDumpEnv();
+
   tmp3->GetWorkerScope(0);
   tmp3->ResetDataset(dataset.get());
   tmp3->Finalize();
@@ -196,6 +205,11 @@ TEST(HeterPipelineTrainerTest, test1) {
   tmp4 = TrainerFactory::CreateTrainer("MultiTrainer");
   tmp4->ResetDataset(dataset.get());
 
+  // heter_section_worker test
+  std::shared_ptr<DeviceWorker> w_0;
+  w_0 = DeviceWorkerFactory::CreateDeviceWorker("HeterSectionWorker");
+  w_0->CreateDeviceResource(p3);
+  w_0->BindingDataFeedMemory();
 #endif
 }
 }  // namespace framework

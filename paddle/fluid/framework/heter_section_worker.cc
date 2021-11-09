@@ -63,6 +63,7 @@ uint64_t HeterSectionWorker::batch_id_(0);
 
 void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   trainer_desc_ = desc;
+  fetch_config_ = desc.fetch_config();
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   program_.reset(new ProgramDesc(
       desc.heter_section_param().section_config().program_desc()));
