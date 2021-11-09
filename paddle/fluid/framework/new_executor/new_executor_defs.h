@@ -650,22 +650,8 @@ struct EventInter {
   platform::DeviceType waiter_type_;
 };
 
-/*
- * An utility class containing base information to help convert OpFuncNode
- * into Instruction.
- */
 struct InstructionInfo {
-  void Resize(size_t num) {
-    dependecy_count_.resize(num);
-    input_var2op_info_.resize(num);
-    vec_meta_info_.resize(num);
-  }
-
-  const std::vector<size_t> DependecyCount() const { return dependecy_count_; }
-
   std::vector<size_t> dependecy_count_;
-  std::vector<std::vector<size_t>> input_var2op_info_;
-  std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
 enum class OpFuncType {
