@@ -487,7 +487,7 @@ struct CudaAcoshFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaAcoshGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
-
+  MPType one = static_cast<MPType>(1.0f);
   // dx = dout * 1 / sqrt(x^2 - 1)
   __device__ __forceinline__ T operator()(const T& arg_dout,
                                           const T& arg_x) const {
@@ -513,13 +513,14 @@ struct CudaAsinhFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaAsinhGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
 
   // dx = dout * 1/sqrt(x^2 + 1)
   __device__ __forceinline__ T operator()(const T& arg_dout,
                                           const T& arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(dout * one / sqrt(x * x + 1));
+    return static_cast<T>(dout * one / sqrt(x * x + one));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
