@@ -35,8 +35,10 @@ function check_whl {
     git checkout -b develop_base_pr upstream/$BRANCH
     [ $? -ne 0 ] && echo "checkout paddle branch failed." && exit 1
 
-    bash -x paddle/scripts/paddle_build.sh build_only
+    #bash -x paddle/scripts/paddle_build.sh build_only
+    cd build && make -j20
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
+    cd ..
     unzip -q build/python/dist/*.whl -d /tmp/develop
 
     sed -i '/paddle\/version\/__init__.py/d' /tmp/pr/*/RECORD
