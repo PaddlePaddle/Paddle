@@ -1848,7 +1848,19 @@ class Executor(object):
                                        use_program_cache)
         from ..distributed.fleet.proto import fleet_executor_desc_pb2
         from google.protobuf import text_format
+        cur_rank = os.getenv("PADDLE_TRAINER_ID")
+        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+        if cur_rank and trainer_endpoints_str:
+            fleet_exe_desc.cur_rank = int(cur_rank)
+            trainer_endpoints = trainer_endpoints_str.split(',')
+            for rank, endpoint in enumerate(trainer_endpoints):
+                rank_info = fleet_executor_desc_pb2.RankInfo()
+                rank_info.rank = rank
+                rank_info.ip_port = endpoint
+                fleet_exe_desc.cluster_info.append(rank_info)
+        else:
+            logging.warning("Fleet Executor will run on single device only.")
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         fleet_exe.init(program._pipeline_opt["section_program"].desc)
         fleet_exe.run()
