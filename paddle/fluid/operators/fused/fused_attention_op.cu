@@ -194,11 +194,20 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     out_linear_compute.ComputeForward(out_linear_weight_data, fmha_out_data,
                                       nullptr, out_linear_out_data, nullptr);
     // output = layernorm(residual + dropout(input + bias))
-    fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-        ctx.cuda_device_context(), out_linear_out_data, x_data,
-        out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
-        bias_dropout_residual_out_data, dropout_mask_out_data, final_out_data,
-        ln_mean_2_data, ln_var_2_data);
+    if (pre_layer_norm) {
+      // output = (residual + dropout(input + bias))
+      fused_dropout_layernorm_helper.ResidualDropoutBias(
+          ctx.cuda_device_context(), out_linear_out_data, x_data,
+          out_linear_bias_data, final_out_data, dropout_mask_out_data);
+
+    } else {
+      // output = layernorm(residual + dropout(input + bias))
+      fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+          ctx.cuda_device_context(), out_linear_out_data, x_data,
+          out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
+          bias_dropout_residual_out_data, dropout_mask_out_data, final_out_data,
+          ln_mean_2_data, ln_var_2_data);
+    }
   }
 };
 

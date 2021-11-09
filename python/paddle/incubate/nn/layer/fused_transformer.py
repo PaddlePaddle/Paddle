@@ -438,6 +438,7 @@ class FusedTransformerEncoderLayer(Layer):
             nhead,
             dropout_rate=dropout_rate,
             attn_dropout_rate=attn_dropout_rate,
+            normalize_before=self.normalize_before,
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0])
 
