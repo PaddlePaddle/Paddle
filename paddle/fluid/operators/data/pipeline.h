@@ -18,12 +18,13 @@
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/operators/data/data_scope.h"
 
 namespace paddle {
 namespace operators {
 
 using BlockDesc = framework::BlockDesc;
-using Scope = framework::Scope;
+using DataScope = framework::DataScope;
 using ParallelExecutor = framework::ParallelExecutor;
 
 using Variable = framework::Variable;
@@ -74,7 +75,7 @@ class Pipeline {
   ThreadPool thread_pool_;
   std::atomic<bool> closed_;
 
-  Scope scope_;
+  DataScope scope_;
   std::shared_ptr<BlockDesc> global_block_;
   platform::Place place_;
   int64_t start_op_index_;
