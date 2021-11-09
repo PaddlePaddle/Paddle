@@ -6,7 +6,10 @@
 # in combination rule, you can remove the source file from the following rules.
 register_unity_group(cc
     pipeline.cc
-    dataloader_op.cc)
+    map_runner.cc
+    dataloader_op.cc
+    map_op.cc)
 
 register_unity_group(cu
-    dataloader_op.cu.cc)
+    dataloader_op.cu.cc
+    map_op.cu.cc)

@@ -33,30 +33,26 @@ using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 
 namespace data {
 
-class Pipeline {
+class MapRunner {
  public:
-  Pipeline(const std::shared_ptr<BlockDesc> global_block,
+  MapRunner(const std::shared_ptr<BlockDesc> global_block,
            const platform::Place &place, int64_t start_op_index,
            int64_t end_op_index, int64_t program_id,
+           const std::vector<std::string> &input_var_names,
            const std::vector<std::string> &output_var_names,
-           size_t prefetch_queue_size);
+           const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
+           const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues);
 
-  // ~Pipeline() {
-  //   VLOG(1) << "~Pipeline";
+  // ~MapRunner() {
+  //   VLOG(1) << "~MapRunner";
   //   Close();
   // }
-
-  inline size_t PrefetchCap() { return prefetch_queue_.Cap(); }
-
-  inline size_t PrefetchSize() { return prefetch_queue_.Size(); }
 
   inline bool IsClosed() { return closed_; }
 
   inline void Close();
 
   inline void Reset();
-
-  void ReadNext(std::vector<Variable *> &out_vars);
 
  private:
   void copy_tensor(const framework::LoDTensor &lod_tensor,
@@ -67,9 +63,11 @@ class Pipeline {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  void StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
+  bool ShareInputsIntoScope();
+  void StartMapThread(std::shared_ptr<ParallelExecutor> executor,
                            const std::vector<std::string> &skip_vars);
 
+  void CheckInputVarStatus(const Variable &var, const std::string &var_name);
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
   ThreadPool thread_pool_;
@@ -82,55 +80,55 @@ class Pipeline {
   int64_t end_op_index_;
   int64_t program_id_;
 
+  std::vector<std::string> input_var_names_;
   std::vector<std::string> output_var_names_;
-
-  const size_t prefetch_queue_size_;
-  LoDTensorBlockingQueue prefetch_queue_;
+  std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues_;
+  std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues_;
 };
 
-class PipelineManager {
-  // PipelineManager is a signleton manager for Pipeline, we
-  // create single Pipeline for a program id
+class MapRunnerManager {
+  // MapRunnerManager is a signleton manager for MapRunner, we
+  // create single MapRunner for a program id
  private:
-  DISABLE_COPY_AND_ASSIGN(PipelineManager);
+  DISABLE_COPY_AND_ASSIGN(MapRunnerManager);
 
-  static PipelineManager *pm_instance_ptr_;
+  static MapRunnerManager *pm_instance_ptr_;
   static std::mutex m_;
 
-  std::map<int64_t, std::unique_ptr<Pipeline>> prog_id_to_pipeline_;
+  std::map<int64_t, std::unique_ptr<MapRunner>> prog_id_to_runner_;
 
  public:
-  static PipelineManager *Instance() {
+  static MapRunnerManager *Instance() {
     if (pm_instance_ptr_ == nullptr) {
       std::lock_guard<std::mutex> lk(m_);
       if (pm_instance_ptr_ == nullptr) {
-        pm_instance_ptr_ = new PipelineManager;
+        pm_instance_ptr_ = new MapRunnerManager;
       }
     }
     return pm_instance_ptr_;
   }
 
-  Pipeline* GetPipeline(
+  void StartMapRunner(
       int64_t program_id, BlockDesc *global_block, const platform::Place &place,
       int64_t start_op_index, int64_t end_op_index,
+      const std::vector<std::string> &input_var_names,
       const std::vector<std::string> &output_var_names,
-      size_t prefetch_queue_size) {
-    auto iter = prog_id_to_pipeline_.find(program_id);
-    if (iter == prog_id_to_pipeline_.end()) {
-      prog_id_to_pipeline_[program_id] = std::unique_ptr<Pipeline>(new Pipeline(
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &input_queues,
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &output_queues) {
+    auto iter = prog_id_to_runner_.find(program_id);
+    if (iter == prog_id_to_runner_.end()) {
+      prog_id_to_runner_[program_id] = std::unique_ptr<MapRunner>(new MapRunner(
           std::shared_ptr<BlockDesc>(global_block), place, start_op_index,
-          end_op_index, program_id, output_var_names, prefetch_queue_size));
-      return prog_id_to_pipeline_[program_id].get();
-    } else {
-      return iter->second.get();
-    }
+          end_op_index, program_id, input_var_names, output_var_names,
+          input_queues, output_queues));
+      }
   }
 
-  PipelineManager() { VLOG(1) << "PipelineManager init"; }
+  MapRunnerManager() { VLOG(1) << "MapRunnerManager init"; }
 
-  ~PipelineManager() {
-    VLOG(1) << "~PipelineManager";
-    prog_id_to_pipeline_.clear();
+  ~MapRunnerManager() {
+    VLOG(1) << "~MapRunnerManager";
+    prog_id_to_runner_.clear();
   }
 };
 

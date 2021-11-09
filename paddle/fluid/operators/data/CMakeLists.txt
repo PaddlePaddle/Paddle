@@ -7,6 +7,9 @@ endif()
 cc_library(pipeline SRCS pipeline.cc DEPS parallel_executor simple_threadpool scope)
 op_library(dataloader_op SRCS dataloader_op.cc dataloader_op.cu.cc DEPS pipeline ${OP_HEADER_DEPS})
 
+cc_library(map_runner SRCS map_runner.cc DEPS parallel_executor simple_threadpool scope)
+op_library(map_op SRCS map_op.cc map_op.cu.cc DEPS map_runner ${OP_HEADER_DEPS})
+
 # register_operators()
 
 # TODO: add test here
