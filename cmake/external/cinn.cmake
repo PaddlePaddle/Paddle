@@ -28,7 +28,15 @@ include(ExternalProject)
 set(CINN_SOURCE_DIR ${THIRD_PARTY_PATH}/CINN)
 # TODO(zhhsplendid): Modify git tag after we have release tag
 set(CINN_GIT_TAG develop)
-set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION} -DWITH_CUDA=${WITH_GPU} -DWITH_CUDNN=${WITH_GPU} -DPUBLISH_LIBS=ON -DWITH_TESTING=ON)
+set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
+                       -DWITH_CUDA=${WITH_GPU}
+                       -DWITH_CUDNN=${WITH_GPU}
+                       -DWITH_MKL_CBLAS=${WITH_MKL}
+                       -DWITH_MKLDNN=${WITH_MKL}
+                       -DPUBLISH_LIBS=ON
+                       -DWITH_TESTING=ON
+                       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+)
 set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
