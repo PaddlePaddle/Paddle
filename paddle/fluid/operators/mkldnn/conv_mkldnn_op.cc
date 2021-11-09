@@ -76,7 +76,7 @@ template <typename T>
 std::shared_ptr<std::tuple<float, std::vector<float> > > get_bias_scales<T>(
     const framework::ExecutionContext& ctx,
     const platform::MKLDNNDeviceContext& dev_ctx,
-    const std::string& key) const {
+    const std::string& key) {
   return std::make_shared<std::tuple<float, std::vector<float>>>(
       std::make_tuple(0.0f, std::vector<float>(1, 1.0f)));
 }
@@ -85,7 +85,7 @@ template <>
 std::shared_ptr<std::tuple<float, std::vector<float> > > get_bias_scales<int8_t>(
     const framework::ExecutionContext& ctx,
     const platform::MKLDNNDeviceContext& dev_ctx,
-    const std::string& key) const {
+    const std::string& key) {
   // Get scales int8 bias key
   const std::string key_bs = key + "@bs";
 
