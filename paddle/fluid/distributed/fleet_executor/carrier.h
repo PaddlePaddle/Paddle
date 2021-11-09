@@ -37,7 +37,7 @@ class Carrier final {
   explicit Carrier(
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node);
 
-  ~Carrier();
+  ~Carrier() = default;
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);

@@ -93,8 +93,8 @@ void MessageBus::ListenPort() {
 
 bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
   // check whether the dst is the same rank or different rank with src
-  auto src_rank = interceptor_id_to_rank_.find(src_id);
-  auto dst_rank = interceptor_id_to_rank_.find(dst_id);
+  const auto& src_rank = interceptor_id_to_rank_.find(src_id);
+  const auto& dst_rank = interceptor_id_to_rank_.find(dst_id);
   PADDLE_ENFORCE_NE(
       src_rank, interceptor_id_to_rank_.end(),
       platform::errors::NotFound(
@@ -103,7 +103,7 @@ bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
       dst_rank, interceptor_id_to_rank_.end(),
       platform::errors::NotFound(
           "Cannot find rank for dst interceptor id %lld. Init error.", dst_id));
-  auto src_ip = rank_to_addr_.find(src_rank->second);
+  const auto& src_ip = rank_to_addr_.find(src_rank->second);
   PADDLE_ENFORCE_NE(src_ip, rank_to_addr_.end(),
                     platform::errors::NotFound(
                         "Cannot find addr for src rank id %lld. Init error.",

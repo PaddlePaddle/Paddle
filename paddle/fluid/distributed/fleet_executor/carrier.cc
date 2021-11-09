@@ -26,14 +26,6 @@ Carrier::Carrier(
   CreateInterceptors();
 }
 
-Carrier::~Carrier() {
-  for (auto iter = interceptor_idx_to_interceptor_.begin();
-       iter != interceptor_idx_to_interceptor_.end(); iter++) {
-    Interceptor* ip = iter->second.release();
-    delete ip;
-  }
-}
-
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // enqueue message to interceptor
@@ -66,10 +58,9 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
 
 void Carrier::CreateInterceptors() {
   // create each Interceptor
-  for (auto iter = interceptor_id_to_node_.begin();
-       iter != interceptor_id_to_node_.end(); iter++) {
-    int64_t interceptor_id = iter->first;
-    TaskNode* task_node = iter->second;
+  for (const auto& item : interceptor_id_to_node_) {
+    int64_t interceptor_id = item.first;
+    TaskNode* task_node = item.second;
     interceptor_idx_to_interceptor_[interceptor_id] =
         std::make_unique<Interceptor>(interceptor_id, task_node);
     VLOG(3) << "Create Interceptor for " << interceptor_id;

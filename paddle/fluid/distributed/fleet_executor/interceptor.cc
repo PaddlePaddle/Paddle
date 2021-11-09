@@ -59,7 +59,7 @@ void Interceptor::PoolTheMailbox() {
                         platform::errors::InvalidArgument(
                             "Error encountered when fetch remote mailbox."));
     }
-    const InterceptorMessage& interceptor_message = local_mailbox_.front();
+    const InterceptorMessage interceptor_message = local_mailbox_.front();
     local_mailbox_.pop();
     const MessageType message_type = interceptor_message.message_type();
     VLOG(3) << interceptor_id_ << " has received a message: " << message_type
