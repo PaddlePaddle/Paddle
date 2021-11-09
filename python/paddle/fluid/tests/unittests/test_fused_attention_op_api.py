@@ -138,7 +138,6 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     out_linear_bias_out = out_linear_out + out_linear_bias
     out_linear_bias_dropout_out = out_linear_bias_out
     out_linear_bias_dropout_residual_out = query + out_linear_bias_dropout_out
-
     if not pre_layer_norm:
         out_linear_bias_dropout_residual_out = layer_norm(
             out_linear_bias_dropout_residual_out, True, True, ln_2_scale,
