@@ -14,29 +14,25 @@
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/fluid/platform/device_context.h"
+// See Note: [ How do we organize the kernel directory ]
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/kernels/cpu/cast.h"
+#include "paddle/pten/kernels/cuda/cast.h"
 
 namespace pten {
 
-using CUDAContext = paddle::platform::CUDADeviceContext;
-
-template <typename T>
-void FillAnyLike(const CUDAContext& dev_ctx,
+template <typename T, typename ContextT>
+DenseTensor Cast(const ContextT& dev_ctx,
                  const DenseTensor& x,
-                 const Scalar& val,
-                 DenseTensor* out);
-
-template <typename T>
-void FillConstant(const CUDAContext& dev_ctx,
-                  const Scalar& val,
-                  DenseTensor* out);
+                 const DenseTensor& y) {
+  auto out_meta = DotInferShape(x.meta(), y.meta());
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
+  Dot<T>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
 
 }  // namespace pten
-
-#endif
