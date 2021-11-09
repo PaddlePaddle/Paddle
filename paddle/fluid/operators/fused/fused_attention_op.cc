@@ -432,8 +432,8 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("SrcMaskOut"),
                         ctx->GetInputDim("SrcMaskOut"));
     }
-    ctx->SetOutputDim(framework::GradVarName("QKVOut"),
-                      ctx->GetInputDim("QKVOut"));
+    // ctx->SetOutputDim(framework::GradVarName("QKVOut"),
+    //                   ctx->GetInputDim("QKVOut"));
     ctx->SetOutputDim(framework::GradVarName("QKVBiasOut"),
                       ctx->GetInputDim("QKVBiasOut"));
     ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
@@ -552,7 +552,8 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
                     this->OutputGrad("BiasDropoutResidualOut"));
     }
 
-    op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
+    // op->SetOutput(framework::GradVarName("QKVOut"),
+    // this->OutputGrad("QKVOut"));
     op->SetOutput(framework::GradVarName("QKVBiasOut"),
                   this->OutputGrad("QKVBiasOut"));
     op->SetOutput(framework::GradVarName("QKTVOut"),
