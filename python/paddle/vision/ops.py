@@ -36,6 +36,7 @@ __all__ = [ #noqa
     'PSRoIPool',
     'roi_align',
     'RoIAlign',
+    'random_crop_and_resize',
 ]
 
 
@@ -1404,3 +1405,95 @@ class RoIAlign(Layer):
             output_size=self._output_size,
             spatial_scale=self._spatial_scale,
             aligned=aligned)
+
+
+def random_crop_and_resize(x,
+                           size,
+                           scale=(0.08, 1.0),
+                           ratio=(3. / 4., 4. / 3.),
+                           interp_method='bilinear',
+                           align_corners=True,
+                           align_mode=1,
+                           data_layout='NCHW',
+                           seed=0,
+                           name=None):
+    """
+    This operator implements the paddle.vision.transforms.RandomResizedCrop.
+    Please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/vision/transforms/RandomResizedCrop_cn.html#randomresizedcrop
+     for details. This operator has only a GPU kernel.
+
+    Args:
+        x (List[Tensor]): A list of input images, 3D-Tensor with the shape
+            of [C,H,W] or [H,W,c]. The data type is uint8 or float32.
+        size (int|list|tuple): Target size of output image,
+            with (height, width) shape.
+        scale (list|tuple): Scale range of the cropped image before resizing,
+            relatively to the origin image. Default: (0.08, 1.0)
+        ratio (list|tuple): Range of aspect ratio of the origin aspect ratio
+            cropped. Default: (0.75, 1.33)
+        interp_method (str, optional): Interpolation method. Default: 'bilinear'.
+            support method are as following:
+            - "nearest",
+            - "bilinear"
+        align_corners (bool, optional): If True, the centers of 4 corner pixels
+            of the input and output tensors are aligned, preserving the values
+            at the corner pixels, If False, are not aligned. Default: True
+        align_mode (int32, optional): Optional for bilinear interpolation,
+            can be 0 for src_idx = scale*(dst_indx+0.5)-0.5, can be 1 for
+            src_idx = scale*dst_index. Default: 1
+        data_layout (str, optional): Only used in an optional string
+            from: NHWC, NCHW. Specify that the data format of the input
+            and output data is channel_first or channel_last. Default: NCHW
+        seed (int, optional): The random seed. Default: 0
+        name(str, optional): For detailed information, please refer to :
+            ref:`api_guide_Name`. Usually name is no need to set and None by
+            default.
+
+    Returns:
+        Tensor: The output of RandomCropAndResizeOp is a 4-D tensor with shape
+            (batch_size, channels, h, w). The data type is uint8 or float32.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.ops import random_crop_and_resize
+
+            data = paddle.rand([3, 256, 256])
+            out = random_crop_and_resize([data])
+    """
+    check_type(size, 'size', (int, tuple), 'random_crop_and_resize')
+    check_type(scale, 'scale', (list, tuple), 'random_crop_and_resize')
+    check_type(ratio, 'ratio', (list, tuple), 'random_crop_and_resize')
+    assert interp_method in ['bilinear', 'nearest']
+    assert data_layout in ['NCHW', 'NHWC']
+    if isinstance(size, int):
+        size = (size, size)
+
+    if in_dygraph_mode():
+        out = _C_ops.random_crop_and_resize(
+            x, "size", size, "scale", scale, "ratio", ratio, "interp_method",
+            interp_method, "align_corners", align_corners, "align_mode",
+            align_mode, "data_layout", data_layout, "seed", seed)
+        return out
+
+    helper = LayerHelper('random_crop_and_resize', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    inputs = {"X": x}
+    attrs = {
+        "size": size,
+        "scale": scale,
+        "ratio": ratio,
+        "interp_method": interp_method,
+        "align_corners": align_corners,
+        "align_mode": align_mode,
+        "data_layout": data_layout,
+        "seed": seed,
+    }
+    helper.append_op(
+        type="random_crop_and_resize",
+        inputs=inputs,
+        outputs={"Out": out},
+        attrs=attrs)
+    return out
