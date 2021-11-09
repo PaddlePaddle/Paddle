@@ -73,7 +73,7 @@ struct remap<uint8_t> {
 };
 
 template <typename T>
-std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<T>(
+std::shared_ptr<std::tuple<float, std::vector<float> > > get_bias_scales<T>(
     const framework::ExecutionContext& ctx,
     const platform::MKLDNNDeviceContext& dev_ctx,
     const std::string& key) const {
@@ -82,7 +82,7 @@ std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<T>(
 }
 
 template <>
-std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<int8_t>(
+std::shared_ptr<std::tuple<float, std::vector<float> > > get_bias_scales<int8_t>(
     const framework::ExecutionContext& ctx,
     const platform::MKLDNNDeviceContext& dev_ctx,
     const std::string& key) const {
