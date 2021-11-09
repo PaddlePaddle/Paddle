@@ -48,6 +48,7 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
     std::vector<int64_t> ids;
     ids.reserve(ids_numel);
 
+    void *ptr;
     if (ids_t->type() == framework::proto::VarType::INT32) {
       std::transform(ids_t->data<int>(), ids_t->data<int>() + ids_numel,
                      std::back_inserter(ids),
@@ -65,8 +66,9 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
       auto *output = output_t->mutable_data<T>(context.GetPlace());
 
       for (int64_t i = 0; i < ids_numel; ++i) {
+        ptr = output + i * row_width;
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-          memset(output + i * row_width, 0, row_width * sizeof(T));
+          memset(ptr, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_LT(
               ids[i], row_number,
@@ -82,8 +84,7 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
                   row_number, ids[i]));
-          memcpy(output + i * row_width, table + ids[i] * row_width,
-                 row_width * sizeof(T));
+          memcpy(ptr, table + ids[i] * row_width, row_width * sizeof(T));
         }
       }
     } else if (table_var->IsType<SelectedRows>()) {
@@ -94,8 +95,9 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
       auto input_data_type = table_t.value().type();
 
       for (int64_t i = 0; i < ids_numel; ++i) {
+        ptr = output + i * row_width;
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-          memset(output + i * row_width, 0, row_width * sizeof(T));
+          memset(ptr, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_GE(
               ids[i], 0,
@@ -111,8 +113,7 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
                   id_index));
 
           if (input_data_type == framework::proto::VarType::BF16) {
-            memcpy(output + i * row_width, table + id_index * row_width,
-                   row_width * sizeof(T));
+            memcpy(ptr, table + id_index * row_width, row_width * sizeof(T));
           } else {
             auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
             blas.VCOPY(row_width, table + id_index * row_width,
@@ -209,9 +210,9 @@ class LookupTableV2GradKernel : public framework::OpKernel<T> {
       int64_t D = table_dim[1];
 
       auto *d_output_data = d_output->data<T>();
-      auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
-
-      memset(d_table_data, 0, d_table->numel() * sizeof(T));
+      void *zero_data = d_table->mutable_data<T>(context.GetPlace());
+      memset(zero_data, 0, d_table->numel() * sizeof(T));
+      T *d_table_data = static_cast<T *>(zero_data);
 
       for (int64_t i = 0; i < ids_num; ++i) {
         if (padding_idx != kNoPadding && ids_data[i] == padding_idx) {
