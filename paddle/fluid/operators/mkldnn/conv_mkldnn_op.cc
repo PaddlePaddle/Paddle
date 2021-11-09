@@ -73,19 +73,17 @@ struct remap<uint8_t> {
 };
 
 template <typename T>
-std::shared_ptr<std::tuple<float, std::vector<float> > > get_bias_scales<T>(
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales(
     const framework::ExecutionContext& ctx,
-    const platform::MKLDNNDeviceContext& dev_ctx,
-    const std::string& key) {
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
   return std::make_shared<std::tuple<float, std::vector<float>>>(
       std::make_tuple(0.0f, std::vector<float>(1, 1.0f)));
 }
 
 template <>
-std::shared_ptr<std::tuple<float, std::vector<float> > > get_bias_scales<int8_t>(
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_bias_scales<int8_t>(
     const framework::ExecutionContext& ctx,
-    const platform::MKLDNNDeviceContext& dev_ctx,
-    const std::string& key) {
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
   // Get scales int8 bias key
   const std::string key_bs = key + "@bs";
 
@@ -124,10 +122,9 @@ std::shared_ptr<std::tuple<float, std::vector<float> > > get_bias_scales<int8_t>
 }
 
 template <typename T>
-std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<T>(
+std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales(
     const framework::ExecutionContext& ctx,
-    const platform::MKLDNNDeviceContext& dev_ctx,
-    const std::string& key) const {
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
   return std::make_shared<std::tuple<float, std::vector<float>>>(
       std::make_tuple(1.0f, std::vector<float>()));
 }
@@ -135,8 +132,7 @@ std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<T>(
 template <>
 std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
     const framework::ExecutionContext& ctx,
-    const platform::MKLDNNDeviceContext& dev_ctx,
-    const std::string& key) const {
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
   // Get scales int8 bias key
   const std::string key_s = key + "@s";
 
@@ -193,6 +189,7 @@ class ConvMKLDNNHandlerT
           mkldnn::convolution_backward_weights> {
  public:
   ConvMKLDNNHandlerT(const framework::ExecutionContext& ctx,
+                     const platform::MKLDNNDeviceContext& dev_ctx,
                      const mkldnn::engine mkldnn_engine, const Tensor* input,
                      const Tensor* filter, const Tensor* bias, Tensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, mkldnn::convolution_forward,
@@ -787,8 +784,8 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, mkldnn_engine, input, filter,
-                                            bias, output);
+    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, dev_ctx, mkldnn_engine, input,
+                                            filter, bias, output);
 
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
@@ -860,8 +857,8 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, mkldnn_engine, input, filter,
-                                            bias, output);
+    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, dev_ctx, mkldnn_engine, input,
+                                            filter, bias, output);
 
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
