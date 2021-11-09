@@ -776,7 +776,7 @@ class Instruction {
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
-namespace interpretercore {
+namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 
@@ -787,7 +787,7 @@ static bool IsMemcpyH2D(const Instruction& instr) {
 static bool IsMemcpyD2H(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyD2H;
 }
-}  // namespace interpretercore
+}  // namespace interpreter
 
 }  // namespace framework
 }  // namespace paddle
