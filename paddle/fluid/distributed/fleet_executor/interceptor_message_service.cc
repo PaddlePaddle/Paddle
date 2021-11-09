@@ -32,7 +32,9 @@ void InterceptorMessageServiceImpl::InterceptorMessageService(
   response->set_rst(true);
   // call interceptor manager's method to handle the message
   std::shared_ptr<Carrier> carrier = FleetExecutor::GetCarrier();
-  carrier->EnqueueInterceptorMessage(*request);
+  if (carrier != nullptr) {
+    carrier->EnqueueInterceptorMessage(*request);
+  }
 }
 
 }  // namespace distributed
