@@ -67,7 +67,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target) {
-  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
+  VLOG(1) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
   bool exist = false;
   {
@@ -195,7 +195,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
   auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
       frontend_program, target);
-  VLOG(4) << "-- The " << compiled_num << "-th compilation ("
+  VLOG(1) << "-- The " << compiled_num << "-th compilation ("
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
   ApplyPass(cinn_graph.get(), "OpFusion");
