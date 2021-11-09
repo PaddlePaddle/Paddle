@@ -168,5 +168,10 @@ class TestRNNOp4(TestRNNOp):
         self.is_bidirec = True
 
 
+class TestRNNOp5(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+
+
 if __name__ == '__main__':
     unittest.main()
