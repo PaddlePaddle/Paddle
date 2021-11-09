@@ -236,8 +236,8 @@ class TestMLPAutoConvert(unittest.TestCase):
         dist_attr_path = [
             "./dist_attr_rank0.pdattr", "./dist_attr_rank1.pdattr"
         ]
-        load_checkpoint_into_program(ckpt_path, dist_main_prog_load,
-                                     dist_attr_path)
+        load_checkpoint_into_program(ckpt_path, dist_attr_path,
+                                     dist_main_prog_load)
         for step in range(10, 20):
             if paddle.distributed.get_rank() in [0]:
                 res = exe.run(dist_main_prog_load,
@@ -368,21 +368,25 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
         dist_main_prog, _, _ = get_distributed_program()
 
         with self.assertRaises(TypeError):
-            save_distributed_checkpoint(dist_main_prog, "", addition_info=[0])
+            save_distributed_checkpoint(
+                dist_main_prog, [""], [""], addition_info=[0])
         with self.assertRaises(ValueError):
             save_distributed_checkpoint(
-                dist_main_prog, "", addition_info={"step": 0})
+                dist_main_prog, [""], [""], addition_info={"step": 0})
         with self.assertRaises(ValueError):
             save_distributed_checkpoint(
-                dist_main_prog, "", addition_info={"bath": 0.0})
+                dist_main_prog, [""], [""], addition_info={"batch": 0.0})
         with self.assertRaises(ValueError):
-            load_checkpoint_into_program([], dist_main_prog)
+            load_checkpoint_into_program(["./model_state_rank.pdmodel"],
+                                         ["./dist_attr_rank.pdattr"],
+                                         dist_main_prog)
         with self.assertRaises(ValueError):
-            load_checkpoint_into_program("", dist_main_prog)
-        with self.assertRaises(ValueError):
-            load_distributed_checkpoint("./model_state_rank.pdmodel")
+            load_distributed_checkpoint(["./model_state_rank.pdmodel"],
+                                        ["./dist_attr_rank.pdattr"])
         with self.assertRaises(TypeError):
-            load_distributed_checkpoint({"path": "./model_state_rank.pdmodel"})
+            load_distributed_checkpoint({
+                "model_path": "./model_state_rank.pdmodel"
+            }, {"dist_path": "./dist_attr_rank.pdattr"})
 
 
 if __name__ == "__main__":

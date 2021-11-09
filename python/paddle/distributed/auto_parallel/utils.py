@@ -362,10 +362,11 @@ def make_data_unshard(dist_main_prog, dist_startup_prog, dist_context=None):
             dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
 
 
-def _check_addition_info(addition_info):
-    """ Validity check of additional information """
+def _update_addition_info(addition_info):
+    """ Update default addition_info with inputs """
+    add_info = {"epoch": 0, "batch": 0, "batch_size": 0}
     if not addition_info:
-        return addition_info
+        return add_info
     elif not isinstance(addition_info, dict):
         raise TypeError(
             "The type of 'addition_info' should be 'dict', but got '{}'.".
@@ -374,54 +375,52 @@ def _check_addition_info(addition_info):
         for item, value in addition_info.items():
             if item not in ["epoch", "batch", "batch_size"]:
                 raise ValueError(
-                    "The key of 'addition_info' should be one of the ['epoch', 'batch', 'batch_size']."
-                )
+                    "The key of 'addition_info' should be one of the ['epoch', 'batch', 'batch_size'], but got '{}'.".
+                    format(str(item)))
             if not isinstance(value, int):
                 raise ValueError(
                     "The value of 'addition_info' should be 'int', but got '{}'.".
                     format(str(type(value))))
-        return addition_info
+            add_info[item] = value
+        return add_info
 
 
 def _check_valid_path(file_path):
     """ Validity check of input file path """
     if not file_path:
         return file_path
-    elif isinstance(file_path, str):
-        if not os.path.exists(file_path):
-            raise ValueError("The path '{}' does not exist.".format(file_path))
-        else:
-            return [file_path]
     elif isinstance(file_path, list):
         for file in file_path:
             if not isinstance(file, str):
                 raise TypeError(
-                    "The type of path should be 'str', but got '{}'.".format(
-                        str(type(file))))
+                    "The type of file path should be 'str', but got '{}'.".
+                    format(str(type(file))))
             if not os.path.exists(file):
-                raise ValueError("The path '{}' does not exist.".format(file))
+                raise ValueError("The file path '{}' does not exist.".format(
+                    file))
         return file_path
     else:
-        raise TypeError(
-            "The type of path should be 'str' or 'list', but got '{}'.".format(
-                str(type(file_path))))
+        raise TypeError("The type of file path should be 'list', but got '{}'.".
+                        format(str(type(file_path))))
 
 
 def _check_param_dict(param_dict):
     if not param_dict:
-        return param_dict
+        raise ValueError("'param_dict' cannot be None.")
     elif not isinstance(param_dict, dict):
-        raise TypeError("The type of 'param_dict' should be 'dict', \
-            but got '{}'.".format(str(type(param_dict))))
+        raise TypeError(
+            "The type of 'param_dict' should be 'dict', but got '{}'.".format(
+                str(type(param_dict))))
     else:
         for name, value in param_dict.items():
             if not isinstance(name, str):
-                raise TypeError("The type of 'param_dict' key should be 'str', \
-                    but got '{}'.".format(str(type(name))))
+                raise TypeError(
+                    "The type of key of 'param_dict' should be 'str', but got '{}'.".
+                    format(str(type(name))))
             if not isinstance(value, paddle.fluid.LoDTensor):
                 raise TypeError(
-                    "The type of 'param_dict' value should be 'LoDTensor', \
-                    but got '{}'".format(str(type(value))))
+                    "The type of value of 'param_dict' should be 'LoDTensor', but got '{}'.".
+                    format(str(type(value))))
         return param_dict
 
 
@@ -429,31 +428,32 @@ def _check_dist_attr(dist_attr):
     if not dist_attr:
         return dist_attr
     elif not isinstance(dist_attr, dict):
-        raise TypeError("The type of 'dist_attr' should be 'dict', \
-            but got '{}'.".format(str(type(dist_attr))))
+        raise TypeError(
+            "The type of 'dist_attr' should be 'dict', but got '{}'.".format(
+                str(type(dist_attr))))
     else:
         for name, value in dist_attr.items():
             if not isinstance(name, str):
-                raise TypeError("The type of param name should be 'str', \
-                    but got '{}'.".format(str(type(name))))
+                raise TypeError(
+                    "The type of param name should be 'str', but got '{}'.".
+                    format(str(type(name))))
             if not isinstance(value, dict):
                 raise TypeError(
-                    "The type of distributed attribute should be 'dict', \
-                    but got '{}'".format(str(type(value))))
-            if not list(value.keys()) == \
-                ['process_shape', 'process_group', 'dims_mapping']:
+                    "The type of distributed attribute should be 'dict', but got '{}'".
+                    format(str(type(value))))
+            if not list(value.keys(
+            )) == ['process_shape', 'process_group', 'dims_mapping']:
                 raise ValueError(
-                    "The key of distributed attribute should be '['process_shape', \
-                    'process_group', 'dims_mapping']', but got {}."
+                    "The key of distributed attribute should be '['process_shape', 'process_group', 'dims_mapping']', but got {}."
                     .format(str(value.keys())))
         return dist_attr
 
 
 def save_distributed_checkpoint(program,
                                 checkpoint_path,
-                                is_integrated=False,
+                                dist_attr_path,
                                 addition_info=None,
-                                dist_attr_path=None):
+                                is_integrated=False):
     """ 
     Save model parameter state, optimzer state, distributed attribute and 
     additional information of each rank.
@@ -461,9 +461,10 @@ def save_distributed_checkpoint(program,
     Args:
         program(Program): The program to be saved.
         checkpoint_path(str): The path of the checkpoint file to be saved.
+        dist_attr_path(str): The path of distributed attribute file to be saved.
+        addition_info(dict, optional): Additional information, key should be selected in ['epoch', 'batch', 'batch_size'].\
+            Default value of 'addition_info' are 0, when it is None. Default: None.
         is_integrated(bool, optional): Whether to integrate param before save. Default: False.
-        addition_info(dict, optional): Additional information, should select in ['epoch', 'batch', 'batch_size']. Default: None.
-        dist_attr_path(str, optional): The path of distributed attribute file to be saved. Default: None
 
     Returns:
         None
@@ -473,50 +474,38 @@ def save_distributed_checkpoint(program,
 
             path = os.path.join("./output", "step_%d" % step)
             os.makedirs(ckpt_path, exist_ok=True)
-            add_info = {'batch': step, "batch_size": args.global_batch_size}
+            add_info = {'batch': step, "batch_size": global_batch_size}
             save_distributed_checkpoint(program, ckpt_path, 
                                         addition_info=add_info, 
                                         dist_attr_path=path)
     """
     assert isinstance(program, paddle.fluid.framework.Program)
     assert isinstance(is_integrated, bool)
-    addition_info = _check_addition_info(addition_info)
+    addition_info = _update_addition_info(addition_info)
 
     if not is_integrated:
-        rank = paddle.distributed.get_rank()
-        ckpt_file_name = os.path.join(checkpoint_path,
-                                      "model_state_rank{}.pdmodel".format(rank))
-
-        state_dict = {
-            "model": program.state_dict(),
-            "world_size": paddle.distributed.get_world_size(),
-            "addition_info": addition_info
-        }
-        paddle.save(state_dict, ckpt_file_name)
-        logging.info("Already saved model to {}".format(checkpoint_path))
-
-        if dist_attr_path:
-            _save_distributed_attribute(program, dist_attr_path)
+        _save_distributed_state_dict(program, addition_info, checkpoint_path)
+        _save_distributed_attribute(program, dist_attr_path)
     else:
         # TODO: integrate param before save
         raise NotImplementedError(
             "Integrating parameter has not been implemented.")
 
 
-def load_distributed_checkpoint(checkpoint_path, dist_attr_path=None):
+def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     """ 
     Load parameter, optimizer, distributed attribute and addition_info.
 
     Args:
         checkpoint_path(str|list[str]): checkpoint_path's type can be 'str' or 'list', \
             which must be in order of rank id when type is 'list'.
-        dist_attr_path(str|list[str], optional): dist_attr_path's type can be 'str' or 'list', \
-            which must be in order of rank id when type is 'list'. Default: None.
+        dist_attr_path(str|list[str]): dist_attr_path's type can be 'str' or 'list', \
+            which must be in order of rank id when type is 'list'.
 
     Returns:
-        param_dict(dict): 
-        dist_attr(dict): 
-        addition_info(dict): user saved in last train. 
+        param_dict(dict): parameters' value of all ranks.
+        dist_attr(dict): parameters' distributed attribute.
+        addition_info(dict): additional information user saved in last training. 
 
     Examples:
         .. code-block:: python
@@ -527,45 +516,27 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path=None):
                               './dist_attr_rank1.pdattr']
             param_dict, dist_attr, add_info = load_distributed_checkpoint(ckpt_path, dist_attr_path)
     """
-    checkpoint_path = _check_valid_path(checkpoint_path)
-    dist_attr_path = _check_valid_path(dist_attr_path)
+    assert _check_valid_path(
+        checkpoint_path), "'checkpoint_path' cannot be None."
+    assert _check_valid_path(dist_attr_path), "'dist_attr_path' cannot be None."
 
-    if checkpoint_path and dist_attr_path:
-        state_dict_info = _load_distributed_state_dict(checkpoint_path)
-        dist_attr = _load_distributed_attribute(dist_attr_path)
-        param_dict = state_dict_info["model"]
-        addition_info = state_dict_info["addition_info"]
-        if addition_info:
-            return param_dict, dist_attr, addition_info
-        else:
-            return param_dict, dist_attr
-    elif checkpoint_path:
-        assert len(checkpoint_path) == paddle.distributed.get_world_size(), \
-            "If 'dist_attr_path' is not provided, the number of 'checkpoint_path' \
-                must be equal to the 'world_size'."
-
-        rank_id = paddle.distributed.get_rank()
-        state_dict_info = paddle.load(checkpoint_path[rank_id])
-        param_dict = state_dict_info["model"]
-        addition_info = state_dict_info["addition_info"]
-        if addition_info:
-            return param_dict, addition_info
-        else:
-            return param_dict
-    else:
-        raise ValueError("'checkpoint_path' can not be None.")
+    state_dict_info = _load_distributed_state_dict(checkpoint_path)
+    dist_attr = _load_distributed_attribute(dist_attr_path)
+    param_dict = state_dict_info["model"]
+    addition_info = state_dict_info["addition_info"]
+    return param_dict, dist_attr, addition_info
 
 
-def load_checkpoint_into_program(checkpoint_path, program, dist_attr_path=None):
+def load_checkpoint_into_program(checkpoint_path, dist_attr_path, program):
     """ 
     Load parameter, optimizer, distributed attribute and addition_info into model.
 
     Args:
         checkpoint_path(str|list[str]): checkpoint_path's type can be 'str' or 'list', \
             which must be in order of rank id when type is 'list'.
+        dist_attr_path(str|list[str]): dist_attr_path's type can be 'str' or 'list', \
+            which must be in order of rank id when type is 'list'.
         program(Program): The program to be updated with checkpoint_path.
-        dist_attr_path(str|list[str], optional): dist_attr_path's type can be 'str' or 'list', \
-            which must be in order of rank id when type is 'list'. Default: None.
 
     Returns:
         None or addition_info which user saved in last train.
@@ -579,49 +550,35 @@ def load_checkpoint_into_program(checkpoint_path, program, dist_attr_path=None):
             load_checkpoint_into_program(ckpt_path, main_program)
     """
     assert isinstance(program, paddle.fluid.framework.Program)
-    checkpoint_path = _check_valid_path(checkpoint_path)
-    dist_attr_path = _check_valid_path(dist_attr_path)
+    assert _check_valid_path(
+        checkpoint_path), "'checkpoint_path' cannot be None."
+    assert _check_valid_path(dist_attr_path), "'dist_attr_path' cannot be None."
 
-    if checkpoint_path and dist_attr_path:
-        all_state_dict_info = _load_distributed_state_dict(checkpoint_path)
-        all_pre_dist_attr = _load_distributed_attribute(dist_attr_path)
-        all_cur_dist_attr = get_dist_attr(program)
-        all_param_dict = all_state_dict_info["model"]
-        addition_info = all_state_dict_info["addition_info"]
-        sliced_param_dict = merge_and_slice_parameter(
-            all_param_dict, all_pre_dist_attr, all_cur_dist_attr)
-        load_parameter_into_program(sliced_param_dict, program)
-        if addition_info:
-            return addition_info
-    elif checkpoint_path:
-        assert len(checkpoint_path) == paddle.distributed.get_world_size(), \
-            "If 'dist_attr_path' is not provided, the number of 'checkpoint_path' \
-                must be equal to the 'world_size'."
+    all_state_dict_info = _load_distributed_state_dict(checkpoint_path)
+    all_pre_dist_attr = _load_distributed_attribute(dist_attr_path)
+    all_cur_dist_attr = get_dist_attr(program)
+    all_param_dict = all_state_dict_info["model"]
+    addition_info = all_state_dict_info["addition_info"]
+    sliced_param_dict = merge_and_slice_parameter(
+        all_param_dict, all_pre_dist_attr, all_cur_dist_attr)
+    load_parameter_into_program(sliced_param_dict, program)
 
-        rank = paddle.distributed.get_rank()
-        state_dict_info = paddle.load(checkpoint_path[rank])
-        param_dict = state_dict_info["model"]
-        addition_info = state_dict_info["addition_info"]
-        load_parameter_into_program(param_dict, program)
-        if addition_info:
-            return addition_info
-    else:
-        raise ValueError("'checkpoint_path' can not be None.")
+    return addition_info
 
 
 def load_parameter_into_program(param_dict, program):
     """ Load parameters into program """
+    _check_param_dict(param_dict)
     assert program and isinstance(program, paddle.fluid.framework.Program)
-    assert _check_param_dict(param_dict), "'param_dict' cannot be None"
 
     program.set_state_dict(param_dict)
 
 
-def _save_distributed_attribute(program, path):
+def _save_distributed_attribute(program, dist_attr_path):
     """ Save distributed attribute of all parameters """
     # TODO: just save a complete distributed attribute file
     rank_id = paddle.distributed.get_rank()
-    dist_attr_name = os.path.join(path,
+    dist_attr_name = os.path.join(dist_attr_path,
                                   "dist_attr_rank{}.pdattr".format(rank_id))
 
     dist_attr_dict = {
@@ -629,7 +586,8 @@ def _save_distributed_attribute(program, path):
         "world_size": paddle.distributed.get_world_size()
     }
     paddle.save(dist_attr_dict, dist_attr_name)
-    logging.info("Already saved distributed attribute to {}".format(path))
+    logging.info("Already saved distributed attribute to {}".format(
+        dist_attr_path))
 
 
 def _load_distributed_attribute(dist_attr_path):
@@ -639,8 +597,7 @@ def _load_distributed_attribute(dist_attr_path):
         dist_attr = paddle.load(dist_attr_file)
         pre_world_size = dist_attr["world_size"]
         assert pre_world_size == len(dist_attr_path), \
-            "The number of distributed attribute path must be equal to the number of \
-                the last training world size."
+            "The number of 'dist_attr_path' must be equal to the last training world size."
 
         for name, attr in dist_attr["model"].items():
             if name not in total_dist_attr:
@@ -649,28 +606,42 @@ def _load_distributed_attribute(dist_attr_path):
     return total_dist_attr
 
 
+def _save_distributed_state_dict(program, addition_info, checkpoint_path):
+    """ Save parameters' state_dict """
+    rank = paddle.distributed.get_rank()
+    ckpt_file_name = os.path.join(checkpoint_path,
+                                  "model_state_rank{}.pdmodel".format(rank))
+
+    state_dict = {
+        "model": program.state_dict(),
+        "world_size": paddle.distributed.get_world_size(),
+        "addition_info": addition_info
+    }
+    paddle.save(state_dict, ckpt_file_name)
+    logging.info("Already saved model to {}".format(checkpoint_path))
+
+
 def _load_distributed_state_dict(checkpoint_path):
     """ Load parameters' state_dict from checkpoint_path """
-    total_state_dict = {}
+    all_state_dict = {}
     for ckpt_file in checkpoint_path:
         state_dict_info = paddle.load(ckpt_file)
         pre_world_size = state_dict_info["world_size"]
         addition_info = state_dict_info["addition_info"]
         assert pre_world_size == len(checkpoint_path), \
-            "The number of checkpoint path must be equal to the number of \
-                the last training world size."
+            "The number of 'checkpoint_path' must be equal to the last training world size."
 
         for name, value in state_dict_info["model"].items():
-            if name in total_state_dict:
-                total_state_dict[name].append(value)
+            if name in all_state_dict:
+                all_state_dict[name].append(np.array(value))
             else:
-                total_state_dict[name] = [value]
+                all_state_dict[name] = [np.array(value)]
 
-    total_state_dict_info = {
-        "model": total_state_dict,
+    all_state_dict_info = {
+        "model": all_state_dict,
         "addition_info": addition_info
     }
-    return total_state_dict_info
+    return all_state_dict_info
 
 
 def get_dist_attr(program, dist_context=None):
@@ -697,79 +668,83 @@ def get_dist_attr(program, dist_context=None):
     return dist_attr
 
 
-def merge_and_slice_parameter(dist_param_dict,
-                              pre_dist_attr=None,
-                              cur_dist_attr=None):
+def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     """
     Merge parameters with previous dist_attr and slice parameters with current dist_attr
 
     Arags:
-        dist_param_dict(dict): parameters' value of all ranks
-        pre_dist_attr(dict, optional): parameters' dist_attr of last training process. Default: None
-        cur_dist_attr(dict, optional): parameters' dist_attr of current training process. Default: None
+        dist_param_dict(dict): parameters' value of all ranks.
+        pre_dist_attr(dict): parameters' dist_attr of last training process.
+        cur_dist_attr(dict): parameters' dist_attr of current training process.
 
     Returns:
-        sliced_param_dict(dict): sliced parameters' of current rank
+        dist_param_dict(dict): parameters' value of current rank.
     """
-    assert isinstance(dist_param_dict,dict), \
-        "The type of 'dist_param_dict' should be 'dict', but got {}.".format(str(type(dist_param_dict)))
+    assert _check_dist_attr(pre_dist_attr), "'pre_dist_attr' cannot be None."
+    assert _check_dist_attr(cur_dist_attr), "'pre_dist_attr' cannot be None."
+    assert isinstance(
+        dist_param_dict, dict
+    ), "The type of 'dist_param_dict' should be 'dict', but got {}.".format(
+        str(type(dist_param_dict)))
     for name, value in dist_param_dict.items():
         if not isinstance(name, str):
             raise TypeError(
-                "The 'dist_param_dict' key is parameters' name, and it should be 'str', \
-                but got {}.".format(str(type(dist_param_dict))))
+                "The key of 'dist_param_dict' is parameters' name, and it should be 'str', but got {}.".
+                format(str(type(name))))
         if not isinstance(value, list) or not all(
-                isinstance(v, paddle.fluid.LoDTensor) for v in value):
+                isinstance(v, np.ndarray) for v in value):
             raise TypeError(
-                "The 'dist_param_dict' value is parameters' value of all ranks, \
-                and it should be 'list(LoDTensor)'.")
-    pre_dist_attr = _check_dist_attr(pre_dist_attr)
-    cur_dist_attr = _check_dist_attr(cur_dist_attr)
-    param_not_in_cur = []
+                "The value of 'dist_param_dict' is parameters' value of all ranks, and it should be 'list(numpy.ndarray)'."
+            )
+
     param_not_in_pre = []
+    param_not_in_cur = []
+    logging.info("Start to merge and slice parameters.")
+    for var_name in cur_dist_attr.keys():
+        if var_name not in pre_dist_attr:
+            param_not_in_pre.append(var_name)
+            continue
 
-    complete_param_dict = {}
-    if pre_dist_attr:
-        logging.info("Start to merge parameters.")
-        for var_name in pre_dist_attr:
-            if cur_dist_attr and var_name not in cur_dist_attr:
-                param_not_in_cur.append(var_name)
-                continue
+        pre_attr = pre_dist_attr[var_name]
+        cur_attr = cur_dist_attr[var_name]
+        if pre_attr == cur_attr:
+            # skip merge and slice
+            rank_id = paddle.distributed.get_rank()
+            index = cur_attr["process_group"].index(rank_id)
+            param = dist_param_dict[var_name][index]
+            dist_param_dict[var_name] = _to_LodTensor(param)
+            continue
 
-            pre_param = dist_param_dict[var_name]
-            pre_attr = pre_dist_attr[var_name]
-            complete_param_dict[var_name] = [
-                _merge_parameter_with_dist_attr(pre_param, pre_attr)
-            ]
-    else:
-        complete_param_dict = dist_param_dict
+        pre_param = dist_param_dict[var_name]
+        pre_dims_mapping = pre_attr["dims_mapping"]
+        cur_dims_mapping = cur_attr["dims_mapping"]
+        if len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping:
+            complete_param = _merge_parameter_with_dist_attr(pre_param,
+                                                             pre_attr)
+            dist_param_dict[var_name] = complete_param
+        else:
+            complete_param = pre_param[0]
+            dist_param_dict[var_name] = _to_LodTensor(complete_param)
 
-    sliced_param_dict = {}
-    if cur_dist_attr:
-        logging.info("Start to slice parameters.")
-        for var_name in cur_dist_attr.keys():
-            if var_name not in dist_param_dict.keys():
-                param_not_in_pre.append(var_name)
-                continue
+        if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
+            sliced_param = _slice_parameter_with_dist_attr(complete_param,
+                                                           cur_attr)
+            dist_param_dict[var_name] = sliced_param
 
-            complete_param = complete_param_dict[var_name][0]
-            cur_attr = cur_dist_attr[var_name]
-            cur_slice_param = _slice_parameter_with_dist_attr(complete_param,
-                                                              cur_attr)
-            sliced_param_dict[var_name] = cur_slice_param
-    else:
-        sliced_param_dict = complete_param_dict
+    for var_name in pre_dist_attr:
+        if var_name not in cur_dist_attr:
+            param_not_in_cur.append(var_name)
+            dist_param_dict.pop(var_name)
 
+    if param_not_in_pre:
+        warnings.warn("Parameters '{}' are not found in last training process."
+                      .format(str(param_not_in_pre)))
     if param_not_in_cur:
         warnings.warn(
-            "Parameters '{}' are not found in current training process." \
-                .format(str(param_not_in_cur)))
-    if param_not_in_pre:
-        warnings.warn(
-            "Parameters '{}' are not found in last training process." \
-                .format(str(param_not_in_pre)))
+            "Parameters '{}' are not found in current training process."
+            .format(str(param_not_in_cur)))
 
-    return sliced_param_dict
+    return dist_param_dict
 
 
 def _merge_parameter_with_dist_attr(param_list, dist_attr):
@@ -780,8 +755,7 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]
     # get the complete shape of the parameter
-    params = [np.array(p) for p in param_list]
-    complete_shape = _compute_complete_shape(params[0].shape, process_shape,
+    complete_shape = _compute_complete_shape(param_list[0].shape, process_shape,
                                              dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
@@ -789,7 +763,8 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
         partition_index = _compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
-        _merge_parameter(partition_param_list, params[index], partition_index)
+        _merge_parameter(partition_param_list, param_list[index],
+                         partition_index)
     assert len(partition_param_list) == 1 or not partition_param_list, \
         "Fail to merge parameter"
     complete_param = _to_LodTensor(partition_param_list[0][0])
@@ -873,7 +848,7 @@ def _slice_parameter(complete_param, partition_index_list, length):
     Slice a complete parameter.
 
     Returns:
-        sliced_param_list(list)
+        sliced_param_list(list): sliced parameters with 'partition_index_list'
 
     Examples:
         .. code-block:: python
