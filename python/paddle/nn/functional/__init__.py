@@ -24,6 +24,7 @@ from .activation import hardtanh  # noqa: F401
 from .activation import hardsigmoid  # noqa: F401
 from .activation import hardswish  # noqa: F401
 from .activation import leaky_relu  # noqa: F401
+from .activation import rrelu  # noqa: F401
 from .activation import log_sigmoid  # noqa: F401
 from .activation import maxout  # noqa: F401
 from .activation import prelu  # noqa: F401

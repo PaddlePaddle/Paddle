@@ -27,6 +27,7 @@ from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops
+import numpy as np
 
 __all__ = []
 
@@ -420,6 +421,61 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             out = F.leaky_relu(x) # [-0.02, 0., 1.]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.leaky_relu(x, 'alpha', negative_slope)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'leaky_relu')
+    helper = LayerHelper('leaky_relu', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='leaky_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': negative_slope})
+    return out
+
+
+def rrelu(x, lower=0.125, upper=0.333, seed=0, name=None):
+    r"""
+    rrelu activation
+
+    .. math::
+        leaky\_relu(x)=
+        \left\{
+            \begin{array}{rcl}
+                x, & & if \ x >= 0 \\
+                negative\_slope * x, & & otherwise \\
+            \end{array}
+        \right.
+        negative\_slope~U(lower,upper)
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        lower(float, optional): The lower bound of the uniform distribution. Default is 0.125.
+        upper(float, optional): The upper bound of the uniform distribution. Default is 0.333.
+        seed(int, optional): The random seed of uniform distribution engin. If seed is 0,
+            it will use the seed of the global default generator (which can be set by paddle.seed).
+            Note that if seed is not 0, this operator will always generate the same random negative_slope every
+            time. Default is 0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.to_tensor([-2., 0., 1.])
+            out = F.rrelu(x) # [-0.02, 0., 1.]
+
+    """
+    np.random.seed(seed)
+    negative_slope = np.random.uniform(lower, upper, [1])
     if in_dygraph_mode():
         return _C_ops.leaky_relu(x, 'alpha', negative_slope)
 

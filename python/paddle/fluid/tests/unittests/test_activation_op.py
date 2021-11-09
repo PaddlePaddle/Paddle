@@ -1356,6 +1356,60 @@ class TestLeakyReluAPI(unittest.TestCase):
             F.leaky_relu(x_fp16)
 
 
+class TestRReluAPI(unittest.TestCase):
+    # test paddle.nn.RReLU, paddle.nn.functional.rrelu,
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.one_np = np.array([-1.]).astype('float32')
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            minus_one = paddle.fluid.data('one', [1])
+            rand_alpha = F.rrelu(minus_one, seed=2022)
+            x = paddle.fluid.data('X', [10, 12])
+            out1 = F.rrelu(x, seed=2022)
+            m = paddle.nn.RReLU(seed=2022)
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np,
+                                'one': self.one_np},
+                          fetch_list=[out1, out2, rand_alpha])
+        out_ref = ref_leaky_relu(self.x_np, alpha=-res[2])
+        for r in range(2):
+            self.assertEqual(np.allclose(out_ref, res[r]), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        rand_alpha = F.rrelu(paddle.to_tensor(-1.), seed=2022)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.rrelu(x, seed=2022)
+        m = paddle.nn.RReLU(seed=2022)
+        out2 = m(x)
+        out_ref = ref_leaky_relu(self.x_np, alpha=-rand_alpha.numpy().item())
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        paddle.enable_static()
+
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.rrelu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.rrelu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
+            F.rrelu(x_fp16)
+
+
 def gelu(x, approximate):
     if approximate:
         y_ref = 0.5 * x * (1.0 + np.tanh(
