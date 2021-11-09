@@ -18,7 +18,7 @@
 
 namespace paddle {
 namespace framework {
-namespace interpretercore {
+namespace interpreter {
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
@@ -129,11 +129,9 @@ std::string get_memcpy_type(const platform::Place& src_place,
   }
 }
 
-void build_variable_scope(const framework::ProgramDesc& pdesc,
+void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope) {
-  auto& global_block = pdesc.Block(0);
-
-  for (auto& var_desc : global_block.AllVars()) {
+  for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
     if (var_name == framework::kEmptyVarName) {
       continue;
@@ -360,9 +358,9 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
 
 std::vector<OpFuncNode> apply_data_transform(
     const OpKernelType& expected_kernel_key, const platform::Place& place,
-    VariableValueMap& ins_map_temp, VariableScope* var_scope,
-    OpFuncNode& op_func_node) {
-  auto& op_base = op_func_node.operator_base_;
+    VariableValueMap* ins_map_temp, VariableScope* var_scope,
+    OpFuncNode* op_func_node) {
+  auto& op_base = op_func_node->operator_base_;
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base is null, please pass a valid "
                                        "op_base in apply_data_transform."));
@@ -372,7 +370,7 @@ std::vector<OpFuncNode> apply_data_transform(
       no_data_transform_index;  // record the no need transform variable index.
   std::vector<OpFuncNode> copy_func_nodes;  // return all the copy opfuncnode.
 
-  for (auto& var_name_item : ins_map_temp) {
+  for (auto& var_name_item : *ins_map_temp) {
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
       auto& var_name = inputs_names[var_name_item.first].at(i);
@@ -394,8 +392,8 @@ std::vector<OpFuncNode> apply_data_transform(
         std::tie(new_var_name, copy_op_func_node) =
             apply_place_transform_for_var(
                 kernel_type_for_var, expected_kernel_key, place, var_name,
-                var_name_item.first, op_func_node, var, var_scope);
-        op_func_node.input_index[var_name_item.first][i] =
+                var_name_item.first, *op_func_node, var, var_scope);
+        op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
         copy_func_nodes.push_back(copy_op_func_node);
         var_name_item.second[i] = var_scope->Var(new_var_name);
@@ -414,23 +412,22 @@ std::vector<OpFuncNode> apply_data_transform(
       }
     }
   }
-  op_func_node.no_data_transform_index = std::move(no_data_transform_index);
+  op_func_node->no_data_transform_index = std::move(no_data_transform_index);
   return copy_func_nodes;
 }
 
 void build_op_func_list(const platform::Place& place,
-                        const framework::ProgramDesc& pdesc,
+                        const framework::BlockDesc& block,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope) {
-  auto& global_block = pdesc.Block(0);
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
 
-  // Step 1: create all ops for global block.
-  auto ops = create_all_ops(global_block);
-  auto unused_var_map = get_unused_vars(global_block, ops);
+  // Step 1: create all ops for current block.
+  auto ops = create_all_ops(block);
+  auto unused_var_map = get_unused_vars(block, ops);
 
   size_t ops_index = 0;
-  for (auto& op : global_block.AllOps()) {
+  for (auto& op : block.AllOps()) {
     VLOG(6) << "Build OpFuncNode from : " << op->Type();
 
     auto op_base = ops[ops_index++];
@@ -498,7 +495,7 @@ void build_op_func_list(const platform::Place& place,
       // apply_data_transform.
       op_func_node.operator_base_ = op_base;
       copy_op_to_insert = apply_data_transform(
-          expected_kernel_key, place, ins_map_temp, var_scope, op_func_node);
+          expected_kernel_key, place, &ins_map_temp, var_scope, &op_func_node);
       for (auto& item : copy_op_to_insert) {
         vec_func_list->push_back(item);
       }
@@ -576,6 +573,25 @@ void build_op_func_list(const platform::Place& place,
   }
 }
 
+void add_fetch(const std::vector<std::string>& fetch_names,
+               framework::BlockDesc* block) {
+  auto* fetch_holder = block->Var(kFetchVarName);
+  fetch_holder->SetType(proto::VarType::FETCH_LIST);
+  fetch_holder->SetPersistable(true);
+
+  int i = 0;
+  for (auto& fetch_name : fetch_names) {
+    // append fetch op
+    auto* op = block->AppendOp();
+    op->SetType("fetch_v2");
+    op->SetInput("X", {fetch_name});
+    op->SetOutput("Out", {kFetchVarName});
+    op->SetAttr("col", {static_cast<int>(i)});
+    op->CheckAttrs();
+    i++;
+  }
+}
+
 std::vector<size_t> merge_vector(const std::vector<size_t>& first,
                                  const std::vector<size_t>& second) {
   std::vector<size_t> out(first.size() + second.size());
@@ -590,6 +606,6 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
   return out;
 }
 
-}  // namespace interpretercore
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
