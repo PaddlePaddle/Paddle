@@ -19,13 +19,20 @@ import six
 import logging
 import signal
 import random
+import threading
+import traceback
+from paddle.distributed.fleet import cloud_utils
 
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
 logger = logging.getLogger("ELASTIC")
 
 ELASTIC_EXIT_CODE = 101
-# unit: seconds
-ELASTIC_TIMEOUT = 60
+
+# wait for timeout, unit: seconds
+ELASTIC_TIMEOUT = 2 * 60
+
+# keepalived ttl, unit: seconds
+ELASTIC_TTL = 60
 
 
 # 1: Fault tolerance, 2: Elastic
@@ -120,13 +127,20 @@ class ElasticManager(object):
         scale = args.scale or int(os.getenv('PADDLE_ELASTIC_SCALE', 0))
         force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
 
+        start_port = 6170
+        if os.environ.get('FLAGS_START_PORT') is not None:
+            start_port = os.environ.get('FLAGS_START_PORT')
+        if cloud_utils.use_paddlecloud() and self.max_np != 1:
+            start_port = int(os.getenv("PADDLE_PORT", ""))
+
         self.elastic_timeout = int(
             os.getenv('PADDLE_ELASTIC_TIMEOUT', ELASTIC_TIMEOUT))
+        elastic_ttl = int(os.getenv('PADDLE_ELASTIC_TTL', ELASTIC_TTL))
         self.endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
         self.trainers = os.getenv('PADDLE_TRAINERS', '')
-        self.lastest_trainers = self.trainers
+        self.lastest_endpoints = self.endpoints
         logger.info(
-            f"trainers={self.trainers}, lastest_trainers={self.lastest_trainers}"
+            f"trainers={self.trainers}, lastest_endpoints={self.lastest_endpoints}"
         )
 
         # auto correct the value of elastic_level
@@ -156,6 +170,8 @@ class ElasticManager(object):
         self.sigint = 0
         self.need_sync = False
 
+        self.elastic_startup_time = None
+
         if not server or ':' not in server or not name or not np:
             logger.info(
                 'Elastic is not enabled with server {} name {} and np {}'.
@@ -167,6 +183,7 @@ class ElasticManager(object):
 
         self.etcd = etcd_client
         self.host = host if host else self._get_host()
+        self.host_port = "%s:%d" % (self.host, start_port)
 
         # etcd data
         self.prefix = "/paddle/" + name
@@ -188,38 +205,70 @@ class ElasticManager(object):
 
         # host
         # register self host to etcd
-        # register watch to reset host after host been deleted
-        self.etcd.delete_prefix(self.node_prefix)
 
+        # register callback
         def host_call_back(event):
-            if self.etcd.get(self.host_path)[0] == None:
-                logger.info('register host again {}'.format(self.host))
+            self.hosts = [
+                six.ensure_str(i[0])
+                for i in self.etcd.get_prefix(self.node_prefix)
+            ]
+            logger.info(
+                f"host_call_back curr_host={self.host_port}, hosts:{self.hosts}")
+            self.np = len(self.hosts)
+            self.need_sync = True
+            self.elastic_startup_time = None
 
-                self.etcd.put(self.host_path, six.b(self.host))
-                self.need_sync = True
+        host_watch = self.etcd.add_watch_prefix_callback(self.node_prefix,
+                                                         host_call_back)
+        host_lease = self.etcd.lease(elastic_ttl)
 
-        host_watch = self.etcd.add_watch_callback(self.host_path,
-                                                  host_call_back)
-        self.etcd.put(self.host_path, six.b(self.host))
+        # register etcd lease heartbeat
+        def lease_heartbeat():
+            while True:
+                try:
+                    host_lease.refresh()
+
+                    hosts = [
+                        six.ensure_str(i[0])
+                        for i in self.etcd.get_prefix(self.node_prefix)
+                    ]
+                    logger.info(
+                        f"[lease_heartbeat] curr_host={self.host_port}, hosts={hosts}"
+                    )
+                    if self.host_port not in hosts:
+                        logger.info(
+                            f"[lease_heartbeat] register host={self.host_port}")
+                        self.etcd.put(self.host_path,
+                                      six.b(self.host_port),
+                                      lease=host_lease)
+                except Exception as e:
+                    logger.error("[lease_heartbeat] internal error:{} {}".
+                                 format(e, traceback.format_exc()))
+                    break
+                time.sleep(elastic_ttl / 3)
+
+        keepalived_thread = threading.Thread(
+            name='lease_heartbeat', target=lease_heartbeat, daemon=True)
+        keepalived_thread.start()
+
+        self.etcd.put(self.host_path, six.b(self.host_port), lease=host_lease)
 
         # np describes the exact number of nodes to run the job
-        inp = int(self.etcd.get(self.np_path)[0] or 0)
-        if scale == 0 and not force:
-            assert inp == np or inp == 0, "np {} is not consistent with np in etcd {}".format(
-                np, inp)
-        else:
-            assert inp == np or inp == self.np, "np {} scale to {} by {} is not allowed".format(
-                inp, self.np, scale)
+        #inp = int(self.etcd.get(self.np_path)[0] or 0)
+        #if scale == 0 and not force:
+        #    assert inp == np or inp == 0, "np {} is not consistent with np in etcd {}".format(
+        #        np, inp)
+        #else:
+        #    assert inp == np or inp == self.np, "np {} scale to {} by {} is not allowed".format(
+        #        inp, self.np, scale)
+        #self.etcd.put(self.np_path, six.b("%d" % (self.np)))
 
-        self.etcd.put(self.np_path, six.b("%d" % (self.np)))
-
-        def np_call_back(event):
-            gnp = int(self.etcd.get(self.np_path)[0])
-            if gnp != self.np:
-                logger.info("scale np {} to {} ".format(self.np, gnp))
-                self.np = gnp
-
-        np_watch = self.etcd.add_watch_callback(self.np_path, np_call_back)
+        #def np_call_back(event):
+        #    gnp = int(self.etcd.get(self.np_path)[0])
+        #    if gnp != self.np:
+        #        logger.info("scale np {} to {} ".format(self.np, gnp))
+        #        self.np = gnp
+        #np_watch = self.etcd.add_watch_callback(self.np_path, np_call_back)
 
         # endpoints handle DISTRIBUTED_TRAINER_ENDPOINTS and PADDLE_TRAINERS
         self.etcd.put(self.endpoints_path,
@@ -237,10 +286,8 @@ class ElasticManager(object):
         endpoints_watch = self.etcd.add_watch_callback(self.endpoints_path,
                                                        endpoints_call_back)
 
-        self.watches = [host_watch, np_watch, endpoints_watch]
-
+        self.watches = [host_watch, endpoints_watch]
         self.launcher = None
-        self.elastic_startup_time = None
 
     def exit(self, completed=False):
         logger.info('manager exist completed {}'.format(completed))
@@ -273,6 +320,7 @@ class ElasticManager(object):
             # Fault tolerant
             min_np = int(np_dict[0])
             min_np = 1 if min_np <= 0 else min_np
+            max_np = 1
         elif len(np_dict) == 2:
             # Elastic
             min_np = int(np_dict[0])
@@ -298,7 +346,6 @@ class ElasticManager(object):
         return int(self.etcd.get(self.prefix)[0]) == 1
 
     def _match(self, host_list: list=None):
-
         if host_list:
             self.hosts = host_list
         else:
@@ -315,10 +362,13 @@ class ElasticManager(object):
 
         if self.elastic_level == ElasticLevel.ELASTIC:
             # FIXME(xym) add freeze status
-            self.np = len(self.hosts)
+            hosts_num = len(self.hosts)
+            alloc_hosts_num = len(self.endpoints.split(","))
+            if hosts_num == alloc_hosts_num:
+                return True
+
             if not self.elastic_startup_time:
                 self.elastic_startup_time = time.time()
-            hosts_num = len(self.hosts)
             if hosts_num == self.max_np:
                 self.elastic_startup_time = None
                 return True
@@ -326,23 +376,26 @@ class ElasticManager(object):
                 interval_time = time.time() - self.elastic_startup_time
                 if interval_time <= self.elastic_timeout:
                     logger.info(
-                        f"wait for timeout, hosts_num={hosts_num}, min_np={self.min_np}, \
-                            interval_time={interval_time}, elastic_timeout={self.elastic_timeout}"
+                        f"wait for timeout, you can set value by PADDLE_ELASTIC_TIMEOUT, \
+                        hosts_num={hosts_num}, min_np={self.min_np}, \
+                        interval_time={interval_time}, elastic_timeout={self.elastic_timeout}"
                     )
                     return False
-
-                self.elastic_startup_time = None
                 return True
             else:
                 self.elastic_startup_time = None
                 return False
 
+    def _update_endpoint(self, endpoints, hosts):
+        self.etcd.put(self.endpoints_path,
+                      six.b('{}|{}'.format(endpoints, hosts)))
+
     def _update_hosts(self):
         assert len(self.hosts) != 0, 'hosts empty'
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
         if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
-            self.lastest_trainers = self.trainers
-            if self.host in self.endpoints:
+            self.lastest_endpoints = self.endpoints
+            if self.host_port in self.endpoints:
                 os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.endpoints
                 os.environ['PADDLE_TRAINERS'] = self.trainers
                 logger.info("update env DISTRIBUTED_TRAINER_ENDPOINTS {} ".
@@ -352,40 +405,45 @@ class ElasticManager(object):
                 return
 
             # fault tolerance 
-            idx = self.hosts.index(self.host)
+            idx = self.hosts.index(self.host_port)
 
             # swap if self.host not in the right position
             if rank >= 0:
                 self.hosts[idx] = self.hosts[rank]
-                self.hosts[rank] = self.host
+                self.hosts[rank] = self.host_port
             else:
                 os.environ['PADDLE_TRAINER_ID'] = '{}'.format(idx)
-
-            hosts = ','.join(self.hosts)
+            hosts = ','.join(
+                [host_port.split(":")[0] for host_port in self.hosts])
             self.args.ips = hosts
             os.environ['PADDLE_TRAINERS'] = hosts
         else:
             # elastic, scale up/down
-            trainers = self.lastest_trainers.split(",")
-            if len(self.hosts) > len(trainers):
+            endpoints = self.lastest_endpoints.split(",")
+            if len(self.hosts) > len(endpoints):
                 # scale up
                 logger.info(
-                    f"elastic scale up, hosts={self.hosts}, trainers={trainers}")
+                    f"elastic scale up, hosts={self.hosts}, endpoints={endpoints}"
+                )
 
-                for curr_host in self.hosts:
-                    if curr_host not in trainers:
-                        trainers.append(curr_host)
-                if rank < 0:
-                    os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
-                        trainers.index(self.host))
-                hosts = ','.join(trainers)
+                for curr_host_port in self.hosts:
+                    if curr_host_port not in endpoints:
+                        endpoints.append(curr_host_port)
+
+                os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+                    endpoints.index(self.host_port))
+                host_port_list = ','.join(endpoints)
+                hosts = ','.join(
+                    [host_port.split(":")[0] for host_port in endpoints])
                 self.args.ips = hosts
                 os.environ['PADDLE_TRAINERS'] = hosts
-                self.lastest_trainers = hosts
+                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = host_port_list
+                self.lastest_endpoints = host_port_list
+                self._update_endpoint(host_port_list, hosts)
             else:
                 # scale down
                 logger.info(
-                    f"elastic scale down, hosts={self.hosts}, trainers={trainers}"
+                    f"elastic scale down, hosts={self.hosts}, endpoints={endpoints}"
                 )
 
                 # If the shrink node is from the first of the rank list, you need to minimize the movement of the rank
@@ -394,32 +452,39 @@ class ElasticManager(object):
                 #   10.10.10.0 is removed
                 #   the new trainers is:10.10.10.3,10.10.10.1,10.10.10.2
                 #   In this case, the rank of 10.10.10.1 and 10.10.10.2 remains unchanged, while the rank of 10.10.10.3 is set to rank0
-                hosts_dict = dict()
-                unsorted_host = []
-                for id, host in enumerate(self.hosts):
-                    idx = trainers.index(host)
-                    if idx <= len(self.hosts) - 1 and not hosts_dict.get(idx):
-                        hosts_dict[idx] = host
+                endpoints_dict = dict()
+                unsorted_endpoints = []
+                for id, host_port in enumerate(self.hosts):
+                    idx = endpoints.index(host_port)
+                    if idx <= len(self.hosts) - 1 and not endpoints_dict.get(
+                            idx):
+                        endpoints_dict[idx] = host_port
                     else:
-                        unsorted_host.append(host)
+                        unsorted_endpoints.append(host_port)
 
                 idle_index = 0
-                sorted_hosts = []
+                sorted_endpoints = []
                 for idx in range(len(self.hosts)):
-                    if not hosts_dict.get(idx) and len(unsorted_host) > 0:
-                        hosts_dict[idx] = unsorted_host[idle_index]
+                    if not endpoints_dict.get(idx) and len(
+                            unsorted_endpoints) > 0:
+                        endpoints_dict[idx] = unsorted_endpoints[idle_index]
                         idle_index += 1
 
-                    sorted_hosts.append(hosts_dict.get(idx))
+                    sorted_endpoints.append(endpoints_dict.get(idx))
 
-                logger.info(f"elastic scale down, sorted_hosts={sorted_hosts}")
-                hosts = ','.join(sorted_hosts)
+                logger.info(
+                    f"elastic scale down, sorted_endpoints={sorted_endpoints}")
+                host_port_list = ','.join(sorted_endpoints)
+                hosts = ','.join([
+                    host_port.split(":")[0] for host_port in sorted_endpoints
+                ])
                 self.args.ips = hosts
-                if rank < 0:
-                    os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
-                        sorted_hosts.index(self.host))
+                os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+                    sorted_endpoints.index(self.host_port))
                 os.environ['PADDLE_TRAINERS'] = hosts
-                self.lastest_trainers = hosts
+                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = host_port_list
+                self.lastest_endpoints = host_port_list
+                self._update_endpoint(host_port_list, hosts)
 
     def wait(self):
         if not self.enable:
@@ -433,13 +498,6 @@ class ElasticManager(object):
                 return
             logger.info('not ready for np {} with hosts {}'.format(self.np,
                                                                    self.hosts))
-
-            # reset hosts every 30s to prevent fake deadlock
-            if idx % 10 == 0:
-                self.etcd.delete_prefix(self.node_prefix)
-                logger.info('reset np {} with hosts {}'.format(self.np,
-                                                               self.hosts))
-
             idx += 1
             time.sleep(2)
 
@@ -459,6 +517,7 @@ class ElasticManager(object):
 
         while not self.stopped:
             ret = self.launcher.watch()
+            logger.debug(f"launcher.watch():{ret}")
 
             if ret is not None:  # self terminated
                 logger.info('job exit with code {}'.format(ret))
@@ -467,8 +526,7 @@ class ElasticManager(object):
                 self.exit(completed=completed)
                 if completed:
                     return ElasticStatus.COMPLETED
-                if self.elastic_level == ElasticLevel.FAULT_TOLERANCE or \
-                    self.elastic_level == ElasticLevel.ELASTIC:
+                if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
                     return ElasticStatus.RESTART
                 else:
                     return ElasticStatus.ERROR
