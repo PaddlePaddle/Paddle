@@ -78,16 +78,14 @@ using XPUContext = paddle::platform::XPUDeviceContext;
       static_assert(attr_idx == 0,                                      \
                     "Kernel's Input should appear before Attributes."); \
       static_assert(out_idx == 0,                                       \
-                    "Kernel's Input should appear before Outputs.");
-
-const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-const tensor_type& arg = ctx->InputAt<tensor_type>(range.first);
-KernelCallHelper<Tail...>::
-    template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(ctx,
-                                                                 pargs...,
-                                                                 arg);
-}
-}
+                    "Kernel's Input should appear before Outputs.");    \
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);      \
+      const tensor_type& arg = ctx->InputAt<tensor_type>(range.first);  \
+      KernelCallHelper<Tail...>::                                       \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>( \
+              ctx, pargs..., arg);                                      \
+    }                                                                   \
+  }
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)     \
   template <typename... Tail>                                           \

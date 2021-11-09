@@ -49,8 +49,8 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
 
   // Create Target Tensor
   egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   egr::EagerTensor& target_tensor = target_tensors[0];
 

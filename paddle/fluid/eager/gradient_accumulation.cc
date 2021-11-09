@@ -176,8 +176,7 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
           numel, dst_tensor->numel()));
 
   auto data_type = pten::TransToProtoVarType(src_tensor->data_type());
-  auto place = pten::TransToFluidPlace(src_tensor->backend());
-  auto pt_place = src_tensor->place();
+  auto place = src_tensor->place();
 
   PADDLE_ENFORCE_EQ(pten::TransToProtoVarType(dst_tensor->data_type()),
                     data_type,

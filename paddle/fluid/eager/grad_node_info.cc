@@ -244,19 +244,21 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
       buffer_tensor = t;
     } else {
       // Accumulation
-      if (t.defined() && buffer_tensor.defined()) {
+      if (t.initialized() && buffer_tensor.initialized()) {
         TensorAdd(t, &buffer_tensor);
       } else if (t.Var().IsInitialized() &&
                  buffer_tensor.Var().IsInitialized()) {
         VariableAdd(t, &buffer_tensor);
-      } else if (t.Var().IsInitialized() && buffer_tensor.defined()) {
+      } else if (t.Var().IsInitialized() && buffer_tensor.initialized()) {
         // TODO(jiabin): This can be merge to upper if case.
         buffer_tensor.SyncToVar();
         VariableAdd(t, &buffer_tensor);
-      } else {
-        // TODO(jiabin): This can be merge to upper if case.
+      } else if (t.initialized() && buffer_tensor.Var().IsInitialized()) {
         buffer_tensor.SyncToTensor();
         TensorAdd(t, &buffer_tensor);
+      } else {
+        // Should not happend case
+        // 1. both not init
       }
     }
   } else {
@@ -264,7 +266,7 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
     if (t.defined()) {
       // Fill 1.0
       auto t_impl = t.impl();
-      FillConstAPI(1.0, t_impl->dims(), t_impl->backend(), t_impl->data_type(),
+      FillConstAPI(1.0, t_impl->dims(), t_impl->place(), t_impl->data_type(),
                    t_impl->layout(), &buffer_tensor);
     } else {
       // TODO(jiabin): Only Support LodTensorForNow

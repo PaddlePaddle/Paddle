@@ -156,6 +156,11 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
+  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
+                         GetAttrsArgsNames(), GetOutputArgsNames());
+}
+
+std::string KernelSignatureToString(const KernelSignature& signature) {
   std::stringstream os;
   os << "Kernel Signature - name: " << signature.name
      << "; inputs: " << string::join_strings(std::get<0>(signature.args), ", ")

@@ -37,7 +37,7 @@ TEST(Benchmark, EagerScalePerformance) {
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
     egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
-        ddim, pten::Backend::CUDA, pten::DataType::FLOAT32,
+        ddim, paddle::platform::CUDAPlace(), pten::DataType::FLOAT32,
         pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
     RetainGradForTensor(tensor);
 
@@ -76,13 +76,13 @@ TEST(Benchmark, EagerIntermediateMatmulPerformance) {
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddimX = paddle::framework::make_ddim({2, 2});
     egr::EagerTensor X = EagerUtils::CreateTensorWithValue(
-        ddimX, pten::Backend::CUDA, pten::DataType::FLOAT32,
+        ddimX, paddle::platform::CUDAPlace(), pten::DataType::FLOAT32,
         pten::DataLayout::NCHW, 1.0, true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = paddle::framework::make_ddim({2, 2});
     egr::EagerTensor Y = EagerUtils::CreateTensorWithValue(
-        ddimY, pten::Backend::CUDA, pten::DataType::FLOAT32,
+        ddimY, paddle::platform::CUDAPlace(), pten::DataType::FLOAT32,
         pten::DataLayout::NCHW, 2.0, true);
     RetainGradForTensor(Y);
 

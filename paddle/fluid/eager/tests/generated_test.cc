@@ -40,8 +40,8 @@ TEST(Generated, Sigmoid) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   VLOG(6) << "Make Dim";
   egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
-      0.0, true);
+      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 0.0, true);
   VLOG(6) << "Make EagerTensor";
   RetainGradForTensor(tensor);
   VLOG(6) << "Retain Grad for Tensor";
@@ -74,13 +74,13 @@ TEST(Generated, Matmul_v2) {
   // 1. Prepare Input
   paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
   egr::EagerTensor X = EagerUtils::CreateTensorWithValue(
-      ddimX, pten::Backend::CPU, pten::DataType::FLOAT32,
+      ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = paddle::framework::make_ddim({16, 20});
   egr::EagerTensor Y = EagerUtils::CreateTensorWithValue(
-      ddimY, pten::Backend::CPU, pten::DataType::FLOAT32,
+      ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);
   RetainGradForTensor(Y);
 

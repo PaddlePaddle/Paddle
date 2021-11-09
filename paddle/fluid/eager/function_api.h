@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/hapi/all.h"
 namespace egr {
@@ -23,8 +24,9 @@ namespace egr {
 void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
               bool bias_after_scale, egr::EagerTensor* out);
 void FillConstAPI(double value, const pten::DDim& ddim,
-                  const pten::Backend& backend, const pten::DataType& dtype,
-                  const pten::DataLayout& layout, egr::EagerTensor* target);
+                  const paddle::platform::Place& place,
+                  const pten::DataType& dtype, const pten::DataLayout& layout,
+                  egr::EagerTensor* target);
 void FillConstAPI(double value, const paddle::framework::DDim& ddim,
                   const paddle::platform::Place& place,
                   const paddle::framework::proto::VarType::Type& dtype,

@@ -28,8 +28,8 @@ TEST(Utils, SyncToVarsSingle) {
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   egr::EagerTensor tensor = egr::EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
-      5.0, true);
+      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 5.0, true);
 
   std::vector<std::shared_ptr<egr::EagerTensor>> var_bases = SyncToVars(tensor);
 
@@ -53,11 +53,11 @@ TEST(Utils, SyncToVarsMultiple) {
 
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   std::vector<egr::EagerTensor> tensors = {
-      egr::EagerUtils::CreateTensorWithValue(ddim, pten::Backend::CPU,
+      egr::EagerUtils::CreateTensorWithValue(ddim, paddle::platform::CPUPlace(),
                                              pten::DataType::FLOAT32,
                                              pten::DataLayout::NCHW, 1.0, true),
       egr::EagerUtils::CreateTensorWithValue(
-          ddim, pten::Backend::CPU, pten::DataType::FLOAT32,
+          ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
           pten::DataLayout::NCHW, 2.0, true)};
 
   std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =

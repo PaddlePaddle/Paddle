@@ -24,6 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/core/allocator.h"
 
+namespace egr {
+class DenseTensorUtils;
+}  // namespace egr
+
 namespace pten {
 
 /// \brief The interface of contiguous storage used for the dense tensor.

@@ -19,7 +19,10 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/pten/api/all.h"
+#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/hapi/all.h"
+#include "paddle/pten/hapi/lib/utils/storage.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better
@@ -152,7 +155,9 @@ class EagerTensor final {
    * @param None
    * @return {bool}
    */
-  bool initialized() const { return tensor_->impl()->initialized(); }
+  bool initialized() const {
+    return defined() && tensor_->impl()->initialized();
+  }
 
   /**
    * @description: Reset the Tensor implementation
@@ -208,11 +213,11 @@ class EagerTensor final {
           framework_tensor->set_layout(
               pten::TransToFluidDataLayout(tensor_->layout()));
           // Contruct framework::Tensor from egr::EagerTensor
-          if (auto tensor_dense = std::dynamic_pointer_cast<pten::DenseTensor>(
-                  tensor_->impl())) {
-            paddle::framework::ShareTensorImpl<pten::DenseTensor>(
-                tensor_dense.get(), framework_tensor);
-
+          auto tensor_dense =
+              std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
+          if (tensor_dense) {
+            paddle::experimental::MovesStorage(tensor_dense.get(),
+                                               framework_tensor);
           } else {
             PADDLE_THROW(paddle::platform::errors::Fatal(
                 "Unrecognized egr::EagerTensor type, only "
@@ -220,10 +225,10 @@ class EagerTensor final {
           }
         }
       } else {
-        PADDLE_THROW(
-            paddle::platform::errors::Fatal("Can not Sync EagerTensor %s whose "
-                                            "pten::Tensor is not initialized!",
-                                            name()));
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Can not Sync EagerTensor %s whose "
+            "pten::DenseTensor is not initialized!",
+            name()));
       }
     }
   }
@@ -233,7 +238,6 @@ class EagerTensor final {
     if (!this->defined() || !this->initialized()) {
       // TODO(jiabin): Support selected rows later.
       if (var_.IsInitialized()) {
-        std::shared_ptr<paddle::memory::allocation::Allocation> allocation;
         if (var_.IsType<paddle::framework::LoDTensor>()) {
           SetImplWithLegacyTensor<paddle::framework::LoDTensor,
                                   pten::DenseTensor>();
@@ -260,16 +264,10 @@ class EagerTensor final {
  private:
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
-    pten::TensorMeta meta;
     const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
-    meta.dims = framework_tensor.dims();
-    meta.backend = pten::TransToPtenBackend(framework_tensor.place());
-    meta.type = pten::TransToPtenDataType(framework_tensor.type());
-    meta.layout = pten::TransToPtenDataLayout(framework_tensor.layout());
-    auto impl_tensor =
-        std::make_shared<TYPE>(std::move(meta), pten::TensorStatus());
-    impl_tensor->ShareAllocation(framework_tensor.Holder());
-    this->set_impl(impl_tensor);
+    this->set_impl(
+        std::move(paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    var_.Clear();
   }
 
  private:

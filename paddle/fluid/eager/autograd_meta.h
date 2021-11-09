@@ -264,12 +264,10 @@ class EagerUtils {
   static void SetHistory(AutogradMeta* autograd_meta,
                          const std::shared_ptr<GradNodeBase>& grad_node);
 
-  static egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
-                                                const pten::Backend& backend,
-                                                const pten::DataType& dtype,
-                                                const pten::DataLayout& layout,
-                                                double value,
-                                                bool is_leaf = true);
+  static egr::EagerTensor CreateTensorWithValue(
+      const pten::DDim& ddim, const paddle::platform::Place& place,
+      const pten::DataType& dtype, const pten::DataLayout& layout, double value,
+      bool is_leaf = true);
   // This is used for Set vector of tensors' rank
   static void SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
                                       size_t slot_id);

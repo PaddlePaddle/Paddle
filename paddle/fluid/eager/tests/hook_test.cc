@@ -36,10 +36,15 @@ using namespace egr;  // NOLINT
 egr::EagerTensor hook_function(const egr::EagerTensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
 
-  auto ret_meta = pten::TensorMeta(t_dense->dims(), t_dense->backend(),
-                                   t_dense->data_type(), t_dense->layout());
-  auto ret_dense = std::make_shared<pten::DenseTensor>(std::move(ret_meta),
-                                                       pten::TensorStatus());
+  auto ret_meta = pten::DenseTensorMeta(t_dense->data_type(), t_dense->dims(),
+                                        t_dense->layout());
+  auto place = t_dense->place();
+  size_t bytes_size = paddle::framework::product(t_dense->dims()) *
+                      SizeOf(t_dense->data_type());
+  auto ret_dense = std::make_shared<pten::DenseTensor>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          paddle::memory::Alloc(place, bytes_size), 0),
+      std::move(ret_meta));
 
   float* t_ptr = t_dense->mutable_data<float>();
   float* ret_ptr = ret_dense->mutable_data<float>();
@@ -76,8 +81,8 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
 
   // Create Target Tensor
   egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   egr::EagerTensor& target_tensor = target_tensors[0];
 
@@ -173,8 +178,8 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 
   // Create Target Tensor
   egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pten::Backend::CPU, pten::DataType::FLOAT32, pten::DataLayout::NCHW,
-      1.0 /*value*/, false /*is_leaf*/);
+      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   egr::EagerTensor& target_tensor = target_tensors[0];
 

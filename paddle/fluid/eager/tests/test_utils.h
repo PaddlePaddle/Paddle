@@ -35,7 +35,7 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
   T* ptr = grad_dense->mutable_data<T>();
 
   std::vector<T> host_data(grad_dense->numel());
-  if (grad_dense->backend() == pten::Backend::CUDA) {
+  if (paddle::platform::is_gpu_place(grad_dense->place())) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -49,7 +49,9 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
   }
 
   for (int i = 0; i < grad_dense->numel(); i++) {
-    if (ptr[i] != value) return false;
+    if (ptr[i] != value) {
+      return false;
+    }
   }
   return true;
 }
@@ -61,7 +63,7 @@ bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
   T* ptr = dense_t->mutable_data<T>();
 
   std::vector<T> host_data(dense_t->numel());
-  if (dense_t->backend() == pten::Backend::CUDA) {
+  if (paddle::platform::is_gpu_place(dense_t->place())) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -101,7 +103,9 @@ bool CompareVariableWithValue(const egr::EagerTensor& target, T value) {
   }
 
   for (int i = 0; i < lod_tensor.numel(); i++) {
-    if (ptr[i] != value) return false;
+    if (ptr[i] != value) {
+      return false;
+    }
   }
   return true;
 }

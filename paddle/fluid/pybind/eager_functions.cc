@@ -33,6 +33,8 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/hapi/lib/utils/storage.h"
+#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wconversion-null"
 
@@ -179,14 +181,15 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   }
   paddle::framework::DDim dims = paddle::framework::make_ddim(vec_dims);
 
-  auto meta =
-      pten::TensorMeta(dims, static_cast<pten::Backend>(place_id), dtype);
-
-  std::shared_ptr<pten::DenseTensor> densetensor(
-      new pten::DenseTensor(std::move(meta), pten::TensorStatus()));
-
+  // TODO(jiabin): Support GPU later
+  auto meta = pten::DenseTensorMeta(dtype, dims);
   auto holder = std::make_shared<EagerNumpyAllocation>(numpy_data, dtype);
-  densetensor->ShareAllocation(holder);
+  size_t bytes_size = paddle::framework::product(dims) * SizeOf(dtype);
+  auto shared_storage =
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          paddle::memory::Alloc(paddle::platform::CPUPlace(), bytes_size), 0);
+  std::shared_ptr<pten::DenseTensor> densetensor(
+      new pten::DenseTensor(std::move(shared_storage), std::move(meta)));
 
   PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
   if (obj) {

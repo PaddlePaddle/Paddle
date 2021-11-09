@@ -121,13 +121,13 @@ void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
 }
 
 egr::EagerTensor EagerUtils::CreateTensorWithValue(
-    const pten::DDim& ddim, const pten::Backend& backend,
+    const pten::DDim& ddim, const paddle::platform::Place& place,
     const pten::DataType& dtype, const pten::DataLayout& layout, double value,
     bool is_leaf) {
   egr::EagerTensor out = egr::EagerTensor();
   // Init tensor's autograo_meta
   auto meta = autograd_meta(&out);
-  FillConstAPI(value, ddim, backend, dtype, layout, &out);
+  FillConstAPI(value, ddim, place, dtype, layout, &out);
 
   if (is_leaf) {
     auto accumulation_node = std::make_shared<GradNodeAccumulation>();

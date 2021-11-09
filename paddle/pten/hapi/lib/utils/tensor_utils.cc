@@ -113,7 +113,8 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   CHECK(dst);
   dst->Resize(src->dims());
   auto storage = src->release();
-  CHECK(storage->OwnsMemory());
+  // TODO(jiabin): Add this back when we fix OwnsMemory()
+  // CHECK(!storage->OwnsMemory());
   std::shared_ptr<paddle::memory::allocation::Allocation> holder(
       new TensorStorage(std::move(storage)));
   dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->data_type()));

@@ -175,14 +175,16 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
   // proper way to Demo it
   // Run Forward Function
   auto dense_tensor = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
-
   // Init output tensor
-  auto tensor_meta =
-      pten::TensorMeta(dense_tensor->dims(), dense_tensor->backend(),
-                       dense_tensor->data_type(), dense_tensor->layout());
-  auto dense_out = std::make_shared<pten::DenseTensor>(std::move(tensor_meta),
-                                                       pten::TensorStatus());
-
+  auto tensor_meta = pten::DenseTensorMeta(
+      dense_tensor->data_type(), dense_tensor->dims(), dense_tensor->layout());
+  auto place = dense_tensor->place();
+  size_t bytes_size = paddle::framework::product(dense_tensor->dims()) *
+                      SizeOf(dense_tensor->data_type());
+  auto dense_out = std::make_shared<pten::DenseTensor>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          paddle::memory::Alloc(place, bytes_size), 0),
+      std::move(tensor_meta));
   // Handle Device Context
   const paddle::platform::Place& expected_kernel_place =
       Controller::Instance().GetExpectedPlace();
@@ -218,17 +220,22 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
 }
 
 void FillConstAPI(double value, const pten::DDim& ddim,
-                  const pten::Backend& backend, const pten::DataType& dtype,
-                  const pten::DataLayout& layout, egr::EagerTensor* target) {
+                  const paddle::platform::Place& place,
+                  const pten::DataType& dtype, const pten::DataLayout& layout,
+                  egr::EagerTensor* target) {
   // Create new tensor->impl and fill it with 1.0
   // Fill 1.0
   // TODO(jiabin): Refactor this with operators::math::set_constant
   std::shared_ptr<pten::DenseTensor> tensor_dense = nullptr;
   if (!target->defined() || !target->initialized()) {
     VLOG(6) << "Init undefined or uninitialized tensor in FillConstAPI";
-    auto tensor_meta = pten::TensorMeta(ddim, backend, dtype, layout);
-    tensor_dense = std::make_shared<pten::DenseTensor>(std::move(tensor_meta),
-                                                       pten::TensorStatus());
+    auto tensor_meta = pten::DenseTensorMeta(dtype, ddim, layout);
+    size_t bytes_size = paddle::framework::product(ddim) * SizeOf(dtype);
+
+    tensor_dense = std::make_shared<pten::DenseTensor>(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            paddle::memory::Alloc(place, bytes_size), 0),
+        std::move(tensor_meta));
     target->set_impl(tensor_dense);
 
   } else {
@@ -240,21 +247,16 @@ void FillConstAPI(double value, const pten::DDim& ddim,
         "FillConstAPI Only supports InputBuffer with DenseTensor for now."));
   }
   VLOG(6) << "Call FillConstKernel";
-  switch (tensor_dense->backend()) {
-    case pten::Backend::CPU: {
-      VLOG(8) << "Call FillConst CPU Kernel";
-      FillConstCPUFunctor(tensor_dense.get(), value);
-      break;
-    }
-    case pten::Backend::CUDA: {
-      VLOG(8) << "Call FillConst CUDA Kernel";
-      FillConstCUDAFunctor(tensor_dense.get(), value);
-      break;
-    }
-    default: {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Only CPU and CUDA Backend are supported for now"));
-    }
+  auto t_place = tensor_dense->place();
+  if (paddle::platform::is_cpu_place(t_place)) {
+    VLOG(8) << "Call FillConst CPU Kernel";
+    FillConstCPUFunctor(tensor_dense.get(), value);
+  } else if (paddle::platform::is_gpu_place(t_place)) {
+    VLOG(8) << "Call FillConst CUDA Kernel";
+    FillConstCUDAFunctor(tensor_dense.get(), value);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Only CPU and CUDA Backend are supported for now"));
   }
 }
 
