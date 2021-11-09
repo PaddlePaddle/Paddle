@@ -184,6 +184,8 @@ class OpBase {
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
+  static pten::KernelContext* GetKernelContext() { return &pt_kernel_context_; }
+
  private:
   static const std::string& UnknownOpType() {
     static std::string kUnknownOpType{"unknown"};
