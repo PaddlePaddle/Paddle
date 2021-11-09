@@ -1,3 +1,7 @@
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+
 # pten (low level) api headers: include
 # pten (high level) api
 add_subdirectory(api)

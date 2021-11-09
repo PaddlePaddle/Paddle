@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       os << "CUDNN";
       break;
     default:
-      PD_THROW("Invalid enum backend type `", static_cast<int>(backend), "`."));
+      PD_THROW("Invalid enum backend type `", static_cast<int>(backend), "`.");
   }
   return os;
 }

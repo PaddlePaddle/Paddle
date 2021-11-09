@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/float16.h"
+
 namespace pten {
 
 DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,

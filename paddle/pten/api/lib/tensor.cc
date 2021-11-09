@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/pten/api/include/tensor.h"
 
 #include <utility>
+#include <vector>
 
 #include "glog/logging.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
@@ -42,16 +43,11 @@ limitations under the License. */
  * or the corresponding components will be re-implemented.
  */
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
-
-#include "paddle/fluid/framework/custom_tensor_utils.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace experimental {
@@ -93,7 +89,7 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-paddle::framework::DDim dims() const { return impl_->dims(); }
+paddle::framework::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
   return paddle::framework::vectorize<int64_t>(impl_->dims());
@@ -117,18 +113,22 @@ PlaceType Tensor::place() const {
   return ConvertInnerPlaceToExtPlace(impl_->place());
 }
 
-paddle::platform::Place Tensor::device() const { return impl_->place(); }
+paddle::platform::Place Tensor::inner_place() const { return impl_->place(); }
 
-bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
+bool Tensor::is_cpu() const {
+  return paddle::platform::is_cpu_place(impl_->place());
+}
 
-bool Tensor::is_cuda() const { return paddle::platform::is_gpu_place(place()); }
+bool Tensor::is_cuda() const {
+  return paddle::platform::is_gpu_place(impl_->place());
+}
 
 /* Part 4: Data Access methods */
 
 template <typename T>
 T *Tensor::mutable_data() {
   if (impl_->type_info().name() == "DenseTensor") {
-    return dynamic_cast<std::shared_ptr<pten::DenseTensor>>(impl_)
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)
         ->mutable_data<T>();
   }
   return nullptr;
@@ -153,7 +153,7 @@ template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   auto inner_place = ConvertExtPlaceToInnerPlace(place);
   PADDLE_ENFORCE_EQ(
-      platform::is_same_place(inner_place, place()),
+      platform::is_same_place(inner_place, impl_->place()),
       true,
       platform::errors::Unimplemented("Modification of tensor place through "
                                       "mutable_data is not supported now"));
@@ -184,7 +184,7 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 template <typename T>
 const T *Tensor::data() const {
   if (impl_->type_info().name() == "DenseTensor") {
-    return dynamic_cast<std::shared_ptr<pten::DenseTensor>>(impl_)->data<T>();
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
   }
   return nullptr;
 }
@@ -205,7 +205,7 @@ template PD_DLL_DECL const paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>() const;
 
 template <typename T>
-T *Tensor::data() const {
+T *Tensor::data() {
   PADDLE_THROW(platform::errors::Unimplemented(
       "It is not currently supported to directly obtain the modifiable data "
       "address through the tensor::data<T>() method, please use the "
@@ -213,20 +213,20 @@ T *Tensor::data() const {
   return nullptr;
 }
 
-template PD_DLL_DECL float *Tensor::data<float>() const;
-template PD_DLL_DECL double *Tensor::data<double>() const;
-template PD_DLL_DECL int64_t *Tensor::data<int64_t>() const;
-template PD_DLL_DECL int32_t *Tensor::data<int32_t>() const;
-template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>() const;
-template PD_DLL_DECL int8_t *Tensor::data<int8_t>() const;
-template PD_DLL_DECL int16_t *Tensor::data<int16_t>() const;
-template PD_DLL_DECL bool *Tensor::data<bool>() const;
+template PD_DLL_DECL float *Tensor::data<float>();
+template PD_DLL_DECL double *Tensor::data<double>();
+template PD_DLL_DECL int64_t *Tensor::data<int64_t>();
+template PD_DLL_DECL int32_t *Tensor::data<int32_t>();
+template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>();
+template PD_DLL_DECL int8_t *Tensor::data<int8_t>();
+template PD_DLL_DECL int16_t *Tensor::data<int16_t>();
+template PD_DLL_DECL bool *Tensor::data<bool>();
 template PD_DLL_DECL paddle::platform::complex<float>
-    *Tensor::data<paddle::platform::complex<float>>() const;
+    *Tensor::data<paddle::platform::complex<float>>();
 template PD_DLL_DECL paddle::platform::complex<double>
-    *Tensor::data<paddle::platform::complex<double>>() const;
+    *Tensor::data<paddle::platform::complex<double>>();
 template PD_DLL_DECL paddle::platform::float16 *
-Tensor::data<paddle::platform::float16>() const;
+Tensor::data<paddle::platform::float16>();
 
 Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
   PADDLE_THROW(
@@ -243,7 +243,7 @@ void Tensor::set_impl(const std::shared_ptr<pten::TensorBase> &impl) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
-  return platform::stream::get_current_stream(-1);
+  return platform::stream::get_current_stream(-1)->raw_stream();
 }
 #endif
 
@@ -298,7 +298,13 @@ Tensor Tensor::cast(const DataType &target_type) const {
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
-bool Tensor::initialized() const { return impl_->initialized(); }
+bool Tensor::initialized() const {
+  return impl_ != nullptr && impl_->initialized();
+}
+
+bool Tensor::is_initialized() const {
+  return impl_ != nullptr && impl_->initialized();
+}
 
 void Tensor::reset() { impl_.reset(); }
 

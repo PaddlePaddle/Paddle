@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
       break;
     default:
       PD_THROW(
-          "Invalid enum data layout type `", static_cast<int>(layout), "`."));
+          "Invalid enum data layout type `", static_cast<int>(layout), "`.");
   }
   return os;
 }

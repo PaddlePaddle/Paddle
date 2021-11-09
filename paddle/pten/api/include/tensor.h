@@ -17,6 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
@@ -31,12 +32,19 @@ using gpuStream_t = hipStream_t;
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/place.h"
 #include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/layout.h"
 
 namespace pten {
 class TensorBase;
 }  // namespace pten
 
 namespace paddle {
+namespace framework {
+class DDim;
+}
+namespace platform {
+class Place;
+}
 namespace experimental {
 
 class Tensor;
@@ -198,10 +206,12 @@ class Tensor final {
 
   /**
    * @brief Return the place (device) of Tensor.
+   * Because the `place` method already exists, so we need to use a new name,
+   * here we temporarily use `inner_place`.
    *
    * @return paddle::platform::Place
    */
-  paddle::platform::Place device() const;
+  paddle::platform::Place inner_place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
@@ -262,7 +272,7 @@ class Tensor final {
    * @return T*
    */
   template <typename T>
-  T* data() const;
+  T* data();
 
   /**
    * @brief Return a sub-tensor of the given tensor.
@@ -344,12 +354,21 @@ class Tensor final {
   bool defined() const;
 
   /**
-   * @brief Determine whether Tensor is initialized
+   * @brief Determine whether Tensor is initialized.
    *
    * @return true
    * @return false
    */
   bool initialized() const;
+
+  /**
+   * @brief Determine whether Tensor is initialized.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return true
+   * @return false
+   */
+  bool is_initialized() const;
 
   /**
    * @brief Reset the Tensor implementation

@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/api/ext/bfloat16.h"
-#include "paddle/pten/api/ext/complex.h"
+#include "bfloat16.h"  // NOLINT
+#include "complex.h"   // NOLINT
+#include "float16.h"   // NOLINT
+
 #include "paddle/pten/api/ext/exception.h"
-#include "paddle/pten/api/ext/float16.h"
 
 namespace paddle {
 namespace experimental {
@@ -73,7 +73,8 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::UNDEFINED:
     case DataType::NUM_DATA_TYPES:
       PD_THROW("Data type ",
-               static_cast<int>(data_type) " is not supported by tensor.");
+               static_cast<int>(data_type),
+               " is not supported by tensor.");
   }
   return 0;
 }
@@ -187,4 +188,8 @@ using DataType = paddle::experimental::DataType;
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface
 using DataType = paddle::experimental::DataType;
+using bfloat16 = paddle::experimental::bfloat16;
+using complex64 = paddle::experimental::complex64;
+using complex128 = paddle::experimental::complex128;
+using float16 = paddle::experimental::float16;
 }  // namespace paddle
