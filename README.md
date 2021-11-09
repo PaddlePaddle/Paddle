@@ -12,6 +12,8 @@ English | [简体中文](./README_cn.md)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
+[TO DELETE] a sentence to test CI
+
 Welcome to the PaddlePaddle GitHub.
 
 PaddlePaddle, as the only independent R&D deep learning platform in China, has been officially open-sourced to professional communities since 2016. It is an industrial platform with advanced technologies and rich features that cover core deep learning frameworks, basic model libraries, end-to-end development kits, tools & components as well as service platforms.
