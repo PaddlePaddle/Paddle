@@ -24,6 +24,7 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #endif
 
+#include "cinn/cinn.h"
 #include "cinn/common/target.h"
 #include "cinn/frontend/net_builder.h"
 #include "cinn/frontend/syntax.h"

@@ -32,8 +32,7 @@ class StreamAnalyzer {
   void Schedule(const std::vector<size_t>& downstream_ops,
                 std::vector<Instruction>* instructions, size_t op_index);
 
-  platform::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node,
-                                              const OperatorBase& op_base);
+  platform::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
 
  private:
   std::vector<size_t> ParseEventVarIds(const Instruction& cur_instr,
