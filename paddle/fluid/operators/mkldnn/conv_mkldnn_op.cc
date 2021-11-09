@@ -191,7 +191,8 @@ class ConvMKLDNNHandlerT
   ConvMKLDNNHandlerT(const framework::ExecutionContext& ctx,
                      const platform::MKLDNNDeviceContext& dev_ctx,
                      const mkldnn::engine mkldnn_engine, const Tensor* input,
-                     const Tensor* filter, const Tensor* bias, Tensor* output)
+                     const Tensor* filter, const Tensor* bias, Tensor* output,
+                     const std::string& key)
       : platform::MKLDNNHandlerNoCachingT<T, mkldnn::convolution_forward,
                                           mkldnn::convolution_backward_data,
                                           mkldnn::convolution_backward_weights>(
@@ -784,16 +785,16 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, dev_ctx, mkldnn_engine, input,
-                                            filter, bias, output);
-
-    auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
-
     // Key is needed for params (weights and biases) to have reordered weights
     // cached
     std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
                                           ctx.InputName("Filter"));
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
+    ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, dev_ctx, mkldnn_engine, input,
+                                            filter, bias, output, key);
+
+    auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
         dev_ctx, key, filter, ctx.Attr<int>("groups"), is_conv3d);
@@ -857,8 +858,14 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
+    // Key is needed for params (weights and biases) to have reordered weights
+    // cached
+    std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
+                                          ctx.InputName("Filter"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
     ConvMKLDNNHandlerT<T, K, T_out> handler(ctx, dev_ctx, mkldnn_engine, input,
-                                            filter, bias, output);
+                                            filter, bias, output, key);
 
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
@@ -868,12 +875,6 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     const int& groups = ctx.Attr<int>("groups");
     int mask_reorder =
         is_multi_channel ? ((groups != 1) ? (1 << 1) + (1 << 0) : 1 << 0) : 0;
-
-    // Key is needed for params (weights and biases) to have reordered weights
-    // cached
-    std::string key = platform::CreateKey(dev_ctx, ctx.InputName("Input"),
-                                          ctx.InputName("Filter"));
-    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
         dev_ctx, key, filter, groups, false, scale_weights_data, mask_reorder);
