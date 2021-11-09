@@ -21,6 +21,10 @@ using bfloat16 = Eigen::bfloat16;
 }  // namespace platform
 }  // namespace paddle
 
+inline void* memset(paddle::platform::bfloat16* ptr, int value, size_t num) {
+  return memset(reinterpret_cast<void*>(ptr), value, num);
+}
+
 namespace std {
 
 template <>
