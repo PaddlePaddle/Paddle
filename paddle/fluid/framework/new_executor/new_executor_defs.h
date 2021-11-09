@@ -472,6 +472,12 @@ struct VariableMetaInfo {
 };
 
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
+
+// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
+// ScopeBase.
+//                   Scope manager the variables and VariableScope is just a
+//                   quick
+//                   access machanism.
 class VariableScope : public ScopeBase {
  public:
   VariableScope() {
@@ -482,7 +488,10 @@ class VariableScope : public ScopeBase {
     info.var_ref_count_ = 0;
     info.vardesc_ = nullptr;
     vec_meta_info_.push_back(info);
+    scope_ptr_.reset(new Scope());
   }
+  const Scope* GetScope() const { return scope_ptr_.get(); }
+
   Variable* FindVar(const std::string& name) const {
     auto it = name2id_.find(name);
     if (it != name2id_.end()) {
@@ -540,11 +549,14 @@ class VariableScope : public ScopeBase {
 
   void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
     name2id_[name] = VarSize();
-    auto v = new Variable();
+    auto v = scope_ptr_->Var(name);
     if (nullptr == var_desc) {
       v->GetMutable<LoDTensor>();
     } else {
-      InitializeVariable(v, var_desc->GetType());
+      InitializeVariable(
+          v,
+          var_desc
+              ->GetType());  // Scope don't initialize variable recently created
     }
     var_list_.push_back(v);
 
@@ -555,8 +567,12 @@ class VariableScope : public ScopeBase {
   }
 
   void AddVar(const std::string& name, Variable& var) {  // NOLINT
+    // must copy.
+    VLOG(4) << "Add variable: " << name << " through AddVar()";
+    auto v = scope_ptr_->Var(name);
+    *v = var;
     name2id_[name] = VarSize();
-    var_list_.push_back(&var);
+    var_list_.push_back(v);
 
     VariableMetaInfo info;
     info.var_ref_count_ = 0;
@@ -595,6 +611,7 @@ class VariableScope : public ScopeBase {
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+  std::unique_ptr<Scope> scope_ptr_;
 };
 
 class NextInstruction {
@@ -759,7 +776,7 @@ class Instruction {
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
-namespace interpretercore {
+namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 
@@ -770,7 +787,7 @@ static bool IsMemcpyH2D(const Instruction& instr) {
 static bool IsMemcpyD2H(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyD2H;
 }
-}  // namespace interpretercore
+}  // namespace interpreter
 
 }  // namespace framework
 }  // namespace paddle

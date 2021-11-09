@@ -546,8 +546,13 @@ PYBIND11_MODULE(core_noavx, m) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
+  m.def("gpu_memory_available", []() {
+    size_t available = 0;
+    size_t total = 0;
+    paddle::platform::GpuMemoryUsage(&available, &total);
+    return available;
+  });
 #endif
-
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
 #endif
@@ -562,7 +567,8 @@ PYBIND11_MODULE(core_noavx, m) {
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def("replay", &platform::CUDAGraph::Replay)
-      .def("reset", &platform::CUDAGraph::Reset);
+      .def("reset", &platform::CUDAGraph::Reset)
+      .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -2393,23 +2399,31 @@ All parameter, weight, gradient are variables in Paddle.
         py::return_value_policy::copy);
 
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
-      .def_readonly("name", &gpuDeviceProp::name)
-      .def_readonly("major", &gpuDeviceProp::major)
-      .def_readonly("minor", &gpuDeviceProp::minor)
-      .def_readonly("is_multi_gpu_board", &gpuDeviceProp::isMultiGpuBoard)
-      .def_readonly("is_integrated", &gpuDeviceProp::integrated)
-      .def_readonly("multi_processor_count",
-                    &gpuDeviceProp::multiProcessorCount)
-      .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
-      .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
-        std::ostringstream stream;
-        stream << "_gpuDeviceProperties(name='" << gpu_device_prop.name
-               << "', major=" << gpu_device_prop.major
-               << ", minor=" << gpu_device_prop.minor << ", total_memory="
-               << gpu_device_prop.totalGlobalMem / (1024 * 1024)
-               << "MB, multi_processor_count="
-               << gpu_device_prop.multiProcessorCount << ")";
-        return stream.str();
+      .def_property_readonly(
+          "name", [](const gpuDeviceProp &prop) { return prop.name; })
+      .def_property_readonly(
+          "major", [](const gpuDeviceProp &prop) { return prop.major; })
+      .def_property_readonly(
+          "minor", [](const gpuDeviceProp &prop) { return prop.minor; })
+      .def_property_readonly(
+          "total_memory",
+          [](const gpuDeviceProp &prop) { return prop.totalGlobalMem; })
+      .def_property_readonly(
+          "multi_processor_count",
+          [](const gpuDeviceProp &prop) { return prop.multiProcessorCount; })
+      .def_property_readonly(
+          "is_multi_gpu_board",
+          [](const gpuDeviceProp &prop) { return prop.isMultiGpuBoard; })
+      .def_property_readonly(
+          "is_integrated",
+          [](const gpuDeviceProp &prop) { return prop.integrated; })
+      .def("__repr__", [](const gpuDeviceProp &prop) {
+        std::stringstream ostr;
+        ostr << "_gpuDeviceProperties(name='" << prop.name
+             << "', major=" << prop.major << ", minor=" << prop.minor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+        return ostr.str();
       });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
