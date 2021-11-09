@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
+import paddle
 import threading
-import paddle.fluid.core as core
 import numpy as np
+import warnings
+import logging
+
+import paddle.fluid.core as core
+from paddle.fluid.io import is_parameter, is_belong_to_optimizer
+from paddle.framework.io import _to_LodTensor
 
 
 def is_valid_list_index(list, index):
@@ -338,9 +345,10 @@ def _get_unshard_dist_shape(var, dist_attr):
     return new_shape
 
 
-def make_data_unshard(dist_main_prog, dist_startup_prog):
+def make_data_unshard(dist_main_prog, dist_startup_prog, dist_context=None):
     from .dist_context import get_default_distributed_context
-    dist_context = get_default_distributed_context()
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
 
     for var in dist_main_prog.list_vars():
         if var.is_data:
@@ -352,3 +360,140 @@ def make_data_unshard(dist_main_prog, dist_startup_prog):
             dim_mapping = [-1] * len(dim_mapping)
             tensor_dist_attr.dims_mapping = dim_mapping
             dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
+
+
+def _check_addition_info(addition_info):
+    """
+    Validity check of additional information
+    """
+    if not addition_info:
+        return addition_info
+    elif not isinstance(addition_info, dict):
+        raise TypeError(
+            "The type of addition_info should be 'dict', but got {}".format(
+                str(type(addition_info))))
+    else:
+        return addition_info
+
+
+def _check_valid_path(file_path):
+    """
+    Validity check of input file path
+    """
+    if not file_path:
+        return file_path
+    elif isinstance(file_path, str):
+        if not os.path.exists(file_path):
+            raise ValueError("The file_path '{}' does not exist.".format(
+                file_path))
+        else:
+            return [file_path]
+    elif isinstance(file_path, list):
+        if not all(isinstance(file, str) for file in file_path):
+            raise ValueError("The type of each file_path should be str.")
+        if not all(os.path.exists(file) for file in file_path):
+            raise ValueError("The file_path's file does not exist.")
+        return file_path
+    else:
+        raise TypeError(
+            "The type of file_path should be 'str' or 'list', but got '{}'.".
+            format(str(type(file_path))))
+
+
+def save_distributed_checkpoint(program,
+                                checkpoint_path,
+                                is_integrated=False,
+                                addition_info=None,
+                                dist_attr_path=None):
+    """ 
+    Save model parameter state, optimzer state, distributed attribute and 
+    additional information of each rank.
+
+    Args:
+        program(Program): The program to be saved.
+        checkpoint_path(str): The path of the checkpoint file to be saved.
+        is_integrated(bool, optional): Whether to integrate param before save. Default: False.
+        addition_info(dict, optional): Additional information. Default: None.
+        dist_attr_path(str, optional): The path of distributed attribute file to be saved. Default: None
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            ckpt_path = os.path.join(args.output_dir, "step_%d" % step)
+            os.makedirs(ckpt_path, exist_ok=True)
+            save_distributed_checkpoint(program, ckpt_path)
+    """
+    if not is_integrated:
+        rank = paddle.distributed.get_rank()
+        ckpt_file_name = os.path.join(checkpoint_path,
+                                      "model_state_rank{}.pdmodel".format(rank))
+
+        state_dict = {
+            "model": program.state_dict(),
+            "ranks": paddle.distributed.get_world_size()
+        }
+        if _check_addition_info(addition_info):
+            state_dict["addition_info"] = addition_info
+
+        paddle.save(state_dict, ckpt_file_name)
+        logging.info("Already save model to {}".format(checkpoint_path))
+
+        if dist_attr_path:
+            raise NotImplementedError(
+                "Save distributed attribute has not been implemented.")
+    else:
+        # TODO: integrate param before save
+        raise NotImplementedError(
+            "Integrating parameter has not been implemented.")
+
+
+def load_distributed_checkpoint(checkpoint_path,
+                                program=None,
+                                dist_attr_path=None):
+    """ 
+    Load parameter, optimizer, distributed attribute and addition_info of model.
+
+    Args:
+        checkpoint_path(str|list[str]): checkpoint_path's type can be 'str' or 'list', \
+            which must be in order of rank id when type is 'list'.
+        program(Program, optional): The program to be updated with checkpoint_path. Default: None.
+        dist_attr_path(str|list[str], optional): dist_attr_path's type can be 'str' or 'list', \
+            which must be in order of rank id when type is 'list'. Default: None.
+
+    Returns:
+        None or addition_info which user saved in last train.
+
+    Examples:
+        .. code-block:: python
+
+            exe.run(startup_program)
+            ckpt_path = ['./output/step_10/model_state_rank0.pdmodel', 
+                         './output/step_10/model_state_rank1.pdmodel']
+            load_distributed_checkpoint(ckpt_path, main_program)
+    """
+    checkpoint_path = _check_valid_path(checkpoint_path)
+    dist_attr_path = _check_valid_path(dist_attr_path)
+
+    if checkpoint_path and dist_attr_path:
+        raise NotImplementedError(
+            "Merge&Slice parameter with dist_attr has not been implemented.")
+
+    elif checkpoint_path:
+        assert len(checkpoint_path) == paddle.distributed.get_world_size(), \
+            "The number of checkpoint_path must equal to the number of ranks"
+        rank = paddle.distributed.get_rank()
+        state_dict_info = paddle.load(checkpoint_path[rank])
+        state_dict = state_dict_info["model"]
+    else:
+        raise ValueError("'checkpoint_path' can not be None.")
+
+    program.set_state_dict(state_dict) if program else \
+        warnings.warn("'Program' is None, parameters will not be loaded.")
+
+    if "addition_info" not in state_dict_info:
+        return
+
+    return state_dict_info["addition_info"]

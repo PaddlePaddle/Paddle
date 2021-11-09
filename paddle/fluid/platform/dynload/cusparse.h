@@ -56,8 +56,8 @@ extern void *cusparse_dso_handle;
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
 
-// APIs available after CUDA 11.2
-#if CUDA_VERSION >= 11020
+// APIs available after CUDA 11.3
+#if CUDA_VERSION >= 11030
 #define CUSPARSE_ROUTINE_EACH_R2(__macro) \
   __macro(cusparseSDDMM_bufferSize);      \
   __macro(cusparseSDDMM_preprocess);      \
