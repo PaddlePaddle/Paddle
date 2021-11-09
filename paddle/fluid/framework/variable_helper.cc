@@ -29,6 +29,10 @@ namespace framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type,
                         proto::VarType::Type dtype) {
+  if (var->IsInitialized()) {
+    return;
+  }
+
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>()->SetType(dtype);
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
