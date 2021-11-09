@@ -42,14 +42,13 @@ struct CustomGradMerger {
     out.show = a.show + b.show;
     out.clk = a.clk + b.clk;
     out.lr_g = a.lr_g + b.lr_g;
-    out.mf_g = a.mf_g;
-    float* out_g= (float*)(out.mf_g);
-    /*
-    for (int i = 0; i < 8; ++i) {
-      out_g[i] = 0;
+    //out.mf_g = a.mf_g;
+    for (int i = 0; i < 1; ++i) {
+      printf("mf_g: %f\n", a.mf_g[0]);
+      //a.mf_g[0] = b.mf_g[0];
       //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; // for local test
     }
-    */
+    
     return out;
   }
 };
@@ -65,6 +64,8 @@ class HeterComm {
   void split_input_to_shard(KeyType* d_keys, int* d_idx_ptr, size_t len,
                             int* left, int* right, int gpu_num);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
+                  int& uniq_len);
+  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, float* mf, size_t len,
                   int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
