@@ -166,23 +166,19 @@ std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
                                : 1;
   std::vector<float> output_shift_scale(count);
 
-  for (int i = 0; i < count; i++) {
-    if (scale_weights_data[i] == 0.0)
-      // weights data will contain 0 in some models, then weights
-      // scale couldn't be calculated
-      output_shift_scale[i] = scale_out_data;
-    else
-      output_shift_scale[i] =
-          static_cast<float>(static_cast<double>(scale_out_data) /
-                             (static_cast<double>(scale_in_data) *
-                              static_cast<double>(scale_weights_data[i])));
-  }
-
   scale_tuple =
       std::make_shared<std::tuple<float, std::vector<float>>>(std::make_tuple(
           static_cast<float>(sum_scale), std::vector<float>(count)));
   for (int i = 0; i < count; i++) {
-    std::get<1>(*scale_tuple)[i] = scale_in_data * scale_weights_data[i];
+    if (scale_weights_data[i] == 0.0)
+      // weights data will contain 0 in some models, then weights
+      // scale couldn't be calculated
+      std::get<1>(*scale_tuple)[i] = scale_out_data;
+    else
+      std::get<1>(*scale_tuple)[i] =
+          static_cast<float>(static_cast<double>(scale_out_data) /
+                             (static_cast<double>(scale_in_data) *
+                              static_cast<double>(scale_weights_data[i])));
   }
 
   dev_ctx.SetBlob(key_s, scale_tuple);
