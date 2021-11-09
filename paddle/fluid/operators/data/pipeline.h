@@ -95,8 +95,9 @@ class PipelineManager {
   DISABLE_COPY_AND_ASSIGN(PipelineManager);
 
   static PipelineManager *pm_instance_ptr_;
-  std::map<int64_t, std::shared_ptr<Pipeline>> prog_id_to_pipeline_;
   static std::mutex m_;
+
+  std::map<int64_t, std::unique_ptr<Pipeline>> prog_id_to_pipeline_;
 
  public:
   static PipelineManager *Instance() {
@@ -109,19 +110,19 @@ class PipelineManager {
     return pm_instance_ptr_;
   }
 
-  std::shared_ptr<Pipeline> GetPipeline(
+  Pipeline* GetPipeline(
       int64_t program_id, BlockDesc *global_block, const platform::Place &place,
       int64_t start_op_index, int64_t end_op_index,
       const std::vector<std::string> &output_var_names,
       size_t prefetch_queue_size) {
     auto iter = prog_id_to_pipeline_.find(program_id);
     if (iter == prog_id_to_pipeline_.end()) {
-      prog_id_to_pipeline_[program_id] = std::shared_ptr<Pipeline>(new Pipeline(
+      prog_id_to_pipeline_[program_id] = std::unique_ptr<Pipeline>(new Pipeline(
           std::shared_ptr<BlockDesc>(global_block), place, start_op_index,
           end_op_index, program_id, output_var_names, prefetch_queue_size));
-      return prog_id_to_pipeline_[program_id];
+      return prog_id_to_pipeline_[program_id].get();
     } else {
-      return iter->second;
+      return iter->second.get();
     }
   }
 
