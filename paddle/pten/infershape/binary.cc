@@ -132,12 +132,6 @@ DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
 DenseTensorMeta ElementwiseInferShape(const DenseTensorMeta& x_meta,
                                       const DenseTensorMeta& y_meta,
                                       int axis) {
-  // TODO(YuanRisheng) Some Check need to be done before INFERSHAPE, but now,
-  // 'meta' can't
-  // get the Tensor Type(eg, DenseTensor or SelectedRows), So, we will add the
-  // PADDLE_ENFORCE
-  // after advancing meta's infomation (refer to elementwise_op.h).
-
   DenseTensorMeta return_meta(x_meta.type, x_meta.dims, x_meta.layout);
   if (x_meta.dims != y_meta.dims) {
     auto x_dims = x_meta.dims;

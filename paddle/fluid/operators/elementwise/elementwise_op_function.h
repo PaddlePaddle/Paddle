@@ -1761,8 +1761,8 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
 
   const auto &dev_ctx =
       ctx.template device_context<platform::CPUDeviceContext>();
-  pten::ElementwiseCompute<Functor, T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
-                                       func, pt_z.get());
+  pten::ElementwiseCompute<Functor, T, OutType>(
+      dev_ctx, *pt_x.get(), *pt_y.get(), axis, func, pt_z.get());
 }
 
 // FusedElemwiseAndAct

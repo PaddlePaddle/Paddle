@@ -43,6 +43,9 @@ void ElementwiseAdd(const CPUContext& dev_ctx,
   }
 }
 
+// TODO(YuanRisheng) Some Check need to be done when args is
+// SelectedRows(refer to InferShape in elementwise_op.h).
+
 }  // namespace pten
 
 PT_REGISTER_MODULE(NnCPU);
