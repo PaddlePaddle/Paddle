@@ -1199,7 +1199,7 @@ class TestVarBaseTo(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.np_x = np.random.random((3, 8, 8))
-        self.x = paddle.to_tensor(self.np_x, dtype="float64")
+        self.x = paddle.to_tensor(self.np_x, dtype="float32")
 
     def test_to_api(self):
         x_double = self.x._to(dtype='double')
@@ -1219,11 +1219,31 @@ class TestVarBaseTo(unittest.TestCase):
             self.assertTrue(x_gpu0.place.is_gpu_place())
             self.assertEqual(x_gpu0.place.gpu_device_id(), 0)
 
+            x_gpu1 = self.x._to(device='gpu:0', dtype="float64")
+            self.assertTrue(x_gpu1.place.is_gpu_place())
+            self.assertEqual(x_gpu1.place.gpu_device_id(), 0)
+            self.assertEqual(x_gpu1.dtype,
+                             paddle.fluid.core.VarDesc.VarType.FP64)
+
+            x_gpu2 = self.x._to(device='gpu:0', dtype="float16")
+            self.assertTrue(x_gpu2.place.is_gpu_place())
+            self.assertEqual(x_gpu2.place.gpu_device_id(), 0)
+            self.assertEqual(x_gpu2.dtype,
+                             paddle.fluid.core.VarDesc.VarType.FP16)
+
         x_cpu = self.x._to(device=paddle.CPUPlace())
         self.assertTrue(x_cpu.place.is_cpu_place())
 
         x_cpu0 = self.x._to(device='cpu')
         self.assertTrue(x_cpu0.place.is_cpu_place())
+
+        x_cpu1 = self.x._to(device=paddle.CPUPlace(), dtype="float64")
+        self.assertTrue(x_cpu1.place.is_cpu_place())
+        self.assertEqual(x_cpu1.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
+
+        x_cpu2 = self.x._to(device='cpu', dtype="float16")
+        self.assertTrue(x_cpu2.place.is_cpu_place())
+        self.assertEqual(x_cpu2.dtype, paddle.fluid.core.VarDesc.VarType.FP16)
 
         self.assertRaises(ValueError, self.x._to, device=1)
         self.assertRaises(AssertionError, self.x._to, blocking=1)

@@ -400,12 +400,12 @@ def monkey_patch_varbase():
                 # waiting_alloc_memory will compute the memory space occupied by 't'.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
                 waiting_alloc_memory = (
-                    (t.numel().numpy()[0] * size_dtype) / 256 + 1) * 256 * 1.2
+                    (t._numel() * size_dtype) / 256 + 1) * 256 * 1.2
                 if gpu_memory_available < waiting_alloc_memory:
                     # Copy Tensor to cpu
                     t_used = t._copy_to(paddle.CPUPlace(), blocking)
                     # Release memory of t
-                    t.value().get_tensor()._clear()
+                    t._clear()
                 else:
                     # Tensor still in GPU
                     t_used = t
