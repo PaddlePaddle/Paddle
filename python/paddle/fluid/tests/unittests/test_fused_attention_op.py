@@ -155,8 +155,8 @@ class TestFusedAttentionOp(OpTest):
         residual_out = residual + self.dropout(out)
         if not self.pre_layer_norm:
             final_out = self.norm1(residual_out)
-        if self.pre_layer_norm:
-            final_out = self.norm2(residual_out)
+        else:
+            final_out = residual_out
         paddle.autograd.backward(
             [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
         return final_out, tensor_query.grad
