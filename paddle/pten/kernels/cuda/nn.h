@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+// CUDA and HIP use same api
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
@@ -32,3 +35,5 @@ void ElementwiseAdd(const CUDAContext& dev_ctx,
                     DenseTensor* out);
 
 }  // namespace pten
+
+#endif
