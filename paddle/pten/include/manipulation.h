@@ -37,4 +37,18 @@ DenseTensor Flatten(const ContextT& dev_ctx,
   return dense_out;
 }
 
+template <typename T, typename ContextT>
+DenseTensor Cast(const ContextT& dev_ctx,
+                 const DenseTensor& x,
+                 DataType out_dtype,
+                 DataType in_dtype) {
+  auto out_meta = UnchangedInferShape(x.meta());
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
+  Cast<T>(dev_ctx, x, out_dtype, in_dtype, &dense_out);
+  return dense_out;
+}
+
 }  // namespace pten

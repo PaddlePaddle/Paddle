@@ -15,6 +15,7 @@
 #include "paddle/pten/infershape/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/functions/math/cast_func.h"
 
 namespace pten {
 
@@ -50,6 +51,18 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
   xshape->set_lod(x.lod());
 }
 
+template <typename T>
+void Cast(const CUDAContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out) {
+  PTEN_DISPATCH_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                            math::CastKernelImpl<CUDAContext, T, data_t>(
+                                dev_ctx, x, out);
+                          }));
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -80,3 +93,20 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+// todo: Hip need support bfloat16
+PT_REGISTER_KERNEL("cast",
+                   CUDA,
+                   ANY,
+                   pten::Cast,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   int16_t,
+                   bool,
+                   uint8_t,
+                   paddle::platform::float16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

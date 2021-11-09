@@ -21,5 +21,7 @@ namespace experimental {
 
 Tensor flatten(const Tensor& x, int start_axis, int stop_axis);
 
+Tensor cast(const Tensor& x, DataType out_dtype);
+
 }  // namespace experimental
 }  // namespace paddle

@@ -33,6 +33,13 @@ void Flatten(const CUDAContext& dev_ctx,
              int stop_axis,
              DenseTensor* out);
 
+template <typename T>
+void Cast(const CUDAContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out);
+
 }  // namespace pten
 
 #endif
