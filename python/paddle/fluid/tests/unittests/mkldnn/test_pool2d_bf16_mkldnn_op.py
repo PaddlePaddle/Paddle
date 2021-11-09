@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci, convert_float_to_uint16
 from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op_Mixin, TestPool2D_Op, max_pool2D_forward_naive
 from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import pool2d_backward_navie as pool2d_backward_naive
 from paddle import enable_static
@@ -25,6 +25,7 @@ from paddle import enable_static
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestPoolBf16MklDNNOpGradMixin(TestPool2D_Op_Mixin):
     def init_kernel_type(self):
         self.use_mkldnn = True
