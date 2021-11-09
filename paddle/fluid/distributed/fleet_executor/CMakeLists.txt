@@ -5,7 +5,7 @@ endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_DISTRIBUTE AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  set(BRPC_DEPS brpc ssl crypto)
+  set(BRPC_DEPS brpc)
 else()
   set(BRPC_DEPS "")
 endif()
