@@ -325,7 +325,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = layer_norm(input);
 	out = compute_qkv(out) + bias;
 	// fmha module
-	{
+  {
     out = transpose(out, perm=[2, 0, 3, 1, 4]);
     out = q * k^t;
     out = attn_mask + out;
