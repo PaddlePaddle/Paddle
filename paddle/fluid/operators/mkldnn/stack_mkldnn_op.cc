@@ -40,7 +40,7 @@ class StackMKLDNNHandler
     int ndims = inputs[0]->dims().size();
 
     if (stack_axis < 0) {
-      stack_axis = ndims + 1 + stack_axis; // +1 to match output's ndims
+      stack_axis = ndims + 1 + stack_axis;  // +1 to match output's ndims
     }
 
     // in stack op all inputs must have same dims
