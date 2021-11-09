@@ -247,7 +247,7 @@ void HeterSectionWorker::Run() {
       // backward
       if (micro_ids_.size() > 0) {
         MiniBatchBarrier();
-        // PrintFetchVars();
+        PrintFetchVars();
         micro_ids_.clear();
       }
     }
@@ -297,7 +297,7 @@ void HeterSectionWorker::TrainFiles() {
   VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num_;
 }
-/*
+
 void HeterSectionWorker::PrintFetchVars() {
   // call count
   batch_num_ += micro_ids_.size();
@@ -327,6 +327,7 @@ void HeterSectionWorker::PrintFetchVars() {
   }
 }
 
+/*
 void HeterSectionWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
   device_reader_->Start();

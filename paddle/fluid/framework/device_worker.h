@@ -620,7 +620,7 @@ class HeterSectionWorker : public DeviceWorker {
 
   void BindingDataFeedMemory() override {}
   void BindingDataFeedMemory(int micro_id);
-  void PrintFetchVars() override {}
+  void PrintFetchVars() override;
   const platform::Place& place() const { return place_; }
 
   void SetDeviceIndex(int tid) override { thread_id_ = tid; }
