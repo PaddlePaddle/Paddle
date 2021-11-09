@@ -1763,12 +1763,6 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  if (!KernelSignatureMap::Instance().Has(Type())) {
-    // TODO(chenweihang): we can generate this map by proto info in compile time
-    KernelArgsNameMakerByOpProto maker(Info().proto_);
-    KernelSignatureMap::Instance().Emplace(
-        Type(), std::move(maker.GetKernelSignature()));
-  }
   return KernelSignatureMap::Instance().Get(Type());
 }
 
@@ -1845,6 +1839,10 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         op_kernel_ctx.EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::string))) {
+        op_kernel_ctx.EmplaceBackAttr(
+            std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "

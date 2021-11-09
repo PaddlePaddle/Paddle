@@ -1271,6 +1271,11 @@ class Executor(object):
         fetch_list = self._check_fetch_list(fetch_list)
 
         if isinstance(program, Program) and program._pipeline_opt:
+            if "fleet_opt" in program._pipeline_opt:
+                return self._run_using_fleet_executor(
+                    program,
+                    fetch_list=fetch_list,
+                    use_program_cache=use_program_cache)
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
@@ -1296,9 +1301,13 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and not program._is_start_up_program_:
-            return self._executor_cache.run(program, scope, feed, fetch_list,
-                                            return_numpy)
+        if self._enable_interpreter_core:
+            inner_program_ = program._program if isinstance(
+                program, compiler.CompiledProgram) else program
+            assert isinstance(inner_program_, framework.Program)
+            if not program._is_start_up_program_:
+                return self._executor_cache.run(program, scope, feed,
+                                                fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1819,6 +1828,31 @@ class Executor(object):
         if use_program_cache: self._add_ctx_cache(cache_key, ctx)
 
         return ctx
+
+    def _run_using_fleet_executor(self,
+                                  program=None,
+                                  dataset=None,
+                                  scope=None,
+                                  thread=0,
+                                  is_infer=False,
+                                  debug=False,
+                                  fetch_list=None,
+                                  fetch_info=None,
+                                  print_period=100,
+                                  fetch_handler=None,
+                                  use_program_cache=False):
+        scope, real_fetch_list, trainer_instance = \
+            self._prepare_pipeline_ctx(program, dataset, scope, thread,
+                                       is_infer, debug, fetch_list, fetch_info,
+                                       print_period, fetch_handler,
+                                       use_program_cache)
+        from ..distributed.fleet.proto import fleet_executor_desc_pb2
+        from google.protobuf import text_format
+        fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+        fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
+        fleet_exe.init(program._pipeline_opt["section_program"].desc)
+        fleet_exe.run()
+        return None
 
     def _run_pipeline(self,
                       program=None,

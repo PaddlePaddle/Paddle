@@ -331,7 +331,7 @@ if (WITH_PSCORE)
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
-    
+
     if (WITH_HETERPS)
         include(external/rocksdb)     # download, build, install libmct
         list(APPEND third_party_deps extern_rocksdb)
@@ -377,5 +377,10 @@ if (WITH_POCKETFFT)
     list(APPEND third_party_deps extern_pocketfft)
     add_definitions(-DPADDLE_WITH_POCKETFFT)
 endif (WITH_POCKETFFT)
+
+if (WIN32)
+    include(external/dirent)
+    list(APPEND third_party_deps extern_dirent)
+endif (WIN32)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

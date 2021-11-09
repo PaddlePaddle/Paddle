@@ -17,6 +17,7 @@ if (WITH_ASCEND_CL)
     # Note: the following test cases has running time more than 120s
     set_tests_properties(test_nearest_interp_op_npu PROPERTIES TIMEOUT 200)
     set_tests_properties(test_nearest_interp_v2_op_npu PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_bilinear_interp_v2_op_npu PROPERTIES TIMEOUT 200)
     set_tests_properties(test_stack_op_npu PROPERTIES TIMEOUT 300)
     set_tests_properties(test_conv2d_transpose_op_npu PROPERTIES TIMEOUT 200)
     set_tests_properties(test_conv2d_op_npu PROPERTIES TIMEOUT 300)
