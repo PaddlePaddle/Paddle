@@ -196,12 +196,32 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // out_linear_out: [batch_size, seq_len, embed_dim]
     out_linear_compute.ComputeForward(out_linear_weight_data, fmha_out_data,
                                       nullptr, out_linear_out_data, nullptr);
-    // output = layernorm(residual + dropout(input + bias))
-    fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-        ctx.cuda_device_context(), out_linear_out_data, x_data,
-        out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
-        bias_dropout_residual_out_data, dropout_mask_out_data, final_out_data,
-        ln_mean_2_data, ln_var_2_data);
+    if (pre_layer_norm) {
+      // output = (residual + dropout(input + bias))
+      fused_dropout_layernorm_helper.ResidualDropoutBias(
+          ctx.cuda_device_context(), out_linear_out_data, x_data,
+          out_linear_bias_data, final_out_data, dropout_mask_out_data);
+    } else {
+      // output = layernorm(residual + dropout(input + bias))
+      fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+          ctx.cuda_device_context(), out_linear_out_data, x_data,
+          out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
+          bias_dropout_residual_out_data, dropout_mask_out_data, final_out_data,
+          ln_mean_2_data, ln_var_2_data);
+    }
+#if 0
+    if (!pre_layer_norm) {
+      fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+          ctx, linear2_out.data<T>(), x.data<T>(), linear2_bias_ptr,
+          ln2_scale_ptr, ln2_bias_ptr, dropout2_out->data<T>(),
+          dropout2_mask->data<uint8_t>(), out->data<T>(), ln2_mean->data<U>(),
+          ln2_variance->data<U>());
+    } else {
+      fused_dropout_layernorm_helper.ResidualDropoutBias(
+          ctx, linear2_out.data<T>(), x.data<T>(), linear2_bias_ptr,
+          out->data<T>(), dropout2_mask->data<uint8_t>());
+    }
+#endif
   }
 };
 
@@ -382,11 +402,31 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
         ln2epsilon);
 
-    fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
-        ctx.cuda_device_context(), d_y_data, bias_dropout_residual_out_data,
-        dropout_mask_out_data, ln_2_scale_data, ln_2_mean_data, ln_2_var_data,
-        d_bias_dropout_residual_out_data, d_ln_2_scale_data, d_ln_2_bias_data,
-        d_out_linear_out_data, d_out_linear_bias_data, d_residual_data);
+    if (pre_layer_norm) {
+      fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
+          ctx.cuda_device_context(), d_y_data, dropout_mask_out_data,
+          d_out_linear_out_data, d_residual_data, d_out_linear_bias_data);
+    } else {
+      fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
+          ctx.cuda_device_context(), d_y_data, bias_dropout_residual_out_data,
+          dropout_mask_out_data, ln_2_scale_data, ln_2_mean_data, ln_2_var_data,
+          d_bias_dropout_residual_out_data, d_ln_2_scale_data, d_ln_2_bias_data,
+          d_out_linear_out_data, d_out_linear_bias_data, d_residual_data);
+    }
+#if 0
+     if (pre_layer_norm) {
+      fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
+          ctx, d_out.data<T>(), dropout2_mask.data<uint8_t>(),
+          d_linear2_out.data<T>(), d_residual.data<T>(), d_linear2_bias_ptr);
+    } else {
+      fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
+          ctx, d_out.data<T>(), dropout2_out.data<T>(),
+          dropout2_mask.data<uint8_t>(), ln2_gamma_ptr, ln2_mean->data<U>(),
+          ln2_variance->data<U>(), d_dropout2_out.data<T>(), d_ln2_gamma_ptr,
+          d_ln2_beta_ptr, d_linear2_out.data<T>(), d_linear2_bias_ptr,
+          d_residual.data<T>());
+    }
+#endif
 
     out_linear_compute.ComputeBackward(fmha_out_data, out_linear_weight_data,
                                        d_out_linear_out_data, d_fmha_out_data,

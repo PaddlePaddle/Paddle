@@ -23,6 +23,12 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
     def setActivation(self):
         self.activation = 'gelu'
 
+    def setAttnMask(self):
+        self.has_attn_mask = True
+
+    def setPreLn(self):
+        self.pre_layer_norm = False
+
     def setUp(self):
         self.batch_size = np.random.randint(1, 8)
         self.query_length = np.random.randint(1, 128)
@@ -37,8 +43,9 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         self.attn_mask_type = np.float64
         self.key_length = self.query_length
         self.dtype = 'float32'
-        self.pre_layer_norm = False
         self.setActivation()
+        self.setAttnMask()
+        self.setPreLn()
 
     def fused_weight(self, weight, num_head):
         a = paddle.transpose(weight, perm=[1, 0])
@@ -58,18 +65,22 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             self.pre_layer_norm)
         src = np.random.rand(self.batch_size, self.query_length,
                              self.embed_dim).astype(self.dtype)
-        attn_mask = np.ones(
-            (self.batch_size, self.num_heads, self.query_length,
-             self.key_length),
-            dtype=self.attn_mask_type)
+
+        if self.has_attn_mask:
+            attn_mask = np.ones(
+                (self.batch_size, self.num_heads, self.query_length,
+                 self.key_length),
+                dtype=self.attn_mask_type)
+            attn_mask_tensor = paddle.to_tensor(attn_mask)
+        else:
+            attn_mask = None
+            attn_mask_tensor = None
 
         dout = np.random.random(src.shape).astype(self.dtype)
 
         base_out = base_encoder(
             paddle.to_tensor(
-                src, stop_gradient=False),
-            paddle.to_tensor(
-                attn_mask, stop_gradient=False))
+                src, stop_gradient=False), attn_mask_tensor)
         paddle.autograd.backward([base_out], [paddle.to_tensor(dout)], True)
 
         fused_encoder = FusedTransformerEncoderLayer(
@@ -112,26 +123,44 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
 
         fused_out = fused_encoder(
             paddle.to_tensor(
-                src, stop_gradient=False),
-            paddle.to_tensor(
-                attn_mask, stop_gradient=False))
+                src, stop_gradient=False), attn_mask_tensor)
         paddle.autograd.backward([fused_out], [paddle.to_tensor(dout)], True)
 
-        self.assertTrue(
-            np.allclose(
-                fused_out.numpy(), base_out.numpy(), rtol=1e-3, atol=1e-4))
-        self.assertTrue(
-            np.allclose(
-                fused_out.grad.numpy(),
-                base_out.grad.numpy(),
-                rtol=1e-3,
-                atol=1e-4))
+        # self.assertTrue(
+        #     np.allclose(
+        #         fused_out.numpy(), base_out.numpy(), rtol=1e-3, atol=1e-3))
+        np.testing.assert_allclose(
+            fused_out.numpy(), base_out.numpy(), rtol=1e-3, atol=1e-4)
+        # self.assertTrue(
+        #     np.allclose(
+        #         fused_out.grad.numpy(),
+        #         base_out.grad.numpy(),
+        #         rtol=1e-3,
+        #         atol=1e-3))
+        np.testing.assert_allclose(
+            fused_out.grad.numpy(), base_out.grad.numpy(), rtol=1e-3, atol=1e-4)
 
 
 class TestFusedTransformerEncoderLayerAct(TestFusedTransformerEncoderLayer):
     def setActivation(self):
         self.activation = 'relu'
 
+
+class TestFusedTransformerEncoderLayerPreLnTrue(
+        TestFusedTransformerEncoderLayer):
+    def setPreLn(self):
+        self.pre_layer_norm = True
+
+
+# class TestFusedTransformerEncoderLayerAttnMaskIsNone(TestFusedTransformerEncoderLayer):
+#     def setAttnMask(self):
+#         self.has_attn_mask = False
+
+# class TestFusedTransformerEncoderLayerPreLnTrueAttnMaskIsNone(TestFusedTransformerEncoderLayer):
+#     def setPreLn(self):
+#         self.pre_layer_norm = True
+#     def setAttnMask(self):
+#         self.has_attn_mask = False
 
 if __name__ == "__main__":
     unittest.main()
