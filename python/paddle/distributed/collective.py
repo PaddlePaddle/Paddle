@@ -348,7 +348,12 @@ def _sync_comm_stream(tensor, ring_id=0):
 def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
 
-    Broadcast a tensor from the source to all others.
+    Broadcast a tensor from the source to all others, as shown below.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/broadcast.png
+        :width: 800
+        :alt: broadcast
+        :align: center
 
     Args:
         tensor (Tensor): The Tensor to send if current rank is the source, or the tensor to receive otherwise. Its data type
@@ -415,7 +420,12 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
 def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
-    Reduce a tensor over all ranks so that all get the result.
+    Reduce a tensor over all ranks so that all get the result, as shown below.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/allreduce.png
+        :width: 800
+        :alt: all_reduce
+        :align: center
 
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
@@ -495,7 +505,12 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
-    Reduce a tensor to the destination from all others.
+    Reduce a tensor to the destination from all others, as shown below.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/reduce.png
+        :width: 800
+        :alt: reduce
+        :align: center
 
     Args:
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
@@ -589,9 +604,9 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
-    Gather tensors from all participators and all get the result.
+    Gather tensors from all participators and all get the result, as shown below.
 
-    .. image:: https://githubraw.bj.bcebos.com/PaddlePaddle/docs/develop/docs/guides/images/inference_ecosystem.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/allgather.png
         :width: 800
         :alt: all_gather
         :align: center
@@ -671,7 +686,12 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     """
 
-    Scatter a tensor to all participators.
+    Scatter a tensor to all participators, as shown below.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/scatter.png
+        :width: 800
+        :alt: scatter
+        :align: center
 
     Args:
         tensor (Tensor): The output Tensor. Its data type
@@ -1266,15 +1286,60 @@ def split(x,
         to N/2 and are mapped to all zeros after embedding. Finally, the results on the two
         devices are sum-reduced.
 
+        The Embedding put on single card is as shown below:
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_embedding_single.png
+            :width: 800
+            :height: 350
+            :alt: single_embedding
+            :align: center
+
+        Parallel Embedding is shown as below:
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_embedding_split.png
+            :width: 800
+            :alt: split_embedding
+            :align: center
+
     Case 2: Row Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
         With row parallel linear, the weight is split into num_partitions partitions, each
         of which is a matrix with N/num_partitions rows and M column.
 
+        The linear layer put on single card is shown as below:
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_single.png
+            :width: 800
+            :alt: single_linear
+            :align: center
+
+        Row Parallel Linear is shown as below:
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_row.png
+            :width: 800
+            :alt: split_row
+            :align: center
+
     Case 3: Column Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
         With column parallel linear, the weight is split into num_paratitions partitions, each
         of which is a matrix with N rows and M/num_partitions column.
+
+        The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
+        is shown as below:
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_col.png
+            :width: 800
+            :alt: split_col
+            :align: center
+    
+    As observed, the column parallel linear and row parallel linear can be combined to skip one ALLGATHER communication
+    operator. Furthermore the Attention and MLP can be combined to imporve the performance as shown below.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_col_row.png
+            :width: 800
+            :alt: split_col_row
+            :align: center
 
     Args:
         x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
@@ -1399,8 +1464,13 @@ def split(x,
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
-    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
-    
+    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list, as shown below.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/alltoall.png
+        :width: 800
+        :alt: alltoall
+        :align: center
+
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.

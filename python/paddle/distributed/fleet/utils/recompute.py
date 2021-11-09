@@ -188,6 +188,7 @@ def recompute(function, *args, **kwargs):
                 intermediate activations will be released to save memory in forward stage and will be recomputed 
                 in backward stage for gradient calculation.
         args: inputs to the function
+        kwargs: Kwargs should only contain the key-value pair of preserve_rng_state, which is used to indicate whether to save the forward rng. If it is True, then the last forward rng value will be restored when the forward recalculation of backpropagation is performed. The default preserve_rng_state is True.
 
     Returns:
         Output of function on args.
