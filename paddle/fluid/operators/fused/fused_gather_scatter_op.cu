@@ -215,8 +215,8 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* gather_index = ctx.Input<Tensor>("Gather_index");
-    auto* scatter_index = ctx.Input<Tensor>("Scatter_index");
+    auto* gather_index = ctx.Input<Tensor>("Scatter_index");
+    auto* scatter_index = ctx.Input<Tensor>("Gather_index");
     auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
     std::string pool_type = ctx.Attr<std::string>("pool_type");
 

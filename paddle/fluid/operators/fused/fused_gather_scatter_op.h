@@ -80,11 +80,10 @@ void gather_scatter_cpu_for_loop(const int& input_size, const int& index_size,
   Functor functor;
   if (pool_type == "MIN" || pool_type == "MAX") {
     std::set<IndexT> existed_dst;
-    bool in_set = false;
     for (int i = 0; i < index_size; ++i) {
       IndexT src_idx = g_index[i];
       IndexT dst_idx = s_index[i];
-      in_set = existed_dst.find(dst_idx) != existed_dst.end();
+      bool in_set = existed_dst.find(dst_idx) != existed_dst.end();
       if (!in_set) {
         elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                         dst_idx, true, functor);
@@ -146,7 +145,7 @@ class FusedGatherScatterOpKernel : public framework::OpKernel<T> {
     const IndexT* g_index = gather_index->data<IndexT>();
     const IndexT* s_index = scatter_index->data<IndexT>();
 
-    std::string pool_type = ctx.Attr<std::string>("pool_type");
+    const std::string& pool_type = ctx.Attr<std::string>("pool_type");
     if (pool_type == "SUM") {
       gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
@@ -168,11 +167,12 @@ class FusedGatherScatterGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* gather_index = ctx.Input<Tensor>("Gather_index");
-    auto* scatter_index = ctx.Input<Tensor>("Scatter_index");
+    auto* gather_index = ctx.Input<Tensor>("Scatter_index");
+    auto* scatter_index = ctx.Input<Tensor>("Gather_index");
     auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     const int& index_size = gather_index->dims()[0];
+    if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
     const auto& src_dims = X->dims();
