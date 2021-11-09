@@ -51,7 +51,7 @@ void LayerWiseSampler::sample(
         instance.uint64_feasigns_[sample_feasign_idx].sign().uint64_feasign_ =
             travel_path[j].id();
         sample_results->push_back(instance);
-        for (int idx_offset = 0; idx_offset <= layer_counts_[j]; idx_offset++) {
+        for (int idx_offset = 0; idx_offset < layer_counts_[j]; idx_offset++) {
           int sample_res = 0;
           do {
             sample_res = sampler_vec_[j]->Sample();
