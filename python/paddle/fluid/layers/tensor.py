@@ -1684,6 +1684,9 @@ def eye(num_rows,
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if num_columns is None:
+        num_columns = num_rows
+
     if in_dygraph_mode():
         attrs = ()
         num_rows_tensor = None

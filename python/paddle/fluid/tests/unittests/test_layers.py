@@ -1631,15 +1631,6 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(eye_tensor_rlt2_value, stack_rlt2))
         self.assertTrue(np.allclose(diag_tensor_value, np.eye(20)))
 
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3.1)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, num_columns=2.2)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, batch_shape=2)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, batch_shape=[-1])
-
     def test_while_loop(self):
         with self.static_graph():
             i = layers.fill_constant(shape=[1], dtype='int64', value=0)
