@@ -272,11 +272,15 @@ class TestMLPAutoConvert2(unittest.TestCase):
         os.remove("./dist_attr_rank{}.pdattr".format(
             str(paddle.distributed.get_rank())))
 
-    def test_mlp_mp2pp(self):
+    def test_mlp_pp2mp(self):
         global _global_parallel_strategy
-        _global_parallel_strategy = "mp"
+        _global_parallel_strategy = "pp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh([0, 1])
+        global PP_MESH_0
+        PP_MESH_0 = auto.ProcessMesh(mesh=[0])
+        global PP_MESH_1
+        PP_MESH_1 = auto.ProcessMesh(mesh=[1])
 
         input = np.random.random(size=(80, 64)).astype('float32')
         label = np.random.random(size=(80, 1)).astype('float32')
@@ -289,26 +293,26 @@ class TestMLPAutoConvert2(unittest.TestCase):
         for step in range(20):
             if step == 10:
                 add_info = {"batch": step, "batch_size": 4}
-                save_distributed_checkpoint(
-                    dist_main_prog,
-                    ".",
-                    addition_info=add_info,
-                    dist_attr_path=".")
+                save_distributed_checkpoint(dist_main_prog, ".", ".", add_info)
 
-            res = exe.run(dist_main_prog,
-                          feed={
-                              "input": input[step * 4:(step + 1) * 4, :],
-                              "label": label[step * 4:(step + 1) * 4, :]
-                          },
-                          fetch_list=[loss])
-        last_res = res[0]
+            if paddle.distributed.get_rank() in [0]:
+                res = exe.run(dist_main_prog,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              })
+            else:
+                res = exe.run(dist_main_prog,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              },
+                              fetch_list=[loss])
+        if paddle.distributed.get_rank() in [1]:
+            last_res = res[0]
 
-        _global_parallel_strategy = "pp"
+        _global_parallel_strategy = "mp"
         _global_process_mesh = auto.ProcessMesh([0, 1])
-        global PP_MESH_0
-        PP_MESH_0 = auto.ProcessMesh(mesh=[0])
-        global PP_MESH_1
-        PP_MESH_1 = auto.ProcessMesh(mesh=[1])
 
         dist_main_prog_load, dist_start_prog_load, loss_load = get_distributed_program(
         )
@@ -336,19 +340,12 @@ class TestMLPAutoConvert2(unittest.TestCase):
         load_parameter_into_program(sliced_param_dict, dist_main_prog_load)
 
         for step in range(10):
-            if paddle.distributed.get_rank() in [0]:
-                res = exe.run(dist_main_prog_load,
-                              feed={
-                                  "input": input[step * 4:(step + 1) * 4, :],
-                                  "label": label[step * 4:(step + 1) * 4, :]
-                              })
-            else:
-                res = exe.run(dist_main_prog_load,
-                              feed={
-                                  "input": input[step * 4:(step + 1) * 4, :],
-                                  "label": label[step * 4:(step + 1) * 4, :]
-                              },
-                              fetch_list=[loss_load])
+            res = exe.run(dist_main_prog_load,
+                          feed={
+                              "input": input[step * 4:(step + 1) * 4, :],
+                              "label": label[step * 4:(step + 1) * 4, :]
+                          },
+                          fetch_list=[loss_load])
 
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
