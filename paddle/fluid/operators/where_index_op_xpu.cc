@@ -48,8 +48,7 @@ class WhereIndexXPUKernel : public framework::OpKernel<T> {
     }
     xpu_memcpy(static_cast<void*>(&true_num_cpu),
                static_cast<const void*>(true_num), sizeof(int32_t),
-               This conversation was marked as resolved by tangzhiyi11 Show
-                   conversation XPU_DEVICE_TO_HOST);
+               XPU_DEVICE_TO_HOST);
     out->Resize(
         framework::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());

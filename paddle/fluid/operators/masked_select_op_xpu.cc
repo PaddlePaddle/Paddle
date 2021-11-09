@@ -55,8 +55,7 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
     xpu_memcpy(static_cast<void*>(&out_size_cpu),
                static_cast<const void*>(out_size), sizeof(int32_t),
                XPU_DEVICE_TO_HOST);
-    This conversation was marked as resolved by tangzhiyi11 Show conversation
-        framework::DDim out_dim{out_size_cpu};
+    framework::DDim out_dim{out_size_cpu};
     out->Resize(out_dim);
     auto out_data = out->mutable_data<T>(context.GetPlace());
 
