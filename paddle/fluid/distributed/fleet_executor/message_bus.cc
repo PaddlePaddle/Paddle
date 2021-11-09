@@ -84,6 +84,7 @@ void MessageBus::ListenPort() {
   PADDLE_ENFORCE_EQ(
       server_.Start(ip_for_brpc, &options), 0,
       platform::errors::Unavailable("Message bus: start brpc service error."));
+  VLOG(3) << "Message bus's listen port thread starts successful.";
 #else
   VLOG(3) << "Fleet executor's ListenPort() is a fake function when Paddle is "
              "compiled with npu or Paddle isn't compiled "
