@@ -229,6 +229,28 @@ void apply_device_guard(const OperatorBase* op_base,
   }
 }
 
+void deal_operator_base(const platform::Place& place,
+                        const VariableScope* var_scope, OperatorBase* op_base,
+                        OpFuncNode* op_func_node) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
+  // input, output is prepared. set the other attributes.
+  op_func_node->operator_base_ = op_base;
+  op_func_node->type_ = OpFuncType::kQueueSync;  // alway Sync
+  op_func_node->kernel_func_ = nullptr;
+  op_base->Run(*var_scope->GetScope(), place);  // Run without data transformer.
+
+  std::unordered_set<int> no_data_transform_index;
+  for (auto& it : op_func_node->input_index) {
+    for (auto& id : it.second) {
+      no_data_transform_index.emplace(id);
+    }
+  }
+  op_func_node->no_data_transform_index =
+      no_data_transform_index;  // all index is no-need-transform
+  op_func_node->dev_ctx_ = dev_ctx;
+}
+
 // the return value is whether data transformer is needed for this var
 bool need_place_transform_for_var(const OpKernelType& kernel_type_for_var,
                                   const OpKernelType& expected_kernel_key) {
@@ -429,80 +451,89 @@ void build_op_func_list(const platform::Place& place,
     OpFuncNode op_func_node;
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
-    // construct RuntimeContext and analysis KernelType
-    RuntimeContext runtime_context({}, {});
-    runtime_context.inputs.swap(ins_map);
-    runtime_context.outputs.swap(outs_map);
-    InterpretercoreInferShapeContext infer_shape_ctx(*op_base, runtime_context);
-    // TODO(Aurelius84): In case of control flow ops, they are NOT inheritted
-    // from OperatorWithKernel.
-    static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
-        &infer_shape_ctx);
-    auto kernels_iter = all_op_kernels.find(op->Type());
-    PADDLE_ENFORCE_NE(
-        kernels_iter, all_op_kernels.end(),
-        platform::errors::Unavailable(
-            "There are no kernels which are registered in the %s operator.",
-            op->Type()));
 
-    OpKernelMap& kernels = kernels_iter->second;
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place);
-    Scope scope;
-    auto expected_kernel_key =
-        dynamic_cast<const framework::OperatorWithKernel*>(op_base)
-            ->GetExpectedKernelType(
-                ExecutionContext(*op_base, scope, *dev_ctx, runtime_context));
-
-    // consider device_guard()
-    apply_device_guard(
-        op_base, place,
-        &expected_kernel_key);  // change device by the device_guard()
-    VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
-
-    // step 3. apply data transforms and insert memory ops
-    VariableValueMap& ins_map_temp = runtime_context.inputs;
-    std::vector<OpFuncNode> copy_op_to_insert;
-    // NOTE(xiongkun03): assign op_base here to reduce parameter number of
-    // apply_data_transform.
-    op_func_node.operator_base_ = op_base;
-    copy_op_to_insert = apply_data_transform(
-        expected_kernel_key, place, ins_map_temp, var_scope, op_func_node);
-    for (auto& item : copy_op_to_insert) {
-      vec_func_list->push_back(item);
-    }
-    // step 4. Run op kernel
-    VLOG(3) << op_base->Type()
-            << " : expected_kernel_key : " << expected_kernel_key;
-
-    if (platform::is_gpu_place(expected_kernel_key.place_)) {
-      op_func_node.type_ = OpFuncType::kQueueAsync;
-    } else if (platform::is_cpu_place(expected_kernel_key.place_)) {
-      op_func_node.type_ = OpFuncType::kQueueSync;
+    if (dynamic_cast<const framework::OperatorWithKernel*>(op_base) ==
+        nullptr) {
+      // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
+      deal_operator_base(place, var_scope, op_base, &op_func_node);
     } else {
-      PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
-                                           expected_kernel_key.place_));
+      // construct RuntimeContext and analysis KernelType
+      RuntimeContext runtime_context({}, {});
+      runtime_context.inputs.swap(ins_map);
+      runtime_context.outputs.swap(outs_map);
+      InterpretercoreInferShapeContext infer_shape_ctx(*op_base,
+                                                       runtime_context);
+      // TODO(Aurelius84): In case of control flow ops, they are NOT inheritted
+      // from OperatorWithKernel.
+      static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
+          &infer_shape_ctx);
+      auto kernels_iter = all_op_kernels.find(op->Type());
+      PADDLE_ENFORCE_NE(
+          kernels_iter, all_op_kernels.end(),
+          platform::errors::Unavailable(
+              "There are no kernels which are registered in the %s operator.",
+              op->Type()));
+
+      OpKernelMap& kernels = kernels_iter->second;
+
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto* dev_ctx = pool.Get(place);
+      Scope scope;
+      auto expected_kernel_key =
+          dynamic_cast<const framework::OperatorWithKernel*>(op_base)
+              ->GetExpectedKernelType(
+                  ExecutionContext(*op_base, scope, *dev_ctx, runtime_context));
+
+      // consider device_guard()
+      apply_device_guard(
+          op_base, place,
+          &expected_kernel_key);  // change device by the device_guard()
+      VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
+
+      // step 3. apply data transforms and insert memory ops
+      VariableValueMap& ins_map_temp = runtime_context.inputs;
+      std::vector<OpFuncNode> copy_op_to_insert;
+      // NOTE(xiongkun03): assign op_base here to reduce parameter number of
+      // apply_data_transform.
+      op_func_node.operator_base_ = op_base;
+      copy_op_to_insert = apply_data_transform(
+          expected_kernel_key, place, ins_map_temp, var_scope, op_func_node);
+      for (auto& item : copy_op_to_insert) {
+        vec_func_list->push_back(item);
+      }
+      // step 4. Run op kernel
+      VLOG(3) << op_base->Type()
+              << " : expected_kernel_key : " << expected_kernel_key;
+
+      if (platform::is_gpu_place(expected_kernel_key.place_)) {
+        op_func_node.type_ = OpFuncType::kQueueAsync;
+      } else if (platform::is_cpu_place(expected_kernel_key.place_)) {
+        op_func_node.type_ = OpFuncType::kQueueSync;
+      } else {
+        PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
+                                             expected_kernel_key.place_));
+      }
+      if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
+        dev_ctx = pool.Get(expected_kernel_key.place_);
+      }
+      op_func_node.dev_ctx_ = dev_ctx;
+
+      auto exec_ctx =
+          ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
+
+      auto kernel_iter = kernels.find(expected_kernel_key);
+      PADDLE_ENFORCE_NE(
+          kernel_iter, kernels.end(),
+          platform::errors::NotFound(
+              "Operator (%s) does not have kernel for %s.", op->Type(),
+              KernelTypeToString(expected_kernel_key)));
+
+      op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
+      op_func_node.kernel_func_(exec_ctx);
     }
 
-    if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
-      dev_ctx = pool.Get(expected_kernel_key.place_);
-    }
-    op_func_node.dev_ctx_ = dev_ctx;
-
-    auto exec_ctx =
-        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
-
-    auto kernel_iter = kernels.find(expected_kernel_key);
-    PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
-                      platform::errors::NotFound(
-                          "Operator (%s) does not have kernel for %s.",
-                          op->Type(), KernelTypeToString(expected_kernel_key)));
-
-    op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-    op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
-
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op_base);
     if (iter == unused_var_map.end()) {

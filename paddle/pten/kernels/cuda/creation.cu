@@ -24,7 +24,39 @@ void FillAnyLike(const CUDAContext& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& val,
                  DenseTensor* out) {
+  auto value = val.to<float>();
+  using CommonType = typename std::common_type<
+      float,
+      typename std::conditional<
+          std::is_same<T, paddle::platform::float16>::value,
+          float,
+          T>::type>::type;
+
+  auto common_type_value = static_cast<CommonType>(value);
+
+  PADDLE_ENFORCE_EQ(
+      (common_type_value >=
+       static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
+          (common_type_value <=
+           static_cast<CommonType>(std::numeric_limits<T>::max())),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "The filled value is out of range for target type, "
+          "current kernel type is %s, the range should between %f "
+          "and %f, but now value is %f.",
+          typeid(T).name(),
+          static_cast<CommonType>(std::numeric_limits<T>::lowest()),
+          static_cast<CommonType>(std::numeric_limits<T>::max()),
+          static_cast<float>(value)));
+
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<float>());
+}
+
+template <typename T>
+void FillConstant(const CUDAContext& dev_ctx,
+                  const Scalar& val,
+                  DenseTensor* out) {
+  eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
 
 }  // namespace pten
@@ -41,3 +73,18 @@ PT_REGISTER_KERNEL("fill_any_like",
                    int64_t,
                    bool,
                    paddle::platform::float16) {}
+
+PT_REGISTER_KERNEL("fill_constant.scalar",
+                   CUDA,
+                   ANY,
+                   pten::FillConstant,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   paddle::platform::float16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}

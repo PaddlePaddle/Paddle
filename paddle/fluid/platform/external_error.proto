@@ -25,6 +25,7 @@ enum ApiType {
   CUSOLVER = 4;
   NCCL = 5;
   CUFFT = 6;
+  CU = 7;
 }
 
 message MessageDesc {
