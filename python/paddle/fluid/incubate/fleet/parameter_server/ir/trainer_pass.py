@@ -109,6 +109,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
         pull_sparse_ops = {}
         pull_sparse_ids = {}
         push_sparse_ops = {}
+        ops = {}
         for op in _program.global_block().ops:
             if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
@@ -336,20 +337,21 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             op_first = ops[0]
             break
         print(op_first)
-        entry = op_first.attr("entry")
-        entry = entry.split(':')
-        if len(entry) == 3 and entry[0] == 'show_click_entry':
-            show_var_name = entry[1]
-            click_var_name = entry[2]
-            if show_var_name in program.global_block(
-            ).vars and click_var_name in program.global_block().vars:
-                show = program.global_block().vars[show_var_name]
-                clk = program.global_block().vars[click_var_name]
-                use_entry = True
-            else:
-                warnings.warn(
-                    'ShowClickEntry configured, but cannot find show/click var, will not use'
-                )
+        if op_first.has_attr("entry"):
+            entry = op_first.attr("entry")
+            entry = entry.split(':')
+            if len(entry) == 3 and entry[0] == 'show_click_entry':
+                show_var_name = entry[1]
+                click_var_name = entry[2]
+                if show_var_name in program.global_block(
+                ).vars and click_var_name in program.global_block().vars:
+                    show = program.global_block().vars[show_var_name]
+                    clk = program.global_block().vars[click_var_name]
+                    use_entry = True
+                else:
+                    warnings.warn(
+                        'ShowClickEntry configured, but cannot find show/click var, will not use'
+                    )
 
         if not use_entry:
             print('ShowClickEntry not configured, will not use')

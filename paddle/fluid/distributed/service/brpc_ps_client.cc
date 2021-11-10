@@ -226,8 +226,8 @@ int32_t BrpcPsClient::initialize() {
   // _async_push_sparse_thread.detach();
   _async_push_dense_thread =
       std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
-  _print_thread =
-      std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
+  // _print_thread =
+  //    std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
 
   return 0;
 }
@@ -474,8 +474,10 @@ void BrpcPsClient::finalize_worker() {
   VLOG(0) << "finalize_worker begin join thread";
   _running = false;
   _async_push_dense_thread.join();
+  VLOG(0) << "push dense thread join";
   _async_push_sparse_thread.join();
-  _print_thread.join();
+  VLOG(0) << "push sparse thread join";
+  // _print_thread.join();
   VLOG(0) << "finalize_worker begin join server";
   _server.Stop(1000);
   _server.Join();

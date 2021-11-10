@@ -195,6 +195,9 @@ class CommonAccessor:
 
         self.trainer_num = compiled_strategy.get_trainers()
 
+        if oop.type != 'adam' and adam_d2sum == True:
+            print('optimization algorithm is not adam, set adam_d2sum False')
+            adam_d2sum = False
         print("adam_d2sum:", adam_d2sum)
         if compiled_strategy.is_geo_mode():
             param_varnames = self.opt_input_map["sum"]
@@ -651,6 +654,10 @@ class TheOnePSRuntime(RuntimeBase):
         print('ZCB begin create c2c connection')
         info = self._communicator.get_client_info()
         all_info = self.role_maker._all_gather(info[0])
+        # for unittest
+        if not isinstance(all_info, list):
+            warnings.warn("gloo may not initialize correctly")
+            all_info = [all_info]
         self._communicator.set_clients(all_info)
         #create_c2c_connection default param: 
         #  pserver_timeout_ms=500000
@@ -837,7 +844,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                 if ctx.is_sparse():
                     table.type = "PS_SPARSE_TABLE"
-                    # table.shard_num = 256
+                    table.shard_num = 256
 
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
@@ -915,11 +922,8 @@ class TheOnePSRuntime(RuntimeBase):
                     common.sync = "true"
                 else:
                     common.sync = "false"
-
                 table.common = common
 
-                #print('debug build_merge_accessor:')
-                #print(str(ctx))
                 if table.table_class != 'MemorySparseTable':
                     accessor = _build_merge_accessor(ctx)
                     table.accessor = accessor

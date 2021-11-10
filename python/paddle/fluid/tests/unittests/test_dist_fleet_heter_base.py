@@ -184,14 +184,18 @@ class TestFleetHeterBase(unittest.TestCase):
         ps0_pipe = open(tempfile.gettempdir() + "/ps0_err.log", "wb+")
         ps1_pipe = open(tempfile.gettempdir() + "/ps1_err.log", "wb+")
 
+        ps0_out = open(tempfile.gettempdir() + "/ps0_out.log", "wb+")
+        ps1_out = open(tempfile.gettempdir() + "/ps1_out.log", "wb+")
+        print(ps0_pipe)
+
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=ps0_out,
             stderr=ps0_pipe,
             env=required_envs)
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=ps1_out,
             stderr=ps1_pipe,
             env=required_envs)
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
@@ -252,21 +256,24 @@ class TestFleetHeterBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
+        tr_cmd = "{0} -u {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
             self._reader, gloo_path, self._heter_endpoints, self._heter_device)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
+        ps_cmd = "{0} -u {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
             self._reader, gloo_path, self._heter_endpoints, self._heter_device)
 
-        heter_cmd = "{0} {1} --role heter_trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
+        heter_cmd = "{0} -u {1} --role heter_trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
             self._reader, gloo_path, self._heter_endpoints, self._heter_device)
 
+        print(tr_cmd)
+        print(ps_cmd)
+        print(heter_cmd)
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
         tr0, tr1, tr0_pipe, tr1_pipe = self._start_trainer(tr_cmd, env)

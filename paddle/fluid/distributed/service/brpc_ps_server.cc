@@ -205,8 +205,7 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
   res_data->resize(num * table->value_accesor()->select_size() / sizeof(float));
   table->pull_dense(res_data->data(), num);
   VLOG(1) << "BrpcPsService::pull_dense num " << num << " data[0] "
-          << res_data->data()[0] << " data[-2] " << res_data->data()[num - 2]
-          << " data[-1] " << res_data->data()[num - 1];
+          << res_data->data()[0] << " data[-1] " << res_data->data()[num - 1];
 
   cntl->response_attachment().append(reinterpret_cast<char *>(res_data->data()),
                                      res_data->size() * sizeof(float));
@@ -237,8 +236,7 @@ int32_t BrpcPsService::push_dense_param(Table *table,
 
   const float *values = (const float *)(data + sizeof(uint32_t));
   VLOG(1) << "BrpcPsService::push_dense_param num " << num << " data[0] "
-          << values[0] << " data[-2] " << values[num - 2] << " data[-1] "
-          << values[num - 1];
+          << values[0] << " data[-1] " << values[num - 1];
   if (table->push_dense_param(values, num) != 0) {
     set_response_code(response, -1, "push_dense_param failed");
   }
@@ -265,7 +263,7 @@ int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
   const float *values =
       (const float *)(request.data().data() + sizeof(uint32_t));
   VLOG(1) << "BrpcPsService::push_dense num " << num << " data[0] " << values[0]
-          << " data[-2] " << values[num - 2] << " data[-1] " << values[num - 1];
+          << " data[-1] " << values[num - 1];
   if (table->push_dense(values, num) != 0) {
     set_response_code(response, -1, "push_dense failed");
   }
