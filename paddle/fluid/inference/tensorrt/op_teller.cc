@@ -1496,12 +1496,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "clip op does not support input's dim is 1 in tensorrt.";
         return false;
       }
-      // TODO(inference): fix
-      if (x_shape.size() == 2 && !with_dynamic_shape) {
-        VLOG(3) << "clip op does not support input's dim is 2 in tensorrt "
-                   "static shape, the output shape has diff.";
-        return false;
-      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
