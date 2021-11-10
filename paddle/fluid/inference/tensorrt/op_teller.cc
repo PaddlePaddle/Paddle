@@ -881,6 +881,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
     }
+
     if (op_type == "scale") {
       auto scale_inputs = desc.Inputs();
       if (scale_inputs.find("ScaleTensor") != scale_inputs.end()) {
@@ -898,8 +899,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (!with_dynamic_shape && x_shape.size() == 1) return false;
+      if (!with_dynamic_shape && x_shape.size() == 1) {
+        VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
+        return false;
+      }
     }
+
     if (op_type == "slice") {
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends") || !desc.HasAttr("decrease_axis")) {
@@ -1154,29 +1159,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (paddings[i] != 0) {
           return false;
         }
-      }
-    }
-
-    if (op_type == "scale") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "scale op does not support input's dim is 1 in tensorrt.";
-        return false;
-      }
-      // TODO(inference): fix
-      if (x_shape.size() == 2 && !with_dynamic_shape) {
-        VLOG(3) << "scale op does not support input's dim is 2 in tensorrt "
-                   "static shape, the output shape has diff.";
-        return false;
       }
     }
 
