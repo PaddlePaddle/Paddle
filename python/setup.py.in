@@ -464,6 +464,10 @@ if '${WITH_LITE}' == 'ON':
             shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
             package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
 
+if '${WITH_CINN}' == 'ON':
+    shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
+    package_data['paddle.libs']+=['libcinnapi.so']
+
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):

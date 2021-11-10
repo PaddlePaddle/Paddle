@@ -1301,9 +1301,13 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and not program._is_start_up_program_:
-            return self._executor_cache.run(program, scope, feed, fetch_list,
-                                            return_numpy)
+        if self._enable_interpreter_core:
+            inner_program_ = program._program if isinstance(
+                program, compiler.CompiledProgram) else program
+            assert isinstance(inner_program_, framework.Program)
+            if not inner_program_._is_start_up_program_:
+                return self._executor_cache.run(inner_program_, scope, feed,
+                                                fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list

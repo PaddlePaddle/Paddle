@@ -38,7 +38,7 @@ Tensor dot(const Tensor& x, const Tensor& y) {
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-  auto kernel_context = pten::KernelContext(*dev_ctx);
+  auto kernel_context = pten::KernelContext(dev_ctx);
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
@@ -76,7 +76,7 @@ Tensor matmul(const Tensor& x,
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-  auto kernel_context = pten::KernelContext(*dev_ctx);
+  auto kernel_context = pten::KernelContext(dev_ctx);
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());

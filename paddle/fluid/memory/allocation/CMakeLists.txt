@@ -18,6 +18,9 @@ if (WITH_GPU)
   nv_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
   nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
+  if(CUDA_VERSION GREATER_EQUAL 10.2)
+    nv_library(cuda_virtual_mem_allocator SRCS cuda_virtual_mem_allocator.cc DEPS dynload_cuda)
+  endif()
 endif()
 
 if (WITH_ROCM)
@@ -36,6 +39,9 @@ cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
 if (WITH_GPU OR WITH_ROCM)
     set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator)
+    if(CUDA_VERSION GREATER_EQUAL 10.2)
+      list(APPEND AllocatorFacadeDeps cuda_virtual_mem_allocator)
+    endif()
 elseif(WITH_XPU)
     set(AllocatorFacadeDeps xpu_info)
 elseif(WITH_ASCEND)
@@ -72,7 +78,7 @@ else()
                 cpu_allocator)
 endif()
 
-list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator best_fit_allocator)
+list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator virtual_memory_auto_growth_best_fit_allocator best_fit_allocator)
 
 if (WITH_ASCEND_CL)
     list(APPEND AllocatorFacadeDeps npu_pinned_allocator)
@@ -106,6 +112,8 @@ cc_test(allocator_facade_frac_flags_test SRCS allocator_facade_frac_flags_test.c
 cc_library(auto_growth_best_fit_allocator SRCS auto_growth_best_fit_allocator.cc DEPS allocator aligned_allocator flags)
 cc_test(auto_growth_best_fit_allocator_facade_test SRCS auto_growth_best_fit_allocator_facade_test.cc DEPS cpu_allocator auto_growth_best_fit_allocator)
 cc_test(auto_growth_best_fit_allocator_test SRCS auto_growth_best_fit_allocator_test.cc DEPS auto_growth_best_fit_allocator)
+
+cc_library(virtual_memory_auto_growth_best_fit_allocator SRCS virtual_memory_auto_growth_best_fit_allocator.cc DEPS allocator aligned_allocator)
 
 if(NOT WIN32)
   cc_library(mmap_allocator SRCS mmap_allocator.cc DEPS allocator)
