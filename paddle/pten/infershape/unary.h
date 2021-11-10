@@ -41,4 +41,8 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
                                   int start_axis,
                                   int stop_axis);
 
+DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
+                                   DataType dtype,
+                                   DataLayout layout);
+
 }  // namespace pten
