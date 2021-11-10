@@ -184,10 +184,8 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   // TODO(jiabin): Support GPU later
   auto meta = pten::DenseTensorMeta(dtype, dims);
   auto holder = std::make_shared<EagerNumpyAllocation>(numpy_data, dtype);
-  size_t bytes_size = paddle::framework::product(dims) * SizeOf(dtype);
   auto shared_storage =
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(paddle::platform::CPUPlace(), bytes_size), 0);
+      pten::make_intrusive<paddle::experimental::SharedStorage>(holder, 0);
   std::shared_ptr<pten::DenseTensor> densetensor(
       new pten::DenseTensor(std::move(shared_storage), std::move(meta)));
 
