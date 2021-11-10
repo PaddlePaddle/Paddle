@@ -733,9 +733,10 @@ class BroadcastDataMKLDNNHandler
 
   template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
-    void* ptr = output->mutable_data<T_out>(
+    T_out* ptr = output->mutable_data<T_out>(
         this->place_, this->fwd_pd_->dst_desc().get_size());
-    memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
+    if (typeid(T) != typeid(platform::bfloat16))
+      memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
