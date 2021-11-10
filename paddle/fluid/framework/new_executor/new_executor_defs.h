@@ -607,6 +607,12 @@ class VariableScope : public ScopeBase {
         platform::errors::NotFound("%s not in VariableScope.", name));
   }
 
+  std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
+
+  const std::vector<VariableMetaInfo>& VecMetaInfo() const {
+    return vec_meta_info_;
+  }
+
  private:
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
