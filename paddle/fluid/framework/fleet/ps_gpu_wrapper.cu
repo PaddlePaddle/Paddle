@@ -156,7 +156,7 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
 
 __global__ void PushCopyWithPool(FeaturePushValue* dest, float** src, int64_t* len,
                          int slot_num, int total_len, int bs,
-                         int* slot_vector, int* mf_dim_vector, HBMMemoryPool* pool) {
+                         int* slot_vector, int* mf_dim_vector, int grad_value_size) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -169,15 +169,18 @@ __global__ void PushCopyWithPool(FeaturePushValue* dest, float** src, int64_t* l
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    FeaturePushValue* cur = (dest + i); 
+    FeaturePushValue* cur = (FeaturePushValue*)((char*)dest + i * grad_value_size); 
     
     cur->slot = slot_vector[x];
     int mf_dim = mf_dim_vector[x]; // slot_vector holds both slot and slot:mf_dim information
+    mf_dim = 8;
     cur->mf_dim = mf_dim;
-    cur->mf_g = (uint64_t)(pool->mem_address(i));
+    //cur->mf_g = (uint64_t)((float*)((char*)dest + start_index) + i * 8); // for test
+    //cur->mf_g = (float*)(dest + start_index);
     for (int j = 0; j < mf_dim; j++) {
       //(dest + i)->mf_g[j] = *(src[x] + y * (mf_dim + 2) + 3 + j) * -1. * bs;
-      ((float*)(cur->mf_g))[j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
+      //((float*)(cur->mf_g))[j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
+      cur->mf_g[j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
     }
     cur->show = *(src[x] + y * (mf_dim + 3));
     cur->clk = *(src[x] + y * (mf_dim + 3) + 1);
@@ -289,7 +292,7 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const std::vector<int64_t>& slot_lengths,
                                const int64_t total_length,
                                const int batch_size,
-                               HBMMemoryPool* pool) {
+                               size_t grad_value_size) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
@@ -321,10 +324,9 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
   cudaMemcpy(d_mf_dim_vector, slot_mf_dim_vector_.data(),
              slot_lengths_lod.size() * sizeof(int), cudaMemcpyHostToDevice);
 
-
   PushCopyWithPool<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
     total_grad_values_gpu, gpu_values, gpu_len,
-    slot_lengths.size(), total_length, batch_size, d_slot_vector, d_mf_dim_vector, pool);
+    slot_lengths.size(), total_length, batch_size, d_slot_vector, d_mf_dim_vector, grad_value_size);
 
 
   cudaStreamSynchronize(stream);

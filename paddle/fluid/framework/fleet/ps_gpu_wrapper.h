@@ -89,7 +89,7 @@ class PSGPUWrapper {
                    FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
                   const int64_t total_length,
-                   const int batch_size, HBMMemoryPool* pool);
+                   const int batch_size, size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -299,12 +299,6 @@ class PSGPUWrapper {
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map_.size() >= 1) ? dim_index_map_.size() : 0;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
-    VLOG(0) << "yxf:: set dynamic mf dim";
-    /*
-    for (size_t i = 0; i < index_dim_vec_.size(); i++) {
-      VLOG(0) << "yxf:: index_dim_vec: i: " << i << " dim: " << index_dim_vec_[i];
-    }
-    */
     slot_index_vec_.resize(slot_mf_dim_vector_.size());
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
       slot_index_vec_[i] = dim_index_map_[slot_mf_dim_vector_[i]];

@@ -891,10 +891,16 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   all_timer.Start();
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
+  size_t grad_value_size = TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
   auto buf =
-      memory::AllocShared(place, total_length * sizeof(FeaturePushValue));
+      memory::AllocShared(place, total_length * grad_value_size);
+  VLOG(0) << "yxf:: max_mf_dim: " << max_mf_dim_; 
   FeaturePushValue* total_grad_values_gpu =
       reinterpret_cast<FeaturePushValue*>(buf->ptr());
+  //auto mf_buf =
+  //    memory::AllocShared(place, total_length * sizeof(float) * max_mf_dim_);
+  //float* mf_gpu =
+  //    reinterpret_cast<float*>(mf_buf->ptr());
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
@@ -916,11 +922,17 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
         batch_grad_pool_[device_id]->reset(size_t(total_length * 1.2));
       }
       this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
-                        total_length, batch_size, batch_grad_pool_[device_id]);
+                        total_length, batch_size, grad_value_size);
     }
     
-
-    VLOG(3) << "Begin call PushSparseGPU in GPUPS, dev: " << devid_2_index
+    char* test_grad_values = (char*)malloc(sizeof(FeaturePushValue) * total_length);
+    cudaMemcpy(test_grad_values, total_grad_values_gpu, sizeof(FeaturePushValue) * total_length, cudaMemcpyDeviceToHost);
+    for (int i = 0 ; i < 10; i++) {
+      FeaturePushValue* cur = (FeaturePushValue*)(test_grad_values + i * sizeof(FeaturePushValue));
+      //VLOG(0) << "yxf:: i: " << i << " cur->slot: " << cur->slot << " show: " << cur->show << " mf_g: " << cur->mf_g << " mf_g[0] " << cur->mf_g[0];
+      VLOG(0) << "yxf:: i: " << i << " cur->slot: " << cur->slot << " show: " << cur->show << " mf_g: " << cur->mf_g;
+    }
+    VLOG(1) << "Begin call PushSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
     push_gpups_timer.Start();
     HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,

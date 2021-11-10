@@ -47,7 +47,7 @@ struct FeatureValue {
   __device__ __forceinline__ void operator=(const FeatureValue& in) {
     delta_score = in.delta_score;
     show = in.show;
-    clk = in.clk;;
+    clk = in.clk;
     slot = in.slot;
     lr = in.lr;
     lr_g2sum = in.lr_g2sum;
@@ -91,7 +91,7 @@ struct FeaturePushValue {
   int slot;
   float lr_g;
   int mf_dim;
-  float* mf_g;
+  float mf_g[0];
 
   __device__ __forceinline__ FeaturePushValue
   operator+(const FeaturePushValue& a) const {
@@ -101,11 +101,22 @@ struct FeaturePushValue {
     out.show = a.show + show;
     out.clk = a.clk + clk;
     out.lr_g = a.lr_g + lr_g;
-    out.mf_g = mf_g;
+    //out.mf_g = a.mf_g;
     for (int i = 0; i < out.mf_dim; ++i) {
       out.mf_g[i] = a.mf_g[i] + mf_g[i];
     }
     return out;
+  }
+  __device__ __forceinline__ void operator=(const FeaturePushValue& in) {
+    show = in.show;
+    clk = in.clk;
+    slot = in.slot;
+    lr_g = in.lr_g;
+    mf_dim = in.mf_dim;
+    for (int i = 0; i < mf_dim; i++) {
+      mf_g[i] = in.mf_g[i];
+    }
+    //printf("yxf::operator====show: %f clk: %f mf_dim: %d mf[0]: %f mf[8]: %f slot: %d\n", in.clk, in.show, in.mf_dim, in.mf[0], in.mf[8], in.slot);
   }
 };
 
