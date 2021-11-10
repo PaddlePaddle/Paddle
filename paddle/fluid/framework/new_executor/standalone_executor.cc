@@ -27,6 +27,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   paddle::framework::InitDevices();
 
   // init scope
+  global_scope_.SetScope(scope);
   BuildVariableOuterScope(startup_prog, &global_scope_, scope);
 
   if (outer_scope_ != nullptr) {
