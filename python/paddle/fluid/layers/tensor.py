@@ -1684,7 +1684,11 @@ def eye(num_rows,
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if num_columns is None:
+    if num_columns is not None:
+        if not isinstance(num_columns, Variable):
+            if not isinstance(num_columns, int) or num_columns < 0:
+                raise TypeError("num_columns should be a non-negative int")
+    else:
         num_columns = num_rows
 
     if in_dygraph_mode():
