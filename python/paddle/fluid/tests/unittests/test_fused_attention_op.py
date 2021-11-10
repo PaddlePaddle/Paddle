@@ -219,9 +219,9 @@ class TestFusedAttentionOp(OpTest):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-5)
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
         np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-5)
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
 
 
 class TestFusedAttentionOpPreLn(TestFusedAttentionOp):
@@ -249,9 +249,9 @@ class TestFusedAttentionOpPreLn(TestFusedAttentionOp):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
         np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
 
 
 class TestFusedAttentionOpNoneAttnMask(TestFusedAttentionOp):
@@ -279,9 +279,9 @@ class TestFusedAttentionOpNoneAttnMask(TestFusedAttentionOp):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
         np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
 
 
 class TestFusedAttentionOpFp16(TestFusedAttentionOp):
