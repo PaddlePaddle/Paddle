@@ -37,6 +37,9 @@ limitations under the License. */
 #ifdef WITH_WIN_DUMP_DBG
 #include <stdio.h>
 #include <time.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 
 #include "DbgHelp.h"

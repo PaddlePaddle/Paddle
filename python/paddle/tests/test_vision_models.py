@@ -85,8 +85,17 @@ class TestVisonModels(unittest.TestCase):
     def test_densenet264(self):
         self.models_infer('densenet264')
 
+    def test_squeezenet1_0(self):
+        self.models_infer('squeezenet1_0')
+
+    def test_squeezenet1_1(self):
+        self.models_infer('squeezenet1_1')
+
     def test_alexnet(self):
         self.models_infer('alexnet')
+
+    def test_shufflenetv2_swish(self):
+        self.models_infer('shufflenet_v2_swish')
 
     def test_resnext50_32x4d(self):
         self.models_infer('resnext50_32x4d')
@@ -111,6 +120,24 @@ class TestVisonModels(unittest.TestCase):
 
     def test_googlenet(self):
         self.models_infer('googlenet')
+
+    def test_shufflenetv2_x0_25(self):
+        self.models_infer('shufflenet_v2_x0_25')
+
+    def test_shufflenetv2_x0_33(self):
+        self.models_infer('shufflenet_v2_x0_33')
+
+    def test_shufflenetv2_x0_5(self):
+        self.models_infer('shufflenet_v2_x0_5')
+
+    def test_shufflenetv2_x1_0(self):
+        self.models_infer('shufflenet_v2_x1_0')
+
+    def test_shufflenetv2_x1_5(self):
+        self.models_infer('shufflenet_v2_x1_5')
+
+    def test_shufflenetv2_x2_0(self):
+        self.models_infer('shufflenet_v2_x2_0')
 
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)
