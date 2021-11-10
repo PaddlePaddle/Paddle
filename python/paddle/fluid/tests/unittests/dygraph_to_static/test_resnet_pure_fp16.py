@@ -60,6 +60,7 @@ def train(to_static, build_strategy=None):
             save_dtype='float32')
 
         for epoch in range(epoch_num):
+            loss_data = []
             total_loss = 0.0
             total_acc1 = 0.0
             total_acc5 = 0.0
@@ -95,6 +96,7 @@ def train(to_static, build_strategy=None):
                 scaler.minimize(optimizer, scaled)
                 resnet.clear_gradients()
 
+                loss_data.append(avg_loss.numpy()[0])
                 total_loss += avg_loss
                 total_acc1 += acc_top1
                 total_acc5 += acc_top5
@@ -108,7 +110,7 @@ def train(to_static, build_strategy=None):
                 if batch_id == 10:
                     break
 
-    return total_loss.numpy()
+    return loss_data
 
 
 class TestResnet(unittest.TestCase):
@@ -121,7 +123,8 @@ class TestResnet(unittest.TestCase):
             static_loss = self.train(to_static=True)
             dygraph_loss = self.train(to_static=False)
             self.assertTrue(
-                np.allclose(static_loss, dygraph_loss),
+                np.allclose(
+                    static_loss, dygraph_loss, atol=1e-4),
                 msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                                  dygraph_loss))
 
