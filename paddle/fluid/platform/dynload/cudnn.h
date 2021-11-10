@@ -180,7 +180,18 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 8000
-#define CUDNN_DNN_ROUTINE_EACH_R8(__macro) __macro(cudnnSetRNNDescriptor_v8);
+#define CUDNN_DNN_ROUTINE_EACH_R8(__macro)            \
+  __macro(cudnnSetRNNDescriptor_v8);                  \
+  __macro(cudnnCreateFusedOpsPlan);                   \
+  __macro(cudnnCreateFusedOpsConstParamPack);         \
+  __macro(cudnnCreateFusedOpsVariantParamPack);       \
+  __macro(cudnnDestroyFusedOpsPlan);                  \
+  __macro(cudnnDestroyFusedOpsConstParamPack);        \
+  __macro(cudnnDestroyFusedOpsVariantParamPack);      \
+  __macro(cudnnFusedOpsExecute);                      \
+  __macro(cudnnSetFusedOpsConstParamPackAttribute);   \
+  __macro(cudnnSetFusedOpsVariantParamPackAttribute); \
+  __macro(cudnnMakeFusedOpsPlan);
 CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
