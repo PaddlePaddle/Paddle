@@ -21,10 +21,6 @@ function(windows_symbolic TARGET)
   endforeach()
 endfunction()
 
-# Adapt to custom op mechanism: Include the header files related to the data type
-# to avoid exposing the path of the underlying file
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-
 add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)

@@ -38,7 +38,7 @@ class BackendSet final {
   uint64_t bitset() const { return bitset_; }
 
   bool inline Has(Backend b) const {
-    PD_CHECK(b != Backend::UNDEFINED, "Backend argument can't be UNDEFINED."));
+    PD_CHECK(b != Backend::UNDEFINED, "Backend argument can't be UNDEFINED.");
     return static_cast<bool>(bitset_ & BackendSet(b).bitset());
   }
   bool IsEmpty() const { return bitset_ == 0; }

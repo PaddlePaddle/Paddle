@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/backend.h"
 
 TEST(Backend, OStream) {

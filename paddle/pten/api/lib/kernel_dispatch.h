@@ -41,7 +41,7 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 
 namespace detail {
 BackendSet GetTensorBackendSet(const Tensor& t) {
-  BackendSet backend_set(pten::TransToPtenBackend(t.place()));
+  BackendSet backend_set(pten::TransToPtenBackend(t.inner_place()));
   switch (t.layout()) {
     case DataLayout::MKLDNN:
       backend_set = backend_set | BackendSet(Backend::MKLDNN);

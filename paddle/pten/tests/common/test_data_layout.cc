@@ -16,6 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include <sstream>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/layout.h"
 
 TEST(DataLayout, OStream) {

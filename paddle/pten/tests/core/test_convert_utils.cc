@@ -20,68 +20,52 @@ namespace tests {
 
 TEST(ConvertUtils, DataType) {
   // enum -> proto
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::FLOAT64) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::FLOAT64) ==
         paddle::framework::proto::VarType::FP64);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::FLOAT32) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::FLOAT32) ==
         paddle::framework::proto::VarType::FP32);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::UINT8) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::UINT8) ==
         paddle::framework::proto::VarType::UINT8);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::INT8) == paddle::framework::proto::VarType::INT8);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::INT32) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::INT8) ==
+        paddle::framework::proto::VarType::INT8);
+  CHECK(pten::TransToProtoVarType(paddle::DataType::INT32) ==
         paddle::framework::proto::VarType::INT32);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::INT64) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::INT64) ==
         paddle::framework::proto::VarType::INT64);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::INT16) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::INT16) ==
         paddle::framework::proto::VarType::INT16);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::BOOL) == paddle::framework::proto::VarType::BOOL);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::COMPLEX64) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::BOOL) ==
+        paddle::framework::proto::VarType::BOOL);
+  CHECK(pten::TransToProtoVarType(paddle::DataType::COMPLEX64) ==
         paddle::framework::proto::VarType::COMPLEX64);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::COMPLEX128) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::COMPLEX128) ==
         paddle::framework::proto::VarType::COMPLEX128);
-  CHECK(paddle::framework::CustomTensorUtils::TransToProtoVarType(
-            paddle::DataType::FLOAT16) ==
+  CHECK(pten::TransToProtoVarType(paddle::DataType::FLOAT16) ==
         paddle::framework::proto::VarType::FP16);
   // proto -> enum
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::FP64) ==
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::FP64) ==
         paddle::DataType::FLOAT64);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::FP32) ==
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::FP32) ==
         paddle::DataType::FLOAT32);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::INT64) ==
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT64) ==
         paddle::DataType::INT64);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::INT32) ==
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT32) ==
         paddle::DataType::INT32);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::INT8) == paddle::DataType::INT8);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::UINT8) ==
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT8) ==
+        paddle::DataType::INT8);
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::UINT8) ==
         paddle::DataType::UINT8);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::INT16) ==
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT16) ==
         paddle::DataType::INT16);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::BOOL) == paddle::DataType::BOOL);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::COMPLEX64) ==
-        paddle::DataType::COMPLEX64);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::BOOL) ==
+        paddle::DataType::BOOL);
+  CHECK(
+      pten::TransToPtenDataType(paddle::framework::proto::VarType::COMPLEX64) ==
+      paddle::DataType::COMPLEX64);
+  CHECK(pten::TransToPtenDataType(
             paddle::framework::proto::VarType::COMPLEX128) ==
         paddle::DataType::COMPLEX128);
-  CHECK(paddle::framework::CustomTensorUtils::TransToPtenDataType(
-            paddle::framework::proto::VarType::FP16) ==
+  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::FP16) ==
         paddle::DataType::FLOAT16);
 }
 
