@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/function_api.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/api/all.h"
 namespace egr {
 std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
     const egr::EagerTensor& tensor);

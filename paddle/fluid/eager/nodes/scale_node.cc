@@ -17,7 +17,7 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/api/all.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"

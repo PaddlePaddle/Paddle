@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/api/all.h"
 namespace egr {
 // Accumulation API
 void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst);

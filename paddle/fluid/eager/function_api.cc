@@ -16,7 +16,7 @@
 
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/include/core.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/math_function.h"

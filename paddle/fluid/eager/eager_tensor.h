@@ -18,11 +18,11 @@
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/pten//all.h"
 #include "paddle/pten/api/all.h"
+#include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/hapi/all.h"
-#include "paddle/pten/hapi/lib/utils/storage.h"
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better

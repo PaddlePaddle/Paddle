@@ -26,7 +26,7 @@
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/include/core.h"
 
 namespace egr {
 

@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/api/all.h"
 namespace egr {
 
 void RegisterGradientHookForTensor(

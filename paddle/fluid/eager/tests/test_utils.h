@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
-#include "paddle/pten/hapi/all.h"
 
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/memory/memcpy.h"

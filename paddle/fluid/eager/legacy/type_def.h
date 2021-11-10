@@ -16,7 +16,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/include/core.h"
 namespace egr {
 using NameTensorMap =
     std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>;

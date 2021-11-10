@@ -17,7 +17,7 @@
 #include <vector>
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/include/core.h"
 namespace egr {
 void InitializeVariable(paddle::framework::Variable* var,
                         paddle::framework::proto::VarType::Type var_type);

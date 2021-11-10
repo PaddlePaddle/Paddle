@@ -31,7 +31,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/pten/api/all.h"
-#include "paddle/pten/hapi/all.h"
+#include "paddle/pten/include/core.h"
 
 namespace egr {
 

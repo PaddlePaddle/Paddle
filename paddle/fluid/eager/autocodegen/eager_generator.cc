@@ -1379,7 +1379,7 @@ static void GenerateNodeCCFile(const std::string& op_type,
   std::string node_cc_path = nodes_dir + node_cc_filename;
   const char* NODE_CC_INCLUDE_TEMPLATE =
       "#include \"glog/logging.h\"\n"
-      "#include \"paddle/pten/hapi/all.h\"\n"
+      "#include \"paddle/pten/api/all.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
@@ -1397,7 +1397,7 @@ static std::string GenerateDygraphHFileIncludes() {
   std::string dygraph_forward_api_includes_str =
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
-      "#include \"paddle/pten/hapi/all.h\"\n"
+      "#include \"paddle/pten/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
 
