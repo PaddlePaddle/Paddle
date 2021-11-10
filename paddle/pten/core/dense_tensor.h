@@ -21,6 +21,8 @@ limitations under the License. */
 
 namespace pten {
 
+class CompatibleDenseTensorUtils;
+
 /// \brief The Dense tensor store values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional
 /// arrays are used in math operators.
@@ -163,6 +165,9 @@ class DenseTensor : public TensorBase,
   /// \brief Get the const data pointer value of raw type.
   /// \return The const data pointer value of raw type.
   const void* data() const;
+
+ private:
+  friend class CompatibleDenseTensorUtils;
 
  private:
   DenseTensorMeta meta_;

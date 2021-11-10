@@ -965,6 +965,9 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     }
     dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
 
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, uint8_t> ones;
+    ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
     int gate_num = 4;

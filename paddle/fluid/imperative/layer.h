@@ -36,6 +36,7 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace framework {

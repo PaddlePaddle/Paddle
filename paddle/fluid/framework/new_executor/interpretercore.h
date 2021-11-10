@@ -40,10 +40,11 @@ using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
  public:
-  InterpreterCore(const platform::Place& place, const ProgramDesc& main_prog,
+  InterpreterCore(const platform::Place& place, BlockDesc* block,
                   VariableScope* global_scope,
-                  const std::vector<std::string>& feed_names,
-                  const std::vector<std::string>& fetch_names);
+                  const std::vector<std::string>& feed_names);
+
+  ~InterpreterCore();
 
   paddle::framework::FetchList Run(
       const std::vector<framework::LoDTensor>& feed_tensors);
@@ -72,15 +73,14 @@ class InterpreterCore {
   void RunInstructionAsync(size_t instr_id);
   void RunNextInstructions(const Instruction& instr_id,
                            std::queue<size_t>* reserved_next_ops);
-  void AddFetch(const std::vector<std::string>& fetch_names);
 
   void BuildSkipShareLoDInfo();
 
   bool is_build_;
 
   const platform::Place& place_;
-  ProgramDesc main_program_;
-  VariableScope* global_scope_;
+  BlockDesc* block_;             // not owned
+  VariableScope* global_scope_;  // not owned
 
   std::vector<paddle::framework::OpFuncNode> vec_func_list_;
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
@@ -88,7 +88,6 @@ class InterpreterCore {
   InstructionInfo instruction_info_;
   std::vector<size_t> dependecy_count_;
   std::vector<std::vector<size_t>> input_var2op_info_;
-  std::vector<VariableMetaInfo> ref_coun_info_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
   std::vector<std::string> feed_names_;
@@ -97,11 +96,11 @@ class InterpreterCore {
   StreamAnalyzer stream_analyzer_;
   EventManager event_manager_;
   EventsWaiter main_thread_blocker_;
-  interpretercore::AsyncWorkQueue async_work_queue_;
+  std::unique_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
 
-  InterpreterCoreGarbageCollector gc_;
+  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   std::atomic<size_t> op_run_number_{0};
 };
