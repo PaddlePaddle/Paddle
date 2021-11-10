@@ -95,7 +95,8 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
 
     if (arg_def.dtype == pten::DataType::UNDEFINED) {
       dtype = pten::TransToPtenDataType(tensor->GetType());
-      VLOG(0) << " LoDTensor GetType = " << dtype;
+      VLOG(0) << "undefined dtype, try to get from tensor. LoDTensor GetType = "
+              << dtype;
     }
 
     tensor->mutable_data(pten::TransToFluidPlace(arg_def.backend),

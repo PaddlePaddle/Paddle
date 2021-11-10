@@ -553,10 +553,9 @@ class VariableScope : public ScopeBase {
     if (nullptr == var_desc) {
       v->GetMutable<LoDTensor>();
     } else {
-      InitializeVariable(
-          v,
-          var_desc
-              ->GetType());  // Scope don't initialize variable recently created
+      InitializeVariable(v, var_desc->GetType(),
+                         var_desc->GetDataType());  // Scope don't initialize
+                                                    // variable recently created
     }
     var_list_.push_back(v);
 

@@ -140,7 +140,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         }
         LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
         auto* ptr = scope->Var(name);
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR, ptr->GetDataType());
         LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }

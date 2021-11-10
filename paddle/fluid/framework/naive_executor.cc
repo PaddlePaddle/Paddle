@@ -77,13 +77,21 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
           auto *ptr = const_cast<Scope *>(anc)->Var(var->Name());
           VLOG(3) << scope << " Create persistable variable " << var->Name()
                   << ", which pointer is " << ptr;
-          InitializeVariable(ptr, var->GetType());
+          if (var->is_tensor_desc()) {
+            InitializeVariable(ptr, var->GetType(), var->GetDataType());
+          } else {
+            InitializeVariable(ptr, var->GetType());
+          }
         }
       } else {
         auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
         VLOG(3) << scope << " Create variable " << var->Name()
                 << ", which pointer is " << ptr;
-        InitializeVariable(ptr, var->GetType());
+        if (var->is_tensor_desc()) {
+          InitializeVariable(ptr, var->GetType(), var->GetDataType());
+        } else {
+          InitializeVariable(ptr, var->GetType());
+        }
       }
     }
   }

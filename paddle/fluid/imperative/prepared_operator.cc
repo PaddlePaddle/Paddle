@@ -309,6 +309,7 @@ static pten::KernelContext BuildDygraphPtenKernelContext(
 
       auto tmp_def = out_def;
       if (out_def.dtype == pten::DataType::UNDEFINED) {
+        VLOG(0) << " ddddddddddddddd  dygraph datatype : = " << var->DataType();
         tmp_def.dtype = pten::TransToPtenDataType(var->DataType());
       }
       tmp_outputs.emplace_back(

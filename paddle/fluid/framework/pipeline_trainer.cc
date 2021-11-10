@@ -80,7 +80,7 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
   for (auto& var : global_block.AllVars()) {
     if (var->Persistable() && microbatch_id == 0) {
       auto* ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
+      InitializeVariable(ptr, var->GetType(), var->GetDataType());
       VLOG(5) << "Create persistable var: " << var->Name()
               << ", which pointer is " << ptr;
     } else if (!var->Persistable()) {

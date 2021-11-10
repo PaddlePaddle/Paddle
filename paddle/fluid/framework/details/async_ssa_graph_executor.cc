@@ -35,9 +35,15 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
                 << " has been initialized beforehand in global scope, skipped";
         continue;
       }
-      InitializeVariable(scope->Var(info.name_), info.type_);
+
+      VLOG(0) << "zzzzzzzzzzzzz Begin to InitVarsInScope data_type_ = : "
+              << info.data_type_ << " name=" << info.name_;
+      InitializeVariable(scope->Var(info.name_), info.type_, info.data_type_);
     } else {
-      InitializeVariable(local_scope->Var(info.name_), info.type_);
+      VLOG(0) << "zzzzzzzzzzzzz Begin to InitVarsInScope data_type_ = : "
+              << info.data_type_ << " name=" << info.name_;
+      InitializeVariable(local_scope->Var(info.name_), info.type_,
+                         info.data_type_);
     }
   }
 }
@@ -88,6 +94,7 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       var_infos_.back().name_ = node->Var()->Name();
       var_infos_.back().type_ = node->Var()->GetType();
       var_infos_.back().persistable_ = node->Var()->Persistable();
+      var_infos_.back().data_type_ = node->Var()->GetDataType();
     }
   }
 

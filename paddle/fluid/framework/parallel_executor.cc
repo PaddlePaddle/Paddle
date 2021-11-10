@@ -742,7 +742,8 @@ void ParallelExecutor::PrepareVariables(Scope *scope) {
               << " has been initialized beforehand in global scope, skipped.";
       continue;
     }
-    framework::InitializeVariable(scope->Var(info.name_), info.type_);
+    framework::InitializeVariable(scope->Var(info.name_), info.type_,
+                                  info.data_type_);
   }
 }
 
@@ -1454,6 +1455,13 @@ void ParallelExecutor::CreateVariableInfos(
       var_infos->back().name_ = node->Var()->Name();
       var_infos->back().type_ = node->Var()->GetType();
       var_infos->back().persistable_ = node->Var()->Persistable();
+      VLOG(0) << "zzzzzzzzzzzzzzz try to getDataType: var.type =  "
+              << static_cast<int>(node->Var()->GetType());
+      if (node->Var()->is_tensor_desc()) {
+        var_infos->back().data_type_ = node->Var()->GetDataType();
+      } else {
+        var_infos->back().data_type_ = proto::VarType::VarType::FP32;
+      }
 
       member_->is_persistable_.emplace(node->Var()->Name(),
                                        node->Var()->Persistable());
