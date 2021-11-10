@@ -29,9 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
-// only can include the headers in paddle/top/api dirs
+// only can include the headers in paddle/pten/include dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/cpu/funcs/elementwise.h"
+#include "paddle/pten/kernels/functions/cpu/elementwise.h"
 #include "paddle/pten/kernels/functions/general/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -134,28 +134,6 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
     axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
   }
   return axis;
-}
-
-/*
- * Out = X ⊙ Y
- * If Y's shape does not match X' shape, they will be reshaped.
- * For example:
- * 1. shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
- *    pre=2, n=3*4, post=5
- *    x.shape(2, 12, 5) * y.shape(1, 12, 1).broadcast(2, 12, 5)
- * 2. shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
- *    pre=2*3, n=4*5, post=1
- *    x.shape(6, 20, 1) * y.shape(1, 20, 1).broadcast(6, 20, 1)
- *
- * New parameter: *is_run_common_broadcast* is a flag to record whether to run
- * common broadcast code.
- */
-inline void get_mid_dims(const framework::DDim &x_dims,
-                         const framework::DDim &y_dims, const int axis,
-                         int *pre, int *n, int *post,
-                         int *is_run_common_broadcast) {
-  pten::general::get_mid_dims(x_dims, y_dims, axis, pre, n, post,
-                              is_run_common_broadcast);
 }
 
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
@@ -1098,154 +1076,6 @@ inline framework::DDim trim_trailing_singular_dims(
   return pten::general::trim_trailing_singular_dims(dims);
 }
 
-template <typename T, typename DeviceContext>
-class RowwiseTransformIterator;
-
-template <typename T, typename DeviceContext>
-class MidWiseTransformIterator;
-
-// NOTE(dzhwinter): ptrdiff_t in iterator is deperecated in c++17
-template <typename T>
-class RowwiseTransformIterator<T, platform::CPUDeviceContext>
-    : public std::iterator<std::random_access_iterator_tag, T, std::ptrdiff_t,
-                           T *, T &> {
- public:
-  RowwiseTransformIterator(const T *ptr, int n) : ptr_(ptr), i_(0), n_(n) {}
-
-  RowwiseTransformIterator<T, platform::CPUDeviceContext> &operator++() {
-    ++i_;
-    if (UNLIKELY(i_ == n_)) {
-      i_ = 0;
-    }
-    return *this;
-  }
-
-  RowwiseTransformIterator<T, platform::CPUDeviceContext> &operator+(int n) {
-    while (n-- > 0) {
-      ++i_;
-      if (UNLIKELY(i_ == n_)) {
-        i_ = 0;
-      }
-    }
-
-    return *this;
-  }
-
-  bool operator==(const RowwiseTransformIterator<T, platform::CPUDeviceContext>
-                      &rhs) const {
-    return (ptr_ + i_) == &(*rhs);
-  }
-
-  bool operator!=(const RowwiseTransformIterator<T, platform::CPUDeviceContext>
-                      &rhs) const {
-    return (ptr_ + i_) != &(*rhs);
-  }
-
-  const T &operator*() { return ptr_[i_]; }
-
- private:
-  const T *ptr_;
-  int i_;
-  int64_t n_;
-};
-
-template <typename T>
-class MidWiseTransformIterator<T, platform::CPUDeviceContext>
-    : public std::iterator<std::random_access_iterator_tag, T, std::ptrdiff_t,
-                           T *, T &> {
- public:
-  MidWiseTransformIterator(const T *ptr, int n, int post)
-      : ptr_(ptr), i_(0), j_(0), n_(n), post_(post) {}
-
-  MidWiseTransformIterator<T, platform::CPUDeviceContext> &operator++() {
-    ++j_;
-    if (UNLIKELY(j_ == post_)) {
-      ++i_;
-      j_ = 0;
-      if (UNLIKELY(i_ == n_)) {
-        i_ = 0;
-      }
-    }
-    return *this;
-  }
-
-  MidWiseTransformIterator<T, platform::CPUDeviceContext> &operator+(int n) {
-    while (n-- > 0) {
-      ++j_;
-      if (UNLIKELY(j_ == post_)) {
-        ++i_;
-        j_ = 0;
-        if (UNLIKELY(i_ == n_)) {
-          i_ = 0;
-        }
-      }
-    }
-    return *this;
-  }
-
-  bool operator==(const MidWiseTransformIterator<T, platform::CPUDeviceContext>
-                      &rhs) const {
-    return (ptr_ + i_) == &(*rhs);
-  }
-
-  bool operator!=(const MidWiseTransformIterator<T, platform::CPUDeviceContext>
-                      &rhs) const {
-    return (ptr_ + i_) != &(*rhs);
-  }
-
-  const T &operator*() { return ptr_[i_]; }
-
- private:
-  const T *ptr_;
-  int64_t i_;
-  int64_t j_;
-  int64_t n_;
-  int64_t post_;
-};
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T>
-class RowwiseTransformIterator<T, platform::CUDADeviceContext>
-    : public thrust::iterator_adaptor<
-          RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T *> {
- public:
-  typedef thrust::iterator_adaptor<
-      RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
-      super_t;
-  HOSTDEVICE RowwiseTransformIterator(const T *x, int n)
-      : super_t(x), begin_(x), n_(n) {}
-  friend class thrust::iterator_core_access;
-
- private:
-  unsigned int n_;
-  const T *begin_;
-  HOSTDEVICE typename super_t::reference dereference() const {
-    return *(begin_ + (this->base() - begin_) % n_);
-  }
-};
-
-template <typename T>
-class MidWiseTransformIterator<T, platform::CUDADeviceContext>
-    : public thrust::iterator_adaptor<
-          MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T *> {
- public:
-  typedef thrust::iterator_adaptor<
-      MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
-      super_t;
-  HOSTDEVICE MidWiseTransformIterator(const T *x, int n, int post)
-      : super_t(x), begin_(x), n_(n), post_(post) {}
-  friend class thrust::iterator_core_access;
-
- private:
-  unsigned int post_;
-  unsigned int n_;
-  const T *begin_;
-  HOSTDEVICE typename super_t::reference dereference() const {
-    return *(begin_ + (((this->base() - begin_) / post_) % n_));
-  }
-};
-#endif
-
 template <typename Functor, typename T, typename DeviceContext,
           typename OutType = T>
 class TransformFunctor {
@@ -1274,10 +1104,12 @@ class TransformFunctor {
     platform::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_, x_, x_ + nx_,
-            RowwiseTransformIterator<T, DeviceContext>(y_, n), z_, func_);
+            pten::general::RowwiseTransformIterator<T, DeviceContext>(y_, n),
+            z_, func_);
     } else {
       trans(ctx_, y_, y_ + nx_,
-            RowwiseTransformIterator<T, DeviceContext>(x_, n), z_, func_);
+            pten::general::RowwiseTransformIterator<T, DeviceContext>(x_, n),
+            z_, func_);
     }
   }
 
@@ -1285,10 +1117,14 @@ class TransformFunctor {
     platform::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_, x_, x_ + nx_,
-            MidWiseTransformIterator<T, DeviceContext>(y_, n, post), z_, func_);
+            pten::general::MidWiseTransformIterator<T, DeviceContext>(y_, n,
+                                                                      post),
+            z_, func_);
     } else {
       trans(ctx_, y_, y_ + nx_,
-            MidWiseTransformIterator<T, DeviceContext>(x_, n, post), z_, func_);
+            pten::general::MidWiseTransformIterator<T, DeviceContext>(x_, n,
+                                                                      post),
+            z_, func_);
     }
   }
 
@@ -1617,13 +1453,13 @@ void ElemwiseGradComputeWithBroadcast(
   if (is_xsize_larger) {
     auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
     axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
-    get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
-                 &is_run_common_broadcast);
+    pten::general::get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n,
+                                &post, &is_run_common_broadcast);
   } else {
     auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
     axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
-    get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
-                 &is_run_common_broadcast);
+    pten::general::get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n,
+                                &post, &is_run_common_broadcast);
   }
   // special case for common backward implementation.
   if (is_run_common_broadcast) {
@@ -2020,7 +1856,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
+  pten::general::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
+                              &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -2567,7 +2404,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
+  pten::general::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
+                              &is_run_common_broadcast);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   if (x->IsInitialized()) x_data = x->data<T>();

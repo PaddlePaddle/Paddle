@@ -15,23 +15,23 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/nn.h"
+#include "paddle/pten/api/include/math.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(NnCPU);
+PT_DECLARE_MODULE(MathCPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(LinalgCUDA);
+PT_DECLARE_MODULE(MathCUDA);
 #endif
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
-TEST(API, elementwise_add) {
+TEST(API, add) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -59,12 +59,11 @@ TEST(API, elementwise_add) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  int axis = 1;
   paddle::experimental::Tensor x(dense_x);
   paddle::experimental::Tensor y(dense_y);
 
   // 2. test API
-  auto out = paddle::experimental::elementwise_add(x, y, axis);
+  auto out = paddle::experimental::add(x, y);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);

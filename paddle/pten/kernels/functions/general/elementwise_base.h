@@ -22,6 +22,7 @@ namespace general {
 
 using DDim = paddle::framework::DDim;
 using CPUContext = paddle::platform::CPUDeviceContext;
+using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
@@ -130,50 +131,48 @@ class MidWiseTransformIterator<T, CPUContext>
   int64_t post_;
 };
 
-// #if defined(__NVCC__) || defined(__HIPCC__)
-// template <typename T>
-// class RowwiseTransformIterator<T, platform::CUDADeviceContext>
-//     : public thrust::iterator_adaptor<
-//           RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T
-//           *> {
-//  public:
-//   typedef thrust::iterator_adaptor<
-//       RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
-//       super_t;
-//   HOSTDEVICE RowwiseTransformIterator(const T *x, int n)
-//       : super_t(x), begin_(x), n_(n) {}
-//   friend class thrust::iterator_core_access;
+#if defined(__NVCC__) || defined(__HIPCC__)
+template <typename T>
+class RowwiseTransformIterator<T, CUDAContext>
+    : public thrust::iterator_adaptor<RowwiseTransformIterator<T, CUDAContext>,
+                                      const T *> {
+ public:
+  typedef thrust::iterator_adaptor<RowwiseTransformIterator<T, CUDAContext>,
+                                   const T *>
+      super_t;
+  HOSTDEVICE RowwiseTransformIterator(const T *x, int n)
+      : super_t(x), begin_(x), n_(n) {}
+  friend class thrust::iterator_core_access;
 
-//  private:
-//   unsigned int n_;
-//   const T *begin_;
-//   HOSTDEVICE typename super_t::reference dereference() const {
-//     return *(begin_ + (this->base() - begin_) % n_);
-//   }
-// };
+ private:
+  unsigned int n_;
+  const T *begin_;
+  HOSTDEVICE typename super_t::reference dereference() const {
+    return *(begin_ + (this->base() - begin_) % n_);
+  }
+};
 
-// template <typename T>
-// class MidWiseTransformIterator<T, platform::CUDADeviceContext>
-//     : public thrust::iterator_adaptor<
-//           MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T
-//           *> {
-//  public:
-//   typedef thrust::iterator_adaptor<
-//       MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
-//       super_t;
-//   HOSTDEVICE MidWiseTransformIterator(const T *x, int n, int post)
-//       : super_t(x), begin_(x), n_(n), post_(post) {}
-//   friend class thrust::iterator_core_access;
+template <typename T>
+class MidWiseTransformIterator<T, CUDAContext>
+    : public thrust::iterator_adaptor<MidWiseTransformIterator<T, CUDAContext>,
+                                      const T *> {
+ public:
+  typedef thrust::iterator_adaptor<MidWiseTransformIterator<T, CUDAContext>,
+                                   const T *>
+      super_t;
+  HOSTDEVICE MidWiseTransformIterator(const T *x, int n, int post)
+      : super_t(x), begin_(x), n_(n), post_(post) {}
+  friend class thrust::iterator_core_access;
 
-//  private:
-//   unsigned int post_;
-//   unsigned int n_;
-//   const T *begin_;
-//   HOSTDEVICE typename super_t::reference dereference() const {
-//     return *(begin_ + (((this->base() - begin_) / post_) % n_));
-//   }
-// };
-// #endif
+ private:
+  unsigned int post_;
+  unsigned int n_;
+  const T *begin_;
+  HOSTDEVICE typename super_t::reference dereference() const {
+    return *(begin_ + (((this->base() - begin_) / post_) % n_));
+  }
+};
+#endif
 
 template <typename Functor,
           typename T,
@@ -380,23 +379,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     }
   }
 }
-
-// template <typename Functor, typename T, typename OutType = T>
-// void ElementwiseCompute<CUDAContext>(const CUDAContext& dev_ctx,
-//                             const DenseTensor& x,
-//                             const DenseTensor& y,
-//                             int axis,
-//                             Functor func,
-//                             DenseTensor *z) {
-// #if defined(__NVCC__) || defined(__HIPCC__)
-//     std::vector<const framework::Tensor *> ins = {x, y};
-//     std::vector<framework::Tensor *> outs = {z};
-//     z->mutable_data<OutType>(dev_ctx.GetPlace());
-
-//     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
-//         dev_ctx, ins, &outs, axis, func);
-// #endif
-// }
 
 }  // namespace general
 }  // namespace pten

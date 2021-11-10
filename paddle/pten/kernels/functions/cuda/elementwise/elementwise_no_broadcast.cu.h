@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/kernels/cuda/funcs/elementwise/elementwise_common.cu.h"
+#include "paddle/pten/kernels/functions/cuda/elementwise/elementwise_common.cu.h"
 
 #ifdef __HIPCC__
 #define ELEMENTWISE_BLOCK_SIZE 256

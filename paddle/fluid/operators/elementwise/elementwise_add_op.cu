@@ -23,33 +23,13 @@ limitations under the License. */
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/nn.h"
+#include "paddle/pten/include/math.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-class ElementwiseAddKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* z = ctx.Output<framework::LoDTensor>("Out");
-    z->mutable_data<T>(ctx.GetPlace());
-
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-    int axis = ctx.Attr<int>("axis");
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
-    pten::ElementwiseAdd<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
-                            pt_z.get());
-  }
-};
 
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(

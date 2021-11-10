@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/cuda/funcs/elementwise/elementwise_common.cu.h"
+#include "paddle/pten/kernels/functions/cuda/elementwise/elementwise_common.cu.h"
 
 namespace pten {
 

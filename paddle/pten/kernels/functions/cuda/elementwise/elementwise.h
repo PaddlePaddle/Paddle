@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/kernels/cuda/funcs/elementwise/elementwise_broadcast.cu.h"
-#include "paddle/pten/kernels/cuda/funcs/elementwise/elementwise_no_broadcast.cu.h"
+#include "paddle/pten/kernels/functions/cuda/elementwise/elementwise_broadcast.cu.h"
+#include "paddle/pten/kernels/functions/cuda/elementwise/elementwise_no_broadcast.cu.h"
 
 namespace pten {
 
