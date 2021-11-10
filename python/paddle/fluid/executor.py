@@ -1305,8 +1305,8 @@ class Executor(object):
             inner_program_ = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
             assert isinstance(inner_program_, framework.Program)
-            if not program._is_start_up_program_:
-                return self._executor_cache.run(program, scope, feed,
+            if not inner_program_._is_start_up_program_:
+                return self._executor_cache.run(inner_program_, scope, feed,
                                                 fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
