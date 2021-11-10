@@ -125,7 +125,7 @@ cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 set(BRPC_DEPS "")
 if(WITH_PSLIB OR WITH_PSCORE)
-    set(BRPC_DEPS brpc)
+    set(BRPC_DEPS brpc ssl crypto)
     if(WITH_PSLIB_BRPC)
         set(BRPC_DEPS pslib_brpc)
     endif()
