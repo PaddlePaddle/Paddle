@@ -129,6 +129,8 @@ void InterpreterCore::Convert() {
     for (auto var_id : gc_check_input_list) {
       vec_meta_info_[var_id].var_ref_count_++;
       instr.AddGCCheckVar(var_id);
+      VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
+              << instr.OpBase()->Type();
     }
   }
 
@@ -139,6 +141,8 @@ void InterpreterCore::Convert() {
         if (input_var2op_info_.at(id).size() == 0) {
           // output var not be used by any kernel
           vec_instruction_[i].AddGCCheckVar(id);
+          VLOG(4) << "clear " << global_scope_->GetNameById(id) << " after "
+                  << vec_instruction_[i].OpBase()->Type();
           vec_meta_info_[id].var_ref_count_++;
         }
       }
@@ -447,6 +451,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 
     try {
       RunInstruction(instr_node);
+      // GC infomation
+      CheckGC(instr_node);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -473,9 +479,6 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     event_manager_.RecordEvent(instr_node, place_);
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
-    // GC infomation
-    CheckGC(instr_node);
-
     RunNextInstructions(instr_node, &ready_ops);
   }
 }
@@ -486,6 +489,9 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   auto& atomic_var_ref = async_work_queue_.AtomicVarRef();
 
   for (auto var_id : instr.GCCheckVars()) {
+    VLOG(4) << "GC " << global_scope_->GetNameById(var_id) << " "
+            << var_scope.VarDesc(var_id);
+
     bool is_ready =
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
     // ignore all persistable var while GC

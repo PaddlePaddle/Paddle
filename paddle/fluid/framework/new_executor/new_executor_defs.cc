@@ -481,14 +481,11 @@ VariableScope::VariableScope() {
   // for @EMPTY@ variable
   var_list_.push_back(nullptr);
   name2id_[kEmptyVarName] = 0;
-  VariableMetaInfo info;
-  info.var_ref_count_ = 0;
-  info.vardesc_ = nullptr;
-  vec_meta_info_.push_back(info);
-  scope_ptr_.reset(new Scope());
+  vec_meta_info_.emplace_back(0, nullptr);
+  scope_.reset(new Scope());
 }
 
-const Scope* VariableScope::GetScope() const { return scope_ptr_.get(); }
+const Scope* VariableScope::GetScope() const { return scope_.get(); }
 
 Variable* VariableScope::FindVar(const std::string& name) const {
   auto it = name2id_.find(name);
@@ -547,7 +544,7 @@ size_t VariableScope::VarSize() const { return var_list_.size(); }
 void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {  // NOLINT
   name2id_[name] = VarSize();
-  auto v = scope_ptr_->Var(name);
+  auto v = scope_->Var(name);
   if (nullptr == var_desc) {
     v->GetMutable<LoDTensor>();
   } else {
@@ -556,33 +553,27 @@ void VariableScope::AddVar(const std::string& name,
         var_desc
             ->GetType());  // Scope don't initialize variable recently created
   }
-  var_list_.push_back(v);
+  var_list_.emplace_back(v);
 
-  VariableMetaInfo info;
-  info.var_ref_count_ = 0;
-  info.vardesc_ = var_desc;
-  vec_meta_info_.push_back(info);
+  vec_meta_info_.emplace_back(0, var_desc);
 }
 
 void VariableScope::AddVar(const std::string& name,
                            const Variable& var) {  // NOLINT
   // must copy.
   VLOG(4) << "Add variable: " << name << " through AddVar()";
-  auto v = scope_ptr_->Var(name);
+  auto v = scope_->Var(name);
   *v = var;
   name2id_[name] = VarSize();
   var_list_.push_back(v);
 
-  VariableMetaInfo info;
-  info.var_ref_count_ = 0;
-  info.vardesc_ = nullptr;
-  vec_meta_info_.push_back(info);
+  vec_meta_info_.emplace_back(0, nullptr);
 }
 
 void VariableScope::SetVarDesc(const std::string& name,
                                framework::VarDesc* var_desc) {
   CheckExist(name);
-  vec_meta_info_[VarId(name)].vardesc_ = var_desc;
+  vec_meta_info_[VarId(name)].var_desc_ = var_desc;
 }
 
 paddle::framework::VarDesc* VariableScope::VarDesc(
@@ -592,7 +583,7 @@ paddle::framework::VarDesc* VariableScope::VarDesc(
 
 paddle::framework::VarDesc* VariableScope::VarDesc(int id) const {
   CheckExist(id);
-  return vec_meta_info_[id].vardesc_;
+  return vec_meta_info_[id].var_desc_;
 }
 
 void VariableScope::CheckExist(int id) const {

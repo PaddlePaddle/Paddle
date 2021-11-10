@@ -141,8 +141,12 @@ struct OpKernelFunc {
 };
 
 struct VariableMetaInfo {
-  int var_ref_count_;
-  paddle::framework::VarDesc* vardesc_;
+  int var_ref_count_{0};
+  framework::VarDesc* var_desc_{nullptr};
+
+  VariableMetaInfo() {}
+  VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
+      : var_ref_count_(var_ref_count), var_desc_(var_desc) {}
 };
 
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
@@ -193,7 +197,7 @@ class VariableScope : public ScopeBase {
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-  std::unique_ptr<Scope> scope_ptr_;
+  std::unique_ptr<Scope> scope_;
   mutable RWLock vars_lock_;
 };
 
