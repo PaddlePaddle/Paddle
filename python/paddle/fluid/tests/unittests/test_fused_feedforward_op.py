@@ -192,6 +192,7 @@ class TestFusedFFNOpNormalizeBefore(TestFusedFFNOp):
 class APITestStaticFusedFFN(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
+        paddle.seed(0)
         dtype = "float32"
         layer_norm_dtype = "float32"
         batch_size = 1
@@ -323,6 +324,18 @@ class TestFusedFFNOpError(unittest.TestCase):
                     x, linear1_weight, linear2_weight, dropout2_rate=-1)
 
             self.assertRaises(ValueError, test_dropout_rate_value)
+
+            def test_dropout_mode():
+                x = paddle.static.data(
+                    name='x3', shape=[1, 10, 10], dtype="float32")
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight3', shape=[10, 10], dtype="float32")
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight3', shape=[10, 10], dtype="float32")
+                incubate_f.fused_feedforward(
+                    x, linear1_weight, linear2_weight, mode='test')
+
+            self.assertRaises(ValueError, test_dropout_mode)
 
 
 if __name__ == "__main__":

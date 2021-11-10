@@ -60,6 +60,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         return paddle.concat(x=[fq, fk, fv], axis=0)
 
     def test_out(self):
+        paddle.seed(0)
         base_encoder = TransformerEncoderLayer(
             self.d_model, self.nhead, self.dim_feedforward, self.dropout_rate,
             self.activation, self.attn_dropout_rate, self.act_dropout_rate,
@@ -88,6 +89,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             self.d_model, self.nhead, self.dim_feedforward, self.dropout_rate,
             self.activation, self.attn_dropout_rate, self.act_dropout_rate,
             self.pre_layer_norm)
+
         fused_encoder.ffn._linear1_weight.set_value(base_encoder.linear1.weight)
         fused_encoder.ffn._linear1_bias.set_value(base_encoder.linear1.bias)
         fused_encoder.ffn._linear2_weight.set_value(base_encoder.linear2.weight)
@@ -132,6 +134,18 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             paddle.to_tensor(
                 src, stop_gradient=False), attn_mask_tensor)
         paddle.autograd.backward([fused_out], [paddle.to_tensor(dout)], True)
+
+        correct_ffn_str = 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}'.format(
+            self.d_model, self.dim_feedforward, self.dropout_rate,
+            fused_encoder.ffn._epsilon, self.activation, self.dropout_rate,
+            self.pre_layer_norm, self.dtype)
+        self.assertTrue(fused_encoder.ffn.extra_repr(), correct_ffn_str)
+
+        correct_attn_str = 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}'.format(
+            self.embed_dim, self.num_heads, self.dropout_rate,
+            self.dropout_rate, fused_encoder.fused_attn._epsilon, None, None,
+            self.pre_layer_norm, False, self.dtype)
+        self.assertTrue(fused_encoder.fused_attn.extra_repr(), correct_attn_str)
 
         np.testing.assert_allclose(
             fused_out.numpy(), base_out.numpy(), rtol=1e-3, atol=1e-4)
