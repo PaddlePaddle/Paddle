@@ -58,8 +58,7 @@ class Interceptor {
   bool EnqueueRemoteInterceptorMessage(
       const InterceptorMessage& interceptor_message);
 
-  void Send(const InterceptorMessage& msg);
-  void Send(int64_t dst_id, InterceptorMessage* msg);
+  void Send(int64_t dst_id, std::unique_ptr<InterceptorMessage> msg);
 
   DISABLE_COPY_AND_ASSIGN(Interceptor);
 
