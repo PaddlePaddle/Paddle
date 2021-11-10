@@ -39,9 +39,11 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       block_(block),
       global_scope_(global_scope),
-      stream_analyzer_(place),
-      async_work_queue_(kHostNumThreads, &main_thread_blocker_) {
+      stream_analyzer_(place) {
   is_build_ = false;
+  async_work_queue_.reset(
+      new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
+  gc_.reset(new InterpreterCoreGarbageCollector());
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(
       kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
@@ -51,6 +53,13 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   // optmize graph pass
 
   // convert to run graph
+}
+
+InterpreterCore::~InterpreterCore() {
+  // cancle gc's thread
+  gc_.reset(nullptr);
+
+  async_work_queue_.reset(nullptr);
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
@@ -330,16 +339,16 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  async_work_queue_.PrepareAtomicDeps(dependecy_count_);
-  async_work_queue_.PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+  async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+  async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
   op_run_number_ = 0;
 
   exception_holder_.Clear();
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_.AddTask(vec_instr.at(i).KernelType(),
-                                [&, i] { RunInstructionAsync(i); });
+      async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
+                                 [&, i] { RunInstructionAsync(i); });
     }
   }
 
@@ -361,7 +370,7 @@ void InterpreterCore::ExecuteInstructionList(
 void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops) {
   auto& next_instr = instr.NextInstructions();
-  auto& atomic_deps = async_work_queue_.AtomicDeps();
+  auto& atomic_deps = async_work_queue_->AtomicDeps();
   auto IsReady = [&](size_t next_id) {
     return atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
   };
@@ -370,7 +379,7 @@ void InterpreterCore::RunNextInstructions(
     // move all sync_ops into other threads
     for (auto next_id : next_instr.SyncRunIds()) {
       if (IsReady(next_id)) {
-        async_work_queue_.AddTask(
+        async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
             [&, next_id] { RunInstructionAsync(next_id); });
       }
@@ -390,7 +399,7 @@ void InterpreterCore::RunNextInstructions(
     // move async_ops into async_thread
     for (auto next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
-        async_work_queue_.AddTask(
+        async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
             [&, next_id] { RunInstructionAsync(next_id); });
       }
@@ -406,7 +415,7 @@ void InterpreterCore::RunNextInstructions(
           continue;
         }
         // move rest ops into other threads
-        async_work_queue_.AddTask(
+        async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
             [&, next_id] { RunInstructionAsync(next_id); });
       }
@@ -464,7 +473,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 void InterpreterCore::CheckGC(const Instruction& instr) {
   size_t instr_id = instr.Id();
   auto& var_scope = *global_scope_;
-  auto& atomic_var_ref = async_work_queue_.AtomicVarRef();
+  auto& atomic_var_ref = async_work_queue_->AtomicVarRef();
 
   for (auto var_id : instr.GCCheckVars()) {
     bool is_ready =
@@ -474,8 +483,8 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
       continue;
     }
     if (is_ready) {
-      gc_.Add(var_scope.Var(var_id), gc_event_.at(instr_id),
-              &instr.DeviceContext());
+      gc_->Add(var_scope.Var(var_id), gc_event_.at(instr_id),
+               &instr.DeviceContext());
     }
   }
 }

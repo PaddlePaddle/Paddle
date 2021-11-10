@@ -43,6 +43,8 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place, const BlockDesc& block,
                   VariableScope* global_scope);
 
+  ~InterpreterCore();
+
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
@@ -91,11 +93,11 @@ class InterpreterCore {
 
   StreamAnalyzer stream_analyzer_;
   EventsWaiter main_thread_blocker_;
-  interpreter::AsyncWorkQueue async_work_queue_;
+  std::unique_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
 
-  InterpreterCoreGarbageCollector gc_;
+  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
 };
 }  // namespace framework
