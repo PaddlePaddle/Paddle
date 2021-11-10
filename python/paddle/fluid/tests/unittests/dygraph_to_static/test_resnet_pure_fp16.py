@@ -123,7 +123,7 @@ class TestResnet(unittest.TestCase):
             self.assertTrue(
                 np.allclose(static_loss, dygraph_loss),
                 msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
-                                                                dygraph_loss))
+                                                                 dygraph_loss))
 
 
 if __name__ == '__main__':
