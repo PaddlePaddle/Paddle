@@ -27,6 +27,16 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
 
 Interceptor::~Interceptor() { interceptor_thread_.join(); }
 
+void Interceptor::RegisterInterceptorHandle(InterceptorHandle handle) {
+  handle_ = handle;
+}
+
+void Interceptor::Handle(const InterceptorMessage& msg) {
+  if (handle_) {
+    handle_(msg);
+  }
+}
+
 std::condition_variable& Interceptor::GetCondVar() {
   // get the conditional var
   return cond_var_;
@@ -46,6 +56,16 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
   remote_mailbox_.push(interceptor_message);
   remote_mailbox_mutex_.unlock();
   return true;
+}
+
+bool Interceptor::Send(const InterceptorMessage& msg) {
+  // send interceptor msg
+}
+
+bool Interceptor::Send(int64_t dst_id, InterceptorMessage* msg) {
+  msg->set_src_id(interceptor_id_);
+  msg->set_dst_id(dst_id);
+  Send(*msg);
 }
 
 void Interceptor::PoolTheMailbox() {
@@ -68,6 +88,8 @@ void Interceptor::PoolTheMailbox() {
       // break the pooling thread
       break;
     }
+
+    Handle(interceptor_message);
   }
 }
 
