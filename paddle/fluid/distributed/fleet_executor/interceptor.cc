@@ -17,28 +17,73 @@
 namespace paddle {
 namespace distributed {
 
-Interceptor::Interceptor(int64_t interceptor_id_, TaskNode* node) {
-  // init
+Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
+    : interceptor_id_(interceptor_id), node_(node) {
+  interceptor_thread_ = std::thread([this]() {
+    VLOG(3) << "Start pooling local mailbox's thread.";
+    PoolTheMailbox();
+  });
+}
+
+Interceptor::~Interceptor() { interceptor_thread_.join(); }
+
+std::condition_variable& Interceptor::GetCondVar() {
+  // get the conditional var
+  return cond_var_;
 }
 
 int64_t Interceptor::GetInterceptorId() const {
   // return the interceptor id
-  return 0;
+  return interceptor_id_;
 }
 
 bool Interceptor::EnqueueRemoteInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
+  VLOG(3) << "Enqueue message: " << interceptor_message.message_type()
+          << " into " << interceptor_id_ << "'s remote mailbox.";
+  remote_mailbox_mutex_.lock();
+  remote_mailbox_.push(interceptor_message);
+  remote_mailbox_mutex_.unlock();
   return true;
 }
 
 void Interceptor::PoolTheMailbox() {
   // pool the local mailbox, parse the Message
+  while (true) {
+    if (local_mailbox_.empty()) {
+      // local mailbox is empty, fetch the remote mailbox
+      VLOG(3) << interceptor_id_ << "'s local mailbox is empty. "
+              << "Fetch the remote mailbox.";
+      PADDLE_ENFORCE_EQ(FetchRemoteMailbox(), true,
+                        platform::errors::InvalidArgument(
+                            "Error encountered when fetch remote mailbox."));
+    }
+    const InterceptorMessage interceptor_message = local_mailbox_.front();
+    local_mailbox_.pop();
+    const MessageType message_type = interceptor_message.message_type();
+    VLOG(3) << interceptor_id_ << " has received a message: " << message_type
+            << ".";
+    if (message_type == STOP) {
+      // break the pooling thread
+      break;
+    }
+  }
 }
 
 bool Interceptor::FetchRemoteMailbox() {
   // fetch all Message from remote mailbox to local mailbox
   // return true if remote mailbox not empty, otherwise return false
+  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
+  cond_var_.wait(lock, [this]() { return !remote_mailbox_.empty(); });
+  if (remote_mailbox_.empty()) {
+    // the thread has been unblocked accidentally
+    return false;
+  }
+  while (!remote_mailbox_.empty()) {
+    local_mailbox_.push(std::move(remote_mailbox_.front()));
+    remote_mailbox_.pop();
+  }
   return true;
 }
 
