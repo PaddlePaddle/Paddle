@@ -38,7 +38,7 @@ Tensor full(const std::vector<int64_t>& shape,
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-  auto kernel_context = pten::KernelContext(*dev_ctx);
+  auto kernel_context = pten::KernelContext(dev_ctx);
 
   // 3. Auto data transform
   kernel_context.EmplaceBackAttr(value);
@@ -81,8 +81,8 @@ Tensor full_like(const Tensor& x,
       "fill_any_like", {kernel_backend, kernel_layout, kernel_data_type});
 
   // 2. Get Device Context
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-  auto kernel_context = pten::KernelContext(*dev_ctx);
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(dev_ctx);
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
