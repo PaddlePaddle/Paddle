@@ -22,7 +22,6 @@ namespace general {
 
 using DDim = paddle::framework::DDim;
 using CPUContext = paddle::platform::CPUDeviceContext;
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
@@ -132,6 +131,7 @@ class MidWiseTransformIterator<T, CPUContext>
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+using CUDAContext = paddle::platform::CUDADeviceContext;
 template <typename T>
 class RowwiseTransformIterator<T, CUDAContext>
     : public thrust::iterator_adaptor<RowwiseTransformIterator<T, CUDAContext>,
