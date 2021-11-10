@@ -162,7 +162,7 @@ class CustomKernelKeyParser {
     }
     DataType dtype = tensors[0].type();
     auto n = tensors.size();
-    for (auto i = 1; i < n; ++i) {
+    for (size_t i = 1; i < n; ++i) {
       if (tensors[i].type() != dtype) {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The data_type of input tensor in list isn't consistent, "

@@ -26,7 +26,12 @@ class API:
                 self.kernel['layout'] = None
             if 'data_type' not in self.kernel or len(self.kernel['data_type']) == 0:
                 self.kernel['data_type'] = None
+            if 'param' not in self.kernel or len(self.kernel['param']) == 0:
+                self.kernel['param'] = None
+
             self.infer_meta = api_item_yaml['infer_meta']
+            if 'param' not in self.infer_meta or len(self.infer_meta['param']) == 0:
+                self.infer_meta['param'] = None
     
     def parse_args(self, args_str) -> dict:
         inputs = {'names' : []}
@@ -37,9 +42,11 @@ class API:
         args_str = args_str[1:-1]
         args_list = args_str.split(',')
         input_types = ['const Tensor&', 'const Tensor &']
-        attr_types = ['const pten::Scalar&', 'const pten::Scalar &', 'int', 'int32_t', 'int64_t', \
+        attr_types = ['const Scalar&', 'const Scalar &', 'int', 'int32_t', 'int64_t', \
                       'size_t', 'float', 'double', 'bool', 'const std::vector<int64_t>&',\
                       'Backend', 'DataLayout', 'DataType']
+        args_declare_str = ""
+        args_define_str = ""
         for item in args_list:
             item = item.strip()
             # match the input tensor
@@ -49,6 +56,8 @@ class API:
                     input_name = item[len(in_type):].strip()
                     assert len(input_name) > 0, f"The input tensor name should not be empty. Please check the args of {self.api} in api.yaml."
                     inputs['names'].append(input_name)
+                    args_declare_str = args_declare_str + in_type + ' ' + input_name + ', '
+                    args_define_str = args_define_str + in_type + ' ' + input_name + ', '
                     has_input = True
                     break
             if has_input:
@@ -62,29 +71,32 @@ class API:
                     default_value = None
                     if '=' in attr_name:
                         attr_infos = attr_name.split('=')
-                        attr_name = attr_infos[0]
-                        default_value = attr_infos[1]
+                        attr_name = attr_infos[0].strip()
+                        default_value = attr_infos[1].strip()
+                    
+                    default_value_str = "" if default_value is None else '=' + default_value
+                    args_declare_str = args_declare_str + attr_type + ' ' + attr_name + default_value_str + ', '
+                    args_define_str = args_define_str + attr_type + ' ' + attr_name + ', '
                     attrs['names'].append(attr_name)
                     attrs['attr_info'][attr_name] = (attr_type, default_value)
                     break
 
-        args = {'inputs' : inputs, 'attrs' : attrs, 'args_str' : args_str}
+        args = {'inputs' : inputs, 'attrs' : attrs, 'args_declare' : args_declare_str[:-2], 'args_define' : args_define_str[:-2]}
         return args
 
     def gene_api_declaration(self) -> str:
         return f"""
-{self.output} {self.api}({self.args['args_str']});
+{self.output} {self.api}({self.args['args_declare']});
 """
     
     def gene_kernel_select(self, input_names, attrs, kernel) -> str:
 
-        kernel_select_code = """
+        kernel_key_item_init = """
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
-
-  CustomKernelKeyParser kernel_key_parser;
 """     
+        kernel_key_item_by_attr = ""
         # Set kernel_key info by attr
         attr_backend_count = 0
         attr_layout_count = 0
@@ -105,19 +117,19 @@ class API:
                 attr_backend_count = attr_backend_count + 1
                 assert attrs['attr_info'][attr_name][0] == 'Backend', f"{self.api} api: The attribute to set backend only allows the type of Backend, but received {attrs['attr_info'][attr_name][0]}."
                 assert attr_backend_count <= 1, f"{self.api} api: The number of attributes to set backend only allows 0 or 1, but now received more than 1."
-                kernel_select_code = kernel_select_code + f"""
+                kernel_key_item_by_attr = kernel_key_item_by_attr + f"""
   kernel_backend = {attr_name};"""
             if kernel['layout'] is not None and attr_name in kernel['layout']:
                 attr_layout_count = attr_layout_count + 1
                 assert attrs['attr_info'][attr_name][0] == 'DataLayout', f"{self.api} api: The attribute to set layout only allows the type of Layout, but received {attrs['attr_info'][attr_name][0]}."
                 assert attr_backend_count <= 1, f"{self.api} api: The number of attributes to set layout only allows 0 or 1, but now received more than 1."
-                kernel_select_code = kernel_select_code + f"""
+                kernel_key_item_by_attr = kernel_key_item_by_attr + f"""
   kernel_layout = {attr_name};"""
             if kernel['data_type'] is not None and attr_name in kernel['data_type']:
                 attr_data_type_count = attr_data_type_count + 1
                 assert attrs['attr_info'][attr_name][0] == 'DataType', f"{self.api} api: The attribute to set data_type only allows the type of DataType, but received {attrs['attr_info'][attr_name][0]}."
                 assert attr_data_type_count <= 1, f"{self.api} api: The number of attributes to set data_type only allows 0 or 1, but now received more than 1."
-                kernel_select_code = kernel_select_code + f"""
+                kernel_key_item_by_attr = kernel_key_item_by_attr + f"""
   kernel_data_type = {attr_name};"""
 
         if len(input_names) == 0:
@@ -126,6 +138,7 @@ class API:
 
         # Set kernel_key info by input
         kernel_select_args = ""
+        kernel_key_item_by_input = ""
 
         input_backend_count = 0
         input_layout_count = 0
@@ -135,21 +148,21 @@ class API:
             if kernel['backend'] is not None and input_name in kernel['backend']:
                 input_backend_count = input_backend_count + 1
                 assert input_backend_count <= 1, f"{self.api} api: Currently, the number of inputs to set backend only allows 0 or 1, but now received more than 1."
-                kernel_select_code = kernel_select_code + f"""
+                kernel_key_item_by_input = kernel_key_item_by_input + f"""
   if (kernel_backend == Backend::UNDEFINED) {{
     kernel_backend = kernel_key_parser.ParseBackend({input_name});
   }}"""
             if kernel['layout'] is not None and input_name in kernel['layout']:
                 input_layout_count = input_layout_count + 1
                 assert input_layout_count <= 1, f"{self.api} api: Currently, the number of inputs to set layout only allows 0 or 1, but now received more than 1."
-                kernel_select_code = kernel_select_code + f"""
+                kernel_key_item_by_input = kernel_key_item_by_input + f"""
   if (kernel_layout == DataLayout::UNDEFINED) {{
     kernel_layout = kernel_key_parser.ParseLayout({input_name});
   }}"""
             if kernel['data_type'] is not None and input_name in kernel['data_type']:
                 input_data_type_count = input_data_type_count + 1
                 assert input_data_type_count <= 1, f"{self.api} api: Currently, the number of inputs to set data_type only allows 0 or 1, but now received more than 1."
-                kernel_select_code = kernel_select_code + f"""
+                kernel_key_item_by_input = kernel_key_item_by_input + f"""
   if (kernel_data_type == DataType::UNDEFINED) {{
     kernel_data_type = kernel_key_parser.ParseDataType({input_name});
   }}"""     
@@ -157,6 +170,15 @@ class API:
 
         if len(kernel_select_args) > 2:
             kernel_select_args = kernel_select_args[:-2]
+        
+        if len(kernel_key_item_by_input) > 0:
+            kernel_key_parse_code = """
+
+  CustomKernelKeyParser kernel_key_parser;
+"""
+            kernel_key_item_by_input = kernel_key_parse_code + kernel_key_item_by_input
+        
+        kernel_select_code = kernel_key_item_init + kernel_key_item_by_attr + kernel_key_item_by_input
 
         if len(input_names) > 0:
             kernel_select_code = kernel_select_code + f"""
@@ -183,8 +205,9 @@ class API:
         return kernel_select_code
 
     def gene_infer_meta(self, input_names, attr_names, infer_meta) -> str:
+        infer_meta_params = infer_meta['param'] if infer_meta['param'] is not None else input_names + attr_names
         param_code = ""
-        for param in infer_meta['param']:
+        for param in infer_meta_params:
             if param in input_names:
                 param_code = param_code + self.prefix_tensor_name + param + "->meta(), "
             elif param in attr_names:
@@ -196,17 +219,21 @@ class API:
   auto out_meta = {infer_meta['func']}({param_code});
 """
 
-    def gene_kernel_context(self, input_names, attr_names, infer_meta) -> str:
+    def gene_kernel_context(self, input_names, attr_names, infer_meta, kernel_param) -> str:
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
         # set input for kernel_context
         input_code_str = ""
         for input_name in input_names:
-            input_code_str = input_code_str + f"""
+            if input_name in kernel_param:
+                input_code_str = input_code_str + f"""
   auto {self.prefix_tensor_name}{input_name} = std::dynamic_pointer_cast<pten::DenseTensor>({input_name}.impl());
   kernel_context.EmplaceBackInput({self.prefix_tensor_name}{input_name});"""
         # set attr for kernel_context
         attr_code_str = ""
         for attr_name in attr_names:
-            attr_code_str = attr_code_str + f"""
+            if attr_name in kernel_param:
+                attr_code_str = attr_code_str + f"""
   kernel_context.EmplaceBackAttr({attr_name});"""     
         return f"""
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
@@ -226,9 +253,9 @@ class API:
     def gene_api_code(self):
         if self.is_base_api:
             return f"""
-{self.output} {self.api}({self.args["args_str"]}) {{
+{self.output} {self.api}({self.args["args_define"]}) {{
 {self.gene_kernel_select(self.args['inputs']['names'], self.args['attrs'], self.kernel)}
-{self.gene_kernel_context(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
+{self.gene_kernel_context(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta, self.kernel['param'])}
 
   kernel(&kernel_context);
   return out;
@@ -236,7 +263,7 @@ class API:
 """
         else:
             return f"""
-{self.output} {self.api}({self.args["args_str"]}) {{
+{self.output} {self.api}({self.args["args_define"]}) {{
   return {self.invoke};
 }}
 """
@@ -329,21 +356,24 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 def main():
     parser = argparse.ArgumentParser(description='Generate PaddlePaddle C++ API files')
     parser.add_argument(
-        '-s',
         '--api_yaml_path',
         help='path to yaml file directory',
         default='python/paddle/utils/code_gen/api.yaml')
     parser.add_argument(
-        '-o',
-        '--output_dir',
-        help='output directory of generated api source code file',
-        default='paddle/pten/api')
+        '--api_header_path',
+        help='output of generated api header code file',
+        default='paddle/pten/api/include/api.h')
+
+    parser.add_argument(
+        '--api_source_path',
+        help='output of generated api source code file',
+        default='paddle/pten/api/lib/api.cc')
     
     options = parser.parse_args()
     
     api_yaml_path = options.api_yaml_path
-    header_file_path = os.path.join(options.output_dir, 'include', 'api.h')
-    source_file_path = os.path.join(options.output_dir, 'lib', 'api.cc')
+    header_file_path = options.api_header_path
+    source_file_path = options.api_source_path
 
     generate_api(api_yaml_path, header_file_path, source_file_path)
 
