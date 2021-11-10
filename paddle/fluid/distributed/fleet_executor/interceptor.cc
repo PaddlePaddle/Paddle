@@ -42,9 +42,8 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   VLOG(3) << "Enqueue message: " << interceptor_message.message_type()
           << " into " << interceptor_id_ << "'s remote mailbox.";
-  remote_mailbox_mutex_.lock();
+  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
   remote_mailbox_.push(interceptor_message);
-  remote_mailbox_mutex_.unlock();
   return true;
 }
 
