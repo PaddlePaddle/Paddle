@@ -87,7 +87,7 @@ class TestBF16MeanOp(TestMeanOp):
 
     def test_checkout_grad(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=0.08)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
