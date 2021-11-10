@@ -176,12 +176,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " op does not support input's dim is 1 in tensorrt.";
         return false;
       }
-      // TODO(inference): fix
-      if (x_shape.size() == 2 && !with_dynamic_shape) {
-        VLOG(3) << "activation op does not support input's dim is 2 in "
-                   "tensorrt static shape, the output shape has diff.";
-        return false;
-      }
     }
 
     if (op_type == "pool2d") {
@@ -1639,15 +1633,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape) {
         auto* block = desc.Block();
         if (block == nullptr) {
-          VLOG(3) << "The block is null.";
+          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                     "Developers need to check whether block_desc is passed in "
+                     "the pass.";
           return false;
         }
         auto x_var_name = desc.Input("X")[0];
         auto* x_var_desc = block->FindVar(x_var_name);
         const auto x_shape = x_var_desc->GetShape();
-        if (x_shape.size() <= 2) {
-          VLOG(3) << "hard_sigmoid op does not support input's dim less than 3 "
-                     "in tensorrt.";
+        if (x_shape.size() == 1) {
+          VLOG(3) << "Hard sigmoid does not support 1-dimensional input in "
+                     "tensorrt";
           return false;
         }
       }
