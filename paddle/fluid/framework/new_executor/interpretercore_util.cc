@@ -373,6 +373,9 @@ std::vector<OpFuncNode> apply_data_transform(
   for (auto& var_name_item : *ins_map_temp) {
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
+      if (!(var->IsType<LoDTensor>() || var->IsType<SelectedRows>())) {
+        continue;
+      }
       auto& var_name = inputs_names[var_name_item.first].at(i);
       auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       if (!tensor_in->IsInitialized()) {
