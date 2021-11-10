@@ -184,7 +184,7 @@ def recompute(function, *args, **kwargs):
     recompute intermediate activations to save then memory.
 
     Args:
-        function (paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model whose 
+        \function\ (paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model whose 
           intermediate activations will be released to save memory in forward stage and will be recomputed 
           in backward stage for gradient calculation.
         args (Tensor): inputs to the function
