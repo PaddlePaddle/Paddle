@@ -606,6 +606,12 @@ class VariableScope : public ScopeBase {
         platform::errors::NotFound("%s not in VariableScope.", name));
   }
 
+  std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
+
+  const std::vector<VariableMetaInfo>& VecMetaInfo() const {
+    return vec_meta_info_;
+  }
+
  private:
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
@@ -775,7 +781,7 @@ class Instruction {
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
-namespace interpretercore {
+namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 
@@ -786,7 +792,7 @@ static bool IsMemcpyH2D(const Instruction& instr) {
 static bool IsMemcpyD2H(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyD2H;
 }
-}  // namespace interpretercore
+}  // namespace interpreter
 
 }  // namespace framework
 }  // namespace paddle
