@@ -76,9 +76,9 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
 
 DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
                                    DataType dtype,
-                                   DataLayout layout){
-  return {dtype == DataType::UNDEFINED ? x_meta.type : dtype, 
-          x_meta.dims, 
+                                   DataLayout layout) {
+  return {dtype == DataType::UNDEFINED ? x_meta.type : dtype,
+          x_meta.dims,
           layout == DataLayout::UNDEFINED ? x_meta.layout : layout};
 }
 

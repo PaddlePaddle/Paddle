@@ -24,12 +24,13 @@ namespace pten {
 // TODO(YuanRisheng) This function name should be same as User API name.
 // TODO(zyfncg) Automatic code generation
 template <typename T, typename ContextT>
-DenseTensor FillAnyLike(const ContextT& dev_ctx,
-                        const DenseTensor& x,
-                        const Scalar& val, 
-                        DataType dtype = DataType::UNDEFINED, 
-                        Backend backend = Backend::UNDEFINED, // Is backend needed here?
-                        DataLayout layout = DataLayout::UNDEFINED) {
+DenseTensor FillAnyLike(
+    const ContextT& dev_ctx,
+    const DenseTensor& x,
+    const Scalar& val,
+    DataType dtype = DataType::UNDEFINED,
+    Backend backend = Backend::UNDEFINED,  // Is backend needed here?
+    DataLayout layout = DataLayout::UNDEFINED) {
   auto out_meta = FullLikeInferShape(x.meta(), dtype, layout);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
