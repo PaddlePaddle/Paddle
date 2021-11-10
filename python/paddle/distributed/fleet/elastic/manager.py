@@ -16,12 +16,14 @@ import time
 import socket
 import os
 import six
+import copy
 import logging
 import signal
 import random
 import threading
 import traceback
 from paddle.distributed.fleet import cloud_utils
+from paddle.distributed.fleet import launch_utils
 
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
 logger = logging.getLogger("ELASTIC")
@@ -122,7 +124,6 @@ class ElasticManager(object):
         server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
         name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
         self.min_np, self.max_np = self._parse_np(args.np)
-        np = self.min_np
         host = args.host or os.getenv('POD_IP')
         scale = args.scale or int(os.getenv('PADDLE_ELASTIC_SCALE', 0))
         force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
@@ -130,17 +131,25 @@ class ElasticManager(object):
         start_port = 6170
         if os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-        if cloud_utils.use_paddlecloud() and self.max_np != 1:
+        if cloud_utils.use_paddlecloud():
             start_port = int(os.getenv("PADDLE_PORT", ""))
+
+        (self.device_mode,
+         self.devices_per_proc) = launch_utils.get_device_proc_info(args)
 
         self.elastic_timeout = int(
             os.getenv('PADDLE_ELASTIC_TIMEOUT', ELASTIC_TIMEOUT))
         elastic_ttl = int(os.getenv('PADDLE_ELASTIC_TTL', ELASTIC_TTL))
-        self.endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
+        self.dist_endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
         self.trainers = os.getenv('PADDLE_TRAINERS', '')
-        self.lastest_endpoints = self.endpoints
+        self.all_host_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS',
+                                            '').split(",")
+        self.np = len(self.all_host_endpoints)
+        logger.info(f'start job with np={self.np}')
+
+        #[ "%s:%d" % (ip, start_port) for ip in self.trainers.split(",")]
         logger.info(
-            f"trainers={self.trainers}, lastest_endpoints={self.lastest_endpoints}"
+            f"trainers={self.trainers}, all_host_endpoints={self.all_host_endpoints}"
         )
 
         # auto correct the value of elastic_level
@@ -151,8 +160,10 @@ class ElasticManager(object):
         if self.min_np == self.max_np or \
                 (self.min_np > 0 and self.max_np == 0):
             self.elastic_level = ElasticLevel.FAULT_TOLERANCE
+            logger.info(f'start job with ElasticLevel.FAULT_TOLERANCE')
         if self.min_np > 0 and self.max_np > self.min_np:
             self.elastic_level = ElasticLevel.ELASTIC
+            logger.info(f'start job with ElasticLevel.ELASTIC')
 
         # compatible with kuberntes service discovery
         if not server and os.getenv(
@@ -172,10 +183,10 @@ class ElasticManager(object):
 
         self.elastic_startup_time = None
 
-        if not server or ':' not in server or not name or not np:
+        if not server or ':' not in server or not name or not self.np:
             logger.info(
                 'Elastic is not enabled with server {} name {} and np {}'.
-                format(server, name, np))
+                format(server, name, self.np))
             self.enable = False
             return
         else:
@@ -195,8 +206,6 @@ class ElasticManager(object):
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
         self.host_path = '{}/{}{}'.format(self.node_prefix, node_tag,
                                           time.time())
-
-        self.np = np + scale
         '''
         0 group mode, be aware of healthy status of other workers
         1 decouple mode, check own status only
@@ -211,7 +220,6 @@ class ElasticManager(object):
             ]
             logger.info(
                 f"host_call_back curr_host={self.host_port}, hosts:{self.hosts}")
-            self.np = len(self.hosts)
             self.need_sync = True
             self.elastic_startup_time = None
 
@@ -252,15 +260,15 @@ class ElasticManager(object):
 
         # endpoints handle DISTRIBUTED_TRAINER_ENDPOINTS and PADDLE_TRAINERS
         self.etcd.put(self.endpoints_path,
-                      six.b('{}|{}'.format(self.endpoints, self.trainers)))
+                      six.b('{}|{}'.format(self.dist_endpoints, self.trainers)))
 
         def endpoints_call_back(event):
-            if not self.endpoints:
+            if not self.dist_endpoints:
                 return
             edps = six.ensure_str(self.etcd.get(self.endpoints_path)[0] or '')
-            self.endpoints, self.trainers = edps.split('|')
+            self.dist_endpoints, self.trainers = edps.split('|')
             logger.info("set DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
-                self.endpoints))
+                self.dist_endpoints))
             logger.info("set PADDLE_TRAINERS {} ".format(self.trainers))
 
         endpoints_watch = self.etcd.add_watch_callback(self.endpoints_path,
@@ -343,8 +351,7 @@ class ElasticManager(object):
         if self.elastic_level == ElasticLevel.ELASTIC:
             # FIXME(xym) add freeze status
             hosts_num = len(self.hosts)
-            alloc_hosts_num = len(self.endpoints.split(","))
-            if hosts_num == alloc_hosts_num:
+            if hosts_num == self.np:
                 return True
 
             if not self.elastic_startup_time:
@@ -366,6 +373,8 @@ class ElasticManager(object):
                 self.elastic_startup_time = None
                 return False
 
+        return False
+
     def _update_endpoint(self, endpoints, hosts):
         self.etcd.put(self.endpoints_path,
                       six.b('{}|{}'.format(endpoints, hosts)))
@@ -374,12 +383,12 @@ class ElasticManager(object):
         assert len(self.hosts) != 0, 'hosts empty'
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
         if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
-            self.lastest_endpoints = self.endpoints
-            if self.host_port in self.endpoints:
-                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.endpoints
+            if self.host_port in self.dist_endpoints:
+                os.environ[
+                    'DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dist_endpoints
                 os.environ['PADDLE_TRAINERS'] = self.trainers
                 logger.info("update env DISTRIBUTED_TRAINER_ENDPOINTS {} ".
-                            format(self.endpoints))
+                            format(self.dist_endpoints))
                 logger.info("update env PADDLE_TRAINERS {} ".format(
                     self.trainers))
                 return
@@ -399,11 +408,11 @@ class ElasticManager(object):
             os.environ['PADDLE_TRAINERS'] = hosts
         else:
             # elastic, scale up/down
-            endpoints = self.lastest_endpoints.split(",")
-            if len(self.hosts) > len(endpoints):
+            endpoints = copy.deepcopy(self.all_host_endpoints)
+            if len(self.hosts) > self.np:
                 # scale up
                 logger.info(
-                    f"elastic scale up, hosts={self.hosts}, endpoints={endpoints}"
+                    f"elastic scale up, from {self.np} to {len(self.hosts)}, hosts={self.hosts}, endpoints={endpoints}"
                 )
 
                 for curr_host_port in self.hosts:
@@ -412,18 +421,19 @@ class ElasticManager(object):
 
                 os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
                     endpoints.index(self.host_port))
-                host_port_list = ','.join(endpoints)
                 hosts = ','.join(
                     [host_port.split(":")[0] for host_port in endpoints])
                 self.args.ips = hosts
                 os.environ['PADDLE_TRAINERS'] = hosts
-                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = host_port_list
-                self.lastest_endpoints = host_port_list
-                self._update_endpoint(host_port_list, hosts)
+                self.np = len(endpoints)
+                os.environ['PADDLE_TRAINER_ENDPOINTS'] = ','.join(endpoints)
+                os.environ[
+                    'DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dist_endpoints
+                self.all_host_endpoints = endpoints
             else:
                 # scale down
                 logger.info(
-                    f"elastic scale down, hosts={self.hosts}, endpoints={endpoints}"
+                    f"elastic scale down, from {len(self.hosts)} to {self.np}, hosts={self.hosts}, endpoints={endpoints}"
                 )
 
                 # If the shrink node is from the first of the rank list, you need to minimize the movement of the rank
@@ -454,17 +464,35 @@ class ElasticManager(object):
 
                 logger.info(
                     f"elastic scale down, sorted_endpoints={sorted_endpoints}")
-                host_port_list = ','.join(sorted_endpoints)
-                hosts = ','.join([
-                    host_port.split(":")[0] for host_port in sorted_endpoints
-                ])
+                self.all_host_endpoints = sorted_endpoints
+
+                endpoint_list = []
+                ip_list = []
+                for host_port in sorted_endpoints:
+                    host_port_list = host_port.split(":")
+                    ip = host_port_list[0]
+                    port = int(host_port_list[1])
+
+                    ip_list.append(ip)
+                    ports = [
+                        x
+                        for x in range(port, port + len(self.devices_per_proc))
+                    ]
+                    endpoint_list.extend(
+                        ["%s:%d" % (ip, port) for port in ports])
+
+                hosts = ','.join(ip_list)
+                new_endpoints = ','.join(endpoint_list)
+
                 self.args.ips = hosts
                 os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
                     sorted_endpoints.index(self.host_port))
                 os.environ['PADDLE_TRAINERS'] = hosts
-                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = host_port_list
-                self.lastest_endpoints = host_port_list
-                self._update_endpoint(host_port_list, hosts)
+                self.np = len(sorted_endpoints)
+                os.environ['PADDLE_TRAINER_ENDPOINTS'] = ','.join(
+                    sorted_endpoints)
+                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = new_endpoints
+                self._update_endpoint(new_endpoints, hosts)
 
     def wait(self):
         if not self.enable:
