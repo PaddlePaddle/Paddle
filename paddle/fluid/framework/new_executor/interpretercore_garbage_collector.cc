@@ -28,6 +28,10 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   queue_ = CreateSingleThreadedWorkQueue(options);
 }
 
+InterpreterCoreGarbageCollector::~InterpreterCoreGarbageCollector() {
+  queue_.reset(nullptr);
+}
+
 void InterpreterCoreGarbageCollector::Add(
     std::shared_ptr<memory::Allocation> garbage,
     paddle::platform::DeviceEvent& event, const platform::DeviceContext* ctx) {

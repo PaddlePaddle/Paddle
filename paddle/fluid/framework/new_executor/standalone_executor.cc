@@ -49,16 +49,15 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names);
 
-  return core->Run(feed_tensors);
+  return core->Run(feed_names, feed_tensors);
 }
 
-const CostInfo& StandaloneExecutor::DryRun(
+framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
   auto core = GetInterpreterCore(feed_names, {});
 
-  auto& cost_info = core->DryRun(feed_tensors);
-  return cost_info;
+  return core->DryRun(feed_names, feed_tensors);
 }
 
 void StandaloneExecutor::BuildVariableOuterScope(
@@ -100,8 +99,8 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     auto* block = new_prog->MutableBlock(0);
     interpreter::add_fetch(fetch_names, block);
 
-    auto core = std::make_shared<InterpreterCore>(place_, block, &global_scope_,
-                                                  feed_names);
+    auto core =
+        std::make_shared<InterpreterCore>(place_, *block, &global_scope_);
     programs_.emplace(oss.str(), new_prog);
     interpretercores_.emplace(oss.str(), core);
     return core;
