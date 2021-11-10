@@ -59,6 +59,7 @@ Tensor full(const std::vector<int64_t>& shape,
   kernel(&kernel_context);
 
   return out;
+  
 }
 
 Tensor full_like(const Tensor& x,

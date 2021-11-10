@@ -35,6 +35,7 @@ Tensor full_like(const Tensor& x,
 
 Tensor ones_like(const Tensor& x, DataType dtype = DataType::UNDEFINED, Backend backend = Backend::UNDEFINED,
                  DataLayout layout = DataLayout::UNDEFINED);
+                 
 
 Tensor zeros_like(const Tensor& x, DataType dtype = DataType::UNDEFINED, Backend backend = Backend::UNDEFINED,
                  DataLayout layout = DataLayout::UNDEFINED);
