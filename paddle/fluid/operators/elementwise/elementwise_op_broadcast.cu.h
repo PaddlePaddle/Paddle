@@ -212,17 +212,27 @@ __global__ void BroadcastKernel(
     int main_offset, int tail_tid, Functor func) {
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
-  // data offset of this block
+#ifdef PADDLE_WITH_XPU2
   for (; block_offset < main_offset; block_offset += stride) {
     BroadcastKernelImpl<InT, OutT, Functor, Arity, VecSize, Rank, false>(
         ins, out, use_broadcast, numel, configs, BLOCK_NUM_X * VecSize,
         block_offset, func);
   }
-
   if (block_offset < numel) {
     BroadcastKernelImpl<InT, OutT, Functor, Arity, VecSize, Rank, true>(
         ins, out, use_broadcast, numel, configs, tail_tid, block_offset, func);
   }
+
+#else
+  if (block_offset < main_offset) {
+    BroadcastKernelImpl<InT, OutT, Functor, Arity, VecSize, Rank, false>(
+        ins, out, use_broadcast, numel, configs, BLOCK_NUM_X * VecSize,
+        block_offset, func);
+  } else {
+    BroadcastKernelImpl<InT, OutT, Functor, Arity, VecSize, Rank, true>(
+        ins, out, use_broadcast, numel, configs, tail_tid, block_offset, func);
+  }
+#endif
 }
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
