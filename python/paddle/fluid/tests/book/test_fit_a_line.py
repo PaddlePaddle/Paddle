@@ -25,6 +25,8 @@ import math
 import sys
 import os
 
+from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
+
 paddle.enable_static()
 
 
@@ -84,6 +86,8 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
+                if avg_loss_value.dtype == numpy.uint16:
+                    avg_loss_value = convert_uint16_to_float(avg_loss_value)
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
                         paddle.static.save_inference_model(
@@ -154,6 +158,8 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
+        if results[0].dtype == numpy.uint16:
+            results[0] = convert_uint16_to_float(results[0])
         print("infer shape: ", results[0].shape)
         print("infer results: ", results[0])
         print("ground truth: ", test_label)
