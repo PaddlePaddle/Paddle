@@ -19,6 +19,8 @@
 #include <unordered_map>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -32,9 +34,10 @@ class Carrier final {
  public:
   Carrier() = delete;
 
-  Carrier(const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node);
+  explicit Carrier(
+      const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node);
 
-  ~Carrier();
+  ~Carrier() = default;
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
