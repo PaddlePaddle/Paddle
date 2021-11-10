@@ -1696,6 +1696,8 @@ def eye(num_rows,
             num_rows_tensor = num_rows
             num_rows_tensor.stop_gradient = True
         else:
+            if not isinstance(num_rows, int) or num_rows < 0:
+                raise TypeError("num_rows should be a non-negative int")
             attrs += ('num_rows', num_rows)
 
         if isinstance(num_columns, Variable):
