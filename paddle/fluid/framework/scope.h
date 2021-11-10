@@ -184,7 +184,7 @@ class Scope : public ScopeBase {
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
-  mutable std::list<ScopeListener*> listeners_;
+  std::list<ScopeListener*> listeners_;
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 

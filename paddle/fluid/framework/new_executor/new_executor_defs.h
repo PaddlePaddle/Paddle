@@ -474,15 +474,12 @@ struct VariableMetaInfo {
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
 
 // NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
-// ScopeBase.
-// Scope manager the variables and VariableScope is just a quick access
-// machanism.
-// ScopeListener is the callback to sync changes in Original Scope. We can make
-// it
-// a membership of VariableScope. Here we use inherent.
+// ScopeBase. Scope manager the variables and VariableScope is just a quick
+// access machanism. ScopeListener is the callback to sync changes in Original
+// Scope. We can make it a membership of VariableScope. Here we use inherent.
 class VariableScope : public ScopeBase, public ScopeListener {
  public:
-  VariableScope() {
+  VariableScope(Scope* outer_scope) {
     // for @EMPTY@ variable
     var_list_.push_back(nullptr);
     name2id_[kEmptyVarName] = 0;
@@ -490,21 +487,17 @@ class VariableScope : public ScopeBase, public ScopeListener {
     info.var_ref_count_ = 0;
     info.vardesc_ = nullptr;
     vec_meta_info_.push_back(info);
-    outer_scope_ = nullptr;
+    outer_scope_ = outer_scope;
+
+    PADDLE_ENFORCE_NE(
+        outer_scope_, nullptr,
+        platform::errors::PreconditionNotMet(
+            "You have passed a nullptr to construct VariableScope."));
+    outer_scope->AddListener(this);
   }
 
   ~VariableScope() {
-    outer_scope_->DelListener(this);  // don't listen anymore.
-  }
-
-  void SetScope(Scope* outer_scope) {
-    // We don't consider SetScope twice currently.
-    PADDLE_ENFORCE_EQ(
-        outer_scope_, nullptr,
-        platform::errors::PreconditionNotMet(
-            "You have been SetScope(), please don't call SetScope twice."));
-    outer_scope_ = outer_scope;
-    outer_scope->AddListener(this);
+    if (outer_scope_ != nullptr) outer_scope_->DelListener(this);
   }
 
   const Scope* GetScope() const { return outer_scope_; }
@@ -565,13 +558,8 @@ class VariableScope : public ScopeBase, public ScopeListener {
   size_t VarSize() const { return var_list_.size(); }
 
   void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
-    // AddVar -> Scope::Var -> onCreateVariable, because name2id is set, so
-    // onCreateVariable will do nothing.
+    // AddVar -> Scope::Var -> onCreateVariable.
     VLOG(4) << "Add variable: " << name << " through AddVar()";
-    PADDLE_ENFORCE_NE(outer_scope_, nullptr,
-                      platform::errors::PreconditionNotMet(
-                          "the outer_scope_ of Variable is nullptr. please "
-                          "SetScope() first"));
     auto v = outer_scope_->Var(name);
     if (nullptr == var_desc) {
       v->GetMutable<LoDTensor>();
@@ -585,12 +573,8 @@ class VariableScope : public ScopeBase, public ScopeListener {
   }
 
   void AddVar(const std::string& name, Variable& var) {  // NOLINT
-    // through name existed in outer_scope_, we need add again to create name2id
-    // map.
-    PADDLE_ENFORCE_NE(outer_scope_, nullptr,
-                      platform::errors::PreconditionNotMet(
-                          "the outer_scope_ of Variable is nullptr. please "
-                          "SetScope() first"));
+    // Though name existed in outer_scope_, we need
+    // add again to create name2id map.
     outer_scope_->Var(name);
   }
 
@@ -647,6 +631,11 @@ class VariableScope : public ScopeBase, public ScopeListener {
   void onCreateScope(Scope* Scope) override {}
   void onDeleteScope(Scope* Scope) override {}
   void onClear() override {}
+  std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
+
+  const std::vector<VariableMetaInfo>& VecMetaInfo() const {
+    return vec_meta_info_;
+  }
 
  private:
   std::vector<Variable*> var_list_;

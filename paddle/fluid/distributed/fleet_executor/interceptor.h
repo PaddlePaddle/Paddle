@@ -22,6 +22,8 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -33,12 +35,15 @@ class Interceptor {
  public:
   Interceptor() = delete;
 
-  Interceptor(int64_t interceptor_id_, TaskNode* node);
+  Interceptor(int64_t interceptor_id, TaskNode* node);
 
-  virtual ~Interceptor() = default;
+  virtual ~Interceptor();
 
   // return the interceptor id
   int64_t GetInterceptorId() const;
+
+  // return the conditional var
+  std::condition_variable& GetCondVar();
 
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   bool EnqueueRemoteInterceptorMessage(
