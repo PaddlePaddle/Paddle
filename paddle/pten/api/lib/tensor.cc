@@ -14,12 +14,14 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
 
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include "glog/logging.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
@@ -43,6 +45,7 @@ limitations under the License. */
  * or the corresponding components will be re-implemented.
  */
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -63,25 +66,21 @@ Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
                               "TensorImpl with nullptr is not supported"));
 }
 
-Tensor::Tensor(const PlaceType &place) {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-      ConvertExtPlaceToInnerPlace(place));
-  impl_ = std::make_shared<pten::DenseTensor>(
-      alloc,
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({}),
-                            pten::DataLayout::NCHW));
-}
+Tensor::Tensor(const PlaceType &place)
+    : impl_(std::move(std::make_shared<pten::DenseTensor>(
+          std::move(pten::make_intrusive<SharedStorage>(
+              ConvertExtPlaceToInnerPlace(place))),
+          std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
+                                          framework::make_ddim({}),
+                                          pten::DataLayout::NCHW))))) {}
 
-Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape) {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-      ConvertExtPlaceToInnerPlace(place));
-  impl_ = std::make_shared<pten::DenseTensor>(
-      alloc,
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim(shape),
-                            pten::DataLayout::NCHW));
-}
+Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
+    : impl_(std::move(std::make_shared<pten::DenseTensor>(
+          std::move(pten::make_intrusive<SharedStorage>(
+              ConvertExtPlaceToInnerPlace(place))),
+          std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
+                                          framework::make_ddim(shape),
+                                          pten::DataLayout::NCHW))))) {}
 
 /* Part 2: Dimension, DataType and DataLayout methods */
 
