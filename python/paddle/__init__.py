@@ -101,6 +101,7 @@ from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
+from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
 from .tensor.logic import is_empty  # noqa: F401
@@ -229,6 +230,7 @@ from .tensor.random import uniform  # noqa: F401
 from .tensor.random import randn  # noqa: F401
 from .tensor.random import rand  # noqa: F401
 from .tensor.random import randint  # noqa: F401
+from .tensor.random import randint_like  # noqa: F401
 from .tensor.random import randperm  # noqa: F401
 from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
@@ -375,6 +377,7 @@ __all__ = [  # noqa
            'ParamAttr',
            'stanh',
            'randint',
+           'randint_like',
            'assign',
            'gather',
            'scale',

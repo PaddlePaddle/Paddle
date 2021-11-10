@@ -916,7 +916,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     Tensor transformed_d_y(d_y->type());
     Tensor transformed_d_x;
     if (data_layout == DataLayout::kNHWC &&
-        compute_format == DataLayout::kNCHW) {
+        compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
       VLOG(3) << "Transform input tensor from NHWC to NCHW.";
       ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
                                                            &transformed_x);

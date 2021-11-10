@@ -273,7 +273,14 @@ class TensorRTEngine {
         infer_engine_,
         platform::errors::InvalidArgument(
             "The TensorRT engine must be built first before serialization"));
+#if IS_TRT_VERSION_LT(8000)
     ihost_memory_.reset(infer_engine_->serialize());
+#else
+    PADDLE_ENFORCE_NOT_NULL(
+        ihost_memory_,
+        platform::errors::InvalidArgument(
+            "TensorRT >= 8.0 requires that buildSerializedNetwork is called"));
+#endif
     return ihost_memory_.get();
   }
 
