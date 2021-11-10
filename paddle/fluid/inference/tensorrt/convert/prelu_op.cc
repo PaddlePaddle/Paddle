@@ -34,6 +34,8 @@ class PReluOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get attrs
     std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
+    std::string data_layout =
+        BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout"));
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
@@ -47,7 +49,7 @@ class PReluOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
-          alpha_data, alpha_tensor_temp->numel(), mode);
+          alpha_data, alpha_tensor_temp->numel(), mode, data_layout);
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
     } else {
 #if IS_TRT_VERSION_GE(7000)
@@ -74,8 +76,8 @@ class PReluOpConverter : public OpConverter {
       layer = TRT_ENGINE_ADD_LAYER(engine_, ParametricReLU, *input,
                                    *alpha_layer_output);
 #else
-      plugin::PReluPlugin* plugin =
-          new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
+      plugin::PReluPlugin* plugin = new plugin::PReluPlugin(
+          alpha_data, alpha_tensor_temp->numel(), mode, data_layout);
       layer = engine_->AddPlugin(&input, input_num, plugin);
 #endif
     }

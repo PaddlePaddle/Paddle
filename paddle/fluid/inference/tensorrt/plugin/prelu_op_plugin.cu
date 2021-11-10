@@ -69,10 +69,11 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
   }
 
   if (mode_ == "channel") {
+    bool channel_last = data_layout_ == "NHWC";
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
     prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],
-                       input_dims.d[1], false /*channel_last*/, numel);
+                       input_dims.d[1], channel_last, numel);
   } else if (mode_ == "element") {
     operators::math::PreluElementWiseDirectCUDAFunctor<float>
         prelu_element_wise;

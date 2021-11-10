@@ -45,15 +45,33 @@ class PReluOp : public framework::OperatorWithKernel {
                             "equal or larger than 2. But recevied X's "
                             "rank: %d",
                             x_rank));
-      PADDLE_ENFORCE_EQ(
-          product(ctx->GetInputDim("Alpha")) == x_dim[1] ||
-              product(ctx->GetInputDim("Alpha")) == x_dim[x_rank - 1],
-          true, platform::errors::InvalidArgument(
-                    "For mode 'channel', size of weight Alpha must be "
-                    "equal to the number of channels of input(x). But "
-                    "recevied alpha's size: %d, x_dim[1]: %d, x_dim[%d]: %d",
-                    product(ctx->GetInputDim("Alpha")), x_dim[1], x_rank - 1,
-                    x_dim[x_rank - 1]));
+      const std::string data_layout_str =
+          ctx->Attrs().Get<std::string>("data_layout");
+      PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
+                        true,
+                        platform::errors::InvalidArgument(
+                            "For mode 'channel', data_layout must be one of "
+                            "NCHW and NHWC. But recevied data_layout: %s",
+                            data_layout_str));
+      if (data_layout_str == "NCHW") {
+        PADDLE_ENFORCE_EQ(
+            product(ctx->GetInputDim("Alpha")) == x_dim[1], true,
+            platform::errors::InvalidArgument(
+                "For mode 'channel', size of weight Alpha must be "
+                "equal to the number of channels of input(x). But "
+                "recevied alpha's size: %d, x_dim[1]: %d",
+                product(ctx->GetInputDim("Alpha")), x_dim[1]));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            product(ctx->GetInputDim("Alpha")) == x_dim[x_rank - 1], true,
+            platform::errors::InvalidArgument(
+                "For mode 'channel', size of weight Alpha must be "
+                "equal to the number of channels of input(x). But "
+                "recevied alpha's size: %d, x_dim[%d]: %d",
+                product(ctx->GetInputDim("Alpha")), x_rank - 1,
+                x_dim[x_rank - 1]));
+      }
+
     } else if (mode == "element") {
       auto alpha_dim = ctx->GetInputDim("Alpha");
       auto alpha_rank = alpha_dim.size();
@@ -137,6 +155,9 @@ There are modes:
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
+    AddAttr<std::string>("data_layout",
+                         "Data format that specifies the layout of input")
+        .SetDefault("NCHW");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)

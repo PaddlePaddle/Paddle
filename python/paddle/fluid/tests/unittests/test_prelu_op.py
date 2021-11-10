@@ -163,10 +163,18 @@ class PReluTest(OpTest):
         # zero.
         x_np[np.abs(x_np) < 0.005] = 0.02
 
-        if self.attrs == {'mode': "all"}:
+        if self.attrs == {
+                'mode': "all",
+                "data_layout": "NCHW"
+        } or self.attrs == {
+                'mode': "all",
+                "data_layout": "NHWC"
+        }:
             alpha_np = np.random.uniform(-1, -0.5, (1))
-        elif self.attrs == {'mode': "channel"}:
+        elif self.attrs == {'mode': "channel", "data_layout": "NCHW"}:
             alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1], 1, 1])
+        elif self.attrs == {'mode': "channel", "data_layout": "NHWC"}:
+            alpha_np = np.random.uniform(-1, -0.5, [1, 1, 1, self.x_shape[-1]])
         else:
             alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
         alpha_np = alpha_np.astype(self.dtype)
@@ -176,11 +184,14 @@ class PReluTest(OpTest):
         # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
         # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1) 	
         reshaped_alpha = self.inputs['Alpha']
-        if self.attrs == {'mode': "channel"}:
+        if self.attrs == {'mode': "channel", "data_layout": "NCHW"}:
             reshaped_alpha = np.reshape(
                 self.inputs['Alpha'],
                 [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]))
-
+        elif self.attrs == {'mode': "channel", "data_layout": "NHWC"}:
+            reshaped_alpha = np.reshape(
+                self.inputs['Alpha'],
+                [1] + [1] * len(self.x_shape[1:-1]) + [self.x_shape[-1]])
         out_np = np.maximum(self.inputs['X'], 0.)
         out_np = out_np + np.minimum(self.inputs['X'], 0.) * reshaped_alpha
         assert out_np is not self.inputs['X']
@@ -193,7 +204,7 @@ class PReluTest(OpTest):
         self.x_shape = [2, 100, 3, 4]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel"}
+        self.attrs = {'mode': "channel", "data_layout": "NCHW"}
 
     def test_check_output(self):
         self.check_output()
@@ -210,7 +221,15 @@ class TestModeAll(PReluTest):
         self.x_shape = [2, 3, 4, 5]
 
     def init_attr(self):
-        self.attrs = {'mode': "all"}
+        self.attrs = {'mode': "all", "data_layout": "NCHW"}
+
+
+class TestModeAllNHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [2, 3, 4, 50]
+
+    def init_attr(self):
+        self.attrs = {'mode': "all", "data_layout": "NHWC"}
 
 
 class TestModeElt(PReluTest):
@@ -218,7 +237,15 @@ class TestModeElt(PReluTest):
         self.x_shape = [3, 2, 5, 10]
 
     def init_attr(self):
-        self.attrs = {'mode': "element"}
+        self.attrs = {'mode': "element", "data_layout": "NCHW"}
+
+
+class TestModeEltNHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [3, 2, 5, 10]
+
+    def init_attr(self):
+        self.attrs = {'mode': "element", "data_layout": "NHWC"}
 
 
 @skip_check_grad_ci(
@@ -229,7 +256,15 @@ class TestModeAllRank3(PReluTest):
         self.x_shape = [1, 200, 3]
 
     def init_attr(self):
-        self.attrs = {'mode': "all"}
+        self.attrs = {'mode': "all", "data_layout": "NCHW"}
+
+
+class TestModeAllRank3NHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 200, 3]
+
+    def init_attr(self):
+        self.attrs = {'mode': "all", "data_layout": "NHWC"}
 
 
 @skip_check_grad_ci(
@@ -240,7 +275,15 @@ class TestModeAllRank6(PReluTest):
         self.x_shape = [1, 2, 3, 4, 5, 6]
 
     def init_attr(self):
-        self.attrs = {'mode': "all"}
+        self.attrs = {'mode': "all", "data_layout": "NCHW"}
+
+
+class TestModeAllRank6NHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 2, 3, 4, 5, 6]
+
+    def init_attr(self):
+        self.attrs = {'mode': "all", "data_layout": "NHWC"}
 
 
 class TestModeChannelRank3(PReluTest):
@@ -248,7 +291,15 @@ class TestModeChannelRank3(PReluTest):
         self.x_shape = [1, 200, 3]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel"}
+        self.attrs = {'mode': "channel", "data_layout": "NCHW"}
+
+
+class TestModeChannelRank3NHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 3, 100]
+
+    def init_attr(self):
+        self.attrs = {'mode': "channel", "data_layout": "NHWC"}
 
 
 class TestModeChannelRank6(PReluTest):
@@ -256,7 +307,15 @@ class TestModeChannelRank6(PReluTest):
         self.x_shape = [1, 100, 2, 2, 2, 2]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel"}
+        self.attrs = {'mode': "channel", "data_layout": "NCHW"}
+
+
+class TestModeChannelRank6NHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 2, 2, 2, 2, 100]
+
+    def init_attr(self):
+        self.attrs = {'mode': "channel", "data_layout": "NHWC"}
 
 
 class TestModeElementRank3(PReluTest):
@@ -264,7 +323,15 @@ class TestModeElementRank3(PReluTest):
         self.x_shape = [3, 10, 10]
 
     def init_attr(self):
-        self.attrs = {'mode': "element"}
+        self.attrs = {'mode': "element", "data_layout": "NCHW"}
+
+
+class TestModeElementRank3NHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [3, 10, 10]
+
+    def init_attr(self):
+        self.attrs = {'mode': "element", "data_layout": "NHWC"}
 
 
 class TestModeElementRank6(PReluTest):
@@ -272,7 +339,15 @@ class TestModeElementRank6(PReluTest):
         self.x_shape = [3, 2, 2, 4, 5, 2]
 
     def init_attr(self):
-        self.attrs = {'mode': "element"}
+        self.attrs = {'mode': "element", "data_layout": "NCHW"}
+
+
+class TestModeElementRank6NHWC(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [3, 2, 2, 4, 5, 2]
+
+    def init_attr(self):
+        self.attrs = {'mode': "element", "data_layout": "NHWC"}
 
 
 def create_test_fp16_class(parent,
@@ -311,6 +386,13 @@ create_test_fp16_class(TestModeChannelRank3)
 create_test_fp16_class(TestModeChannelRank6)
 create_test_fp16_class(TestModeElementRank3)
 create_test_fp16_class(TestModeElementRank6)
+create_test_fp16_class(TestModeEltNHWC)
+create_test_fp16_class(TestModeAllRank3NHWC)
+create_test_fp16_class(TestModeAllRank6NHWC)
+create_test_fp16_class(TestModeChannelRank3NHWC)
+create_test_fp16_class(TestModeChannelRank6NHWC)
+create_test_fp16_class(TestModeElementRank3NHWC)
+create_test_fp16_class(TestModeElementRank6NHWC)
 
 
 def prelu_t(x, mode, param_attr=None, name=None):
