@@ -17,44 +17,76 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
+import paddle
 
 
 def fully_connected_naive(input, weights, bias_data):
-    result = np.dot(input, weights) + bias_data
+    result = np.dot(input, weights)
+    if bias_data is not None:
+        result = result + bias_data
+
     return result
 
 
-class MatrixGenerate:
-    def __init__(self, mb, ic, oc, h, w):
-        self.input = np.random.random((mb, ic * h * w)).astype("float32")
-        self.weights = np.random.random((ic * h * w, oc)).astype("float32")
-
-
 class TestFCMKLDNNOp(OpTest):
-    def create_data(self):
-        self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
-        self.bias = np.random.random(15).astype("float32")
+    def init_shape(self):
+        self.mb = 12
+        self.ic = 10
+        self.oc = 15
+        self.h = 3
+        self.w = 3
+
+    def init_rank_and_bias(self):
+        self.input_rank = 2
+        self.with_bias = None
+
+    def generate_data(self):
+        self.input = np.random.random((self.mb, self.ic * self.h * self.w)).astype("float32")
+        self.weights = np.random.random((self.ic * self.h * self.w, self.oc)).astype("float32")
+        self.np_weights = self.weights.copy()
+
+#        if self.input_rank == 3:
+#            self.input = np.reshape(self.input, (self.mb, self.ic, self.h * self.w))
+#            self.np_weights = np.reshape(self.np_weights, (self.ic, self.h * self.w, self.oc))
+#        elif self.input_rank == 4:
+#            self.input = np.reshape(self.input, (self.mb, self.ic, self.h, self.w))
+
+        if self.with_bias is not None:
+            self.bias = np.random.random((self.oc)).astype("float32")
+        else:
+            self.bias = None
+
+        self.output = fully_connected_naive(self.input, self.np_weights,
+                                         self.bias)
 
     def setUp(self):
         self.op_type = "fc"
         self._cpu_only = True
         self.use_mkldnn = True
-        self.create_data()
+        self.init_shape()
+        self.init_rank_and_bias()
+        self.generate_data()
+
+        if self.input_rank == 3:
+            self.input = np.reshape(self.input, (self.mb//2, 2, self.ic * self.h * self.w))
+            self.output = np.reshape(self.output, ((self.mb//2), 2, self.oc))
+
         self.inputs = {
-            'Input': self.matrix.input,
-            'W': self.matrix.weights,
-            'Bias': self.bias
+            'Input': self.input,
+            'W': self.weights
         }
 
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        if self.bias is not None:
+            self.inputs['Bias'] = self.bias
+
+        self.attrs = {'use_mkldnn': self.use_mkldnn,
+                      'in_num_col_dims': self.input_rank - 1}
 
         self.outputs = {
-            'Out': fully_connected_naive(self.matrix.input, self.matrix.weights,
-                                         self.bias)
+            'Out': self.output
         }
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
@@ -64,11 +96,12 @@ class TestFCMKLDNNOp(OpTest):
         pass
 
 
-class TestFCMKLDNNOp1(TestFCMKLDNNOp):
-    def create_data(self):
-        self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
-        self.bias = np.random.random(48).astype("float32")
+class TestFCMKLDNNOpWithBias(TestFCMKLDNNOp):
+    def init_rank_and_bias(self):
+        self.input_rank = 2
+        self.with_bias = True
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
