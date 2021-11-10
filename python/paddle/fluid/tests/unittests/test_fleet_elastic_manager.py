@@ -81,7 +81,7 @@ class TestElasticManager(unittest.TestCase):
             host_port = None
             scale = None
             force = None
-            backend = 'nccl'
+            backend = 'gloo'
 
         args = Argument()
 
@@ -103,7 +103,7 @@ class TestElasticManager(unittest.TestCase):
             host_port = None
             scale = None
             force = None
-            backend = 'nccl'
+            backend = 'gloo'
 
         args = Argument()
         elastic = ElasticManager(args, self.etcd_client)
@@ -126,7 +126,7 @@ class TestElasticManager(unittest.TestCase):
             host_port = None
             scale = None
             force = None
-            backend = 'nccl'
+            backend = 'gloo'
 
         os.environ['PADDLE_ELASTIC_TIMEOUT'] = "60"
         args = Argument()
@@ -174,7 +174,7 @@ class TestElasticManager(unittest.TestCase):
             host_port = None
             scale = None
             force = None
-            backend = 'nccl'
+            backend = 'gloo'
 
         args = Argument()
         os.environ['FLAGS_START_PORT'] = "6001"
@@ -219,7 +219,7 @@ class TestElasticManager(unittest.TestCase):
             host_port = None
             scale = None
             force = None
-            backend = 'nccl'
+            backend = 'gloo'
 
         args = Argument()
 
@@ -295,7 +295,7 @@ class TestElasticManager(unittest.TestCase):
             host_port = None
             scale = None
             force = None
-            backend = 'nccl'
+            backend = 'gloo'
 
         args = Argument()
         elastic = ElasticManager(args, self.etcd_client)
