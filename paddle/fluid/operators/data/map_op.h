@@ -70,13 +70,13 @@ class MapOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Step1: get output vars and attrs
     auto input_vars = ctx.MultiInputVar("X");
-    auto input_var_names = ctx.InputNames("X");
     auto output_vars = ctx.MultiOutputVar("Out");
-    auto output_var_names = ctx.OutputNames("Out");
 
     CheckInputQueueStatus(input_vars);
     CheckAndInitOutputQueue(output_vars, /*capacity=*/2);
 
+    auto input_var_names = ctx.Attr<std::vector<std::string>>("input_var_names");
+    auto output_var_names = ctx.Attr<std::vector<std::string>>("output__var_names");
     auto* global_block = ctx.Attr<BlockDesc*>("global_block");
     auto start_op_index = ctx.Attr<int64_t>("start_op_index");
     auto end_op_index = ctx.Attr<int64_t>("end_op_index");

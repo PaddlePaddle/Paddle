@@ -210,6 +210,8 @@ REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
+REG_PROTO_VAR_TYPE_TRAIT(operators::reader::LoDTensorBlockingQueueHolder,
+                         proto::VarType::LOD_TENSOR_BLOCKING_QUEUE);
 REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);

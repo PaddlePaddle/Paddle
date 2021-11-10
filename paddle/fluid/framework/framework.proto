@@ -152,6 +152,8 @@ message VarType {
     STRINGS = 26;
     VOCAB = 27;
     FEED_LIST = 28;
+
+    LOD_TENSOR_BLOCKING_QUEUE = 31;
   }
 
   required Type type = 1;

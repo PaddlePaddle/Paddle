@@ -54,7 +54,7 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddAttr<BlockDesc*>("global_block",
                         "(BlockDesc *)"
-                        "The global block of executed dataloader program "
+                        "The global block of executed map program "
                         "desc.");
     AddAttr<int64_t>("start_op_index",
                      "(int64_t)"
@@ -66,6 +66,12 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
                      "(int64_t)"
                      "The unique hash id used as cache key for "
                      "ExecutorInfoCache");
+    AddAttr<std::vector<std::string>>("input_var_names",
+                     "(list of string)"
+                     "input variable names for map program");
+    AddAttr<std::vector<std::string>>("output_var_names",
+                     "(list of string)"
+                     "output variable names for map program");
     AddComment(R"DOC(
         Map Op
          )DOC");
