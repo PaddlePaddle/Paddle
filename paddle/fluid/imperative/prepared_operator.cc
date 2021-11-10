@@ -345,7 +345,8 @@ static void BuildDygraphPtenKernelContext(
           if (out_def.dtype == pten::DataType::UNDEFINED) {
             VLOG(0) << " ddddddddddddddd  dygraph datatype : = "
                     << outs_vector[j]->DataType();
-            tmp_def.dtype = pten::TransToPtenDataType(var->DataType());
+            tmp_def.dtype =
+                pten::TransToPtenDataType(outs_vector[j]->DataType());
           }
 
           experimental::ReMakePtenDenseTensorFromVar(
