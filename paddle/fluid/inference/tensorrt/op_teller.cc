@@ -455,22 +455,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      // TODO(inference): fix
-      if (x_shape.size() == 2 && !with_dynamic_shape) {
-        VLOG(3) << "concat op does not support input's dim is 2 in tensorrt "
-                   "static shape, the output shape has diff.";
-        return false;
-      }
     }
     if (op_type == "transpose2" || op_type == "transpose") {
       if (!desc.HasAttr("axis")) {
