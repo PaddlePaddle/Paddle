@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -230,6 +231,25 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
   }
 }
 
+static PyObject* eager_api_retain_grad_for_tensor(PyObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  RetainGradForTensor(CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0));
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
+                                        PyObject* kwargs) {
+  auto tensors = CastPyArg2VectorOfEagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto grad_tensors =
+      CastPyArg2VectorOfEagerTensor(PyTuple_GET_ITEM(args, 1), 1);
+  RunBackward(tensors, grad_tensors,
+              CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
 PyMethodDef variable_functions[] = {
     {"to_tensor", (PyCFunction)(void (*)(void))eager_api_to_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -237,6 +257,11 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_expected_place",
      (PyCFunction)(void (*)(void))eager_api_set_expected_place,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"retain_grad_for_tensor",
+     (PyCFunction)(void (*)(void))eager_api_retain_grad_for_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"run_backward", (PyCFunction)(void (*)(void))eager_api_run_backward,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
