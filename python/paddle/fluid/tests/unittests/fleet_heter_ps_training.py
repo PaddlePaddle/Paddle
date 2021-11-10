@@ -108,6 +108,7 @@ def net(batch_size=4, lr=0.01):
     return datas, avg_cost
 
 
+'''
 optimizer = fluid.optimizer.Adam(learning_rate=0.01)
 
 role = role_maker.PaddleCloudRoleMaker()
@@ -123,22 +124,26 @@ feeds, avg_cost = net()
 optimizer = fleet.distributed_optimizer(optimizer, strategy)
 optimizer.minimize(avg_cost)
 dataset = get_dataset(feeds)
+'''
 
 if fleet.is_server():
-    fleet.init_server()
-    fleet.run_server()
+    pass
+    #fleet.init_server()
+    #fleet.run_server()
 elif fleet.is_heter_worker():
-    fleet.init_heter_worker()
-    fleet.run_heter_worker(dataset=dataset)
+    pass
+    #fleet.init_heter_worker()
+    #fleet.run_heter_worker(dataset=dataset)
     fleet.stop_worker()
 elif fleet.is_worker():
-    place = fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    exe.run(fluid.default_startup_program())
-    fleet.init_worker()
-    step = 1
-    for i in range(step):
-        exe.train_from_dataset(
-            program=fluid.default_main_program(), dataset=dataset, debug=False)
-    exe.close()
-    fleet.stop_worker()
+    pass
+    #place = fluid.CPUPlace()
+    #exe = fluid.Executor(place)
+    #exe.run(fluid.default_startup_program())
+    #fleet.init_worker()
+    #step = 1
+    #for i in range(step):
+    #    exe.train_from_dataset(
+    #        program=fluid.default_main_program(), dataset=dataset, debug=False)
+    #exe.close()
+    #fleet.stop_worker()
