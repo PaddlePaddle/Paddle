@@ -144,10 +144,6 @@ def get_numeric_gradient(place,
 
     def get_output():
         sum = []
-        print("xxxxxxxxxxxxxxxx")
-        print(scope)
-        print(place)
-        print(op)
         op.run(scope, place)
         for output_name in output_names:
             output_numpy = np.array(scope.find_var(output_name).get_tensor())
@@ -1756,7 +1752,6 @@ class OpTest(unittest.TestCase):
         prog = Program()
         scope = core.Scope()
         block = prog.global_block()
-        print(block)
         self._append_ops(block)
 
         inputs = self._get_inputs(block)

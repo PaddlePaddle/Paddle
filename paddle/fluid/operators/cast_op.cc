@@ -118,7 +118,6 @@ class CastVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
         BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
-    VLOG(0) << "xxxxxxxxxxxxx CastVarTypeInference : " << var_data_type;
     if (var_data_type < 0) {
       ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
     } else {
