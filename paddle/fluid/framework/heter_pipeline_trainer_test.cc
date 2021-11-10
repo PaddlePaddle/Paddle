@@ -80,7 +80,7 @@ void GetHeterListenAndServProgram(framework::ProgramDesc* program) {
   op->SetAttr("pserver_id", 0);
 }
 
-TEST(HeterPipelineTrainerTest, test1) {
+TEST(HeterPipelineTrainerTest, GPU) {
 #ifdef _LINUX
   TrainerDesc t, t2, t3;
   // t2
@@ -161,6 +161,7 @@ TEST(HeterPipelineTrainerTest, test1) {
 
   Scope root_scope, root_scope2, root_scope3;
   paddle::platform::CPUPlace place;
+  paddle::platform::CUDAPlace place2;
 
   // tmp1
   std::shared_ptr<TrainerBase> tmp1;
@@ -178,7 +179,7 @@ TEST(HeterPipelineTrainerTest, test1) {
   tmp2 = TrainerFactory::CreateTrainer(t2.class_name());
   tmp2->SetScope(&root_scope2);
   tmp2->Initialize(t2, dataset.get());
-  tmp2->InitTrainerEnv(p2, place);
+  tmp2->InitTrainerEnv(p2, place2);
   tmp2->InitOtherEnv(p2);
   tmp2->GetWorkerScope(0);
   tmp2->ResetDataset(dataset.get());
