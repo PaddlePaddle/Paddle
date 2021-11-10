@@ -73,10 +73,9 @@ struct UniqueOpFunctor {
     if (count_ != nullptr) {
       // Resize the count tensor dims to allocate the memory
       count_->Resize(framework::make_ddim({static_cast<int64_t>(uniq.size())}));
-      void* zero_data = count_->mutable_data<IndexT>(platform::CPUPlace());
+      IndexT* count_data = count_->mutable_data<IndexT>(platform::CPUPlace());
       // init count_data to 0
-      memset(zero_data, 0, uniq.size() * sizeof(IndexT));
-      IndexT* count_data = static_cast<IndexT*>(zero_data);
+      memset(count_data, 0, uniq.size() * sizeof(IndexT));
 
       const auto& index_type = index_->type();
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
