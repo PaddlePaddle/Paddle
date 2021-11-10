@@ -36,13 +36,12 @@ bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
   return true;
 }
 
-#ifndef PADDLE_WITH_ASCEND_CL
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
 bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   // send the message inter rank (dst is different rank with src)
   return true;
 }
-#endif
 #endif
 
 bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
