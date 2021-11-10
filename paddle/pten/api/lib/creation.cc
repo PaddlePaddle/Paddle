@@ -59,23 +59,26 @@ Tensor full(const std::vector<int64_t>& shape,
   kernel(&kernel_context);
 
   return out;
-  
 }
 
 Tensor full_like(const Tensor& x,
                  const Scalar& value,
-                 DataType dtype, Backend backend, DataLayout layout) {
+                 DataType dtype,
+                 Backend backend,
+                 DataLayout layout) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
 
-  DataType kernel_data_type = dtype == DataType::UNDEFINED ? kernel_key.dtype() : dtype;
-  Backend kernel_backend = backend == Backend::UNDEFINED ? kernel_key.backend() : backend;
-  DataLayout kernel_layout = layout == DataLayout::UNDEFINED ? kernel_key.layout() : layout;
-  
+  DataType kernel_data_type =
+      dtype == DataType::UNDEFINED ? kernel_key.dtype() : dtype;
+  Backend kernel_backend =
+      backend == Backend::UNDEFINED ? kernel_key.backend() : backend;
+  DataLayout kernel_layout =
+      layout == DataLayout::UNDEFINED ? kernel_key.layout() : layout;
+
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "fill_any_like",
-      {kernel_backend, kernel_layout, kernel_data_type});
+      "fill_any_like", {kernel_backend, kernel_layout, kernel_data_type});
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
@@ -103,11 +106,17 @@ Tensor full_like(const Tensor& x,
   return out;
 }
 
-Tensor ones_like(const Tensor& x, DataType dtype, Backend backend, DataLayout layout) {
+Tensor ones_like(const Tensor& x,
+                 DataType dtype,
+                 Backend backend,
+                 DataLayout layout) {
   return full_like(x, 1, dtype, backend, layout);
 }
 
-Tensor zeros_like(const Tensor& x, DataType dtype, Backend backend, DataLayout layout) {
+Tensor zeros_like(const Tensor& x,
+                  DataType dtype,
+                  Backend backend,
+                  DataLayout layout) {
   return full_like(x, 0, dtype, backend, layout);
 }
 
