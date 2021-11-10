@@ -61,11 +61,12 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
       ++retry_time;
       if (SendInterRank(interceptor_message)) {
         VLOG(3) << "Message bus sends inter rank successfully with "
-                << retry_time << " times retries." return true;
+                << retry_time << " times retries.";
+        return true;
       }
     }
-    VLOG(3) << "Message bus sends inter rank fail after 10 times "
-               "retries." return false;
+    VLOG(3) << "Message bus sends inter rank fail after 10 times retries.";
+    return false;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "Fleet executor does not support sending message between different "
