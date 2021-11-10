@@ -24,10 +24,17 @@ import unittest
 import math
 import sys
 import os
-
-from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
+import struct
 
 paddle.enable_static()
+
+
+def convert_uint16_to_float(in_list):
+    in_list = numpy.asarray(in_list)
+    out = numpy.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[numpy.float32])(in_list.flat)
+    return numpy.reshape(out, in_list.shape)
 
 
 def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
