@@ -113,7 +113,7 @@ class MTMomentumOp : public framework::OperatorWithKernel {
             ctx->GetInputsVarType("Params").front()));
 
     auto lr_dims = ctx->GetInputsDim("LearningRate");
-    for (auto idx = 0; idx < lr_dims.size(); idx++) {
+    for (size_t idx = 0; idx < lr_dims.size(); idx++) {
       PADDLE_ENFORCE_NE(framework::product(lr_dims[idx]), 0,
                         platform::errors::InvalidArgument(
                             "Maybe the Input variable LearningRate has not "
@@ -157,7 +157,7 @@ class MTMomentumOp : public framework::OperatorWithKernel {
 
     if (ctx->GetInputsVarType("Grads")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
-      for (auto idx = 0; idx < param_dims.size(); idx++) {
+      for (size_t idx = 0; idx < param_dims.size(); idx++) {
         PADDLE_ENFORCE_EQ(
             param_dims[idx], grad_dims[idx],
             platform::errors::InvalidArgument(
