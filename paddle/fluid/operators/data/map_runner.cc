@@ -25,7 +25,7 @@ MapRunner::MapRunner(
     const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
     const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues)
     : thread_pool_(1),
-      closed_(false),
+      running_(true),
       global_block_(global_block),
       place_(place),
       start_op_index_(start_op_index),
@@ -111,11 +111,11 @@ bool MapRunner::ShareInputsIntoScope() {
 void MapRunner::StartMapThread(std::shared_ptr<ParallelExecutor> executor,
                                    const std::vector<std::string> &skip_vars) {
   thread_pool_.enqueue([this, executor, skip_vars]() -> void {
-    while (!closed_.load()) {
+    while (running_.load()) {
       // Step1: get input LoDTensor and share into Scope
       bool success = ShareInputsIntoScope();
       if (!success) {
-        Close();
+        Shutdown();
         break;
       }
 
@@ -157,12 +157,17 @@ void MapRunner::CheckOutputVarStatus(const Variable &var,
                         var_name));
 }
 
-inline void MapRunner::Close() {
-  VLOG(1) << "MapRunner close";
+void MapRunner::Shutdown() {
+  VLOG(1) << "MapRunner shutdown";
+  // close all output queue, op after this op can shutdown itself
   for (auto queue :  output_queues_) {
     queue->Close();
   }
-  closed_ = true;
+
+  // set running_ as false to exit map thread, then release thread pool
+  running_ = false;
+  // FIXME: ThreadPool doesn't have shutdown method
+  delete &thread_pool_;
 }
 
 // initialization static variables out of MapRunnerManager

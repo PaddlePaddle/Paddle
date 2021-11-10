@@ -48,11 +48,10 @@ class MapRunner {
   //   Close();
   // }
 
-  inline bool IsClosed() { return closed_; }
+  void Shutdown();
 
-  inline void Close();
+  inline bool IsRunning() { return running_; }
 
-  inline void Reset();
 
  private:
   void copy_tensor(const framework::LoDTensor &lod_tensor,
@@ -71,7 +70,7 @@ class MapRunner {
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
   ThreadPool thread_pool_;
-  std::atomic<bool> closed_;
+  std::atomic<bool> running_;
 
   Scope scope_;
   std::shared_ptr<BlockDesc> global_block_;
@@ -122,6 +121,14 @@ class MapRunnerManager {
           end_op_index, program_id, input_var_names, output_var_names,
           input_queues, output_queues));
       }
+  }
+
+  void ShutdownMapRunner(int program_id) {
+    auto iter = prog_id_to_runner_.find(program_id);
+    if (iter != prog_id_to_runner_.end()) {
+      iter->second.get()->Shutdown();
+      prog_id_to_runner_.erase(iter);
+    }
   }
 
   MapRunnerManager() { VLOG(1) << "MapRunnerManager init"; }
