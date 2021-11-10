@@ -26,16 +26,20 @@ function check_whl {
     unzip -q build/python/dist/*.whl -d /tmp/pr
     rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
 
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     [ $? -ne 0 ] && echo "checkout paddle branch failed." && exit 1
 
-    cd build && make -j20
+    if [ -f ${PADDLE_ROOT}/build/Makefile ];then
+        cd build && make -j20
+    else
+        bash -x paddle/scripts/paddle_build.sh build_only
+    fi
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     cd ..
     unzip -q build/python/dist/*.whl -d /tmp/develop
