@@ -21,7 +21,7 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
+#include "paddle/fluid/platform/device/npu/npu_pinned_allocator.h"
 #endif
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
@@ -44,7 +44,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 
 PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time, 10000,

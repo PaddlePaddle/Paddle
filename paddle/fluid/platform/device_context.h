@@ -59,7 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/stream/npu_stream.h"
+#include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -75,7 +75,7 @@ struct GpuDevice;
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
 namespace paddle {

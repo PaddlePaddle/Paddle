@@ -26,8 +26,8 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/npu_info.h"
-#include "paddle/fluid/platform/npu_resource_pool.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
 #endif
 namespace paddle {
 namespace operators {

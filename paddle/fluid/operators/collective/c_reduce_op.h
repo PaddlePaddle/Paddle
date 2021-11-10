@@ -43,7 +43,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/dynload/hccl_helper.h"
 #endif
 
 namespace paddle {
