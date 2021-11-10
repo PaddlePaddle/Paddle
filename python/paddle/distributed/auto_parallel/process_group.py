@@ -19,6 +19,8 @@ from ..collective import _new_ring_id
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.layers.tensor import fill_constant
 
+# Note that Process group 0 is reserved for representing all ranks.
+# At the begining, group 0 is empty and new ranks will be added automatically. 
 _g_process_group_map = {}
 
 
@@ -27,25 +29,27 @@ def get_all_process_groups():
     return _g_process_group_map.values()
 
 
+def get_process_group(group_id):
+    global _g_process_group_map
+    return _g_process_group_map.get(group_id, None)
+
+
 def new_process_group(ranks):
     global _g_process_group_map
-    if not _g_process_group_map:
-        genv = _get_global_env()
-        _g_process_group_map["global_group"] = ProcessGroup(
-            0, list(range(genv.world_size)))
-    # A key constructed from ranks is used in the global process group map
-    key = ''.join(map(str, sorted(ranks)))
-    if key not in _g_process_group_map:
-        num_groups = len(_g_process_group_map)
-        # Note: our process group may interfere with the original implementation
-        # so the created group id should start from the original _new_ring_id()
-        group_id = _new_ring_id() + num_groups + 1
-        pg = ProcessGroup(group_id, ranks)
-        _g_process_group_map[key] = pg
-        return pg
-    else:
-        pg = _g_process_group_map[key]
-        return pg
+    # A key constructed from ranks is used for avoiding duplication 
+    new_key = ''.join(map(str, sorted(ranks)))
+    for pg_id, pg in _g_process_group_map.items():
+        cur_key = ''.join(map(str, sorted(pg.ranks)))
+        if pg_id != 0 and new_key == cur_key:
+            return pg
+    # If not matching the existing one, construt a new process group
+    num_groups = len(_g_process_group_map)
+    # Note: our process group may interfere with the original implementation
+    # so the created group id should start from the original _new_ring_id()
+    group_id = _new_ring_id() + num_groups + 1
+    new_pg = ProcessGroup(group_id, ranks)
+    _g_process_group_map[group_id] = new_pg
+    return new_pg
 
 
 # This implementation refers to lots of Paddle/python/paddle/distributed/collective.py,
@@ -56,8 +60,14 @@ def new_process_group(ranks):
 # handle the communication implementation choice.
 class ProcessGroup:
     def __init__(self, group_id, ranks):
+        if group_id == 0 and get_process_group(0) is not None:
+            assert group_id != 0, "Process group id 0 is reserved for all ranks."
         self._group_id = group_id
         self._ranks = sorted(ranks)
+        # Add the current ranks into group 0
+        if group_id != 0:
+            global _g_process_group_map
+            _g_process_group_map[0].add_ranks(ranks)
         self._nranks = len(self._ranks)
         self._is_instantiate = False
 
@@ -65,9 +75,15 @@ class ProcessGroup:
     def id(self):
         return self._group_id
 
-    # @property
-    # def key(self):
-    #     return ''.join(map(str, sorted(self._ranks)))
+    @property
+    def ranks(self):
+        return self._ranks
+
+    def add_ranks(self, new_ranks):
+        assert self.is_instantiate() == False, \
+            "Cannot add new ranks after instantiating the process group"
+        self._ranks.extend(new_ranks)
+        self._ranks = sorted(list(set(self._ranks)))
 
     def local_rank(self, global_rank):
         if global_rank in self._ranks:
@@ -113,7 +129,20 @@ class ProcessGroup:
 
         self._is_instantiate = True
 
+    def __eq__(self, other):
+        if not isinstance(other, ProcessGroup):
+            return False
+        if self.id != other.id:
+            return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
             self.id, self._nranks, ", ".join(map(str, self._ranks)))
         return string
+
+
+_g_process_group_map[0] = ProcessGroup(0, [])

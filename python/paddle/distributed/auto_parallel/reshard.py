@@ -666,11 +666,7 @@ def _concat_partitions_with_op(partition_tensor_list, tensor, partition_index,
 
 
 def _init_comm_for_send_recv():
-    if not _g_process_group_map:
-        genv = _get_global_env()
-        _g_process_group_map["global_group"] = ProcessGroup(
-            0, list(range(genv.world_size)))
-        _g_process_group_map["global_group"].instantiate()
+    pass
 
 
 HAS_SENT = {}
