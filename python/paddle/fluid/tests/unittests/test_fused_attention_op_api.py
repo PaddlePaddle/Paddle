@@ -160,8 +160,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
         self.batch_size = 1
         self.query_length = 2
-        self.head_dim = 2
-        self.num_heads = 2
+        self.head_dim = 8
+        self.num_heads = 8
         self.embed_dim = self.head_dim * self.num_heads
 
         self.dropout_prob = 0.0
@@ -171,6 +171,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
         self.kdim, self.vdim = self.embed_dim, self.embed_dim
         self.key_length, self.value_length = self.query_length, self.query_length
+
+        print(self.batch_size, self.query_length, self.head_dim, self.num_heads)
 
     def generate_input_data(self):
         self.query = np.random.rand(self.batch_size, self.query_length,
@@ -192,6 +194,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.key, self.value = self.query, self.query
 
     def run_imperative(self):
+        #for i in range(100):
+        #    self.generate_input_data()
         if self.has_attn_mask:
             attn_mask_tensor = paddle.to_tensor(self.attn_mask)
         else:
