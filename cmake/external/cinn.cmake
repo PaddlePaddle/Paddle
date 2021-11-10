@@ -35,6 +35,7 @@ set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_MKLDNN=${WITH_MKL}
                        -DPUBLISH_LIBS=ON
                        -DWITH_TESTING=ON
+                       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 )
 set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
