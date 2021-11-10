@@ -129,6 +129,63 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
+egr::EagerTensor CastPyArg2EagerTensor(PyObject* obj, ssize_t arg_pos) {
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(pEagerTensorType))) {
+    return reinterpret_cast<EagerTensorObject*>(obj)->eagertensor;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "EagerTensor, but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+}
+
+std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
+                                                            ssize_t arg_pos) {
+  std::vector<egr::EagerTensor> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(pEagerTensorType))) {
+        result.emplace_back(
+            reinterpret_cast<EagerTensorObject*>(item)->eagertensor);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of bool, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(pEagerTensorType))) {
+        result.emplace_back(
+            reinterpret_cast<EagerTensorObject*>(item)->eagertensor);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of bool, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list or tuple, but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
 PyObject* ToPyObject(bool value) {
   if (value) {
     Py_INCREF(Py_True);

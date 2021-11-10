@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wconversion-null"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
 
 namespace paddle {
 namespace pybind {
