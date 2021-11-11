@@ -334,7 +334,6 @@ static void BuildDygraphPtenKernelContext(
       size_t output_size = kernel_ctx->OutputsSize();
       for (size_t j = 0; j < outs_vector.size(); ++j) {
         if (output_size > i + j) {
-          auto tmp_def = out_def;
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j]->MutableVar(), out_def,
               kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
