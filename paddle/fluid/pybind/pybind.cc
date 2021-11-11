@@ -546,8 +546,13 @@ PYBIND11_MODULE(core_noavx, m) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
+  m.def("gpu_memory_available", []() {
+    size_t available = 0;
+    size_t total = 0;
+    paddle::platform::GpuMemoryUsage(&available, &total);
+    return available;
+  });
 #endif
-
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
 #endif
@@ -562,7 +567,8 @@ PYBIND11_MODULE(core_noavx, m) {
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def("replay", &platform::CUDAGraph::Replay)
-      .def("reset", &platform::CUDAGraph::Reset);
+      .def("reset", &platform::CUDAGraph::Reset)
+      .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -2064,11 +2070,13 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
-  py::class_<framework::CostInfo>(m, "CostInfo")
+  py::class_<framework::interpreter::CostInfo>(m, "CostInfo")
       .def(py::init<>())
-      .def("total_time", [](CostInfo &self) { return self.total_time; })
-      .def("device_memory_bytes",
-           [](CostInfo &self) { return self.device_memory_bytes; });
+      .def("total_time",
+           [](interpreter::CostInfo &self) { return self.total_time; })
+      .def("device_memory_bytes", [](interpreter::CostInfo &self) {
+        return self.device_memory_bytes;
+      });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
@@ -2129,7 +2137,7 @@ All parameter, weight, gradient are variables in Paddle.
                feed_tensors.push_back(t);
              }
 
-             CostInfo cost_info;
+             framework::interpreter::CostInfo cost_info;
              {
                pybind11::gil_scoped_release release;
                cost_info = self.DryRun(feed_names, feed_tensors);

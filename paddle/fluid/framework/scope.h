@@ -51,6 +51,22 @@ class ScopeBase {
 
 class Scope;
 
+class ScopeListener {
+  // NOTE(xiongkun03) Abstract Class, doesn't have any attributes.
+  // Used by VariableScope. If we modify the original scope, we
+  // need synchronize changes to VariableScope. So we add listerer
+  // in original Scope.
+ public:
+  virtual ~ScopeListener() {}
+  virtual void onCreateVariable(const std::string& name) {}
+  virtual void onDeleteVariable(const std::string& name) {}
+  virtual void onRenameVariable(const std::string& old_name,
+                                const std::string& new_name) {}
+  virtual void onCreateScope(Scope* Scope) {}
+  virtual void onDeleteScope(Scope* Scope) {}
+  virtual void onClear() {}
+};
+
 /**
  * @brief Scope that manage all variables.
  *
@@ -128,6 +144,10 @@ class Scope : public ScopeBase {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
+  void AddListener(ScopeListener* listener);
+
+  void DelListener(ScopeListener* listener);
+
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {
@@ -164,6 +184,7 @@ class Scope : public ScopeBase {
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
+  std::list<ScopeListener*> listeners_;
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 

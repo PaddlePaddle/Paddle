@@ -1131,7 +1131,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // phase
   if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
-    if (pt_kernel_signature_.get() == nullptr || pt_kernel_.get() == nullptr) {
+    if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
       ChoosePtenKernel(exe_ctx);
     }
     run_pten_kernel_ = pt_kernel_->IsValid();
@@ -1178,8 +1178,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
     if (run_pten_kernel_) {
-      auto op_kernel_ctx = BuildPtenKernelContext(*runtime_ctx, *dev_ctx);
-      (*pt_kernel_)(&op_kernel_ctx);
+      if (pt_kernel_context_ == nullptr) {
+        pt_kernel_context_.reset(new pten::KernelContext());
+      }
+      BuildPtenKernelContext(*runtime_ctx, dev_ctx);
+      (*pt_kernel_)(pt_kernel_context_.get());
+      pt_kernel_context_->ClearData();
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
@@ -1765,8 +1769,8 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
   return KernelSignatureMap::Instance().Get(Type());
 }
 
-pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
-    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
+void OperatorWithKernel::BuildPtenKernelContext(
+    const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const {
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
@@ -1774,7 +1778,7 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  pten::KernelContext op_kernel_ctx(dev_ctx);
+  pt_kernel_context_->SetDeviceContext(dev_ctx);
 
   auto& input_names = std::get<0>(pt_kernel_signature_->args);
   auto& attr_names = std::get<1>(pt_kernel_signature_->args);
@@ -1803,30 +1807,53 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto in_def = input_defs.at(i);
-    VLOG(2) << "in_def: " << in_def.backend << ", " << in_def.dtype << ", "
-            << in_def.layout;
-
-    auto ins_vector = ctx.inputs.at(input_names[i]);
-
-    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
-    for (auto var : ins_vector) {
-      tmp_inputs.emplace_back(
-          experimental::MakePtenTensorBaseFromVar(*var, in_def));
+    auto& in_def = input_defs.at(i);
+    auto& ins_vector = ctx.inputs.at(input_names[i]);
+    if (pt_kernel_context_->InputsSize() <= i) {
+      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
+      for (auto* var : ins_vector) {
+        tmp_inputs.emplace_back(
+            experimental::MakePtenTensorBaseFromVar(*var, in_def));
+      }
+      pt_kernel_context_->EmplaceBackInputs(std::move(tmp_inputs));
+    } else {
+      size_t input_size = pt_kernel_context_->InputsSize();
+      for (size_t j = 0; j < ins_vector.size(); ++j) {
+        if (input_size > i + j) {
+          experimental::ReMakePtenDenseTensorFromVar(
+              *ins_vector[j], in_def,
+              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(i + j));
+        }
+        // TODO(chenweihang): adapt multi-input case later
+      }
+      pt_kernel_context_->MutableInputRangeAt(i) =
+          std::make_pair(i, i + ins_vector.size());
     }
-    op_kernel_ctx.EmplaceBackInputs(std::move(tmp_inputs));
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto out_def = output_defs.at(i);
-    auto outs_vector = ctx.outputs.at(output_names[i]);
-
-    paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
-    for (auto var : outs_vector) {
-      tmp_outputs.emplace_back(
-          experimental::MakePtenTensorBaseFromVar(var, out_def));
+    auto& out_def = output_defs.at(i);
+    auto& outs_vector = ctx.outputs.at(output_names[i]);
+    if (pt_kernel_context_->OutputsSize() <= i) {
+      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
+      for (auto* var : outs_vector) {
+        tmp_outputs.emplace_back(
+            experimental::MakePtenTensorBaseFromVar(var, out_def));
+      }
+      pt_kernel_context_->EmplaceBackOutputs(std::move(tmp_outputs));
+    } else {
+      size_t output_size = pt_kernel_context_->OutputsSize();
+      for (size_t j = 0; j < outs_vector.size(); ++j) {
+        if (output_size > i + j) {
+          experimental::ReMakePtenDenseTensorFromVar(
+              outs_vector[j], out_def,
+              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(i + j));
+        }
+        // TODO(chenweihang): adapt multi-output case later
+      }
+      pt_kernel_context_->MutableOutputRangeAt(i) =
+          std::make_pair(i, i + outs_vector.size());
     }
-    op_kernel_ctx.EmplaceBackOutputs(std::move(tmp_outputs));
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
@@ -1836,11 +1863,11 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-        op_kernel_ctx.EmplaceBackAttr(
+        pt_kernel_context_->EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else if (std::type_index(attr.type()) ==
                  std::type_index(typeid(std::string))) {
-        op_kernel_ctx.EmplaceBackAttr(
+        pt_kernel_context_->EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -1851,11 +1878,11 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
     } else {
       // TODO(chenweihang): support other attrs later
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
-        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+        pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
-        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+        pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
-        op_kernel_ctx.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+        pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
@@ -1864,8 +1891,6 @@ pten::KernelContext OperatorWithKernel::BuildPtenKernelContext(
       }
     }
   }
-
-  return op_kernel_ctx;
 }
 
 }  // namespace framework

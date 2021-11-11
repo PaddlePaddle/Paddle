@@ -34,6 +34,7 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
+from .compiler import _prune_feed_ops
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -598,7 +599,9 @@ class _ExecutorCache(object):
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
         if program not in self._cached_executors:
-            new_exe = _StandaloneExecutor(self._place, program, scope)
+            new_program = program.clone()
+            _prune_feed_ops(new_program)
+            new_exe = _StandaloneExecutor(self._place, new_program, scope)
             self._cached_executors[program] = new_exe
 
         return self._cached_executors[program]
@@ -1317,9 +1320,13 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and not program._is_start_up_program_:
-            return self._executor_cache.run(program, scope, feed, fetch_list,
-                                            return_numpy)
+        if self._enable_interpreter_core:
+            inner_program_ = program._program if isinstance(
+                program, compiler.CompiledProgram) else program
+            assert isinstance(inner_program_, framework.Program)
+            if not inner_program_._is_start_up_program_:
+                return self._executor_cache.run(inner_program_, scope, feed,
+                                                fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1880,7 +1887,19 @@ class Executor(object):
                                        use_program_cache)
         from ..distributed.fleet.proto import fleet_executor_desc_pb2
         from google.protobuf import text_format
+        cur_rank = os.getenv("PADDLE_TRAINER_ID")
+        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+        if cur_rank and trainer_endpoints_str:
+            fleet_exe_desc.cur_rank = int(cur_rank)
+            trainer_endpoints = trainer_endpoints_str.split(',')
+            for rank, endpoint in enumerate(trainer_endpoints):
+                rank_info = fleet_executor_desc_pb2.RankInfo()
+                rank_info.rank = rank
+                rank_info.ip_port = endpoint
+                fleet_exe_desc.cluster_info.append(rank_info)
+        else:
+            logging.warning("Fleet Executor will run on single device only.")
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         fleet_exe.init(program._pipeline_opt["section_program"].desc)
         fleet_exe.run()
