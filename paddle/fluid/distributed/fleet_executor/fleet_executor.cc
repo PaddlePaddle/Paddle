@@ -46,6 +46,7 @@ void FleetExecutor::InitMessageBus() {
     int64_t rank = rank_info.rank();
     std::string ip_port = rank_info.ip_port();
     ss << rank << "\t->\t" << ip_port << "\n";
+    // TODO(Yuang): replace the first rank with real interceptor id
     interceptor_id_to_rank.insert(std::make_pair(rank, rank));
     rank_to_addr.insert(std::make_pair(rank, ip_port));
     if (rank == cur_rank) {
