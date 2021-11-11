@@ -49,8 +49,10 @@ void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
     }
   }
   PADDLE_ENFORCE_NE(
-      addr, "", platform::errors::NotFound(
-                    "Current rank's ip_port cannot be found in the config."));
+      addr, "",
+      platform::errors::NotFound(
+          "Current rank is %s, which ip_port cannot be found in the config.",
+          cur_rank));
   VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is " << addr
           << ".";
   VLOG(3) << "The number of ranks are " << interceptor_id_to_rank.size() << ".";
