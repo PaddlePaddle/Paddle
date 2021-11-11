@@ -28,6 +28,7 @@ def fully_connected_naive(input, weights, bias_data):
 
     return result
 
+
 @OpTestTool.skip_if_not_cpu()
 class TestFCOneDNNKernel2DNoBias(OpTest):
     def init_shape(self):
