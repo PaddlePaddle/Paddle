@@ -42,6 +42,8 @@ void MessageBus::Init(
   });
 }
 
+bool MessageBus::IsInit() { return is_init_; }
+
 void MessageBus::Release() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)

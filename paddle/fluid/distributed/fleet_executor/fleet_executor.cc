@@ -37,7 +37,7 @@ void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
 
 void FleetExecutor::InitMessageBus() {
   std::stringstream ss;
-  ss << "The DNS table of the message bus is: \n";
+  ss << "\nThe DNS table of the message bus is: \n";
   int64_t cur_rank = exe_desc_.cur_rank();
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank;
   std::unordered_map<int64_t, std::string> rank_to_addr;
@@ -45,7 +45,7 @@ void FleetExecutor::InitMessageBus() {
   for (const auto& rank_info : exe_desc_.cluster_info()) {
     int64_t rank = rank_info.rank();
     std::string ip_port = rank_info.ip_port();
-    ss << rank << ":\t" << ip_port << "\n";
+    ss << rank << "\t->\t" << ip_port << "\n";
     interceptor_id_to_rank.insert(std::make_pair(rank, rank));
     rank_to_addr.insert(std::make_pair(rank, ip_port));
     if (rank == cur_rank) {
@@ -62,7 +62,9 @@ void FleetExecutor::InitMessageBus() {
   VLOG(3) << "The number of ranks are " << interceptor_id_to_rank.size() << ".";
   VLOG(5) << ss.str();
   MessageBus& message_bus_instance = MessageBus::Instance();
-  message_bus_instance.Init(interceptor_id_to_rank, rank_to_addr, addr);
+  if (!message_bus_instance.IsInit()) {
+    message_bus_instance.Init(interceptor_id_to_rank, rank_to_addr, addr);
+  }
 }
 
 void FleetExecutor::Run() {
