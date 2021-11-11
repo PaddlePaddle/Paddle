@@ -1,6 +1,6 @@
 set(INTERPRETERCORE_DEPS op_registry device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog 
 lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
-graph_to_program_pass variable_helper timer monitor)
+graph_to_program_pass variable_helper timer monitor nan_inf_utils)
 
 cc_library(workqueue SRCS workqueue.cc workqueue_utils.cc DEPS enforce)
 cc_library(interpretercore_garbage_collector SRCS interpretercore_garbage_collector.cc DEPS workqueue ${DEVICE_EVENT_LIBS})

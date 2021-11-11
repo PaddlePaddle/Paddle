@@ -89,6 +89,8 @@ class XPUOpTest(OpTest):
         if self.dtype == np.float16:
             if core.is_float16_supported(place) == False:
                 return
+        if self.dtype == np.float16:
+            atol = 0.1
         return super().check_output_with_place(
             place, atol, no_check_set, equal_nan, check_dygraph, inplace_atol)
 
@@ -115,6 +117,7 @@ class XPUOpTest(OpTest):
                 return
 
         if self.dtype == np.float16:
+            max_relative_error = 1.0
             return super().check_grad_with_place(
                 place, inputs_to_check, output_names, no_grad_set,
                 numeric_grad_delta, in_place, max_relative_error,

@@ -24,13 +24,12 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 import paddle.fluid.core as core
 
 paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
-ROOT_MESH = auto.ProcessMesh([0, 1])
 
 
 class MLPLayer(nn.Layer):
@@ -78,8 +77,12 @@ def mlp_pretrain_forward(train_program, start_program):
         label = static.data(
             name="label", shape=[batch_size, sequence_len, 1], dtype='float32')
 
-        auto.shard_tensor(input, _global_process_mesh, dim_mapping=[-1, -1, -1])
-        auto.set_pipeline_stage(1)
+        auto.shard_tensor(
+            input,
+            dist_attr={
+                "process_mesh": _global_process_mesh,
+                "dims_mappig": [-1, -1, -1]
+            })
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -99,7 +102,7 @@ class TestMLPAutoParallelizer(unittest.TestCase):
     def test_mlp_serial(self):
 
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
 
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.amp = False
@@ -131,7 +134,7 @@ class TestMLPAutoParallelizer(unittest.TestCase):
             for op in block.ops:
                 for attr_name in op.attr_names:
                     self.assertTrue(suffix not in attr_name)
-        # print_program_with_distributed_attr(distributed_main_program)
+        # print_program_with_dist_attr(distributed_main_program)
         self.assertIsNotNone(distributed_startup_program)
         self.assertIsNotNone(distributed_main_program)
 

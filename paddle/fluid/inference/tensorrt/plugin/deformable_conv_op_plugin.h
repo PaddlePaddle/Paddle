@@ -91,8 +91,8 @@ class DeformableConvPlugin : public nvinfer1::IPluginV2Ext {
 
  private:
   template <typename T>
-  int enqueue_impl(int batch_size, const void* const* inputs, void** outputs,
-                   void* workspace, cudaStream_t stream);
+  int enqueue_impl(int batch_size, const void* const* inputs,
+                   void* const* outputs, void* workspace, cudaStream_t stream);
   nvinfer1::Weights copyToDevice(const void* hostData, size_t count);
   void serializeFromDevice(void** hostBuffer,
                            const nvinfer1::Weights& deviceWeights) const;
@@ -119,7 +119,7 @@ class DeformableConvPlugin : public nvinfer1::IPluginV2Ext {
 
 class DeformableConvPluginCreator : public nvinfer1::IPluginCreator {
  public:
-  DeformableConvPluginCreator();
+  DeformableConvPluginCreator() = default;
   ~DeformableConvPluginCreator() override = default;
 
   void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override;

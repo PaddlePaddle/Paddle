@@ -17,17 +17,45 @@ import unittest
 import abc
 import os
 import enum
+import time
 import logging
+import shutil
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import NumpyArrayInitializer
+from paddle.fluid.core import PassVersionChecker
 import paddle.fluid.core as core
 from paddle import compat as cpt
 import paddle.inference as paddle_infer
 from typing import Optional, List, Callable, Dict, Any, Set
 from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
 
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+
 logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+settings.register_profile(
+    "ci",
+    max_examples=100,
+    suppress_health_check=hypothesis.HealthCheck.all(),
+    deadline=None,
+    print_blob=True,
+    derandomize=True,
+    report_multiple_bugs=False)
+settings.register_profile(
+    "dev",
+    max_examples=1000,
+    suppress_health_check=hypothesis.HealthCheck.all(),
+    deadline=None,
+    print_blob=True,
+    derandomize=True,
+    report_multiple_bugs=False)
+if float(os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')) < 1 or \
+    os.getenv('HYPOTHESIS_TEST_PROFILE', 'dev') == 'ci':
+    settings.load_profile("ci")
+else:
+    settings.load_profile("dev")
 
 
 class SkipReasons(enum.Enum):
@@ -35,17 +63,24 @@ class SkipReasons(enum.Enum):
     TRT_NOT_IMPLEMENTED = 0
     # TRT not support.
     TRT_NOT_SUPPORT = 1
+    # Accuracy is abnormal after enabling pass.
+    PASS_ACCURACY_ERROR = 2
+    # Accuracy is abnormal after enabling mkldnn.
+    MKLDNN_ACCURACY_ERROR = 3
 
 
 class AutoScanTest(unittest.TestCase):
-    def __init__(self, methodName='runTest'):
+    def __init__(self, *args, **kwargs):
         np.random.seed(1024)
         paddle.enable_static()
-        super(AutoScanTest, self).__init__(methodName)
+        super(AutoScanTest, self).__init__(*args, **kwargs)
         self.skip_cases = []
+        abs_dir = os.path.abspath(os.path.dirname(__file__))
+        self.cache_dir = os.path.join(abs_dir,
+                                      str(self.__module__) + '_cache_dir')
 
     @abc.abstractmethod
-    def sample_program_configs(self) -> List[ProgramConfig]:
+    def sample_program_configs(self):
         '''
         Generate all config with the combination of different Input tensor shape and
         different Attr values.
@@ -53,7 +88,7 @@ class AutoScanTest(unittest.TestCase):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def sample_predictor_configs(self) -> List[paddle_infer.Config]:
+    def sample_predictor_configs(self):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -88,21 +123,488 @@ class AutoScanTest(unittest.TestCase):
             result[out_name] = predictor.get_output_handle(o_name).copy_to_cpu()
         return result
 
+    @abc.abstractmethod
     def assert_tensors_near(self,
-                            threshold: float,
-                            tensors: List[Dict[str, np.array]]):
-        assert len(tensors) > 1
-        first = tensors[0]
-        for group in tensors[1:]:
-            for key, arr in group.items():
-                self.assertTrue(
-                    first[key].shape == arr.shape,
-                    "The output shape of GPU and TensorRT are not equal.")
-                self.assertTrue(
-                    np.allclose(
-                        first[key], arr, atol=threshold),
-                    "Output has diff between GPU and TensorRT. ")
+                            atol: float,
+                            rtol: float,
+                            tensor: Dict[str, np.array],
+                            baseline: Dict[str, np.array]):
+        for key, arr in tensor.items():
+            self.assertTrue(
+                baseline[key].shape == arr.shape,
+                "The output shapes are not equal, the baseline shape is " +
+                str(baseline[key].shape) + ', but got ' + str(arr.shape))
+            self.assertTrue(
+                np.allclose(
+                    baseline[key], arr, atol=atol, rtol=rtol),
+                "Output has diff. ")
 
     @abc.abstractmethod
     def run_test(self, quant=False):
         raise NotImplementedError
+
+    def generate_op_config(self,
+                           ops_config: List[Dict[str, Any]]) -> List[OpConfig]:
+        ops = []
+        for i in range(len(ops_config)):
+            op_config = ops_config[i]
+            ops.append(
+                OpConfig(
+                    type=op_config['op_type'],
+                    inputs=op_config['op_inputs'],
+                    outputs=op_config['op_outputs'],
+                    attrs=op_config['op_attrs']))
+        return ops
+
+    @abc.abstractmethod
+    def skip_log(self, msg: str):
+        logging.warning("SKIP: " + msg)
+
+    @abc.abstractmethod
+    def fail_log(self, msg: str):
+        logging.error("FAILE: " + msg)
+
+    @abc.abstractmethod
+    def success_log(self, msg: str):
+        logging.info("SUCCESS: " + msg)
+
+    @abc.abstractmethod
+    def create_inference_config(self,
+                                passes: Optional[List[str]]=None,
+                                use_gpu: bool=False,
+                                use_mkldnn: bool=False,
+                                ir_optim: Optional[bool]=None):
+        config = paddle_infer.Config()
+        config.switch_ir_debug(True)
+        config.set_optim_cache_dir(self.cache_dir)
+        config.disable_glog_info()
+        if ir_optim is not None:
+            config.switch_ir_optim(ir_optim)
+        if use_gpu:
+            config.enable_use_gpu(100, 0)
+        if use_mkldnn:
+            config.enable_mkldnn()
+        if passes is not None:
+            config.pass_builder().set_passes(passes)
+            self.passes = passes
+        return config
+
+
+class MkldnnAutoScanTest(AutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super(MkldnnAutoScanTest, self).__init__(*args, **kwargs)
+
+    def run_test(self, quant=False, *args, **kwargs):
+        status = True
+
+        for prog_config in self.sample_program_configs(*args, **kwargs):
+            # if program is invalid, we should skip that cases.
+            if not self.is_program_valid(prog_config):
+                continue
+
+            model, params = create_fake_model(prog_config)
+            if quant:
+                model, params = create_quant_model(model, params)
+
+            feed_data = {}
+            for name, tensor_config in prog_config.inputs.items():
+                feed_data[name] = {
+                    'data': tensor_config.data,
+                    'lod': tensor_config.lod
+                }
+            results: List[Dict[str, np.ndarray]] = []
+
+            # baseline: cpu no ir_optim run
+            base_config = self.create_inference_config(ir_optim=False)
+            logging.info('RUN program_config: ' + str(prog_config))
+            results.append(
+                self.run_test_config(model, params, prog_config, base_config,
+                                     feed_data))
+            self.success_log('RUN_CPU_BASELINE done')
+
+            for pred_config, (
+                    atol, rtol) in self.sample_predictor_configs(prog_config):
+                # skip info
+                skip_flag = False
+                for skip_info in self.skip_cases:
+                    if skip_info[0](prog_config, pred_config):
+                        skip_flag = True
+                        if skip_info[1] == SkipReasons.MKLDNN_ACCURACY_ERROR:
+                            self.skip_log("[MKLDNN_ACCURACY_ERROR] " +
+                                          skip_info[2] + ' ' + ' vs ' + self.
+                                          inference_config_str(pred_config))
+                        else:
+                            raise NotImplementedError
+                        break
+
+                if os.path.exists(self.cache_dir):
+                    shutil.rmtree(self.cache_dir)
+                if not os.path.exists(self.cache_dir):
+                    os.mkdir(self.cache_dir)
+
+                try:
+                    results.append(
+                        self.run_test_config(model, params, prog_config,
+                                             pred_config, feed_data))
+                    self.assert_tensors_near(atol, rtol, results[-1],
+                                             results[0])
+                except Exception as e:
+                    self.fail_log(
+                        self.inference_config_str(pred_config) +
+                        '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
+                    if not skip_flag:
+                        status = False
+                    continue
+                self.success_log('RUN predictor_config ' + self.
+                                 inference_config_str(pred_config) + ' done')
+
+        self.assertTrue(status)
+
+    def inference_config_str(self, config) -> str:
+        dic = {}
+        enable_mkldnn = config.mkldnn_enabled()
+        dic['use_mkldnn'] = enable_mkldnn
+        enable_gpu = config.use_gpu()
+        dic['use_gpu'] = enable_gpu
+        return str(dic)
+
+
+class PassAutoScanTest(AutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super(PassAutoScanTest, self).__init__(*args, **kwargs)
+        self.passes = []
+
+    def check_op_version(self):
+        status = True
+        for pass_name in self.passes:
+            if not PassVersionChecker.IsCompatible(pass_name):
+                self.fail_log('{} version check failed.'.format(pass_name))
+                status = False
+        return status
+
+    def assert_op_size(self, fusion_before_num, fusion_after_num, origin_model):
+        if not self.passes:
+            raise ValueError(
+                'In PassAutoScan you should give a valid pass name.')
+        last_passed_program = os.path.join(self.cache_dir,
+                                           self.passes[-1] + '.pdmodel')
+        model_bytes = paddle.static.load_from_file(last_passed_program)
+        pg = paddle.static.deserialize_program(model_bytes)
+        main_block = pg.desc.block(0)
+        after_op_size = main_block.op_size()
+        pg = paddle.static.deserialize_program(origin_model)
+        main_block = pg.desc.block(0)
+        before_op_size = main_block.op_size()
+        self.assertTrue(before_op_size == fusion_before_num,
+                        'before fusion op size is {}, but got {}!'.format(
+                            before_op_size, fusion_before_num))
+        self.assertTrue(after_op_size == fusion_after_num,
+                        'after fusion op size is {}, but got {}!'.format(
+                            after_op_size, fusion_after_num))
+
+    def run_test(self, quant=False, *args, **kwargs):
+        status = True
+
+        for prog_config in self.sample_program_configs(*args, **kwargs):
+            # if program is invalid, we should skip that cases.
+            if not self.is_program_valid(prog_config):
+                continue
+
+            model, params = create_fake_model(prog_config)
+            if quant:
+                model, params = create_quant_model(model, params)
+
+            feed_data = {}
+            for name, tensor_config in prog_config.inputs.items():
+                feed_data[name] = {
+                    'data': tensor_config.data,
+                    'lod': tensor_config.lod
+                }
+            results: List[Dict[str, np.ndarray]] = []
+
+            # baseline: cpu no ir_optim run
+            base_config = self.create_inference_config(ir_optim=False)
+            logging.info('RUN program_config: ' + str(prog_config))
+            results.append(
+                self.run_test_config(model, params, prog_config, base_config,
+                                     feed_data))
+            self.success_log('RUN_CPU_BASELINE done')
+
+            for pred_config, nodes_num, (
+                    atol, rtol) in self.sample_predictor_configs(prog_config):
+                # skip info
+                skip_flag = False
+                for skip_info in self.skip_cases:
+                    if skip_info[0](prog_config, pred_config):
+                        skip_flag = True
+                        if skip_info[1] == SkipReasons.PASS_ACCURACY_ERROR:
+                            self.skip_log("[PASS_ACCURACY_ERROR] " + skip_info[
+                                2] + ' ' + ' vs ' + self.inference_config_str(
+                                    pred_config))
+                        else:
+                            raise NotImplementedError
+                        break
+
+                if os.path.exists(self.cache_dir):
+                    shutil.rmtree(self.cache_dir)
+                if not os.path.exists(self.cache_dir):
+                    os.mkdir(self.cache_dir)
+
+                try:
+                    results.append(
+                        self.run_test_config(model, params, prog_config,
+                                             pred_config, feed_data))
+                    self.assert_tensors_near(atol, rtol, results[-1],
+                                             results[0])
+                    if not skip_flag:
+                        self.assert_op_size(nodes_num[0], nodes_num[1], model)
+
+                except Exception as e:
+                    self.fail_log(
+                        self.inference_config_str(pred_config) +
+                        '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
+                    if not skip_flag:
+                        status = False
+                    continue
+                self.success_log('RUN predictor_config ' + self.
+                                 inference_config_str(pred_config) + ' done')
+
+        status = self.check_op_version() and status
+        self.assertTrue(status)
+
+    def inference_config_str(self, config) -> str:
+        dic = {}
+        enable_mkldnn = config.mkldnn_enabled()
+        dic['use_mkldnn'] = enable_mkldnn
+        enable_gpu = config.use_gpu()
+        dic['use_gpu'] = enable_gpu
+        if not self.passes:
+            dic['passes'] = self.passes
+
+        enable_trt = config.tensorrt_engine_enabled()
+        trt_precison = config.tensorrt_precision_mode()
+        trt_dynamic_shape = config.tensorrt_dynamic_shape_enabled()
+        if enable_trt:
+            dic['use_trt'] = True
+            dic['trt_precision'] = trt_precison
+            dic['use_dynamic_shape'] = trt_dynamic_shape
+        else:
+            dic['use_trt'] = False
+        return str(dic)
+
+    def create_trt_inference_config(self) -> paddle_infer.Config:
+        config = paddle_infer.Config()
+        config.disable_glog_info()
+        config.enable_use_gpu(100, 0)
+        config.set_optim_cache_dir(self.cache_dir)
+        config.switch_ir_debug()
+        # for assert_op_size.
+        self.passes = ['transpose_flatten_concat_fuse_pass']
+        return config
+
+
+class TrtLayerAutoScanTest(AutoScanTest):
+    class TensorRTParam:
+        '''
+        TensorRT subgraph engine parameters. 
+        '''
+
+        def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
+                     precision, use_static, use_calib_mode):
+            self.workspace_size = workspace_size
+            self.max_batch_size = max_batch_size
+            self.min_subgraph_size = min_subgraph_size
+            self.precision = precision
+            self.use_static = use_static
+            self.use_calib_mode = use_calib_mode
+
+    class DynamicShapeParam:
+        '''
+         Prepare TensorRT subgraph engine dynamic shape parameters. 
+         '''
+
+        def __init__(self, min_input_shape, max_input_shape, opt_input_shape,
+                     disable_trt_plugin_fp16):
+            self.min_input_shape = min_input_shape
+            self.max_input_shape = max_input_shape
+            self.opt_input_shape = opt_input_shape
+            self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
+
+    def __init__(self, *args, **kwargs):
+        super(TrtLayerAutoScanTest, self).__init__(*args, **kwargs)
+        self.trt_param = self.TensorRTParam(
+            workspace_size=1024,
+            max_batch_size=4,
+            min_subgraph_size=0,
+            precision=paddle_infer.PrecisionType.Float32,
+            use_static=True,
+            use_calib_mode=False)
+        self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
+        self.num_percent_cases = float(
+            os.getenv(
+                'TEST_NUM_PERCENT_CASES', default='1.0'))
+        # Choose different tests by week
+        np.random.seed(int(time.strftime("%W")))
+
+    def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
+        config = paddle_infer.Config()
+        config.disable_glog_info()
+        config.enable_use_gpu(100, 0)
+        config.set_optim_cache_dir(self.cache_dir)
+        if use_trt:
+            config.switch_ir_debug()
+            config.enable_tensorrt_engine(
+                max_batch_size=self.trt_param.max_batch_size,
+                workspace_size=self.trt_param.workspace_size,
+                min_subgraph_size=self.trt_param.min_subgraph_size,
+                precision_mode=self.trt_param.precision,
+                use_static=self.trt_param.use_static,
+                use_calib_mode=self.trt_param.use_calib_mode)
+            if len(self.dynamic_shape.min_input_shape
+                   ) != 0 and self.dynamic_shape.min_input_shape.keys(
+                   ) == self.dynamic_shape.max_input_shape.keys(
+                   ) and self.dynamic_shape.min_input_shape.keys(
+                   ) == self.dynamic_shape.opt_input_shape.keys():
+                config.set_trt_dynamic_shape_info(
+                    self.dynamic_shape.min_input_shape,
+                    self.dynamic_shape.max_input_shape,
+                    self.dynamic_shape.opt_input_shape,
+                    self.dynamic_shape.disable_trt_plugin_fp16)
+        return config
+
+    def assert_op_size(self, trt_engine_num, paddle_op_num):
+        last_passed_program = os.path.join(
+            self.cache_dir, 'transpose_flatten_concat_fuse_pass.pdmodel')
+        model_bytes = paddle.static.load_from_file(last_passed_program)
+        pg = paddle.static.deserialize_program(model_bytes)
+        main_block = pg.desc.block(0)
+        op_size = main_block.op_size()
+        op_types = [
+            main_block.op(i).type() == 'tensorrt_engine' for i in range(op_size)
+        ]
+        trt_engine_size = sum(op_types)
+        paddle_op_size = op_size - trt_engine_size
+        self.assertTrue(trt_engine_size == trt_engine_num,
+                        'trt_engine_num is {}, but got {}!'.format(
+                            trt_engine_size, trt_engine_num))
+        self.assertTrue(paddle_op_size == paddle_op_num,
+                        'paddle_op_num is {}, but got {}!'.format(
+                            paddle_op_size, paddle_op_num))
+
+    def inference_config_str(self, config: paddle_infer.Config) -> str:
+        dic = {}
+        enable_trt = config.tensorrt_engine_enabled()
+        trt_precison = config.tensorrt_precision_mode()
+        trt_dynamic_shape = config.tensorrt_dynamic_shape_enabled()
+        if enable_trt:
+            dic['use_trt'] = True
+            dic['trt_precision'] = trt_precison
+            dic['use_dynamic_shape'] = trt_dynamic_shape
+        else:
+            dic['use_trt'] = False
+        return str(dic)
+
+    def run_test(self, quant=False, *args, **kwargs):
+        status = True
+        run_flags = []
+        for prog_config in self.sample_program_configs(*args, **kwargs):
+            # In CI, only run 10% cases
+            if np.random.rand() < self.num_percent_cases:
+                run_flags.append(True)
+            else:
+                run_flags.append(False)
+
+        for prog_config, run_flags in zip(
+                self.sample_program_configs(*args, **kwargs), run_flags):
+            if not run_flags:
+                continue
+
+            # if program is invalid, we should skip that cases.
+            if not self.is_program_valid(prog_config):
+                continue
+
+            model, params = create_fake_model(prog_config)
+            if quant:
+                model, params = create_quant_model(model, params)
+
+            feed_data = {}
+            for name, tensor_config in prog_config.inputs.items():
+                feed_data[name] = {
+                    'data': tensor_config.data,
+                    'lod': tensor_config.lod
+                }
+
+            results: List[Dict[str, np.ndarray]] = []
+
+            # baseline: gpu run
+            logging.info('RUN program_config: ' + str(prog_config))
+            gpu_config = self.create_inference_config(use_trt=False)
+            results.append(
+                self.run_test_config(model, params, prog_config, gpu_config,
+                                     feed_data))
+            self.success_log('RUN_GPU_BASELINE done')
+
+            for pred_config, nodes_num, threshold in self.sample_predictor_configs(
+                    prog_config):
+
+                if os.path.exists(self.cache_dir):
+                    shutil.rmtree(self.cache_dir)
+
+                if isinstance(threshold, float):
+                    atol = threshold
+                    rtol = 1e-8
+                elif isinstance(threshold, list) or isinstance(threshold,
+                                                               tuple):
+                    atol = threshold[0]
+                    rtol = threshold[1]
+                else:
+                    raise NotImplementedError
+
+                if quant and pred_config.tensorrt_precision_mode(
+                ) != paddle_infer.PrecisionType.Int8:
+                    continue
+                if pred_config.tensorrt_precision_mode(
+                ) == paddle_infer.PrecisionType.Int8 and not quant:
+                    continue
+
+                skip_flag = False
+                for skip_info in self.skip_cases:
+                    if skip_info[0](prog_config, pred_config):
+                        skip_flag = True
+                        if skip_info[1] == SkipReasons.TRT_NOT_IMPLEMENTED:
+                            self.skip_log("[TRT_NOT_IMPLEMENTED] " + skip_info[
+                                2] + ' ' + ' vs ' + self.inference_config_str(
+                                    pred_config))
+                        elif skip_info[1] == SkipReasons.TRT_NOT_SUPPORT:
+                            self.skip_log("[TRT_NOT_SUPPORT] " + skip_info[
+                                2] + ' ' + ' vs ' + self.inference_config_str(
+                                    pred_config))
+                        else:
+                            raise NotImplementedError
+                        break
+
+                try:
+                    pred_config_deserialize = paddle_infer.Config(pred_config)
+                    results.append(
+                        self.run_test_config(model, params, prog_config,
+                                             pred_config, feed_data))
+                    self.assert_tensors_near(atol, rtol, results[-1],
+                                             results[0])
+                    if not skip_flag:
+                        self.assert_op_size(nodes_num[0], nodes_num[1])
+                    # deserialize test
+                    if nodes_num[0] > 0:
+                        self.run_test_config(model, params, prog_config,
+                                             pred_config_deserialize, feed_data)
+                except Exception as e:
+                    self.fail_log(
+                        str(prog_config) + ' vs ' + self.inference_config_str(
+                            pred_config) +
+                        '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
+                    if not skip_flag:
+                        status = False
+                    continue
+                self.success_log('RUN predictor_config ' + self.
+                                 inference_config_str(pred_config) + ' done')
+
+        self.assertTrue(status)

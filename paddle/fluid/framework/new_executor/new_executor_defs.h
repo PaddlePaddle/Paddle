@@ -471,59 +471,116 @@ struct VariableMetaInfo {
   paddle::framework::VarDesc* vardesc_;
 };
 
-// TODO(Aurelius84): Consider inherit ScopeBase to unify interface.
-class VariableScope {
+// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
+
+// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
+// ScopeBase. Scope manager the variables and VariableScope is just a quick
+// access machanism. ScopeListener is the callback to sync changes in Original
+// Scope. We can make it a membership of VariableScope. Here we use inherent.
+class VariableScope : public ScopeBase, public ScopeListener {
  public:
-  Variable* FindVar(const std::string& name) const {
-    if (!HasVar(name)) {
-      return nullptr;
-    }
-    auto var_id = VarId(name);
-    CheckExist(var_id);
-    return var_list[var_id];
-  }
-
-  bool HasVar(const std::string& name) const {
-    return name2id.find(name) != name2id.end();
-  }
-
-  int VarId(const std::string& name) const {
-    CheckExist(name);
-    return name2id.at(name);
-  }
-
-  Variable* Var(int id) const { return var_list.at(id); }
-
-  Variable* Var(const std::string& name) const {
-    return var_list.at(VarId(name));
-  }
-
-  size_t VarSize() const { return var_list.size(); }
-
-  void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
-    name2id[name] = VarSize();
-    auto v = new Variable();
-    if (nullptr == var_desc) {
-      v->GetMutable<LoDTensor>();
-    } else {
-      InitializeVariable(v, var_desc->GetType());
-    }
-    var_list.push_back(v);
-
-    VariableMetaInfo info;
-    info.var_ref_count_ = 0;
-    info.vardesc_ = var_desc;
-    vec_meta_info_.push_back(info);
-  }
-
-  void AddVar(const std::string& name, Variable& var) {  // NOLINT
-    name2id[name] = VarSize();
-    var_list.push_back(&var);
-
+  VariableScope(Scope* outer_scope) {
+    // for @EMPTY@ variable
+    var_list_.push_back(nullptr);
+    name2id_[kEmptyVarName] = 0;
     VariableMetaInfo info;
     info.var_ref_count_ = 0;
     info.vardesc_ = nullptr;
     vec_meta_info_.push_back(info);
+    outer_scope_ = outer_scope;
+
+    PADDLE_ENFORCE_NE(
+        outer_scope_, nullptr,
+        platform::errors::PreconditionNotMet(
+            "You have passed a nullptr to construct VariableScope."));
+    outer_scope->AddListener(this);
+  }
+
+  ~VariableScope() {
+    if (outer_scope_ != nullptr) outer_scope_->DelListener(this);
+  }
+
+  const Scope* GetScope() const { return outer_scope_; }
+
+  Variable* FindVar(const std::string& name) const {
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      PADDLE_ENFORCE_LT(it->second, var_list_.size(),
+                        platform::errors::NotFound(
+                            "The id(%d) of variable(%s) should not be larger "
+                            "than the size of variable list(%d).",
+                            it->second, name, var_list_.size()));
+      return var_list_[it->second];
+    }
+    return nullptr;
+  }
+
+  // Get variable id by name, return -1 if not found
+  int GetIdByName(const std::string& name) const {
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      return it->second;
+    }
+    return -1;
+  }
+
+  // Get variable name by id, return "" if not found
+  std::string GetNameById(int id) const {
+    // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
+    // vec_meta_info_[id] may be nullptr,
+    // typically when the target variable is not existed in the original program
+    // desc, but created by interpretercore.
+    // For example, created and used by d2h_copy or h2d_copy operator.
+    auto it =
+        std::find_if(name2id_.begin(), name2id_.end(),
+                     [id](const auto& pair) { return pair.second == id; });
+    if (it != name2id_.end()) {
+      return it->first;
+    }
+    return "";
+  }
+
+  bool HasVar(const std::string& name) const {
+    return name2id_.find(name) != name2id_.end();
+  }
+
+  int VarId(const std::string& name) const {
+    CheckExist(name);
+    return name2id_.at(name);
+  }
+
+  Variable* Var(int id) const { return var_list_.at(id); }
+
+  Variable* Var(const std::string& name) const {
+    return var_list_.at(VarId(name));
+  }
+
+  size_t VarSize() const { return var_list_.size(); }
+
+  void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
+    // AddVar -> Scope::Var -> onCreateVariable.
+    VLOG(4) << "Add variable: " << name << " through AddVar()";
+    auto v = outer_scope_->Var(name);
+    if (nullptr == var_desc) {
+      v->GetMutable<LoDTensor>();
+    } else {
+      InitializeVariable(
+          v,
+          var_desc
+              ->GetType());  // Scope don't initialize variable recently created
+    }
+    SetVarDesc(name, var_desc);
+  }
+
+  void AddVar(const std::string& name, Variable& var) {  // NOLINT
+    // Though name existed in outer_scope_, we need
+    // add again to create name2id map.
+    outer_scope_->Var(name);
+  }
+
+  void SetVarDesc(const std::string& name, framework::VarDesc* var_desc) {
+    CheckExist(name);
+    vec_meta_info_[VarId(name)].vardesc_ = var_desc;
   }
 
   paddle::framework::VarDesc* VarDesc(const std::string& name) const {
@@ -535,15 +592,11 @@ class VariableScope {
     return vec_meta_info_[id].vardesc_;
   }
 
-  VariableMetaInfo& VarMetaInfo(const std::string& name) {
-    return vec_meta_info_[VarId(name)];
-  }
-
   void CheckExist(int id) const {
-    PADDLE_ENFORCE_LT(id, var_list.size(),
+    PADDLE_ENFORCE_LT(id, var_list_.size(),
                       platform::errors::PreconditionNotMet(
                           "Required var_id < %d, but received var_id = %d.",
-                          var_list.size(), id));
+                          var_list_.size(), id));
   }
 
   void CheckExist(const std::string& name) const {
@@ -552,10 +605,43 @@ class VariableScope {
         platform::errors::NotFound("%s not in VariableScope.", name));
   }
 
+ public:  // callbacks from ScopeListener class
+  void onCreateVariable(const std::string& name) override {
+    auto v = outer_scope_->GetVar(name);  // must exsit in outer_scope_
+    if (!HasVar(name)) {                  // may exist in variable scope.
+      VLOG(4) << "Calling VariableScope::onCreateVariable with var_name: "
+              << name;
+      name2id_[name] = VarSize();
+      var_list_.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = nullptr;  // set nullptr, then modifty it in AddVar()
+      vec_meta_info_.push_back(info);
+    }
+  }
+  void onDeleteVariable(const std::string& name) override {
+    if (HasVar(name)) {
+      VLOG(4) << "Calling VariableScope::onDeleteVariable with var_name: "
+              << name;
+    }
+  }
+  void onRenameVariable(const std::string& old_name,
+                        const std::string& new_name) override {}
+  void onCreateScope(Scope* Scope) override {}
+  void onDeleteScope(Scope* Scope) override {}
+  void onClear() override {}
+  std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
+
+  const std::vector<VariableMetaInfo>& VecMetaInfo() const {
+    return vec_meta_info_;
+  }
+
  private:
-  std::vector<Variable*> var_list;
-  std::map<std::string, int> name2id;
+  std::vector<Variable*> var_list_;
+  std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+  Scope* outer_scope_ = nullptr;
 };
 
 class NextInstruction {
@@ -720,7 +806,7 @@ class Instruction {
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
-namespace interpretercore {
+namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 
@@ -731,7 +817,7 @@ static bool IsMemcpyH2D(const Instruction& instr) {
 static bool IsMemcpyD2H(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyD2H;
 }
-}  // namespace interpretercore
+}  // namespace interpreter
 
 }  // namespace framework
 }  // namespace paddle

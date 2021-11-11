@@ -360,7 +360,7 @@ void gemm_impl<half>(cublasHandle_t handle, cublasOperation_t transa,
 template <typename T>
 int DeformableConvPlugin::enqueue_impl(int batch_size,
                                        const void* const* inputs,
-                                       void** outputs, void* workspace,
+                                       void* const* outputs, void* workspace,
                                        cudaStream_t stream) {
   const T* input = reinterpret_cast<const T*>(inputs[0]);
   const T* offset = reinterpret_cast<const T*>(inputs[1]);
@@ -526,8 +526,6 @@ nvinfer1::IPluginV2Ext* DeformableConvPlugin::clone() const TRT_NOEXCEPT {
                                   deformable_groups_, im2col_step_, input_dim_,
                                   offset_dim_, mask_dim_, output_dim_);
 }
-
-DeformableConvPluginCreator::DeformableConvPluginCreator() TRT_NOEXCEPT {}
 
 void DeformableConvPluginCreator::setPluginNamespace(const char* lib_namespace)
     TRT_NOEXCEPT {

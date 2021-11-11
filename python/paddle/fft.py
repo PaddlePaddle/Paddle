@@ -1345,7 +1345,7 @@ def ifftshift(x, axes=None, name=None):
         # shift all axes
         rank = len(x.shape)
         axes = list(range(0, rank))
-        shifts = shape // 2
+        shifts = -shape // 2
     elif isinstance(axes, int):
         shifts = -shape[axes] // 2
     else:

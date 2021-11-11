@@ -249,6 +249,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_relu6_mkldnn_fuse_pass",                //
              "conv_swish_mkldnn_fuse_pass",                //
              "conv_hard_swish_mkldnn_fuse_pass",           //
+             "conv_hard_sigmoid_mkldnn_fuse_pass",         //
              "scale_matmul_fuse_pass",                     //
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_fuse_pass",         //
@@ -256,7 +257,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              // Disabled due to topology-dependent speed-up
              // "fc_mkldnn_pass",
              // "fc_act_mkldnn_fuse_pass",
-             "batch_norm_act_fuse_pass",
+             "batch_norm_act_fuse_pass",              //
+             "softplus_activation_mkldnn_fuse_pass",  //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
