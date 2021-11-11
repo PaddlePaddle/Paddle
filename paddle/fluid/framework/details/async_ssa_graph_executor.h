@@ -30,7 +30,6 @@ struct VarInfo {
   std::string name_;
   proto::VarType::Type type_;
   bool persistable_;
-  proto::VarType::Type data_type_;
 };
 
 class AsyncSSAGraphExecutor : public SSAGraphExecutor {

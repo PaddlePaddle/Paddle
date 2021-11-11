@@ -152,10 +152,10 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
       auto* ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType(), var->GetDataType());
+      InitializeVariable(ptr, var->GetType());
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType(), var->GetDataType());
+      InitializeVariable(ptr, var->GetType());
     }
   }
 }

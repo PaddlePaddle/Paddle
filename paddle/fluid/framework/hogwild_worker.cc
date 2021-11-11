@@ -69,13 +69,13 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
     all_param_.push_back(var->Name());
     if (var->Persistable()) {
       auto *ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType(), var->GetDataType());
+      InitializeVariable(ptr, var->GetType());
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
         int tensor_dim =
             root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
         auto *ptr1 = thread_scope_->Var(var->Name());
-        InitializeVariable(ptr1, var->GetType(), var->GetDataType());
+        InitializeVariable(ptr1, var->GetType());
         LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
         LoDTensor *root_tensor =
             root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
@@ -89,7 +89,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       }
     } else {
       auto *ptr = thread_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType(), var->GetDataType());
+      InitializeVariable(ptr, var->GetType());
     }
   }
 }

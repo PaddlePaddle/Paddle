@@ -1181,8 +1181,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
     }
     // init variable in scope
     Variable* old_var = old_scope->Var(old_var_desc->Name());
-    InitializeVariable(old_var, old_var_desc->GetType(),
-                       old_var_desc->GetDataType());
+    InitializeVariable(old_var, old_var_desc->GetType());
     old_param_list.push_back(t);
     if (load_combine) {
       continue;

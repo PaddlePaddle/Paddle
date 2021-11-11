@@ -42,7 +42,7 @@ void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader,
     for (auto& var : block.AllVars()) {
       if (!var->Persistable()) {
         auto* ptr = scope_->Var(var->Name());
-        InitializeVariable(ptr, var->GetType(), var->GetDataType());
+        InitializeVariable(ptr, var->GetType());
       }
     }
   }

@@ -132,7 +132,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
       Variable* root_var = root_scope_->FindVar(name);
       LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
       auto* ptr = scope->Var(name);
-      InitializeVariable(ptr, proto::VarType::LOD_TENSOR, ptr->GetDataType());
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
 
 #define HeterMemcpyFunc(cpp_type, proto_type)                           \
@@ -270,14 +270,13 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
       for (auto& var : block.AllVars()) {
         if (!var->Persistable()) {
           auto* ptr = context->scope_->Var(var->Name());
-          InitializeVariable(ptr, var->GetType(), var->GetDataType());
+          InitializeVariable(ptr, var->GetType());
         }
       }
       for (auto& v : dense_grad_names_) {
         for (auto& name : v.second) {
           auto* ptr = context->scope_->Var(name + "pin");
-          InitializeVariable(ptr, proto::VarType::LOD_TENSOR,
-                             ptr->GetDataType());
+          InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         }
       }
       for (auto& op_desc : block.AllOps()) {
@@ -417,7 +416,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   std::shared_ptr<HeterServiceContext> context = object_pool_.Get();
 
   if (!context->scope_) {
-    int num = rand_r() % places_.size();
+    int num = rand() % places_.size();
     context->place_num_ = num;
     auto place = places_[num];
     context->scope_ = &(place_scopes_[num]->NewScope());
@@ -425,13 +424,13 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
     for (auto& var : block.AllVars()) {
       if (!var->Persistable()) {
         auto* ptr = context->scope_->Var(var->Name());
-        InitializeVariable(ptr, var->GetType(), var->GetDataType());
+        InitializeVariable(ptr, var->GetType());
       }
     }
     for (auto& v : dense_grad_names_) {
       for (auto& name : v.second) {
         auto* ptr = context->scope_->Var(name + "pin");
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR, var->GetDataType());
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       }
     }
     for (auto& op_desc : block.AllOps()) {

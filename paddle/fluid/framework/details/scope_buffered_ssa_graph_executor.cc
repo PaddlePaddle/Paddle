@@ -201,7 +201,7 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
               << " has been initialized beforehand in global scope, skipped";
           continue;
         }
-        InitializeVariable(scope->Var(info.name_), info.type_, info.data_type_);
+        InitializeVariable(scope->Var(info.name_), info.type_);
       } else {
         Variable *tmp_var = local_scope->Var(info.name_);
         preserve_vars_[idx].emplace(tmp_var);

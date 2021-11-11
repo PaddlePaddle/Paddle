@@ -36,7 +36,6 @@ struct VariableInfo {
   std::string name_;
   proto::VarType::Type type_;
   bool persistable_;
-  proto::VarType::Type data_type_;
 };
 
 class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
