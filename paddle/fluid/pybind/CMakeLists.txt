@@ -126,7 +126,6 @@ if(WITH_PYTHON)
     target_link_libraries(op_function_generator ${ROCM_HIPRTC_LIB})
   endif()
 
-
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
   set(tmp_impl_file ${impl_file}.tmp)
 
@@ -217,10 +216,6 @@ if(WITH_PYTHON)
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
   endif()
-
-  # if(WITH_XPU2)
-  #   target_link_libraries(paddle_pybind ${XPU2_CLANGRTC_LIB})
-  # endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})

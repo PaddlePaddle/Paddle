@@ -278,12 +278,6 @@ if(WITH_XPU)
     list(APPEND third_party_deps extern_xpu)
 endif(WITH_XPU)
 
-# added bt lxd 
-if(WITH_XPU2)
-    #include(external/xpu2)          # download, build, install xpu
-    #list(APPEND third_party_deps extern_xpu)
-endif(WITH_XPU)
-
 if(WITH_PSLIB)
     include(external/pslib)          # download, build, install pslib
     list(APPEND third_party_deps extern_pslib)
