@@ -132,7 +132,7 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
 
 cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)
 if(WITH_ASCEND_CL)
-    target_link_libraries(device_context npu_collective_helper)
+    target_link_libraries(collective_helper npu_collective_helper)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
