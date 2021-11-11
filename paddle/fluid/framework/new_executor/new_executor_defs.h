@@ -224,7 +224,7 @@ class VariableScope : public ScopeBase {
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
   Scope* scope_ = nullptr;
-  mutable RWLock vars_lock_;
+  // mutable RWLock vars_lock_;
   std::shared_ptr<VariableScopeListener> listener_;
 };
 
