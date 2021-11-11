@@ -286,16 +286,16 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
-    if (IsInt8<T_in>() == false) {
-      this->RunKernel<T_in>(ctx);
-    } else {
-      if (force_fp32_output) {
-        this->RunKernel<float>(ctx);
-      } else if (fuse_relu) {
+    if (force_fp32_output) {
+      this->RunKernel<float>(ctx);
+    } else if (IsInt8<T_in>()) {
+      if (fuse_relu) {
         this->RunKernel<uint8_t>(ctx);
       } else {
         this->RunKernel<int8_t>(ctx);
       }
+    } else {
+      this->RunKernel<T_in>(ctx);
     }
   }
 
