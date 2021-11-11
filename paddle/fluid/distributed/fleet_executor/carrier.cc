@@ -20,8 +20,6 @@
 namespace paddle {
 namespace distributed {
 
-Carrier::Carrier() = default;
-
 void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
   interceptor_id_to_node_ = interceptor_id_to_node;
@@ -66,8 +64,10 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                         "The interceptor id %lld has already been created! "
                         "The interceptor is should be unique.",
                         interceptor_id));
+  auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
+  return ptr;
 }
 
 void Carrier::CreateInterceptors() {

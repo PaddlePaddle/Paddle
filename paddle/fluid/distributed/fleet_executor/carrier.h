@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -26,7 +27,6 @@
 namespace paddle {
 namespace distributed {
 
-class Interceptor;
 class TaskNode;
 class InterceptorMessageServiceImpl;
 
@@ -46,20 +46,20 @@ class Carrier final {
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
 
-  DISABLE_COPY_AND_ASSIGN(Carrier);
-
- private:
-  Carrier();
-
-  // create each Interceptor
-  void CreateInterceptors();
-
   // get interceptor based on the interceptor id
   Interceptor* GetInterceptor(int64_t interceptor_id);
 
   // set interceptor with interceptor id
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
+
+  DISABLE_COPY_AND_ASSIGN(Carrier);
+
+ private:
+  Carrier() = default;
+
+  // create each Interceptor
+  void CreateInterceptors();
 
   // interceptor logic id to the Nodes info
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;

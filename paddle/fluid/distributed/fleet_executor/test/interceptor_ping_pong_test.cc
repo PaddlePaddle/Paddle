@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
@@ -47,11 +48,15 @@ TEST(InterceptorTest, PingPong) {
   MessageBus& msg_bus = MessageBus::Instance();
   msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
-  Interceptor a(0, nullptr);
-  Interceptor b(1, nullptr);
+  Carrier& carrier = Carrier::Instance();
+
+  Interceptor* a = carrier.SetInterceptor(
+      0, std::make_unique<PingPongInterceptor>(0, nullptr));
+
+  carrier.SetInterceptor(0, std::make_unique<PingPongInterceptor>(1, nullptr));
 
   InterceptorMessage msg;
-  a.Send(1, msg);
+  a->Send(1, msg);
 }
 
 }  // namespace distributed
