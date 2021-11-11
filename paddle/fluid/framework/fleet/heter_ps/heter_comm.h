@@ -18,6 +18,7 @@ limitations under the License. */
 #include "cub/cub.cuh"
 #include "hashtable.h"
 #include "heter_resource.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -29,19 +30,26 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 struct CustomGradMerger {
   template <typename T>
   CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
   operator()(const T& a, const T& b) const {
     T out;
     out.slot = a.slot;
+    out.mf_dim = a.mf_dim;
     out.show = a.show + b.show;
     out.clk = a.clk + b.clk;
     out.lr_g = a.lr_g + b.lr_g;
-    for (int i = 0; i < MF_DIM; ++i) {
-      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
+    // out.mf_g = a.mf_g;
+    for (int i = 0; i < 1; ++i) {
+      printf("mf_g: %f\n", a.mf_g[0]);
+      // a.mf_g[0] = b.mf_g[0];
+      //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; //
+      // for local test
     }
+
     return out;
   }
 };
@@ -58,8 +66,12 @@ class HeterComm {
                             int* left, int* right, int gpu_num);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
                   int& uniq_len);
+  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, float* mf,
+                  size_t len, int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
+                size_t chunk_size, int stream_num);
+  void build_ps(int num, KeyType* h_keys, HBMMemoryPool* pool, size_t len,
                 size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
@@ -91,6 +103,11 @@ class HeterComm {
     nccl_inner_comms_ = inner_comms;
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
+  }
+
+  void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+    multi_mf_dim_ = multi_mf_dim;
+    max_mf_dim_ = max_mf_dim;
   }
 
   bool need_transfer(int send_id, int receive_id) {
@@ -173,9 +190,11 @@ class HeterComm {
 
  private:
   using Table = HashTable<KeyType, ValType>;
+  using PtrTable = HashTable<KeyType, uint64_t>;
   int block_size_{256};
   float load_factor_{0.75};
   std::vector<Table*> tables_;
+  std::vector<PtrTable*> ptr_tables_;
   std::shared_ptr<HeterPsResource> resource_;
   CustomGradMerger merger_;
   int topo_aware_{1};
@@ -186,6 +205,8 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
+  int multi_mf_dim_{8};
+  int max_mf_dim_ = 8;
 };
 
 }  // end namespace framework

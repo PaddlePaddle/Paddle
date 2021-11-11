@@ -93,7 +93,39 @@ class Optimizer {
         }
       }
     } else {
-      update_mf(MF_DIM, &val.mf[1], val.mf[0], grad.mf_g, grad.show);
+      update_mf(MF_DIM, &val.mf[1], val.mf[0], grad.mf_g,
+                grad.show);  // for local test
+    }
+  }
+
+  __device__ void dy_mf_update_value(uint64_t ptr, const GradType& grad) {
+    ValType* val = (ValType*)ptr;
+    val->slot = grad.slot;
+    val->show += grad.show;
+    val->clk += grad.clk;
+    val->mf_dim = grad.mf_dim;
+    val->delta_score +=
+        optimizer_config::nonclk_coeff * (grad.show - grad.clk) +
+        optimizer_config::clk_coeff * grad.clk;
+
+    update_lr(val->lr, val->lr_g2sum, grad.lr_g, grad.show);
+
+    if (val->mf_size == 0) {
+      if (optimizer_config::mf_create_thresholds <=
+          optimizer_config::nonclk_coeff * (val->show - val->clk) +
+              optimizer_config::clk_coeff * val->clk) {
+        val->mf_size = val->mf_dim + 1;
+        val->mf[0] = 0;
+        int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+        curandState state;
+        curand_init(clock64(), tid_x, 0, &state);
+        for (int i = 0; i < val->mf_dim; ++i) {
+          val->mf[i + 1] =
+              (curand_uniform(&state)) * optimizer_config::mf_initial_range;
+        }
+      }
+    } else {
+      update_mf(val->mf_dim, &(val->mf[1]), val->mf[0], grad.mf_g, grad.show);
     }
   }
 };
