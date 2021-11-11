@@ -42,6 +42,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                      "FusedAttentionOp");
       OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
                      "FusedAttentionOp");
+    } else {
+      OP_INOUT_CHECK(ctx->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
+                     "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
+                     "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
+                     "BiasDropoutResidualOut", "FusedAttentionOp");
     }
 
     // qkv_out: [batch_size, seq_len, 3, num_head, dim_head]
@@ -70,12 +77,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
-                   "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
-                   "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
-                   "BiasDropoutResidualOut", "FusedAttentionOp");
+
     OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"), "Output", "DropoutMaskOut",
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedAttentionOp");
@@ -109,6 +111,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
       ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
       ctx->SetOutputDim("LnOut", ctx->GetInputDim("X"));
+    } else {
+      ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
+      ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
+      ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
     }
     // [batch_size, seq_len, 3, num_head, head_size]
     ctx->SetOutputDim("QKVOut",
@@ -138,12 +144,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("FMHAOut", {x_dim[0], x_dim[1], y_dim[1], y_dim[2]});
     ctx->SetOutputDim("OutLinearOut", ctx->GetInputDim("X"));
 
-    ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
     if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
-    ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
+
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
   }
 
@@ -314,25 +318,28 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     AddComment(R"DOC(
-    	Add fused attention op whose logic is as follows:
-        // @input: [batch_size, seq_len, 3, num_head, head_dim] 
-        // @final_out: [batch_size, seq_len, num_heads, head_dim] 
-   	if (pre_layernorm)
-    	    out = layer_norm(input);
+  Add fused attention op whose logic is as follows:
+  // @input: [batch_size, seq_len, 3, num_head, head_dim] 
+  // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+  if (pre_layernorm)
+    out = layer_norm(input);
 	out = compute_qkv(out) + bias;
 	// fmha module
-	{
-            out = transpose(out, perm=[2, 0, 3, 1, 4]);
-            out = q * k^t;
-            out = attn_mask + out;
-            out = softmax(out);
-            out = dropout(out);
-            out = out * v;
-            out = transpose(out, perm=[0, 2, 1, 3]);
+  {
+    out = transpose(out, perm=[2, 0, 3, 1, 4]);
+    out = q * k^t;
+    out = attn_mask + out;
+    out = softmax(out);
+    out = dropout(out);
+    out = out * v;
+    out = transpose(out, perm=[0, 2, 1, 3]);
                 
-        }
+  }
 	out = out_linear(out);
-	final_out = layer_norm(residual + dropout(bias + out));
+  if (pre_layernorm)
+    final_out = residual + dropout(bias + out);
+  else
+    final_out = layer_norm(residual + dropout(bias + out));
     )DOC");
   }
 };
@@ -347,20 +354,20 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "GradOp is only callable when attn_dropout_is_test is false"));
 
-    OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",
-                   "FusedAttentionGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Ln2Variance"), "Input", "Ln2Variance",
-                   "FusedAttentionGrad");
-    if (ctx->HasOutput(framework::GradVarName("Ln2Scale"))) {
-      ctx->SetOutputDim(framework::GradVarName("Ln2Scale"),
-                        ctx->GetInputDim("Ln2Scale"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("Ln2Bias"))) {
-      ctx->SetOutputDim(framework::GradVarName("Ln2Bias"),
-                        ctx->GetInputDim("Ln2Bias"));
-    }
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionGrad");
-    if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
+    if (ctx->Attrs().Get<bool>("pre_layer_norm") == false) {
+      OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",
+                     "FusedAttentionGrad");
+      OP_INOUT_CHECK(ctx->HasInput("Ln2Variance"), "Input", "Ln2Variance",
+                     "FusedAttentionGrad");
+      if (ctx->HasOutput(framework::GradVarName("Ln2Scale"))) {
+        ctx->SetOutputDim(framework::GradVarName("Ln2Scale"),
+                          ctx->GetInputDim("Ln2Scale"));
+      }
+      if (ctx->HasOutput(framework::GradVarName("Ln2Bias"))) {
+        ctx->SetOutputDim(framework::GradVarName("Ln2Bias"),
+                          ctx->GetInputDim("Ln2Bias"));
+      }
+    } else {
       OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
                      "FusedAttentionGrad");
       OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
@@ -368,6 +375,8 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("LnOut"), "Input", "LnOut",
                      "FusedAttentionGrad");
     }
+
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionGrad");
     OP_INOUT_CHECK(ctx->HasInput("QKVW"), "Input", "QKVW",
                    "FusedAttentionGrad");
     OP_INOUT_CHECK(ctx->HasInput("QKVBias"), "Input", "QKVBias",
@@ -402,6 +411,9 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       ctx->SetOutputDim(framework::GradVarName("LnOut"),
                         ctx->GetInputDim("LnOut"));
+    } else {
+      ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
+                        ctx->GetInputDim("BiasDropoutResidualOut"));
     }
     ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
                       ctx->GetInputDim("FMHAOut"));
@@ -426,8 +438,6 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("QKVBiasOut"));
     ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
                       ctx->GetInputDim("OutLinearOut"));
-    ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
-                      ctx->GetInputDim("BiasDropoutResidualOut"));
   }
 
  protected:
@@ -478,17 +488,17 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
         op->SetOutput(framework::GradVarName("LnBias"),
                       this->InputGrad("LnBias"));
       }
-    }
-
-    if (this->HasInput("Ln2Scale")) {
-      op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
-      op->SetOutput(framework::GradVarName("Ln2Scale"),
-                    this->InputGrad("Ln2Scale"));
-    }
-    if (this->HasInput("Ln2Bias")) {
-      op->SetInput("Ln2Bias", this->Input("Ln2Bias"));
-      op->SetOutput(framework::GradVarName("Ln2Bias"),
-                    this->InputGrad("Ln2Bias"));
+    } else {
+      if (this->HasInput("Ln2Scale")) {
+        op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
+        op->SetOutput(framework::GradVarName("Ln2Scale"),
+                      this->InputGrad("Ln2Scale"));
+      }
+      if (this->HasInput("Ln2Bias")) {
+        op->SetInput("Ln2Bias", this->Input("Ln2Bias"));
+        op->SetOutput(framework::GradVarName("Ln2Bias"),
+                      this->InputGrad("Ln2Bias"));
+      }
     }
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -511,6 +521,11 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       if (this->HasOutput("LnVariance")) {
         op->SetInput("LnVariance", this->Output("LnVariance"));
       }
+    } else {
+      op->SetInput("Ln2Mean", this->Output("Ln2Mean"));
+      op->SetInput("Ln2Variance", this->Output("Ln2Variance"));
+      op->SetInput("BiasDropoutResidualOut",
+                   this->Output("BiasDropoutResidualOut"));
     }
     op->SetInput("QKVOut", this->Output("QKVOut"));
     op->SetInput("QKVBiasOut", this->Output("QKVBiasOut"));
@@ -523,12 +538,7 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput("FMHAOut", this->Output("FMHAOut"));
     op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
-
-    op->SetInput("Ln2Mean", this->Output("Ln2Mean"));
-    op->SetInput("Ln2Variance", this->Output("Ln2Variance"));
     op->SetInput("DropoutMaskOut", this->Output("DropoutMaskOut"));
-    op->SetInput("BiasDropoutResidualOut",
-                 this->Output("BiasDropoutResidualOut"));
     op->SetInput("QKVOut", this->Output("QKVOut"));
 
     // backward outputs: dinput
@@ -537,7 +547,11 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
         op->SetOutput(framework::GradVarName("LnOut"),
                       this->OutputGrad("LnOut"));
       }
+    } else {
+      op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
+                    this->OutputGrad("BiasDropoutResidualOut"));
     }
+
     op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
     op->SetOutput(framework::GradVarName("QKVBiasOut"),
                   this->OutputGrad("QKVBiasOut"));
@@ -553,8 +567,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("FMHAOut"),
                   this->OutputGrad("FMHAOut"));
-    op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
-                  this->OutputGrad("BiasDropoutResidualOut"));
     op->SetOutput(framework::GradVarName("OutLinearOut"),
                   this->OutputGrad("OutLinearOut"));
   }
