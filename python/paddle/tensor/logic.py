@@ -631,7 +631,7 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
                                   equal_nan=False, name="ignore_nan")
           np_result1 = result1.numpy()
           # [True, False]
-          result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
+          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
           np_result2 = result2.numpy()
           # [True, True]
