@@ -85,7 +85,6 @@ endif()
 message(STATUS "HIP library name: ${hip_library_name}")
 
 # set HIP link libs
-# 从后面找到叫hip_hcc或者amdhip64的库
 find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 

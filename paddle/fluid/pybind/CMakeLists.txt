@@ -130,9 +130,6 @@ if(WITH_PYTHON)
     target_link_libraries(op_function_generator ${ROCM_HIPRTC_LIB})
   endif()
 
-  # if(WITH_XPU2)
-  #   target_link_libraries(op_function_generator ${XPU2_CLANGRTC_LIB})
-  # endif()
 
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
   set(tmp_impl_file ${impl_file}.tmp)
