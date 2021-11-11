@@ -165,39 +165,41 @@ REGISTER_OP_CPU_KERNEL(isclose, ops::IscloseKernel<CPU, float>,
                        ops::IscloseKernel<CPU, double>);
 
 /* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(isclose)
-    .AddCheckpoint(
-        R"ROC(Upgrade isclose, add two new inputs [Rtol] and [Atol].)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewInput("Rtol",
-                      "The added input 'Rtol' is not"
-                      "dispensable.")
-            .NewInput("Atol",
-                      "The added input 'Atol' is not"
-                      "dispensable."))
-    .AddCheckpoint(
-        R"ROC(Delete two float attributes [rtol] and [atol], 
-        then add 2 string attributes [atol, rtol]. Don't be surprised.
-        This is because float cannot represent hight-precision
-        floating-point values, and our framework doesn't support
-        the use of double attributes. As a result, string instead
-        of double is used here to represent high-precision
-        floating-point values.
-        )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .DeleteAttr("rtol",
-                        "The attribute 'rtol' is deleted."
-                        "The reason why it is deleted is that"
-                        "attributes do not support a float64 value"
-                        "and it is changed to a tensor.")
-            .DeleteAttr("atol",
-                        "The attribute 'atol' is deleted."
-                        "The reason why it is deleted is that"
-                        "attributes do not support a float64 value"
-                        "and it is changed to a tensor.")
-            .NewAttr("rtol",
-                     "(string) The relative tolerance. Default: :math:`1e-5` .",
-                     std::string("1e-5"))
-            .NewAttr("atol",
-                     "(string) The absolute tolerance. Default: :math:`1e-8` .",
-                     std::string("1e-8")));
+// REGISTER_OP_VERSION(isclose)
+//     .AddCheckpoint(
+//         R"ROC(Upgrade isclose, add two new inputs [Rtol] and [Atol].)ROC",
+//         paddle::framework::compatible::OpVersionDesc()
+//             .NewInput("Rtol",
+//                       "The added input 'Rtol' is not"
+//                       "dispensable.")
+//             .NewInput("Atol",
+//                       "The added input 'Atol' is not"
+//                       "dispensable."))
+//     .AddCheckpoint(
+//         R"ROC(Delete two float attributes [rtol] and [atol],
+//         then add 2 string attributes [atol, rtol]. Don't be surprised.
+//         This is because float cannot represent hight-precision
+//         floating-point values, and our framework doesn't support
+//         the use of double attributes. As a result, string instead
+//         of double is used here to represent high-precision
+//         floating-point values.
+//         )ROC",
+//         paddle::framework::compatible::OpVersionDesc()
+//             .DeleteAttr("rtol",
+//                         "The attribute 'rtol' is deleted."
+//                         "The reason why it is deleted is that"
+//                         "attributes do not support a float64 value"
+//                         "and it is changed to a tensor.")
+//             .DeleteAttr("atol",
+//                         "The attribute 'atol' is deleted."
+//                         "The reason why it is deleted is that"
+//                         "attributes do not support a float64 value"
+//                         "and it is changed to a tensor.")
+//             .NewAttr("rtol",
+//                      "(string) The relative tolerance. Default: :math:`1e-5`
+//                      .",
+//                      std::string("1e-5"))
+//             .NewAttr("atol",
+//                      "(string) The absolute tolerance. Default: :math:`1e-8`
+//                      .",
+//                      std::string("1e-8")));
