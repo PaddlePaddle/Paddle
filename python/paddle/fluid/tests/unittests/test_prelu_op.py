@@ -395,7 +395,7 @@ create_test_fp16_class(TestModeElementRank3NHWC)
 create_test_fp16_class(TestModeElementRank6NHWC)
 
 
-def prelu_t(x, mode, param_attr=None, name=None):
+def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
     helper = fluid.layer_helper.LayerHelper('prelu', **locals())
     alpha_shape = [1, x.shape[1], 1, 1]
     dtype = helper.input_dtype(input_param_name='x')
@@ -410,13 +410,19 @@ def prelu_t(x, mode, param_attr=None, name=None):
         type="prelu",
         inputs={"X": x,
                 'Alpha': alpha},
-        attrs={"mode": mode},
+        attrs={"mode": mode,
+               'data_layout': data_format},
         outputs={"Out": out})
     return out
 
 
 # error message test if mode is not one of 'all', 'channel', 'element'
 class TestModeError(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
+
     def test_mode_error(self):
         main_program = Program()
         with fluid.program_guard(main_program, Program()):
@@ -425,6 +431,24 @@ class TestModeError(unittest.TestCase):
                 y = prelu_t(x, 'any')
             except Exception as e:
                 assert (e.args[0].find('InvalidArgument') != -1)
+
+    def test_data_format_error1(self):
+        main_program = Program()
+        with fluid.program_guard(main_program, Program()):
+            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            try:
+                y = prelu_t(x, 'channel', data_format='N')
+            except Exception as e:
+                assert (e.args[0].find('InvalidArgument') != -1)
+
+    def test_data_format_error2(self):
+        main_program = Program()
+        with fluid.program_guard(main_program, Program()):
+            x = fluid.data(name='x', shape=[2, 3, 4, 5])
+            try:
+                y = paddle.static.nn.prelu(x, 'channel', data_format='N')
+            except ValueError as e:
+                pass
 
 
 if __name__ == "__main__":
