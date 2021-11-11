@@ -140,6 +140,7 @@ class TestFusedFFNOp(OpTest):
         return out, x.grad
 
     def test_out_and_grad(self):
+        paddle.seed(42)
         base_out, base_grad = self.Base()
         fused_out, fused_grad = self.FusedFFN()
         np.testing.assert_allclose(
@@ -192,7 +193,7 @@ class TestFusedFFNOpNormalizeBefore(TestFusedFFNOp):
 class APITestStaticFusedFFN(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
-        paddle.seed(0)
+        paddle.seed(42)
         dtype = "float32"
         layer_norm_dtype = "float32"
         batch_size = 1
