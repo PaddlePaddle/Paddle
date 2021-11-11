@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/service/communicator.h"
-
 #include <google/protobuf/text_format.h>
 
 #include "gflags/gflags.h"
@@ -349,6 +348,8 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
               << " from 0' trainer done";
     }
   }
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(100 + trainer_id_ * 10));
   BarrierWithTable(1);
   return;
 }
@@ -495,7 +496,6 @@ void AsyncCommunicator::SendByCommunicator() {
           MergeVars<float>(var_name, vars[i], send_scope_.get(), 1);
         }
       }
-
       if (ctx.is_tensor_table) {
         SendGlobalStep(ctx, merged_var_num, send_scope_.get());
       } else if (ctx.is_sparse) {
