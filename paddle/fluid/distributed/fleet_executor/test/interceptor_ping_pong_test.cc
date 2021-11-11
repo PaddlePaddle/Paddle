@@ -32,9 +32,16 @@ class PingPongInterceptor : public Interceptor {
   }
 
   void PingPong(const InterceptorMessage& msg) {
-    std::cout << GetInterceptorId() << " recv msg, count=" << count_;
+    std::cout << GetInterceptorId() << " recv msg, count=" << count_
+              << std::endl;
     ++count_;
-    if (count_ == 100) return;
+    if (count_ == 20) {
+      InterceptorMessage stop;
+      stop.set_message_type(STOP);
+      Send(0, stop);
+      Send(1, stop);
+      return;
+    }
 
     InterceptorMessage resp;
     Send(msg.src_id(), resp);
@@ -53,7 +60,7 @@ TEST(InterceptorTest, PingPong) {
   Interceptor* a = carrier.SetInterceptor(
       0, std::make_unique<PingPongInterceptor>(0, nullptr));
 
-  carrier.SetInterceptor(0, std::make_unique<PingPongInterceptor>(1, nullptr));
+  carrier.SetInterceptor(1, std::make_unique<PingPongInterceptor>(1, nullptr));
 
   InterceptorMessage msg;
   a->Send(1, msg);

@@ -32,10 +32,7 @@ void MessageBus::Init(
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
 
-  listen_port_thread_ = std::thread([this]() {
-    VLOG(3) << "Start listen_port_thread_ for message bus";
-    ListenPort();
-  });
+  ListenPort();
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { MessageBus::Instance().Release(); });
@@ -51,7 +48,6 @@ void MessageBus::Release() {
   server_.Stop(1000);
   server_.Join();
 #endif
-  listen_port_thread_.join();
 }
 
 bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
