@@ -599,13 +599,13 @@ class _ExecutorCache(object):
         assert isinstance(
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
-        if program not in self._cached_executors:
+        if str(program) not in self._cached_executors:
             new_program = program.clone()
             _prune_feed_ops(new_program)
             new_exe = _StandaloneExecutor(self._place, new_program, scope)
-            self._cached_executors[program] = new_exe
+            self._cached_executors[str(program)] = new_exe
 
-        return self._cached_executors[program]
+        return self._cached_executors[str(program)]
 
 
 class Executor(object):
