@@ -31,7 +31,11 @@ _ASMoutput = namedtuple('_ASMoutput', ['output', 'loss'])
 
 
 class AdaptiveLogSoftmaxWithLoss(Layer):
-    r"""Efficient softmax approximation as described in
+    r"""
+    BSD LICENSE From PyTorch:
+    Copyright (c) 2016-     Facebook, Inc            (Adam Paszke)
+
+    Efficient softmax approximation as described in
     `Efficient softmax approximation for GPUs by Edouard Grave, Armand Joulin,
     Moustapha Cissé, David Grangier, and Hervé Jégou
     <https://arxiv.org/abs/1609.04309>`__.

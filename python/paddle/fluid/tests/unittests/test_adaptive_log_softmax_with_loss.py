@@ -23,7 +23,7 @@ paddle.seed(10)
 
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
-    def test_adaptive_log_softmax(self):
+    def test_error(self):
         # args validation
         with self.assertRaises(ValueError):
             _ = nn.AdaptiveLogSoftmaxWithLoss(16, 20, [5, 15, 15], div_value=2.)
@@ -37,10 +37,10 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,
                                     "cutoffs should be a sequence of unique,"):
             _ = nn.AdaptiveLogSoftmaxWithLoss(16, 20, [5, 10, 20], div_value=2.)
-
         # not raise
         _ = nn.AdaptiveLogSoftmaxWithLoss(16, 20, [5, 10, 19], div_value=2.)
 
+    def test_shape(self):
         # input shapes
         with self.assertRaisesRegex(
                 RuntimeError, r"Input and target should have the same size"):
@@ -59,12 +59,11 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             y = paddle.randint(low=21, high=200, shape=[128])
             asfm(x, y)
 
+    def test_cluster(self):
         # cluster sizes
         asfm = nn.AdaptiveLogSoftmaxWithLoss(16, 20, [5, 10, 15], div_value=2.)
         x = paddle.randn((128, 16))
         y = paddle.randint(low=0, high=20, shape=[128])
-        # x = paddle.randn((3, 16))
-        # y = paddle.to_tensor((0, 17))
 
         self.assertEqual(
             asfm.head.weight.shape,
@@ -76,33 +75,26 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
 
         self.assertEqual(asfm(x, y).output.shape, [128])
 
+    def test_log_probs(self):
         # log_probs actually returns log_proba
         asfm = nn.AdaptiveLogSoftmaxWithLoss(8, 4, [2], div_value=2.)
         x = paddle.randn((4, 8))
         logprob_out = asfm.log_prob(x)
         np.testing.assert_array_almost_equal(
             paddle.exp(logprob_out).sum(1), paddle.ones([4]))
-        # if_equal=(paddle.abs(paddle.exp(logprob_out).sum(1)-paddle.ones([4]))<paddle.ones([4])*1e-5).numpy().tolist()
-        # true_var=[True]*4
-
-        # self.assertEqual(if_equal,true_var)
 
         # forward returns the same thing as log_probs
         for v in [0, 1, 2, 3]:
             y = paddle.full((4, ), v, dtype='int64')
             out, loss = asfm(x, y)
-            # if_equal=(paddle.abs(out-logprob_out.gather(y.unsqueeze(1),1).squeeze())<paddle.ones([4])*1e-5).numpy().tolist()
-            # true_var=[True]*4
             np.testing.assert_array_almost_equal(
                 out,
                 logprob_out.gather(y.unsqueeze(1), 1).slice([1], [0],
                                                             [1]).squeeze())
-            # self.assertEqual(out, logprob_out.gather(y.unsqueeze(1),1).squeeze())
-            # self.assertEqual(if_equal,true_var)
             np.testing.assert_array_almost_equal(loss,
                                                  F.nll_loss(logprob_out, y))
-            # self.assertEqual(loss, F.nll_loss(logprob_out, y))
 
+    def test_correct(self):
         # predict
         x = paddle.abs(paddle.randn((64, 8)))
 
