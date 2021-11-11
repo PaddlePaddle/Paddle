@@ -149,8 +149,8 @@ class FusedGatherScatterGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetInput("Scatter_count", this->Output("Scatter_count"));
     }
 
-    if (BOOST_GAT_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
-        BOOST_GAT_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
+        BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
       op->SetInput("X", this->Input("X"));
       op->SetInput("Out", this->Output("Out"));
     }

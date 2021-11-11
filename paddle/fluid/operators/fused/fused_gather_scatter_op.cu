@@ -67,6 +67,7 @@ __global__ void GatherScatterCUDAKernel(const T* params,
   }
 }
 
+// For min and max
 template <typename T>
 __global__ void InputResetCUDAKernel(T* output, size_t input_size,
                                      size_t slice_size) {
@@ -78,6 +79,7 @@ __global__ void InputResetCUDAKernel(T* output, size_t input_size,
   }
 }
 
+// Get scatter_count
 template <typename T, typename IndexT>
 __global__ void ComputeCountCUDAKernel(int* count,
                                        const IndexT* scatter_indices,
@@ -88,6 +90,7 @@ __global__ void ComputeCountCUDAKernel(int* count,
   }
 }
 
+// For forward mean
 template <typename T>
 __global__ void ManipulateMeanCUDAKernel(T* output, int* count,
                                          size_t input_size, size_t slice_size) {
@@ -96,6 +99,26 @@ __global__ void ManipulateMeanCUDAKernel(T* output, int* count,
     if (*(count + c_index) > 1) {
       *(output + i) = *(output + i) / *(count + c_index);
     }
+  }
+}
+
+// For backward mean
+template <typename T, typename IndexT>
+__global__ void ManipulateMeanGradCUDAKernel(const T* params,
+                                             const IndexT* gather_indices,
+                                             const IndexT* scatter_indices,
+                                             T* output, size_t index_size,
+                                             size_t slice_size,
+                                             const int* scatter_count) {
+  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
+    int64_t indices_i = i / slice_size;
+    int64_t slice_i = i - indices_i * slice_size;
+    IndexT gather_i = gather_indices[indices_i];
+    IndexT scatter_i = scatter_indices[indices_i];
+    int64_t in_i = gather_i * slice_size + slice_i;
+    int64_t out_i = scatter_i * slice_size + slice_i;
+    paddle::platform::CudaAtomicAdd(output + out_i,
+                                    *(params + in_i) / scatter_count[gather_i]);
   }
 }
 
@@ -190,22 +213,23 @@ class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
                               .stream()>>>(p_src, g_index, s_index, p_output,
                                            index_size, slice_size, functor);
 
-      Tensor count;
-      int* count_ptr = count.mutable_data<int>({input_size}, ctx.GetPlace());
-      cudaMemset(count_ptr, 0, input_size * sizeof(int));
+      auto* scatter_count = ctx.Output<Tensor>("Scatter_count");
+      int* p_scatter_count = scatter_count->mutable_data<int>(ctx.GetPlace());
+      cudaMemset(p_scatter_count, 0, input_size * sizeof(int));
       int64_t grid_count = (index_size + block - 1) / block;
       ComputeCountCUDAKernel<
           T, IndexT><<<grid_count, block, 0,
                        reinterpret_cast<const platform::CUDADeviceContext&>(
                            ctx.device_context())
-                           .stream()>>>(count_ptr, s_index, index_size);
+                           .stream()>>>(p_scatter_count, s_index, index_size);
 
       int64_t grid_mean = (input_size * slice_size + block - 1) / block;
       ManipulateMeanCUDAKernel<
           T><<<grid_mean, block, 0,
                reinterpret_cast<const platform::CUDADeviceContext&>(
                    ctx.device_context())
-                   .stream()>>>(p_output, count_ptr, input_size, slice_size);
+                   .stream()>>>(p_output, p_scatter_count, input_size,
+                                slice_size);
     }
   }
 };
@@ -293,30 +317,13 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
                    ctx.device_context())
                    .stream()>>>(p_output, input_size, slice_size);
     } else if (pool_type == "MEAN") {
-      GatherScatterSumCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterSumCUDAFunctor<T, IndexT>><<<
+      auto* scatter_count = ctx.Input<Tensor>("Scatter_count");
+      const int* s_count = scatter_count->data<int>();
+      ManipulateMeanGradCUDAKernel<T, IndexT><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
-                                           index_size, slice_size, functor);
-
-      Tensor count;
-      int* count_ptr = count.mutable_data<int>({input_size}, ctx.GetPlace());
-      cudaMemset(count_ptr, 0, input_size * sizeof(int));
-      int64_t grid_count = (index_size + block - 1) / block;
-      ComputeCountCUDAKernel<
-          T, IndexT><<<grid_count, block, 0,
-                       reinterpret_cast<const platform::CUDADeviceContext&>(
-                           ctx.device_context())
-                           .stream()>>>(count_ptr, s_index, index_size);
-
-      int64_t grid_mean = (input_size * slice_size + block - 1) / block;
-      ManipulateMeanCUDAKernel<
-          T><<<grid_mean, block, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(
-                   ctx.device_context())
-                   .stream()>>>(p_output, count_ptr, input_size, slice_size);
+                                           index_size, slice_size, s_count);
     }
   }
 };
