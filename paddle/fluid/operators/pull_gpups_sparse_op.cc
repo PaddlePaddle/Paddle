@@ -30,9 +30,12 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Outputs(Out) of PullGpuPSSparseOp should not be empty."));
     auto embedding_size_vec = ctx->Attrs().Get<std::vector<int>>("size");
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Ids").size(), embedding_size_vec.size(),
-                        platform::errors::InvalidArgument(
-                            "The ids size: %lu must be equal to the length of embedding size: %lu.", ctx->Inputs("Ids").size(), embedding_size_vec.size()));
+    PADDLE_ENFORCE_EQ(
+        ctx->Inputs("Ids").size(), embedding_size_vec.size(),
+        platform::errors::InvalidArgument("The ids size: %lu must be equal to "
+                                          "the length of embedding size: %lu.",
+                                          ctx->Inputs("Ids").size(),
+                                          embedding_size_vec.size()));
     auto all_ids_dim = ctx->GetInputsDim("Ids");
     const size_t n_ids = all_ids_dim.size();
     std::vector<framework::DDim> outs_dims;
@@ -68,13 +71,26 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
 class PullGpuPSSparseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("W",
+             "(Tensor) The input represents embedding tensors, "
+             "which is a learnable parameter.")
+        .AsDispensable();
     AddInput("Ids",
              "Input tensors with type int32 or int64 "
              "contains the ids to be looked up in GpuPS. "
              "The last dimension size must be 1.")
         .AsDuplicable();
     AddOutput("Out", "The lookup results tensors.").AsDuplicable();
-    AddAttr<std::vector<int>>("size", "(vector<int>, the embedding size of corresponding slot").SetDefault(std::vector<int>());
+    AddAttr<std::vector<int>>(
+        "size", "(vector<int>, the embedding size of corresponding slot")
+        .SetDefault(std::vector<int>());
+    AddAttr<bool>("is_sparse",
+                  "(boolean, default false) "
+                  "Sparse update.")
+        .SetDefault(false);
+    AddAttr<bool>("is_distributed",
+                  "(boolean, default false) distributed lookup table.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Pull GpuPS Sparse Operator.
 

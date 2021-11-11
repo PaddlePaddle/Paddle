@@ -63,6 +63,11 @@ void HeterPs::push_sparse(int num, FeatureKey* d_keys,
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
 
+void HeterPs::push_sparse(int num, FeatureKey* d_keys,
+                          FeaturePushValue* d_grads, float* mf, size_t len) {
+  // comm_->push_sparse(num, d_keys, d_grads, mf, len, opt_);
+}
+
 void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                                      const std::vector<ncclComm_t>& inter_comms,
                                      int comm_size) {

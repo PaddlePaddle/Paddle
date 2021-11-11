@@ -18,8 +18,8 @@ limitations under the License. */
 #include "cub/cub.cuh"
 #include "hashtable.h"
 #include "heter_resource.h"
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
@@ -30,8 +30,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-#define TYPEALIGN(ALIGNVAL, LEN)  \
-  (((uint64_t) (LEN) + ((ALIGNVAL) - 1)) & ~((uint64_t) ((ALIGNVAL) - 1)))
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 struct CustomGradMerger {
   template <typename T>
   CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
@@ -42,13 +42,14 @@ struct CustomGradMerger {
     out.show = a.show + b.show;
     out.clk = a.clk + b.clk;
     out.lr_g = a.lr_g + b.lr_g;
-    //out.mf_g = a.mf_g;
+    // out.mf_g = a.mf_g;
     for (int i = 0; i < 1; ++i) {
       printf("mf_g: %f\n", a.mf_g[0]);
-      //a.mf_g[0] = b.mf_g[0];
-      //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; // for local test
+      // a.mf_g[0] = b.mf_g[0];
+      //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; //
+      // for local test
     }
-    
+
     return out;
   }
 };
@@ -65,13 +66,13 @@ class HeterComm {
                             int* left, int* right, int gpu_num);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
                   int& uniq_len);
-  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, float* mf, size_t len,
-                  int& uniq_len);
+  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, float* mf,
+                  size_t len, int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
                 size_t chunk_size, int stream_num);
   void build_ps(int num, KeyType* h_keys, HBMMemoryPool* pool, size_t len,
-               size_t chunk_size, int stream_num);
+                size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);

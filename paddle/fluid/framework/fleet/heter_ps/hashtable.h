@@ -49,32 +49,42 @@ class TableContainer
 template <typename KeyType, typename ValType>
 class HashTable {
  public:
-  HashTable(size_t capacity);
+  explicit HashTable(size_t capacity);
   virtual ~HashTable();
   HashTable(const HashTable&) = delete;
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
               gpuStream_t stream);
-  void insert(const KeyType* d_keys, size_t len, HBMMemoryPool* pool, size_t start_index,
-            gpuStream_t stream);
+  void insert(const KeyType* d_keys, size_t len, HBMMemoryPool* pool,
+              size_t start_index, gpuStream_t stream);
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            gpuStream_t stream);
-  void get(const KeyType* d_keys, char* d_vals, size_t len,
-           gpuStream_t stream);
+  void get(const KeyType* d_keys, char* d_vals, size_t len, gpuStream_t stream);
   void show();
   void dump_to_cpu(int devid, cudaStream_t stream);
+  void dy_mf_dump_to_cpu(int devid, cudaStream_t stream);
 
   template <typename GradType, typename Sgd>
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
               Sgd sgd, gpuStream_t stream);
 
-  int size() { 
-    return container_->size();
+  template <typename Sgd>
+  void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
+              gpuStream_t stream);
+
+  int size() { return container_->size(); }
+
+  void set_use_ptr_val(bool use_ptr_val) { use_ptr_val_ = use_ptr_val; }
+
+  void set_feature_value_size(size_t pull_feature_value_size,
+                              size_t push_grad_value_size) {
+    pull_feature_value_size_ = pull_feature_value_size;
+    push_grad_value_size_ = push_grad_value_size;
+    VLOG(0) << "yxf:::pull value size: " << pull_feature_value_size_
+            << " push value size: " << push_grad_value_size_;
   }
 
-  void set_use_ptr_val (bool use_ptr_val) {use_ptr_val_ = use_ptr_val;}
-
-  bool use_ptr_val() {return use_ptr_val_;}
+  bool use_ptr_val() { return use_ptr_val_; }
 
   std::unique_ptr<RWLock> rwlock_{nullptr};
 
@@ -85,6 +95,8 @@ class HashTable {
   size_t capacity_;
   bool use_ptr_val_ = true;
   size_t max_mf_dim_ = 8;
+  size_t pull_feature_value_size_;
+  size_t push_grad_value_size_;
 };
 }  // end namespace framework
 }  // end namespace paddle

@@ -56,6 +56,9 @@ class HeterPsResource {
   int total_gpu();
   int get_index_by_devid(int devid);
   int dev_id(int num);
+  void set_multi_mf(int multi_mf_dim, int max_mf_dim);
+  int multi_mf() { return multi_mf_dim_; }
+  int max_mf_dim() { return max_mf_dim_; }
   gpuStream_t local_stream(int gpu_num, int stream_num);
   gpuStream_t remote_stream(int gpu_num, int stream_num);
   gpuStream_t comm_stream(int gpu_num, int stream_num);
@@ -63,6 +66,8 @@ class HeterPsResource {
   std::vector<std::shared_ptr<GPUResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;
+  int multi_mf_dim_;
+  int max_mf_dim_;
 };
 
 }  // end namespace framework

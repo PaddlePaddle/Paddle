@@ -46,6 +46,9 @@ class HeterPsBase {
   virtual void show_one_table(int gpu_num) = 0;
   virtual void push_sparse(int num, FeatureKey* d_keys,
                            FeaturePushValue* d_grads, size_t len) = 0;
+  virtual void push_sparse(int num, FeatureKey* d_keys,
+                           FeaturePushValue* d_grads, float* mf,
+                           size_t len) = 0;
   static HeterPsBase* get_instance(size_t capacity,
                                    std::shared_ptr<HeterPsResource> resource);
 };
