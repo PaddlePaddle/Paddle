@@ -472,8 +472,26 @@ struct VariableMetaInfo {
 };
 
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
+
+// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
+// ScopeBase.
+//                   Scope manager the variables and VariableScope is just a
+//                   quick
+//                   access machanism.
 class VariableScope : public ScopeBase {
  public:
+  VariableScope() {
+    // for @EMPTY@ variable
+    var_list_.push_back(nullptr);
+    name2id_[kEmptyVarName] = 0;
+    VariableMetaInfo info;
+    info.var_ref_count_ = 0;
+    info.vardesc_ = nullptr;
+    vec_meta_info_.push_back(info);
+    scope_ptr_.reset(new Scope());
+  }
+  const Scope* GetScope() const { return scope_ptr_.get(); }
+
   Variable* FindVar(const std::string& name) const {
     auto it = name2id_.find(name);
     if (it != name2id_.end()) {
@@ -531,11 +549,14 @@ class VariableScope : public ScopeBase {
 
   void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
     name2id_[name] = VarSize();
-    auto v = new Variable();
+    auto v = scope_ptr_->Var(name);
     if (nullptr == var_desc) {
       v->GetMutable<LoDTensor>();
     } else {
-      InitializeVariable(v, var_desc->GetType());
+      InitializeVariable(
+          v,
+          var_desc
+              ->GetType());  // Scope don't initialize variable recently created
     }
     var_list_.push_back(v);
 
@@ -546,13 +567,22 @@ class VariableScope : public ScopeBase {
   }
 
   void AddVar(const std::string& name, Variable& var) {  // NOLINT
+    // must copy.
+    VLOG(4) << "Add variable: " << name << " through AddVar()";
+    auto v = scope_ptr_->Var(name);
+    *v = var;
     name2id_[name] = VarSize();
-    var_list_.push_back(&var);
+    var_list_.push_back(v);
 
     VariableMetaInfo info;
     info.var_ref_count_ = 0;
     info.vardesc_ = nullptr;
     vec_meta_info_.push_back(info);
+  }
+
+  void SetVarDesc(const std::string& name, framework::VarDesc* var_desc) {
+    CheckExist(name);
+    vec_meta_info_[VarId(name)].vardesc_ = var_desc;
   }
 
   paddle::framework::VarDesc* VarDesc(const std::string& name) const {
@@ -562,10 +592,6 @@ class VariableScope : public ScopeBase {
   paddle::framework::VarDesc* VarDesc(int id) const {
     CheckExist(id);
     return vec_meta_info_[id].vardesc_;
-  }
-
-  VariableMetaInfo& VarMetaInfo(const std::string& name) {
-    return vec_meta_info_[VarId(name)];
   }
 
   void CheckExist(int id) const {
@@ -581,10 +607,17 @@ class VariableScope : public ScopeBase {
         platform::errors::NotFound("%s not in VariableScope.", name));
   }
 
+  std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
+
+  const std::vector<VariableMetaInfo>& VecMetaInfo() const {
+    return vec_meta_info_;
+  }
+
  private:
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+  std::unique_ptr<Scope> scope_ptr_;
 };
 
 class NextInstruction {
@@ -749,7 +782,7 @@ class Instruction {
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
-namespace interpretercore {
+namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 
@@ -760,7 +793,7 @@ static bool IsMemcpyH2D(const Instruction& instr) {
 static bool IsMemcpyD2H(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyD2H;
 }
-}  // namespace interpretercore
+}  // namespace interpreter
 
 }  // namespace framework
 }  // namespace paddle

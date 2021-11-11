@@ -59,8 +59,21 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
   for (auto& feed_pair : input_tensors_) {
     const auto& feed_name = feed_pair.first;
     const auto* tensor = feed_pair.second;
+    PADDLE_ENFORCE_NE(tensor, nullptr,
+                      platform::errors::PreconditionNotMet(
+                          "The input variable %s's tensor cannot be NULL,"
+                          "we need the variable's dtype and shape from tensor.",
+                          feed_name.c_str()));
 
+    VLOG(4) << "Get feed info from input: " << feed_name;
     feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+
+    PADDLE_ENFORCE_NE(
+        feed_map[feed_name].shape.size(), 0UL,
+        platform::errors::PreconditionNotMet(
+            "The input variable %s's tensor shape cannot be empty,"
+            "we need the variable's dtype and shape from tensor.",
+            feed_name.c_str()));
   }
   return feed_map;
 }
@@ -95,6 +108,12 @@ CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
   auto parameter_names = GetGraphInputParameterNames();
 
   for (const auto& param_name : parameter_names) {
+    PADDLE_ENFORCE_GT(
+        feed_map.count(param_name), 0UL,
+        platform::errors::NotFound("Cannot find parameter %s from input list,"
+                                   "please add the tensor into input.",
+                                   param_name.c_str()));
+
     // if cannot find var in graph input, skip.
     // scope accepte the CINN format name, so here we need transform
     // paddle format name to CINN format.

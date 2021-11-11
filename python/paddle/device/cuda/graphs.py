@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from paddle.fluid.core import is_compiled_with_cuda, is_compiled_with_rocm, CUDAPlace
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
@@ -22,7 +23,8 @@ if is_compiled_with_cuda() and not is_compiled_with_rocm():
             ALL_MODES = ["global", "thread_local", "relaxed"]
             self._graph = None
             if place is None:
-                place = CUDAPlace(0)
+                device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
+                place = CUDAPlace(device_id)
             self._place = place
             assert mode in ALL_MODES
             self._mode = ALL_MODES.index(mode)
@@ -38,6 +40,16 @@ if is_compiled_with_cuda() and not is_compiled_with_rocm():
 
         def reset(self):
             self._graph.reset()
+
+        def print_to_dot_files(self, dirname, flags=None):
+            if not isinstance(dirname, (str, bytes)):
+                dirname = dirname.name
+            os.makedirs(name=dirname, exist_ok=True)
+            assert os.path.isdir(
+                dirname), "The dirname {} should be a directory".format(dirname)
+            if flags is None:
+                flags = 2047  # only all information. It can be any integer inside [1, 2048)  
+            self._graph.print_to_dot_files(dirname, flags)
 else:
 
     class CUDAGraph:
@@ -54,4 +66,7 @@ else:
             raise NotImplementedError()
 
         def reset(self):
+            raise NotImplementedError()
+
+        def print_to_dot_files(self, dirname, flags=None):
             raise NotImplementedError()
