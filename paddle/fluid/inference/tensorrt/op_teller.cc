@@ -888,8 +888,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "slice") {
+      if (desc.HasAttr("decrease_axis")) {
+        std::vector<int> decrease_axis =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
+        if (decrease_axis.size() > 0) {
+          VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
+                     "is not supported in TensorRT";
+          return false;
+        }
+      }
+
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
-          !desc.HasAttr("ends") || !desc.HasAttr("decrease_axis")) {
+          !desc.HasAttr("ends")) {
+        VLOG(3) << "The necessary attributes of the slice operator axes "
+                   "or starts or ends are missing.";
         return false;
       } else {
         std::vector<int> axes =
@@ -898,14 +910,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
         std::vector<int> ends =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
-        std::vector<int> decrease_axis =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
+
         if (axes.size() != starts.size() || axes.size() != ends.size()) {
-          return false;
-        }
-        if (decrease_axis.size() > 0) {
-          VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                     "is not supported in TensorRT";
+          VLOG(3) << "The shape of attributes of the slice operator axes "
+                     "or starts or ends are not equal.";
           return false;
         }
         if (!with_dynamic_shape) {
