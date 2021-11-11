@@ -451,7 +451,8 @@ def save_distributed_checkpoint(program,
                                 checkpoint_path,
                                 dist_attr_path,
                                 addition_info=None,
-                                is_integrated=False):
+                                is_integrated=False,
+                                dist_context=None):
     """ 
     Save model parameter state, optimzer state, distributed attribute and 
     additional information of each rank.
@@ -463,6 +464,7 @@ def save_distributed_checkpoint(program,
         addition_info(dict, optional): Additional information, key should be selected in ['epoch', 'batch', 'batch_size'].
             Default values are 0, when 'addition_info' is None. Default: None.
         is_integrated(bool, optional): Whether to integrate param before save. Default: False.
+        dist_context(DistributedContext ,optional): collect related distributed information for program
 
     Returns:
         None
@@ -475,13 +477,16 @@ def save_distributed_checkpoint(program,
             add_info = {'batch': step, "batch_size": global_batch_size}
             save_distributed_checkpoint(program, path, path, add_info)
     """
+    from .dist_context import get_default_distributed_context
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
     assert isinstance(program, paddle.fluid.framework.Program)
     assert isinstance(is_integrated, bool)
     addition_info = _update_addition_info(addition_info)
 
     if not is_integrated:
         _save_distributed_state_dict(program, addition_info, checkpoint_path)
-        _save_distributed_attribute(program, dist_attr_path)
+        _save_distributed_attribute(program, dist_attr_path, dist_context)
     else:
         # TODO: integrate param before save
         raise NotImplementedError(
@@ -522,7 +527,10 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     return param_dict, dist_attr, addition_info
 
 
-def load_checkpoint_into_program(checkpoint_path, dist_attr_path, program):
+def load_checkpoint_into_program(checkpoint_path,
+                                 dist_attr_path,
+                                 program,
+                                 dist_context=None):
     """ 
     Load parameter, optimizer, distributed attribute and addition_info into model.
 
@@ -530,9 +538,13 @@ def load_checkpoint_into_program(checkpoint_path, dist_attr_path, program):
         checkpoint_path(list[str]): model parameter file path, must be in order of rank id.
         dist_attr_path(list[str]): distributed attribute file path, must be in order of rank id.
         program(Program): the program to be updated with checkpoint_path.
+        dist_context(DistributedContext ,optional): collect related distributed information for program
 
     Returns:
         addition_info(dict): user saved in last train.
+    
+    Notes:
+        The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
 
     Examples:
         .. code-block:: python
@@ -544,6 +556,9 @@ def load_checkpoint_into_program(checkpoint_path, dist_attr_path, program):
                               './dist_attr_rank1.pdattr']
             load_checkpoint_into_program(ckpt_path, dist_attr_path, main_program)
     """
+    from .dist_context import get_default_distributed_context
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
     assert isinstance(program, paddle.fluid.framework.Program)
     assert _check_valid_path(checkpoint_path), \
         "'checkpoint_path' cannot be None."
@@ -552,7 +567,7 @@ def load_checkpoint_into_program(checkpoint_path, dist_attr_path, program):
 
     all_state_dict_info = _load_distributed_state_dict(checkpoint_path)
     all_pre_dist_attr = _load_distributed_attribute(dist_attr_path)
-    all_cur_dist_attr = get_dist_attr(program)
+    all_cur_dist_attr = get_dist_attr(program, dist_context)
     all_param_dict = all_state_dict_info["model"]
     addition_info = all_state_dict_info["addition_info"]
     sliced_param_dict = merge_and_slice_parameter(
@@ -572,19 +587,17 @@ def load_parameter_into_program(param_dict, program):
     """
     _check_param_dict(param_dict)
     assert program and isinstance(program, paddle.fluid.framework.Program)
-
     program.set_state_dict(param_dict)
 
 
-def _save_distributed_attribute(program, dist_attr_path):
+def _save_distributed_attribute(program, dist_attr_path, dist_context):
     """ Save distributed attribute of all parameters """
     # TODO: just save a complete distributed attribute file
     rank_id = paddle.distributed.get_rank()
     dist_attr_name = os.path.join(dist_attr_path,
                                   "dist_attr_rank{}.pdattr".format(rank_id))
-
     dist_attr_dict = {
-        "model": get_dist_attr(program),
+        "model": get_dist_attr(program, dist_context),
         "world_size": paddle.distributed.get_world_size()
     }
     paddle.save(dist_attr_dict, dist_attr_name)
@@ -600,7 +613,6 @@ def _load_distributed_attribute(dist_attr_path):
         pre_world_size = dist_attr["world_size"]
         assert pre_world_size == len(dist_attr_path), \
             "The number of 'dist_attr_path' must be equal to the last training world size."
-
         for name, attr in dist_attr["model"].items():
             if name not in total_dist_attr:
                 total_dist_attr[name] = attr
@@ -613,7 +625,6 @@ def _save_distributed_state_dict(program, addition_info, checkpoint_path):
     rank = paddle.distributed.get_rank()
     ckpt_file_name = os.path.join(checkpoint_path,
                                   "model_state_rank{}.pdmodel".format(rank))
-
     state_dict = {
         "model": program.state_dict(),
         "world_size": paddle.distributed.get_world_size(),
@@ -626,13 +637,13 @@ def _save_distributed_state_dict(program, addition_info, checkpoint_path):
 def _load_distributed_state_dict(checkpoint_path):
     """ Load parameters' state_dict from checkpoint_path """
     all_state_dict = {}
-    for ckpt_file in checkpoint_path:
+    for idx, ckpt_file in enumerate(checkpoint_path):
         state_dict_info = paddle.load(ckpt_file)
         pre_world_size = state_dict_info["world_size"]
-        addition_info = state_dict_info["addition_info"]
         assert pre_world_size == len(checkpoint_path), \
             "The number of 'checkpoint_path' must be equal to the last training world size."
-
+        if idx == 0:
+            addition_info = state_dict_info["addition_info"]
         for name, value in state_dict_info["model"].items():
             if name in all_state_dict:
                 all_state_dict[name].append(np.array(value))
@@ -657,7 +668,6 @@ def get_dist_attr(program, dist_context=None):
     from .dist_context import get_default_distributed_context
     if dist_context is None:
         dist_context = get_default_distributed_context()
-
     dist_attr = {}
     for var in program.list_vars():
         if is_parameter(var) or is_belong_to_optimizer(var):
@@ -665,13 +675,11 @@ def get_dist_attr(program, dist_context=None):
                 var)
             process_mesh = tensor_dist_attr.process_mesh
             dims_mapping = tensor_dist_attr.dims_mapping
-
             dist_attr[var.name] = {
                 "process_shape": process_mesh.topology,
                 "process_group": process_mesh.processes,
                 "dims_mapping": dims_mapping
             }
-
     return dist_attr
 
 
@@ -874,13 +882,11 @@ def _slice_parameter(complete_param, partition_index_list, length):
     axis = len(complete_param.shape) - length
     sliced_param = np.split(
         complete_param, partition_index_list[axis], axis=axis)
-
     if length == 1:
         return sliced_param
     for param in sliced_param:
         sliced_param_list.extend(
             _slice_parameter(param, partition_index_list, length - 1))
-
     return sliced_param_list
 
 
@@ -915,21 +921,17 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
 
     partition_index = _compute_partition_index(
         rank, complete_shape, dims_mapping, process_shape, process_group)
-
     sliced_param_index = 0
     for i, shape in enumerate(complete_shape):
         if dims_mapping[i] == -1:
             slice_shape = shape
         else:
             slice_shape = shape // process_shape[dims_mapping[i]]
-
         if shape == 1:
             index = 0
         else:
             index = (partition_index[i][0] + 1) // slice_shape
-
         sliced_param_index = sliced_param_index * (shape // slice_shape) + index
-
     return sliced_param_index
 
 
@@ -960,16 +962,13 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
     for process in process_group:
         partition_index = _compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
-
         if split_indices_list:
             for dim in range(len(partition_index)):
                 split_indices_list[dim].extend(partition_index[dim])
         else:
             split_indices_list = partition_index
-
     split_indices_list = list(
         map(lambda x, y: list(set(x) - set([y]) - set([0])), split_indices_list,
             complete_shape))
     split_indices_list = [sorted(x) for x in split_indices_list]
-
     return split_indices_list

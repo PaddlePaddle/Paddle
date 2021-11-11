@@ -49,14 +49,15 @@ class MLPLayer(nn.Layer):
         d_model = hidden_size
         dim_feedforward = intermediate_size
         np.random.seed(2021)
-        arr = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
-        weight_attr = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr))
+        arr0 = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
+        arr1 = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
+        weight_attr0 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr0))
+        weight_attr1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr1))
         bias_attr = None
-
         self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
+            d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr)
         self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
+            dim_feedforward, d_model, weight_attr1, bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
@@ -104,14 +105,12 @@ class MLPLayer(nn.Layer):
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
-
         return out
 
 
 def mlp_forward(train_program, start_program):
     with static.program_guard(train_program,start_program), \
         utils.unique_name.guard():
-
         batch_size = 4
         hidden_size = 64
         input = static.data(
@@ -151,25 +150,20 @@ def mlp_forward(train_program, start_program):
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
             initializer_range=0.02)
-
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
-
     return loss, train_program, start_program
 
 
 def get_distributed_program():
     train_program = static.Program()
     startup_program = static.Program()
-
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
-
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
-
     optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
     optimizer = fleet.distributed_optimizer(optimizer)
     _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
@@ -252,7 +246,6 @@ class TestMLPAutoConvert(unittest.TestCase):
                                   "label": label[step * 4:(step + 1) * 4, :]
                               },
                               fetch_list=[loss_load])
-
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
 
@@ -281,7 +274,6 @@ class TestMLPAutoConvert2(unittest.TestCase):
         PP_MESH_0 = auto.ProcessMesh(mesh=[0])
         global PP_MESH_1
         PP_MESH_1 = auto.ProcessMesh(mesh=[1])
-
         input = np.random.random(size=(80, 64)).astype('float32')
         label = np.random.random(size=(80, 1)).astype('float32')
 
@@ -289,7 +281,6 @@ class TestMLPAutoConvert2(unittest.TestCase):
         place = paddle.set_device("gpu")
         exe = paddle.static.Executor(place)
         exe.run(dist_start_prog)
-
         for step in range(20):
             if step == 10:
                 add_info = {"batch": step, "batch_size": 4}
@@ -319,7 +310,6 @@ class TestMLPAutoConvert2(unittest.TestCase):
         place = paddle.set_device("gpu")
         exe = paddle.static.Executor(place)
         exe.run(dist_start_prog_load)
-
         ckpt_path = [
             "./model_state_rank0.pdmodel", "./model_state_rank1.pdmodel"
         ]
@@ -333,12 +323,10 @@ class TestMLPAutoConvert2(unittest.TestCase):
         start_index = batch * batch_size
         input = input[start_index:, :]
         label = label[start_index:, :]
-
         cur_dist_attr = get_dist_attr(dist_main_prog_load)
         sliced_param_dict = merge_and_slice_parameter(param_dict, pre_dist_attr,
                                                       cur_dist_attr)
         load_parameter_into_program(sliced_param_dict, dist_main_prog_load)
-
         for step in range(10):
             res = exe.run(dist_main_prog_load,
                           feed={
@@ -346,7 +334,6 @@ class TestMLPAutoConvert2(unittest.TestCase):
                               "label": label[step * 4:(step + 1) * 4, :]
                           },
                           fetch_list=[loss_load])
-
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
 
@@ -363,7 +350,6 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh([0, 1])
         dist_main_prog, _, _ = get_distributed_program()
-
         with self.assertRaises(TypeError):
             save_distributed_checkpoint(
                 dist_main_prog, [""], [""], addition_info=[0])
@@ -382,8 +368,8 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
                                         ["./dist_attr_rank.pdattr"])
         with self.assertRaises(TypeError):
             load_distributed_checkpoint({
-                "model_path": "./model_state_rank.pdmodel"
-            }, {"dist_path": "./dist_attr_rank.pdattr"})
+                "0": "./model_state_rank.pdmodel"
+            }, {"1": "./dist_attr_rank.pdattr"})
 
 
 if __name__ == "__main__":
