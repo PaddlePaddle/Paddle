@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/scalar.h"
 

@@ -143,7 +143,7 @@ TEST(API, full) {
   auto out = paddle::experimental::full({3, 2}, val, pten::DataType::FLOAT32);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
