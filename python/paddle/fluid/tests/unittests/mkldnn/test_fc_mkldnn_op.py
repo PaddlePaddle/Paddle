@@ -16,7 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from numpy.core.numeric import True_
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 import paddle
 
 
@@ -27,8 +28,8 @@ def fully_connected_naive(input, weights, bias_data):
 
     return result
 
-
-class TestFCMKLDNNOp(OpTest):
+@OpTestTool.skip_if_not_cpu()
+class TestFCOneDNNKernel2DNoBias(OpTest):
     def init_shape(self):
         self.mb = 12
         self.ic = 10
@@ -93,16 +94,22 @@ class TestFCMKLDNNOp(OpTest):
         pass
 
 
-class TestFCMKLDNNOpWithBias(TestFCMKLDNNOp):
+class TestFCOneDNNKernel3DWithBias(TestFCOneDNNKernel2DNoBias):
     def init_rank_and_bias(self):
         self.input_rank = 3
         self.with_bias = True
 
 
-class TestFCMKLDNNOpWithBia2s(TestFCMKLDNNOp):
+class TestFCOneDNNKernel3DNoBias(TestFCOneDNNKernel2DNoBias):
+    def init_rank_and_bias(self):
+        self.input_rank = 3
+        self.with_bias = False
+
+
+class TestFCOneDNNKernel4DWithBias(TestFCOneDNNKernel2DNoBias):
     def init_rank_and_bias(self):
         self.input_rank = 4
-        self.with_bias = False
+        self.with_bias = True
 
 
 if __name__ == "__main__":
