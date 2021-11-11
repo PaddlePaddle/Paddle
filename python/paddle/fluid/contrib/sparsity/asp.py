@@ -312,20 +312,12 @@ class ASPHelper(object):
                         prune_func = SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP[
                             layer_name]
                         break
-                # if prune_func is None:
-                #     weight_pruned_nparray, weight_sparse_mask = \
-                #         ASPHelper._default_pruning(weight_nparray, m, n, func_name, param.name)
-                # else:
+
                 weight_pruned_nparray, weight_sparse_mask = \
                     prune_func(weight_nparray, m, n, func_name, param.name)
+                weight_pruned_nparray = weight_pruned_nparray.astype(weight_nparray.dtype)
                 weight_tensor.set(weight_pruned_nparray, place)
-                # weight_sparse_mask = sparsity.create_mask(
-                #     weight_nparray.T, func_name=func_name, n=n, m=m).T
-                # weight_pruned_nparray = np.multiply(weight_nparray,
-                #                                     weight_sparse_mask)
-                # weight_tensor.set(weight_pruned_nparray, place)
-                # assert sparsity.check_sparsity(weight_pruned_nparray.T,  n=n, m=m, func_name=checked_func_name), \
-                #         'Pruning {} weight matrix failure!!!'.format(param.name)
+
                 if with_mask:
                     weight_mask_param = global_scope().find_var(
                         ASPHelper._get_mask_name(param.name))
@@ -333,6 +325,8 @@ class ASPHelper(object):
                         'Cannot find {} variable, please call ASPHelper.minimize' \
                         ' and initialization (exe.run(startup_program)) first!'.format(ASPHelper._get_mask_name(param.name))
                     weight_mask_tensor = weight_mask_param.get_tensor()
+                    weight_sparse_mask = weight_sparse_mask.astype(
+                                        np.array(weight_mask_tensor).dtype)
                     weight_mask_tensor.set(weight_sparse_mask, place)
                 asp_info.update_masks(param.name, weight_sparse_mask)
         return asp_info.masks.copy()
