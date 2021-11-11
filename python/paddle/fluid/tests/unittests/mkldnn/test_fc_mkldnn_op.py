@@ -41,15 +41,11 @@ class TestFCMKLDNNOp(OpTest):
         self.with_bias = None
 
     def generate_data(self):
-        self.input = np.random.random((self.mb, self.ic * self.h * self.w)).astype("float32")
-        self.weights = np.random.random((self.ic * self.h * self.w, self.oc)).astype("float32")
+        self.input = np.random.random(
+            (self.mb, self.ic * self.h * self.w)).astype("float32")
+        self.weights = np.random.random(
+            (self.ic * self.h * self.w, self.oc)).astype("float32")
         self.np_weights = self.weights.copy()
-
-#        if self.input_rank == 3:
-#            self.input = np.reshape(self.input, (self.mb, self.ic, self.h * self.w))
-#            self.np_weights = np.reshape(self.np_weights, (self.ic, self.h * self.w, self.oc))
-#        elif self.input_rank == 4:
-#            self.input = np.reshape(self.input, (self.mb, self.ic, self.h, self.w))
 
         if self.with_bias is not None:
             self.bias = np.random.random((self.oc)).astype("float32")
@@ -57,34 +53,35 @@ class TestFCMKLDNNOp(OpTest):
             self.bias = None
 
         self.output = fully_connected_naive(self.input, self.np_weights,
-                                         self.bias)
+                                            self.bias)
 
     def setUp(self):
         self.op_type = "fc"
-        self._cpu_only = True
         self.use_mkldnn = True
         self.init_shape()
         self.init_rank_and_bias()
         self.generate_data()
 
         if self.input_rank == 3:
-            self.input = np.reshape(self.input, (self.mb//2, 2, self.ic * self.h * self.w))
-            self.output = np.reshape(self.output, ((self.mb//2), 2, self.oc))
+            self.input = np.reshape(self.input, (self.mb // 2, 2,
+                                                 self.ic * self.h * self.w))
+            self.output = np.reshape(self.output, (self.mb // 2, 2, self.oc))
+        elif self.input_rank == 4:
+            self.input = np.reshape(self.input, (self.mb // 6, 3, 2,
+                                                 self.ic * self.h * self.w))
+            self.output = np.reshape(self.output, (self.mb // 6, 3, 2, self.oc))
 
-        self.inputs = {
-            'Input': self.input,
-            'W': self.weights
-        }
+        self.inputs = {'Input': self.input, 'W': self.weights}
 
         if self.bias is not None:
             self.inputs['Bias'] = self.bias
 
-        self.attrs = {'use_mkldnn': self.use_mkldnn,
-                      'in_num_col_dims': self.input_rank - 1}
-
-        self.outputs = {
-            'Out': self.output
+        self.attrs = {
+            'use_mkldnn': self.use_mkldnn,
+            'in_num_col_dims': self.input_rank - 1
         }
+
+        self.outputs = {'Out': self.output}
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
@@ -98,8 +95,14 @@ class TestFCMKLDNNOp(OpTest):
 
 class TestFCMKLDNNOpWithBias(TestFCMKLDNNOp):
     def init_rank_and_bias(self):
-        self.input_rank = 2
+        self.input_rank = 3
         self.with_bias = True
+
+
+class TestFCMKLDNNOpWithBia2s(TestFCMKLDNNOp):
+    def init_rank_and_bias(self):
+        self.input_rank = 4
+        self.with_bias = False
 
 
 if __name__ == "__main__":
