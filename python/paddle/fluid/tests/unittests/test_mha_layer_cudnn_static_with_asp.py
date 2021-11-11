@@ -22,7 +22,6 @@ import paddle.fluid.core as core
 import paddle
 from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
 from paddle.nn.layer import CUDNNSeqInfoInfer
-from paddle.static import sparsity
 from paddle import fluid
 
 def _generate_data(batch_size, max_seq_len, vec_size):
@@ -74,7 +73,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
             loss = paddle.mean(cudnn_mha_output)
             optimizer = fluid.contrib.mixed_precision.decorator.decorate(
                         fluid.optimizer.SGD(learning_rate=0.01))
-            optimizer = sparsity.decorate(optimizer)
+            optimizer = fluid.contrib.sparsity.decorate(optimizer)
             optimizer.minimize(loss, self.cudnn_startup_prog)
 
         self.exe.run(self.cudnn_startup_prog)
@@ -88,7 +87,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
         for w in self._get_cudnn_mha_weight(pre_pruned_mat):
             self.assertFalse(fluid.contrib.sparsity.check_sparsity(w.T))
 
-        sparsity.prune_model(
+        fluid.contrib.sparsity.prune_model(
             self.place,
             self.cudnn_main_prog,
             func_name=fluid.contrib.sparsity.MaskAlgo.MASK_1D,
@@ -105,7 +104,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
             self.assertFalse(fluid.contrib.sparsity.check_sparsity(w.T, 
                 func_name=fluid.contrib.sparsity.CheckMethod.CHECK_2D))
 
-        sparsity.prune_model(
+        fluid.contrib.sparsity.prune_model(
             self.place,
             self.cudnn_main_prog,
             func_name=fluid.contrib.sparsity.MaskAlgo.MASK_2D_GREEDY,
@@ -124,7 +123,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
             self.assertFalse(fluid.contrib.sparsity.check_sparsity(w.T, 
                 func_name=fluid.contrib.sparsity.CheckMethod.CHECK_2D))
 
-        sparsity.prune_model(
+        fluid.contrib.sparsity.prune_model(
             self.place,
             self.cudnn_main_prog,
             func_name=fluid.contrib.sparsity.MaskAlgo.MASK_2D_BEST,
@@ -136,7 +135,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
                 func_name=fluid.contrib.sparsity.CheckMethod.CHECK_2D))
 
     def test_asp_workflow(self):
-        sparsity.prune_model(
+        fluid.contrib.sparsity.prune_model(
             self.place,
             self.cudnn_main_prog,
             with_mask=True)
