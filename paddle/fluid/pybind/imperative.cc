@@ -1640,6 +1640,26 @@ void BindImperative(py::module *m_ptr) {
                      "gradient or without gradient."));
              return self.GradVarBase()->RemoveVariableWrapperHook(hook_id);
            })
+      .def("_register_void_function_post_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register void function post hook on a Tensor that "
+                     "stop "
+                     "gradient or without gradient."));
+             auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
+             VLOG(1) << 111;
+             auto grad_node = self.MutableGradVarBase()->GradNode();
+             VLOG(1) << 222;
+             VLOG(1) << (grad_node == nullptr);
+             for (auto &cur_op : *grad_node) {
+               VLOG(1) << 333;
+               cur_op.AddVoidFunctionPostHook(
+                   std::make_shared<std::function<void()>>(py_func));
+               VLOG(1) << 444;
+             }
+           })
       .def("_register_backward_hook",
            [](imperative::VarBase &self, const py::handle &hook) {
              PADDLE_ENFORCE_EQ(
