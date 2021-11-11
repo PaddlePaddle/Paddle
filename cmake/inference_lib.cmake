@@ -242,9 +242,6 @@ copy(inference_lib_dist
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h)
-# In order to adapt to the inference API directory, we need to add `include/experimental/` path to all related header files
-set(pten_main_header ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h)
-add_custom_target(copy_pten_headers_cmd ALL DEPENDS ${pten_main_header})
 
 
 # CAPI inference library for only inference

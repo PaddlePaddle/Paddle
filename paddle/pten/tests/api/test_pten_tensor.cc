@@ -180,23 +180,23 @@ void GroupTestCast() {
 
 void GroupTestDtype() {
   CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
-  // CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
-  // CHECK(TestDtype<int>() == paddle::DataType::INT32);
-  // CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
-  // CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
-  // CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
-  // CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
-  // CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
-  // CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
-  // CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
+  CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
+  CHECK(TestDtype<int>() == paddle::DataType::INT32);
+  CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
+  CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
+  CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
+  CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
+  CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
+  CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
+  CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
 }
 
 void TestInitilized() {
-  paddle::Tensor empty_tensor;
-  CHECK(empty_tensor.is_initialized() == false);
   paddle::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
+  CHECK(test_tensor.is_initialized() == false);
+  test_tensor.mutable_data<float>();
   CHECK(test_tensor.is_initialized() == true);
-  float* tensor_data = test_tensor.data<float>();
+  float* tensor_data = test_tensor.mutable_data<float>();
   for (int i = 0; i < test_tensor.size(); i++) {
     tensor_data[i] = 0.5;
   }
@@ -206,6 +206,7 @@ void TestInitilized() {
 }
 
 TEST(PtenTensor, All) {
+  // TODO(chenweihang, before 2021.11.20) support copy, slice and cast methods
   // VLOG(2) << "TestCopy";
   // GroupTestCopy();
   VLOG(2) << "TestDtype";
