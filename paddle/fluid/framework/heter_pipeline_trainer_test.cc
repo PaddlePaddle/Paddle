@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    defined(PADDLE_WITH_PSCORE)
+    (defined PADDLE_WITH_PSCORE)
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
