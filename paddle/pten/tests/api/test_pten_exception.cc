@@ -23,7 +23,7 @@ TEST(PD_THROW, empty) {
     std::string err_msg = e.what();
     EXPECT_TRUE(err_msg.find("An error occurred.") != std::string::npos);
 #if _WIN32
-    EXPECT_TRUE(err_msg.find("tests\\custom_op\\test_pten_exception.cc:20") !=
+    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc:20") !=
                 std::string::npos);
 #else
     EXPECT_TRUE(
@@ -51,7 +51,7 @@ TEST(PD_THROW, non_empty) {
     EXPECT_TRUE(err_msg.find("PD_THROW returns 0. DataType of 1 is INT. ") !=
                 std::string::npos);
 #if _WIN32
-    EXPECT_TRUE(err_msg.find("tests\\custom_op\\test_pten_exception.cc") !=
+    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc") !=
                 std::string::npos);
 #else
     EXPECT_TRUE(err_msg.find("paddle/pten/tests/api/test_pten_exception.cc") !=
@@ -81,7 +81,7 @@ TEST(PD_CHECK, FAILED) {
     EXPECT_TRUE(err_msg.find("Expected false, but it's not satisfied.") !=
                 std::string::npos);
 #if _WIN32
-    EXPECT_TRUE(err_msg.find("tests\\custom_op\\test_pten_exception.cc") !=
+    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc") !=
                 std::string::npos);
 #else
     EXPECT_TRUE(err_msg.find("paddle/pten/tests/api/test_pten_exception.cc") !=
@@ -107,7 +107,7 @@ TEST(PD_CHECK, FAILED) {
     EXPECT_TRUE(err_msg.find("PD_CHECK returns 0. DataType of 1 is INT. ") !=
                 std::string::npos);
 #if _WIN32
-    EXPECT_TRUE(err_msg.find("tests\\custom_op\\test_pten_exception.cc") !=
+    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc") !=
                 std::string::npos);
 #else
     EXPECT_TRUE(err_msg.find("paddle/pten/tests/api/test_pten_exception.cc") !=
@@ -127,7 +127,7 @@ TEST(PD_CHECK, FAILED) {
     EXPECT_TRUE(err_msg.find("Expected a > b, but it's not satisfied.") !=
                 std::string::npos);
 #if _WIN32
-    EXPECT_TRUE(err_msg.find("tests\\custom_op\\test_pten_exception.cc") !=
+    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc") !=
                 std::string::npos);
 #else
     EXPECT_TRUE(err_msg.find("paddle/pten/tests/api/test_pten_exception.cc") !=
@@ -147,7 +147,7 @@ TEST(PD_CHECK, FAILED) {
     EXPECT_TRUE(err_msg.find("PD_CHECK returns 0, because 123 > 0.345") !=
                 std::string::npos);
 #if _WIN32
-    EXPECT_TRUE(err_msg.find("tests\\custom_op\\test_pten_exception.cc") !=
+    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc") !=
                 std::string::npos);
 #else
     EXPECT_TRUE(err_msg.find("paddle/pten/tests/api/test_pten_exception.cc") !=
