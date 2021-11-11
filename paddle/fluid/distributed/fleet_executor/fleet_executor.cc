@@ -32,6 +32,10 @@ FleetExecutor::~FleetExecutor() {
 
 void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
   // Compile and Initialize
+  InitMessageBus();
+}
+
+void FleetExecutor::InitMessageBus() {
   std::stringstream ss;
   ss << "The DNS table of the message bus is: \n";
   int64_t cur_rank = exe_desc_.cur_rank();
