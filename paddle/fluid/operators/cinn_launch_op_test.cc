@@ -189,6 +189,27 @@ TEST(CinnLaunchOpHelperTest, TestPlaceToCinnTarget) {
                paddle::platform::EnforceNotMet);
 }
 
+TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
+  platform::CPUPlace place;
+  framework::Scope scope;
+  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  tensor1->mutable_data<float>(framework::make_ddim({5, 8}), place);
+
+  CinnScope cinn_scope;
+  cinn_scope.Var<CinnTensor>("cinn_var1");
+  auto cinn_tensor1 = cinn_scope.GetTensor("cinn_var1");
+  cinn_tensor1->Resize(CinnShape({5, 8}));
+  cinn_tensor1->set_type(::cinn::common::type_of<float>());
+  ASSERT_NO_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1));
+  // check throw
+  auto tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
+  ASSERT_THROW(CheckTensorEquivalent("var2", tensor2, cinn_tensor1),
+               paddle::platform::EnforceNotMet);
+  cinn_tensor1->Resize(CinnShape({5, 7}));
+  ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
+               paddle::platform::EnforceNotMet);
+}
+
 TEST(CinnLaunchOpHelperTest, TestMutableTensorDataWithCompiledInfo) {
   platform::CPUPlace place;
   framework::Scope scope;
@@ -236,20 +257,28 @@ TEST(CinnLaunchContextTest, TestIsVariableUsed) {
   ASSERT_EQ(launch_context->IsVariableUsed("var5"), false);
 }
 
+TEST(CinnLaunchContextTest, TestPaddleVarNameToCinn) {
+  auto launch_context =
+      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
+  ASSERT_EQ(launch_context->PaddleVarNameToCinn("var1"), "cinn_var1");
+  ASSERT_THROW(launch_context->PaddleVarNameToCinn("not_exist"),
+               paddle::platform::EnforceNotMet);
+}
+
 TEST(CinnLaunchContextTest, TestGetCinnTensor) {
   const auto& default_compiled_obj = GetDefaultCompiledObj();
   auto launch_context =
       std::make_unique<CinnLaunchContext>(default_compiled_obj);
 
   // not found
-  ASSERT_THROW(launch_context->GetCinnTensor("var4"),
+  ASSERT_THROW(launch_context->GetCinnTensor("cinn_var4"),
                paddle::platform::EnforceNotMet);
   // expected result
-  auto cinn_tensor = launch_context->GetCinnTensor("var2");
-  ASSERT_NE(cinn_tensor.get(), nullptr);
-  ASSERT_EQ(cinn_tensor.get(),
+  auto tensor_cinn_name = launch_context->GetCinnTensor("cinn_var2");
+  ASSERT_NE(tensor_cinn_name.get(), nullptr);
+  ASSERT_EQ(tensor_cinn_name.get(),
             default_compiled_obj.scope->GetTensor("cinn_var2").get());
-  EXPECT_EQ(cinn_tensor->shape().data(), std::vector<int>({6, 7, 8}));
+  EXPECT_EQ(tensor_cinn_name->shape().data(), std::vector<int>({6, 7, 8}));
 }
 
 TEST(CinnLaunchContextTest, TestPrepareArguments) {
@@ -265,7 +294,7 @@ TEST(CinnLaunchContextTest, TestPrepareArguments) {
   data1[10] = 19.99f;
 
   // check SetArgument
-  ASSERT_NO_THROW(launch_context->SetArgument("var1", tensor1));
+  ASSERT_NO_THROW(launch_context->SetArgument("cinn_var1", tensor1));
   // check GetUnSetParameters
   auto unset_parameters = launch_context->GetUnSetParameters();
   ASSERT_EQ(unset_parameters.size(), 2);
@@ -274,14 +303,11 @@ TEST(CinnLaunchContextTest, TestPrepareArguments) {
             std::unordered_set<std::string>({"cinn_var2", "cinn_var3"}));
   // check CheckTensorEquivalent throw
   auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
-  tensor2->mutable_data<float>(framework::make_ddim({6, 7}), place);
-  ASSERT_THROW(launch_context->SetArgument("var2", tensor2),
-               paddle::platform::EnforceNotMet);
   tensor2->mutable_data<float>(framework::make_ddim({6, 7, 8}), place);
-  ASSERT_NO_THROW(launch_context->SetArgument("var2", tensor2));
+  ASSERT_NO_THROW(launch_context->SetArgument("cinn_var2", tensor2));
   auto* tensor3 = scope.Var("var3")->GetMutable<LoDTensor>();
   tensor3->mutable_data<float>(framework::make_ddim({10, 16}), place);
-  ASSERT_NO_THROW(launch_context->SetArgument("var3", tensor3));
+  ASSERT_NO_THROW(launch_context->SetArgument("cinn_var3", tensor3));
 
   // check FinalizeExecutionArguments and ShareTensorWithCinnBuffer
   auto name2argument = launch_context->FinalizeExecutionArguments();

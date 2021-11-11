@@ -86,42 +86,42 @@ bool CinnLaunchContext::IsVariableUsed(const std::string& paddle_name) {
          cinn_variable_names_.count(paddle2cinn_varmap_.at(paddle_name)) > 0;
 }
 
-CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& paddle_name) {
-  PADDLE_ENFORCE_EQ(
-      IsVariableUsed(paddle_name), true,
+const std::string& CinnLaunchContext::PaddleVarNameToCinn(
+    const std::string& paddle_name) {
+  PADDLE_ENFORCE_GT(
+      paddle2cinn_varmap_.count(paddle_name), 0,
       platform::errors::NotFound(
-          "Variable(%s) not found in compilation result, "
-          "varmap.find(%d), cinn_scope.find(%d).",
-          paddle_name, paddle2cinn_varmap_.count(paddle_name),
-          paddle2cinn_varmap_.count(paddle_name) > 0
-              ? cinn_variable_names_.count(paddle2cinn_varmap_.at(paddle_name))
-              : 0));
-
-  return cinn_scope_->GetTensor(paddle2cinn_varmap_.at(paddle_name));
+          "Variable(%s) not found in compilation result.", paddle_name));
+  return paddle2cinn_varmap_.at(paddle_name);
 }
 
-void CinnLaunchContext::SetArgument(const std::string& paddle_name,
-                                    LoDTensor* paddle_tensor) {
-  PADDLE_ENFORCE_EQ(IsVariableUsed(paddle_name), true,
-                    platform::errors::InvalidArgument(
-                        "Variable(%s) not need for execution", paddle_name));
-  CheckTensorEquivalent(paddle_name, paddle_tensor, GetCinnTensor(paddle_name));
+CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& var_name) {
+  PADDLE_ENFORCE_GT(cinn_variable_names_.count(var_name), 0,
+                    platform::errors::NotFound(
+                        "Variable(%s) not found in compiled scope.", var_name));
+  return cinn_scope_->GetTensor(var_name);
+}
 
-  const auto& cinn_name = paddle2cinn_varmap_.at(paddle_name);
+void CinnLaunchContext::SetArgument(const std::string& cinn_name,
+                                    LoDTensor* paddle_tensor) {
+  PADDLE_ENFORCE_GT(
+      cinn_variable_names_.count(cinn_name), 0,
+      platform::errors::InvalidArgument(
+          "Parameter(%s) not found in executable program", cinn_name));
+
   auto buffer = ShareTensorWithCinnBuffer(paddle_tensor);
   name2argument_.emplace(cinn_name, buffer.get());
   hold_buffers_.emplace_back(std::move(buffer));
 
   VLOG(4) << "Set argument-" << name2argument_.size() << ": "
-          << "name(" << paddle_name << "->" << cinn_name << "), "
+          << "name(" << cinn_name << "), "
           << "type(" << framework::DataTypeToString(paddle_tensor->type())
-          << "), "
-          << "dims(" << paddle_tensor->dims() << ").";
+          << "), dims(" << paddle_tensor->dims() << ").";
 }
 
-void CinnLaunchContext::CheckTensorEquivalent(const std::string& paddle_name,
-                                              const LoDTensor* paddle_tensor,
-                                              const CinnTensor& cinn_tensor) {
+void CheckTensorEquivalent(const std::string& paddle_name,
+                           const LoDTensor* paddle_tensor,
+                           const CinnTensor& cinn_tensor) {
   PADDLE_ENFORCE_EQ(
       paddle_tensor->IsInitialized(), true,
       platform::errors::InvalidArgument(

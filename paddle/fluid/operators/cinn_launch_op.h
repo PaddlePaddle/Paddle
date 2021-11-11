@@ -47,6 +47,12 @@ const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place);
 // Print detailed compilation result of graph for debug
 void DebugCinnCompiledResult(const CinnCompiledObject& result);
 
+// Check whether tensors from Paddle and CINN respectively
+// of the same variable are equivalent in type and dimension
+void CheckTensorEquivalent(const std::string& paddle_name,
+                           const LoDTensor* paddle_tensor,
+                           const CinnTensor& cinn_tensor);
+
 // Allocate buffer to a Paddle tensor with assginment information from CINN
 void MutableTensorDataWithCompiledInfo(const platform::Place& place,
                                        const CinnTensor& cinn_tensor,
@@ -59,8 +65,10 @@ class CinnLaunchContext {
   // return whether a Paddle variable used on compiled kernels
   bool IsVariableUsed(const std::string& var_name);
 
-  // Get CinnTensor with paddle variable name
-  CinnTensor GetCinnTensor(const std::string& paddle_name);
+  const std::string& PaddleVarNameToCinn(const std::string& paddle_name);
+
+  // Get CinnTensor with CINN variable name
+  CinnTensor GetCinnTensor(const std::string& var_name);
 
   // Set an argument with name and tensor
   void SetArgument(const std::string& paddle_name, LoDTensor* paddle_tensor);
@@ -73,12 +81,6 @@ class CinnLaunchContext {
   const std::map<std::string, cinn_pod_value_t>& FinalizeExecutionArguments();
 
  private:
-  // Check whether tensors from Paddle and CINN respectively
-  // of the same variable are equivalent in type and dimension
-  void CheckTensorEquivalent(const std::string& paddle_name,
-                             const LoDTensor* paddle_tensor,
-                             const CinnTensor& cinn_tensor);
-
   // Share the buffer of a Paddle tensor to CINN by delivering memory address
   // to a cinn_buffer_t object
   std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(LoDTensor* tensor);
@@ -154,7 +156,10 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       }
 
       auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
-      launch_context->SetArgument(var_name, tensor);
+      const auto& cinn_name = launch_context->PaddleVarNameToCinn(var_name);
+      auto cinn_tensor = launch_context->GetCinnTensor(cinn_name);
+      details::CheckTensorEquivalent(var_name, tensor, cinn_tensor);
+      launch_context->SetArgument(cinn_name, tensor);
     }
 
     // 3.2 Prepare output variables: all output variables should
@@ -171,12 +176,14 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                             "Output variable(%s) not used in cinn", var_name));
 
       auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
+      const auto& cinn_name = launch_context->PaddleVarNameToCinn(var_name);
+      auto cinn_tensor = launch_context->GetCinnTensor(cinn_name);
       if (!tensor->IsInitialized()) {
-        details::MutableTensorDataWithCompiledInfo(
-            place, launch_context->GetCinnTensor(var_name), tensor);
+        details::MutableTensorDataWithCompiledInfo(place, cinn_tensor, tensor);
       }
 
-      launch_context->SetArgument(var_name, tensor);
+      details::CheckTensorEquivalent(var_name, tensor, cinn_tensor);
+      launch_context->SetArgument(cinn_name, tensor);
     }
 
     // 3.3 Prepare internal or temporary variables: Create a temporary
@@ -190,8 +197,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     if (!temp_variable_names.empty()) {
       for (const auto& var_name : temp_variable_names) {
         auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
-        details::MutableTensorDataWithCompiledInfo(
-            place, launch_context->GetCinnTensor(var_name), tensor);
+        auto cinn_tensor = launch_context->GetCinnTensor(var_name);
+        details::MutableTensorDataWithCompiledInfo(place, cinn_tensor, tensor);
+        details::CheckTensorEquivalent(var_name, tensor, cinn_tensor);
         launch_context->SetArgument(var_name, tensor);
       }
     }
