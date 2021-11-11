@@ -119,10 +119,16 @@ class DenseTensor : public TensorBase,
   /// \return Whether the storage is shared with other objects.
   bool IsSharedWith(const DenseTensor& b) const;
 
-  /// \brief Change the dims information in the metadata, and the corresponding
-  /// memory allocation will occur when the `mutable_data` is called.
+  /// \brief Change the dims information in the metadata. If the new size is
+  /// inconsistent with the original value, the storage area will be released
+  /// to avoid wrong access.
   /// \param dims The new dims of the dense tensor.
-  void Resize(const DDim& dims) noexcept { meta_.dims = dims; }
+  void Resize(const DDim& dims);
+
+  /// \brief Change the dims information in the metadata.
+  /// \param dims The new dims of the dense tensor. The product of the dims
+  /// elements must be consistent with the original value.
+  void set_dims(const DDim& dims);
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
