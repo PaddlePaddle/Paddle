@@ -146,9 +146,9 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         self.weight_quantize_type = 'channel_wise_abs_max'
 
     def set_params(self):
-        self.transpose_x = False
-        self.transpose_y = False
-        self.alpha = 1.0
+        self.transpose_x = True
+        self.transpose_y = True
+        self.alpha = 2.1
 
     def test_check_output(self):
         #self.quant_dequant()
@@ -166,14 +166,6 @@ class TensorRTMatMulQuantDequantDims4TransposeYTest(
         self.transpose_x = False
         self.transpose_y = True
         self.alpha = 1.0
-
-
-class TensorRTMatMulQuantDequantDims4TransposeXYTest(
-        TensorRTMatMulQuantDequantDims4Test):
-    def set_params(self):
-        self.transpose_x = True
-        self.transpose_y = True
-        self.alpha = 3.1
 
 
 class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
