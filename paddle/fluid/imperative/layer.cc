@@ -356,6 +356,37 @@ void VarBase::BumpInplaceVersion() {
   MutableVar()->BumpInplaceVersion();
 }
 
+// NOTE(weilong wu):
+// This function try to copy the data from target varbase,
+// and fill into the grad_var_ of the current varbase.
+void VarBase::_CopyGradientFrom(const VarBase& src) {
+  if (Var().IsInitialized()) {
+    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different data type with Tensor %s",
+                          Name(), src.Name()));
+    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different type with Tensor %s, Tensor "
+                          "ShareGradientDataWith cannot be performed!",
+                          Name(), src.Name()));
+  }
+  VLOG(4) << " VarBase copy gradient with " << src.Name();
+  if (grad_var_) {
+    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "tensor has not been initialized", src.Name()));
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(grad_t->IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "tensor %s has not been initialized", Name()));
+    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
+    grad_t->ShareDataWith(src_tensor);
+    grad_t->Resize(var_->dims());
+  }
+}
+
 pten::KernelContext OpBase::pt_kernel_context_;
 
 void OpBase::SetType(const std::string& type) {
