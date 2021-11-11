@@ -120,13 +120,7 @@ def _in_amp_guard():
 
 def _in_pure_fp16_guard():
     tracer = _dygraph_tracer()
-    if tracer:
-        if tracer._amp_level == core.AmpLevel.O2:
-            return True
-        else:
-            return False
-    else:
-        return False
+    return tracer and tracer._amp_level == core.AmpLevel.O2
 
 
 @dygraph_only

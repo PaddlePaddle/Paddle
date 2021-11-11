@@ -83,9 +83,6 @@ def train(to_static, build_strategy=None):
                         custom_black_list=None,
                         level='O2'):
                     pred = resnet(img)
-                    # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
-                    # precision problem, need to figure out the underlying reason.
-                    # If we remove it, the loss between dygraph and dy2stat is exactly same.
                     loss = fluid.layers.cross_entropy(input=pred, label=label)
                 avg_loss = fluid.layers.mean(x=pred)
                 acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
@@ -124,7 +121,7 @@ class TestResnet(unittest.TestCase):
             dygraph_loss = self.train(to_static=False)
             self.assertTrue(
                 np.allclose(
-                    static_loss, dygraph_loss, atol=1e-4),
+                    static_loss, dygraph_loss, atol=1e-3),
                 msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                                  dygraph_loss))
 

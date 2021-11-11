@@ -35,9 +35,7 @@ class TestAMP(TestMNIST):
         if paddle.fluid.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()
             static_loss = self.train_static()
-            # NOTE(Aurelius84): In static AMP training, there is a grep_list but
-            # dygraph AMP don't. It will bring the numbers of cast_op is different
-            # and leads to loss has a bit diff.
+
             self.assertTrue(
                 np.allclose(
                     dygraph_loss, static_loss, atol=1e-3),
@@ -54,7 +52,6 @@ class TestAMP(TestMNIST):
 
         optimizer = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=mnist.parameters())
-        # optimizer = paddle.optimizer.SGD(learning_rate=0.0001, parameters=mnist.parameters()) 
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
