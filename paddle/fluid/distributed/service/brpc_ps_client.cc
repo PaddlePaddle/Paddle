@@ -105,6 +105,7 @@ int32_t BrpcPsClient::start_client_service() {
     LOG(ERROR) << "BrpcPsServer start failed";
     return -1;
   }
+  _server_started = true;
   _env->registe_ps_client(butil::my_ip_cstr(), _server.listen_address().port,
                           _client_id);
   return 0;
@@ -461,10 +462,11 @@ void BrpcPsClient::finalize_worker() {
   _running = false;
   _async_push_dense_thread.join();
   _async_push_sparse_thread.join();
-  _print_thread.join();
+  // _print_thread.join();
   VLOG(0) << "BrpcPsClient::finalize_worker begin join server";
   _server.Stop(1000);
   _server.Join();
+  _server_started = false;
   VLOG(0) << "BrpcPsClient::finalize_worker done";
 }
 

@@ -628,6 +628,8 @@ void AsyncCommunicator::Start() {
 
 void AsyncCommunicator::Stop() {
   VLOG(1) << "Communicator stop";
+  _worker_ptr->finalize_worker();
+  VLOG(0) << "Communicator finalize_worker done";
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";

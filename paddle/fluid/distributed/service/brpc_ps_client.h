@@ -137,7 +137,23 @@ struct array_deleter {
 class BrpcPsClient : public PSClient {
  public:
   BrpcPsClient() {}
-  virtual ~BrpcPsClient() {}  // move to finalize_worker()
+  virtual ~BrpcPsClient() {
+    if (_running) {
+      flush();
+      _running = false;
+    }
+    if (_async_push_dense_thread.joinable()) {
+      _async_push_dense_thread.join();
+    }
+    if (_async_push_sparse_thread.joinable()) {
+      _async_push_sparse_thread.join();
+    }
+    if (_server_started) {
+      _server.Stop(1000);
+      _server.Join();
+      _server_started = false;
+    }
+  }
   virtual int32_t create_client2client_connection(
       int pserver_timeout_ms, int pserver_connect_timeout_ms, int max_retry);
   std::future<int32_t> shrink(uint32_t table_id,
@@ -298,6 +314,7 @@ class BrpcPsClient : public PSClient {
   uint16_t _push_times = 0;
   brpc::Server _server;
   DownpourPsClientService _service;
+  bool _server_started = false;
   std::atomic_uint grad_num_{0};
 };
 }  // namespace distributed
