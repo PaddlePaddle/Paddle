@@ -149,19 +149,37 @@ struct VariableMetaInfo {
       : var_ref_count_(var_ref_count), var_desc_(var_desc) {}
 };
 
+class VariableScope;
+class VariableScopeListener : public ScopeListener {
+ public:
+  explicit VariableScopeListener(VariableScope* var_scope_);
+  void onCreateVariable(const std::string& name) override;
+  void onDeleteVariable(const std::string& name) override;
+  void onRenameVariable(const std::string& old_name,
+                        const std::string& new_name) override;
+  void onCreateScope(Scope* Scope) override;
+  void onDeleteScope(Scope* Scope) override;
+  void onClear() override;
+
+ private:
+  VariableScope* var_scope_;  // not owned
+};
+
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
 
 // NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
-// ScopeBase.
-//                   Scope manager the variables and VariableScope is just a
-//                   quick
-//                   access machanism.
+// ScopeBase. Scope manager the variables and VariableScope is just a quick
+// access machanism. ScopeListener is the callback to sync changes in Original
+// Scope. We can make it a membership of VariableScope. Here we use inherent.
 class VariableScope : public ScopeBase {
  public:
-  VariableScope();
+  explicit VariableScope(Scope* scope);
+
   const Scope* GetScope() const;
 
   Variable* FindVar(const std::string& name) const;
+
+  ~VariableScope();
 
   // Get variable id by name, return -1 if not found
   int GetIdByName(const std::string& name) const;
@@ -199,12 +217,15 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
+  friend class VariableScopeListener;
+
  private:
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-  std::unique_ptr<Scope> scope_;
+  Scope* scope_ = nullptr;
   mutable RWLock vars_lock_;
+  std::shared_ptr<VariableScopeListener> listener_;
 };
 
 class NextInstruction {

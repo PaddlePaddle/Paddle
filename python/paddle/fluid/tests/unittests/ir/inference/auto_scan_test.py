@@ -260,7 +260,7 @@ class MkldnnAutoScanTest(AutoScanTest):
 
         self.assertTrue(status)
 
-    def inference_config_str(self, config) -> bool:
+    def inference_config_str(self, config) -> str:
         dic = {}
         enable_mkldnn = config.mkldnn_enabled()
         dic['use_mkldnn'] = enable_mkldnn
@@ -372,7 +372,7 @@ class PassAutoScanTest(AutoScanTest):
         status = self.check_op_version() and status
         self.assertTrue(status)
 
-    def inference_config_str(self, config) -> bool:
+    def inference_config_str(self, config) -> str:
         dic = {}
         enable_mkldnn = config.mkldnn_enabled()
         dic['use_mkldnn'] = enable_mkldnn
@@ -491,7 +491,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         'paddle_op_num is {}, but got {}!'.format(
                             paddle_op_size, paddle_op_num))
 
-    def inference_config_str(self, config: paddle_infer.Config):
+    def inference_config_str(self, config: paddle_infer.Config) -> str:
         dic = {}
         enable_trt = config.tensorrt_engine_enabled()
         trt_precison = config.tensorrt_precision_mode()

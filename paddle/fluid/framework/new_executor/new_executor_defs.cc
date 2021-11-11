@@ -477,15 +477,27 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::OutputVars(
   return it->second;
 }
 
-VariableScope::VariableScope() {
+VariableScope::VariableScope(Scope* scope) {
   // for @EMPTY@ variable
   var_list_.push_back(nullptr);
   name2id_[kEmptyVarName] = 0;
   vec_meta_info_.emplace_back(0, nullptr);
-  scope_.reset(new Scope());
+  scope_ = scope;
+  PADDLE_ENFORCE_NE(
+      scope, nullptr,
+      platform::errors::PreconditionNotMet(
+          "You have passed a nullptr to construct VariableScope."));
+  listener_ = std::make_shared<VariableScopeListener>(this);
+  scope->AddListener(listener_);
 }
 
-const Scope* VariableScope::GetScope() const { return scope_.get(); }
+VariableScope::~VariableScope() {
+  if (scope_ && listener_) {
+    scope_->DelListener(listener_);
+  }
+}
+
+const Scope* VariableScope::GetScope() const { return scope_; }
 
 Variable* VariableScope::FindVar(const std::string& name) const {
   auto it = name2id_.find(name);
@@ -543,7 +555,6 @@ size_t VariableScope::VarSize() const { return var_list_.size(); }
 
 void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {  // NOLINT
-  name2id_[name] = VarSize();
   auto v = scope_->Var(name);
   if (nullptr == var_desc) {
     v->GetMutable<LoDTensor>();
@@ -553,21 +564,14 @@ void VariableScope::AddVar(const std::string& name,
         var_desc
             ->GetType());  // Scope don't initialize variable recently created
   }
-  var_list_.emplace_back(v);
-
-  vec_meta_info_.emplace_back(0, var_desc);
+  SetVarDesc(name, var_desc);
 }
 
 void VariableScope::AddVar(const std::string& name,
                            const Variable& var) {  // NOLINT
-  // must copy.
-  VLOG(4) << "Add variable: " << name << " through AddVar()";
-  auto v = scope_->Var(name);
-  *v = var;
-  name2id_[name] = VarSize();
-  var_list_.push_back(v);
-
-  vec_meta_info_.emplace_back(0, nullptr);
+  // Though name existed in outer_scope_, we need
+  // add again to create name2id map.
+  scope_->Var(name);
 }
 
 void VariableScope::SetVarDesc(const std::string& name,
@@ -597,6 +601,33 @@ void VariableScope::CheckExist(const std::string& name) const {
   PADDLE_ENFORCE_EQ(HasVar(name), true, platform::errors::NotFound(
                                             "%s not in VariableScope.", name));
 }
+
+VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
+  var_scope_ = var_scope;
+}
+
+void VariableScopeListener::onCreateVariable(const std::string& name) {
+  auto v = var_scope_->scope_->GetVar(name);  // must exsit in outer_scope_
+  if (!var_scope_->HasVar(name)) {            // may exist in variable scope.
+    VLOG(4) << "Calling VariableScope::onCreateVariable with var_name: "
+            << name;
+    var_scope_->name2id_[name] = var_scope_->VarSize();
+    var_scope_->var_list_.emplace_back(v);
+    var_scope_->vec_meta_info_.emplace_back(0, nullptr);
+  }
+}
+
+void VariableScopeListener::onDeleteVariable(const std::string& name) {
+  if (var_scope_->HasVar(name)) {
+    VLOG(4) << "Calling VariableScope::onDeleteVariable with var_name: "
+            << name;
+  }
+}
+void VariableScopeListener::onRenameVariable(const std::string& old_name,
+                                             const std::string& new_name) {}
+void VariableScopeListener::onCreateScope(Scope* Scope) {}
+void VariableScopeListener::onDeleteScope(Scope* Scope) {}
+void VariableScopeListener::onClear() {}
 
 }  // namespace framework
 }  // namespace paddle
