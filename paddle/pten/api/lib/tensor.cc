@@ -228,10 +228,10 @@ template PD_DLL_DECL paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>();
 
 Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
-  PADDLE_THROW(
-      platform::errors::Unimplemented("Implement the slice method later"));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The slice operation is not supported now, "
+      "and it will be implemented by calling the slice kernel later."));
   return Tensor();
-  // return slice_(*this, begin_idx, end_idx);
 }
 
 std::shared_ptr<pten::TensorBase> Tensor::impl() const { return impl_; }
@@ -250,10 +250,10 @@ gpuStream_t Tensor::stream() const {
 
 template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  PADDLE_THROW(
-      platform::errors::Unimplemented("Implement the copy_to method later"));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The copy_to operation is not supported now, "
+      "and it will be implemented by calling the copy kernel later."));
   return Tensor();
-  // return copy_to(*this, ConvertExtPlaceToInnerPlace(place));
 }
 
 template PD_DLL_DECL Tensor
@@ -280,17 +280,17 @@ template PD_DLL_DECL Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
 
 Tensor Tensor::to(const PlaceType &target_place) const {
-  PADDLE_THROW(
-      platform::errors::Unimplemented("Implement the to method later"));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The to operation is not supported now, "
+      "and it will be implemented by calling the copy kernel later."));
   return Tensor();
-  // return copy_to(*this, ConvertExtPlaceToInnerPlace(target_place));
 }
 
 Tensor Tensor::cast(const DataType &target_type) const {
-  PADDLE_THROW(
-      platform::errors::Unimplemented("Implement the cast method later"));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The cast operation is not supported now, "
+      "and it will be implemented by calling the cast kernel later."));
   return Tensor();
-  // return cast(*this, target_type);
 }
 
 /* Part 6: Status utils methods */
