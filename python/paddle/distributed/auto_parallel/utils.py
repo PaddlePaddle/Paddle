@@ -478,10 +478,11 @@ def save_distributed_checkpoint(program,
             save_distributed_checkpoint(program, path, path, add_info)
     """
     from .dist_context import get_default_distributed_context
-    if dist_context is None:
-        dist_context = get_default_distributed_context()
+
     assert isinstance(program, paddle.fluid.framework.Program)
     assert isinstance(is_integrated, bool)
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
     addition_info = _update_addition_info(addition_info)
 
     if not is_integrated:
@@ -505,6 +506,9 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
         param_dict(dict): parameters' value of all ranks.
         dist_attr(dict): parameters' distributed attribute.
         addition_info(dict): additional information user saved in last training. 
+
+    Notes:
+        The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
 
     Examples:
         .. code-block:: python
@@ -557,14 +561,14 @@ def load_checkpoint_into_program(checkpoint_path,
             load_checkpoint_into_program(ckpt_path, dist_attr_path, main_program)
     """
     from .dist_context import get_default_distributed_context
-    if dist_context is None:
-        dist_context = get_default_distributed_context()
+
     assert isinstance(program, paddle.fluid.framework.Program)
     assert _check_valid_path(checkpoint_path), \
         "'checkpoint_path' cannot be None."
     assert _check_valid_path(dist_attr_path), \
         "'dist_attr_path' cannot be None."
-
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
     all_state_dict_info = _load_distributed_state_dict(checkpoint_path)
     all_pre_dist_attr = _load_distributed_attribute(dist_attr_path)
     all_cur_dist_attr = get_dist_attr(program, dist_context)
@@ -664,8 +668,9 @@ def get_dist_attr(program, dist_context=None):
     Args:
         program(Program): main program for training
     """
-    assert isinstance(program, paddle.fluid.framework.Program)
     from .dist_context import get_default_distributed_context
+
+    assert isinstance(program, paddle.fluid.framework.Program)
     if dist_context is None:
         dist_context = get_default_distributed_context()
     dist_attr = {}
