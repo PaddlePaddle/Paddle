@@ -83,7 +83,6 @@ class TestEyeOp_Row_OneTensor_Column_OneTensor(OpTest):
             "NumColumns": np.array(
                 [self.columns], dtype="int32")
         }
-        # self.outputs = {'Out': self.out}
         self.attrs = {'dtype': framework.convert_np_dtype_to_dtype_(np.int32)}
 
     def config(self):
