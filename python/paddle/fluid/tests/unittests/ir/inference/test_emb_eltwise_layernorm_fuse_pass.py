@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -116,94 +116,71 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             'weight_size': kwargs['weight_size']
         }]
 
-        ops_config = [{
-            "op_type": attrs[0]['op_type'],
-            "op_inputs": {
-                "Ids": ["input_data1"],
-                "W": ["embedding_weight1"]
-            },
-            "op_outputs": {
-                "Out": ["embedding_output1"]
-            },
-            "op_attrs": {
+        emb_op1 = OpConfig(
+            type=attrs[0]['op_type'],
+            inputs={"Ids": ["input_data1"],
+                    "W": ["embedding_weight1"]},
+            outputs={"Out": ["embedding_output1"]},
+            attrs={
                 'is_sparse': attrs[0]['is_sparse'],
                 'is_distributed': attrs[0]['is_distributed'],
-                'padding_idx': attrs[0]['padding_idx'],
-            }
-        }, {
-            "op_type": attrs[0]['op_type'],
-            "op_inputs": {
-                "Ids": ["input_data2"],
-                "W": ["embedding_weight2"]
-            },
-            "op_outputs": {
-                "Out": ["embedding_output2"]
-            },
-            "op_attrs": {
+                'padding_idx': attrs[0]['padding_idx']
+            })
+        emb_op2 = OpConfig(
+            type=attrs[0]['op_type'],
+            inputs={"Ids": ["input_data2"],
+                    "W": ["embedding_weight2"]},
+            outputs={"Out": ["embedding_output2"]},
+            attrs={
                 'is_sparse': attrs[0]['is_sparse'],
                 'is_distributed': attrs[0]['is_distributed'],
-                'padding_idx': attrs[0]['padding_idx'],
-            },
-        }, {
-            "op_type": attrs[0]['op_type'],
-            "op_inputs": {
-                "Ids": ["input_data3"],
-                "W": ["embedding_weight3"]
-            },
-            "op_outputs": {
-                "Out": ["embedding_output3"]
-            },
-            "op_attrs": {
+                'padding_idx': attrs[0]['padding_idx']
+            })
+        emb_op3 = OpConfig(
+            type=attrs[0]['op_type'],
+            inputs={"Ids": ["input_data3"],
+                    "W": ["embedding_weight3"]},
+            outputs={"Out": ["embedding_output3"]},
+            attrs={
                 'is_sparse': attrs[0]['is_sparse'],
                 'is_distributed': attrs[0]['is_distributed'],
-                'padding_idx': attrs[0]['padding_idx'],
+                'padding_idx': attrs[0]['padding_idx']
+            })
+        add_op1 = OpConfig(
+            type='elementwise_add',
+            inputs={
+                "X": [emb_op2.outputs["Out"][0]],
+                "Y": [emb_op3.outputs["Out"][0]],
             },
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["embedding_output2"],
-                "Y": ["embedding_output3"]
+            outputs={"Out": ["elementwise_add_output1"]},
+            attrs={"axis": attrs[1]['axis']})
+        add_op2 = OpConfig(
+            type='elementwise_add',
+            inputs={
+                "X": [add_op1.outputs["Out"][0]],
+                "Y": [emb_op1.outputs["Out"][0]],
             },
-            "op_outputs": {
-                "Out": ["elementwise_add_output1"]
-            },
-            "op_attrs": {
-                "axis": attrs[1]['axis'],
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["elementwise_add_output1"],
-                "Y": ["embedding_output1"]
-            },
-            "op_outputs": {
-                "Out": ["elementwise_add_output2"]
-            },
-            "op_attrs": {
-                "axis": attrs[1]['axis'],
-            }
-        }, {
-            "op_type": "layer_norm",
-            "op_inputs": {
-                "X": ["elementwise_add_output2"],
+            outputs={"Out": ["elementwise_add_output2"]},
+            attrs={"axis": attrs[1]['axis']})
+        layer_norm_op = OpConfig(
+            type='layer_norm',
+            inputs={
+                "X": [add_op2.outputs["Out"][0]],
                 "Bias": ["layer_norm_bias"],
                 "Scale": ["layer_norm_scale"]
             },
-            "op_outputs": {
+            outputs={
                 "Y": ["layer_norm_output1"],
                 "Mean": ["layer_norm_output2"],
                 "Variance": ["layer_norm_output3"]
             },
-            "op_attrs": {
+            attrs={
                 'begin_norm_axis': attrs[2]['begin_norm_axis'],
-                'epsilon': attrs[2]['epsilon'],
-            }
-        }]
-
-        ops = self.generate_op_config(ops_config)
+                'epsilon': attrs[2]['epsilon']
+            })
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=[emb_op1, emb_op2, emb_op3, add_op1, add_op2, layer_norm_op],
             weights={
                 "embedding_weight1":
                 TensorConfig(data_gen=partial(generate_weight1, attrs[3])),
@@ -242,7 +219,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
             use_calib_mode=False)
-        yield config, (10, 3), (1e-5, 1e-5)
+        yield config, (10, 5), (1e-5, 1e-5)
         # trt dynamic_shape
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
@@ -280,7 +257,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                 "input_data2": [2, 128],
                 "input_data3": [2, 128]
             })
-        yield config, (10, 3), (1e-5, 1e-5)
+        yield config, (10, 5), (1e-5, 1e-5)
 
     def add_skip_pass_case(self):
         def teller1(program_config, predictor_config):

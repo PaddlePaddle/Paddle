@@ -600,7 +600,7 @@ class _ExecutorCache(object):
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
         if program not in self._cached_executors:
-            new_program = program
+            new_program = program.clone()
             _prune_feed_ops(new_program)
             new_exe = _StandaloneExecutor(self._place, new_program, scope)
             self._cached_executors[program] = new_exe
@@ -1309,8 +1309,8 @@ class Executor(object):
             inner_program_ = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
             assert isinstance(inner_program_, framework.Program)
-            if not program._is_start_up_program_:
-                return self._executor_cache.run(program, scope, feed,
+            if not inner_program_._is_start_up_program_:
+                return self._executor_cache.run(inner_program_, scope, feed,
                                                 fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
