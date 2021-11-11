@@ -31,6 +31,29 @@ FleetExecutor::~FleetExecutor() {
 
 void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
   // Compile and Initialize
+  std::stringstream ss;
+  ss << "The DNS table of the message bus is: \n";
+  int64_t cur_rank = exe_desc_.cur_rank();
+  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank;
+  std::unordered_map<int64_t, std::string> rank_to_addr;
+  std::string addr;
+  for (const auto& rank_info : exe_desc_.cluster_info()) {
+    int64_t rank = rank_info.rank();
+    std::string ip_port = rank_info.ip_port();
+    ss << rank << ":\t" << ip_port << "\n";
+    interceptor_id_to_rank.insert(std::make_pair(rank, rank));
+    rank_to_addr.insert(std::make_pair(rank, ip_port));
+    if (rank == cur_rank) {
+      addr = ip_port;
+    }
+  }
+  PADDLE_ENFORCE_NE(
+      addr, "", platform::errors::NotFound(
+                    "Current rank's ip_port cannot be found in the config."));
+  VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is " << addr
+          << ".";
+  VLOG(3) << "The number of ranks are " << interceptor_id_to_rank.size() << ".";
+  VLOG(5) << ss.str();
 }
 
 void FleetExecutor::Run() {
