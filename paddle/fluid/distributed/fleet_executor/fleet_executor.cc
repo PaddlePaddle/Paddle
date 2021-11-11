@@ -20,7 +20,9 @@ namespace paddle {
 namespace distributed {
 
 FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
-  // Initialize Executor
+  bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
+  PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
+                                 "Error occurs while parsing string to proto"));
 }
 
 FleetExecutor::~FleetExecutor() {
@@ -37,6 +39,16 @@ void FleetExecutor::Run() {
 
 void FleetExecutor::Release() {
   // Release
+}
+
+std::shared_ptr<Carrier> FleetExecutor::GetCarrier() {
+  // get carrier
+  return nullptr;
+}
+
+std::shared_ptr<MessageBus> FleetExecutor::GetMessageBus() {
+  // get message bus
+  return nullptr;
 }
 
 }  // namespace distributed

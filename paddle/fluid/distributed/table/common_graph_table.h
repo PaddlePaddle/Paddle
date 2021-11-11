@@ -64,7 +64,7 @@ class GraphShard {
   Node *find_node(uint64_t id);
   void delete_node(uint64_t id);
   void clear();
-  void add_neighboor(uint64_t id, uint64_t dst_id, float weight);
+  void add_neighbor(uint64_t id, uint64_t dst_id, float weight);
   std::unordered_map<uint64_t, int> get_node_location() {
     return node_location;
   }
@@ -81,17 +81,9 @@ struct SampleKey {
   uint64_t node_key;
   size_t sample_size;
   SampleKey(uint64_t _node_key, size_t _sample_size)
-      : node_key(_node_key), sample_size(_sample_size) {
-    // std::cerr<<"in constructor of samplekey\n";
-  }
+      : node_key(_node_key), sample_size(_sample_size) {}
   bool operator==(const SampleKey &s) const {
     return node_key == s.node_key && sample_size == s.sample_size;
-  }
-};
-
-struct SampleKeyHash {
-  size_t operator()(const SampleKey &s) const {
-    return s.node_key ^ s.sample_size;
   }
 };
 
@@ -121,13 +113,13 @@ class LRUNode {
   // time to live
   LRUNode<K, V> *pre, *next;
 };
-template <typename K, typename V, typename Hash = std::hash<K>>
+template <typename K, typename V>
 class ScaledLRU;
 
-template <typename K, typename V, typename Hash = std::hash<K>>
+template <typename K, typename V>
 class RandomSampleLRU {
  public:
-  RandomSampleLRU(ScaledLRU<K, V, Hash> *_father) : father(_father) {
+  RandomSampleLRU(ScaledLRU<K, V> *_father) : father(_father) {
     node_size = 0;
     node_head = node_end = NULL;
     global_ttl = father->ttl;
@@ -149,7 +141,7 @@ class RandomSampleLRU {
       for (size_t i = 0; i < length; i++) {
         auto iter = key_map.find(keys[i]);
         if (iter != key_map.end()) {
-          res.push_back({keys[i], iter->second->data});
+          res.emplace_back(keys[i], iter->second->data);
           iter->second->ttl--;
           if (iter->second->ttl == 0) {
             remove(iter->second, true);
@@ -229,15 +221,15 @@ class RandomSampleLRU {
   }
 
  private:
-  std::unordered_map<K, LRUNode<K, V> *, Hash> key_map;
-  ScaledLRU<K, V, Hash> *father;
+  std::unordered_map<K, LRUNode<K, V> *> key_map;
+  ScaledLRU<K, V> *father;
   size_t global_ttl;
   int node_size;
   LRUNode<K, V> *node_head, *node_end;
-  friend class ScaledLRU<K, V, Hash>;
+  friend class ScaledLRU<K, V>;
 };
 
-template <typename K, typename V, typename Hash>
+template <typename K, typename V>
 class ScaledLRU {
  public:
   ScaledLRU(size_t shard_num, size_t size_limit, size_t _ttl)
@@ -246,8 +238,8 @@ class ScaledLRU {
     stop = false;
     thread_pool.reset(new ::ThreadPool(1));
     global_count = 0;
-    lru_pool = std::vector<RandomSampleLRU<K, V, Hash>>(
-        shard_num, RandomSampleLRU<K, V, Hash>(this));
+    lru_pool = std::vector<RandomSampleLRU<K, V>>(shard_num,
+                                                  RandomSampleLRU<K, V>(this));
     shrink_job = std::thread([this]() -> void {
       while (true) {
         {
@@ -258,8 +250,6 @@ class ScaledLRU {
           }
         }
 
-        // shrink();
-        // std::cerr<<"shrink job in queue\n";
         auto status =
             thread_pool->enqueue([this]() -> int { return shrink(); });
         status.wait();
@@ -269,10 +259,8 @@ class ScaledLRU {
   }
   ~ScaledLRU() {
     std::unique_lock<std::mutex> lock(mutex_);
-    // std::cerr<<"cancel shrink job\n";
     stop = true;
     cv_.notify_one();
-    // pthread_cancel(shrink_job.native_handle());
   }
   LRUResponse query(size_t index, K *keys, size_t length,
                     std::vector<std::pair<K, V>> &res) {
@@ -286,10 +274,7 @@ class ScaledLRU {
     std::string t = "";
     for (size_t i = 0; i < lru_pool.size(); i++) {
       node_size += lru_pool[i].node_size;
-      // t += std::to_string(i) + "->" + std::to_string(lru_pool[i].node_size) +
-      // " ";
     }
-    // std::cout<<t<<std::endl;
 
     if (node_size <= size_limit) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
@@ -305,7 +290,7 @@ class ScaledLRU {
           }
         }
         if (global_count > size_limit) {
-          // std::cout<<"before shrinking cache, cached nodes count =
+          // VLOG(0)<<"before shrinking cache, cached nodes count =
           // "<<global_count<<std::endl;
           size_t remove = global_count - size_limit;
           while (remove--) {
@@ -319,11 +304,11 @@ class ScaledLRU {
             remove_node.lru_pointer->key_map.erase(remove_node.node->key);
             remove_node.lru_pointer->remove(remove_node.node, true);
           }
-          // std::cout<<"after shrinking cache, cached nodes count =
+          // VLOG(0)<<"after shrinking cache, cached nodes count =
           // "<<global_count<<std::endl;
         }
       } catch (...) {
-        // std::cout << "shrink cache failed"<<std::endl;
+        // VLOG(0) << "shrink cache failed"<<std::endl;
         pthread_rwlock_unlock(&rwlock);
         return -1;
       }
@@ -336,7 +321,7 @@ class ScaledLRU {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
       if (global_count > int(1.5 * size_limit)) {
-        // std::cout<<"global_count too large "<<global_count<<" enter start
+        // VLOG(0)<<"global_count too large "<<global_count<<" enter start
         // shrink task\n";
         thread_pool->enqueue([this]() -> int { return shrink(); });
       }
@@ -352,16 +337,16 @@ class ScaledLRU {
   size_t ttl;
   bool stop;
   std::thread shrink_job;
-  std::vector<RandomSampleLRU<K, V, Hash>> lru_pool;
+  std::vector<RandomSampleLRU<K, V>> lru_pool;
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   struct RemovedNode {
     LRUNode<K, V> *node;
-    RandomSampleLRU<K, V, Hash> *lru_pointer;
+    RandomSampleLRU<K, V> *lru_pointer;
     bool operator>(const RemovedNode &a) const { return node->ms > a.node->ms; }
   };
   std::shared_ptr<::ThreadPool> thread_pool;
-  friend class RandomSampleLRU<K, V, Hash>;
+  friend class RandomSampleLRU<K, V>;
 };
 
 class GraphTable : public SparseTable {
@@ -373,7 +358,7 @@ class GraphTable : public SparseTable {
                                   int &actual_size, bool need_feature,
                                   int step);
 
-  virtual int32_t random_sample_neighboors(
+  virtual int32_t random_sample_neighbors(
       uint64_t *node_ids, int sample_size,
       std::vector<std::shared_ptr<char>> &buffers,
       std::vector<int> &actual_sizes);
@@ -433,11 +418,11 @@ class GraphTable : public SparseTable {
 
   size_t get_server_num() { return server_num; }
 
-  virtual int32_t make_neigh_sample_cache(size_t size_limit, size_t ttl) {
+  virtual int32_t make_neighbor_sample_cache(size_t size_limit, size_t ttl) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (use_cache == false) {
-        scaled_lru.reset(new ScaledLRU<SampleKey, SampleResult, SampleKeyHash>(
+        scaled_lru.reset(new ScaledLRU<SampleKey, SampleResult>(
             shard_end - shard_start, size_limit, ttl));
         use_cache = true;
       }
@@ -460,10 +445,20 @@ class GraphTable : public SparseTable {
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
-  std::shared_ptr<ScaledLRU<SampleKey, SampleResult, SampleKeyHash>> scaled_lru;
+  std::shared_ptr<ScaledLRU<SampleKey, SampleResult>> scaled_lru;
   bool use_cache;
   mutable std::mutex mutex_;
 };
 }  // namespace distributed
 
 };  // namespace paddle
+
+namespace std {
+
+template <>
+struct hash<paddle::distributed::SampleKey> {
+  size_t operator()(const paddle::distributed::SampleKey &s) const {
+    return s.node_key ^ s.sample_size;
+  }
+};
+}

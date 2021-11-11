@@ -25,8 +25,13 @@ import traceback
 from paddle.distributed.fleet import cloud_utils
 from paddle.distributed.fleet import launch_utils
 
-logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
 logger = logging.getLogger("ELASTIC")
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    fmt='%(name)s %(levelname)s %(asctime)s %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 ELASTIC_EXIT_CODE = 101
 

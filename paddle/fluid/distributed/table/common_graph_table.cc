@@ -125,7 +125,7 @@ FeatureNode *GraphShard::add_feature_node(uint64_t id) {
   return (FeatureNode *)bucket[node_location[id]];
 }
 
-void GraphShard::add_neighboor(uint64_t id, uint64_t dst_id, float weight) {
+void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
   find_node(id)->add_edge(dst_id, weight);
 }
 
@@ -277,7 +277,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
 
       size_t index = src_shard_id - shard_start;
       shards[index].add_graph_node(src_id)->build_edges(is_weighted);
-      shards[index].add_neighboor(src_id, dst_id, weight);
+      shards[index].add_neighbor(src_id, dst_id, weight);
       valid_count++;
     }
   }
@@ -392,121 +392,85 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
   memcpy(pointer, res.data(), actual_size);
   return 0;
 }
-int32_t GraphTable::random_sample_neighboors(
+int32_t GraphTable::random_sample_neighbors(
     uint64_t *node_ids, int sample_size,
     std::vector<std::shared_ptr<char>> &buffers,
     std::vector<int> &actual_sizes) {
   size_t node_num = buffers.size();
   std::function<void(char *)> char_del = [](char *c) { delete[] c; };
   std::vector<std::future<int>> tasks;
-  if (use_cache) {
-    std::vector<std::vector<uint32_t>> seq_id(shard_end - shard_start);
-    std::vector<std::vector<SampleKey>> id_list(shard_end - shard_start);
-    size_t index;
-    for (size_t idx = 0; idx < node_num; ++idx) {
-      index = get_thread_pool_index(node_ids[idx]);
-      seq_id[index].emplace_back(idx);
-      id_list[index].emplace_back(node_ids[idx], sample_size);
-    }
-    for (int i = 0; i < seq_id.size(); i++) {
-      if (seq_id[i].size() == 0) continue;
-      tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {
-        uint64_t node_id;
-        std::vector<std::pair<SampleKey, SampleResult>> r;
-        auto response =
+  std::vector<std::vector<uint32_t>> seq_id(shard_end - shard_start);
+  std::vector<std::vector<SampleKey>> id_list(shard_end - shard_start);
+  size_t index;
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    index = get_thread_pool_index(node_ids[idx]);
+    seq_id[index].emplace_back(idx);
+    id_list[index].emplace_back(node_ids[idx], sample_size);
+  }
+  for (int i = 0; i < seq_id.size(); i++) {
+    if (seq_id[i].size() == 0) continue;
+    tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {
+      uint64_t node_id;
+      std::vector<std::pair<SampleKey, SampleResult>> r;
+      LRUResponse response = LRUResponse::blocked;
+      if (use_cache) {
+        response =
             scaled_lru->query(i, id_list[i].data(), id_list[i].size(), r);
-        int index = 0;
-        uint32_t idx;
-        std::vector<SampleResult> sample_res;
-        std::vector<SampleKey> sample_keys;
-        auto &rng = _shards_task_rng_pool[i];
-        for (size_t k = 0; k < id_list[i].size(); k++) {
-          if (index < r.size() &&
-              r[index].first.node_key == id_list[i][k].node_key) {
-            idx = seq_id[i][k];
-            actual_sizes[idx] = r[index].second.actual_size;
-            buffers[idx] = r[index].second.buffer;
-            index++;
+      }
+      int index = 0;
+      uint32_t idx;
+      std::vector<SampleResult> sample_res;
+      std::vector<SampleKey> sample_keys;
+      auto &rng = _shards_task_rng_pool[i];
+      for (size_t k = 0; k < id_list[i].size(); k++) {
+        if (index < r.size() &&
+            r[index].first.node_key == id_list[i][k].node_key) {
+          idx = seq_id[i][k];
+          actual_sizes[idx] = r[index].second.actual_size;
+          buffers[idx] = r[index].second.buffer;
+          index++;
+        } else {
+          node_id = id_list[i][k].node_key;
+          Node *node = find_node(node_id);
+          idx = seq_id[i][k];
+          int &actual_size = actual_sizes[idx];
+          if (node == nullptr) {
+            actual_size = 0;
+            continue;
+          }
+          std::shared_ptr<char> &buffer = buffers[idx];
+          std::vector<int> res = node->sample_k(sample_size, rng);
+          actual_size = res.size() * (Node::id_size + Node::weight_size);
+          int offset = 0;
+          uint64_t id;
+          float weight;
+          char *buffer_addr = new char[actual_size];
+          if (response == LRUResponse::ok) {
+            sample_keys.emplace_back(node_id, sample_size);
+            sample_res.emplace_back(actual_size, buffer_addr);
+            buffer = sample_res.back().buffer;
           } else {
-            node_id = id_list[i][k].node_key;
-            Node *node = find_node(node_id);
-            idx = seq_id[i][k];
-            int &actual_size = actual_sizes[idx];
-            if (node == nullptr) {
-              actual_size = 0;
-              continue;
-            }
-            std::shared_ptr<char> &buffer = buffers[idx];
-            std::vector<int> res = node->sample_k(sample_size, rng);
-            actual_size = res.size() * (Node::id_size + Node::weight_size);
-            int offset = 0;
-            uint64_t id;
-            float weight;
-            char *buffer_addr = new char[actual_size];
-            if (response == LRUResponse::ok) {
-              sample_keys.emplace_back(node_id, sample_size);
-              sample_res.emplace_back(actual_size, buffer_addr);
-              buffer = sample_res.back().buffer;
-            } else {
-              buffer.reset(buffer_addr, char_del);
-            }
-            for (int &x : res) {
-              id = node->get_neighbor_id(x);
-              weight = node->get_neighbor_weight(x);
-              memcpy(buffer_addr + offset, &id, Node::id_size);
-              offset += Node::id_size;
-              memcpy(buffer_addr + offset, &weight, Node::weight_size);
-              offset += Node::weight_size;
-            }
+            buffer.reset(buffer_addr, char_del);
+          }
+          for (int &x : res) {
+            id = node->get_neighbor_id(x);
+            weight = node->get_neighbor_weight(x);
+            memcpy(buffer_addr + offset, &id, Node::id_size);
+            offset += Node::id_size;
+            memcpy(buffer_addr + offset, &weight, Node::weight_size);
+            offset += Node::weight_size;
           }
         }
-        if (sample_res.size()) {
-          scaled_lru->insert(i, sample_keys.data(), sample_res.data(),
-                             sample_keys.size());
-        }
-        return 0;
-      }));
-    }
-    for (auto &t : tasks) {
-      t.get();
-    }
-    return 0;
-  }
-  for (size_t idx = 0; idx < node_num; ++idx) {
-    uint64_t &node_id = node_ids[idx];
-    std::shared_ptr<char> &buffer = buffers[idx];
-    int &actual_size = actual_sizes[idx];
-
-    int thread_pool_index = get_thread_pool_index(node_id);
-    auto rng = _shards_task_rng_pool[thread_pool_index];
-
-    tasks.push_back(_shards_task_pool[thread_pool_index]->enqueue([&]() -> int {
-      Node *node = find_node(node_id);
-
-      if (node == nullptr) {
-        actual_size = 0;
-        return 0;
       }
-      std::vector<int> res = node->sample_k(sample_size, rng);
-      actual_size = res.size() * (Node::id_size + Node::weight_size);
-      int offset = 0;
-      uint64_t id;
-      float weight;
-      char *buffer_addr = new char[actual_size];
-      buffer.reset(buffer_addr, char_del);
-      for (int &x : res) {
-        id = node->get_neighbor_id(x);
-        weight = node->get_neighbor_weight(x);
-        memcpy(buffer_addr + offset, &id, Node::id_size);
-        offset += Node::id_size;
-        memcpy(buffer_addr + offset, &weight, Node::weight_size);
-        offset += Node::weight_size;
+      if (sample_res.size()) {
+        scaled_lru->insert(i, sample_keys.data(), sample_res.data(),
+                           sample_keys.size());
       }
       return 0;
     }));
   }
-  for (size_t idx = 0; idx < node_num; ++idx) {
-    tasks[idx].get();
+  for (auto &t : tasks) {
+    t.get();
   }
   return 0;
 }
