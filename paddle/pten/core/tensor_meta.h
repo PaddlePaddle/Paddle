@@ -82,4 +82,11 @@ inline bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
+inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
+  bool ret = true;
+  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.type == rhs.type) && (lhs.layout == rhs.layout) &&
+         (lhs.lod == rhs.lod);
+}
+
 }  // namespace pten
