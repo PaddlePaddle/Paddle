@@ -23,6 +23,7 @@ from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 import unittest
 from op_test import OpTest
+from paddle.fluid.framework import default_main_program
 
 
 class TestFusedFFNOp(OpTest):
@@ -140,7 +141,7 @@ class TestFusedFFNOp(OpTest):
         return out, x.grad
 
     def test_out_and_grad(self):
-        paddle.seed(42)
+        default_main_program().random_seed = 42
         base_out, base_grad = self.Base()
         fused_out, fused_grad = self.FusedFFN()
         np.testing.assert_allclose(
@@ -193,7 +194,7 @@ class TestFusedFFNOpNormalizeBefore(TestFusedFFNOp):
 class APITestStaticFusedFFN(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
-        paddle.seed(42)
+        default_main_program().random_seed = 42
         dtype = "float32"
         layer_norm_dtype = "float32"
         batch_size = 1
