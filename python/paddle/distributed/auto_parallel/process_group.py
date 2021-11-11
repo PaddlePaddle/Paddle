@@ -68,7 +68,6 @@ class ProcessGroup:
         if group_id != 0:
             global _g_process_group_map
             _g_process_group_map[0].add_ranks(ranks)
-        self._nranks = len(self._ranks)
         self._is_instantiate = False
 
     @property
@@ -79,15 +78,22 @@ class ProcessGroup:
     def ranks(self):
         return self._ranks
 
+    @property
+    def nranks(self):
+        return len(self._ranks)
+
     def add_ranks(self, new_ranks):
-        assert self.is_instantiate() == False, \
-            "Cannot add new ranks after instantiating the process group"
+        if set(new_ranks) <= set(self.ranks):
+            return
+        else:
+            assert self.is_instantiate() == False, \
+                "Cannot add new ranks after instantiating the process group"
         self._ranks.extend(new_ranks)
-        self._ranks = sorted(list(set(self._ranks)))
+        self._ranks = sorted(list(set(self.ranks)))
 
     def local_rank(self, global_rank):
-        if global_rank in self._ranks:
-            return self._ranks.index(global_rank)
+        if global_rank in self.ranks:
+            return self.ranks.index(global_rank)
         else:
             assert False, \
                 "Rank {} doesn't belong to this group".format(global_rank)
@@ -102,12 +108,12 @@ class ProcessGroup:
         genv = _get_global_env()
         global_rank = genv.rank
 
-        if self._nranks >= 2:
+        if self.nranks >= 2:
             strategy = core.ParallelStrategy()
-            strategy.nranks = self._nranks
+            strategy.nranks = self.nranks
             strategy.local_rank = self.local_rank(global_rank)
             strategy.trainer_endpoints = [
-                genv.trainer_endpoints[i] for i in self._ranks
+                genv.trainer_endpoints[i] for i in self.ranks
             ]
             strategy.current_endpoint = genv.current_endpoint
             strategy.nrings = 1
@@ -141,7 +147,7 @@ class ProcessGroup:
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
-            self.id, self._nranks, ", ".join(map(str, self._ranks)))
+            self.id, self.nranks, ", ".join(map(str, self.ranks)))
         return string
 
 
