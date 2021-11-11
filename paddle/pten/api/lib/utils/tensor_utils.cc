@@ -91,30 +91,16 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     framework::Variable* variable, const pten::TensorArgDef& arg_def) {
   // mutable_data before run kernel, to avoid share output form
   // KernelContext to original tensor
-
-  auto dtype = arg_def.dtype;
-
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
-
-    if (arg_def.dtype == pten::DataType::UNDEFINED) {
-      dtype = pten::TransToPtenDataType(tensor->GetType());
-      VLOG(0) << " LoDTensor GetType = " << dtype;
-    }
-
     tensor->mutable_data(pten::TransToFluidPlace(arg_def.backend),
-                         pten::TransToProtoVarType(dtype));
+                         pten::TransToProtoVarType(arg_def.dtype));
     return MakePtenDenseTensor(*tensor);
   } else if (variable->template IsType<framework::SelectedRows>()) {
     auto* tensor = variable->template GetMutable<framework::SelectedRows>();
-
-    if (arg_def.dtype == pten::DataType::UNDEFINED) {
-      dtype = pten::TransToPtenDataType(tensor->value().GetType());
-    }
-
     tensor->mutable_value()->mutable_data(
         pten::TransToFluidPlace(arg_def.backend),
-        pten::TransToProtoVarType(dtype));
+        pten::TransToProtoVarType(arg_def.dtype));
     // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
     // here the row and height will lost in output!
     return MakePtenDenseTensor(tensor->value());

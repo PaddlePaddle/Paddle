@@ -219,10 +219,6 @@ class Tensor {
     return type_;
   }
 
-  proto::VarType::Type GetType() const { return type_; }
-
-  void SetType(proto::VarType::Type t) { type_ = t; }
-
   /**
    * [Add method get the saved type of tensor]
    *

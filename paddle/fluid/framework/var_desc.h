@@ -162,8 +162,6 @@ class VarDesc {
   // distributed attribute now.
   uint64_t Id() const { return id_; }
 
-  bool is_tensor_desc() const;
-
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;

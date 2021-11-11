@@ -104,23 +104,13 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
 
         VLOG(3) << "Initialize Variable " << var->Name();
-
-        if (var->is_tensor_desc()) {
-          InitializeVariable(ptr, var->GetType(), var->GetDataType());
-        } else {
-          InitializeVariable(ptr, var->GetType());
-        }
-
+        InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
                 << " global, which pointer is " << ptr << " type is "
                 << static_cast<int>(var->GetType());
       } else {
         auto* ptr = scope->Var(var->Name());
-        if (var->is_tensor_desc()) {
-          InitializeVariable(ptr, var->GetType(), var->GetDataType());
-        } else {
-          InitializeVariable(ptr, var->GetType());
-        }
+        InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
                 << " locally, which pointer is " << ptr << "Variable Type "
                 << static_cast<int>(var->GetType());
@@ -129,13 +119,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   } else {
     for (auto& var : global_block.AllVars()) {
       auto* ptr = scope->Var(var->Name());
-
-      if (var->is_tensor_desc()) {
-        InitializeVariable(ptr, var->GetType(), var->GetDataType());
-      } else {
-        InitializeVariable(ptr, var->GetType());
-      }
-
+      InitializeVariable(ptr, var->GetType());
       VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
               << ptr;
     }

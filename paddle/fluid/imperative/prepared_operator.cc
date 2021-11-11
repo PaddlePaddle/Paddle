@@ -335,15 +335,8 @@ static void BuildDygraphPtenKernelContext(
       for (size_t j = 0; j < outs_vector.size(); ++j) {
         if (output_size > i + j) {
           auto tmp_def = out_def;
-          if (out_def.dtype == pten::DataType::UNDEFINED) {
-            VLOG(0) << " ddddddddddddddd  dygraph datatype : = "
-                    << outs_vector[j]->DataType();
-            tmp_def.dtype =
-                pten::TransToPtenDataType(outs_vector[j]->DataType());
-          }
-
           experimental::ReMakePtenDenseTensorFromVar(
-              outs_vector[j]->MutableVar(), tmp_def,
+              outs_vector[j]->MutableVar(), out_def,
               kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
         }
         // TODO(chenweihang): adapt multi-output case later

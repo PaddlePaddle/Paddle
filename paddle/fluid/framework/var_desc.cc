@@ -195,29 +195,6 @@ std::vector<int32_t> VarDesc::GetLoDLevels() const {
   }
 }
 
-bool VarDesc::is_tensor_desc() const {
-  PADDLE_ENFORCE_EQ(
-      desc_.has_type(), true,
-      platform::errors::NotFound("The variable's type was not be set."));
-  PADDLE_ENFORCE_EQ(
-      desc_.type().has_type(), true,
-      platform::errors::NotFound("The variable's type was not be set."));
-  switch (desc_.type().type()) {
-    case proto::VarType::SELECTED_ROWS:
-      return true;
-    case proto::VarType::LOD_TENSOR:
-      return true;
-    case proto::VarType::LOD_TENSOR_ARRAY:
-      return true;
-    case proto::VarType::STRINGS:
-      return true;
-    case proto::VarType::VOCAB:
-      return true;
-    default:
-      return false;
-  }
-}
-
 const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE_EQ(
       desc_.has_type(), true,
