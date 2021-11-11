@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -54,6 +55,8 @@ void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
           << ".";
   VLOG(3) << "The number of ranks are " << interceptor_id_to_rank.size() << ".";
   VLOG(5) << ss.str();
+  MessageBus& message_bus_instance = MessageBus::Instance();
+  message_bus_instance.Init(interceptor_id_to_rank, rank_to_addr, addr);
 }
 
 void FleetExecutor::Run() {
