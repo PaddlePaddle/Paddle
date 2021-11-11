@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import os
 import paddle
 import paddle.fluid as fluid
 
@@ -32,6 +33,16 @@ class TestFleetExecutor(unittest.TestCase):
         exe.run(empty_program, feed={'x': [1]})
 
     def test_executor_on_multi_devices(self):
+        places = [fluid.CPUPlace()]
+        if fluid.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            self.run_fleet_executor(place)
+
+    def test_dist_executor_on_multi_devices(self):
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002"
         places = [fluid.CPUPlace()]
         if fluid.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))

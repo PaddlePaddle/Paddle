@@ -21,20 +21,28 @@
 namespace paddle {
 namespace distributed {
 
-MessageBus::MessageBus(
+void MessageBus::Init(
     const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
     const std::unordered_map<int64_t, std::string>& rank_to_addr,
-    const std::string& addr)
-    : interceptor_id_to_rank_(interceptor_id_to_rank),
-      rank_to_addr_(rank_to_addr),
-      addr_(addr) {
+    const std::string& addr) {
+  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
+                                         "MessageBus is already init."));
+  is_init_ = true;
+  interceptor_id_to_rank_ = interceptor_id_to_rank;
+  rank_to_addr_ = rank_to_addr;
+  addr_ = addr;
+
   listen_port_thread_ = std::thread([this]() {
     VLOG(3) << "Start listen_port_thread_ for message bus";
     ListenPort();
   });
+
+  std::call_once(once_flag_, []() {
+    std::atexit([]() { MessageBus::Instance().Release(); });
+  });
 }
 
-MessageBus::~MessageBus() {
+void MessageBus::Release() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   server_.Stop(1000);
