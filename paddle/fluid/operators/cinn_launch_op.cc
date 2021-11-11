@@ -62,40 +62,6 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
           << "]";
 }
 
-std::vector<std::string> MapPaddleVariablesToCinn(
-    const std::vector<std::string>& paddle_names,
-    const std::unordered_map<std::string, std::string>& paddle2cinn_varmap) {
-  std::vector<std::string> result;
-  result.reserve(result.size());
-  std::transform(
-      paddle_names.begin(), paddle_names.end(), std::back_inserter(result),
-      [&paddle2cinn_varmap](const std::string& pd_name) {
-        PADDLE_ENFORCE_GT(paddle2cinn_varmap.count(pd_name), 0,
-                          platform::errors::NotFound(
-                              "Not found the corresponding cinn variable "
-                              "of paddle variable(%s) in compilation result.",
-                              pd_name));
-        return paddle2cinn_varmap.at(pd_name);
-      });
-  return result;
-}
-
-std::vector<CinnTensor> GetCinnTensorsFromCompiledScope(
-    const std::vector<std::string>& cinn_names, const CinnScope& cinn_scope) {
-  std::vector<CinnTensor> result;
-  result.reserve(cinn_names.size());
-  std::transform(cinn_names.begin(), cinn_names.end(),
-                 std::back_inserter(result),
-                 [&cinn_scope](const std::string& var_name) {
-                   PADDLE_ENFORCE_NOT_NULL(
-                       cinn_scope.FindVar(var_name),
-                       platform::errors::NotFound(
-                           "Variable(%s) not found in cinn scope.", var_name));
-                   return cinn_scope.GetTensor(var_name);
-                 });
-  return result;
-}
-
 void CheckTensorEquivalent(const std::string& paddle_name,
                            const LoDTensor* paddle_tensor,
                            const CinnTensor& cinn_tensor) {
@@ -124,10 +90,32 @@ void TensorMutableDataWithCinnInfo(const platform::Place& place,
       framework::make_ddim(cinn_tensor->shape().data()), place);
 }
 
+CinnLaunchContext::CinnLaunchContext(const CinnCompiledObject& compiled_obj)
+    : paddle2cinn_varmap_(compiled_obj.paddle2cinn_varmap),
+      cinn_scope_(compiled_obj.cinn_scope) {}
+
+bool CinnLaunchContext::IsVariableUsed(const std::string& var_name) {
+  return paddle2cinn_varmap_.count(var_name) > 0 &&
+         cinn_scope_.FindVar(paddle2cinn_varmap_.at(var_name)) != nullptr;
+}
+
+CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& paddle_name) {
+  PADDLE_ENFORCE_GT(paddle2cinn_varmap_.count(paddle_name), 0,
+                    platform::errors::NotFound(
+                        "Not found the corresponding cinn variable "
+                        "of paddle variable(%s) in compilation result.",
+                        paddle_name));
+  const auto& cinn_name = paddle2cinn_varmap_.at(paddle_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      cinn_scope_.FindVar(cinn_name),
+      platform::errors::NotFound("Variable(%s) not found in cinn scope",
+                                 cinn_name));
+  return cinn_scope_.GetTensor(cinn_name);
+}
+
 std::vector<std::string> SeperateTempVar(
     const CinnScope& cinn_scope,
-    const std::vector<std::string>& input_cinn_names,
-    const std::vector<std::string>& output_cinn_names) {
+    const std::map<std::string, cinn_pod_value_t>& processed_name2argument) {
   auto cinn_var_names = cinn_scope.var_names();
   std::unordered_set<std::string> all_cinn_names;
   all_cinn_names.reserve(cinn_var_names.size());
@@ -136,12 +124,10 @@ std::vector<std::string> SeperateTempVar(
       std::inserter(all_cinn_names, all_cinn_names.end()),
       [](const auto& name_view) { return std::string(name_view.data()); });
 
-  auto exclude_fn = [&all_cinn_names](const auto& cinn_name) {
-    all_cinn_names.erase(cinn_name);
-  };
-
-  std::for_each(input_cinn_names.begin(), input_cinn_names.end(), exclude_fn);
-  std::for_each(output_cinn_names.begin(), output_cinn_names.end(), exclude_fn);
+  std::for_each(processed_name2argument.begin(), processed_name2argument.end(),
+                [&all_cinn_names](const auto& name2arg) {
+                  all_cinn_names.erase(name2arg.first);
+                });
   return {all_cinn_names.begin(), all_cinn_names.end()};
 }
 
@@ -156,6 +142,9 @@ std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(LoDTensor* tensor) {
   // assign size and memory
   cinn_buffer->resize(cinn_dims.data(), cinn_dims.size());
   cinn_buffer->memory = reinterpret_cast<uint8_t*>(tensor->data<float>());
+  VLOG(4) << "ShareTensorWithCinnBuffer:num_elements:"
+          << cinn_buffer->num_elements() << ", memory_address:"
+          << reinterpret_cast<void*>(cinn_buffer->memory);
   return cinn_buffer;
 }
 

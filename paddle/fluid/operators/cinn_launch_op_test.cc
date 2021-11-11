@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/utils/none.h"
 
 USE_OP(cinn_launch);
 USE_OP(elementwise_add);
@@ -188,32 +189,24 @@ TEST(CinnLaunchOpHelperTest, TestPlaceToCinnTarget) {
                paddle::platform::EnforceNotMet);
 }
 
-TEST(CinnLaunchOpHelperTest, TestMapPaddleVariablesToCinn) {
+TEST(CinnLaunchOpHelperTest, TestTranformPaddleVarNameToCinn) {
   std::unordered_map<std::string, std::string> varmap(
       {{"var1", "cinn_var1"}, {"var2", "cinn_var2"}, {"var3", "cinn_var3"}});
 
-  auto cinn_names = MapPaddleVariablesToCinn({"var1", "var3"}, varmap);
-  ASSERT_EQ(cinn_names.size(), 2);
-  EXPECT_EQ(cinn_names, std::vector<std::string>({"cinn_var1", "cinn_var3"}));
-  ASSERT_THROW(MapPaddleVariablesToCinn({"var1", "not_exist"}, varmap),
+  auto cinn_name = TranformPaddleVarNameToCinn("var1", varmap);
+  ASSERT_EQ(cinn_name, "cinn_var1");
+  ASSERT_THROW(TranformPaddleVarNameToCinn("not_exist", varmap),
                paddle::platform::EnforceNotMet);
 }
 
-TEST(CinnLaunchOpHelperTest, TestGetCinnTensorsFromCompiledScope) {
+TEST(CinnLaunchOpHelperTest, TestGetTensorFromCinnScope) {
   CinnScope cinn_scope;
   cinn_scope.Var<CinnTensor>("cinn_var1");
   cinn_scope.Var<CinnTensor>("cinn_var2");
   cinn_scope.Var<CinnTensor>("cinn_var3");
 
-  auto cinn_tensors =
-      GetCinnTensorsFromCompiledScope({"cinn_var1", "cinn_var3"}, cinn_scope);
-  ASSERT_EQ(cinn_tensors.size(), 2);
-  ASSERT_EQ(cinn_tensors.front().get(),
-            cinn_scope.GetTensor("cinn_var1").get());
-  ASSERT_EQ(cinn_tensors.back().get(), cinn_scope.GetTensor("cinn_var3").get());
-  ASSERT_THROW(
-      GetCinnTensorsFromCompiledScope({"cinn_var1", "not_exist"}, cinn_scope),
-      paddle::platform::EnforceNotMet);
+  ASSERT_NE(GetTensorFromCinnScope("cinn_var3", cinn_scope), ::paddle::none);
+  ASSERT_EQ(GetTensorFromCinnScope("not_exist", cinn_scope), ::paddle::none);
 }
 
 TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
@@ -257,12 +250,12 @@ TEST(CinnLaunchOpHelperTest, TestSeperateTempVar) {
   cinn_scope.Var<CinnTensor>("cinn_var1");
   cinn_scope.Var<CinnTensor>("cinn_var2");
   cinn_scope.Var<CinnTensor>("cinn_var3");
-  cinn_scope.Var<CinnTensor>("cinn_var4");
+  std::map<std::string, cinn_pod_value_t> name2argument(
+      {{"cinn_var1", cinn_pod_value_t()}, {"cinn_var3", cinn_pod_value_t()}});
 
-  auto temp_names =
-      SeperateTempVar(cinn_scope, {"cinn_var1", "cinn_var2"}, {"cinn_var4"});
+  auto temp_names = SeperateTempVar(cinn_scope, name2argument);
   ASSERT_EQ(temp_names.size(), 1);
-  EXPECT_EQ(temp_names.front(), "cinn_var3");
+  EXPECT_EQ(temp_names.front(), "cinn_var2");
 }
 
 TEST(CinnLaunchOpHelperTest, TestShareTensorWithCinnBuffer) {
