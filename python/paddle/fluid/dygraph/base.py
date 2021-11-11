@@ -414,7 +414,7 @@ def grad(outputs,
          no_grad_vars=None):
     ''' 
     .. note::
-        **This API is ONLY available in Dygraph mode.**
+        **This API is ONLY available in imperative mode.**
 
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 
@@ -456,7 +456,7 @@ def grad(outputs,
             the Tensors whose gradients are not needed to compute. Default None.
 
     Returns:
-        tuple: a tuple of Tensors, whose length is the same as the Tensor number 
+        list: a list of Tensors, whose length is the same as the Tensor number 
         inside `inputs`, and the i-th returned Tensor is the sum of gradients of 
         `outputs` with respect to the i-th `inputs`.
 

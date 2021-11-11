@@ -12,8 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/flatten_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace {
+enum class ReshapeKernelOpName {
+  reshape,
+  reshape2,
+  squeeze,
+  squeeze2,
+  flatten,
+  flatten2,
+};
+}  // anonymous namespace
 
 namespace paddle {
 namespace operators {
@@ -41,7 +53,7 @@ static std::vector<int> extract_shape(
   return vec_new_shape;
 }
 
-template <typename T>
+template <typename T, ReshapeKernelOpName op_name>
 class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -55,42 +67,12 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<LoDTensor>("X");
-    auto* xshape = ctx.Output<LoDTensor>("XShape");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    framework::DDim x_dims;
-    // if reshape or squeeze
-    if (ctx.Type().find("2") == std::string::npos) {
-      x_dims = x->dims();
-    } else {
-      auto xshape_dims = xshape->dims();
-      x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    }
+    framework::DDim x_dims, out_dims;
+    InferInOutShape(ctx, x_dims, out_dims);
 
     auto x_vec_dims = framework::vectorize(x_dims);
-
-    framework::DDim out_dims;
-    if (ctx.Type() == "squeeze") {
-      auto& axes = ctx.Attr<std::vector<int>>("axes");
-      out_dims = GetOutputShape(axes, x_dims, true);
-    } else {
-      out_dims = out->dims();
-    }
-
-    if (ctx.Type().find("reshape") != std::string::npos) {
-      auto list_new_shape_tensor = ctx.MultiInput<Tensor>("ShapeTensor");
-      if (list_new_shape_tensor.size() > 0) {
-        auto new_shape = extract_shape(list_new_shape_tensor);
-        out_dims = ValidateShape(new_shape, x_dims);
-      } else if (ctx.HasInput("Shape")) {
-        auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
-        auto* shape_data = shape_tensor->data<int>();
-
-        auto shape =
-            std::vector<int>(shape_data, shape_data + shape_tensor->numel());
-        out_dims = ValidateShape(shape, x_dims);
-      }
-    }
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
     platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
@@ -114,6 +96,104 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
         framework::vectorize(out_dims))));
+  }
+
+  void InferInOutShape(const framework::ExecutionContext& ctx,
+                       framework::DDim& x_dims,
+                       framework::DDim& out_dims) const {
+    switch (op_name) {
+      case ReshapeKernelOpName::reshape:
+        InferShapeReshapeOp(ctx, x_dims, out_dims);
+        break;
+      case ReshapeKernelOpName::reshape2:
+        InferShapeReshape2Op(ctx, x_dims, out_dims);
+        break;
+      case ReshapeKernelOpName::squeeze:
+        InferShapeSqueezeOp(ctx, x_dims, out_dims);
+        break;
+      case ReshapeKernelOpName::squeeze2:
+        InferShapeSqueeze2Op(ctx, x_dims, out_dims);
+        break;
+      case ReshapeKernelOpName::flatten:
+        InferShapeFlattenOp(ctx, x_dims, out_dims);
+        break;
+      case ReshapeKernelOpName::flatten2:
+        InferShapeFlattenOp(ctx, x_dims, out_dims);
+        break;
+      default:
+        PADDLE_THROW(paddle::platform::errors::OutOfRange(
+            "Reshape kernel doesn not support that operator name"));
+    }
+  }
+
+  void InferShapeReshapeOp(const framework::ExecutionContext& ctx,
+                           framework::DDim& x_dims,
+                           framework::DDim& out_dims) const {
+    auto* x = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+    x_dims = x->dims();
+    out_dims = out->dims();
+    ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
+  }
+
+  void InferShapeReshape2Op(const framework::ExecutionContext& ctx,
+                            framework::DDim& x_dims,
+                            framework::DDim& out_dims) const {
+    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* xshape = ctx.Output<LoDTensor>("XShape");
+    auto xshape_dims = xshape->dims();
+    x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    out_dims = out->dims();
+    ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
+  }
+
+  // in reshape1/2 ops  "ShapeTensor" has highest priority and "Shape" has
+  // second highest priority
+  void ChangeReshapeOutDimsIfNeeded(const framework::ExecutionContext& ctx,
+                                    framework::DDim& x_dims,
+                                    framework::DDim& out_dims) const {
+    auto list_new_shape_tensor = ctx.MultiInput<Tensor>("ShapeTensor");
+    if (list_new_shape_tensor.size() > 0) {
+      auto new_shape = extract_shape(list_new_shape_tensor);
+      out_dims = ValidateShape(new_shape, x_dims);
+    } else if (ctx.HasInput("Shape")) {
+      auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+      auto* shape_data = shape_tensor->data<int>();
+
+      auto shape =
+          std::vector<int>(shape_data, shape_data + shape_tensor->numel());
+      out_dims = ValidateShape(shape, x_dims);
+    }
+  }
+
+  void InferShapeSqueezeOp(const framework::ExecutionContext& ctx,
+                           framework::DDim& x_dims,
+                           framework::DDim& out_dims) const {
+    auto* x = ctx.Input<LoDTensor>("X");
+    x_dims = x->dims();
+    const auto& axes = ctx.Attr<std::vector<int>>("axes");
+    out_dims = GetOutputShape(axes, x_dims, true);
+  }
+
+  void InferShapeSqueeze2Op(const framework::ExecutionContext& ctx,
+                            framework::DDim& x_dims,
+                            framework::DDim& out_dims) const {
+    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* xshape = ctx.Output<LoDTensor>("XShape");
+    auto xshape_dims = xshape->dims();
+    x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    out_dims = out->dims();
+  }
+
+  void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
+                           framework::DDim& x_dims,
+                           framework::DDim& out_dims) const {
+    auto x = ctx.Input<LoDTensor>("X");
+    x_dims = x->dims();
+    auto axes = ctx.Attr<int>("axis");
+    out_dims = framework::make_ddim(
+        FlattenKernel<platform::CPUDeviceContext, float>::GetOutputShape(
+            axes, x_dims));
   }
 
  protected:
@@ -223,8 +303,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T> {
+template <typename T, ReshapeKernelOpName op_name>
+class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     RunKernel(ctx);
@@ -239,14 +319,9 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T> {
     auto* dout = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
 
-    framework::DDim x_dims;
-    // if reshape or squeeze
-    if (ctx.Type().find("2") == std::string::npos) {
-      x_dims = dx->dims();
-    } else {
-      auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-      x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    }
+    framework::DDim dx_dims;
+    InferOutputShapeInGrad(ctx, dx_dims);
+
     auto dout_vec_dims = framework::vectorize(dout->dims());
 
     mkldnn::memory::data_type dout_type =
@@ -265,44 +340,128 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    dx->Resize(x_dims);
+    dx->Resize(dx_dims);
     dx->set_layout(framework::DataLayout::kMKLDNN);
     dx->set_format(GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
-        framework::vectorize(x_dims))));
+        framework::vectorize(dx_dims))));
+  }
+
+  void InferOutputShapeInGrad(const framework::ExecutionContext& ctx,
+                              framework::DDim& x_dims) const {
+    switch (op_name) {
+      case ReshapeKernelOpName::reshape:
+        InferShapeReshapeSqueezeGradOp(ctx, x_dims);
+        break;
+      case ReshapeKernelOpName::reshape2:
+        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
+        break;
+      case ReshapeKernelOpName::squeeze:
+        InferShapeReshapeSqueezeGradOp(ctx, x_dims);
+        break;
+      case ReshapeKernelOpName::squeeze2:
+        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
+        break;
+      case ReshapeKernelOpName::flatten:
+        InferShapeFlattenGradOp(ctx, x_dims);
+        break;
+      case ReshapeKernelOpName::flatten2:
+        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
+        break;
+      default:
+        PADDLE_THROW(paddle::platform::errors::OutOfRange(
+            "Reshape grad kernel doesn not support that operator name"));
+    }
+  }
+
+  void InferShapeReshapeSqueezeGradOp(const framework::ExecutionContext& ctx,
+                                      framework::DDim& dx_dims) const {
+    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    dx_dims = dx->dims();
+  }
+
+  void InferShapeReshape2Squeeze2Flatten2GradOp(
+      const framework::ExecutionContext& ctx, framework::DDim& dx_dims) const {
+    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    dx_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  }
+
+  void InferShapeFlattenGradOp(const framework::ExecutionContext& ctx,
+                               framework::DDim& dx_dims) const {
+    dx_dims = ctx.Input<LoDTensor>("X")->dims();
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(squeeze, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeMKLDNNKernel<float>,
-                   ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    squeeze, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
+    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+                             ReshapeKernelOpName::squeeze>);
 
-REGISTER_OP_KERNEL(squeeze_grad, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeGradMKLDNNKernel<float>,
-                   ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    squeeze_grad, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
+    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+                                 ReshapeKernelOpName::squeeze>);
 
-REGISTER_OP_KERNEL(squeeze2, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeMKLDNNKernel<float>,
-                   ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    squeeze2, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
+    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+                             ReshapeKernelOpName::squeeze2>);
 
-REGISTER_OP_KERNEL(squeeze2_grad, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeGradMKLDNNKernel<float>,
-                   ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    squeeze2_grad, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
+    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+                                 ReshapeKernelOpName::squeeze2>);
 
-REGISTER_OP_KERNEL(reshape, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeMKLDNNKernel<float>,
-                   ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    reshape, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
+    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+                             ReshapeKernelOpName::reshape>);
 
-REGISTER_OP_KERNEL(reshape_grad, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeGradMKLDNNKernel<float>,
-                   ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    reshape_grad, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
+    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+                                 ReshapeKernelOpName::reshape>);
 
-REGISTER_OP_KERNEL(reshape2, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeMKLDNNKernel<float>,
-                   ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    reshape2, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape2>,
+    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+                             ReshapeKernelOpName::reshape2>);
 
-REGISTER_OP_KERNEL(reshape2_grad, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReshapeGradMKLDNNKernel<float>,
-                   ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(
+    reshape2_grad, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape2>,
+    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+                                 ReshapeKernelOpName::reshape2>);
+
+REGISTER_OP_KERNEL(
+    flatten, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::flatten>,
+    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+                             ReshapeKernelOpName::flatten>);
+
+REGISTER_OP_KERNEL(
+    flatten_grad, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::flatten>,
+    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+                                 ReshapeKernelOpName::flatten>);
+
+REGISTER_OP_KERNEL(
+    flatten2, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::flatten2>,
+    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+                             ReshapeKernelOpName::flatten2>);
+
+REGISTER_OP_KERNEL(
+    flatten2_grad, MKLDNN, paddle::platform::CPUPlace,
+    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::flatten2>,
+    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+                                 ReshapeKernelOpName::flatten2>);

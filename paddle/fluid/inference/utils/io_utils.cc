@@ -197,6 +197,9 @@ void SerializeShapeRangeInfo(
 void DeserializeShapeRangeInfo(
     const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
   int fd = open(path.c_str(), O_RDONLY);
+  if (fd == -1) {
+    PADDLE_THROW(platform::errors::NotFound("File [%s] is not found.", path));
+  }
   google::protobuf::io::FileInputStream *is =
       new google::protobuf::io::FileInputStream(fd);
   google::protobuf::TextFormat::Parse(is, info);

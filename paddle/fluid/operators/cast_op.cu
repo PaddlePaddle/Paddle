@@ -47,12 +47,12 @@ __global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
 }
 
 template <typename InT>
-struct CastOpFunctor<platform::CUDADeviceContext, InT> {
+struct CastCUDAOpFunctor {
   const framework::Tensor* in_;
   framework::Tensor* out_;
   const platform::CUDADeviceContext& ctx_;
-  CastOpFunctor(const framework::Tensor* in, framework::Tensor* out,
-                const platform::CUDADeviceContext& ctx)
+  CastCUDAOpFunctor(const framework::Tensor* in, framework::Tensor* out,
+                    const platform::CUDADeviceContext& ctx)
       : in_(in), out_(out), ctx_(ctx) {}
 
   template <typename OutT>
@@ -75,41 +75,38 @@ struct CastOpFunctor<platform::CUDADeviceContext, InT> {
   }
 };
 
+template <typename InT>
+class CastCUDAOpKernel : public framework::OpKernel<InT> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+    framework::VisitDataType(
+        static_cast<framework::proto::VarType::Type>(
+            context.Attr<int>("out_dtype")),
+        CastCUDAOpFunctor<InT>(
+            in, out,
+            context.template device_context<platform::CUDADeviceContext>()));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-#ifdef PADDLE_WITH_HIP
-REGISTER_OP_CUDA_KERNEL(
-    cast, ops::CastOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::complex<float>>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::complex<double>>);
+#define REGISTER_CAST_CUDA_BASE(op_name, ...)                               \
+  REGISTER_OP_CUDA_KERNEL(                                                  \
+      op_name, ops::CastCUDAOpKernel<float>, ops::CastCUDAOpKernel<double>, \
+      ops::CastCUDAOpKernel<int>, ops::CastCUDAOpKernel<int64_t>,           \
+      ops::CastCUDAOpKernel<int16_t>, ops::CastCUDAOpKernel<bool>,          \
+      ops::CastCUDAOpKernel<uint8_t>, ops::CastCUDAOpKernel<plat::float16>, \
+      ops::CastCUDAOpKernel<plat::complex<float>>,                          \
+      ops::CastCUDAOpKernel<plat::complex<double>>, ##__VA_ARGS__);
+
+#if !defined(PADDLE_WITH_HIP)
+REGISTER_CAST_CUDA_BASE(cast, ops::CastCUDAOpKernel<plat::bfloat16>)
 #else
-REGISTER_OP_CUDA_KERNEL(
-    cast, ops::CastOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::bfloat16>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::complex<float>>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::complex<double>>);
+REGISTER_CAST_CUDA_BASE(cast)
 #endif

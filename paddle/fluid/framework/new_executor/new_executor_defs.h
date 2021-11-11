@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 
@@ -463,7 +464,6 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
 struct OpKernelFunc {
   OpKernelComputeFunc compute_func_;
-  OperatorBase* operator_base_;
 };
 
 struct VariableMetaInfo {
@@ -471,21 +471,197 @@ struct VariableMetaInfo {
   paddle::framework::VarDesc* vardesc_;
 };
 
-struct VariableScope {
-  std::vector<Variable*> var_list;
-  std::map<std::string, int> name2id;
+// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
+
+// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
+// ScopeBase. Scope manager the variables and VariableScope is just a quick
+// access machanism. ScopeListener is the callback to sync changes in Original
+// Scope. We can make it a membership of VariableScope. Here we use inherent.
+class VariableScope : public ScopeBase, public ScopeListener {
+ public:
+  VariableScope(Scope* outer_scope) {
+    // for @EMPTY@ variable
+    var_list_.push_back(nullptr);
+    name2id_[kEmptyVarName] = 0;
+    VariableMetaInfo info;
+    info.var_ref_count_ = 0;
+    info.vardesc_ = nullptr;
+    vec_meta_info_.push_back(info);
+    outer_scope_ = outer_scope;
+
+    PADDLE_ENFORCE_NE(
+        outer_scope_, nullptr,
+        platform::errors::PreconditionNotMet(
+            "You have passed a nullptr to construct VariableScope."));
+    outer_scope->AddListener(this);
+  }
+
+  ~VariableScope() {
+    if (outer_scope_ != nullptr) outer_scope_->DelListener(this);
+  }
+
+  const Scope* GetScope() const { return outer_scope_; }
+
+  Variable* FindVar(const std::string& name) const {
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      PADDLE_ENFORCE_LT(it->second, var_list_.size(),
+                        platform::errors::NotFound(
+                            "The id(%d) of variable(%s) should not be larger "
+                            "than the size of variable list(%d).",
+                            it->second, name, var_list_.size()));
+      return var_list_[it->second];
+    }
+    return nullptr;
+  }
+
+  // Get variable id by name, return -1 if not found
+  int GetIdByName(const std::string& name) const {
+    auto it = name2id_.find(name);
+    if (it != name2id_.end()) {
+      return it->second;
+    }
+    return -1;
+  }
+
+  // Get variable name by id, return "" if not found
+  std::string GetNameById(int id) const {
+    // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
+    // vec_meta_info_[id] may be nullptr,
+    // typically when the target variable is not existed in the original program
+    // desc, but created by interpretercore.
+    // For example, created and used by d2h_copy or h2d_copy operator.
+    auto it =
+        std::find_if(name2id_.begin(), name2id_.end(),
+                     [id](const auto& pair) { return pair.second == id; });
+    if (it != name2id_.end()) {
+      return it->first;
+    }
+    return "";
+  }
+
+  bool HasVar(const std::string& name) const {
+    return name2id_.find(name) != name2id_.end();
+  }
+
+  int VarId(const std::string& name) const {
+    CheckExist(name);
+    return name2id_.at(name);
+  }
+
+  Variable* Var(int id) const { return var_list_.at(id); }
+
+  Variable* Var(const std::string& name) const {
+    return var_list_.at(VarId(name));
+  }
+
+  size_t VarSize() const { return var_list_.size(); }
+
+  void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
+    // AddVar -> Scope::Var -> onCreateVariable.
+    VLOG(4) << "Add variable: " << name << " through AddVar()";
+    auto v = outer_scope_->Var(name);
+    if (nullptr == var_desc) {
+      v->GetMutable<LoDTensor>();
+    } else {
+      InitializeVariable(
+          v,
+          var_desc
+              ->GetType());  // Scope don't initialize variable recently created
+    }
+    SetVarDesc(name, var_desc);
+  }
+
+  void AddVar(const std::string& name, Variable& var) {  // NOLINT
+    // Though name existed in outer_scope_, we need
+    // add again to create name2id map.
+    outer_scope_->Var(name);
+  }
+
+  void SetVarDesc(const std::string& name, framework::VarDesc* var_desc) {
+    CheckExist(name);
+    vec_meta_info_[VarId(name)].vardesc_ = var_desc;
+  }
+
+  paddle::framework::VarDesc* VarDesc(const std::string& name) const {
+    return VarDesc(VarId(name));
+  }
+
+  paddle::framework::VarDesc* VarDesc(int id) const {
+    CheckExist(id);
+    return vec_meta_info_[id].vardesc_;
+  }
+
+  void CheckExist(int id) const {
+    PADDLE_ENFORCE_LT(id, var_list_.size(),
+                      platform::errors::PreconditionNotMet(
+                          "Required var_id < %d, but received var_id = %d.",
+                          var_list_.size(), id));
+  }
+
+  void CheckExist(const std::string& name) const {
+    PADDLE_ENFORCE_EQ(
+        HasVar(name), true,
+        platform::errors::NotFound("%s not in VariableScope.", name));
+  }
+
+ public:  // callbacks from ScopeListener class
+  void onCreateVariable(const std::string& name) override {
+    auto v = outer_scope_->GetVar(name);  // must exsit in outer_scope_
+    if (!HasVar(name)) {                  // may exist in variable scope.
+      VLOG(4) << "Calling VariableScope::onCreateVariable with var_name: "
+              << name;
+      name2id_[name] = VarSize();
+      var_list_.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = nullptr;  // set nullptr, then modifty it in AddVar()
+      vec_meta_info_.push_back(info);
+    }
+  }
+  void onDeleteVariable(const std::string& name) override {
+    if (HasVar(name)) {
+      VLOG(4) << "Calling VariableScope::onDeleteVariable with var_name: "
+              << name;
+    }
+  }
+  void onRenameVariable(const std::string& old_name,
+                        const std::string& new_name) override {}
+  void onCreateScope(Scope* Scope) override {}
+  void onDeleteScope(Scope* Scope) override {}
+  void onClear() override {}
+  std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
+
+  const std::vector<VariableMetaInfo>& VecMetaInfo() const {
+    return vec_meta_info_;
+  }
+
+ private:
+  std::vector<Variable*> var_list_;
+  std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+  Scope* outer_scope_ = nullptr;
 };
 
-struct EventRun {
-  explicit EventRun(size_t op_id) : op_id_(op_id) {}
-  size_t op_id_;
-};
-struct NextInstruction {
+class NextInstruction {
+ public:
+  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
+
+  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
+
+  void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
+
+  const std::vector<size_t>& DirectRunIds() const { return direct_run_; }
+
+  const std::vector<size_t>& EventRunIds() const { return event_wait_run_; }
+
+  const std::vector<size_t>& SyncRunIds() const { return synchronize_run_; }
+
+ private:
   std::vector<size_t> direct_run_;
-  std::vector<EventRun> event_wait_run_;
-  std::vector<EventRun> synchronize_run_;
-  std::vector<size_t> all_next_ops_;
+  std::vector<size_t> event_wait_run_;
+  std::vector<size_t> synchronize_run_;
 };
 
 struct EventInter {
@@ -508,48 +684,140 @@ enum class OpFuncType {
 };
 class RuntimeInferShapeContext;
 
-struct Instruction {
-  OpKernelFunc kernel_func_;
-  std::shared_ptr<RuntimeContext> runtime_ctx_;
-  std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
-  std::shared_ptr<ExecutionContext> execution_ctx_;
-  std::map<std::string, std::vector<int>> input_index_;
-  std::map<std::string, std::vector<int>> output_index_;
-
-  std::vector<size_t> gc_check_var_list;
-  NextInstruction next_instruction_;
-
-  std::vector<EventInter> intput_events_;
-  std::vector<EventInter> output_events_;
-
-  platform::DeviceContext* dev_ctx_;  // not owned
-  OpFuncType type_;
-
-  std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
-};
-
 struct OpFuncNode {
-  // int unsed;
+  OperatorBase* operator_base_;
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
+  std::unordered_set<int> no_data_transform_index;
 
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
   OpFuncType type_;
 };
 
-namespace interpretercore {
+class Instruction {
+ public:
+  Instruction(size_t id, const OpFuncNode& op_func_node,
+              const platform::DeviceContext& dev_ctx)
+      : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
+    PADDLE_ENFORCE_GE(id, 0, platform::errors::PreconditionNotMet(
+                                 "Required id >= 0, but received id = %d", id));
+  }
+
+  size_t Id() const { return id_; }
+
+  const std::map<std::string, std::vector<int>>& Inputs() const {
+    return op_func_node_.input_index;
+  }
+
+  const std::map<std::string, std::vector<int>>& Outputs() const {
+    return op_func_node_.output_index;
+  }
+
+  const std::unordered_set<int>& NoDataTransformVars() const {
+    return op_func_node_.no_data_transform_index;
+  }
+
+  OpKernelComputeFunc KernelFunc() const { return op_func_node_.kernel_func_; }
+
+  OpFuncType KernelType() const { return op_func_node_.type_; }
+
+  OperatorBase* OpBase() const {
+    auto* op_base = op_func_node_.operator_base_;
+    PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
+                                         "op_base shall not be nullptr."));
+    return op_base;
+  }
+
+  NextInstruction& NextInstructions() { return next_instruction_; }
+
+  const NextInstruction& NextInstructions() const { return next_instruction_; }
+
+  void AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+
+  const std::vector<size_t>& GCCheckVars() const { return gc_check_var_list_; }
+
+  void ResetContext(const VariableValueMap& in_vars,
+                    const VariableValueMap& out_vars) {
+    runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+    infershape_ctx_.reset(
+        new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+    // NOTE: Because execution_ctx_ is constructed by `scope&`, so we fake an
+    // empty here to avoid illegal local reference.
+    static framework::Scope scope_;
+    execution_ctx_.reset(
+        new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+  }
+
+  std::shared_ptr<RuntimeContext> InnerRuntimeContext() const {
+    return runtime_ctx_;
+  }
+
+  std::shared_ptr<InterpretercoreInferShapeContext> InnerInferShapeContext()
+      const {
+    return infershape_ctx_;
+  }
+
+  std::shared_ptr<ExecutionContext> InnerExecutionContext() const {
+    return execution_ctx_;
+  }
+
+  const platform::DeviceContext& DeviceContext() const { return dev_ctx_; }
+
+  const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const {
+    return vec_inplace_in_to_out_;
+  }
+
+  void AddInplace(Variable* in, Variable* out) {
+    vec_inplace_in_to_out_.emplace_back(in, out);
+  }
+
+  const std::vector<EventInter>& InputEvents() const { return intput_events_; }
+
+  const std::vector<EventInter>& OutputEvents() const { return output_events_; }
+
+  void AddInputEvent(size_t var_id,
+                     std::shared_ptr<platform::DeviceEvent> event,
+                     platform::DeviceType waiter_type) {
+    intput_events_.emplace_back(var_id, event, waiter_type);
+  }
+
+  void AddOutputEvent(size_t var_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type) {
+    output_events_.emplace_back(var_id, event, waiter_type);
+  }
+
+ private:
+  size_t id_;
+  const OpFuncNode& op_func_node_;          // not owned
+  const platform::DeviceContext& dev_ctx_;  // not owned
+
+  std::shared_ptr<RuntimeContext> runtime_ctx_;
+  std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
+  std::shared_ptr<ExecutionContext> execution_ctx_;
+
+  std::vector<size_t> gc_check_var_list_;
+  NextInstruction next_instruction_;
+
+  std::vector<EventInter> intput_events_;
+  std::vector<EventInter> output_events_;
+
+  std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
+};
+
+namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 
 static bool IsMemcpyH2D(const Instruction& instr) {
-  return instr.kernel_func_.operator_base_->Type() == kMemcpyH2D;
+  return instr.OpBase()->Type() == kMemcpyH2D;
 }
 
 static bool IsMemcpyD2H(const Instruction& instr) {
-  return instr.kernel_func_.operator_base_->Type() == kMemcpyD2H;
+  return instr.OpBase()->Type() == kMemcpyD2H;
 }
-}  // namespace interpretercore
+}  // namespace interpreter
 
 }  // namespace framework
 }  // namespace paddle

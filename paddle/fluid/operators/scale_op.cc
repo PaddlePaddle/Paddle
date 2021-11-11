@@ -70,6 +70,17 @@ class ScaleOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (ctx.HasInput("ScaleTensor")) {
+      return framework::KernelSignature("scale.host", {"X", "ScaleTensor"},
+                                        {"bias", "bias_after_scale"}, {"Out"});
+    } else {
+      return framework::KernelSignature(
+          "scale", {"X"}, {"scale", "bias", "bias_after_scale"}, {"Out"});
+    }
+  }
 };
 
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {

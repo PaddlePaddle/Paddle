@@ -205,5 +205,44 @@ class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ElementwiseAddTripleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    using Tensor = framework::Tensor;
+    auto *ddx = ctx.Input<Tensor>("DDX");
+    auto *ddy = ctx.Input<Tensor>("DDY");
+    auto *d_ddout = ctx.Input<Tensor>("D_DDOut");
+    auto *d_ddx = ctx.Output<Tensor>("D_DDX");
+    auto *d_ddy = ctx.Output<Tensor>("D_DDY");
+    // skip out
+    auto *out = d_ddout;
+
+    // Special case when d_ddy is not needed and d_ddx doesn't reduce
+    if (d_ddx != nullptr && d_ddy == nullptr &&
+        d_ddx->dims() == d_ddout->dims()) {
+      VLOG(4) << "Special case when d_ddy is not needed and d_ddx doesn't "
+                 "reduce";
+      framework::TensorCopy(
+          *d_ddout, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), d_ddx);
+    } else if (d_ddx == nullptr && d_ddy != nullptr &&
+               d_ddy->dims() == d_ddout->dims()) {
+      VLOG(4) << "Special case when d_ddx is not needed and d_ddy doesn't "
+                 "reduce";
+      framework::TensorCopy(
+          *d_ddout, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), d_ddy);
+    } else if (d_ddx != nullptr && d_ddy != nullptr &&
+               (d_ddx->dims() == d_ddy->dims())) {
+      elementwise_add_grad<DeviceContext, T>(ctx, ddx, ddy, out, d_ddout, d_ddx,
+                                             d_ddy);
+    } else {
+      default_elementwise_add_grad<DeviceContext, T>(ctx, ddx, ddy, out,
+                                                     d_ddout, d_ddx, d_ddy);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

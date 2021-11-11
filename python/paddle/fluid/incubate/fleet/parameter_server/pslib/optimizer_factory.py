@@ -42,9 +42,12 @@ FLEET_GLOBAL_DICT = {
     "scale_sparse_grad": None,
 }
 
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 class DistributedOptimizerImplBase(object):
@@ -846,7 +849,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             "user_define_dump_filename", "")
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
-        gpus_env = os.getenv("FLAGS_selected_gpus")
+        gpus_env = os.getenv("FLAGS_selected_gpus", "0")
         opt_info["worker_places"] = [int(s) for s in gpus_env.split(",")]
         opt_info["use_ps_gpu"] = strategy.get("use_ps_gpu", False)
         if server._server.downpour_server_param.downpour_table_param[

@@ -185,34 +185,67 @@ class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
 
     int rois_num = rois->dims()[0];
     if (rois_num == 0) return;
-
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(rois_batch_size, batch_size,
-                      platform::errors::InvalidArgument(
-                          "The batch size of input(ROIs) and input(X) must be "
-                          "the same but received batch size of input(ROIs) and "
-                          "input(X) is %d and %d respectively.",
-                          rois_batch_size, batch_size));
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      platform::errors::InvalidArgument(
-                          "The number of rois from input(ROIs) and its LOD "
-                          "must be the same. Received rois %d of input(ROIs) "
-                          "but the number of rois %d from its LOD is %d",
-                          rois_num, rois_num_with_lod));
-
-    // set rois batch id
+    int rois_batch_size;
     framework::Tensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        rois_batch_id_data[i] = n;
+
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
+      auto* rois_num_data = rois_num_t->data<int>();
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument(
+              "The batch size of input(ROIs) and input(X) must be "
+              "the same but received batch size of input(ROIs) and "
+              "input(X) is %d and %d respectively.",
+              rois_batch_size, batch_size));
+      std::vector<int> rois_num_list(rois_batch_size);
+      memory::Copy(platform::CPUPlace(), rois_num_list.data(),
+                   BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()),
+                   rois_num_data, sizeof(int) * rois_batch_size, 0);
+      int rois_num_count = 0;
+      for (int i = 0; i < rois_batch_size; ++i) {
+        rois_num_count += rois_num_list[i];
+      }
+      PADDLE_ENFORCE_EQ(
+          rois_num_count, rois_num,
+          platform::errors::InvalidArgument(
+              "the rois_num from input and RoisNum must be the same"));
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_list[n]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
+        start += rois_num_list[n];
+      }
+    } else {
+      auto rois_lod = rois->lod().back();
+      rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument(
+              "The batch size of input(ROIs) and input(X) must be "
+              "the same but received batch size of input(ROIs) and "
+              "input(X) is %d and %d respectively.",
+              rois_batch_size, batch_size));
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
+                        platform::errors::InvalidArgument(
+                            "The number of rois from input(ROIs) and its LOD "
+                            "must be the same. Received rois %d of input(ROIs) "
+                            "but the number of rois %d from its LOD is %d",
+                            rois_num, rois_num_with_lod));
+
+      // set rois batch id
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
       }
     }
-
     framework::Tensor rois_batch_id_list_gpu;
     framework::TensorCopy(rois_batch_id_list, ctx.GetPlace(),
                           ctx.device_context(), &rois_batch_id_list_gpu);
@@ -257,14 +290,30 @@ class GPUPSROIPoolGradOpKernel : public framework::OpKernel<T> {
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          rois_batch_id_data[i] = n;
+      int rois_batch_size;
+      if (ctx.HasInput("RoisNum")) {
+        auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
+        rois_batch_size = rois_num_t->numel();
+        std::vector<int> rois_num_list(rois_batch_size);
+        memory::Copy(platform::CPUPlace(), rois_num_list.data(),
+                     BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()),
+                     rois_num_t->data<int>(), sizeof(int) * rois_batch_size, 0);
+        int start = 0;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (int i = start; i < start + rois_num_list[n]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
+          start += rois_num_list[n];
+        }
+      } else {
+        auto rois_lod = rois->lod().back();
+        rois_batch_size = rois_lod.size() - 1;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
         }
       }
-
       framework::Tensor rois_batch_id_list_gpu;
       framework::TensorCopy(rois_batch_id_list, ctx.GetPlace(),
                             ctx.device_context(), &rois_batch_id_list_gpu);

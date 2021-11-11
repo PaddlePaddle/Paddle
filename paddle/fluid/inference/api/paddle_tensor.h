@@ -14,9 +14,15 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle_infer {
+
+/// \brief  Experimental.
+/// Strings for text data.
+using Strings = std::vector<std::string>;
 
 typedef void (*CallbackFunc)(void*);
 
@@ -57,6 +63,14 @@ class PD_INFER_DECL Tensor {
   /// \param shape The shape to set.
   void Reshape(const std::vector<int>& shape);
 
+  /// \brief Experimental interface.
+  /// Reset the shape of the Strings tensor.
+  /// Generally it's only used for the input tensor.
+  /// Reshape must be called before calling
+  /// ZeroCopyStringTensorCreate() or PaddleInferTensorCreate()
+  /// \param shape The shape to set.
+  void ReshapeStrings(const std::size_t& shape);
+
   /// \brief Get the memory pointer in CPU or GPU with specific data type.
   /// Please Reshape the tensor first before call this.
   /// It's usually used to get input data pointer.
@@ -77,6 +91,11 @@ class PD_INFER_DECL Tensor {
   /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
   void CopyFromCpu(const T* data);
+
+  /// \brief Experimental interface.
+  /// It's usually used to set the input tensor data with Strings data type.
+  /// \param data The pointer of the data, from which the tensor will copy.
+  void CopyStringsFromCpu(const paddle_infer::Strings* data);
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
@@ -122,7 +141,10 @@ class PD_INFER_DECL Tensor {
 
  protected:
   explicit Tensor(void* scope);
+
+  template <typename T>
   void* FindTensor() const;
+
   void SetPlace(PlaceType place, int device = -1);
   void SetName(const std::string& name);
 

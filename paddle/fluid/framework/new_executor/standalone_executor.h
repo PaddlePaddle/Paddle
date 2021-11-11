@@ -28,7 +28,7 @@ class ExecutorBase {
   virtual ~ExecutorBase() {}
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::Tensor>& feed_tensors,
+      const std::vector<framework::LoDTensor>& feed_tensors,
       const std::vector<std::string>& fetch_names) = 0;
 };
 
@@ -42,11 +42,12 @@ class StandaloneExecutor : public ExecutorBase {
 
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::Tensor>& feed_tensors,
+      const std::vector<framework::LoDTensor>& feed_tensors,
       const std::vector<std::string>& fetch_names);
 
-  const CostInfo& DryRun(const std::vector<std::string>& feed_names,
-                         const std::vector<framework::Tensor>& feed_tensors);
+  framework::interpreter::CostInfo DryRun(
+      const std::vector<std::string>& feed_names,
+      const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
   void BuildVariableOuterScope(const framework::ProgramDesc& pdesc,
@@ -62,6 +63,7 @@ class StandaloneExecutor : public ExecutorBase {
   Scope* outer_scope_;
   VariableScope global_scope_;
 
+  std::unordered_map<std::string, std::shared_ptr<ProgramDesc>> programs_;
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;
 };

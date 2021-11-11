@@ -176,10 +176,10 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                               : attr_checker->GetDefaultAttrMap();
 
   NameVarBaseMap new_ins = ins;
-  if (amp_level_ == 1) {
+  if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
-  } else if (amp_level_ == 2) {
+  } else if (amp_level_ == AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
     new_ins = CastPureFp16Inputs(type, ins);
   }
@@ -213,6 +213,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
+    // Compatible impl: clear pten kernel context data when throw error
+    OpBase::GetKernelContext()->ClearData();
     throw std::move(exception);
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::Fatal(

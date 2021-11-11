@@ -196,6 +196,17 @@ REGISTER_OP_CUDA_KERNEL(
                                         plat::complex<float>>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
                                         plat::complex<double>>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_add_triple_grad,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, double>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, int>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex<float>>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     grad_add, ops::ElementwiseAddKernel<plat::CUDADeviceContext, float>,

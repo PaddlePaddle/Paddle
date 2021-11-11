@@ -25,7 +25,7 @@ namespace platform {
 namespace dynload {
 
 extern std::once_flag mklml_dso_flag;
-extern void* mklml_dso_handle;
+extern void *mklml_dso_handle;
 
 /**
  * The following macro definition can generate structs
@@ -40,7 +40,7 @@ extern void* mklml_dso_handle;
       std::call_once(mklml_dso_flag, []() {                                \
         mklml_dso_handle = paddle::platform::dynload::GetMKLMLDsoHandle(); \
       });                                                                  \
-      static void* p_##_name = dlsym(mklml_dso_handle, #__name);           \
+      static void *p_##_name = dlsym(mklml_dso_handle, #__name);           \
       return reinterpret_cast<mklmlFunc>(p_##_name)(args...);              \
     }                                                                      \
   };                                                                       \
@@ -67,6 +67,8 @@ extern void* mklml_dso_handle;
   __macro(cblas_zgemv);             \
   __macro(cblas_strsm);             \
   __macro(cblas_dtrsm);             \
+  __macro(cblas_ctrsm);             \
+  __macro(cblas_ztrsm);             \
   __macro(cblas_sgemm_alloc);       \
   __macro(cblas_dgemm_alloc);       \
   __macro(cblas_sgemm_pack);        \

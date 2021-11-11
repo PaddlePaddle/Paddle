@@ -240,7 +240,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                   x_dims, y_dims, x_dims_array[i], y_dims_array[i], i));
     if ((x_dims_array[i] > 1 || y_dims_array[i] > 1) ||
         (x_dims_array[i] == 1 && y_dims_array[i] == 1)) {
-      out_dims_array[i] = std::max(x_dims_array[i], y_dims_array[i]);
+      out_dims_array[i] = (std::max)(x_dims_array[i], y_dims_array[i]);
     } else {
       out_dims_array[i] = -1;
     }
@@ -1779,7 +1779,7 @@ void CommonElementwiseBroadcastForward(
     const framework::Tensor *y, framework::Tensor *z,
     const framework::DDim &x_dims, const framework::DDim &y_dims, Functor func,
     int axis, const bool is_xsize_larger = true) {
-  int max_dim = std::max(x_dims.size(), y_dims.size());
+  int max_dim = (std::max)(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
   PADDLE_ENFORCE_GE(
       axis, 0,

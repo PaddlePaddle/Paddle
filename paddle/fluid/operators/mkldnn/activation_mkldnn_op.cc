@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/mkldnn/softplus_mkldnn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -170,6 +171,13 @@ struct GeluMKLDNNGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    custom_softplus_eltwise_forward<T>(ctx);
+  }
+};
+
+template <typename T>
 using ReluMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_relu>;
 
@@ -257,7 +265,6 @@ namespace ops = paddle::operators;
           ops::grad_functor<paddle::platform::bfloat16>>);
 
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                           \
-  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);                \
   __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);             \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
   __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);             \
@@ -267,7 +274,14 @@ namespace ops = paddle::operators;
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(relu, ReluMKLDNNFunctor,
+                                       ReluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
                                        GeluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
                                        SigmoidMKLDNNGradFunctor);
+
+namespace ops = paddle::operators;
+REGISTER_OP_KERNEL(
+    softplus, MKLDNN, paddle::platform::CPUPlace,
+    ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>);

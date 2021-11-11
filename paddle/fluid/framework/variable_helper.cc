@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -41,6 +42,10 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
     var->GetMutable<LoDTensorArray>();
+  } else if (var_type == proto::VarType::STRINGS) {
+    var->GetMutable<Strings>();
+  } else if (var_type == proto::VarType::VOCAB) {
+    var->GetMutable<Vocab>();
   } else if (var_type == proto::VarType::PLACE_LIST) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {

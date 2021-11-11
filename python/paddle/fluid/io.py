@@ -1426,7 +1426,8 @@ def save_inference_model(dirname,
                 main_program.global_block().create_var(
                     name=target_v.name,
                     shape=target_v.shape,
-                    dtype=target_v.dtype)
+                    dtype=target_v.dtype,
+                    persistable=target_v.persistable)
 
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)

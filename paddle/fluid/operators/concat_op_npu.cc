@@ -122,8 +122,14 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(concat, ops::ConcatNPUKernel<float>,
                        ops::ConcatNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ConcatNPUKernel<int64_t>,
+#endif
                        ops::ConcatNPUKernel<int>);
 
 REGISTER_OP_NPU_KERNEL(concat_grad, ops::ConcatGradNPUKernel<float>,
                        ops::ConcatGradNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ConcatGradNPUKernel<int64_t>,
+#endif
                        ops::ConcatGradNPUKernel<int>);

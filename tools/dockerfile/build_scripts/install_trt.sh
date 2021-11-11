@@ -31,6 +31,11 @@ if [[ "$VERSION" == "10.1" ]];then
   tar -zxf TensorRT6-cuda10.1-cudnn7.tar.gz -C /usr/local
   cp -rf /usr/local/TensorRT6-cuda10.1-cudnn7/include/* /usr/include/ && cp -rf /usr/local/TensorRT6-cuda10.1-cudnn7/lib/* /usr/lib/
   rm TensorRT6-cuda10.1-cudnn7.tar.gz
+elif [[ "$1" == "trt8034" && "$VERSION" == "11.2" ]];then
+  wget -q https://paddle-ci.gz.bcebos.com/TRT/TensorRT-8.0.3.4.Linux.x86_64-gnu.cuda-11.3.cudnn8.2.tar.gz --no-check-certificate
+  tar -zxf TensorRT-8.0.3.4.Linux.x86_64-gnu.cuda-11.3.cudnn8.2.tar.gz -C /usr/local
+  cp -rf /usr/local/TensorRT-8.0.3.4/include/* /usr/include/ && cp -rf /usr/local/TensorRT-8.0.3.4/lib/* /usr/lib/
+  rm TensorRT-8.0.3.4.Linux.x86_64-gnu.cuda-11.3.cudnn8.2.tar.gz  
 elif [[ "$VERSION" == "11.2" ]];then
   wget -q https://paddle-ci.gz.bcebos.com/TRT/TensorRT7-cuda11.1-cudnn8.1.tar.gz --no-check-certificate
   tar -zxf TensorRT7-cuda11.1-cudnn8.1.tar.gz -C /usr/local

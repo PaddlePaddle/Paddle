@@ -270,6 +270,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
+        if self._heter_ptr:
             self._heter_ptr.stop_xpu_service()
         self._role_maker._barrier_worker()
         self._role_maker._barrier_all()
@@ -543,18 +544,6 @@ class PSLib(Fleet):
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
-    def clear_model(self):
-        """
-        clear_model() will be called by user. It will clear sparse model.
-        Examples:
-            .. code-block:: python
-              fleet.clear_model()
-        """
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.clear_model()
-        self._role_maker._barrier_worker()
-
     def load_pslib_whitelist(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table with whitelist
@@ -796,6 +785,15 @@ class PSLib(Fleet):
                     table_id, model_dir, mode, prefix)
             else:
                 self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def set_date(self, table_id, date):
+        """
+        set_date, eg, 20210918
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.set_date(table_id, str(date))
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
@@ -1090,7 +1088,8 @@ class DownpourOptimizer(DistributedOptimizer):
                  scopes=None,
                  startup_programs=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 program_mode="all_reduce"):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
@@ -1104,6 +1103,7 @@ class DownpourOptimizer(DistributedOptimizer):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+            program_mode (str|"all_reduce"): grad action for grogram when use_ps_gpu. 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
@@ -1138,12 +1138,17 @@ class DownpourOptimizer(DistributedOptimizer):
         if opt_info["use_ps_gpu"]:
             from paddle.fluid.transpiler.collective import MultiThread
             # check start program
-
+            if program_mode not in [
+                    "all_reduce", "fuse_all_reduce", "all_gather"
+            ]:
+                raise ValueError("You should set program_mode in [ all_reduce, \
+                                fuse_all_reduce, all_gather ]")
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]
             for i in range(0, len(startup_programs)):
-                t = MultiThread()
+
+                t = MultiThread(trans_mode=program_mode)
                 start_program = startup_programs[i]
                 main_program = programs[i]
                 t.transpile(

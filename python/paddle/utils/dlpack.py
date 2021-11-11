@@ -28,7 +28,9 @@ def to_dlpack(x):
     Encodes a tensor to DLPack.
 
     Args:
-        x (Tensor): A tensor, and the data type is bool, float32, float64, int32, int64.
+        x (Tensor): The input tensor, and the data type can be `bool`, `float16`, `float32`,
+                    `float64`, `int8`, `int16`, `int32`, `int64`, `uint8`, `complex64`,
+                    `complex128`.
 
     Returns:
         dltensor, and the data type is PyCapsule.
@@ -51,19 +53,9 @@ def to_dlpack(x):
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
                 " but received {}.".format(type(x)))
 
-        dtype = convert_dtype(x.dtype)
-
-        if dtype not in ['bool', 'int32', 'int64', 'float32', 'float64']:
-            raise TypeError(
-                "the dtype of 'x' in to_dlpack must be any of [bool, int32, int64, "
-                "float32, float64], but received {}.".format(dtype))
-
         return x.value().get_tensor()._to_dlpack()
 
     check_type(x, 'x', (LoDTensor), 'to_dlpack')
-    check_dtype(x._dtype(), 'x',
-                ['bool', 'int32', 'int64', 'float32', 'float64'], 'to_dlpack')
-
     return x._to_dlpack()
 
 
@@ -75,7 +67,9 @@ def from_dlpack(dlpack):
         dlpack (PyCapsule): a PyCapsule object with the dltensor.
 
     Returns:
-        out (Tensor): a tensor decoded from DLPack.
+        out (Tensor): a tensor decoded from DLPack. One thing to be noted, if we get 
+                      an input dltensor with data type as `bool`, we return the decoded
+                      tensor as `uint8`.
 
     Examples:
         .. code-block:: python

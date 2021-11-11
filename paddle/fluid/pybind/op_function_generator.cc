@@ -40,6 +40,10 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
+    {"bincount", {"X", "Weights"}},
+    {"fused_attention",
+     {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "SrcMask", "OutLinearW",
+      "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
     {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
@@ -54,6 +58,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"gather", {"X", "Index", "Axis"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
+    {"psroi_pool", {"X", "ROIs", "RoisNum"}},
     {"collect_fpn_proposals",
      {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
     {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
@@ -67,6 +72,10 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"fused_feedforward",
+     {"Dropout1Seed", "Dropout2Seed", "Linear1Bias", "Linear2Bias", "Ln1Scale",
+      "Ln1Bias", "Ln2Scale", "Ln2Bias"}},
+    {"faster_tokenizer", {"Text", "Vocab", "TextPair"}},
     {"matrix_rank", {"X", "TolTensor"}},
     {"adam",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
@@ -90,6 +99,11 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"fused_attention",
+     {"LnMean", "LnVariance", "LnOut", "QKVOut", "QKVBiasOut", "TransposeOut2",
+      "QKOut", "QKTVOut", "SoftmaxOut", "AttnDropoutMaskOut", "AttnDropoutOut",
+      "SrcMaskOut", "FMHAOut", "OutLinearOut", "DropoutMaskOut", "Ln2Mean",
+      "Ln2Variance", "BiasDropoutResidualOut", "Y"}},
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
@@ -553,7 +567,9 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    if (!all_kernels.count(op_type)) {
+    // if the pten lib contains op kernel, we still generate ops method
+    if (!all_kernels.count(op_type) &&
+        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 
