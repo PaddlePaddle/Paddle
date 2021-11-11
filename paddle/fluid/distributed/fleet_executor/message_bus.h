@@ -48,7 +48,7 @@ class MessageBus final {
             const std::unordered_map<int64_t, std::string>& rank_to_addr,
             const std::string& addr);
 
-  bool IsInit();
+  bool IsInit() const;
 
   void Release();
 
