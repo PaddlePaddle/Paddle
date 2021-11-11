@@ -122,7 +122,7 @@ class TestASPHelperCustomerizedPruneFunc(unittest.TestCase):
                 supported_layer_count += 1
                 if (self.customer_prefix in param.name):
                     self.assertLessEqual(
-                        np.sum(mat.flatten() - static_tensor_mask.flatten()), 0)
+                        np.sum(mat.flatten() - static_tensor.flatten()), 1e-4)
                 else:
                     self.assertTrue(
                         sparsity.check_sparsity(
@@ -161,10 +161,10 @@ class TestASPHelperCustomerizedPruneFunc(unittest.TestCase):
                 supported_layer_count += 1
                 if (self.customer_prefix in param.name):
                     self.assertLessEqual(
-                        np.sum(mat.flatten() - static_tensor.flatten()), 0)
+                        np.sum(mat.flatten() - static_tensor.flatten()), 1e-4)
                     self.assertLessEqual(
                         np.sum(mat_mask.flatten() - static_tensor_mask.flatten(
-                        )), 0)
+                        )), 1e-4)
                 else:
                     self.assertTrue(
                         sparsity.check_sparsity(
