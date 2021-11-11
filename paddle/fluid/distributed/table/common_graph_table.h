@@ -64,7 +64,7 @@ class GraphShard {
   Node *find_node(uint64_t id);
   void delete_node(uint64_t id);
   void clear();
-  void add_neighboor(uint64_t id, uint64_t dst_id, float weight);
+  void add_neighbor(uint64_t id, uint64_t dst_id, float weight);
   std::unordered_map<uint64_t, int> get_node_location() {
     return node_location;
   }
@@ -81,9 +81,7 @@ struct SampleKey {
   uint64_t node_key;
   size_t sample_size;
   SampleKey(uint64_t _node_key, size_t _sample_size)
-      : node_key(_node_key), sample_size(_sample_size) {
-    // std::cerr<<"in constructor of samplekey\n";
-  }
+      : node_key(_node_key), sample_size(_sample_size) {}
   bool operator==(const SampleKey &s) const {
     return node_key == s.node_key && sample_size == s.sample_size;
   }
@@ -143,7 +141,7 @@ class RandomSampleLRU {
       for (size_t i = 0; i < length; i++) {
         auto iter = key_map.find(keys[i]);
         if (iter != key_map.end()) {
-          res.push_back({keys[i], iter->second->data});
+          res.emplace_back(keys[i], iter->second->data);
           iter->second->ttl--;
           if (iter->second->ttl == 0) {
             remove(iter->second, true);
@@ -252,8 +250,6 @@ class ScaledLRU {
           }
         }
 
-        // shrink();
-        // std::cerr<<"shrink job in queue\n";
         auto status =
             thread_pool->enqueue([this]() -> int { return shrink(); });
         status.wait();
@@ -263,10 +259,8 @@ class ScaledLRU {
   }
   ~ScaledLRU() {
     std::unique_lock<std::mutex> lock(mutex_);
-    // std::cerr<<"cancel shrink job\n";
     stop = true;
     cv_.notify_one();
-    // pthread_cancel(shrink_job.native_handle());
   }
   LRUResponse query(size_t index, K *keys, size_t length,
                     std::vector<std::pair<K, V>> &res) {
@@ -280,10 +274,7 @@ class ScaledLRU {
     std::string t = "";
     for (size_t i = 0; i < lru_pool.size(); i++) {
       node_size += lru_pool[i].node_size;
-      // t += std::to_string(i) + "->" + std::to_string(lru_pool[i].node_size) +
-      // " ";
     }
-    // std::cout<<t<<std::endl;
 
     if (node_size <= size_limit) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
@@ -299,7 +290,7 @@ class ScaledLRU {
           }
         }
         if (global_count > size_limit) {
-          // std::cout<<"before shrinking cache, cached nodes count =
+          // VLOG(0)<<"before shrinking cache, cached nodes count =
           // "<<global_count<<std::endl;
           size_t remove = global_count - size_limit;
           while (remove--) {
@@ -313,11 +304,11 @@ class ScaledLRU {
             remove_node.lru_pointer->key_map.erase(remove_node.node->key);
             remove_node.lru_pointer->remove(remove_node.node, true);
           }
-          // std::cout<<"after shrinking cache, cached nodes count =
+          // VLOG(0)<<"after shrinking cache, cached nodes count =
           // "<<global_count<<std::endl;
         }
       } catch (...) {
-        // std::cout << "shrink cache failed"<<std::endl;
+        // VLOG(0) << "shrink cache failed"<<std::endl;
         pthread_rwlock_unlock(&rwlock);
         return -1;
       }
@@ -330,7 +321,7 @@ class ScaledLRU {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
       if (global_count > int(1.5 * size_limit)) {
-        // std::cout<<"global_count too large "<<global_count<<" enter start
+        // VLOG(0)<<"global_count too large "<<global_count<<" enter start
         // shrink task\n";
         thread_pool->enqueue([this]() -> int { return shrink(); });
       }
