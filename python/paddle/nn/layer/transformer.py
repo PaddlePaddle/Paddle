@@ -259,7 +259,7 @@ class CUDNNMultiHeadAttention(Layer):
             WK = weight_nparray[stride:2 * stride].reshape((vec_size, vec_size))
             WV = weight_nparray[2 * stride:3 * stride].reshape(
                 (vec_size, vec_size))
-            WO = weight_nparray[3 * stride:].reshape((vec_size, vec_size))
+            WO = weight_nparray[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
             WQ_sparse_mask = sparsity.create_mask(
                 WQ.T, func_name=func_name, n=n, m=m).T.flatten()
@@ -269,11 +269,15 @@ class CUDNNMultiHeadAttention(Layer):
                 WV.T, func_name=func_name, n=n, m=m).T.flatten()
             WO_sparse_mask = sparsity.create_mask(
                 WO.T, func_name=func_name, n=n, m=m).T.flatten()
+            bias_sparse_mask = np.ones((4*vec_size))
             weight_sparse_mask = np.concatenate([
-                WQ_sparse_mask, WK_sparse_mask, WV_sparse_mask, WO_sparse_mask
+                WQ_sparse_mask, WK_sparse_mask, WV_sparse_mask,
+                WO_sparse_mask, bias_sparse_mask
             ])
+
             weight_pruned_nparray = np.multiply(weight_nparray,
                                                 weight_sparse_mask)
+
             return weight_pruned_nparray, weight_sparse_mask
 
         return cudnn_pruning
