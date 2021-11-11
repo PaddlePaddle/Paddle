@@ -54,7 +54,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                     "shape": [10, 10],
                     "dtype": npu_var.dtype,
                     "value": 1.0,
-                    "place_type": 4
+                    "place_type": -1  # determine the place by executor
                 })
             main_program.global_block().append_op(
                 type="fill_constant",
@@ -63,7 +63,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                     "shape": [10, 10],
                     "dtype": cpu_var.dtype,
                     "value": 0.0,
-                    "place_type": 0
+                    "place_type": -1  # determine the place by executor
                 })
         return main_program, npu_var, cpu_var
 
