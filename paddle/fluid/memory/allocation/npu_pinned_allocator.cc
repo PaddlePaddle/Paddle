@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_pinned_allocator.h"
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 
 namespace paddle {
 namespace memory {

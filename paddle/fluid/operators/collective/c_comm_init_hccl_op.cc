@@ -26,7 +26,7 @@ class Scope;
 #include "hccl/hccl.h"
 #include "hccl/hccl_types.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/dynload/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace paddle {

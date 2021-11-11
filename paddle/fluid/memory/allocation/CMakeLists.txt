@@ -30,6 +30,11 @@ if (WITH_ROCM)
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
 endif()
 
+if (WITH_ASCEND_CL)
+  cc_library(npu_allocator SRCS npu_allocator.cc DEPS allocator npu_info)
+  cc_library(npu_pinned_allocator SRCS npu_pinned_allocator.cc DEPS allocator npu_info)
+endif()
+
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
 if (WITH_GPU OR WITH_ROCM)

@@ -14,7 +14,7 @@ limitations under the Licnse. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/dynload/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
