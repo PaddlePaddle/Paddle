@@ -26,6 +26,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 #include "paddle/fluid/memory/malloc.h"
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#endif
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
@@ -641,6 +646,30 @@ class RecordedCudaMallocHelper {
 
   uint64_t LimitSize() const { return limit_size_; }
 
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+  CUresult MemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+                     const CUmemAllocationProp *prop,
+                     unsigned long long flags) {  // NOLINT
+    auto result =
+        paddle::platform::dynload::cuMemCreate(handle, size, prop, flags);
+    if (result == CUDA_SUCCESS) {
+      cur_size_.fetch_add(size);
+    }
+    return result;
+  }
+
+  CUresult MemRelease(CUmemGenericAllocationHandle handle, size_t size) {
+    auto result = paddle::platform::dynload::cuMemRelease(handle);
+    if (result == CUDA_SUCCESS) {
+      cur_size_.fetch_sub(size);
+    }
+    return result;
+  }
+
+#endif
+#endif
+
  private:
   const int dev_id_;
   const uint64_t limit_size_;
@@ -663,6 +692,22 @@ gpuError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id) {
 void RecordedCudaFree(void *p, size_t size, int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->Free(p, size);
 }
+
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+CUresult RecordedCuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+                             const CUmemAllocationProp *prop,
+                             unsigned long long flags, int dev_id) {  // NOLINT
+  return RecordedCudaMallocHelper::Instance(dev_id)->MemCreate(handle, size,
+                                                               prop, flags);
+}
+
+CUresult RecordedCuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
+                              int dev_id) {
+  return RecordedCudaMallocHelper::Instance(dev_id)->MemRelease(handle, size);
+}
+#endif
+#endif
 
 bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
                             size_t *actual_total, int dev_id) {

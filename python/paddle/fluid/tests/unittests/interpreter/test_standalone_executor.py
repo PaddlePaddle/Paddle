@@ -295,7 +295,7 @@ class TestException(unittest.TestCase):
         self.assertRaises(ValueError, self.run_new_executor, feed)
 
     def test_nan(self):
-        flags = {'FLAGS_check_nan_inf': True}
+        flags = {'FLAGS_check_nan_inf': True, 'FLAGS_benchmark': True}
         paddle.fluid.set_flags(flags)
         feed = [{
             'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),

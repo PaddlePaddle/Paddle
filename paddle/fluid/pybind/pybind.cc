@@ -81,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
 #include "paddle/fluid/pybind/bind_cost_model.h"
+#include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -223,6 +224,23 @@ bool SupportsBfloat16FastPerformance() {
     return true;
   else
     return false;
+#endif
+}
+
+bool SupportsInt8() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return (platform::MayIUse(platform::cpu_isa_t::avx2) ||
+          platform::MayIUse(platform::cpu_isa_t::avx512f));
+#endif
+}
+
+bool SupportsVNNI() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
 #endif
 }
 
@@ -488,6 +506,17 @@ static int GetNCCLVersion() {
 }
 #endif
 
+template <typename PlaceType>
+static void TensorCopyFrom(framework::Tensor *dst, const framework::Tensor &src,
+                           const PlaceType &place, int64_t batch_size) {
+  if (batch_size < 0) {
+    framework::TensorCopy(src, place, dst);
+  } else {
+    auto sliced = src.Slice(0, batch_size);
+    framework::TensorCopy(sliced, place, dst);
+  }
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -517,8 +546,13 @@ PYBIND11_MODULE(core_noavx, m) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
+  m.def("gpu_memory_available", []() {
+    size_t available = 0;
+    size_t total = 0;
+    paddle::platform::GpuMemoryUsage(&available, &total);
+    return available;
+  });
 #endif
-
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
 #endif
@@ -533,7 +567,8 @@ PYBIND11_MODULE(core_noavx, m) {
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def("replay", &platform::CUDAGraph::Replay)
-      .def("reset", &platform::CUDAGraph::Reset);
+      .def("reset", &platform::CUDAGraph::Reset)
+      .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -737,16 +772,17 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
-      .def("_copy_from",
-           [](framework::Tensor &self, const framework::Tensor &other,
-              const platform::Place &place, int64_t batch_size) {
-             if (batch_size < 0) {
-               framework::TensorCopy(other, place, &self);
-             } else {
-               auto sliced = other.Slice(0, batch_size);
-               framework::TensorCopy(sliced, place, &self);
-             }
-           },
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::NPUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
@@ -2033,11 +2069,13 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
-  py::class_<framework::CostInfo>(m, "CostInfo")
+  py::class_<framework::interpreter::CostInfo>(m, "CostInfo")
       .def(py::init<>())
-      .def("total_time", [](CostInfo &self) { return self.total_time; })
-      .def("device_memory_bytes",
-           [](CostInfo &self) { return self.device_memory_bytes; });
+      .def("total_time",
+           [](interpreter::CostInfo &self) { return self.total_time; })
+      .def("device_memory_bytes", [](interpreter::CostInfo &self) {
+        return self.device_memory_bytes;
+      });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
@@ -2098,7 +2136,7 @@ All parameter, weight, gradient are variables in Paddle.
                feed_tensors.push_back(t);
              }
 
-             CostInfo cost_info;
+             framework::interpreter::CostInfo cost_info;
              {
                pybind11::gil_scoped_release release;
                cost_info = self.DryRun(feed_names, feed_tensors);
@@ -2121,6 +2159,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
+  m.def("supports_int8", SupportsInt8);
+  m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
@@ -2197,6 +2237,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
   BindProcessMeshDesc(&m);
+  BindFleetExecutor(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -2360,23 +2401,31 @@ All parameter, weight, gradient are variables in Paddle.
         py::return_value_policy::copy);
 
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
-      .def_readonly("name", &gpuDeviceProp::name)
-      .def_readonly("major", &gpuDeviceProp::major)
-      .def_readonly("minor", &gpuDeviceProp::minor)
-      .def_readonly("is_multi_gpu_board", &gpuDeviceProp::isMultiGpuBoard)
-      .def_readonly("is_integrated", &gpuDeviceProp::integrated)
-      .def_readonly("multi_processor_count",
-                    &gpuDeviceProp::multiProcessorCount)
-      .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
-      .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
-        std::ostringstream stream;
-        stream << "_gpuDeviceProperties(name='" << gpu_device_prop.name
-               << "', major=" << gpu_device_prop.major
-               << ", minor=" << gpu_device_prop.minor << ", total_memory="
-               << gpu_device_prop.totalGlobalMem / (1024 * 1024)
-               << "MB, multi_processor_count="
-               << gpu_device_prop.multiProcessorCount << ")";
-        return stream.str();
+      .def_property_readonly(
+          "name", [](const gpuDeviceProp &prop) { return prop.name; })
+      .def_property_readonly(
+          "major", [](const gpuDeviceProp &prop) { return prop.major; })
+      .def_property_readonly(
+          "minor", [](const gpuDeviceProp &prop) { return prop.minor; })
+      .def_property_readonly(
+          "total_memory",
+          [](const gpuDeviceProp &prop) { return prop.totalGlobalMem; })
+      .def_property_readonly(
+          "multi_processor_count",
+          [](const gpuDeviceProp &prop) { return prop.multiProcessorCount; })
+      .def_property_readonly(
+          "is_multi_gpu_board",
+          [](const gpuDeviceProp &prop) { return prop.isMultiGpuBoard; })
+      .def_property_readonly(
+          "is_integrated",
+          [](const gpuDeviceProp &prop) { return prop.integrated; })
+      .def("__repr__", [](const gpuDeviceProp &prop) {
+        std::stringstream ostr;
+        ostr << "_gpuDeviceProperties(name='" << prop.name
+             << "', major=" << prop.major << ", minor=" << prop.minor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+        return ostr.str();
       });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
