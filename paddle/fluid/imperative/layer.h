@@ -222,7 +222,10 @@ class VarBase {
 
   const platform::Place Place() const { return var_->Place(); }
 
-  void ClearGradient();
+  void ClearGradient(bool set_to_zero = true);
+
+  void _GradientSetEmpty(bool is_empty = true);
+  bool _IsGradientSetEmpty();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
