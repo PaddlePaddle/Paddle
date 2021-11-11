@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -82,6 +83,13 @@ class PSGPUWrapper {
                    const std::vector<int64_t>& slot_lengths,
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
+
+  void CopyForPush(const paddle::platform::Place& place,
+                   const std::vector<const float*>& grad_values,
+                   FeaturePushValue* total_grad_values_gpu,
+                   const std::vector<int64_t>& slot_lengths,
+                   const int64_t total_length, const int batch_size,
+                   size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -264,6 +272,42 @@ class PSGPUWrapper {
     slot_vector_ = slot_vector;
   }
 
+  void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
+    slot_offset_vector_ = slot_offset_vector;
+  }
+
+  void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
+    slot_mf_dim_vector_ = slot_mf_dim_vector;
+    assert(slot_mf_dim_vector_.size() == slot_vector_.size());
+    for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
+      slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
+    }
+
+    std::unordered_set<int> dims_set;
+    for (auto& it : slot_dim_map_) {
+      dims_set.insert(it.second);
+    }
+    size_t num_of_dim = dims_set.size();
+    index_dim_vec_.resize(num_of_dim);
+    index_dim_vec_.assign(dims_set.begin(), dims_set.end());
+    std::sort(index_dim_vec_.begin(), index_dim_vec_.end());
+    for (size_t i = 0; i < num_of_dim; i++) {
+      dim_index_map_[index_dim_vec_[i]] = i;
+    }
+    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
+    max_mf_dim_ = index_dim_vec_.back();
+    multi_mf_dim_ = (dim_index_map_.size() >= 1) ? dim_index_map_.size() : 0;
+    resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
+    slot_index_vec_.resize(slot_mf_dim_vector_.size());
+    for (size_t i = 0; i < slot_index_vec_.size(); i++) {
+      slot_index_vec_[i] = dim_index_map_[slot_mf_dim_vector_[i]];
+    }
+    val_type_size_ =
+        TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
+    grad_type_size_ =
+        TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+  }
+
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
  private:
@@ -277,6 +321,8 @@ class PSGPUWrapper {
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
+  std::vector<int> slot_offset_vector_;
+  std::vector<int> slot_mf_dim_vector_;
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
@@ -287,12 +333,24 @@ class PSGPUWrapper {
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
   std::vector<std::vector<robin_hood::unordered_set<uint64_t>>> thread_keys_;
+  std::vector<std::vector<std::vector<robin_hood::unordered_set<uint64_t>>>>
+      thread_dim_keys_;
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;
   int year_;
   int month_;
   int day_;
+  std::unordered_map<int, int> slot_dim_map_;
+  std::unordered_map<int, int> dim_index_map_;
+  std::vector<int> slot_index_vec_;
+  std::vector<int> index_dim_vec_;
+  int multi_mf_dim_{0};
+  int max_mf_dim_;
+  size_t val_type_size_;
+  size_t grad_type_size_;
+  std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
+                                           // pools of totol dims number
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
@@ -318,6 +376,39 @@ class PSGPUWrapper {
  protected:
   static bool is_initialized_;
 };
+
+/*
+class MemoryPool {
+ public:
+  MemoryPool(size_t capacity, size_t block_size) : _capacity(capacity),
+_block_size(block_size) {
+    _mem = (char*)malloc(block_size * _capacity);
+  }
+  ~MemoryPool() {
+    free(_mem);
+  }
+  size_t block_size() {
+    return _block_size;
+  }
+  char *mem() {
+    return _mem;
+  }
+
+  size_t capacity() {
+    return _capacity;
+  }
+  size_t byte_size() {
+    return _capacity * _block_size;
+  }
+  void* mem_address(const uint32_t &idx) {
+    return (void*)&_mem[(idx - 1) * _block_size];
+  }
+ private:
+  char* _mem = NULL;
+  size_t _capacity;
+  size_t _block_size;
+};
+*/
 
 }  // end namespace framework
 }  // end namespace paddle
