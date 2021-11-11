@@ -14,4 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/api/all.h"
 
-namespace pten {}  // namespace pten
+namespace paddle {
+namespace experimental {}  // namespace experimental
+}  // namespace paddle

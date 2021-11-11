@@ -79,7 +79,30 @@ using XPUContext = paddle::platform::XPUDeviceContext;
                     "Kernel's Input should appear before Attributes."); \
       static_assert(out_idx == 0,                                       \
                     "Kernel's Input should appear before Outputs.");    \
-      const tensor_type& arg = ctx->InputAt<tensor_type>(in_idx);       \
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);      \
+      const tensor_type& arg = ctx->InputAt<tensor_type>(range.first);  \
+      KernelCallHelper<Tail...>::                                       \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>( \
+              ctx, pargs..., arg);                                      \
+    }                                                                   \
+  }
+
+#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)     \
+  template <typename... Tail>                                           \
+  struct KernelCallHelper<const std::vector<tensor_type>&, Tail...> {   \
+    template <int dev_ctx_idx,                                          \
+              int in_idx,                                               \
+              int attr_idx,                                             \
+              int out_idx,                                              \
+              typename... PreviousArgs>                                 \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {   \
+      static_assert(attr_idx == 0,                                      \
+                    "Kernel's Input should appear before Attributes."); \
+      static_assert(out_idx == 0,                                       \
+                    "Kernel's Input should appear before Outputs.");    \
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);      \
+      std::vector<tensor_type> arg = std::move(                         \
+          ctx->InputBetween<tensor_type>(range.first, range.second));   \
       KernelCallHelper<Tail...>::                                       \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>( \
               ctx, pargs..., arg);                                      \
@@ -104,20 +127,39 @@ using XPUContext = paddle::platform::XPUDeviceContext;
     }                                                                     \
   }
 
-#define PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(tensor_type)          \
-  template <typename... Tail>                                           \
-  struct KernelCallHelper<tensor_type*, Tail...> {                      \
-    template <int dev_ctx_idx,                                          \
-              int in_idx,                                               \
-              int attr_idx,                                             \
-              int out_idx,                                              \
-              typename... PreviousArgs>                                 \
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {   \
-      tensor_type* arg = ctx->MutableOutputAt<tensor_type>(out_idx);    \
-      KernelCallHelper<Tail...>::                                       \
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>( \
-              ctx, pargs..., arg);                                      \
-    }                                                                   \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(tensor_type)           \
+  template <typename... Tail>                                            \
+  struct KernelCallHelper<tensor_type*, Tail...> {                       \
+    template <int dev_ctx_idx,                                           \
+              int in_idx,                                                \
+              int attr_idx,                                              \
+              int out_idx,                                               \
+              typename... PreviousArgs>                                  \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {    \
+      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);     \
+      tensor_type* arg = ctx->MutableOutputAt<tensor_type>(range.first); \
+      KernelCallHelper<Tail...>::                                        \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(  \
+              ctx, pargs..., arg);                                       \
+    }                                                                    \
+  }
+
+#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)          \
+  template <typename... Tail>                                                 \
+  struct KernelCallHelper<std::vector<tensor_type*>, Tail...> {               \
+    template <int dev_ctx_idx,                                                \
+              int in_idx,                                                     \
+              int attr_idx,                                                   \
+              int out_idx,                                                    \
+              typename... PreviousArgs>                                       \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {         \
+      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);          \
+      std::vector<tensor_type*> arg = std::move(                              \
+          ctx->MutableOutputBetween<tensor_type>(range.first, range.second)); \
+      KernelCallHelper<Tail...>::                                             \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(       \
+              ctx, pargs..., arg);                                            \
+    }                                                                         \
   }
 
 template <typename T>
@@ -152,6 +194,7 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   /* Input Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
 
@@ -164,10 +207,12 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
 
   /* Output Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
 
