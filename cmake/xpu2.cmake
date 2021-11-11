@@ -40,26 +40,6 @@ endif()
 
 set(TOOLCHAIN_ARGS )
 
-if(API_ARCH MATCHES "aarch64")
-  set(TOOLCHAIN_ARGS --gcc-toolchain=${HOST_SYSROOT} )
-  set(HOST_SYSROOT ${HOST_SYSROOT}/aarch64-linux-gnu/libc )
-endif()
-
-if(API_ARCH MATCHES "sw_64")
-  set(SW_API_LINK_FLAGS --sysroot=${HOST_SYSROOT} )
-  if(NOT SW_PREFIX)
-   set(SW_PREFIX sw_64sw6-sunway-linux-gnu)
-  endif()
-  if(NOT GCC_VERSION)
-   set(GCC_VERSION 8.3.0)
-  endif()
-
-  set(XPU_MF_FLAGS -isystem ${HOST_SYSROOT}/usr/include/c++/${GCC_VERSION} -isystem ${HOST_SYSROOT}/usr/include/c++/${GCC_VERSION}/${SW_PREFIX})
-  set(HOST_XPU_FLAGS -fuse-as=${SW_PREFIX}-gcc -isystem ${HOST_SYSROOT}/usr/include/c++/${GCC_VERSION} -isystem ${HOST_SYSROOT}/usr/include/c++/${GCC_VERSION}/${SW_PREFIX})
-  set(HOST_CXX ${HOST_SYSROOT}/usr/bin/${SW_PREFIX}-g++)
-  set(HOST_AR ${HOST_SYSROOT}/usr/bin/${SW_PREFIX}-ar)
-endif()
-
 if(OPT_LEVEL)
   set(OPT_LEVEL ${OPT_LEVEL})
 else()
