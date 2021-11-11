@@ -181,6 +181,13 @@ IF(WITH_XPU)
         DSTS ${dst_dir} ${dst_dir})
 ENDIF()
 
+# IF(WITH_XPU2)
+#     set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/xpu2")
+#     copy(inference_lib_dist
+#         SRCS ${XPU2_INC_DIR} ${XPU2_LIB_DIR}
+#         DSTS ${dst_dir} ${dst_dir})
+# ENDIF()
+
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt

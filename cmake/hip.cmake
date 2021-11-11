@@ -13,11 +13,13 @@ else()
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
 
+#找到相关的编译器依赖环境
 find_package(HIP REQUIRED)
 include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
 message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
 
+# 添加相关环境
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
   include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
@@ -83,6 +85,7 @@ endif()
 message(STATUS "HIP library name: ${hip_library_name}")
 
 # set HIP link libs
+# 从后面找到叫hip_hcc或者amdhip64的库
 find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 

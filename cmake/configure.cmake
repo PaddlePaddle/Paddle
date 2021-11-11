@@ -99,6 +99,11 @@ if(WITH_XPU)
     add_definitions(-DPADDLE_WITH_XPU)
 endif()
 
+if(WITH_XPU2)
+    message(STATUS "Compile with XPU2!")
+    add_definitions(-DPADDLE_WITH_XPU2)
+endif()
+
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)

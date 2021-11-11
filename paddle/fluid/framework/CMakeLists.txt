@@ -205,6 +205,14 @@ cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope gl
     pten pten_utils kernel_factory)
 ENDIF()
 
+# IF(WITH_XPU2)
+# cc_library(operator SRCS operator.cc DEPS xpu2_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
+#     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+# ELSE()
+# cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
+#     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+# ENDIF()
+
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
 
