@@ -34,7 +34,7 @@ class TaskNode;
 
 class Interceptor {
  public:
-  using InterceptorHandle = std::function<void(const InterceptorMessage&)>;
+  using MsgHandle = std::function<void(const InterceptorMessage&)>;
 
  public:
   Interceptor() = delete;
@@ -44,7 +44,7 @@ class Interceptor {
   virtual ~Interceptor();
 
   // register interceptor handle
-  void RegisterInterceptorHandle(InterceptorHandle handle);
+  void RegisterMsgHandle(MsgHandle handle);
 
   void Handle(const InterceptorMessage& msg);
 
@@ -77,7 +77,7 @@ class Interceptor {
   TaskNode* node_;
 
   // interceptor handle which process message
-  InterceptorHandle handle_{nullptr};
+  MsgHandle handle_{nullptr};
 
   // mutex to control read/write conflict for remote mailbox
   std::mutex remote_mailbox_mutex_;
