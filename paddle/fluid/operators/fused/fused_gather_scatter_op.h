@@ -76,7 +76,8 @@ template <typename T, typename IndexT, typename Functor>
 void gather_scatter_cpu_for_loop(const int& input_size, const int& index_size,
                                  const IndexT* g_index, const IndexT* s_index,
                                  const Tensor& src, Tensor* dst,
-                                 const std::string& pool_type) {
+                                 const std::string& pool_type,
+                                 int* scatter_count = NULL) {
   Functor functor;
   if (pool_type == "MIN" || pool_type == "MAX") {
     std::set<IndexT> existed_dst;
@@ -107,19 +108,59 @@ void gather_scatter_cpu_for_loop(const int& input_size, const int& index_size,
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                       dst_idx, false, functor);
     }
-    int* count = new int[input_size];
-    memset(count, 0, input_size * sizeof(int));
     for (int i = 0; i < index_size; ++i) {
       IndexT dst_idx = s_index[i];
-      count[dst_idx] += 1;
+      *(scatter_count + dst_idx) += 1;
     }
     for (int i = 0; i < input_size; ++i) {
-      if (count[i] <= 1) continue;
+      if (*(scatter_count + i) == 0) continue;
       auto dst_slice = dst->Slice(i, i + 1);
       auto eigen_dst = framework::EigenVector<T>::Flatten(dst_slice);
-      eigen_dst = eigen_dst / static_cast<T>(count[i]);
+      eigen_dst = eigen_dst / static_cast<T>(*(scatter_count + i));
     }
-    delete[] count;
+  }
+}
+
+template <typename T, typename IndexT, typename Functor>
+void gather_scatter_cpu_for_loop_grad(const int& input_size,
+                                      const int& index_size,
+                                      const IndexT* g_index,
+                                      const IndexT* s_index, const Tensor& src,
+                                      Tensor* dst, const std::string& pool_type,
+                                      const int* scatter_count = NULL) {
+  Functor functor;
+  if (pool_type == "SUM") {
+    for (int i = 0; i < index_size; ++i) {
+      IndexT src_idx = g_index[i];
+      IndexT dst_idx = s_index[i];
+      elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
+                                                      dst_idx, false, functor);
+    }
+  } else if (pool_type == "MEAN") {
+    for (int i = 0; i < index_size; ++i) {
+      IndexT src_idx = g_index[i];
+      IndexT dst_idx = s_index[i];
+      auto src_slice = src.Slice(src_idx, src_idx + 1);
+      auto dst_slice = dst->Slice(dst_idx, dst_idx + 1);
+      auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
+      auto eigen_dst = framework::EigenVector<T>::Flatten(dst_slice);
+      eigen_dst += (eigen_src / static_cast<T>(scatter_count[src_idx]));
+    }
+  } else if (pool_type == "MIN" || pool_type == "MAX") {
+    std::set<IndexT> existed_dst;
+    for (int i = 0; i < index_size; ++i) {
+      IndexT src_idx = g_index[i];
+      IndexT dst_idx = s_index[i];
+      bool in_set = existed_dst.find(dst_idx) != existed_dst.end();
+      if (!in_set) {
+        elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
+                                                        dst_idx, true, functor);
+        existed_dst.emplace(dst_idx);
+      } else {
+        elementwise_inner_operation<T, IndexT, Functor>(
+            src, dst, src_idx, dst_idx, false, functor);
+      }
+    }
   }
 }
 
@@ -156,8 +197,12 @@ class FusedGatherScatterOpKernel : public framework::OpKernel<T> {
       gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterMaxFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MEAN") {
+      auto* scatter_count = ctx.Output<Tensor>("Scatter_count");
+      int* p_scatter_count = scatter_count->mutable_data<int>(ctx.GetPlace());
+      memset(p_scatter_count, 0, src_dims[0] * sizeof(int));
       gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
+          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type,
+          p_scatter_count);
     }
   }
 };
@@ -186,17 +231,23 @@ class FusedGatherScatterGradOpKernel : public framework::OpKernel<T> {
 
     const std::string& pool_type = ctx.Attr<std::string>("pool_type");
     if (pool_type == "SUM") {
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
+      gather_scatter_cpu_for_loop_grad<T, IndexT,
+                                       FusedGatherScatterSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MIN") {
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterMinFunctor<T>>(
+      gather_scatter_cpu_for_loop_grad<T, IndexT,
+                                       FusedGatherScatterMinFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MAX") {
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterMaxFunctor<T>>(
+      gather_scatter_cpu_for_loop_grad<T, IndexT,
+                                       FusedGatherScatterMaxFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MEAN") {
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
+      auto* scatter_count = ctx.Input<Tensor>("Scatter_count");
+      const int* s_count = scatter_count->data<int>();
+      gather_scatter_cpu_for_loop_grad<T, IndexT,
+                                       FusedGatherScatterSumFunctor<T>>(
+          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type, s_count);
     }
   }
 };

@@ -22,22 +22,13 @@ class FusedGatherScatterOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument(
-            "Input(X) of FusedGatherScatterOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Gather_index"), true,
-        platform::errors::InvalidArgument(
-            "Input(Gather_index) of FusedGatherScatterOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Scatter_index"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Scatter_index) of FusedGatherScatterOp should "
-                          "not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument(
-            "Output(Out) of FusedGatherScatterOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGatherScatter");
+    OP_INOUT_CHECK(ctx->HasInput("Gather_index"), "Input", "Gather_index",
+                   "FusedGatherScatter");
+    OP_INOUT_CHECK(ctx->HasInput("Scatter_index"), "Input", "Scatter_index",
+                   "FusedGatherScatter");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FusedGatherScatter");
 
     auto gather_index_dims = ctx->GetInputDim("Gather_index");
     if (gather_index_dims.size() == 2) {
@@ -73,6 +64,12 @@ class FusedGatherScatterOP : public framework::OperatorWithKernel {
     // same?
     auto dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dims);
+
+    if (ctx->Attrs().Get<std::string>("pool_type") == "MEAN") {
+      OP_INOUT_CHECK(ctx->HasOutput("Scatter_count"), "Output", "Scatter_count",
+                     "FusedGatherScatter");
+      ctx->SetOutputDim("Scatter_count", {dims[0]});
+    }
   }
 
  protected:
@@ -111,6 +108,9 @@ class FusedGatherScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Gather_index", "The gather index tensor.");
     AddInput("Scatter_index", "The scatter index tensor.");
     AddOutput("Out", "Output tensor of fused_gather_scatter op.");
+    AddOutput("Scatter_count",
+              "Count tensor of Scatter index, mainly for MEAN pool_type.")
+        .AsIntermediate();
     AddAttr<std::string>(
         "pool_type",
         "(string, default 'SUM')"
@@ -144,6 +144,17 @@ class FusedGatherScatterGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("fused_gather_scatter_grad");
     op->SetInput("Gather_index", this->Input("Gather_index"));
     op->SetInput("Scatter_index", this->Input("Scatter_index"));
+
+    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
+      op->SetInput("Scatter_count", this->Output("Scatter_count"));
+    }
+
+    if (BOOST_GAT_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
+        BOOST_GAT_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+      op->SetInput("X", this->Input("X"));
+      op->SetInput("Out", this->Output("Out"));
+    }
+
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
