@@ -348,7 +348,9 @@ def _sync_comm_stream(tensor, ring_id=0):
 def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
 
-    Broadcast a tensor from the source to all others, as shown below.
+    Broadcast a tensor from the source to all others.
+    As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    by the GPU number.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/broadcast.png
         :width: 800
@@ -420,7 +422,10 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
 def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
-    Reduce a tensor over all ranks so that all get the result, as shown below.
+    Reduce a tensor over all ranks so that all get the result.
+    As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    by the GPU number. The reduce operator is sum. Through all_reduce operator, 
+    each GPU will have the sum of the data from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/allreduce.png
         :width: 800
@@ -604,7 +609,10 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
-    Gather tensors from all participators and all get the result, as shown below.
+    Gather tensors from all participators and all get the result. As shown
+    below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    by the GPU number. Through the all_gather operator, each GPU will have data
+    from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/allgather.png
         :width: 800
@@ -1464,7 +1472,9 @@ def split(x,
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
-    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list, as shown below.
+    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
+    As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
+    Through alltoall operator, the out_tensor_list in GPU0 includes 0_0 and 1_0, and GPU1 includes 0_1 and 1_1.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/alltoall.png
         :width: 800
