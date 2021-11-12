@@ -23,16 +23,14 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     : place_(place),
       startup_prog_(startup_prog),
       main_prog_(main_prog),
-      outer_scope_(scope),
-      global_scope_(scope) {
-  paddle::framework::InitDevices();
+      global_scope_(VariableScope(scope)) {
   // init scope
-  BuildVariableOuterScope(startup_prog, &global_scope_, scope);
+  BuildVariableScope(startup_prog, &global_scope_);
 
-  if (outer_scope_ != nullptr) {
-    auto name_list = outer_scope_->LocalVarNames();
+  if (scope != nullptr) {
+    auto name_list = scope->LocalVarNames();
     for (auto name : name_list) {
-      auto v = outer_scope_->Var(name);
+      auto v = scope->Var(name);
       if (!global_scope_.HasVar(name)) {
         global_scope_.AddVar(name, *v);
       }
@@ -62,9 +60,8 @@ framework::interpreter::CostInfo StandaloneExecutor::DryRun(
   return core->DryRun(feed_names, feed_tensors);
 }
 
-void StandaloneExecutor::BuildVariableOuterScope(
-    const framework::ProgramDesc& pdesc, VariableScope* var_scope,
-    Scope* outer_scope) {
+void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
+                                            VariableScope* var_scope) {
   auto& global_block = pdesc.Block(0);
 
   for (auto& var : global_block.AllVars()) {
