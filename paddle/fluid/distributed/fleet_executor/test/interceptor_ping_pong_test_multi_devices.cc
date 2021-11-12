@@ -52,20 +52,39 @@ class PingPongInterceptor : public Interceptor {
   int count_{0};
 };
 
-TEST(InterceptorTest, PingPong) {
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+TEST(InterceptorTestRemote, RemotePingPong) {
+  std::cout << "Test ping pong through brpc.";
+  pid_t pid = fork();
+  if (pid < 0) {
+    std::cout << "Fork error, exit remote ping pong test." << std::endl;
+  } else if (pid == 0) {
+    MessageBus& msg_bus = MessageBus::Instance();
+    msg_bus.Init({{0, 0}, {1, 0}},
+                 {{0, "127.0.0.1:8000"}, {1, "127.0.0.1:8001"}},
+                 "127.0.0.1:8001");
 
-  Carrier& carrier = Carrier::Instance();
+    Carrier& carrier = Carrier::Instance();
 
-  Interceptor* a = carrier.SetInterceptor(
-      0, std::make_unique<PingPongInterceptor>(0, nullptr));
+    carrier.SetInterceptor(1,
+                           std::make_unique<PingPongInterceptor>(1, nullptr));
+  } else {
+    MessageBus& msg_bus = MessageBus::Instance();
+    msg_bus.Init({{0, 0}, {1, 1}},
+                 {{0, "127.0.0.1:8000"}, {1, "127.0.0.1:8001"}},
+                 "127.0.0.1:8000");
 
-  carrier.SetInterceptor(1, std::make_unique<PingPongInterceptor>(1, nullptr));
+    Carrier& carrier = Carrier::Instance();
 
-  InterceptorMessage msg;
-  a->Send(1, msg);
+    Interceptor* a = carrier.SetInterceptor(
+        0, std::make_unique<PingPongInterceptor>(0, nullptr));
+
+    InterceptorMessage msg;
+    a->Send(1, msg);
+  }
 }
+#endif
 
 }  // namespace distributed
 }  // namespace paddle
