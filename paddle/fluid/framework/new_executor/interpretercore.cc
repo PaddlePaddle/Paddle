@@ -466,7 +466,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
       return;
     }
 
-    interpreter::RecordEvent(instr_node, place_);
+    interpreter::RecordEvent(instr_node);
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
     RunNextInstructions(instr_node, &ready_ops);
