@@ -1334,6 +1334,29 @@ void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
 #endif
 }
 
+void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
+#ifdef PADDLE_WITH_PSLIB
+  assert(date.size() == 8);
+  int year = std::stoi(date.substr(0, 4));
+  int month = std::stoi(date.substr(4, 2));
+  int day = std::stoi(date.substr(6, 2));
+  struct std::tm b;
+  b.tm_year = year - 1900;
+  b.tm_mon = month - 1;
+  b.tm_mday = day;
+  b.tm_hour = b.tm_min = b.tm_sec = 0;
+  std::time_t seconds_from_1970 = std::mktime(&b);
+  int day_id = seconds_from_1970 / 86400;
+  auto ret = pslib_ptr_->_worker_ptr->set_day_id(table_id, day_id);
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "setdate : " << date << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);

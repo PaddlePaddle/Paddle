@@ -202,6 +202,7 @@ function cmake_base() {
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
+        -DWITH_CINN=${WITH_CINN:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -246,6 +247,7 @@ EOF
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
+        -DWITH_CINN=${WITH_CINN:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -581,12 +583,16 @@ EOF
 
         if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.6 install --user hypothesis
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.7 install --user hypothesis
         elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.8 install --user hypothesis
         elif [ "$1" == "cp39-cp39" ]; then
             pip3.9 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.9 install --user hypothesis
         fi
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
@@ -1204,8 +1210,8 @@ set +x
         single_card_tests_secondary_high_parallel='^job$'   # cases list which would run 15 job each time with single GPU
         single_card_tests_third_high_parallel='^job$'       # cases list which would run 12 job each time with single GPU
         single_card_tests_medium_parallel='^job$'           # cases list which would run 7 job each time with single GPU
-        single_card_tests_lows_parallel='^job$'  
-        single_card_tests_non_parallel='^job$'              # cases list which would run 2 job each time with single GPU
+        single_card_tests_lows_parallel='^job$'             # cases list which would run 4 job each time with single GPU
+        single_card_tests_non_parallel='^job$'              # cases list which would run 4 job each time with single GPU
         single_card_tests='^job$'                           # all cases list which would take single GPU
         
         multiple_card_tests_medium_parallel='^job$'         # cases list which would run 4 job each time with multiple GPUs, most cases would be two GPUs
@@ -1313,10 +1319,9 @@ set +x
         card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
         card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
         card_test "$single_card_tests_medium_parallel" 1 7              # run cases 7 job each time with single GPU
-        card_test "$single_card_tests_lows_parallel" 1 4                # run cases 2 job each time with single GPU
-        card_test "$single_card_tests_non_parallel" 1 4                # run cases 2 job each time with single GPU
+        card_test "$single_card_tests_lows_parallel" 1 5                # run cases 4 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU
         single_ut_endTime_s=`date +%s`
-        echo "single_card_tests finished!!!"
         
         multi_ut_startTime_s=`date +%s`
         card_test "$multiple_card_tests_medium_parallel" 2 4            # run cases 2 job each time with two GPUs
@@ -1328,10 +1333,6 @@ set +x
         card_test "$exclusive_tests_medium_parallel" -1 4                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         card_test "$exclusive_tests_non_parallel" -1 2                # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         exclu_ut_endTime_s=`date +%s`
-
-        echo "ipipe_log_param_1aaa_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
-        echo "ipipe_log_param_2aaa_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s"
-        echo "ipipe_log_param_Exclusiveaaaa_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s"
 
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -1743,6 +1744,52 @@ set -x
     fi   
 }
 
+function parallel_test_base_cinn() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit cinn tests ...
+    ========================================
+EOF
+
+set +x
+        ut_startTime_s=`date +%s`
+        test_cases=$(ctest -N -V)        # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=CINN mean the case would run in CINN CI.
+                    read is_cinn <<< $(echo "$line"|grep -oEi "RUN_TYPE=CINN")
+                    continue
+                fi
+                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+                if [[ "$is_cinn" != "" ]]; then
+                    if [[ "$single_card_tests" == "" ]]; then
+                        single_card_tests="^$testcase$"
+                    else
+                        single_card_tests="$single_card_tests|^$testcase$"
+                    fi
+                fi
+                is_cinn=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+        card_test "$single_card_tests" 1
+        collect_failed_tests
+set -x
+        ut_endTime_s=`date +%s`
+        echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi   
+}
+
 function parallel_test_base_npu() {
     # skipping if no NPU related files changed
     if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
@@ -1884,10 +1931,13 @@ set -ex
 function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    pip install hypothesis
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
-    if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
+    if [ "$WITH_CINN" == "ON" ];then
+        parallel_test_base_cinn
+    elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu
@@ -2284,11 +2334,11 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, Avin0323 16167147
+    # Xreki 12538138, luotao1 6836917, Avin0323 23427135
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
-        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 16167147 12538138 6836917)
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 23427135 12538138 6836917)
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
             echo "==================================="
@@ -2379,6 +2429,40 @@ function find_temporary_files() {
     fi
 }
 
+function trt_convert_test() {
+    set +e
+    cd ${PADDLE_ROOT}
+    result_num=0
+    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python
+    for file_name in `find python/ -name 'test_trt_convert*'`;do
+        echo "----- test trt ut: $file_name -----"
+        python $file_name
+        res=$?
+        if [ "$res" != "0" ];then
+            echo "$file_name convert test failed " >&2
+            result_num=11
+        fi
+    done
+    if [ "$result_num" != "0" ];then
+        exit 11
+    fi
+}
+
+function build_pr_and_develop() {
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
+    rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+    git checkout .
+    git checkout -b develop_base_pr upstream/$BRANCH
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+}
+
 
 function main() {
     local CMD=$1 
@@ -2387,6 +2471,9 @@ function main() {
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        ;;
+      build_pr_dev)
+        build_pr_and_develop 
         ;;
       build_and_check)
         set +e
@@ -2628,6 +2715,10 @@ function main() {
         ;;
       test_model_benchmark)
         test_model_benchmark
+        ;;
+      trt_convert_test)
+        # only test trt convert.
+        trt_convert_test
         ;;
       *)
         print_usage

@@ -1936,18 +1936,18 @@ def fused_bn_add_act(x,
 
 def pow2_decay_with_linear_warmup(warmup_steps,
                                   total_steps,
-                                  start_lr,
                                   base_lr,
                                   end_lr,
                                   dtype='float32',
                                   name=None):
     if paddle.fluid.in_dygraph_mode():
         raise NotImplementedError(
-            "pow2_warmup does not support dygraph mode yet.")
+            "pow2_decay_with_linear_warmup does not support dygraph mode yet.")
 
     helper = LayerHelper("pow2_decay_with_linear_warmup", **locals())
     lr = helper.create_global_variable(persistable=True, dtype=dtype, shape=[1])
-    helper.set_variable_initializer(lr, Constant(value=start_lr))
+    helper.set_variable_initializer(
+        lr, Constant(value=float(base_lr) / warmup_steps))
 
     step = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1])
@@ -1963,7 +1963,6 @@ def pow2_decay_with_linear_warmup(warmup_steps,
         attrs={
             "warmup_steps": warmup_steps,
             "total_steps": total_steps,
-            "start_lr": start_lr,
             "base_lr": base_lr,
             "end_lr": end_lr,
         })

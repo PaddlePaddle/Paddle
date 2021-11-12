@@ -20,6 +20,8 @@ from ..fluid.inference import Tensor  # noqa: F401
 from ..fluid.inference import Predictor  # noqa: F401
 from ..fluid.inference import create_predictor  # noqa: F401
 from ..fluid.inference import get_version  # noqa: F401
+from ..fluid.inference import get_trt_compile_version  # noqa: F401
+from ..fluid.inference import get_trt_runtime_version  # noqa: F401
 from ..fluid.inference import get_num_bytes_of_data_type  # noqa: F401
 from ..fluid.inference import PredictorPool  # noqa: F401
 
@@ -32,6 +34,8 @@ __all__ = [  # noqa
     'Predictor',
     'create_predictor',
     'get_version',
+    'get_trt_compile_version',
+    'get_trt_runtime_version',
     'get_num_bytes_of_data_type',
     'PredictorPool'
 ]

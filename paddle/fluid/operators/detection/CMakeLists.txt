@@ -64,6 +64,8 @@ endif()
 
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_xpu.cc)
+elseif(WITH_ASCEND_CL)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_npu.cc)
 else()
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op.cu)
 endif()

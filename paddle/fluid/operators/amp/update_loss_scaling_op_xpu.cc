@@ -113,10 +113,9 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
     } else {
       cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
     }
-
     int cpu_good_out_data = 0;
     int cpu_bad_out_data = 0;
-    MPDType cpu_updated_loss_scaling_data;
+    MPDType cpu_updated_loss_scaling_data = cpu_pre_loss_scaling_data;
 
     if (cpu_found_inf_data) {
       cpu_good_out_data = 0;
@@ -140,8 +139,7 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
         cpu_good_out_data = 0;
       }
     }
-
-    // copy to host
+    // copy to device
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
                  bad_out_data, platform::CPUPlace(), &cpu_bad_out_data,
                  sizeof(int));

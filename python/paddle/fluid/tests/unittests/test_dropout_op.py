@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 import paddle
+import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -854,6 +855,49 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                 m.eval()
                 result = m(input)
                 self.assertTrue(np.allclose(result.numpy(), result_np))
+
+
+class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
+    def setUp(self):
+        paddle.framework.random.set_random_seed_generator('seed0', 123)
+        paddle.framework.random.set_random_seed_generator('seed1', 123)
+        rng0 = paddle.framework.random.get_random_seed_generator('seed0')
+        rng1 = paddle.framework.random.get_random_seed_generator('seed1')
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import dropout
+        with static.program_guard(static.Program(), static.Program()):
+            input = static.data(name="input", shape=[40, 40], dtype="float32")
+            res1 = dropout(
+                input,
+                p=0.3,
+                training=True,
+                mode='upscale_in_train',
+                rng_name='seed0')
+            res2 = dropout(
+                input,
+                p=0.3,
+                training=True,
+                mode='upscale_in_train',
+                rng_name='seed1')
+            res3 = dropout(input, p=0.3)
+
+            in_np = np.random.random([40, 40]).astype("float32")
+
+            exe = static.Executor(place)
+            res_list = [res1, res2]
+            for i in range(2):
+                out1, out2 = exe.run(static.default_main_program(),
+                                     feed={"input": in_np},
+                                     fetch_list=res_list)
+                self.assertTrue(np.allclose(out1, out2))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
 
 
 if __name__ == '__main__':

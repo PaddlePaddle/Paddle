@@ -1061,6 +1061,27 @@ PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
   return act_out;
 }
 
+PDNode *patterns::SoftplusActivation::operator()(std::string activation_type) {
+  // Create Operators
+  auto *softplus_op =
+      pattern->NewNode(softplus_repr())->assert_is_op("softplus");
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *softplus_out = pattern->NewNode(softplus_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("softplus")
+                           ->assert_is_op_input(activation_type);
+  // output
+  auto *activation_out = pattern->NewNode(activation_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output(activation_type);
+
+  softplus_op->LinksTo({softplus_out});
+  activation_op->LinksFrom({softplus_out}).LinksTo({activation_out});
+  return activation_out;
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =
@@ -1606,6 +1627,7 @@ PDNode *patterns::Matmul::operator()() {
                          ->assert_is_op_input("matmul", "X");
   auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
                          ->AsInput()
+                         ->assert_is_persistable_var()
                          ->assert_is_op_input("matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
@@ -1615,23 +1637,45 @@ PDNode *patterns::Matmul::operator()() {
   return matmul_out;
 }
 
+// MatmulV2: tensor * weight
+PDNode *patterns::MatmulV2Weight::operator()() {
+  auto matmul_v2_op =
+      pattern->NewNode(matmul_v2_op_repr())->assert_is_op("matmul_v2");
+
+  auto matmul_v2_in_x = pattern->NewNode(matmul_v2_in_x_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "X");
+  auto matmul_v2_in_y = pattern->NewNode(matmul_v2_in_y_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()  // Y is weight
+                            ->assert_is_op_input("matmul_v2", "Y");
+  auto matmul_v2_out = pattern->NewNode(matmul_v2_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("matmul_v2", "Out");
+
+  matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y})
+      .LinksTo({matmul_v2_out});
+  return matmul_v2_out;
+}
+
+// MatmulV2: tensor * tensor or tensor * weight
 PDNode *patterns::MatmulV2::operator()() {
-  auto matmul_op =
-      pattern->NewNode(matmul_op_repr())->assert_is_op("matmul_v2");
+  auto matmul_v2_op =
+      pattern->NewNode(matmul_v2_op_repr())->assert_is_op("matmul_v2");
 
-  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
-                         ->AsInput()
-                         ->assert_is_op_input("matmul_v2", "X");
-  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
-                         ->assert_is_persistable_var()
-                         ->AsInput()
-                         ->assert_is_op_input("matmul_v2", "Y");
-  auto matmul_out = pattern->NewNode(matmul_out_repr())
-                        ->AsOutput()
-                        ->assert_is_op_output("matmul_v2", "Out");
+  auto matmul_v2_in_x = pattern->NewNode(matmul_v2_in_x_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "X");
+  auto matmul_v2_in_y = pattern->NewNode(matmul_v2_in_y_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "Y");
+  auto matmul_v2_out = pattern->NewNode(matmul_v2_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("matmul_v2", "Out");
 
-  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
-  return matmul_out;
+  matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y})
+      .LinksTo({matmul_v2_out});
+  return matmul_v2_out;
 }
 
 PDNode *patterns::Squeeze2Matmul::operator()() {
@@ -2697,16 +2741,18 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
   return matmul_out;
 }
 
-PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
+// shared function for matmul and matmul_v2
+PDNode *patterns::MatmulTransposeReshapePattern::operator()(
+    const std::string &op_name) {
   auto reshape_op =
       pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op(op_name);
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsInput()
-                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_op_output(op_name, "Out")
                         ->assert_is_op_input("transpose2", "X");
 
   auto transpose_out = pattern->NewNode(transpose_out_repr())
