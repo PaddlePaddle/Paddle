@@ -127,6 +127,24 @@ using XPUContext = paddle::platform::XPUDeviceContext;
     }                                                                     \
   }
 
+#define PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE_CONST(attr_type)     \
+  template <typename... Tail>                                             \
+  struct KernelCallHelper<const attr_type&, Tail...> {                    \
+    template <int dev_ctx_idx,                                            \
+              int in_idx,                                                 \
+              int attr_idx,                                               \
+              int out_idx,                                                \
+              typename... PreviousArgs>                                   \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {     \
+      static_assert(out_idx == 0,                                         \
+                    "Kernel's Attributes should appear before Outputs."); \
+      attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                   \
+      KernelCallHelper<Tail...>::                                         \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
+              ctx, pargs..., arg);                                        \
+    }                                                                     \
+  }
+
 #define PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(tensor_type)           \
   template <typename... Tail>                                            \
   struct KernelCallHelper<tensor_type*, Tail...> {                       \
@@ -208,6 +226,7 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE_CONST(std::vector<int>);
 
   /* Output Helpers */
 

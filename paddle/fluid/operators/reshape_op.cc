@@ -15,7 +15,12 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/pten_utils.h"
 
+// only can include the headers in paddle/top/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/manipulation.h"
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -248,13 +253,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    //#ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     framework::DataLayout::kMKLDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -366,13 +364,6 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    //#ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     framework::DataLayout::kMKLDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -382,42 +373,94 @@ class ReshapeKernel {
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
+    // framework::DDim out_dims = out->dims();
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
 
-    framework::DDim out_dims = out->dims();
+    // we can't MakePtenDenseTensor by out, because reshape will realloc memory
+    // and this
+    // will throw error(can't realloc shared memory) in current DenseTensor
+    // design. So, codes
+    // below create a tmp densetensor for output.
+    const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+        paddle::platform::CPUPlace());
+    pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
+                               in->dims(),
+                               pten::TransToPtenDataLayout(in->layout())};
+    auto pt_out_tmp =
+        std::make_shared<pten::DenseTensor>(alloc, std::move(meta));
+    pten::DenseTensor *pt_out = nullptr;
+    if (in == out) {
+      pt_out = pt_x.get();
+    } else {
+      pt_out = pt_out_tmp.get();
+    }
 
     auto list_new_shape_tensor =
         ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
-      auto new_shape = get_new_shape(list_new_shape_tensor);
-      out_dims = ReshapeOp::ValidateShape(new_shape, in->dims());
-
-    } else {
-      auto *shape_tensor = ctx.HasInput("Shape")
-                               ? ctx.Input<framework::LoDTensor>("Shape")
-                               : nullptr;
-
-      if (shape_tensor) {
-        auto *shape_data = shape_tensor->data<int>();
-        framework::Tensor cpu_shape_tensor;
-        if (platform::is_gpu_place(shape_tensor->place()) ||
-            platform::is_xpu_place(shape_tensor->place())) {
-          TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                         &cpu_shape_tensor);
-          shape_data = cpu_shape_tensor.data<int>();
+      std::vector<pten::DenseTensor> pt_vec_shape;
+      for (auto &tensor : list_new_shape_tensor) {
+        if (platform::is_gpu_place(tensor->place()) ||
+            platform::is_xpu_place(tensor->place())) {
+          framework::Tensor temp;
+          TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+          pt_vec_shape.push_back(
+              std::move(*(paddle::experimental::MakePtenDenseTensor(temp))));
+        } else {
+          pt_vec_shape.push_back(
+              std::move(*(paddle::experimental::MakePtenDenseTensor(*tensor))));
         }
-        auto shape =
-            std::vector<int>(shape_data, shape_data + shape_tensor->numel());
-        out_dims = ReshapeOp::ValidateShape(shape, in->dims());
+      }
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+        pten::ReshapeFromVectorDT(dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
+      }
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+        pten::ReshapeFromVectorDT(dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
+      }
+
+    } else if (shape_tensor) {
+      std::unique_ptr<pten::DenseTensor> pt_shape;
+      if (platform::is_gpu_place(shape_tensor->place()) ||
+          platform::is_xpu_place(shape_tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*shape_tensor, platform::CPUPlace(), &temp);
+        pt_shape = paddle::experimental::MakePtenDenseTensor(temp);
+      } else {
+        pt_shape = paddle::experimental::MakePtenDenseTensor(*shape_tensor);
+      }
+
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+        pten::ReshapeFromDT(dev_ctx, *pt_x.get(), *pt_shape.get(), pt_out);
+      }
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+        pten::ReshapeFromDT(dev_ctx, *pt_x.get(), *pt_shape.get(), pt_out);
+      }
+    } else {
+      auto &shape_vec = ctx.Attr<std::vector<int>>("shape");
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+        pten::ReshapeFromVectorVal(dev_ctx, *pt_x.get(), shape_vec, pt_out);
+      }
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+        pten::ReshapeFromVectorVal(dev_ctx, *pt_x.get(), shape_vec, pt_out);
       }
     }
-
-    out->Resize(out_dims);
-    out->mutable_data(ctx.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), out);
-    out->Resize(out_dims);
+    // non-inplace need move all result from pt_out to out, inplace need set
+    // result dims.
+    if (in != out) {
+      paddle::experimental::MovesStorage(pt_out, static_cast<Tensor *>(out));
+    } else {
+      out->Resize(pt_out->dims());
+    }
   }
 };
 
@@ -478,6 +521,21 @@ class Reshape2Op : public ReshapeOp {
     ctx->ShareLoD("X", /*->*/ "XShape");
 
     ReshapeOp::InferShape(ctx);
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    if (multi_inputs.size() > 0) {
+      return framework::KernelSignature(
+          "reshape2.mulhost.mid", {"X", "ShapeTensor"}, {}, {"XShape", "Out"});
+    } else if (ctx.HasInput("Shape")) {
+      return framework::KernelSignature("reshape2.host.mid", {"X", "Shape"}, {},
+                                        {"XShape", "Out"});
+    } else {
+      return framework::KernelSignature("reshape2.mid", {"X"}, {"shape"},
+                                        {"XShape", "Out"});
+    }
   }
 };
 
@@ -557,13 +615,6 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-    //#ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     framework::DataLayout::kMKLDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 

@@ -15,6 +15,7 @@
 #include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
+#include "paddle/pten/kernels/functions/general/manipulation.h"
 
 namespace pten {
 
@@ -40,20 +41,83 @@ void FlattenWithXShape(const CPUContext& dev_ctx,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  const auto& in_dims = x.meta().dims;
-  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < in_dims.size(); ++i) {
-    xshape_dims[i + 1] = in_dims[i];
+  general::SetXShape(x, xshape);
+}
+
+void ReshapeFromVectorVal(const CPUContext& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int>& shape,
+                          DenseTensor* out) {
+  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  if (&x == out) {
+    out->Resize(out_meta.dims);
+    return;
   }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->set_lod(x.lod());
+  pten::Copy(dev_ctx, x, out);
+  out->Resize(out_meta.dims);
+}
+
+void ReshapeFromVectorValWithXShape(const CPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const std::vector<int>& shape,
+                                    DenseTensor* xshape,
+                                    DenseTensor* out) {
+  ReshapeFromVectorVal(dev_ctx, x, shape, out);
+  general::SetXShape(x, xshape);
+}
+
+void ReshapeFromDT(const CPUContext& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& shape,
+                   DenseTensor* out) {
+  auto* shape_data = shape.data<int>();
+  auto vector_shape = std::vector<int>(shape_data, shape_data + shape.numel());
+  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+}
+
+void ReshapeFromDTWithXShape(const CPUContext& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& shape,
+                             DenseTensor* xshape,
+                             DenseTensor* out) {
+  ReshapeFromDT(dev_ctx, x, shape, out);
+  general::SetXShape(x, xshape);
+}
+
+void ReshapeFromVectorDT(const CPUContext& dev_ctx,
+                         const DenseTensor& x,
+                         const std::vector<DenseTensor>& shape,
+                         DenseTensor* out) {
+  std::vector<int> vector_shape;
+  for (auto& tensor : shape) {
+    PADDLE_ENFORCE_EQ(
+        tensor.dims(),
+        paddle::framework::make_ddim({1}),
+        paddle::platform::errors::InvalidArgument(
+            "If the element type of 'shape' in ReshapeOp is Tensor, "
+            "the element's shape must be [1]. But received the element's shape "
+            "is [%s]",
+            tensor.dims()));
+    vector_shape.push_back(static_cast<int32_t>(*tensor.data<int32_t>()));
+  }
+  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+}
+
+void ReshapeFromVectorDTWithXShape(const CPUContext& dev_ctx,
+                                   const DenseTensor& x,
+                                   const std::vector<DenseTensor>& shape,
+                                   DenseTensor* xshape,
+                                   DenseTensor* out) {
+  ReshapeFromVectorDT(dev_ctx, x, shape, out);
+  general::SetXShape(x, xshape);
 }
 
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
 PT_REGISTER_MODULE(ManipulationCPU);
+
+using bfloat16 = paddle::platform::bfloat16;
 
 // TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
 // architecture, kernel_name should be "flatten".
@@ -78,3 +142,15 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+
+// TODO(yuanrisheng): "reshape2" is compatible with old kernel
+// architecture, kernel_name should be "reshape".
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromVectorVal) {}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mid",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromVectorValWithXShape) {}
