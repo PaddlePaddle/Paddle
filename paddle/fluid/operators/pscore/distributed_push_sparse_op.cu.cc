@@ -19,4 +19,5 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     distributed_push_sparse,
-    ops::DistributedPushSparseKernel<plat::CUDADeviceContext, float>);
+    ops::DistributedPushSparseKernel<plat::CUDADeviceContext, float>,
+    ops::DistributedPushSparseKernel<plat::CUDADeviceContext, double>);

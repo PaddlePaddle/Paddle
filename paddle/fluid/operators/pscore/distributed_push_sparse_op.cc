@@ -125,6 +125,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(distributed_push_sparse, ops::DistributedPushSparseOp,
                   ops::DistributedPushSparseOpMaker);
 
-REGISTER_OP_CPU_KERNEL(distributed_push_sparse,
-                       ops::DistributedPushSparseKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    distributed_push_sparse,
+    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext,
+                                     double>);
