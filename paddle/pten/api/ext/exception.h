@@ -77,19 +77,6 @@ class ErrorMessage {
   std::ostringstream oss;
 };
 
-#if defined _WIN32
-#define HANDLE_THE_ERROR try {
-#define END_HANDLE_THE_ERROR            \
-  }                                     \
-  catch (const std::exception& e) {     \
-    std::cerr << e.what() << std::endl; \
-    throw e;                            \
-  }
-#else
-#define HANDLE_THE_ERROR
-#define END_HANDLE_THE_ERROR
-#endif
-
 #define PD_CHECK(COND, ...)                                               \
   do {                                                                    \
     if (PD_UNLIKELY(!(COND))) {                                           \
