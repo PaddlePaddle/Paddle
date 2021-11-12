@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -24,6 +25,8 @@ class ProgramDesc;
 
 namespace distributed {
 class RuntimeGraph;
+class Carrier;
+class MessageBus;
 
 class FleetExecutor final {
  public:
@@ -33,11 +36,13 @@ class FleetExecutor final {
   void Init(const paddle::framework::ProgramDesc& program_desc);
   void Run();
   void Release();
+  static std::shared_ptr<Carrier> GetCarrier();
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   FleetExecutorDesc exe_desc_;
   std::unique_ptr<RuntimeGraph> runtime_graph_;
+  void InitMessageBus();
 };
 
 }  // namespace distributed

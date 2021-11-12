@@ -34,6 +34,11 @@ class ExternalStorage : public pten::Storage {
         "The external shared storage cannot be reallocated."));
   }
 
+  void Clear() override {
+    data_.Clear();
+    size_ = 0;
+  }
+
   size_t size() const noexcept override { return size_; }
   const paddle::platform::Place& place() const override {
     return data_.place();
@@ -41,7 +46,7 @@ class ExternalStorage : public pten::Storage {
   bool OwnsMemory() const noexcept override { return false; }
 
  private:
-  const int64_t size_{0};
+  int64_t size_{0};
 };
 
 class SharedStorage : public pten::Storage {
@@ -65,6 +70,11 @@ class SharedStorage : public pten::Storage {
         "The external shared storage cannot be reallocated."));
   }
 
+  void Clear() override {
+    data_.Clear();
+    size_ = 0;
+  }
+
   size_t size() const noexcept override { return size_; }
   const paddle::platform::Place& place() const override {
     return data_.place();
@@ -73,6 +83,24 @@ class SharedStorage : public pten::Storage {
 
   const std::shared_ptr<paddle::memory::Allocation>& GetAllocation() {
     return allocation_;
+  }
+
+  // Temporary method: For compatible with fluid Tensor and improve performance
+  void ResetAllocation(std::shared_ptr<paddle::memory::Allocation> allocation,
+                       size_t offset) {
+    allocation_ = allocation;
+    data_ = pten::Allocation(
+        reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(allocation->ptr()) +
+                                offset),
+        allocation->place());
+    size_ = allocation->size();
+  }
+
+  // Temporary method: For compatible with fluid Tensor and improve performance
+  void Reset() {
+    allocation_.reset();
+    data_.Clear();
+    size_ = 0;
   }
 
  private:

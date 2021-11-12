@@ -138,9 +138,11 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     out_linear_bias_out = out_linear_out + out_linear_bias
     out_linear_bias_dropout_out = out_linear_bias_out
     out_linear_bias_dropout_residual_out = query + out_linear_bias_dropout_out
-    out_linear_bias_dropout_residual_ln_out = layer_norm(
-        out_linear_bias_dropout_residual_out, True, True, ln_2_scale, ln_2_bias)
-    return out_linear_bias_dropout_residual_ln_out
+    if not pre_layer_norm:
+        out_linear_bias_dropout_residual_out = layer_norm(
+            out_linear_bias_dropout_residual_out, True, True, ln_2_scale,
+            ln_2_bias)
+    return out_linear_bias_dropout_residual_out
 
 
 class TestFusedAttentionAPI(unittest.TestCase):
@@ -152,6 +154,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.x_type = np.float32
         self.attn_mask_type = np.float64
         self.pre_layer_norm = True
+        self.has_attn_mask = True
         self.training = True
         self.need_weight = False
 
@@ -172,19 +175,27 @@ class TestFusedAttentionAPI(unittest.TestCase):
     def generate_input_data(self):
         self.query = np.random.rand(self.batch_size, self.query_length,
                                     self.embed_dim).astype(self.x_type)
-        self.attn_mask = np.ones(
-            (self.batch_size, self.num_heads, self.query_length,
-             self.key_length),
-            dtype=self.attn_mask_type)
-        if self.attn_mask_type == np.int64:
-            self.attn_mask = np.tril(self.attn_mask)
-        elif self.attn_mask_type == np.float64:
-            self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e9
+        if self.has_attn_mask:
+            self.attn_mask = np.ones(
+                (self.batch_size, self.num_heads, self.query_length,
+                 self.key_length),
+                dtype=self.attn_mask_type)
+            if self.attn_mask_type == np.int64:
+                self.attn_mask = np.tril(self.attn_mask)
+            elif self.attn_mask_type == np.float64:
+                self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e9
+            else:
+                raise ValueError(
+                    "'attn_mask_type' should be 'int64' or 'float64'.")
         else:
-            raise ValueError("'attn_mask_type' should be 'int64' or 'float64'.")
+            self.attn_mask = None
         self.key, self.value = self.query, self.query
 
     def run_imperative(self):
+        if self.has_attn_mask:
+            attn_mask_tensor = paddle.to_tensor(self.attn_mask)
+        else:
+            attn_mask_tensor = None
         fused_attn = FusedMultiHeadAttention(
             self.embed_dim, self.num_heads, self.dropout_prob,
             self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
@@ -192,7 +203,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
         out = fused_attn(
             paddle.to_tensor(self.query),
             paddle.to_tensor(self.query),
-            paddle.to_tensor(self.query), paddle.to_tensor(self.attn_mask))
+            paddle.to_tensor(self.query), attn_mask_tensor)
         ref_out = compute_reference(self.pre_layer_norm, self.query,
                                     self.attn_mask,
                                     fused_attn.pre_ln_scale.numpy(),
@@ -203,7 +214,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     fused_attn.qkv_bias.numpy(),
                                     fused_attn.linear_weight.numpy(),
                                     fused_attn.linear_bias.numpy())
-        self.assertTrue(np.allclose(ref_out, out, rtol=1e-5, atol=1e-5))
+        np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5, atol=1e-5)
 
     def run_static(self):
         fused_attn = FusedMultiHeadAttention(
@@ -215,29 +226,42 @@ class TestFusedAttentionAPI(unittest.TestCase):
             name='X',
             shape=[self.batch_size, self.query_length, self.embed_dim],
             dtype=self.x_type)
-        attn_mask = paddle.static.data(
-            name='SrcMask',
-            shape=[
-                self.batch_size, self.num_heads, self.query_length,
-                self.key_length
-            ],
-            dtype=self.attn_mask_type)
-        final_out = fused_attn(x, x, x, attn_mask)
+        if self.has_attn_mask:
+            attn_mask = paddle.static.data(
+                name='SrcMask',
+                shape=[
+                    self.batch_size, self.num_heads, self.query_length,
+                    self.key_length
+                ],
+                dtype=self.attn_mask_type)
+            final_out = fused_attn(x, x, x, attn_mask)
+        else:
+            final_out = fused_attn(x, x, x)
 
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
-            paddle.static.default_main_program(),
-            feed={"X": self.query,
-                  "SrcMask": self.attn_mask},
-            fetch_list=[
-                final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
-                fused_attn.linear_weight, fused_attn.linear_bias,
-                fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
-                fused_attn.ln_scale, fused_attn.ln_bias
-            ])
-
+        if self.has_attn_mask:
+            out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
+                paddle.static.default_main_program(),
+                feed={"X": self.query,
+                      "SrcMask": self.attn_mask},
+                fetch_list=[
+                    final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
+                    fused_attn.linear_weight, fused_attn.linear_bias,
+                    fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
+                    fused_attn.ln_scale, fused_attn.ln_bias
+                ])
+        else:
+            out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
+                paddle.static.default_main_program(),
+                feed={"X": self.query, },
+                fetch_list=[
+                    final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
+                    fused_attn.linear_weight, fused_attn.linear_bias,
+                    fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
+                    fused_attn.ln_scale, fused_attn.ln_bias
+                ])
         return out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias
 
     def test_static_api(self):
@@ -249,13 +273,35 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     self.attn_mask, ln_scale, ln_bias,
                                     ln_2_scale, ln_2_bias, qkv_weight, qkv_bias,
                                     linear_weight, linear_bias)
-        self.assertTrue(
-            np.allclose(
-                np.array(ref_out), np.array(out), rtol=1e-5, atol=1e-5))
+        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-5)
 
     def test_dynamic_api(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         self.run_imperative()
+
+
+class TestFusedAttentionAPINoneAttnMask(TestFusedAttentionAPI):
+    def config(self):
+        self.x_type = np.float32
+        self.attn_mask_type = np.float64
+        self.pre_layer_norm = True
+        self.has_attn_mask = False
+        self.training = True
+        self.need_weight = False
+
+        self.batch_size = 1
+        self.query_length = 2
+        self.head_dim = 2
+        self.num_heads = 2
+        self.embed_dim = self.head_dim * self.num_heads
+
+        self.dropout_prob = 0.0
+        self.attn_dropout_prob = 0.0
+        self.weight_attr = None
+        self.bias_attr = None
+
+        self.kdim, self.vdim = self.embed_dim, self.embed_dim
+        self.key_length, self.value_length = self.query_length, self.query_length
 
 
 if __name__ == "__main__":

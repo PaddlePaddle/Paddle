@@ -19,6 +19,7 @@
 #include "paddle/pten/include/infershape.h"
 #include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
+#include "paddle/pten/kernels/xpu/manipulation.h"
 
 namespace pten {
 

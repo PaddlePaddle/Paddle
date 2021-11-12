@@ -115,12 +115,29 @@ TEST(dense_tensor, resize) {
   CHECK_EQ(tensor_0.memory_size(), 2u);
   tensor_0.check_memory_size();
   tensor_0.Resize({1, 2, 3});
-  CHECK_EQ(tensor_0.memory_size(), 2u);
+  CHECK_EQ(tensor_0.memory_size(), 0u);
+  tensor_0.set_dims({2, 3});
+  CHECK_EQ(tensor_0.memory_size(), 0u);
   tensor_0.mutable_data<int8_t>();
   CHECK_EQ(tensor_0.memory_size(), 6u);
 
   auto storage = tensor_0.release();
   CHECK_EQ(storage->size(), 6u);
+}
+
+TEST(dense_tensor, shallow_clone) {
+  const DDim dims({1, 2});
+  const DataType dtype{DataType::INT8};
+  const DataLayout layout{DataLayout::NHWC};
+  const std::vector<std::vector<size_t>> lod{};
+  DenseTensorMeta meta(dtype, dims, layout, lod);
+
+  auto alloc = std::make_shared<FancyAllocator>();
+  DenseTensor tensor_0(alloc, meta);
+
+  auto tensor_1 = tensor_0.shallow_clone();
+  CHECK(tensor_0.meta() == tensor_1.meta());
+  CHECK(tensor_0.release() == tensor_1.release());
 }
 
 }  // namespace tests
