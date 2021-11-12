@@ -25,4 +25,5 @@ endif()
 if(WITH_XPU)
   set(PTEN_DEPS ${PTEN_DEPS} manipulation_xpu)
 endif()
+
 cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})
