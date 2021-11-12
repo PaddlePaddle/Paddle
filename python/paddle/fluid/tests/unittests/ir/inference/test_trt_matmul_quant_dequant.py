@@ -77,7 +77,7 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
+                use_gpu, atol=1, flatten=False, rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
@@ -87,7 +87,15 @@ class TensorRTMatMulQuantDequantDims3TransposeXTest(
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = False
-        self.alpha = 1.0
+        self.alpha = 2.1
+
+
+class TensorRTMatMulQuantDequantDims3TransposeYTest(
+        TensorRTMatMulQuantDequantDims3Test):
+    def set_params(self):
+        self.transpose_x = False
+        self.transpose_y = True
+        self.alpha = 3.9
 
 
 class TensorRTMatMulQuantDequantDims3TransposeXYTest(
@@ -95,7 +103,7 @@ class TensorRTMatMulQuantDequantDims3TransposeXYTest(
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = True
-        self.alpha = 1.0
+        self.alpha = 8.4
 
 
 class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
@@ -146,18 +154,26 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         self.weight_quantize_type = 'channel_wise_abs_max'
 
     def set_params(self):
-        self.transpose_x = True
-        self.transpose_y = True
-        self.alpha = 2.1
+        self.transpose_x = False
+        self.transpose_y = False
+        self.alpha = 1.0
 
     def test_check_output(self):
         #self.quant_dequant()
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
+                use_gpu, atol=1, flatten=False, rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTMatMulQuantDequantDims4TransposeXTest(
+        TensorRTMatMulQuantDequantDims4Test):
+    def set_params(self):
+        self.transpose_x = True
+        self.transpose_y = False
+        self.alpha = 3.2
 
 
 class TensorRTMatMulQuantDequantDims4TransposeYTest(
@@ -165,7 +181,23 @@ class TensorRTMatMulQuantDequantDims4TransposeYTest(
     def set_params(self):
         self.transpose_x = False
         self.transpose_y = True
-        self.alpha = 1.0
+        self.alpha = 7.5
+
+
+class TensorRTMatMulQuantDequantDims4TransposeXYTest(
+        TensorRTMatMulQuantDequantDims4Test):
+    def set_params(self):
+        self.transpose_x = True
+        self.transpose_y = True
+        self.alpha = 11.2
+
+
+class TensorRTMatMulQuantDequantDims4ScaleTest(
+        TensorRTMatMulQuantDequantDims4Test):
+    def set_params(self):
+        self.transpose_x = False
+        self.transpose_y = False
+        self.alpha = 2.0
 
 
 class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
@@ -228,7 +260,7 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
+                use_gpu, atol=1, flatten=False, rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
@@ -254,7 +286,7 @@ class TensorRTMatMulQuantDequantDims4TransposeXYDynamicTest(
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = True
-        self.alpha = 3.1
+        self.alpha = 7.8
 
 
 if __name__ == "__main__":
