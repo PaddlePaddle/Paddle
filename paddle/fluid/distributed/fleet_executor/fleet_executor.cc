@@ -76,10 +76,5 @@ void FleetExecutor::Release() {
   // Release
 }
 
-std::shared_ptr<Carrier> FleetExecutor::GetCarrier() {
-  // get carrier
-  return nullptr;
-}
-
 }  // namespace distributed
 }  // namespace paddle

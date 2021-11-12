@@ -43,7 +43,6 @@ class FleetExecutor final {
   FleetExecutorDesc exe_desc_;
   std::unique_ptr<RuntimeGraph> runtime_graph_;
   void InitMessageBus();
-  static std::shared_ptr<Carrier> global_carrier_;
 };
 
 }  // namespace distributed
