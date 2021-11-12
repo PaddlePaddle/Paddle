@@ -80,8 +80,8 @@ TEST(InterceptorTestRemote, RemotePingPong) {
 
     Carrier& carrier = Carrier::Instance();
 
-    Interceptor* a = carrier.SetInterceptor(
-        1, std::make_unique<PingPongInterceptor>(1, nullptr));
+    carrier.SetInterceptor(1,
+                           std::make_unique<PingPongInterceptor>(1, nullptr));
   } else {
     MessageBus& msg_bus = MessageBus::Instance();
     msg_bus.Init({{0, 0}, {1, 1}},
