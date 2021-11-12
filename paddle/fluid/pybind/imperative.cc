@@ -282,6 +282,27 @@ static void InitVarBaseFromTensorWithArgDefault(
   }
 }
 
+template <typename P>
+static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
+                                         const framework::Tensor &tensor,
+                                         const P &place) {
+  VLOG(4) << "Init VarBase";
+  new (self) imperative::VarBase(
+      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
+  self->SetPersistable(false);
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+  self->SetDataType(tensor.type());
+  auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  // Same place，share data directly
+  if (platform::is_same_place(place, tensor.place())) {
+    new_tensor->ShareDataWith(tensor);
+    VLOG(4) << "Same place, do ShareDataWith";
+  } else {
+    framework::TensorCopy(tensor, place, new_tensor);
+    VLOG(4) << "Different place, do TensorCopy";
+  }
+}
+
 static std::string GetTypeName(const imperative::VarBase &var) {
   if (var.Type() == framework::proto::VarType::RAW) {
     return "RAW";
@@ -899,6 +920,16 @@ void BindImperative(py::module *m_ptr) {
            py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
+           py::arg("tensor"), py::arg("place"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def(
           "__setitem_varbase__",
@@ -985,6 +1016,12 @@ void BindImperative(py::module *m_ptr) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});
+
+                // pass the stop_gradient from value to tensor
+                if (!value_tensor->OverridedStopGradient() &&
+                    self->OverridedStopGradient()) {
+                  self->SetOverridedStopGradient(false);
+                }
               } else if (py::isinstance<py::array>(value_obj)) {
                 auto value_tensor = std::shared_ptr<imperative::VarBase>(
                     new imperative::VarBase(false,
@@ -1443,7 +1480,8 @@ void BindImperative(py::module *m_ptr) {
                 #   one of the variables needed for gradient computation has been modified by an inplace operation.
              
        )DOC")
-      .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
+      .def("clear_gradient", &imperative::VarBase::ClearGradient,
+           py::arg("set_to_zero") = true, R"DOC(
 
         Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 
@@ -1463,6 +1501,9 @@ void BindImperative(py::module *m_ptr) {
                 linear.weight.clear_gradient()
                 print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
       )DOC")
+      .def("_gradient_set_empty", &imperative::VarBase::_GradientSetEmpty,
+           py::arg("set_is_empty") = true)
+      .def("_is_gradient_set_empty", &imperative::VarBase::_IsGradientSetEmpty)
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
              const auto &tensor = self->Var().Get<framework::LoDTensor>();
@@ -1859,6 +1900,70 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
+      .def("_clear",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             t->clear();
+           })
+      .def("_offset",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->offset();
+           })
+      .def("_share_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &target_t) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t_t =
+                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             t->ShareBufferWith(*t_t);
+           })
+      .def("_is_shared_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &target_t) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t_t =
+                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->IsSharedBufferWith(*t_t);
+           })
+      .def("_slice",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              int64_t begin_idx, int64_t end_idx) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->Slice(begin_idx, end_idx);
+           })
+      .def("_copy_gradient_from",
+           [](std::shared_ptr<imperative::VarBase> &self,
+              const imperative::VarBase &src) { self->_CopyGradientFrom(src); })
+      .def("_numel",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "tensor has not been initialized"));
+             return t->numel();
+           })
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property("stop_gradient",
@@ -1875,6 +1980,12 @@ void BindImperative(py::module *m_ptr) {
             } else if (self.Var().IsType<framework::SelectedRows>()) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
+            } else if (self.Var().IsType<framework::Strings>()) {
+              return std::vector<int>{static_cast<int>(
+                  self.Var().Get<framework::Strings>().size())};
+            } else if (self.Var().IsType<framework::Vocab>()) {
+              return std::vector<int>{
+                  static_cast<int>(self.Var().Get<framework::Vocab>().size())};
             } else {
               VLOG(2) << "It is meaningless to get shape of "
                          "variable type "

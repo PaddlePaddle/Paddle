@@ -23,9 +23,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     : place_(place),
       startup_prog_(startup_prog),
       main_prog_(main_prog),
-      outer_scope_(scope) {
+      outer_scope_(scope),
+      global_scope_(scope) {
   paddle::framework::InitDevices();
-
   // init scope
   BuildVariableOuterScope(startup_prog, &global_scope_, scope);
 
@@ -33,41 +33,33 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     auto name_list = outer_scope_->LocalVarNames();
     for (auto name : name_list) {
       auto v = outer_scope_->Var(name);
-      if (global_scope_.name2id.find(name) == global_scope_.name2id.end()) {
-        global_scope_.name2id[name] = global_scope_.var_list.size();
-        global_scope_.var_list.push_back(v);
-
-        VariableMetaInfo info;
-        info.var_ref_count_ = 0;
-        info.vardesc_ = nullptr;
-        global_scope_.vec_meta_info_.push_back(info);
+      if (!global_scope_.HasVar(name)) {
+        global_scope_.AddVar(name, *v);
       }
     }
   }
 
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
-  std::vector<paddle::framework::OperatorBase*> op_list;
-  paddle::framework::interpretercore::build_op_func_list(
-      place_, startup_prog, &op_list, &vec_func_list, &global_scope_);
+  paddle::framework::interpreter::build_op_func_list(
+      place_, startup_prog.Block(0), &vec_func_list, &global_scope_);
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::Tensor>& feed_tensors,
+    const std::vector<framework::LoDTensor>& feed_tensors,
     const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names);
 
-  return core->Run(feed_tensors);
+  return core->Run(feed_names, feed_tensors);
 }
 
-const CostInfo& StandaloneExecutor::DryRun(
+framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::Tensor>& feed_tensors) {
+    const std::vector<framework::LoDTensor>& feed_tensors) {
   auto core = GetInterpreterCore(feed_names, {});
 
-  auto& cost_info = core->DryRun(feed_tensors);
-  return cost_info;
+  return core->DryRun(feed_names, feed_tensors);
 }
 
 void StandaloneExecutor::BuildVariableOuterScope(
@@ -80,16 +72,8 @@ void StandaloneExecutor::BuildVariableOuterScope(
       continue;
     }
 
-    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
-      var_scope->name2id[var->Name()] = var_scope->var_list.size();
-      auto v = outer_scope->Var(var->Name());
-      InitializeVariable(v, var->GetType());
-      var_scope->var_list.push_back(v);
-
-      VariableMetaInfo info;
-      info.var_ref_count_ = 0;
-      info.vardesc_ = var;
-      var_scope->vec_meta_info_.push_back(info);
+    if (!var_scope->HasVar(var->Name())) {
+      var_scope->AddVar(var->Name(), var);
     }
   }
 }
@@ -111,8 +95,15 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
 
   if (iter == interpretercores_.end()) {
     VLOG(3) << "create interpreter_core for " << oss.str();
-    auto core = std::make_shared<InterpreterCore>(
-        place_, main_prog_, &global_scope_, feed_names, fetch_names);
+    // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy a
+    // new program.
+    auto new_prog = std::make_shared<framework::ProgramDesc>(main_prog_);
+    auto* block = new_prog->MutableBlock(0);
+    interpreter::add_fetch(fetch_names, block);
+
+    auto core =
+        std::make_shared<InterpreterCore>(place_, *block, &global_scope_);
+    programs_.emplace(oss.str(), new_prog);
     interpretercores_.emplace(oss.str(), core);
     return core;
   } else {

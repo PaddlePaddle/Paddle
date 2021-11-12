@@ -54,8 +54,6 @@ class Pow2DecayWithLinearWarmupOpMaker
     AddAttr<int64_t>(
         "total_steps",
         "(int64_t) The total steps for changing the learning rate.");
-    AddAttr<float>("start_lr",
-                   "(float) The initial value of the learning rate.");
     AddAttr<float>("base_lr",
                    "(float) The final learning rate value after warmup.");
     AddAttr<float>("end_lr",
@@ -63,7 +61,7 @@ class Pow2DecayWithLinearWarmupOpMaker
     AddComment(R"DOC(
 The Pow2DecayWithLinearWarmup learning rate scheduler.
 
-When step_num < warmup_steps, lr = (base_lr - start_lr) * step_num / warmup_steps + start_lr  
+When step_num < warmup_steps, lr = base_lr * step_num / warmup_steps 
 
 When warmup_steps <= step_num <= total_steps, 
    factor = 1 - (step_num - warmup_steps) / (total_steps - warmup_steps) 

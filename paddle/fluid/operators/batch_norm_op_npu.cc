@@ -192,6 +192,9 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       auto dx_tensor =
           ctx.AllocateTmpTensor<T, NPUDeviceContext>(d_x->dims(), dev_ctx);
       dx_tensor.ShareDataWith(*d_x);
+      if (data_layout == DataLayout::kNHWC) {
+        dx_tensor.set_layout(DataLayout::kNHWC);
+      }
       if (use_global_stats) {
         if (x->dims().size() == 3) {
           // BNInferGrad only support x rank = 4,

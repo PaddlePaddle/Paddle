@@ -119,10 +119,7 @@ def _in_amp_guard():
 
 
 @dygraph_only
-def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
-    if not enable_pure_fp16:
-        return models, optimizers
-
+def pure_fp16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
@@ -132,43 +129,7 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
                         paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
                     continue
                 layer.to(dtype='float16')
-
-    for idx_opt in range(len(optimizers)):
-        # update _param_groups
-        if getattr(optimizers[idx_opt], '_param_groups', None) and isinstance(
-                optimizers[idx_opt]._param_groups[0], dict):
-            for param_group in optimizers[idx_opt]._param_groups:
-                for i, param in enumerate(param_group['params']):
-                    for idx_model in range(len(models)):
-                        for layer in models[idx_model].sublayers(
-                                include_self=True):
-                            if id(param) in layer._parameters_transform_map:
-                                param_group['params'][
-                                    i] = layer._parameters_transform_map[id(
-                                        param)][0]
-            for param_group in optimizers[idx_opt]._parameter_list:
-                params = param_group['params']
-                for i, param in enumerate(params):
-                    for idx_model in range(len(models)):
-                        for layer in models[idx_model].sublayers(
-                                include_self=True):
-                            if id(param) in layer._parameters_transform_map:
-                                params[i] = layer._parameters_transform_map[id(
-                                    param)][0]
-        # update _parameter_list
-        else:
-            for i, param in enumerate(optimizers[idx_opt]._parameter_list):
-                for idx_model in range(len(models)):
-                    for layer in models[idx_model].sublayers(include_self=True):
-                        if id(param) in layer._parameters_transform_map:
-                            optimizers[idx_opt]._parameter_list[
-                                i] = layer._parameters_transform_map[id(param)][
-                                    0]
-                            if hasattr(optimizers[idx_opt], '_param_groups'):
-                                optimizers[idx_opt]._param_groups[
-                                    i] = layer._parameters_transform_map[id(
-                                        param)][0]
-    return models, optimizers
+    return models
 
 
 def check_models(models):
@@ -235,9 +196,9 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
-    if not (level in ['O1', 'O2']):
+    if not (level in ['O0', 'O1', 'O2']):
         raise ValueError(
-            "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
+            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16 train mode."
         )
 
     tracer = _dygraph_tracer()
@@ -256,10 +217,14 @@ def amp_guard(enable=True,
         amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
         _black_list = BLACK_LIST
-    else:
+    elif level == 'O2':
         amp_level = AMP_LEVEL.O2
         _white_list = PURE_FP16_WHITE_LIST
         _black_list = PURE_FP16_BLACK_LIST
+    elif level == 'O0':
+        amp_level = AMP_LEVEL.O0
+        _white_list = WHITE_LIST
+        _black_list = BLACK_LIST
 
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
@@ -397,8 +362,7 @@ def amp_decorate(models,
             "optimizers must be either a single optimizer or a list of optimizers."
         )
 
-    models, optimizers = pure_fp16_initialize(
-        enable_pure_fp16=True, models=models, optimizers=optimizers)
+    models = pure_fp16_initialize(models=models)
 
     # supprot master_weight    
     for idx_opt in range(len(optimizers)):

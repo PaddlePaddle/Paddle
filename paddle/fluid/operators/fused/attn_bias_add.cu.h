@@ -72,14 +72,14 @@ __global__ void BroadcastKernelBinary(
   // load in0
   if (use_broadcast[0]) {
     kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg0, in0, fix, configlists[0], numel, 1, 1);
+        arg0, in0, fix, configlists[0], numel);
   } else {
     kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
   }
   // load in1
   if (use_broadcast[1]) {
     kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg1, in1, fix, configlists[1], numel, 1, 1);
+        arg1, in1, fix, configlists[1], numel);
   } else {
     kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
   }
