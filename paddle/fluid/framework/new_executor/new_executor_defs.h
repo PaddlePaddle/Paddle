@@ -474,13 +474,12 @@ struct VariableMetaInfo {
 // TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
 
 // NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
-// ScopeBase.
-//                   Scope manager the variables and VariableScope is just a
-//                   quick
-//                   access machanism.
-class VariableScope : public ScopeBase {
+// ScopeBase. Scope manager the variables and VariableScope is just a quick
+// access machanism. ScopeListener is the callback to sync changes in Original
+// Scope. We can make it a membership of VariableScope. Here we use inherent.
+class VariableScope : public ScopeBase, public ScopeListener {
  public:
-  VariableScope() {
+  VariableScope(Scope* outer_scope) {
     // for @EMPTY@ variable
     var_list_.push_back(nullptr);
     name2id_[kEmptyVarName] = 0;
@@ -488,9 +487,20 @@ class VariableScope : public ScopeBase {
     info.var_ref_count_ = 0;
     info.vardesc_ = nullptr;
     vec_meta_info_.push_back(info);
-    scope_ptr_.reset(new Scope());
+    outer_scope_ = outer_scope;
+
+    PADDLE_ENFORCE_NE(
+        outer_scope_, nullptr,
+        platform::errors::PreconditionNotMet(
+            "You have passed a nullptr to construct VariableScope."));
+    outer_scope->AddListener(this);
   }
-  const Scope* GetScope() const { return scope_ptr_.get(); }
+
+  ~VariableScope() {
+    if (outer_scope_ != nullptr) outer_scope_->DelListener(this);
+  }
+
+  const Scope* GetScope() const { return outer_scope_; }
 
   Variable* FindVar(const std::string& name) const {
     auto it = name2id_.find(name);
@@ -548,8 +558,9 @@ class VariableScope : public ScopeBase {
   size_t VarSize() const { return var_list_.size(); }
 
   void AddVar(const std::string& name, VarDesc* var_desc) {  // NOLINT
-    name2id_[name] = VarSize();
-    auto v = scope_ptr_->Var(name);
+    // AddVar -> Scope::Var -> onCreateVariable.
+    VLOG(4) << "Add variable: " << name << " through AddVar()";
+    auto v = outer_scope_->Var(name);
     if (nullptr == var_desc) {
       v->GetMutable<LoDTensor>();
     } else {
@@ -558,26 +569,13 @@ class VariableScope : public ScopeBase {
           var_desc
               ->GetType());  // Scope don't initialize variable recently created
     }
-    var_list_.push_back(v);
-
-    VariableMetaInfo info;
-    info.var_ref_count_ = 0;
-    info.vardesc_ = var_desc;
-    vec_meta_info_.push_back(info);
+    SetVarDesc(name, var_desc);
   }
 
   void AddVar(const std::string& name, Variable& var) {  // NOLINT
-    // must copy.
-    VLOG(4) << "Add variable: " << name << " through AddVar()";
-    auto v = scope_ptr_->Var(name);
-    *v = var;
-    name2id_[name] = VarSize();
-    var_list_.push_back(v);
-
-    VariableMetaInfo info;
-    info.var_ref_count_ = 0;
-    info.vardesc_ = nullptr;
-    vec_meta_info_.push_back(info);
+    // Though name existed in outer_scope_, we need
+    // add again to create name2id map.
+    outer_scope_->Var(name);
   }
 
   void SetVarDesc(const std::string& name, framework::VarDesc* var_desc) {
@@ -607,6 +605,32 @@ class VariableScope : public ScopeBase {
         platform::errors::NotFound("%s not in VariableScope.", name));
   }
 
+ public:  // callbacks from ScopeListener class
+  void onCreateVariable(const std::string& name) override {
+    auto v = outer_scope_->GetVar(name);  // must exsit in outer_scope_
+    if (!HasVar(name)) {                  // may exist in variable scope.
+      VLOG(4) << "Calling VariableScope::onCreateVariable with var_name: "
+              << name;
+      name2id_[name] = VarSize();
+      var_list_.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = nullptr;  // set nullptr, then modifty it in AddVar()
+      vec_meta_info_.push_back(info);
+    }
+  }
+  void onDeleteVariable(const std::string& name) override {
+    if (HasVar(name)) {
+      VLOG(4) << "Calling VariableScope::onDeleteVariable with var_name: "
+              << name;
+    }
+  }
+  void onRenameVariable(const std::string& old_name,
+                        const std::string& new_name) override {}
+  void onCreateScope(Scope* Scope) override {}
+  void onDeleteScope(Scope* Scope) override {}
+  void onClear() override {}
   std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
 
   const std::vector<VariableMetaInfo>& VecMetaInfo() const {
@@ -617,7 +641,7 @@ class VariableScope : public ScopeBase {
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-  std::unique_ptr<Scope> scope_ptr_;
+  Scope* outer_scope_ = nullptr;
 };
 
 class NextInstruction {

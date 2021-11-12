@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
 namespace paddle {
 namespace distributed {
@@ -27,9 +28,7 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
 
 Interceptor::~Interceptor() { interceptor_thread_.join(); }
 
-void Interceptor::RegisterInterceptorHandle(InterceptorHandle handle) {
-  handle_ = handle;
-}
+void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
 void Interceptor::Handle(const InterceptorMessage& msg) {
   if (handle_) {
@@ -61,7 +60,7 @@ void Interceptor::Send(int64_t dst_id,
                        std::unique_ptr<InterceptorMessage> msg) {
   msg->set_src_id(interceptor_id_);
   msg->set_dst_id(dst_id);
-  // send interceptor msg
+  MessageBus::Instance().Send(*msg.get());
 }
 
 void Interceptor::PoolTheMailbox() {
