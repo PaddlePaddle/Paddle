@@ -72,7 +72,7 @@ class AutoParallelizer:
             assert auto_parallel_recompute_pass
             auto_parallel_recompute_pass.apply_forward(main_program, startup_program, parameter_list, no_grad_set, self._pass_context)
         else:
-            from paddle.fluid.backward import append_backward, _some_in_set_, _append_grad_suffix_
+            from paddle.fluid.backward import append_backward
             with program_guard(main_program, startup_program):
                 params_grads = append_backward(
                     loss,
@@ -103,7 +103,7 @@ class AutoParallelizer:
         """
 
         # forward pass
-        self._apply_serial_forward_pass( main_program, startup_program)
+        self._apply_serial_forward_pass(main_program, startup_program)
 
         # backward pass
         params_grads = self._generate_backward(main_program, startup_program, parameter_list, no_grad_set)
@@ -149,7 +149,7 @@ class AutoParallelizer:
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)
-        partitioned_main_prog, partitioned_startup_prog, params_grads = partitioner.partition_forward_backward(completed_main_program, startup_program, params_grads)
+        partitioned_main_prog, partitioned_startup_prog, params_grads = partitioner.partition(completed_main_program, startup_program, params_grads)
 
         # Traverse different rank programs and traverse each op of them,
         # instantiate communication by process_mapping.
