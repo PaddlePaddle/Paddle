@@ -17,6 +17,7 @@ import queue
 import copy
 from enum import Enum
 import paddle
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 SUCC = 0  # successor
 PRED = 1  # predecessor
@@ -155,9 +156,9 @@ class CompOpCostNode(CostNode):
 
     def init_comp_cost(self, cost_data):
         # TODO: improve fluid.CostModel for more specific cost_data
-        op_name = self.node.type
-        if op_name in cost_data.keys():
-            self.cost = cost_data[op_name]
+        op_id = self.node.desc.id()
+        if op_id in cost_data.keys():
+            self.cost = cost_data[op_id]
         else:
             self.cost = 0.0
 
@@ -225,7 +226,8 @@ class CostModel(object):
             if op.type.startswith('c_') or op.type.startswith(
                     'send') or op.type.startswith('recv'):
                 is_bwd = False
-                if op.type.startswith('c_'):
+                if op.type.startswith('c_') and op.type != "c_sync_calc_stream":
+                    print("op: ", op)
                     ring_id = op.attr('ring_id')
                     if ring_id not in self.ring2rank:
                         self.ring2rank[ring_id] = set()
@@ -238,7 +240,8 @@ class CostModel(object):
                 op_node = CommOpCostNode(op, CostNodeType.COMMUNICATION, op_id,
                                          is_bwd)
             else:
-                is_bwd = '_grad' in op.type
+                is_bwd = (int(op.attr('op_role')) == int(OpRole.Backward)
+                          ) or "@GRAD" in op.input_arg_names
                 is_optim = 'LearningRate' in op.input_names
                 op_node = CompOpCostNode(op, CostNodeType.COMPUTATION, op_id,
                                          is_bwd, is_optim)
@@ -318,6 +321,8 @@ class CostModel(object):
                 sub_prog, self.nodes[sub_idx], self.origin_graph[sub_idx],
                 self.cost_data[0 if self.rank2pp is None else self.rank2pp[
                     sub_idx]], sub_idx)
+            print("sub_prog: ", sub_prog)
+            print("self.nodes[sub_idx]: ", self.nodes[sub_idx])
         return self.nodes
 
     def _find_succ_op(self, node_id, sub_idx=0):
@@ -361,7 +366,8 @@ class CostModel(object):
         for sub_idx in range(self.total_rank):
             for node_id, edges in self.op_graph[sub_idx].items():
                 node = self.nodes[sub_idx][node_id]
-                if node_id.startswith('c_'):
+                if node_id.startswith('c_') and not node.id.startswith(
+                        "c_sync_calc_stream"):
                     ring_id = node.node.attr('ring_id')
                     node.set_ranks(list(self.ring2rank[ring_id]))
                     node.init_comm_cost(self.cluster)
@@ -464,30 +470,41 @@ class CostModel(object):
                 runtime_graph[merged_node_id][PRED] = runtime_graph[pred_id][
                     PRED]
                 for i in runtime_graph[pred_id][PRED]:
+                    print("runtime_graph: ", runtime_graph)
+                    print("pred_id: ", pred_id)
+                    print("i: ", i)
+
                     runtime_graph[i][SUCC].remove(pred_id)
                     runtime_graph[i][SUCC].append(merged_node_id)
 
                 for i in edges[SUCC]:
+                    print("i: ", i)
+                    print("runtime_graph: ", runtime_graph)
                     runtime_graph[i][PRED].remove(node_id)
                     runtime_graph[i][PRED].append(merged_node_id)
                 if succ is not None:
                     for i in succ:
+                        print("i: ", i)
+                        print("runtime_graph: ", runtime_graph)
                         runtime_graph[i][PRED].remove(pred_id)
                         runtime_graph[i][PRED].append(merged_node_id)
 
                 runtime_graph.pop(node_id)
                 runtime_graph.pop(pred_id)
                 reduct_cnt += 1
-        self.eliminate_multi_edges(runtime_graph)
+                self.eliminate_multi_edges(runtime_graph)
+                break
         return reduct_cnt  # the number of nodes that have been reduced
 
     def _merge_branch(self, nodes, runtime_graph, is_bwd=False):
         reduct_cnt = 0
         rt_nodes_id = list(runtime_graph.keys())
+        print("rt_nodes_id: ", rt_nodes_id)
         for node_id in rt_nodes_id:
             node = nodes[node_id]
             if not is_bwd == node.is_bwd or node.is_optim:
                 continue
+            #print("runtime_graph keys: ", runtime_graph.keys())
             edges = runtime_graph[node_id]
             outd = len(edges[SUCC])  # out_degree
             if outd > 1:  # branch out
@@ -500,6 +517,7 @@ class CostModel(object):
                         if succ_id in tmp:
                             succ_to_elim.append(succ_id)
                             break
+                print("succ_to_elim: ", succ_to_elim)
                 for id in succ_to_elim:
                     edges[SUCC].remove(id)
                     runtime_graph[id][PRED].remove(node_id)
@@ -515,7 +533,7 @@ class CostModel(object):
                         runtime_graph[i][SUCC][0] != end_node_id:
                         to_merge = False  # if branches has different end node, we don't merge them
                         break
-                if to_merge:
+                if to_merge and len(succ_nodes_id) > 1:
                     to_merge_node_list = [nodes[i] for i in succ_nodes_id]
                     merged_node_id, merged_node = self._merge_node(
                         to_merge_node_list, merge_type='branch', nodes=nodes)
@@ -529,9 +547,12 @@ class CostModel(object):
                     runtime_graph[end_node_id][PRED] = [merged_node_id]
                     runtime_graph[node_id][SUCC] = [merged_node_id]
 
+                    print("merge_nodes_id: ", succ_nodes_id)
                     for i in succ_nodes_id:
+
                         runtime_graph.pop(i)
                     reduct_cnt += len(to_merge_node_list) - 1
+                    break
         return reduct_cnt
 
     def get_runtime_cost(self):
@@ -615,7 +636,7 @@ class CostModel(object):
         return static_mem, cur_mem, top_mem
 
     def get_pipeline_time(self):
-        if self.total_rank <= 1:
+        if self.pp2rank is None:
             return self.fwd_time[0] + self.bwd_time[0] + self.optim_time[0]
         else:
             return self._simulate_pipeline()
