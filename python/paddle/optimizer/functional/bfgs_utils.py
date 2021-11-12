@@ -29,7 +29,7 @@ def ternary(cond, x, y):
 
     return paddle.where(cond, x, y)
 
-def vjp(f, x):
+def vjp(f, x, v=None, create_graph=False):
     r"""A single tensor version of VJP.
     
     Args:
@@ -45,7 +45,7 @@ def vjp(f, x):
         f'This BFGS optimizer applies to function of a single input tensor. '
         f'The input however is a {type(x)}.'
     )
-    fval, gval = _vjp(f, x)
+    fval, gval = _vjp(f, x, v=v, create_graph=create_graph)
     assert isinstance(fval, paddle.Tensor), (
         f'This BFGS optimizer only supports function returning a single output '
         f'tensor. However, the function result is a {type(fval)}.'
