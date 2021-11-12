@@ -16,4 +16,5 @@ limitations under the License. */
 
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/infershape/binary.h"
+#include "paddle/pten/infershape/nary.h"
 #include "paddle/pten/infershape/unary.h"
