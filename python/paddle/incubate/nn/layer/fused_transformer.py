@@ -39,7 +39,7 @@ class FusedMultiHeadAttention(Layer):
         attn_dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout in attention.
             0 for no dropout. Default 0.5.
-        epsilon (float, optional): he small value added to the variance to prevent
+        epsilon (float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
         kdim (int, optional): The feature size in key. If None, assumed equal to
             `embed_dim`. Default None.

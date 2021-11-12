@@ -278,8 +278,18 @@ def fused_multi_head_attention(x,
             0 for no dropout. Default 0.5.
         ln_epsilon (float, optional): Small float value added to denominator of layer_norm
             to avoid dividing by zero. Default is 1e-5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
