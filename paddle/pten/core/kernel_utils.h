@@ -18,6 +18,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_def.h"
+#include "paddle/pten/core/vector_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -194,6 +195,7 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   /* Input Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(VectorTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);

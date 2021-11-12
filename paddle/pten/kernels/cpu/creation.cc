@@ -58,6 +58,16 @@ void FillConstant(const CPUContext& dev_ctx,
   eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
 }
 
+template <typename T>
+void FillConstantNew(const CPUContext& dev_ctx,
+                     const VectorTensor& shape,
+                     const Scalar& val,
+                     DenseTensor* out) {
+  out->Resize(GetDimFromVectorTensor(shape));
+  out->mutable_data<T>();
+  eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
+}
+
 }  // namespace pten
 
 PT_REGISTER_MODULE(CreationCPU);
@@ -77,6 +87,22 @@ PT_REGISTER_KERNEL("fill_constant.scalar",
                    CPU,
                    ANY,
                    pten::FillConstant,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
+
+PT_REGISTER_KERNEL("fill_constant.new",
+                   CPU,
+                   ANY,
+                   pten::FillConstantNew,
                    float,
                    double,
                    uint8_t,

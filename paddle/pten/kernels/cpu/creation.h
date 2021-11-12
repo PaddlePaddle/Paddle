@@ -16,6 +16,7 @@
 
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/vector_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
 
@@ -33,5 +34,11 @@ template <typename T>
 void FillConstant(const CPUContext& dev_ctx,
                   const Scalar& val,
                   DenseTensor* out);
+
+template <typename T>
+void FillConstantNew(const CPUContext& dev_ctx,
+                     const VectorTensor& shape,
+                     const Scalar& val,
+                     DenseTensor* out);
 
 }  // namespace pten
