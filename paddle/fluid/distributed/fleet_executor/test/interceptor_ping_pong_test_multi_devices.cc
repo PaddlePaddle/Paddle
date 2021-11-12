@@ -81,7 +81,8 @@ TEST(InterceptorTestRemote, RemotePingPong) {
         0, std::make_unique<PingPongInterceptor>(0, nullptr));
 
     InterceptorMessage msg;
-    a->Send(1, msg);
+    while (!a->Send(1, msg)) {
+    }
   }
 }
 #endif
