@@ -62,7 +62,7 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
   std::unique_lock<std::mutex> lock(mutex_);
 
   std::string ip_port = ip + ":" + std::to_string(port);
-  VLOG(0) << "yxf::running server with rank id: " << _rank
+  VLOG(2) << "BrpcPsServer::start running server with rank id: " << _rank
           << ", endpoint: " << ip_port;
   brpc::ServerOptions options;
 
@@ -161,7 +161,8 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
     return;
   }
 
-  VLOG(1) << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
+  VLOG(2) << "debug BrpcPsService::service cmd_id: " << request->cmd_id()
+          << "\n";
   response->set_err_code(0);
   response->set_err_msg("");
   auto *table = _server->table(request->table_id());
@@ -204,10 +205,9 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
   res_data->resize(num * table->value_accesor()->select_size() / sizeof(float));
   table->pull_dense(res_data->data(), num);
   VLOG(1) << "BrpcPsService::pull_dense num " << num << " data[0] "
-          << res_data->data()[0] << " data[-2] " << res_data->data()[num - 2]
-          << " data[-1] " << res_data->data()[num - 1];
+          << res_data->data()[0] << " data[-1] " << res_data->data()[num - 1];
 
-  cntl->response_attachment().append((char *)(res_data->data()),
+  cntl->response_attachment().append(reinterpret_cast<char *>(res_data->data()),
                                      res_data->size() * sizeof(float));
   butil::return_object(res_data);
 
@@ -236,8 +236,7 @@ int32_t BrpcPsService::push_dense_param(Table *table,
 
   const float *values = (const float *)(data + sizeof(uint32_t));
   VLOG(1) << "BrpcPsService::push_dense_param num " << num << " data[0] "
-          << values[0] << " data[-2] " << values[num - 2] << " data[-1] "
-          << values[num - 1];
+          << values[0] << " data[-1] " << values[num - 1];
   if (table->push_dense_param(values, num) != 0) {
     set_response_code(response, -1, "push_dense_param failed");
   }
@@ -264,7 +263,7 @@ int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
   const float *values =
       (const float *)(request.data().data() + sizeof(uint32_t));
   VLOG(1) << "BrpcPsService::push_dense num " << num << " data[0] " << values[0]
-          << " data[-2] " << values[num - 2] << " data[-1] " << values[num - 1];
+          << " data[-1] " << values[num - 1];
   if (table->push_dense(values, num) != 0) {
     set_response_code(response, -1, "push_dense failed");
   }
@@ -307,7 +306,7 @@ int32_t BrpcPsService::push_sparse_param(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  uint32_t num = *(uint32_t *)(request.params(0).c_str());  // NOLINT
   /*
   Push Content:
   |---keysData---|---valuesData---|
@@ -337,10 +336,11 @@ int32_t BrpcPsService::pull_geo_param(Table *table,
   table->pull_geo_param(trainer_id, &values, &ids);
 
   uint32_t num = ids.size();
-  cntl->response_attachment().append((char *)(&num), sizeof(uint32_t));
-  cntl->response_attachment().append((char *)ids.data(),
+  cntl->response_attachment().append(reinterpret_cast<char *>(&num),
+                                     sizeof(uint32_t));
+  cntl->response_attachment().append(reinterpret_cast<char *>(ids.data()),
                                      ids.size() * sizeof(uint64_t));
-  cntl->response_attachment().append((char *)values.data(),
+  cntl->response_attachment().append(reinterpret_cast<char *>(values.data()),
                                      values.size() * sizeof(float));
   return 0;
 }
@@ -367,7 +367,7 @@ int32_t BrpcPsService::pull_sparse(Table *table,
     return 0;
   }
 
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  uint32_t num = *(uint32_t *)(request.params(0).c_str());  // NOLINT
   auto dim = table->value_accesor()->select_dim();
 
   thread_local std::string req_buffer;
@@ -384,7 +384,7 @@ int32_t BrpcPsService::pull_sparse(Table *table,
   res_data->resize(num * dim);
   table->pull_sparse(res_data->data(), value);
 
-  cntl->response_attachment().append((char *)(res_data->data()),
+  cntl->response_attachment().append(reinterpret_cast<char *>(res_data->data()),
                                      res_data->size() * sizeof(float));
   butil::return_object(res_data);
   return 0;
@@ -407,7 +407,7 @@ int32_t BrpcPsService::push_sparse(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  uint32_t num = *(uint32_t *)(request.params(0).c_str());  // NOLINT
   /*
   Push Content:
   |---keysData---|---valuesData---|
@@ -458,10 +458,10 @@ int32_t BrpcPsService::load_all_table(Table *table,
                                       const PsRequestMessage &request,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
-  VLOG(0) << "zcb debug server load_all_table";
+  VLOG(2) << "debug server load_all_table";
   auto &table_map = *(_server->table());
   for (auto &itr : table_map) {
-    VLOG(0) << "zcb debug server begin load table " << itr.first;
+    VLOG(2) << "debug server begin load table " << itr.first;
     if (load_one_table(itr.second.get(), request, response, cntl) != 0) {
       LOG(ERROR) << "load table[" << itr.first << "] failed";
       return -1;

@@ -195,6 +195,9 @@ class CommonAccessor:
 
         self.trainer_num = compiled_strategy.get_trainers()
 
+        if oop.type != 'adam' and adam_d2sum == True:
+            print('optimization algorithm is not adam, set adam_d2sum False')
+            adam_d2sum = False
         print("adam_d2sum:", adam_d2sum)
         if compiled_strategy.is_geo_mode():
             param_varnames = self.opt_input_map["sum"]
@@ -651,6 +654,10 @@ class TheOnePSRuntime(RuntimeBase):
         print('ZCB begin create c2c connection')
         info = self._communicator.get_client_info()
         all_info = self.role_maker._all_gather(info[0])
+        # for unittest
+        if not isinstance(all_info, list):
+            warnings.warn("gloo may not initialize correctly")
+            all_info = [all_info]
         self._communicator.set_clients(all_info)
         #create_c2c_connection default param: 
         #  pserver_timeout_ms=500000
@@ -837,7 +844,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                 if ctx.is_sparse():
                     table.type = "PS_SPARSE_TABLE"
-                    # table.shard_num = 256
+                    table.shard_num = 256
 
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
@@ -847,13 +854,53 @@ class TheOnePSRuntime(RuntimeBase):
                     else:
                         table.table_class = parse_table_class(
                             common.table_name, self.origin_main_program)
-                    table_proto = self.context[
-                        "user_defined_strategy"].sparse_table_configs
-                    table.shard_num = table_proto.shard_num
-                    from google.protobuf import text_format
-                    table.accessor_proto = text_format.MessageToString(
-                        table_proto.accessor)
-                    print("the_one_ps table_proto:", table.accessor_proto)
+                        table_proto = self.context[
+                            "user_defined_strategy"].sparse_table_configs
+                        table.shard_num = table_proto.shard_num
+                        from google.protobuf import text_format
+                        table.accessor_proto = text_format.MessageToString(
+                            table_proto.accessor)
+
+                        print('table proto:', table_proto)
+                        if table.table_class == 'MemorySparseTable' and table.accessor_proto == '':
+                            table.shard_num = 1950
+                            table.accessor_proto = 'accessor_class: "CtrCommonAccessor"\n' \
+                                                   'embed_sgd_param {\n' \
+                                                   '  name: "SparseAdaGradSGDRule"\n' \
+                                                   '  adagrad {\n' \
+                                                   '    learning_rate: 0.05\n' \
+                                                   '    initial_g2sum: 3.0\n' \
+                                                   '    initial_range: 0.0001\n' \
+                                                   '    weight_bounds: -10.0\n' \
+                                                   '    weight_bounds: 10.0\n' \
+                                                   '  }\n' \
+                                                   '}\n' \
+                                                   'embedx_sgd_param {\n' \
+                                                   '  name: "SparseAdaGradSGDRule"\n' \
+                                                   '  adagrad {\n' \
+                                                   '    learning_rate: 0.05\n' \
+                                                   '    initial_g2sum: 3.0\n' \
+                                                   '    initial_range: 0.0001\n' \
+                                                   '    weight_bounds: -10.0\n' \
+                                                   '    weight_bounds: 10.0\n' \
+                                                   '  }\n' \
+                                                   '}\n' \
+                                                   'fea_dim: 11\n' \
+                                                   'embedx_dim: 8\n' \
+                                                   'embedx_threshold: 10\n' \
+                                                   'ctr_accessor_param {\n' \
+                                                   '  nonclk_coeff: 0.1\n' \
+                                                   '  click_coeff: 1.0\n' \
+                                                   '  base_threshold: 1.5\n' \
+                                                   '  delta_threshold: 0.25\n' \
+                                                   '  delta_keep_days: 16.0\n' \
+                                                   '  show_click_decay_rate: 0.98\n' \
+                                                   '  delete_threshold: 0.8\n' \
+                                                   '  delete_after_unseen_days: 30.0\n' \
+                                                   '  ssd_unseenday_threshold: 1\n' \
+                                                   '}'
+
+                        print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -875,12 +922,9 @@ class TheOnePSRuntime(RuntimeBase):
                     common.sync = "true"
                 else:
                     common.sync = "false"
-
                 table.common = common
 
-                print('debug zcb build_merge_accessor:')
-                print(str(ctx))
-                if not ctx.is_sparse():
+                if table.table_class != 'MemorySparseTable':
                     accessor = _build_merge_accessor(ctx)
                     table.accessor = accessor
                 tables.append(table)
@@ -1094,7 +1138,6 @@ class TheOnePSRuntime(RuntimeBase):
             tensor = var.get_value()
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
-            ####TODO: zcb put into hdfs
 
     def _ps_inference_save_persistables(self,
                                         executor,

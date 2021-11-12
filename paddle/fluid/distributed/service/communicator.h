@@ -245,10 +245,11 @@ class Communicator {
 
   virtual void InitBrpcClient(const std::string &dist_desc,
                               const std::vector<std::string> &host_sign_list);
-  
+
   virtual std::vector<uint64_t> GetClientInfo();
 
-  virtual int SetClients(const std::vector<uint64_t>& host_sign_list);
+  // virtual int SetClients(const std::vector<uint64_t> &host_sign_list);
+  virtual int SetClients(std::vector<uint64_t> &host_sign_list);  // NOLINT
 
   // 1. recv dense param
   virtual void RpcRecvDense(const std::vector<std::string> &varnames,
@@ -276,7 +277,7 @@ class Communicator {
 
   virtual void InitParams(const RecvCtxMap &recv_varname_to_ctx);
 
-  //note: only for pull dense param first before training
+  // note: only for pull dense param first before training
   virtual void PullDense(const RecvCtxMap &recv_varname_to_ctx);
 
   virtual void Start() = 0;
@@ -302,8 +303,11 @@ class Communicator {
     rets.wait();
   }
 
-  virtual void CreateC2CConnection(int pserver_timeout_ms, int pserver_connect_timeout_ms, int max_retry) {
-    _worker_ptr->create_client2client_connection(pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
+  virtual void CreateC2CConnection(int pserver_timeout_ms,
+                                   int pserver_connect_timeout_ms,
+                                   int max_retry) {
+    _worker_ptr->create_client2client_connection(
+        pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 
   virtual void BarrierTriggerDecrement() {}
@@ -403,7 +407,8 @@ class AsyncCommunicator : public Communicator {
   void InitEnvs() {
     independent_recv_ = static_cast<bool>(
         std::stoi(envs.at("communicator_independent_recv_thread")));
-    std::cout << "debug zcb: communicator_independent_recv_thread " << independent_recv_ << "\n";
+    VLOG(2) << "debug comm: communicator_independent_recv_thread "
+            << independent_recv_;
     min_send_grad_num_before_recv_ =
         std::stoi(envs.at("communicator_min_send_grad_num_before_recv"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
@@ -555,14 +560,15 @@ class GeoCommunicator : public AsyncCommunicator {
                 Scope *recv_scope) override;
 
   void InitParams(const RecvCtxMap &recv_varname_to_ctx) override;
-  void InitDense(std::vector<std::string> &varnames, int table_id);
+  void InitDense(std::vector<std::string> &varnames, int table_id);  // NOLINT
   void InitSparse(const std::string &var_name, int table_id);
 
   void SendDense(const CommContext &send_ctx);
   void RecvDense(const CommContext &send_ctx);
 
   std::vector<int64_t> MergeSparseIds(const std::string &varname);
-  void SendSparse(const std::string &varname, std::vector<int64_t> &sparse_ids,
+  void SendSparse(const std::string &varname,
+                  std::vector<int64_t> &sparse_ids,  // NOLINT
                   int table_id, int ep_idx);
   void RecvSparse(const std::string &varname, int table_id, int ep_idx);
 

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,9 +22,10 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-#include "paddle/fluid/distributed/common/thread_queue.h"
+// #include "paddle/fluid/distributed/common/thread_queue.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -54,10 +56,9 @@ class DownpourPsClientService : public PsService {
     _rank = rank_id;
     return 0;
   }
-  virtual void service(::google::protobuf::RpcController *controller,
-                       const PsRequestMessage *request,
-                       PsResponseMessage *response,
-                       ::google::protobuf::Closure *done) override;
+  void service(::google::protobuf::RpcController *controller,
+               const PsRequestMessage *request, PsResponseMessage *response,
+               ::google::protobuf::Closure *done) override;
 
  protected:
   size_t _rank;
@@ -78,7 +79,7 @@ class DownpourBrpcClosure : public PSClientClosure {
     }
   }
   virtual ~DownpourBrpcClosure() {}
-  virtual void Run() override {
+  void Run() override {
     if (_waiting_num.fetch_sub(1) == 1) {
       _callback(this);
       delete this;
@@ -131,48 +132,49 @@ struct SparseTaskPool {
 
 template <class T>
 struct array_deleter {
-  void operator()(T *&x) const { delete[] x; }
+  void operator()(T *&x) const { delete[] x; }  // NOLINT
 };
 
 class BrpcPsClient : public PSClient {
  public:
   BrpcPsClient() {}
   virtual ~BrpcPsClient() {
-    std::cout << "debug zcb: client deconstructor begin\n";
+    // VLOG(0) << "debug brpc_client: client deconstructor begin";
     // finalize_worker();
-    _running = false;
-    try {
-      //_async_push_dense_thread.join();
-      //_async_push_sparse_thread.join();
-      std::cout << "debug zcb: client deconstructor done\n";
-    } catch (...) {
-    }
+    // _running = false;
+    // try {
+    // _async_push_dense_thread.join();
+    // _async_push_sparse_thread.join();
+    //  VLOG(0) << "debug brpc_client: client deconstructor done";
+    //} catch (...) {
+    //}
+    std::cout << "BrpcPsClient::deconstructor";
   }
   virtual int32_t create_client2client_connection(
       int pserver_timeout_ms, int pserver_connect_timeout_ms, int max_retry);
-  virtual std::future<int32_t> shrink(uint32_t table_id,
-                                      const std::string threshold) override;
-  virtual std::future<int32_t> load(const std::string &epoch,
-                                    const std::string &mode) override;
-  virtual std::future<int32_t> load(uint32_t table_id, const std::string &epoch,
-                                    const std::string &mode) override;
+  std::future<int32_t> shrink(uint32_t table_id,
+                              const std::string threshold) override;
+  std::future<int32_t> load(const std::string &epoch,
+                            const std::string &mode) override;
+  std::future<int32_t> load(uint32_t table_id, const std::string &epoch,
+                            const std::string &mode) override;
 
-  virtual std::future<int32_t> save(const std::string &epoch,
-                                    const std::string &mode) override;
+  std::future<int32_t> save(const std::string &epoch,
+                            const std::string &mode) override;
 
-  virtual std::future<int32_t> save(uint32_t table_id, const std::string &epoch,
-                                    const std::string &mode) override;
+  std::future<int32_t> save(uint32_t table_id, const std::string &epoch,
+                            const std::string &mode) override;
 
-  virtual std::future<int32_t> clear() override;
+  std::future<int32_t> clear() override;
 
-  virtual std::future<int32_t> clear(uint32_t table_id) override;
+  std::future<int32_t> clear(uint32_t table_id) override;
 
-  virtual std::future<int32_t> stop_server() override;
+  std::future<int32_t> stop_server() override;
 
-  virtual std::future<int32_t> start_profiler() override;
-  virtual std::future<int32_t> stop_profiler() override;
+  std::future<int32_t> start_profiler() override;
+  std::future<int32_t> stop_profiler() override;
 
-  virtual void finalize_worker() override;
+  void finalize_worker() override;
 
   virtual std::future<int32_t> pull_dense(Region *regions, size_t region_num,
                                           size_t table_id);
@@ -202,8 +204,8 @@ class BrpcPsClient : public PSClient {
                                                 void *done);
   virtual std::future<int32_t> flush();
 
-  virtual std::future<int32_t> send_client2client_msg(
-      int msg_type, int to_client_id, const std::string &msg) override;
+  std::future<int32_t> send_client2client_msg(int msg_type, int to_client_id,
+                                              const std::string &msg) override;
 
   // for local save sparse
   virtual int32_t recv_and_save_table(const uint64_t table_id,
@@ -223,7 +225,7 @@ class BrpcPsClient : public PSClient {
   inline brpc::Channel *get_cmd_channel(size_t server_id) {
     return _server_channels[server_id][2].get();
   }
-  virtual int32_t initialize() override;
+  int32_t initialize() override;
 
  private:
   // virtual int32_t initialize() override;
@@ -241,32 +243,34 @@ class BrpcPsClient : public PSClient {
 
   bool _running = false;
   bool _flushing = false;
-  std::atomic<uint32_t> _async_call_num;  //异步请求计数
+  std::atomic<uint32_t> _async_call_num;  // 异步请求计数
 
   // 异步push dense task
   std::thread _async_push_dense_thread;
   typedef AsyncRequestTask<std::shared_ptr<std::vector<float>>> DenseAsyncTask;
-  typedef thread_queue<DenseAsyncTask *, store_value> DenseAsyncTaskQueue;
-  std::unordered_map<uint32_t, std::shared_ptr<DenseAsyncTaskQueue>>
+  // typedef thread_queue<DenseAsyncTask *, store_value> DenseAsyncTaskQueue;
+  // std::unordered_map<uint32_t, std::shared_ptr<DenseAsyncTaskQueue>>
+  std::unordered_map<uint32_t, paddle::framework::Channel<DenseAsyncTask *>>
       _push_dense_task_queue_map;
-  //异步push sparse task
+  // 异步push sparse task
   std::thread _async_push_sparse_thread;
   typedef AsyncRequestTask<std::shared_ptr<SparsePushTaskData>> SparseAsyncTask;
-  typedef thread_queue<SparseAsyncTask *, store_value> SparseAsyncTaskQueue;
-  std::unordered_map<uint32_t, std::shared_ptr<SparseAsyncTaskQueue>>
+  // typedef thread_queue<SparseAsyncTask *, store_value> SparseAsyncTaskQueue;
+  // std::unordered_map<uint32_t, std::shared_ptr<SparseAsyncTaskQueue>>
+  std::unordered_map<uint32_t, paddle::framework::Channel<SparseAsyncTask *>>
       _push_sparse_task_queue_map;
   std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
 
-  std::thread _print_thread;
+  // std::thread _print_thread;
 
   int push_sparse_async_shard_merge(
-      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,
-      std::vector<int> &request_kv_num, int table_id, int shard_idx,
+      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
+      std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
       ValueAccessor *accessor);
 
   int push_sparse_async_shard_push(
-      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,
-      std::vector<int> &request_kv_num, int table_id, int shard_idx,
+      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
+      std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
       DownpourBrpcClosure *closure, ValueAccessor *accessor);
 
   SparseTaskPool _sparse_task_pool;
@@ -275,33 +279,33 @@ class BrpcPsClient : public PSClient {
       _client_channels;  // client2client
   std::vector<std::array<std::shared_ptr<brpc::Channel>, 3>>
       _server_channels;  // client2server
-  virtual std::future<int32_t> push_dense_raw_gradient(
-      int table_id, float *total_send_data, size_t total_send_data_size,
-      void *done) override;
+  std::future<int32_t> push_dense_raw_gradient(int table_id,
+                                               float *total_send_data,
+                                               size_t total_send_data_size,
+                                               void *done) override;
 
-  virtual std::future<int32_t> push_sparse_raw_gradient(
-      size_t table_id, const uint64_t *keys, const float **update_values,
-      size_t num, void *done) override;
+  std::future<int32_t> push_sparse_raw_gradient(size_t table_id,
+                                                const uint64_t *keys,
+                                                const float **update_values,
+                                                size_t num,
+                                                void *done) override;
 
-  virtual std::future<int32_t> push_sparse_raw_gradient_partial(
+  std::future<int32_t> push_sparse_raw_gradient_partial(
       size_t table_id, const uint64_t *keys, const float **update_values,
       uint32_t num, void *done, int pserver_idx) override;
 
-  virtual std::future<int32_t> push_sparse_param(size_t table_id,
-                                                 const uint64_t *keys,
-                                                 const float **update_values,
-                                                 size_t num,
-                                                 void *done) override;
-  virtual std::future<int32_t> push_sparse(size_t table_id,
-                                           const uint64_t *keys,
-                                           const float **update_values,
-                                           size_t num) override;
+  std::future<int32_t> push_sparse_param(size_t table_id, const uint64_t *keys,
+                                         const float **update_values,
+                                         size_t num, void *done) override;
+  std::future<int32_t> push_sparse(size_t table_id, const uint64_t *keys,
+                                   const float **update_values,
+                                   size_t num) override;
   void push_sparse_task_consume();
 
  private:
   int32_t start_client_service();
 
-  void push_dense_raw_gradient(std::shared_ptr<DenseAsyncTask> &task,
+  void push_dense_raw_gradient(std::shared_ptr<DenseAsyncTask> &task,  // NOLINT
                                float *total_send_data,
                                size_t total_send_data_size,
                                DownpourBrpcClosure *closure);
