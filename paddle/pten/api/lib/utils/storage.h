@@ -101,7 +101,9 @@ class SharedStorage : public pten::Storage {
 
   // Temporary method: For compatible with fluid Tensor and improve performance
   void Reset() {
-    allocation_.reset();
+    if (allocation_ != nullptr) {
+      allocation_.reset();
+    }
     data_.Clear();
     size_ = 0;
   }

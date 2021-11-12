@@ -70,5 +70,8 @@ void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
                                   const pten::TensorArgDef& arg_def,
                                   pten::DenseTensor* dst);
 
+void MakeVariableFromPtenTensor(pten::DenseTensor* src,
+                                framework::Variable* variable);
+
 }  // namespace experimental
 }  // namespace paddle

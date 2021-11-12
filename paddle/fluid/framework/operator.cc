@@ -1183,6 +1183,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
       BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
+
+      PtenKernelContexToRuntimeContext(runtime_ctx);
+
       pt_kernel_context_->ClearData();
     } else {
       (*kernel_func_)(
@@ -1923,6 +1926,28 @@ void OperatorWithKernel::BuildPtenKernelContext(
             "KernelContext.",
             attr_names[i]));
       }
+    }
+  }
+}
+
+void OperatorWithKernel::PtenKernelContexToRuntimeContext(
+    RuntimeContext* ctx) const {
+  // auto& input_names = std::get<0>(pt_kernel_signature_->args);
+  // auto& attr_names = std::get<1>(pt_kernel_signature_->args);
+  auto& output_names = std::get<2>(pt_kernel_signature_->args);
+
+  // pt_kernel_context_
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto& outs_vector = ctx->outputs.at(output_names[i]);
+
+    auto& range_pair = pt_kernel_context_->OutputRangeAt(i);
+    auto pten_outs =
+        pt_kernel_context_->MutableOutputBetween<pten::DenseTensor>(
+            range_pair.first, range_pair.second);
+
+    for (size_t j = 0; j < pten_outs.size(); ++j) {
+      experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
     }
   }
 }

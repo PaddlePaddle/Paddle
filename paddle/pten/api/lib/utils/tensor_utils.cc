@@ -153,7 +153,6 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   CHECK(dst);
   dst->Resize(src->dims());
   auto storage = src->release();
-  CHECK(storage->OwnsMemory());
   std::shared_ptr<paddle::memory::allocation::Allocation> holder(
       new TensorStorage(std::move(storage)));
   dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->data_type()));
@@ -261,6 +260,40 @@ void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared output `%s` type now when call pt kernel.",
+        framework::ToTypeName(variable->Type())));
+  }
+}
+
+void MakeVariableFromPtenTensor(pten::DenseTensor* src,
+                                framework::Variable* variable) {
+  if (variable->IsType<framework::LoDTensor>()) {
+    auto* tensor = variable->GetMutable<framework::LoDTensor>();
+
+    auto dtype = pten::TransToProtoVarType(src->data_type());
+    tensor->Resize(src->dims());
+    SetLoD(tensor->mutable_lod(), src->lod());
+
+    if (tensor->IsInitialized()) {
+    } else {
+      auto storage = dynamic_cast<SharedStorage*>(
+          pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+      tensor->ResetHolderWithType(std::move(storage->GetAllocation()), dtype);
+    }
+
+  } else if (variable->IsType<framework::SelectedRows>()) {
+    auto* tensor = variable->GetMutable<framework::SelectedRows>();
+    auto dtype = pten::TransToProtoVarType(src->data_type());
+
+    if (tensor->value().IsInitialized()) {
+    } else {
+      auto storage = dynamic_cast<SharedStorage*>(
+          pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+      tensor->mutable_value()->ResetHolderWithType(
+          std::move(storage->GetAllocation()), dtype);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported shared input `%s` type now when call pt kernel.",
         framework::ToTypeName(variable->Type())));
   }
 }

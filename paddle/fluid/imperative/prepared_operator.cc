@@ -413,6 +413,26 @@ static void BuildDygraphPtenKernelContext(
 }
 
 template <typename VarType>
+static void PtenKernelContextToNameVarMap(
+    const framework::KernelSignature& pt_kernel_signature,
+    const NameVarMap<VarType>& outs, pten::KernelContext* kernel_ctx) {
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto& outs_vector = outs.at(output_names[i]);
+
+    auto& range_pair = kernel_ctx->OutputRangeAt(i);
+    auto pten_outs = kernel_ctx->MutableOutputBetween<pten::DenseTensor>(
+        range_pair.first, range_pair.second);
+
+    for (size_t j = 0; j < pten_outs.size(); ++j) {
+      experimental::MakeVariableFromPtenTensor(pten_outs[j],
+                                               outs_vector[j]->MutableVar());
+    }
+  }
+}
+
+template <typename VarType>
 static void PreparedOpRunImpl(
     const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
     const framework::OpKernelType& kernel_type,
@@ -484,6 +504,9 @@ static void PreparedOpRunPtImpl(
                                          pt_kernel_context);
 
   pt_kernel(pt_kernel_context);
+
+  PtenKernelContextToNameVarMap<VarType>(pt_kernel_signature, outs,
+                                         pt_kernel_context);
 
   // Ensure that it does not affect the VarBase life cycle management
   pt_kernel_context->ClearData();
