@@ -15,12 +15,31 @@
 import unittest
 
 import numpy as np
-from scipy.stats import special_ortho_group
 import paddle
 from paddle.optimizer.functional import bfgs_iterates, bfgs_optimize
 from paddle.optimizer.functional.bfgs import verify_symmetric_positive_definite_matrix
 
 class TestBFGS(unittest.TestCase):
+
+    def setUp(self):
+        pass        
+
+    def gen_configs(self):
+        dtypes = ['float32', 'float64']
+        shapes = {
+            '1d1v': [1],
+            '1d2v': [2],
+            '2d1v': [2, 1],
+            '2d2v': [2, 2],
+            '1d100v': [100],
+            '10d10v': [10, 10]
+        }
+        for shape, dtype in zip(shapes.values(), dtypes):
+            yield shape, dtype
+
+    def test_update_approx_inverse_hessian(self):
+        for shape, dtype in self.gen_configs():
+            
     
     def _regular_quadratic(self, dtype):
         

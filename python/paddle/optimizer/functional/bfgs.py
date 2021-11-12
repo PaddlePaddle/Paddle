@@ -164,26 +164,27 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     #              + rho * rho * (T(y_k) * H_k * y_k) s_k * T(s_k) ----- (5)
     #
     # Since H_k is symmetric, (3) is (2)'s transpose.
-    # prod_H_y = paddle.matmul(Hk, yk.unsqueeze(-1))
-    prod_H_y = einsum('...ij, ...j', Hk, yk)
+    # H_k * y_k
+    Hy = einsum('...ij, ...j', Hk, yk)
     
-    # term23 = prod_H_y * sk
-    term2 = einsum('...i, ...j', prod_H_y, sk)
-    term3 = einsum('...ij->...ji', term2)
+    # T(y_k) * H_y * y_k
+    yHy = einsum('...i, ...i', Hy, yk)
 
-    # Merges terms (4) and (5) forgoing rho
-    term45 = sk + einsum('...i, ...i, ...j, ...', prod_H_y, yk, sk, rho_k)
-    term45 = einsum('...i,...j', term45, sk)
+    term23 = einsum('...i, ...j', Hy, sk) + einsum('...i, ...j', sk, Hy)
 
-    # Updates H_k and obtain H_k+1
-    new_Hk = Hk + einsum('..., ...ij-> ...ij', rho_k, (term45 - term2 - term3))
+    # T(s_k) * s_k
+    sTs = einsum('...i, ...i', sk, sk)
 
-    return new_Hk
+    term45 = sTs * (1 + rho_k * yHy).unsqueeze(-1).unqueeze(-1)
+
+    Hk_next = Hk + (term45 - term23) * rho_k.unsqueeze(-1).unsqueeze(-1)
+
+    return Hk_next
 
 
 def iterates(func,
              x0, 
-             dtype='float',
+             dtype='float32',
              H0=None,
              gtol=1e-8,
              xtol=0,
@@ -315,7 +316,7 @@ def iterates(func,
 
 def optimize(func,
              x0,
-             dtype='float',
+             dtype='float32',
              H0=None,
              gtol=1e-8,
              xtol=0,

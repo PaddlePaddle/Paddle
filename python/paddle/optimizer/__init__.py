@@ -34,5 +34,6 @@ __all__ = [     #noqa
            'Adadelta',
            'SGD',
            'Momentum',
-           'Lamb'
+           'Lamb',
+           'functional'
 ]
