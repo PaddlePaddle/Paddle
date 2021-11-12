@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
 
 namespace pten {
 
@@ -72,6 +72,14 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
   }
 
   return return_meta;
+}
+
+DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
+                                   DataType dtype,
+                                   DataLayout layout) {
+  return {dtype == DataType::UNDEFINED ? x_meta.type : dtype,
+          x_meta.dims,
+          layout == DataLayout::UNDEFINED ? x_meta.layout : layout};
 }
 
 }  // namespace pten

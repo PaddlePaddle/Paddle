@@ -123,6 +123,8 @@ class RandomSampleLRU {
     node_size = 0;
     node_head = node_end = NULL;
     global_ttl = father->ttl;
+    extra_penalty = 0;
+    size_limit = (father->size_limit / father->shard_num + 1);
   }
 
   ~RandomSampleLRU() {
@@ -138,16 +140,16 @@ class RandomSampleLRU {
       return LRUResponse::blocked;
     int init_node_size = node_size;
     try {
+      // pthread_rwlock_rdlock(&father->rwlock);
       for (size_t i = 0; i < length; i++) {
         auto iter = key_map.find(keys[i]);
         if (iter != key_map.end()) {
           res.emplace_back(keys[i], iter->second->data);
           iter->second->ttl--;
           if (iter->second->ttl == 0) {
-            remove(iter->second, true);
-          } else {
             remove(iter->second);
-            add_to_tail(iter->second);
+          } else {
+            move_to_tail(iter->second);
           }
         }
       }
@@ -168,14 +170,12 @@ class RandomSampleLRU {
       for (size_t i = 0; i < length; i++) {
         auto iter = key_map.find(keys[i]);
         if (iter != key_map.end()) {
+          move_to_tail(iter->second);
           iter->second->ttl = global_ttl;
-          remove(iter->second);
-          add_to_tail(iter->second);
           iter->second->data = data[i];
         } else {
           LRUNode<K, V> *temp = new LRUNode<K, V>(keys[i], data[i], global_ttl);
-          add_to_tail(temp);
-          key_map[keys[i]] = temp;
+          add_new(temp);
         }
       }
     } catch (...) {
@@ -187,7 +187,48 @@ class RandomSampleLRU {
     father->handle_size_diff(node_size - init_node_size);
     return LRUResponse::ok;
   }
-  void remove(LRUNode<K, V> *node, bool del = false) {
+  void remove(LRUNode<K, V> *node) {
+    fetch(node);
+    node_size--;
+    key_map.erase(node->key);
+    delete node;
+    if (node_size >= size_limit) {
+      extra_penalty -= 1.0;
+    }
+  }
+
+  void move_to_tail(LRUNode<K, V> *node) {
+    fetch(node);
+    place_at_tail(node);
+  }
+
+  void add_new(LRUNode<K, V> *node) {
+    node->ttl = global_ttl;
+    place_at_tail(node);
+    node_size++;
+    key_map[node->key] = node;
+    if (node_size > size_limit) {
+      extra_penalty += penalty_inc;
+      if (extra_penalty >= 1.0) {
+        remove(node_head);
+      }
+    }
+  }
+  void place_at_tail(LRUNode<K, V> *node) {
+    if (node_end == NULL) {
+      node_head = node_end = node;
+      node->next = node->pre = NULL;
+    } else {
+      node_end->next = node;
+      node->pre = node_end;
+      node->next = NULL;
+      node_end = node;
+    }
+    node->ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+  }
+
+  void fetch(LRUNode<K, V> *node) {
     if (node->pre) {
       node->pre->next = node->next;
     } else {
@@ -198,42 +239,25 @@ class RandomSampleLRU {
     } else {
       node_end = node->pre;
     }
-    node_size--;
-    if (del) {
-      delete node;
-      key_map.erase(node->key);
-    }
-  }
-
-  void add_to_tail(LRUNode<K, V> *node) {
-    if (node_end == NULL) {
-      node_head = node_end = node;
-      node->next = node->pre = NULL;
-    } else {
-      node_end->next = node;
-      node->pre = node_end;
-      node->next = NULL;
-      node_end = node;
-    }
-    node_size++;
-    node->ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch());
   }
 
  private:
   std::unordered_map<K, LRUNode<K, V> *> key_map;
   ScaledLRU<K, V> *father;
-  size_t global_ttl;
+  size_t global_ttl, size_limit;
   int node_size;
   LRUNode<K, V> *node_head, *node_end;
   friend class ScaledLRU<K, V>;
+  float extra_penalty;
+  const float penalty_inc = 0.75;
 };
 
 template <typename K, typename V>
 class ScaledLRU {
  public:
-  ScaledLRU(size_t shard_num, size_t size_limit, size_t _ttl)
+  ScaledLRU(size_t _shard_num, size_t size_limit, size_t _ttl)
       : size_limit(size_limit), ttl(_ttl) {
+    shard_num = _shard_num;
     pthread_rwlock_init(&rwlock, NULL);
     stop = false;
     thread_pool.reset(new ::ThreadPool(1));
@@ -244,12 +268,11 @@ class ScaledLRU {
       while (true) {
         {
           std::unique_lock<std::mutex> lock(mutex_);
-          cv_.wait_for(lock, std::chrono::milliseconds(3000));
+          cv_.wait_for(lock, std::chrono::milliseconds(20000));
           if (stop) {
             return;
           }
         }
-
         auto status =
             thread_pool->enqueue([this]() -> int { return shrink(); });
         status.wait();
@@ -271,12 +294,11 @@ class ScaledLRU {
   }
   int shrink() {
     int node_size = 0;
-    std::string t = "";
     for (size_t i = 0; i < lru_pool.size(); i++) {
       node_size += lru_pool[i].node_size;
     }
 
-    if (node_size <= size_limit) return 0;
+    if (node_size <= 1.2 * size_limit) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
       try {
         global_count = 0;
@@ -301,14 +323,16 @@ class ScaledLRU {
               q.push({next, remove_node.lru_pointer});
             }
             global_count--;
-            remove_node.lru_pointer->key_map.erase(remove_node.node->key);
-            remove_node.lru_pointer->remove(remove_node.node, true);
+            remove_node.lru_pointer->remove(remove_node.node);
           }
-          // VLOG(0)<<"after shrinking cache, cached nodes count =
-          // "<<global_count<<std::endl;
+          for (size_t i = 0; i < lru_pool.size(); i++) {
+            lru_pool[i].size_limit = lru_pool[i].node_size;
+            lru_pool[i].extra_penalty = 0;
+          }
+          //  VLOG(0)<<"after shrinking cache, cached nodes count =
+          // // "<<global_count<<std::endl;
         }
       } catch (...) {
-        // VLOG(0) << "shrink cache failed"<<std::endl;
         pthread_rwlock_unlock(&rwlock);
         return -1;
       }
@@ -320,7 +344,7 @@ class ScaledLRU {
   void handle_size_diff(int diff) {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
-      if (global_count > int(1.5 * size_limit)) {
+      if (global_count > int(1.25 * size_limit)) {
         // VLOG(0)<<"global_count too large "<<global_count<<" enter start
         // shrink task\n";
         thread_pool->enqueue([this]() -> int { return shrink(); });
@@ -332,6 +356,7 @@ class ScaledLRU {
 
  private:
   pthread_rwlock_t rwlock;
+  size_t shard_num;
   int global_count;
   size_t size_limit;
   size_t ttl;
