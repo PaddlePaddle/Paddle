@@ -85,6 +85,10 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
 }
 
 void MessageBus::ListenPort() {
+  if (addr_ == "") {
+    VLOG(3) << "No need listen to port since training on single card.";
+    return;
+  }
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
@@ -121,6 +125,10 @@ bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
       dst_rank, interceptor_id_to_rank_.end(),
       platform::errors::NotFound(
           "Cannot find rank for dst interceptor id %lld. Init error.", dst_id));
+  if (addr_ == "") {
+    // single card training, must be same rank
+    return true;
+  }
   const auto& src_ip = rank_to_addr_.find(src_rank->second);
   PADDLE_ENFORCE_NE(src_ip, rank_to_addr_.end(),
                     platform::errors::NotFound(
