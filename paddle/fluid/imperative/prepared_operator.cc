@@ -296,7 +296,11 @@ static void BuildDygraphPtenKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
-    if (kernel_ctx->InputsSize() <= i) {
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + ins_vector.size();
+
+    if (kernel_ctx->InputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (const auto& var : ins_vector) {
         const auto& variable = var->Var();
@@ -304,25 +308,37 @@ static void BuildDygraphPtenKernelContext(
             experimental::MakePtenTensorBaseFromVar(variable, in_def));
       }
       kernel_ctx->EmplaceBackInputs(std::move(tmp_inputs));
-    } else {
+    } else if (kernel_ctx->InputsSize() > start_idx) {
       size_t input_size = kernel_ctx->InputsSize();
       for (size_t j = 0; j < ins_vector.size(); ++j) {
-        if (input_size > i + j) {
+        if (input_size > start_idx + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               ins_vector[j]->Var(), in_def,
-              kernel_ctx->MutableInputAt<pten::DenseTensor>(i + j));
+              kernel_ctx->MutableInputAt<pten::DenseTensor>(start_idx + j));
+        } else {
+          kernel_ctx->EmplaceBackInputWithoutSetRange(
+              experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
+                                                      in_def));
         }
-        // TODO(chenweihang): adapt multi-input case later
       }
-      kernel_ctx->MutableInputRangeAt(i) =
-          std::make_pair(i, i + ins_vector.size());
+      kernel_ctx->MutableInputRangeAt(i) = std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.inputs.size() is "
+          "`%d` ",
+          start_idx, kernel_ctx->InputsSize()));
     }
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
-    if (kernel_ctx->OutputsSize() <= i) {
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + outs_vector.size();
+
+    if (kernel_ctx->OutputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
       for (auto& var : outs_vector) {
         auto* variable = var->MutableVar();
@@ -330,18 +346,26 @@ static void BuildDygraphPtenKernelContext(
             experimental::MakePtenTensorBaseFromVar(variable, out_def));
       }
       kernel_ctx->EmplaceBackOutputs(std::move(tmp_outputs));
-    } else {
+    } else if (kernel_ctx->OutputsSize() > start_idx) {
       size_t output_size = kernel_ctx->OutputsSize();
       for (size_t j = 0; j < outs_vector.size(); ++j) {
         if (output_size > i + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j]->MutableVar(), out_def,
               kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
+        } else {
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(
+              experimental::MakePtenTensorBaseFromVar(
+                  outs_vector[j]->MutableVar(), out_def));
         }
-        // TODO(chenweihang): adapt multi-output case later
       }
-      kernel_ctx->MutableOutputRangeAt(i) =
-          std::make_pair(i, i + outs_vector.size());
+      kernel_ctx->MutableOutputRangeAt(i) = std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.outputs.size() is "
+          "`%d` ",
+          start_idx, kernel_ctx->OutputsSize()));
     }
   }
 

@@ -1809,50 +1809,78 @@ void OperatorWithKernel::BuildPtenKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx.inputs.at(input_names[i]);
-    if (pt_kernel_context_->InputsSize() <= i) {
+
+    size_t start_idx =
+        (i == 0 ? 0 : pt_kernel_context_->InputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + ins_vector.size();
+
+    if (pt_kernel_context_->InputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (auto* var : ins_vector) {
         tmp_inputs.emplace_back(
             experimental::MakePtenTensorBaseFromVar(*var, in_def));
       }
       pt_kernel_context_->EmplaceBackInputs(std::move(tmp_inputs));
-    } else {
+    } else if (pt_kernel_context_->InputsSize() > start_idx) {
       size_t input_size = pt_kernel_context_->InputsSize();
       for (size_t j = 0; j < ins_vector.size(); ++j) {
-        if (input_size > i + j) {
+        if (input_size > start_idx + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               *ins_vector[j], in_def,
-              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(i + j));
+              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(start_idx +
+                                                                    j));
+        } else {
+          pt_kernel_context_->EmplaceBackInputWithoutSetRange(
+              experimental::MakePtenTensorBaseFromVar(*ins_vector[j], in_def));
         }
-        // TODO(chenweihang): adapt multi-input case later
       }
       pt_kernel_context_->MutableInputRangeAt(i) =
-          std::make_pair(i, i + ins_vector.size());
+          std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.inputs.size() is "
+          "`%d` ",
+          start_idx, pt_kernel_context_->InputsSize()));
     }
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto& out_def = output_defs.at(i);
     auto& outs_vector = ctx.outputs.at(output_names[i]);
-    if (pt_kernel_context_->OutputsSize() <= i) {
+
+    size_t start_idx =
+        (i == 0 ? 0 : pt_kernel_context_->OutputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + outs_vector.size();
+
+    if (pt_kernel_context_->OutputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
       for (auto* var : outs_vector) {
         tmp_outputs.emplace_back(
             experimental::MakePtenTensorBaseFromVar(var, out_def));
       }
       pt_kernel_context_->EmplaceBackOutputs(std::move(tmp_outputs));
-    } else {
+    } else if (pt_kernel_context_->OutputsSize() > start_idx) {
       size_t output_size = pt_kernel_context_->OutputsSize();
       for (size_t j = 0; j < outs_vector.size(); ++j) {
-        if (output_size > i + j) {
+        if (output_size > start_idx + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j], out_def,
-              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(i + j));
+              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
+                                                                     j));
+        } else {
+          pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
+              experimental::MakePtenTensorBaseFromVar(outs_vector[j], out_def));
         }
-        // TODO(chenweihang): adapt multi-output case later
       }
       pt_kernel_context_->MutableOutputRangeAt(i) =
-          std::make_pair(i, i + outs_vector.size());
+          std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.outputs.size() is "
+          "`%d` ",
+          start_idx, pt_kernel_context_->OutputsSize()));
     }
   }
 
