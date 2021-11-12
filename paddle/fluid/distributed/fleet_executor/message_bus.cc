@@ -42,7 +42,10 @@ void MessageBus::Init(
   });
 }
 
+bool MessageBus::IsInit() const { return is_init_; }
+
 void MessageBus::Release() {
+  VLOG(3) << "Message bus releases resource.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   server_.Stop(1000);

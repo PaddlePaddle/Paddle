@@ -14,16 +14,20 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/api/include/tensor.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/core/dense_tensor.h"
 
-namespace paddle {
-namespace experimental {
+namespace pten {
+namespace blas {
 
-// TODO(chenweihang): add scale API
-// TODO(chenweihang): move mean API into stat.h/cc
-Tensor mean(const Tensor& x);
+template <typename DevCtx, typename T>
+void ElementwiseAdd(const DevCtx& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
+  blas.VADD(x.numel(), x.data<T>(), y.data<T>(), out->mutable_data<T>());
+}
 
-Tensor add(const Tensor& x, const Tensor& y);
-
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace blas
+}  // namespace pten
