@@ -75,6 +75,7 @@ paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
 }
 
 int main(int argc, char* argv[]) {
+  paddle::framework::InitDevices();
   std::cout << "main" << std::endl;
   int64_t batch_size = std::stoi(argv[1]);
   paddle::framework::InitDevices();
