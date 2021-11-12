@@ -64,10 +64,10 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     auto* out = ctx.OutputVar("Out");
     auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
     out_array.resize(ins->size());
-    std::cout << "decode: " << ins->size() << std::endl;
+    // std::cout << "decode: " << ins->size() << std::endl;
     for (int i = 0; i < ins->size(); i++) {
       const framework::LoDTensor x = ins->at(i);
-      framework::LoDTensor out = out_array.at(i);
+      // framework::LoDTensor out = out_array.at(i);
       int components;
       nvjpegChromaSubsampling_t subsampling;
       int widths[NVJPEG_MAX_COMPONENT];
@@ -126,9 +126,9 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
 
       // auto* out = ctx.Output<framework::LoDTensor>("Out");
       std::vector<int64_t> out_shape = {output_components, height, width};
-      out.Resize(framework::make_ddim(out_shape));
+      out_array.at(i).Resize(framework::make_ddim(out_shape));
 
-      T* data = out.mutable_data<T>(ctx.GetPlace());
+      T* data = out_array.at(i).mutable_data<T>(ctx.GetPlace());
 
       for (int c = 0; c < output_components; c++) {
         out_image.channel[c] = data + c * sz;

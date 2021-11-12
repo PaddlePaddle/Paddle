@@ -95,8 +95,8 @@ class FileDataReader {
     std::vector<int> labels = ctx.Attr<std::vector<int>>("labels");
     rank_ = ctx.Attr<int>("rank");
     world_size_ = ctx.Attr<int>("world_size");
-    std::cout << "files and labels size: " << files.size() << " "
-              << labels.size() << std::endl;
+    // std::cout << "files and labels size: " << files.size() << " "
+    //           << labels.size() << std::endl;
     batch_size_ = ctx.Attr<int>("batch_size");
     current_epoch_ = 0;
     current_iter_ = 0;
@@ -157,7 +157,7 @@ class FileDataReader {
   }
 
   bool LoadBatch() {
-    std::cout << "start LoadBatch 0.01" << std::endl;
+    // std::cout << "start LoadBatch 0.01" << std::endl;
     LoDTensorArray batch_data = std::move(Read());
     return batch_buffer_.Push(batch_data) == BufferStatus::kBufferStatusSuccess;
   }
