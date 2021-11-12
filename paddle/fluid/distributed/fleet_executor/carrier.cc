@@ -62,7 +62,7 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
   PADDLE_ENFORCE_EQ(iter, interceptor_idx_to_interceptor_.end(),
                     platform::errors::AlreadyExists(
                         "The interceptor id %lld has already been created! "
-                        "The interceptor is should be unique.",
+                        "The interceptor id should be unique.",
                         interceptor_id));
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
