@@ -16,7 +16,8 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-"""
+
+
 class TestFusedGatherScatterMaxOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -34,9 +35,10 @@ class TestFusedGatherScatterMaxOp(OpTest):
 
         self.attrs = {'pool_type': 'MAX'}
 
-        out, scatter_count = compute_gather_scatter(self.inputs, self.attrs)
+        out, gradient = compute_gather_scatter_for_min_max(self.inputs,
+                                                           self.attrs)
 
-        self.outputs = {'Out': out, 'Scatter_count': scatter_count}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
@@ -62,16 +64,16 @@ class TestFusedGatherScatterMinOp(OpTest):
 
         self.attrs = {'pool_type': 'MIN'}
 
-        out, scatter_count = compute_gather_scatter(self.inputs, self.attrs)
+        out, self.gradient = compute_gather_scatter_for_min_max(self.inputs,
+                                                                self.attrs)
 
-        self.outputs = {'Out': out, 'Scatter_count': scatter_count}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-"""
+        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
 class TestFusedGatherScatterSumOp(OpTest):
@@ -91,7 +93,7 @@ class TestFusedGatherScatterSumOp(OpTest):
 
         self.attrs = {'pool_type': 'SUM'}
 
-        out, _ = compute_gather_scatter(self.inputs, self.attrs)
+        out, _ = compute_gather_scatter_for_sum_mean(self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -119,7 +121,8 @@ class TestFusedGatherScatterMeanOp(OpTest):
 
         self.attrs = {'pool_type': 'MEAN'}
 
-        out, scatter_count = compute_gather_scatter(self.inputs, self.attrs)
+        out, scatter_count = compute_gather_scatter_for_sum_mean(self.inputs,
+                                                                 self.attrs)
 
         self.outputs = {'Out': out, 'Scatter_count': scatter_count}
 
@@ -130,7 +133,7 @@ class TestFusedGatherScatterMeanOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-def compute_gather_scatter(inputs, attributes):
+def compute_gather_scatter_for_sum_mean(inputs, attributes):
     x = inputs['X']
     gather_index = inputs['Gather_index']
     scatter_index = inputs['Scatter_index']
@@ -139,20 +142,41 @@ def compute_gather_scatter(inputs, attributes):
 
     gather_x = x[gather_index]
     target_shape = list(x.shape)
+    results = np.zeros(target_shape, dtype=x.dtype)
     if pool_type == 'SUM':
-        results = np.zeros(target_shape, dtype=x.dtype)
         for index, s_id in enumerate(scatter_index):
             results[s_id, :] += gather_x[index, :]
     elif pool_type == 'MEAN':
-        results = np.zeros(target_shape, dtype=x.dtype)
         count = np.zeros(target_shape[0], dtype=np.int32)
         for index, s_id in enumerate(scatter_index):
             results[s_id, :] += gather_x[index, :]
             count[s_id] += 1
         results = results / count.reshape([-1, 1])
         results[np.isnan(results)] = 0
-    elif pool_type == 'MAX':
-        results = np.zeros(target_shape, dtype=x.dtype)
+    else:
+        raise ValueError("Invalid pool_type, only SUM, MEAN supported!")
+
+    count = np.zeros(target_shape[0], dtype=np.int32)
+    for index, s_id in enumerate(scatter_index):
+        count[s_id] += 1
+
+    return results, count
+
+
+def compute_gather_scatter_for_min_max(inputs, attributes):
+    x = inputs['X']
+    gather_index = inputs['Gather_index']
+    scatter_index = inputs['Scatter_index']
+
+    pool_type = attributes['pool_type']
+
+    gather_x = x[gather_index]
+    target_shape = list(x.shape)
+    results = np.zeros(target_shape, dtype=x.dtype)
+    gradient = np.zeros_like(x)
+
+    # Calculate forward output 
+    if pool_type == "MAX":
         first_set = set()
         for index, s_id in enumerate(scatter_index):
             if s_id not in first_set:
@@ -161,8 +185,7 @@ def compute_gather_scatter(inputs, attributes):
             else:
                 results[s_id, :] = np.maximum(results[s_id, :],
                                               gather_x[index, :])
-    elif pool_type == 'MIN':
-        results = np.zeros(target_shape, dtype=x.dtype)
+    elif pool_type == "MIN":
         first_set = set()
         for index, s_id in enumerate(scatter_index):
             if s_id not in first_set:
@@ -172,11 +195,14 @@ def compute_gather_scatter(inputs, attributes):
                 results[s_id, :] = np.minimum(results[s_id, :],
                                               gather_x[index, :])
     else:
-        raise ValueError(
-            "Invalid pool_type, only SUM, MEAN, MAX, MIN supported!")
+        raise ValueError("Invalid pool_type, only MAX, MIN supported!")
 
-    count = np.zeros(target_shape[0], dtype=np.int32)
-    for index, s_id in enumerate(scatter_index):
-        count[s_id] += 1
+    # Calculate backward gradient
+    index_size = len(gather_index)
+    for i in range(index_size):
+        forward_src_idx = scatter_index[i]
+        forward_dst_idx = gather_index[i]
+        gradient[forward_src_idx] += 1 * (
+            x[forward_src_idx] == results[forward_dst_idx])
 
-    return results, count
+    return results, gradient
