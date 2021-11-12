@@ -34,8 +34,11 @@ class PReluOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get attrs
     std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
-    std::string data_layout =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout"));
+    std::string data_layout = "NCHW";
+    if (op_desc.HasAttr("data_layout")) {
+      data_layout =
+          BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout"));
+    }
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
