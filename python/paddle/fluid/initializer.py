@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import math
 from . import framework
 from . import core
 from .framework import in_dygraph_mode, default_main_program
@@ -1031,6 +1032,49 @@ def _global_bias_initializer():
     Return the global weight initializer, The user doesn't need to use it.
     """
     return _global_bias_initializer_
+
+
+def calculate_gain(nonlinearity, param=None):
+    """
+    Get the recommended gain value of some nonlinearity function.
+
+    Args:
+        nonlinearity: nonlinearity function.
+        param: optional parameter for somme nonlinearity function
+
+    Returns:
+        The recommended gain value for nonlinearity function.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            gain = paddle.nn.initializer.calculate_gain('tanh')
+            initializer = paddle.nn.initializer.Orthogonal(gain)
+
+    """
+    if param is None:
+        param = 0.01
+    else:
+        assert isinstance(param, (bool, int, float))
+    recommended_gain = {
+        'sigmoid': 1,
+        'linear': 1,
+        'conv1d': 1,
+        'conv2d': 1,
+        'conv3d': 1,
+        'conv_transpose1d': 1,
+        'conv_transpose2d': 1,
+        'conv_transpose3d': 1,
+        'tanh': 5.0 / 3,
+        'relu': math.sqrt(2.0),
+        'leaky_relu': math.sqrt(2.0 / (1 + param**2))
+    }
+    if nonlinearity in recommended_gain.keys():
+        return recommended_gain[nonlinearity]
+    else:
+        raise ValueError("nonlinearity function {} is not suppported now.".
+                         format(nonlinearity))
 
 
 # We short the class name, since users will use the initializer with the package
