@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <unistd.h>
 #include <iostream>
 #include <unordered_map>
 
@@ -64,6 +65,37 @@ TEST(InterceptorTest, PingPong) {
 
   InterceptorMessage msg;
   a->Send(1, msg);
+}
+
+TEST(InterceptorTestRemote, RemotePingPong) {
+  std::cout << "Test ping pong through brpc.";
+  pid_t pid = fork();
+  if (pid < 0) {
+    std::cout << "Fork error, exit remote ping pong test." << std::endl;
+  } else if (pid == 0) {
+    MessageBus& msg_bus = MessageBus::Instance();
+    msg_bus.Init({{0, 0}, {1, 0}},
+                 {{0, "127.0.0.1:8000"}, {1, "127.0.0.1:8001"}},
+                 "127.0.0.1:8001");
+
+    Carrier& carrier = Carrier::Instance();
+
+    Interceptor* a = carrier.SetInterceptor(
+        1, std::make_unique<PingPongInterceptor>(1, nullptr));
+  } else {
+    MessageBus& msg_bus = MessageBus::Instance();
+    msg_bus.Init({{0, 0}, {1, 1}},
+                 {{0, "127.0.0.1:8000"}, {1, "127.0.0.1:8001"}},
+                 "127.0.0.1:8000");
+
+    Carrier& carrier = Carrier::Instance();
+
+    Interceptor* a = carrier.SetInterceptor(
+        0, std::make_unique<PingPongInterceptor>(0, nullptr));
+
+    InterceptorMessage msg;
+    a->Send(1, msg);
+  }
 }
 
 }  // namespace distributed
