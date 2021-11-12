@@ -24,10 +24,9 @@ void Flatten(const CPUContext& dev_ctx,
              int start_axis,
              int stop_axis,
              DenseTensor* out) {
-  auto out_meta = FlattenInferShape(x.meta(), start_axis, stop_axis);
+  auto out_dims = out->dims();
   pten::Copy(dev_ctx, x, out);
-  out->set_lod(out_meta.lod);
-  out->Resize(out_meta.dims);
+  out->Resize(out_dims);
 }
 
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate

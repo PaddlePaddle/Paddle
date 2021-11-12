@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/pten/api/include/core.h"
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace framework {
@@ -586,8 +586,8 @@ class OperatorWithKernel : public OperatorBase {
   /* member functions for adapting to pten lib */
   void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
-  pten::KernelContext BuildPtenKernelContext(
-      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
+  void BuildPtenKernelContext(const RuntimeContext& ctx,
+                              platform::DeviceContext* dev_ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -605,6 +605,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_pten_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  mutable std::unique_ptr<pten::KernelContext> pt_kernel_context_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

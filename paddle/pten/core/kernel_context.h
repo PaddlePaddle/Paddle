@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include <iterator>
 #include <utility>
 
+#include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/small_vector.h"
@@ -39,52 +41,50 @@ using DataLayout = paddle::experimental::DataLayout;
  */
 class KernelContext {
  public:
-  explicit KernelContext(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
-  KernelContext(const DeviceContext& dev_ctx,
-                const paddle::SmallVector<std::shared_ptr<TensorBase>>& inputs,
-                const paddle::SmallVector<std::shared_ptr<TensorBase>>& outputs,
-                const paddle::SmallVector<paddle::any>& attrs)
-      : dev_ctx_(dev_ctx), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
+  KernelContext() = default;
+  explicit KernelContext(DeviceContext* dev_ctx) : dev_ctx_(dev_ctx) {}
+
+  void SetDeviceContext(DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
   template <typename CtxType>
   const CtxType& GetDeviceContext() const {
-    return static_cast<const CtxType&>(dev_ctx_);
+    return static_cast<const CtxType&>(*dev_ctx_);
   }
 
   void EmplaceBackInput(std::shared_ptr<TensorBase> input) {
+    int index = inputs_.size();
     inputs_.emplace_back(std::move(input));
     // Record the start and end index of the input
-    int index = inputs_.size();
     input_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
   void EmplaceBackInputs(
       paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
-    for (auto in : inputs) {
-      inputs_.emplace_back(in);
-    }
-    // Record the start and end index of the input
     int index = inputs_.size();
+    // Record the start and end index of the input
     input_range_.emplace_back(
         std::pair<int, int>(index, index + inputs.size()));
+    inputs_.insert(inputs_.end(),
+                   std::make_move_iterator(inputs.begin()),
+                   std::make_move_iterator(inputs.end()));
   }
 
   void EmplaceBackOutput(std::shared_ptr<TensorBase> output) {
+    int index = outputs_.size();
     outputs_.emplace_back(std::move(output));
     // Record the start and end index of the input
-    int index = outputs_.size();
     output_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
   void EmplaceBackOutputs(
       paddle::SmallVector<std::shared_ptr<TensorBase>> outputs) {
-    for (auto out : outputs) {
-      outputs_.emplace_back(out);
-    }
-    // Record the start and end index of the input
     int index = outputs_.size();
+    // Record the start and end index of the input
     output_range_.emplace_back(
         std::pair<int, int>(index, index + outputs.size()));
+    outputs_.insert(outputs_.end(),
+                    std::make_move_iterator(outputs.begin()),
+                    std::make_move_iterator(outputs.end()));
   }
 
   void EmplaceBackAttr(paddle::any attr) {
@@ -97,8 +97,50 @@ class KernelContext {
   }
 
   template <typename TensorType>
+  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+    std::vector<TensorType> v;
+    for (size_t i = start; i < end; ++i) {
+      auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
+      v.emplace_back(std::move(*t.get()));
+    }
+
+    return v;
+  }
+
+  const std::pair<int, int>& InputRangeAt(size_t idx) const {
+    return input_range_.at(idx);
+  }
+
+  const std::pair<int, int>& OutputRangeAt(size_t idx) const {
+    return output_range_.at(idx);
+  }
+
+  std::pair<int, int>& MutableInputRangeAt(size_t idx) {
+    return input_range_[idx];
+  }
+
+  std::pair<int, int>& MutableOutputRangeAt(size_t idx) {
+    return output_range_[idx];
+  }
+
+  template <typename TensorType>
+  TensorType* MutableInputAt(size_t idx) {
+    return static_cast<TensorType*>(inputs_.at(idx).get());
+  }
+
+  template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
     return static_cast<TensorType*>(outputs_.at(idx).get());
+  }
+
+  template <typename TensorType>
+  std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
+    std::vector<TensorType*> v;
+    for (size_t i = start; i < end; ++i) {
+      v.emplace_back(static_cast<TensorType*>(outputs_.at(i).get()));
+    }
+
+    return v;
   }
 
   template <typename AttrType>
@@ -111,12 +153,30 @@ class KernelContext {
     }
   }
 
+  // Temporary method: For compatible with fluid Tensor and improve performance
+  // Only deal with DenseTensor now
+  void ClearData() {
+    for (auto& in : inputs_) {
+      CompatibleDenseTensorUtils::ClearStorage(
+          static_cast<DenseTensor*>(in.get()));
+    }
+    for (auto& out : outputs_) {
+      CompatibleDenseTensorUtils::ClearStorage(
+          static_cast<DenseTensor*>(out.get()));
+    }
+    attrs_.clear();
+  }
+
+  size_t InputsSize() const { return inputs_.size(); }
+  size_t OutputsSize() const { return outputs_.size(); }
+  size_t AttrsSize() const { return attrs_.size(); }
+
  private:
   bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
 
  private:
   // DeviceContext base class
-  const DeviceContext& dev_ctx_;
+  DeviceContext* dev_ctx_;
 
   // TODO(chenweihang): Tensor -> Tensor*, Tensor should by managed `scope`
   // Note: can't use API Tensor here, the inference don't use this API Tensor
@@ -127,11 +187,6 @@ class KernelContext {
   // Only contains input like list[Tensor] need `range`
   paddle::SmallVector<std::pair<int, int>> input_range_;
   paddle::SmallVector<std::pair<int, int>> output_range_;
-
-  // Only static graph need `name`
-  // TODO(chenweihang): replaced by paddle::string_view
-  paddle::SmallVector<std::string> input_names_;
-  paddle::SmallVector<std::string> output_names_;
 };
 
 }  // namespace pten
