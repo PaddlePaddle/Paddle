@@ -18,6 +18,7 @@ from paddle.common_ops_import import fill_constant
 from ..fluid.layers import utils
 
 from ..fluid.layers import tensor
+from ..nn import functional as F
 from ..fluid.framework import Variable
 from ..fluid.framework import unique_name
 from ..fluid.framework import _current_expected_place, _get_paddle_place
@@ -773,6 +774,43 @@ def meshgrid(*args, **kwargs):
         type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out})
 
     return out
+
+
+def zeropad2d(x, pad, data_format="NCHW", name=None):
+    """
+    Pads the input tensor boundaries with zero according to 'pad'.
+    Args:
+        x(Tensor): The input tensor with data type float32/float64/int32/int64.
+        pad(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            The input dimension should be 4 and pad has the form (pad_left, pad_right,
+            pad_top, pad_bottom).
+        data_format(str): An string from: "NHWC", "NCHW". Specify the data format of
+            the input data. Default: "NCHW".
+        name(str, optional): The default value is None. Normally there is no need for user
+            to set this property.
+    Returns: A Tensor padded with 0 according to pad and data type is same as input.
+    Returns: Tensor
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x_shape = (1, 1, 2, 3)
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = paddle.zeropad2d(x, [1, 2, 1, 1])
+            # [[[[0. 0. 0. 0. 0. 0.]
+            #    [0. 1. 2. 3. 0. 0.]
+            #    [0. 4. 5. 6. 0. 0.]
+            #    [0. 0. 0. 0. 0. 0.]]]]
+    """
+
+    return F.pad(x,
+                 pad=pad,
+                 mode='constant',
+                 value=0,
+                 data_format=data_format,
+                 name=name)
 
 
 def diagflat(x, offset=0, name=None):

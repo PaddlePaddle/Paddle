@@ -88,6 +88,7 @@ from .tensor.creation import meshgrid  # noqa: F401
 from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
+from .tensor.creation import zeropad2d  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -427,6 +428,7 @@ __all__ = [  # noqa
            'set_grad_enabled',
            'mod',
            'abs',
+           'zeropad2d',
            'tril',
            'pow',
            'zeros_like',

@@ -1108,6 +1108,73 @@ class Pad2D(Layer):
             self._pad, self._mode, self._value, self._data_format, name_str)
 
 
+class ZeroPad2D(Layer):
+    """
+    This interface is used to construct a callable object of the ``ZeroPad2D`` class.
+    Pads the input tensor boundaries with zero.
+
+    Parameters:
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+           Default is  "NCHW"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: text
+
+            x = [[[[1., 2., 3.],
+                   [4., 5., 6.]]]]
+            padding = [1, 1, 0, 0]
+            Out = [[[[0. 1. 2. 3. 0.]
+                     [0. 4. 5. 6. 0.]]]]
+
+    Code Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+            import numpy as np
+            input_shape = (1, 1, 2, 3)
+            pad = [1, 0, 1, 2]
+            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            my_pad = nn.Pad2D(padding=pad)
+            result = my_pad(data)
+            print(result)
+            # [[[[0. 0. 0. 0.]
+            #    [0. 1. 2. 3.]
+            #    [0. 4. 5. 6.]
+            #    [0. 0. 0. 0.]
+            #    [0. 0. 0. 0.]]]]
+    """
+
+    def __init__(self, padding, data_format="NCHW", name=None):
+        super(ZeroPad2D, self).__init__()
+        self._pad = _npairs(padding, 2)
+        self._mode = 'constant'
+        self._value = 0.
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return F.pad(x,
+                     pad=self._pad,
+                     mode=self._mode,
+                     value=self._value,
+                     data_format=self._data_format,
+                     name=self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, data_format={}{}'.format(
+            self._pad, self._data_format, name_str)
+
+
 class Pad3D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad3D`` class.
