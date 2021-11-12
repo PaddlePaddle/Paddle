@@ -11,7 +11,6 @@ limitations under the License. */
 
 #pragma once
 
-// #include "paddle/fluid/operators/fused/attn_bias_add.cu.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -74,8 +73,6 @@ class AttnMatMul {
     }
   }
 
-  // void ComputeBackward(const T* input, const T* weight, const T* d_output,
-  //                      T* d_input, T* d_weight, T* d_bias) {
   void ComputeBackward(const framework::Tensor* input,
                        const framework::Tensor* weight,
                        const framework::Tensor* d_output,
