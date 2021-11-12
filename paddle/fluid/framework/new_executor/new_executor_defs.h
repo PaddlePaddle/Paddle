@@ -269,7 +269,8 @@ enum class OpFuncType {
 class RuntimeInferShapeContext;
 
 struct OpFuncNode {
-  OperatorBase* operator_base_;
+  // TODO(zhiqiu): Better make it unique_ptr
+  std::shared_ptr<OperatorBase> operator_base_;
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
   std::unordered_set<int> no_data_transform_index;
@@ -281,7 +282,7 @@ struct OpFuncNode {
 
 class Instruction {
  public:
-  Instruction(size_t id, const OpFuncNode& op_func_node,
+  Instruction(size_t id, OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
 
   size_t Id() const;
@@ -336,7 +337,7 @@ class Instruction {
 
  private:
   size_t id_;
-  const OpFuncNode& op_func_node_;          // not owned
+  OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;

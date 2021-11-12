@@ -629,7 +629,7 @@ void VariableScopeListener::onCreateScope(Scope* Scope) {}
 void VariableScopeListener::onDeleteScope(Scope* Scope) {}
 void VariableScopeListener::onClear() {}
 
-Instruction::Instruction(size_t id, const OpFuncNode& op_func_node,
+Instruction::Instruction(size_t id, OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
     : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
   PADDLE_ENFORCE_GE(id, 0, platform::errors::PreconditionNotMet(
@@ -657,10 +657,10 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
 
 OperatorBase* Instruction::OpBase() const {
-  auto* op_base = op_func_node_.operator_base_;
+  auto op_base = op_func_node_.operator_base_;
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base shall not be nullptr."));
-  return op_base;
+  return op_base.get();
 }
 
 NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
