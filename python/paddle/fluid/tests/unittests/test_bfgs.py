@@ -89,7 +89,7 @@ class TestBFGS(unittest.TestCase):
         for shape, dtype in self.gen_configs():
             center = paddle.rand(shape, dtype=dtype)
             scales = paddle.exp(paddle.rand(shape, dtype=dtype))
-            scales = 1
+            scales = paddle.square(paddle.rand(shape, dtype=dtype))
             def f(x):
                 return paddle.sum(scales * paddle.square(x - center), axis=-1)
             x0 = paddle.ones_like(center, dtype=dtype)
@@ -164,12 +164,13 @@ shape = [2]
 dtype = 'float32'
 
 center = paddle.rand(shape, dtype=dtype)
-scales = paddle.exp(paddle.rand(shape, dtype=dtype))
+# scales = paddle.square(paddle.rand(shape, dtype=dtype))
+scales = paddle.to_tensor([0.2, 1.5])
 def f(x):
-    return paddle.sum(scales * paddle.square(x - center), axis=-1)
+    return paddle.sum(paddle.square(x - center), axis=-1)
 
 x0 = paddle.ones_like(center, dtype=dtype)
-            
+
 # The true inverse hessian value at x0
 hess = hesfn_gen(f)(x0)
 inv_hess = paddle.inverse(hess)

@@ -175,7 +175,7 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     # T(s_k) * s_k
     sTs = einsum('...i, ...i', sk, sk)
 
-    term45 = sTs * (1 + rho_k * yHy).unsqueeze(-1).unqueeze(-1)
+    term45 = sTs * (1 + rho_k * yHy).unsqueeze(-1).unsqueeze(-1)
 
     Hk_next = Hk + (term45 - term23) * rho_k.unsqueeze(-1).unsqueeze(-1)
 
