@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -31,6 +32,46 @@ FleetExecutor::~FleetExecutor() {
 
 void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
   // Compile and Initialize
+  InitMessageBus();
+}
+
+void FleetExecutor::InitMessageBus() {
+  std::stringstream ss;
+  ss << "\nThe DNS table of the message bus is: \n";
+  int64_t cur_rank = exe_desc_.cur_rank();
+  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank;
+  std::unordered_map<int64_t, std::string> rank_to_addr;
+  std::string addr;
+  for (const auto& rank_info : exe_desc_.cluster_info()) {
+    // init the dns map
+    int64_t rank = rank_info.rank();
+    std::string ip_port = rank_info.ip_port();
+    ss << rank << "\t->\t" << ip_port << "\n";
+    // TODO(Yuang): init interceptor_id_to_rank out of this loop
+    interceptor_id_to_rank.insert(std::make_pair(rank, rank));
+    rank_to_addr.insert(std::make_pair(rank, ip_port));
+    if (rank == cur_rank) {
+      addr = ip_port;
+    }
+  }
+  if (addr == "") {
+    PADDLE_ENFORCE_EQ(
+        rank_to_addr.size(), 0,
+        platform::errors::NotFound("Empty address is not valid for "
+                                   "paddle.distributed.launch method."));
+    PADDLE_ENFORCE_EQ(
+        cur_rank, 0,
+        platform::errors::NotFound("Address is empty but cur rank is not 0."));
+  }
+  VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is "
+          << (addr == "" ? "empty" : addr) << ".";
+  VLOG(3) << "The number of ranks are "
+          << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
+  VLOG(5) << ss.str();
+  MessageBus& message_bus_instance = MessageBus::Instance();
+  if (!message_bus_instance.IsInit()) {
+    message_bus_instance.Init(interceptor_id_to_rank, rank_to_addr, addr);
+  }
 }
 
 void FleetExecutor::Run() {
@@ -39,11 +80,6 @@ void FleetExecutor::Run() {
 
 void FleetExecutor::Release() {
   // Release
-}
-
-std::shared_ptr<Carrier> FleetExecutor::GetCarrier() {
-  // get carrier
-  return nullptr;
 }
 
 }  // namespace distributed

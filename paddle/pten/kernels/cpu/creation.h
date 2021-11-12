@@ -26,7 +26,6 @@ using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
 void FillAnyLike(const CPUContext& dev_ctx,
-                 const DenseTensor& x,
                  const Scalar& val,
                  DenseTensor* out);
 

@@ -29,7 +29,6 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 void FillAnyLike(const CUDAContext& dev_ctx,
-                 const DenseTensor& x,
                  const Scalar& val,
                  DenseTensor* out);
 

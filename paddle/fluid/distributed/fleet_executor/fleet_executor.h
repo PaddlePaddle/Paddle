@@ -42,7 +42,7 @@ class FleetExecutor final {
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   FleetExecutorDesc exe_desc_;
   std::unique_ptr<RuntimeGraph> runtime_graph_;
-  static std::shared_ptr<Carrier> global_carrier_;
+  void InitMessageBus();
 };
 
 }  // namespace distributed
