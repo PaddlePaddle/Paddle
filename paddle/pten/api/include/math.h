@@ -23,5 +23,7 @@ namespace experimental {
 // TODO(chenweihang): move mean API into stat.h/cc
 Tensor mean(const Tensor& x);
 
+Tensor add(const Tensor& x, const Tensor& y);
+
 }  // namespace experimental
 }  // namespace paddle

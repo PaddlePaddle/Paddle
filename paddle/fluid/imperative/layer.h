@@ -222,7 +222,10 @@ class VarBase {
 
   const platform::Place Place() const { return var_->Place(); }
 
-  void ClearGradient();
+  void ClearGradient(bool set_to_zero = true);
+
+  void _GradientSetEmpty(bool is_empty = true);
+  bool _IsGradientSetEmpty();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
@@ -230,6 +233,8 @@ class VarBase {
   void CopyFrom(const imperative::VarBase& src, bool blocking);
 
   void BumpInplaceVersion();
+
+  void _CopyGradientFrom(const imperative::VarBase& src);
 
   /* Hook related method: now only used for GradVarBase */
   bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
