@@ -76,7 +76,7 @@ template <typename T>
 T* DenseTensor::mutable_data() {
   PADDLE_ENFORCE(
       (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::PreconditionNotMet(
+      paddle::platform::errors::InvalidArgument(
           "The type of data (%d) we are trying to retrieve does not match the "
           "type of data currently contained in the container (%d).",
           static_cast<int>(paddle::experimental::CppTypeToDataType<T>::Type()),
@@ -88,7 +88,7 @@ template <typename T>
 const T* DenseTensor::data() const {
   PADDLE_ENFORCE(
       (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::PreconditionNotMet(
+      paddle::platform::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
   return static_cast<const T*>(data());
