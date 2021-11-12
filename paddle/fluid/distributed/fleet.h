@@ -157,7 +157,12 @@ class FleetWrapper {
       const std::vector<std::string>& input_names,
       std::vector<const LoDTensor*>* inputs,    // NOLINT
       std::vector<const LoDTensor*>* outputs);  // NOLINT
-
+  void PushSparseFromTensorAsync(const uint64_t table_id, int fea_dim,
+                                 uint64_t padding_id, platform::Place place,
+                                 std::vector<const LoDTensor*>* inputs,
+                                 const LoDTensor* shows,
+                                 const LoDTensor* clicks,
+                                 std::vector<LoDTensor*>* outputs);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
   // Param<Out>: push_values, push_sparse_status
@@ -200,7 +205,7 @@ class FleetWrapper {
   void PrintTableStat(const uint64_t table_id);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
-  void LoadModel(const std::string& path, const std::string& mode);
+  void LoadModel(const std::string& path, const int mode);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModelOneTable(const uint64_t table_id, const std::string& path,
