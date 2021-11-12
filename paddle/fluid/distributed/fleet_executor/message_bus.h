@@ -48,6 +48,8 @@ class MessageBus final {
             const std::unordered_map<int64_t, std::string>& rank_to_addr,
             const std::string& addr);
 
+  bool IsInit() const;
+
   void Release();
 
   // called by Interceptor, send InterceptorMessage to dst
