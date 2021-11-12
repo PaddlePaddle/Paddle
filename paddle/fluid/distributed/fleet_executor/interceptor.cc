@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
 namespace paddle {
 namespace distributed {
@@ -26,6 +27,14 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
 }
 
 Interceptor::~Interceptor() { interceptor_thread_.join(); }
+
+void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
+
+void Interceptor::Handle(const InterceptorMessage& msg) {
+  if (handle_) {
+    handle_(msg);
+  }
+}
 
 std::condition_variable& Interceptor::GetCondVar() {
   // get the conditional var
@@ -42,10 +51,16 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   VLOG(3) << "Enqueue message: " << interceptor_message.message_type()
           << " into " << interceptor_id_ << "'s remote mailbox.";
-  remote_mailbox_mutex_.lock();
+  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
   remote_mailbox_.push(interceptor_message);
-  remote_mailbox_mutex_.unlock();
   return true;
+}
+
+void Interceptor::Send(int64_t dst_id,
+                       std::unique_ptr<InterceptorMessage> msg) {
+  msg->set_src_id(interceptor_id_);
+  msg->set_dst_id(dst_id);
+  MessageBus::Instance().Send(*msg.get());
 }
 
 void Interceptor::PoolTheMailbox() {
@@ -68,6 +83,8 @@ void Interceptor::PoolTheMailbox() {
       // break the pooling thread
       break;
     }
+
+    Handle(interceptor_message);
   }
 }
 
