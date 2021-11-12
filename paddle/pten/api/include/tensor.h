@@ -83,7 +83,7 @@ class AbstractAutogradMeta {
  * another simple Tensor design may be required for inference.
  */
 
-class Tensor final {
+class PD_DLL_DECL Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
 
