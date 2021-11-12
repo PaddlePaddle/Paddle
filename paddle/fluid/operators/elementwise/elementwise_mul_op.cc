@@ -131,11 +131,11 @@ class ElementwiseMulTripleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     // set outputs
-    op->SetOutput("D_X_out", this->InputGrad("X"));
-    op->SetOutput("D_Y_out", this->InputGrad("Y"));
-    op->SetOutput("D_DOut_out", this->InputGrad("DOut"));
-    op->SetOutput("D_DDX_out", this->InputGrad("DDX"));
-    op->SetOutput("D_DDY_out", this->InputGrad("DDY"));
+    op->SetOutput("D_X", this->InputGrad("X"));
+    op->SetOutput("D_Y", this->InputGrad("Y"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDX", this->InputGrad("DDX"));
+    op->SetOutput("D_DDY", this->InputGrad("DDY"));
   }
 };
 
@@ -158,8 +158,7 @@ REGISTER_OPERATOR(
     ops::ElementwiseMulTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulTripleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_mul_triple_grad, ops::ElementwiseOpTripleGrad,
-                  ops::ElementwiseTripleGradOpInplaceInferer);
+REGISTER_OPERATOR(elementwise_mul_triple_grad, ops::ElementwiseOpTripleGrad);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,

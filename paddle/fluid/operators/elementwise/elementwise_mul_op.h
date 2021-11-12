@@ -300,12 +300,12 @@ class ElementwiseMulTripleGradKernel : public framework::OpKernel<T> {
     auto* d_ddout = ctx.Input<framework::Tensor>("D_DDOut");
 
     // get output
-    auto* out_d_x = ctx.Output<framework::Tensor>("D_X_out");
-    auto* out_d_y = ctx.Output<framework::Tensor>("D_Y_out");
-    auto* out_d_dout = ctx.Output<framework::Tensor>("D_DOut_out");
+    auto* out_d_x = ctx.Output<framework::Tensor>("D_X");
+    auto* out_d_y = ctx.Output<framework::Tensor>("D_Y");
+    auto* out_d_dout = ctx.Output<framework::Tensor>("D_DOut");
 
-    auto* out_d_ddx = ctx.Output<framework::Tensor>("D_DDX_out");
-    auto* out_d_ddy = ctx.Output<framework::Tensor>("D_DDY_out");
+    auto* out_d_ddx = ctx.Output<framework::Tensor>("D_DDX");
+    auto* out_d_ddy = ctx.Output<framework::Tensor>("D_DDY");
 
     if (out_d_x) out_d_x->mutable_data<T>(x->dims(), ctx.GetPlace());
     if (out_d_y) out_d_y->mutable_data<T>(y->dims(), ctx.GetPlace());
