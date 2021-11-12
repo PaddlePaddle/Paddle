@@ -365,19 +365,20 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
   return std::make_pair(new_var_name, copy_op_func_node);
 }
 
-std::vector<OpFuncNode> apply_data_transform(
-    const OpKernelType& expected_kernel_key, const platform::Place& place,
-    VariableValueMap* ins_map_temp, VariableScope* var_scope,
-    OpFuncNode* op_func_node) {
+void apply_data_transform(const OpKernelType& expected_kernel_key,
+                          const platform::Place& place,
+                          VariableValueMap* ins_map_temp,
+                          VariableScope* var_scope, OpFuncNode* op_func_node,
+                          std::vector<OpFuncNode>* copy_func_nodes) {
   auto op_base = op_func_node->operator_base_.get();
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base is null, please pass a valid "
                                        "op_base in apply_data_transform."));
-  auto inputs_names = op_base->Inputs();
+
+  VariableNameMap new_ins(op_base->Inputs());
 
   std::unordered_set<int>
       no_data_transform_index;  // record the no need transform variable index.
-  std::vector<OpFuncNode> copy_func_nodes;  // return all the copy opfuncnode.
 
   for (auto& var_name_item : *ins_map_temp) {
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -385,7 +386,7 @@ std::vector<OpFuncNode> apply_data_transform(
       if (!(var->IsType<LoDTensor>() || var->IsType<SelectedRows>())) {
         continue;
       }
-      auto& var_name = inputs_names[var_name_item.first].at(i);
+      auto& var_name = new_ins[var_name_item.first].at(i);
       auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       if (!tensor_in->IsInitialized()) {
         continue;
@@ -407,8 +408,9 @@ std::vector<OpFuncNode> apply_data_transform(
                 var_name_item.first, *op_func_node, var, var_scope);
         op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
-        copy_func_nodes.push_back(copy_op_func_node);
+        copy_func_nodes->emplace_back(copy_op_func_node);
         var_name_item.second[i] = var_scope->Var(new_var_name);
+        new_ins[var_name_item.first][i] = new_var_name;
       } else if (need_dtype_transform_for_var(kernel_type_for_var,
                                               expected_kernel_key)) {
         // TODO(@xiongkun) add dtype judgement here
@@ -424,8 +426,14 @@ std::vector<OpFuncNode> apply_data_transform(
       }
     }
   }
+
+  // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
+  // with instruction
+  // hot fix, it is not good design here
+  op_func_node->operator_base_ =
+      std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
+          op_base->Type(), new_ins, op_base->Outputs(), op_base->Attrs()));
   op_func_node->no_data_transform_index = std::move(no_data_transform_index);
-  return copy_func_nodes;
 }
 
 void build_op_func_list(const platform::Place& place,
@@ -441,7 +449,6 @@ void build_op_func_list(const platform::Place& place,
 
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
-    // for (auto& op : block.AllOps()) {
     VLOG(6) << "Build OpFuncNode from : " << op->Type();
 
     auto inputs_names = op->Inputs();
@@ -507,8 +514,8 @@ void build_op_func_list(const platform::Place& place,
       // NOTE(xiongkun03): assign op_base here to reduce parameter number of
       // apply_data_transform.
       op_func_node.operator_base_ = ops[i];
-      copy_op_to_insert = apply_data_transform(
-          expected_kernel_key, place, &ins_map_temp, var_scope, &op_func_node);
+      apply_data_transform(expected_kernel_key, place, &ins_map_temp, var_scope,
+                           &op_func_node, &copy_op_to_insert);
       for (auto& item : copy_op_to_insert) {
         vec_func_list->push_back(item);
       }
