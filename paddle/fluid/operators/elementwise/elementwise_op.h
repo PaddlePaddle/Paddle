@@ -139,6 +139,17 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                                      tensor.place(), tensor.layout());
     }
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (Type() == "elementwise_add") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("elementwise_add", {"X", "Y"},
+                                          {"axis"}, {"Out"});
+      }
+    }
+    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
+  }
 };
 
 class ElementwiseOpInferVarType
