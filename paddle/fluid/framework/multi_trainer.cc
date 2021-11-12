@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/platform/lodtensor_printer.h"
 
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/service/communicator.h"
@@ -153,7 +154,14 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
+
+#ifdef PADDLE_WITH_PSCORE
+  // pull dense param first
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  auto& recv_ctx = communicator->GetRecvCtxMap();
+  communicator->PullDense(recv_ctx);
   VLOG(3) << "init other env done.";
+#endif
 }
 
 Scope* MultiTrainer::GetWorkerScope(int thread_id) {
@@ -252,6 +260,12 @@ void MultiTrainer::Finalize() {
   }
 #ifdef PADDLE_WITH_HETERPS
   MergeDenseParam();
+#endif
+
+#if defined PADDLE_WITH_PSCORE
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  communicator->_worker_ptr->flush();
+  VLOG(1) << "MultiTrainer::Finalize ps client flush done";
 #endif
   root_scope_->DropKids();
 }
