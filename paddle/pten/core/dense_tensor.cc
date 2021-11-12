@@ -113,6 +113,20 @@ void DenseTensor::check_memory_size() const {
                         bytes));
 }
 
+void DenseTensor::Resize(const DDim& dims) {
+  if (product(dims) == product(meta_.dims)) {
+    set_dims(dims);
+  } else {
+    meta_.dims = dims;
+    storage_->Clear();
+  }
+}
+
+void DenseTensor::set_dims(const DDim& dims) {
+  CHECK(product(dims) == product(meta_.dims));
+  meta_.dims = dims;
+}
+
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \
   template dtype* DenseTensor::mutable_data(); \
   template const dtype* DenseTensor::data() const;
