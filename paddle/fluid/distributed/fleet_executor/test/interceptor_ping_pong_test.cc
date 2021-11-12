@@ -67,6 +67,8 @@ TEST(InterceptorTest, PingPong) {
   a->Send(1, msg);
 }
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
 TEST(InterceptorTestRemote, RemotePingPong) {
   std::cout << "Test ping pong through brpc.";
   pid_t pid = fork();
@@ -97,6 +99,7 @@ TEST(InterceptorTestRemote, RemotePingPong) {
     a->Send(1, msg);
   }
 }
+#endif
 
 }  // namespace distributed
 }  // namespace paddle
