@@ -80,7 +80,7 @@ RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
 
 # Install Go and glide
 WORKDIR /home
-RUN wget -qO- https://paddle-ci.gz.bcebos.com/go1.15.12.linux-amd64.tar.gz | \
+RUN wget -qO- https://paddle-ci.gz.bcebos.com/go1.17.2.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
