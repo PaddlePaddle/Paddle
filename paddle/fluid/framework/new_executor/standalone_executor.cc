@@ -23,9 +23,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     : place_(place),
       startup_prog_(startup_prog),
       main_prog_(main_prog),
-      outer_scope_(scope) {
+      outer_scope_(scope),
+      global_scope_(scope) {
   paddle::framework::InitDevices();
-
   // init scope
   BuildVariableOuterScope(startup_prog, &global_scope_, scope);
 

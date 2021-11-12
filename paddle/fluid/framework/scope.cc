@@ -59,18 +59,35 @@ std::unique_ptr<Scope> Scope::NewTmpScope() const {
 }
 
 Variable* Scope::Var(const std::string& name) {
-  SCOPE_VARS_WRITER_LOCK
-  return VarInternal(name);
+  // NOTE(xiongkun03): add {} here to unlock. With {}, scope
+  // will do callback after unlock.
+  Variable* ret = nullptr;
+  {
+    SCOPE_VARS_WRITER_LOCK
+    ret = VarInternal(name);
+  }
+  for (auto l : listeners_) {
+    l->onCreateVariable(name);
+  }
+  return ret;
 }
 
 Variable* Scope::Var(std::string* name) {
-  SCOPE_VARS_WRITER_LOCK
-  auto new_name = std::to_string(reinterpret_cast<uintptr_t>(this)) + "." +
-                  std::to_string(vars_.size());
-  if (name != nullptr) {
-    *name = new_name;
+  Variable* ret = nullptr;
+  std::string new_name;
+  {
+    SCOPE_VARS_WRITER_LOCK
+    new_name = std::to_string(reinterpret_cast<uintptr_t>(this)) + "." +
+               std::to_string(vars_.size());
+    if (name != nullptr) {
+      *name = new_name;
+    }
+    ret = VarInternal(new_name);
   }
-  return VarInternal(new_name);
+  for (auto l : listeners_) {
+    l->onCreateVariable(new_name);
+  }
+  return ret;
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
@@ -101,9 +118,14 @@ const Scope* Scope::FindScope(const std::string& name) const {
 }
 
 void Scope::DropKids() {
-  SCOPE_KIDS_WRITER_LOCK
-  for (Scope* s : kids_) delete s;
-  kids_.clear();
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    for (Scope* s : kids_) delete s;
+    kids_.clear();
+  }
+  for (auto l : listeners_) {
+    l->onClear();
+  }
 }
 
 bool Scope::HasKid(const Scope* scope) const {
@@ -125,42 +147,64 @@ std::vector<std::string> Scope::LocalVarNames() const {
 }
 
 void Scope::DeleteScope(Scope* scope) const {
-  SCOPE_KIDS_WRITER_LOCK
-  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-  PADDLE_ENFORCE_NE(it, this->kids_.end(),
-                    platform::errors::NotFound(
-                        "%p is not found in %p as kid scope", scope, this));
-  this->kids_.erase(it);
-  // When making memory benchmark on Fluid, we have to delete scope sync.
-  if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
-    delete scope;
-  } else {
-    Async([scope] { delete scope; });
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+    PADDLE_ENFORCE_NE(it, this->kids_.end(),
+                      platform::errors::NotFound(
+                          "%p is not found in %p as kid scope", scope, this));
+    this->kids_.erase(it);
+    // When making memory benchmark on Fluid, we have to delete scope sync.
+    if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
+      delete scope;
+    } else {
+      Async([scope] { delete scope; });
+    }
+  }
+  for (auto l : listeners_) {
+    l->onDeleteScope(scope);
   }
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
-  std::set<std::string> var_set(var_names.begin(), var_names.end());
-  SCOPE_VARS_WRITER_LOCK
-  for (auto it = vars_.begin(); it != vars_.end();) {
-    if (var_set.find(it->first) != var_set.end()) {
-      it = vars_.erase(it);
-    } else {
-      ++it;
+  {
+    std::set<std::string> var_set(var_names.begin(), var_names.end());
+    SCOPE_VARS_WRITER_LOCK
+    for (auto it = vars_.begin(); it != vars_.end();) {
+      if (var_set.find(it->first) != var_set.end()) {
+        it = vars_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+  for (auto l : listeners_) {
+    for (auto& var_name : var_names) {
+      l->onDeleteVariable(var_name);
     }
   }
 }
 
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
-  SCOPE_VARS_WRITER_LOCK
-  RenameInternal(origin_name, new_name);
+  {
+    SCOPE_VARS_WRITER_LOCK
+    RenameInternal(origin_name, new_name);
+  }
+  for (auto l : listeners_) {
+    l->onRenameVariable(origin_name, new_name);
+  }
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
-  SCOPE_VARS_WRITER_LOCK
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
-  RenameInternal(origin_name, new_name);
+  {
+    SCOPE_VARS_WRITER_LOCK
+    RenameInternal(origin_name, new_name);
+  }
+  for (auto l : listeners_) {
+    l->onRenameVariable(origin_name, new_name);
+  }
   return new_name;
 }
 
@@ -220,6 +264,17 @@ Variable* Scope::FindVarLocally(const std::string& name) const {
     return it->second.get();
   }
   return nullptr;
+}
+
+void Scope::AddListener(ScopeListener* listener) {
+  auto it = std::find(listeners_.begin(), listeners_.end(), listener);
+  if (it == listeners_.end()) {
+    listeners_.push_back(listener);
+  }
+}
+
+void Scope::DelListener(ScopeListener* listener) {
+  listeners_.remove(listener);
 }
 
 void Scope::EraseVarsExcept(const std::unordered_set<Variable*>& vars) {
