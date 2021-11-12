@@ -317,6 +317,8 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
+rem set vs language to english to block showIncludes, this need vs has installed English language package.
+set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 set DISTUTILS_USE_SDK=1

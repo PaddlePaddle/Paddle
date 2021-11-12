@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/cpu/manipulation.h"
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
 #include "paddle/pten/kernels/functions/math/cast_func.h"
 

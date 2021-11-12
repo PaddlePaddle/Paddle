@@ -46,20 +46,20 @@ void HeterServer::StartHeterService() {
     ready_ = 1;
   }
   condition_ready_.notify_all();
-
   std::unique_lock<std::mutex> running_lock(mutex_);
+  stoped_ = false;
   cv_.wait(running_lock, [&] {
     VLOG(1) << "Heter Server is Stop? " << stoped_;
     return stoped_;
   });
 }
 
-void HeterServer::SetEndPoint(std::string& endpoint) {
+void HeterServer::SetEndPoint(const std::string& endpoint) {
   endpoint_ = endpoint;
   service_.SetEndpoint(endpoint);
 }
 
-void HeterServer::SetFanin(int& fan_in) { service_.SetFanin(fan_in); }
+void HeterServer::SetFanin(const int& fan_in) { service_.SetFanin(fan_in); }
 
 void HeterServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
