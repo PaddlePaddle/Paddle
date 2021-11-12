@@ -440,6 +440,18 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       ctx->ShareDim("DDY", "D_DDY");
       ctx->ShareLoD("DDY", "D_DDY");
     }
+    if (ctx->HasOutput("D_X")) {
+      ctx->ShareDim("X", "D_X");
+      ctx->ShareLoD("X", "D_X");
+    }
+    if (ctx->HasOutput("D_Y")) {
+      ctx->ShareDim("Y", "D_Y");
+      ctx->ShareLoD("Y", "D_Y");
+    }
+    if (ctx->HasOutput("D_DOut")) {
+      ctx->ShareDim("DOut", "D_DOut");
+      ctx->ShareLoD("DOut", "D_DOut");
+    }
   }
 
   framework::OpKernelType GetExpectedKernelType(
