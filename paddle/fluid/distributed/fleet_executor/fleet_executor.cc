@@ -63,8 +63,8 @@ void FleetExecutor::InitMessageBus() {
         cur_rank, 0,
         platform::errors::NotFound("Address is empty but cur rank is not 0."));
   }
-  VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is " << addr
-          << ".";
+  VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is "
+          << (addr == "" ? "empty" : addr) << ".";
   VLOG(3) << "The number of ranks are "
           << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
