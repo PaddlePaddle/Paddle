@@ -48,6 +48,13 @@ void ScaleHost(const CUDAContext& dev_ctx,
                bool bias_after_scale,
                DenseTensor* out);
 
+template <typename T>
+void ElementwiseAdd(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
+
 }  // namespace pten
 
 #endif

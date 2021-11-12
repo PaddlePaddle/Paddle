@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
-#include "cinn/frontend/var_type_utils.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -138,9 +137,7 @@ std::vector<std::string> SeperateTempVar(
       [](const auto& name_view) { return std::string(name_view.data()); });
 
   auto exclude_fn = [&all_cinn_names](const auto& cinn_name) {
-    PADDLE_ENFORCE_EQ(all_cinn_names.erase(cinn_name), 1,
-                      platform::errors::NotFound(
-                          "Variable(%s) not found in cinn scope", cinn_name));
+    all_cinn_names.erase(cinn_name);
   };
 
   std::for_each(input_cinn_names.begin(), input_cinn_names.end(), exclude_fn);
