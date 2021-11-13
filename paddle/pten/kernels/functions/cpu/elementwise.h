@@ -147,7 +147,7 @@ void ElementwiseCompute(const paddle::platform::CPUDeviceContext &dev_ctx,
                         int axis,
                         Functor func,
                         DenseTensor *z) {
-  z->mutable_data<T>();
+  z->mutable_data<OutType>();
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   bool is_xsize_larger = true;
