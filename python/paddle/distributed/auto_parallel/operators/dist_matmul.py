@@ -237,6 +237,12 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
                                           process_mesh.topology, axis, rank_id)
             sync_group = new_process_group(group_ranks)
 
+            print("_init_param_sync *******************")
+            print(Weight_var.name)
+            print(rank_id)
+            print(group_ranks)
+            print(sync_group.id)
+
             startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -656,6 +662,13 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+
+        # x 被切分的mapping值和 y 被切分的mapping值需要不一样
+        if is_dim_shard(x_dims_mapping[0]):
+            for mapping in y_dims_mapping[1:]:
+                if is_dim_shard(mapping) and mapping == x_dims_mapping[0]:
+                    return False
+
         return True
 
     def is_output_compatible(self, dist_op):
@@ -667,6 +680,35 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             return False
         for mapping in out_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
+                return False
+        
+        x_name = op_desc.input('X')[0]
+        y_name = op_desc.input('Y')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        input_dims_mapping = []
+        ordered_input_shard_dims_mapping = []
+        for dim in (x_dims_mapping + y_dims_mapping):
+            input_dims_mapping.append(dim)
+        for item in input_dims_mapping:
+            if item not in ordered_input_shard_dims_mapping and item != -1:
+                 ordered_input_shard_dims_mapping.append(item)
+
+        # [-1, -1] [-1, 0] [-1, 1]
+        for mapping in out_dims_mapping:
+            if mapping not in input_dims_mapping:
+                return False
+        
+        # [0, -1] [-1, 1] [1, 0]
+        if is_dim_shard(x_dims_mapping[0]):
+            order_index = 0
+            for idx, item in enumerate(out_dims_mapping):
+                if item != -1:
+                    if item != ordered_input_shard_dims_mapping[order_index]:
+                        return False
+                    else:
+                        order_index += 1
+            if order_index != len(ordered_input_shard_dims_mapping):
                 return False
         return True
 
@@ -806,6 +848,21 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+
+        # [0, 1] [0, -1]
+        x_shard_dims = []
+        y_shard_dims = []
+        for dim in x_dims_mapping:
+            if is_dim_shard(dim):
+                x_shard_dims.append(dim)
+        
+        for dim in y_dims_mapping:
+            if is_dim_shard(dim):
+                y_shard_dims.append(dim)
+        
+        if x_shard_dims[-1] != y_shard_dims[0]:
+            return False
+
         return True
 
     def is_output_compatible(self, dist_op):
@@ -819,6 +876,59 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         for mapping in out_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+
+        x_name = op_desc.input('X')[0]
+        y_name = op_desc.input('Y')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+
+        x_shard_dim_count = 0
+        x_shard_dims = []
+        y_shard_dim_count = 0
+        y_shard_dims = []
+        for dim in x_dims_mapping:
+            if is_dim_shard(dim):
+                x_shard_dim_count += 1
+                x_shard_dims.append(dim)
+        
+        for dim in y_dims_mapping:
+            if is_dim_shard(dim):
+                y_shard_dim_count += 1
+                y_shard_dims.append(dim)
+
+        # [-1, 0] [0, -1] [0, -1] -> [-1, -1]
+        if x_shard_dim_count == y_shard_dim_count:
+            for dim in out_dims_mapping:
+                if is_dim_shard(dim):
+                    return False 
+            if x_shard_dims != y_shard_dims:
+                return False
+
+            print("dist_matmul =================")
+            print(x_name)
+            print(x_dims_mapping)
+            print(x_shard_dim_count)
+            print(x_shard_dims)
+            print("************")
+            print(y_name)
+            print(y_dims_mapping)
+            print(y_shard_dim_count)
+            print(y_shard_dims)
+            print("************")
+            print(out_name)
+            print(out_dims_mapping)
+
+        else:
+            # [0, 1] [1, -1] [1, -1] -> [0, -1]
+            if x_shard_dim_count < y_shard_dim_count:
+                return False
+            output_shard_dims = []
+            for dim in out_dims_mapping:
+                if is_dim_shard(dim):
+                    output_shard_dims.append(dim)
+            if not output_shard_dims or output_shard_dims[0] != x_shard_dims[0]:
+                return False
+
         return True
 
     def update_dims_mapping(self, dist_op):

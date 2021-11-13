@@ -23,6 +23,7 @@ from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .utils import make_data_unshard
 from .reshard import reshard
+from .auto_search import auto_search
 
 
 class AutoParallelizer:
@@ -59,9 +60,26 @@ class AutoParallelizer:
         assert startup_program is not None
         main_program = loss.block.program
 
-        # Annotation completion
-        completed_main_program = complete_annotation(main_program,
-                                                     self._dist_context)
+        if self._dist_strategy.auto_search:
+            print("============" * 3)
+            print("Auto search")
+            self._dist_context, _ = auto_search(main_program,
+                                                startup_program, loss, 
+                                                self._optimizer)
+            completed_main_program = main_program
+            print("tensor *****************"*3)
+            for key, item in self._dist_context._dist_tensors_for_program.items():
+                print(item)
+            print("op *****************"*3)
+            for key, item in self._dist_context._dist_ops_for_program.items():
+                print(item)
+        else:
+            print("============" * 3)
+            print("Annotation completion")
+            # Annotation completion
+            completed_main_program = complete_annotation(main_program,
+                                                        self._dist_context)
+
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)

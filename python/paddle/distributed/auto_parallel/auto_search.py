@@ -35,7 +35,7 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import reshard
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 #from paddle.distributed.auto_parallel.completion import update_op_dims_mapping_by_elementwise_like_dist_impl
 #from paddle.distributed.auto_parallel.completion import update_op_dims_mapping_by_default_dist_impl
@@ -319,6 +319,10 @@ def check_op_dims_mapping(op, op_dist_attr, vars):
         if not check_dims_mapping(process_mesh.topology, vars[var_name].shape,
                                   dims_mapping):
             return False
+        if vars[var_name].is_data and len(dims_mapping) > 1:
+            for dim in dims_mapping[1:]:
+                if dim != -1: 
+                    return False
 
     for var_name in op.output_arg_names:
         dims_mapping = op_dist_attr.get_output_dims_mapping(var_name)
@@ -398,17 +402,17 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
                         break
                 if valid:
                     # to ensure the op dist attr different and valid
-                    if check_op_dims_mapping(op, op_dist_attr, vars):
+                    if check_op_dims_mapping(op, dist_op.dist_attr, vars):
                         _ = []
                         for var_name in op.input_arg_names:
                             _.append(
-                                op_dist_attr.get_input_dims_mapping(var_name))
+                                dist_op.dist_attr.get_input_dims_mapping(var_name))
                         for var_name in op.output_arg_names:
                             _.append(
-                                op_dist_attr.get_output_dims_mapping(var_name))
+                                dist_op.dist_attr.get_output_dims_mapping(var_name))
                         if _ not in elementwise_op_dist_attr_list:
-                            op_dist_attr.impl_idx = -1
-                            valid_op_dist_attr_list.append(op_dist_attr)
+                            dist_op.dist_attr.impl_idx = -1
+                            valid_op_dist_attr_list.append(dist_op.dist_attr)
                             elementwise_op_dist_attr_list.append(_)
                 continue
             else:
@@ -422,17 +426,17 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
                         valid = False
                         break
                 if valid:
-                    if check_op_dims_mapping(op, op_dist_attr, vars):
+                    if check_op_dims_mapping(op, dist_op.dist_attr, vars):
                         _ = []
                         for var_name in op.input_arg_names:
                             _.append(
-                                op_dist_attr.get_input_dims_mapping(var_name))
+                                dist_op.dist_attr.get_input_dims_mapping(var_name))
                         for var_name in op.output_arg_names:
                             _.append(
-                                op_dist_attr.get_output_dims_mapping(var_name))
+                                dist_op.dist_attr.get_output_dims_mapping(var_name))
                         if _ not in default_op_dist_attr_list:
-                            op_dist_attr.impl_idx = -2
-                            valid_op_dist_attr_list.append(op_dist_attr)
+                            dist_op.dist_attr.impl_idx = -2
+                            valid_op_dist_attr_list.append(dist_op.dist_attr)
                             default_op_dist_attr_list.append(_)
                 continue
 
@@ -440,9 +444,15 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
         impls = dist_op_impl_container.get_impls()
         for idx, impl in enumerate(impls):
             if impl.is_compatible(dist_op):
-                if check_op_dims_mapping(op, op_dist_attr, vars):
-                    op_dist_attr.impl_idx = idx
-                    valid_op_dist_attr_list.append(op_dist_attr)
+                if check_op_dims_mapping(op, dist_op.dist_attr, vars):
+                    dist_op.dist_attr.impl_idx = idx
+                    valid_op_dist_attr_list.append(dist_op.dist_attr)
+
+        if op.type == "matmul_v2":
+            print("auto_search matmul_v2 *************************")
+            for i in valid_op_dist_attr_list:
+                print(i)
+
     return valid_op_dist_attr_list
 
 
@@ -457,8 +467,16 @@ def enumerate_ops_valid_dist_attr(program,
     ops = program.global_block().ops
     processes = reduce(lambda x, y: x * y, process_mesh_topology)
     process_mesh_global_group = [i for i in range(processes)]
-    global_process_mesh = auto.ProcessMesh(mesh=np.array(
-        process_mesh_global_group).reshape(process_mesh_topology).tolist())
+    # global_process_mesh = auto.ProcessMesh(mesh=np.array(
+    #     process_mesh_global_group).reshape(process_mesh_topology).tolist())
+    if len(process_mesh_topology) > 1:
+        global_process_mesh = auto.ProcessMesh(mesh=
+            np.array(process_mesh_global_group).reshape(process_mesh_topology).tolist())  
+    else:
+        global_process_mesh =  auto.ProcessMesh(mesh=process_mesh_global_group) 
+    print("global_process_mesh************************")
+    print(global_process_mesh)
+    
     pipeline_process_mesh_list = None
     if pipeline_mode:
         pipeline_stages = process_mesh_topology[-1]
@@ -492,6 +510,7 @@ def mcmc_search_strategy(program,
     ops = program.global_block().ops
     vars = program.global_block().vars
     new_dist_context = copy.deepcopy(dist_context)
+    new_dist_context._dist_op_context = DistributedOperatorContext()
     new_op_valid_dist_attr_dict = None
     random_selected_op_idx = np.random.randint(len(ops))
     selected_op = ops[random_selected_op_idx]
@@ -636,20 +655,28 @@ def mcmc_search_strategy(program,
                                                       selected_op_dist_attr)
         for var_name in selected_op.output_arg_names:
             process_mesh = selected_op_dist_attr.process_mesh
-            new_dist_context.get_tensor_dist_attr_for_program(vars[
-                var_name]).process_mesh = process_mesh
-            dims_mapping = selected_op_dist_attr.get_output_dims_mapping(
-                var_name)
-            new_dist_context.get_tensor_dist_attr_for_program(vars[
-                var_name]).dims_mapping = dims_mapping
+            tensor_dist_attr = TensorDistributedAttribute()
+            tensor_dist_attr.process_mesh = process_mesh
+            tensor_dist_attr.dims_mapping = selected_op_dist_attr.get_output_dims_mapping(var_name)
+            new_dist_context.set_tensor_dist_attr_for_program(
+                vars[var_name], tensor_dist_attr)
+            # process_mesh = selected_op_dist_attr.process_mesh
+            # new_dist_context.get_tensor_dist_attr_for_program(vars[
+            #     var_name]).process_mesh = process_mesh
+            # dims_mapping = selected_op_dist_attr.get_output_dims_mapping(
+            #     var_name)
+            # new_dist_context.get_tensor_dist_attr_for_program(vars[
+            #     var_name]).dims_mapping = dims_mapping
+
         for var_name in selected_op.input_arg_names:
-            process_mesh = selected_op_dist_attr.process_mesh
-            new_dist_context.get_tensor_dist_attr_for_program(vars[
-                var_name]).process_mesh = process_mesh
-            dims_mapping = selected_op_dist_attr.get_input_dims_mapping(
-                var_name)
-            new_dist_context.get_tensor_dist_attr_for_program(vars[
-                var_name]).dims_mapping = dims_mapping
+            if vars[var_name].is_parameter:
+                print("mcmc_search ================")
+                print(var_name)
+                process_mesh = selected_op_dist_attr.process_mesh
+                tensor_dist_attr = TensorDistributedAttribute()
+                tensor_dist_attr.process_mesh = process_mesh
+                tensor_dist_attr.dims_mapping = selected_op_dist_attr.get_input_dims_mapping(var_name)
+                new_dist_context.set_tensor_dist_attr_for_program(vars[var_name], tensor_dist_attr)
 
     if new_op_valid_dist_attr_dict is None:
         return op_valid_dist_attr_dict, new_dist_context
@@ -681,7 +708,7 @@ def mcmc(train_program,
     while times < max_search_times:
         times += 1
         new_dist_context = mcmc_search_strategy(
-            train_program, op_valid_dist_attr_dict, init_dist_context,
+            train_program, op_valid_dist_attr_dict, best_dist_context,
             pipeline_process_mesh_list)[1]
         cur_cost = int(
             estimate_searched_strategy_cost(
@@ -694,7 +721,7 @@ def mcmc(train_program,
                 cluster=None).runtime)
         print("cur_cost: ", cur_cost, "min_cost: ", min_cost)
         if (min_cost - cur_cost) > 0:
-            best_dist_context = new_dist_context
+            best_dist_context = copy.deepcopy(new_dist_context)
             min_cost = cur_cost
 
             times = 0
@@ -886,17 +913,19 @@ def init(op_valid_dist_attr_dict, program):
         random_op_dist_attr = np.random.randint(len(op_valid_dist_attr_list))
         init_op_dist_attr = op_valid_dist_attr_list[random_op_dist_attr]
         new_dist_context.set_op_dist_attr_for_program(op, init_op_dist_attr)
+        for var_name in op.input_arg_names:
+            if new_dist_context.get_tensor_dist_attr_for_program(vars[var_name]) is None:
+                tensor_dist_attr = TensorDistributedAttribute()
+                tensor_dist_attr.process_mesh = init_op_dist_attr.process_mesh
+                tensor_dist_attr.dims_mapping = init_op_dist_attr.get_input_dims_mapping(
+                    var_name)
+                new_dist_context.set_tensor_dist_attr_for_program(vars[var_name],
+                                                                tensor_dist_attr)
+
         for var_name in op.output_arg_names:
             tensor_dist_attr = TensorDistributedAttribute()
             tensor_dist_attr.process_mesh = init_op_dist_attr.process_mesh
             tensor_dist_attr.dims_mapping = init_op_dist_attr.get_output_dims_mapping(
-                var_name)
-            new_dist_context.set_tensor_dist_attr_for_program(vars[var_name],
-                                                              tensor_dist_attr)
-        for var_name in op.input_arg_names:
-            tensor_dist_attr = TensorDistributedAttribute()
-            tensor_dist_attr.process_mesh = init_op_dist_attr.process_mesh
-            tensor_dist_attr.dims_mapping = init_op_dist_attr.get_input_dims_mapping(
                 var_name)
             new_dist_context.set_tensor_dist_attr_for_program(vars[var_name],
                                                               tensor_dist_attr)
@@ -937,15 +966,16 @@ def auto_search(serial_main_program,
         optimizer,
         pipeline_process_mesh_list=None,
         cluster=None)
+    best_dist_context._dist_op_context = DistributedOperatorContext()
     return best_dist_context, runtime
 
 
-train_program = paddle.static.Program()
-startup_program = paddle.static.Program()
-loss, train_program, start_program = mlp_forward(train_program, startup_program)
-optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
-best_dist_context, run_time = auto_search(train_program, startup_program, loss,
-                                          optimizer)
-for key, item in best_dist_context._dist_ops_for_program.items():
-    print(item)
-print(run_time)
+# train_program = paddle.static.Program()
+# startup_program = paddle.static.Program()
+# loss, train_program, start_program = mlp_forward(train_program, startup_program)
+# optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
+# best_dist_context, run_time = auto_search(train_program, startup_program, loss,
+#                                           optimizer)
+# for key, item in best_dist_context._dist_ops_for_program.items():
+#     print(item)
+# print(run_time)

@@ -755,7 +755,16 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
                     input_var)
                 assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(
                     input_var.name)
-                ref_dims_mapping = input_var_dist_attr.dims_mapping
+                ref_dims_mapping = None
+                if "@GRAD" in input_name:
+                    ref_dims_mapping = input_var_dist_attr.dims_mapping
+                else:
+                    if forward_op_dist_attr.get_output_dims_mapping(input_name):
+                        ref_dims_mapping = forward_op_dist_attr.get_output_dims_mapping(input_name)
+                    else:
+                        ref_dims_mapping = forward_op_dist_attr.get_input_dims_mapping(input_name)
+
+                # ref_dims_mapping = input_var_dist_attr.dims_mapping
                 assert ref_dims_mapping is not None, "[{}] 's dims mapping is NONE".format(
                     input_var.name)
                 grad_op_dist_attr.set_input_dims_mapping(input_name,

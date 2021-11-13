@@ -227,7 +227,7 @@ class CostModel(object):
                     'send') or op.type.startswith('recv'):
                 is_bwd = False
                 if op.type.startswith('c_') and op.type != "c_sync_calc_stream":
-                    print("op: ", op)
+                    # print("op: ", op)
                     ring_id = op.attr('ring_id')
                     if ring_id not in self.ring2rank:
                         self.ring2rank[ring_id] = set()
@@ -321,8 +321,8 @@ class CostModel(object):
                 sub_prog, self.nodes[sub_idx], self.origin_graph[sub_idx],
                 self.cost_data[0 if self.rank2pp is None else self.rank2pp[
                     sub_idx]], sub_idx)
-            print("sub_prog: ", sub_prog)
-            print("self.nodes[sub_idx]: ", self.nodes[sub_idx])
+            # print("sub_prog: ", sub_prog)
+            # print("self.nodes[sub_idx]: ", self.nodes[sub_idx])
         return self.nodes
 
     def _find_succ_op(self, node_id, sub_idx=0):
@@ -470,22 +470,22 @@ class CostModel(object):
                 runtime_graph[merged_node_id][PRED] = runtime_graph[pred_id][
                     PRED]
                 for i in runtime_graph[pred_id][PRED]:
-                    print("runtime_graph: ", runtime_graph)
-                    print("pred_id: ", pred_id)
-                    print("i: ", i)
+                    # print("runtime_graph: ", runtime_graph)
+                    # print("pred_id: ", pred_id)
+                    # print("i: ", i)
 
                     runtime_graph[i][SUCC].remove(pred_id)
                     runtime_graph[i][SUCC].append(merged_node_id)
 
                 for i in edges[SUCC]:
-                    print("i: ", i)
-                    print("runtime_graph: ", runtime_graph)
+                    # print("i: ", i)
+                    # print("runtime_graph: ", runtime_graph)
                     runtime_graph[i][PRED].remove(node_id)
                     runtime_graph[i][PRED].append(merged_node_id)
                 if succ is not None:
                     for i in succ:
-                        print("i: ", i)
-                        print("runtime_graph: ", runtime_graph)
+                        # print("i: ", i)
+                        # print("runtime_graph: ", runtime_graph)
                         runtime_graph[i][PRED].remove(pred_id)
                         runtime_graph[i][PRED].append(merged_node_id)
 
@@ -499,7 +499,7 @@ class CostModel(object):
     def _merge_branch(self, nodes, runtime_graph, is_bwd=False):
         reduct_cnt = 0
         rt_nodes_id = list(runtime_graph.keys())
-        print("rt_nodes_id: ", rt_nodes_id)
+        # print("rt_nodes_id: ", rt_nodes_id)
         for node_id in rt_nodes_id:
             node = nodes[node_id]
             if not is_bwd == node.is_bwd or node.is_optim:
@@ -517,7 +517,7 @@ class CostModel(object):
                         if succ_id in tmp:
                             succ_to_elim.append(succ_id)
                             break
-                print("succ_to_elim: ", succ_to_elim)
+                # print("succ_to_elim: ", succ_to_elim)
                 for id in succ_to_elim:
                     edges[SUCC].remove(id)
                     runtime_graph[id][PRED].remove(node_id)
@@ -547,7 +547,7 @@ class CostModel(object):
                     runtime_graph[end_node_id][PRED] = [merged_node_id]
                     runtime_graph[node_id][SUCC] = [merged_node_id]
 
-                    print("merge_nodes_id: ", succ_nodes_id)
+                    # print("merge_nodes_id: ", succ_nodes_id)
                     for i in succ_nodes_id:
 
                         runtime_graph.pop(i)

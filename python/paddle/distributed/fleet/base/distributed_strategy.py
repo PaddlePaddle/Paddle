@@ -1632,6 +1632,33 @@ class DistributedStrategy(object):
             print("WARNING: semi-auto should have value of bool type")
 
     @property
+    def auto_search(self):
+        """
+        Indicating whether we are using auto-search parallel function
+        For details, please reference the following code example
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+
+            strategy = fleet.DistributedStrategy()
+            strategy.auto_search = True
+        """
+        return self.strategy.auto_search
+
+    @auto_search.setter
+    def auto_search(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.auto_search = flag
+        else:
+            print("WARNING: auto-search should have value of bool type")
+
+    @property
     def cudnn_exhaustive_search(self):
         """
         Indicating whether to use exhaustive search method to choose convolution algorithms.
