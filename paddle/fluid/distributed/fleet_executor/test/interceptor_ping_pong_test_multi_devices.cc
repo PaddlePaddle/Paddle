@@ -41,6 +41,7 @@ class PingPongInterceptor : public Interceptor {
       stop.set_message_type(STOP);
       Send(0, stop);
       Send(1, stop);
+      finish_ = true;
       return;
     }
 
@@ -48,8 +49,11 @@ class PingPongInterceptor : public Interceptor {
     Send(msg.src_id(), resp);
   }
 
+  bool IsFinish() { return finish_; }
+
  private:
   int count_{0};
+  bool finish_{false};
 };
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
@@ -66,11 +70,13 @@ TEST(InterceptorTestRemote, RemotePingPong) {
                  "127.0.0.1:7950");
 
     Carrier& carrier = Carrier::Instance();
-    carrier.Init({{1, nullptr}});
-    Interceptor* a = carrier.GetInterceptor(1);
+    Interceptor* a = carrier.SetInterceptor(
+        1, std::make_unique<PingPongInterceptor>(1, nullptr));
 
     InterceptorMessage msg;
     while (!a->Send(0, msg)) {
+    }
+    while (!a.IsFinish()) {
     }
   } else {
     MessageBus& msg_bus = MessageBus::Instance();
@@ -79,11 +85,13 @@ TEST(InterceptorTestRemote, RemotePingPong) {
                  "127.0.0.1:6912");
 
     Carrier& carrier = Carrier::Instance();
-    carrier.Init({{0, nullptr}});
-    Interceptor* a = carrier.GetInterceptor(0);
+    Interceptor* a = carrier.SetInterceptor(
+        0, std::make_unique<PingPongInterceptor>(0, nullptr));
 
     InterceptorMessage msg;
     while (!a->Send(1, msg)) {
+    }
+    while (!a.IsFinish()) {
     }
   }
 }
