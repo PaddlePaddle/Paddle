@@ -655,11 +655,14 @@ def hz_linesearch(state,
         # to succeed. 
         stopped = stopped | stopping_condition(state, phi, c, deriv)
 
-        # Obtains the first interval with opposite slopes
-        a_j, b_j = bracket(state, phi, c, iter_count)
-
+        init = True       
         # Continues if there's line search still active
         while any_active_with_predicates(state.state, ~stopped):
+            # Brackets to find the first interval with opposite slopes
+            if init:
+                a_j, b_j = bracket(state, phi, c, iter_count)
+            else:
+                init = False
             # Applies secant2 to the located opposite slope interval
             a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
 

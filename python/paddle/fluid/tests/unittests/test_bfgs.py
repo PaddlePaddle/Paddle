@@ -197,31 +197,31 @@ s = np.array([-0.5, -0.5])
 
 # scales = paddle.square(paddle.rand(shape, dtype=dtype))
 
-# TF results as reference
-center_tf = tf.convert_to_tensor(center)
-x0_tf = tf.convert_to_tensor(x0)
-s_tf = tf.convert_to_tensor(s)
+# # TF results as reference
+# center_tf = tf.convert_to_tensor(center)
+# x0_tf = tf.convert_to_tensor(x0)
+# s_tf = tf.convert_to_tensor(s)
 
-def f_tf(x):
-    return tf.reduce_sum(tf.square(x - center_tf), axis=-1)
+# def f_tf(x):
+#     return tf.reduce_sum(tf.square(x - center_tf), axis=-1)
 
-with tf.GradientTape() as tape:
-    tape.watch(x0_tf)
-    y = f_tf(x0_tf)
+# with tf.GradientTape() as tape:
+#     tape.watch(x0_tf)
+#     y = f_tf(x0_tf)
 
-g0_tf = tape.gradient(y, x0_tf)
+# g0_tf = tape.gradient(y, x0_tf)
 
-x1_tf = x0_tf + s_tf
-with tf.GradientTape() as tape:
-    tape.watch(x1_tf)
-    y = f_tf(x1_tf)
+# x1_tf = x0_tf + s_tf
+# with tf.GradientTape() as tape:
+#     tape.watch(x1_tf)
+#     y = f_tf(x1_tf)
 
-g1_tf = tape.gradient(y, x1_tf)
+# g1_tf = tape.gradient(y, x1_tf)
 
-y_tf = g1_tf - g0_tf
-h0_tf = tf.linalg.inv(tf.linalg.diag(g0_tf))
-normalization_factor = tf.tensordot(s_tf, y_tf, 1)
-h1_tf = tf_inv_hessian_update(y_tf, s_tf, normalization_factor, h0_tf)
+# y_tf = g1_tf - g0_tf
+# h0_tf = tf.linalg.inv(tf.linalg.diag(g0_tf))
+# normalization_factor = tf.tensordot(s_tf, y_tf, 1)
+# h1_tf = tf_inv_hessian_update(y_tf, s_tf, normalization_factor, h0_tf)
 
 # Applies the proper update rules.
 center_pp = paddle.to_tensor(center)
