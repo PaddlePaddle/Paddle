@@ -32,23 +32,22 @@ void MessageBus::Init(
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
 
-  listen_port_thread_ = std::thread([this]() {
-    VLOG(3) << "Start listen_port_thread_ for message bus";
-    ListenPort();
-  });
+  ListenPort();
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { MessageBus::Instance().Release(); });
   });
 }
 
+bool MessageBus::IsInit() const { return is_init_; }
+
 void MessageBus::Release() {
+  VLOG(3) << "Message bus releases resource.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   server_.Stop(1000);
   server_.Join();
 #endif
-  listen_port_thread_.join();
 }
 
 bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
@@ -86,6 +85,10 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
 }
 
 void MessageBus::ListenPort() {
+  if (addr_ == "") {
+    VLOG(3) << "No need listen to port since training on single card.";
+    return;
+  }
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
@@ -122,6 +125,10 @@ bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
       dst_rank, interceptor_id_to_rank_.end(),
       platform::errors::NotFound(
           "Cannot find rank for dst interceptor id %lld. Init error.", dst_id));
+  if (addr_ == "") {
+    // single card training, must be same rank
+    return true;
+  }
   const auto& src_ip = rank_to_addr_.find(src_rank->second);
   PADDLE_ENFORCE_NE(src_ip, rank_to_addr_.end(),
                     platform::errors::NotFound(
@@ -181,11 +188,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
 
 bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
-  std::shared_ptr<Carrier> carrier = FleetExecutor::GetCarrier();
-  if (carrier != nullptr) {
-    return carrier->EnqueueInterceptorMessage(interceptor_message);
-  }
-  return true;
+  return Carrier::Instance().EnqueueInterceptorMessage(interceptor_message);
 }
 
 }  // namespace distributed
