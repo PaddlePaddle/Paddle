@@ -34,10 +34,11 @@ TEST(DEV_API, mean) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::DenseTensorShape(framework::make_ddim({3, 4}),
+                                                   pten::DataLayout::NCHW)));
   auto* dense_x_data = dense_x.mutable_data<float>();
 
   float sum = 0.0;
@@ -55,8 +56,8 @@ TEST(DEV_API, mean) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
   ASSERT_EQ(out.numel(), 1);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.data_type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = sum / 12;
   auto actual_result = out.data<float>()[0];

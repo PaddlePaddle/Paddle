@@ -23,14 +23,15 @@ DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta) {
 
 DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta) {
   const auto& out_dims = paddle::framework::make_ddim({1});
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype,
+                              DenseTensorShape(out_dims, x_meta.shape.layout));
   return return_meta;
 }
 
 DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
                                   int start_axis,
                                   int stop_axis) {
-  auto& x_dims = x_meta.dims;
+  auto& x_dims = x_meta.shape.dims;
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
     start_axis = start_axis + in_dims_size;
@@ -63,12 +64,13 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
     out_shape.push_back(x_dims[i]);
   }
   const auto& out_dims = paddle::framework::make_ddim(out_shape);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype,
+                              DenseTensorShape(out_dims, x_meta.shape.layout));
 
-  if (x_dims[0] == return_meta.dims[0]) {
+  if (x_dims[0] == return_meta.shape.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
-    return_meta.lod = x_meta.lod;
+    return_meta.shape.lod = x_meta.shape.lod;
   }
 
   return return_meta;
@@ -77,9 +79,10 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
 DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
                                    DataType dtype,
                                    DataLayout layout) {
-  return {dtype == DataType::UNDEFINED ? x_meta.type : dtype,
-          x_meta.dims,
-          layout == DataLayout::UNDEFINED ? x_meta.layout : layout};
+  return {dtype == DataType::UNDEFINED ? x_meta.dtype : dtype,
+          DenseTensorShape(
+              x_meta.shape.dims,
+              layout == DataLayout::UNDEFINED ? x_meta.shape.layout : layout)};
 }
 
 }  // namespace pten

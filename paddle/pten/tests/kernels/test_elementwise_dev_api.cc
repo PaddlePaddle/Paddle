@@ -34,16 +34,19 @@ TEST(DEV_API, elementwise_add) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc,
+      pten::DenseTensorMeta(
+          pten::DataType::FLOAT32,
+          pten::DenseTensorShape(framework::make_ddim({3, 10}),
+                                 pten::DataLayout::NCHW)));
   auto* dense_x_data = dense_x.mutable_data<float>();
 
-  pten::DenseTensor dense_y(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::DenseTensorShape(framework::make_ddim({10}),
+                                                   pten::DataLayout::NCHW)));
   auto* dense_y_data = dense_y.mutable_data<float>();
 
   float sum[3][10] = {0.0};
@@ -71,8 +74,8 @@ TEST(DEV_API, elementwise_add) {
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
-  ASSERT_EQ(dense_out.meta().type, pten::DataType::FLOAT32);
-  ASSERT_EQ(dense_out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out.data_type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(dense_out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = sum;
   auto actual_result0 = dense_out.data<float>()[0];

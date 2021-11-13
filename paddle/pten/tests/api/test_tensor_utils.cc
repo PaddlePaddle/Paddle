@@ -26,13 +26,14 @@ using DataLayout = paddle::experimental::DataLayout;
 
 using DenseTensor = pten::DenseTensor;
 using DenseTensorMeta = pten::DenseTensorMeta;
+using DenseTensorShape = pten::DenseTensorShape;
 
 TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   const DDim dims({2, 1});
   const DataType dtype{DataType::FLOAT32};
   const DataLayout layout{DataLayout::NCHW};
   const std::vector<std::vector<size_t>> lod{{0, 2}};
-  DenseTensorMeta meta(dtype, dims, layout, lod);
+  DenseTensorMeta meta(dtype, DenseTensorShape(dims, layout, lod));
 
   auto alloc = std::make_shared<DefaultAllocator>(platform::CPUPlace());
 
@@ -44,8 +45,8 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   framework::LoDTensor lod_tensor;
   MovesStorage(&dense_tensor, &lod_tensor);
 
-  CHECK(dense_tensor.lod().size() == lod_tensor.lod().size());
-  CHECK(dense_tensor.lod()[0] ==
+  CHECK(dense_tensor.shape().lod.size() == lod_tensor.lod().size());
+  CHECK(dense_tensor.shape().lod[0] ==
         static_cast<std::vector<size_t>>((lod_tensor.lod()[0])));
   CHECK(dense_tensor.data_type() ==
         pten::TransToPtenDataType(lod_tensor.type()));
@@ -60,8 +61,8 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   CHECK(dense_tensor_1->dims() == dims);
   CHECK(dense_tensor_1->data_type() == dtype);
   CHECK(dense_tensor_1->layout() == layout);
-  CHECK(dense_tensor_1->lod().size() == lod.size());
-  CHECK(dense_tensor_1->lod()[0] == lod[0]);
+  CHECK(dense_tensor_1->shape().lod.size() == lod.size());
+  CHECK(dense_tensor_1->shape().lod[0] == lod[0]);
   const float* data_1 = dense_tensor_1->data<float>();
   CHECK(data_1[0] == 1.0f);
   CHECK(data_1[1] == 2.1f);
@@ -71,7 +72,7 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   const DDim dims({2, 1});
   const DataType dtype{DataType::FLOAT32};
   const DataLayout layout{DataLayout::NCHW};
-  DenseTensorMeta meta(dtype, dims, layout);
+  DenseTensorMeta meta(dtype, DenseTensorShape(dims, layout));
 
   auto alloc = std::make_shared<DefaultAllocator>(platform::CPUPlace());
 

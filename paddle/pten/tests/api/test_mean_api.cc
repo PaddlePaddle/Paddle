@@ -38,8 +38,8 @@ TEST(API, mean) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc,
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 4}),
-                            pten::DataLayout::NCHW));
+                            pten::DenseTensorShape(framework::make_ddim({3, 4}),
+                                                   pten::DataLayout::NCHW)));
   auto* dense_x_data = dense_x->mutable_data<float>();
 
   float sum = 0.0;

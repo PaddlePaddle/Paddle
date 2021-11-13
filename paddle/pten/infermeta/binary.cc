@@ -20,7 +20,7 @@ namespace pten {
 
 DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
                               const DenseTensorMeta& y_meta) {
-  auto x_dims = x_meta.dims;
+  auto x_dims = x_meta.shape.dims;
   auto x_rank = static_cast<size_t>(x_dims.size());
   PADDLE_ENFORCE_EQ(true,
                     1 == x_rank || 2 == x_rank,
@@ -29,7 +29,7 @@ DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
                         "should be 1 or 2",
                         x_dims.to_str()));
 
-  auto y_dims = y_meta.dims;
+  auto y_dims = y_meta.shape.dims;
   PADDLE_ENFORCE_EQ(
       true,
       x_rank == (size_t)y_dims.size(),
@@ -56,7 +56,8 @@ DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
                         y_dims.to_str()));
 
   x_dims[x_dims.size() - 1] = 1;
-  DenseTensorMeta return_meta(x_meta.type, x_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype,
+                              DenseTensorShape(x_dims, x_meta.shape.layout));
   return return_meta;
 }
 
@@ -64,8 +65,8 @@ DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
                                  const DenseTensorMeta& y_meta,
                                  bool trans_x,
                                  bool trans_y) {
-  std::vector<int64_t> dims_x = paddle::framework::vectorize(x_meta.dims);
-  std::vector<int64_t> dims_y = paddle::framework::vectorize(y_meta.dims);
+  std::vector<int64_t> dims_x = paddle::framework::vectorize(x_meta.shape.dims);
+  std::vector<int64_t> dims_y = paddle::framework::vectorize(y_meta.shape.dims);
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
@@ -127,16 +128,17 @@ DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
 
   auto ddim_out = paddle::framework::make_ddim(new_dims);
 
-  return {x_meta.type, ddim_out, x_meta.layout};
+  return {x_meta.dtype, DenseTensorShape(ddim_out, x_meta.shape.layout)};
 }
 
 DenseTensorMeta ElementwiseInferShape(const DenseTensorMeta& x_meta,
                                       const DenseTensorMeta& y_meta,
                                       int axis) {
-  DenseTensorMeta return_meta(x_meta.type, x_meta.dims, x_meta.layout);
-  if (x_meta.dims != y_meta.dims) {
-    auto x_dims = x_meta.dims;
-    auto y_dims = y_meta.dims;
+  DenseTensorMeta return_meta(
+      x_meta.dtype, DenseTensorShape(x_meta.shape.dims, x_meta.shape.layout));
+  if (x_meta.shape.dims != y_meta.shape.dims) {
+    auto x_dims = x_meta.shape.dims;
+    auto y_dims = y_meta.shape.dims;
     int max_dim = std::max(x_dims.size(), y_dims.size());
     if (x_dims.size() == y_dims.size()) {
       PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
@@ -169,9 +171,9 @@ DenseTensorMeta ElementwiseInferShape(const DenseTensorMeta& x_meta,
                                     out_dims_array.data(),
                                     max_dim,
                                     axis);
-    return_meta.dims = paddle::framework::make_ddim(out_dims_array);
+    return_meta.shape.dims = paddle::framework::make_ddim(out_dims_array);
   }
-  return_meta.lod = x_meta.lod;
+  return_meta.shape.lod = x_meta.shape.lod;
   return return_meta;
 }
 

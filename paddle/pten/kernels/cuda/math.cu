@@ -81,10 +81,11 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
       dev_ctx.GetPlace());
   pten::DenseTensor tmp(
       alloc,
-      DenseTensorMeta(x.data_type(),
-                      paddle::framework::make_ddim(
-                          {static_cast<int64_t>(temp_storage_bytes)}),
-                      x.layout()));
+      DenseTensorMeta(
+          x.data_type(),
+          DenseTensorShape(paddle::framework::make_ddim(
+                               {static_cast<int64_t>(temp_storage_bytes)}),
+                           x.layout())));
   void* temp_storage = tmp.mutable_data<T>();
   err = cub::DeviceReduce::Sum(static_cast<uint8_t*>(temp_storage),
                                temp_storage_bytes,

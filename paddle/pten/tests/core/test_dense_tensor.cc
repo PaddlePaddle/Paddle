@@ -64,12 +64,12 @@ TEST(dense_tensor, meta) {
   CHECK(!meta_0.valid());
 
   DenseTensorMeta meta_1(dtype, shape);
-  CHECK(meta_1.type == dtype);
+  CHECK(meta_1.dtype == dtype);
   CHECK(meta_1.shape == shape);
   CHECK(meta_1.valid());
 
   DenseTensorMeta meta_2(dtype, std::move(shape));
-  CHECK(meta_2.type == dtype);
+  CHECK(meta_2.dtype == dtype);
   CHECK(meta_2.shape == shape_1);
   CHECK(meta_2.valid());
 
@@ -99,7 +99,7 @@ TEST(dense_tensor, ctor) {
     bool r{true};
     r = r && (t.numel() == product(m.shape.dims));
     r = r && (t.dims() == m.shape.dims);
-    r = r && (t.data_type() == m.type);
+    r = r && (t.data_type() == m.dtype);
     r = r && (t.layout() == m.shape.layout);
     r = r && (t.place() == paddle::platform::CPUPlace());
     r = r && t.initialized();

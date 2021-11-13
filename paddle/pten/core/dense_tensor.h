@@ -84,7 +84,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType data_type() const noexcept { return meta_.type; }
+  DataType data_type() const noexcept { return meta_.dtype; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.

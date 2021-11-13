@@ -40,14 +40,16 @@ void FlattenWithXShape(const CPUContext& dev_ctx,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  const auto& in_dims = x.meta().dims;
+  const auto& in_dims = x.dims();
   std::vector<int64_t> xshape_dims(in_dims.size() + 1);
   xshape_dims[0] = 0;
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
   xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->set_lod(x.lod());
+  auto shape = xshape->shape();
+  shape.lod = shape.lod;
+  xshape->set_shape(shape);
 }
 
 }  // namespace pten

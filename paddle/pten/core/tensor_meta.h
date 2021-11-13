@@ -31,8 +31,11 @@ namespace pten {
 using DDim = paddle::framework::DDim;
 using LoD = std::vector<std::vector<size_t>>;
 
+/// \brief The shape data of dense tensor. Together with the data type
+/// information, it determines how the underlying storage area should
+/// be read. Take the structure type and use all default operations.
+
 struct DenseTensorShape {
-  using DataType = paddle::experimental::DataType;
   using DataLayout = paddle::experimental::DataLayout;
 
   DenseTensorShape() = default;
@@ -42,6 +45,8 @@ struct DenseTensorShape {
                    DataLayout layout,
                    const std::vector<std::vector<size_t>>& lod);
 
+  /// \brief Test whether the shape is valid. Does not throw exceptions.
+  /// \return Whether the shape is valid.
   bool valid() const noexcept;
 
   DDim dims{std::initializer_list<int64_t>{}};
@@ -77,8 +82,10 @@ inline bool operator==(const DenseTensorShape& lhs,
 
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
-///
+
 struct DenseTensorMeta {
+  using DataType = paddle::experimental::DataType;
+
   DenseTensorMeta() = default;
   DenseTensorMeta(DataType type, const DenseTensorShape& shape);
   DenseTensorMeta(DataType type, DenseTensorShape&& shape);
@@ -87,29 +94,27 @@ struct DenseTensorMeta {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  /// During the entire life cycle of a DenseTensor, the following attributes
-  /// marked with `const` are expected to remain unchanged.
-  DataType type{DataType::UNDEFINED};
+  DataType dtype{DataType::UNDEFINED};
   DenseTensorShape shape;
 };
 
 inline DenseTensorMeta::DenseTensorMeta(DataType type,
                                         const DenseTensorShape& shape)
-    : type(type), shape(shape) {}
+    : dtype(type), shape(shape) {}
 
 inline DenseTensorMeta::DenseTensorMeta(DataType type, DenseTensorShape&& shape)
-    : type(type), shape(std::move(shape)) {}
+    : dtype(type), shape(std::move(shape)) {}
 
 inline bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
-  valid = valid && (type != DataType::UNDEFINED);
+  valid = valid && (dtype != DataType::UNDEFINED);
   valid = valid && (shape.valid());
   return valid;
 }
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   bool ret = true;
-  return ret && (lhs.type == rhs.type) && (lhs.shape == rhs.shape);
+  return ret && (lhs.dtype == rhs.dtype) && (lhs.shape == rhs.shape);
 }
 
 }  // namespace pten

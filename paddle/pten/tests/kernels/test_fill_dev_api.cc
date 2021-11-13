@@ -34,10 +34,11 @@ TEST(DEV_API, fill_any_like) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 2}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc,
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::DenseTensorShape(framework::make_ddim({3, 2}),
+                                                   pten::DataLayout::NCHW)));
   auto* dense_x_data = dense_x.mutable_data<float>();
   dense_x_data[0] = 0;
   float val = 1.0;
@@ -56,8 +57,8 @@ TEST(DEV_API, fill_any_like) {
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.data_type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
 
   auto* actual_result = out.data<float>();
   for (auto i = 0; i < 6; i++) {

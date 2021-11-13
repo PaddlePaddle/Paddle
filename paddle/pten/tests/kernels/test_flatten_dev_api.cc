@@ -36,9 +36,10 @@ TEST(DEV_API, flatten) {
       paddle::platform::CPUPlace());
   pten::DenseTensor dense_x(
       alloc,
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2, 2, 3}),
-                            pten::DataLayout::NCHW));
+      pten::DenseTensorMeta(
+          pten::DataType::FLOAT32,
+          pten::DenseTensorShape(framework::make_ddim({3, 2, 2, 3}),
+                                 pten::DataLayout::NCHW)));
   auto* dense_x_data = dense_x.mutable_data<float>();
 
   for (int i = 0; i < dense_x.numel(); i++) {
@@ -62,8 +63,8 @@ TEST(DEV_API, flatten) {
   ASSERT_EQ(out.dims()[1], expect_shape[1]);
   ASSERT_EQ(out.dims()[2], expect_shape[2]);
   ASSERT_EQ(out.numel(), 36);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.data_type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
 
   bool value_equal = true;
   auto* dense_out_data = out.data<float>();
