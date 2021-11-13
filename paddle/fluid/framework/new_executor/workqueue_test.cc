@@ -83,6 +83,8 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   events_waiter.WaitEvent();
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
+  // Cancel
+  work_queue->Cancel();
 }
 
 TEST(WorkQueue, TestWorkQueueGroup) {
@@ -119,7 +121,9 @@ TEST(WorkQueue, TestWorkQueueGroup) {
       ++counter;
     }
   });
-  //  WaitQueueGroupEmpty()
+  // WaitQueueGroupEmpty
   events_waiter.WaitEvent();
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum + kLoopNum);
+  // Cancel
+  queue_group->Cancel();
 }

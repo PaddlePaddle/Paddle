@@ -29,19 +29,17 @@ from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
-from paddle.distributed.auto_parallel.context import DistributedContext
-from paddle.distributed.auto_parallel.context import set_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import _get_comm_group
-from paddle.distributed.auto_parallel.process import new_process_group
+from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
-ROOT_MESH = auto.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]])
 
 
 def get_programs(annotated_func):
@@ -49,7 +47,7 @@ def get_programs(annotated_func):
     start_program = static.Program()
     dist_context = DistributedContext()
     global _global_process_mesh
-    dist_context.set_process_mesh(_global_process_mesh)
+    dist_context.process_mesh = _global_process_mesh
     train_program, start_program = annotated_func(train_program, start_program)
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
@@ -95,9 +93,8 @@ def initialization_check(mode, dist_context, dist_startup_prog,
                          serial_startup_prog, var_need_broadcast, process_mesh,
                          mp_parallel_axis, dp_parallel_axis):
     if 'mp' in mode:
-        group_ranks = _get_comm_group(process_mesh.process_group,
-                                      process_mesh.topology, mp_parallel_axis,
-                                      3)
+        group_ranks = _get_comm_group(
+            process_mesh.processes, process_mesh.topology, mp_parallel_axis, 3)
         mp_ring_id = new_process_group(group_ranks).id
         broadcast_ops = [
             op for op in dist_startup_prog.global_block().ops
@@ -110,9 +107,8 @@ def initialization_check(mode, dist_context, dist_startup_prog,
             return False
 
     if 'dp' in mode:
-        group_ranks = _get_comm_group(process_mesh.process_group,
-                                      process_mesh.topology, dp_parallel_axis,
-                                      3)
+        group_ranks = _get_comm_group(
+            process_mesh.processes, process_mesh.topology, dp_parallel_axis, 3)
         dp_ring_id = new_process_group(group_ranks).id
         nparam = len(serial_startup_prog.all_parameters())
         nbroadcast_dp = len([
@@ -137,22 +133,21 @@ def initialization_check(mode, dist_context, dist_startup_prog,
 def get_input_var_dist_attr(op, main_program, dist_context):
     varname = op.desc.input_arg_names()
     var = main_program.global_block().var(varname[0])
-    dist_attr = dist_context.get_tensor_distributed_attr_for_program(var)
+    dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
     return dist_attr
 
 
 def get_output_var_dist_attr(op, main_program, dist_context):
     varname = op.desc.output_arg_names()
     var = main_program.global_block().var(varname[0])
-    dist_attr = dist_context.get_tensor_distributed_attr_for_program(var)
+    dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
     return dist_attr
 
 
 def check_equal_var_dist_attr(serial_dist_attr, dist_attr):
     equal = True
-    if serial_dist_attr.get_process_mesh() != dist_attr.get_process_mesh() or \
-        serial_dist_attr.is_parameter() != dist_attr.is_parameter() or \
-        serial_dist_attr.get_dims_mapping() != dist_attr.get_dims_mapping():
+    if serial_dist_attr.process_mesh != dist_attr.process_mesh or \
+        serial_dist_attr.dims_mapping != dist_attr.dims_mapping:
         equal = False
     return equal
 
@@ -161,36 +156,33 @@ def check_equal_dist_op_attr(dist_context, dist_main_prog, serial_op, dist_ops,
                              dist_op_idx):
     equal = True
     # get serial op's process_mesh and impl_idx
-    serial_op_dist_attr = dist_context.get_op_distributed_attr_for_program(
-        serial_op)
-    serial_process_mesh = serial_op_dist_attr.get_process_mesh()
-    serial_impl_idx = serial_op_dist_attr.get_impl_idx()
+    serial_op_dist_attr = dist_context.get_op_dist_attr_for_program(serial_op)
+    serial_process_mesh = serial_op_dist_attr.process_mesh
+    serial_impl_idx = serial_op_dist_attr.impl_idx
 
     # check dist_attr between serial op and dist op
     for i in dist_op_idx:
-        op_dist_attr = dist_context.get_op_distributed_attr_for_program(
-            dist_ops[i])
+        op_dist_attr = dist_context.get_op_dist_attr_for_program(dist_ops[i])
         for in_varname in dist_ops[i].desc.input_arg_names():
             in_var = dist_main_prog.global_block().var(in_varname)
-            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                 in_var)
-            tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
+            tensor_dims_mapping = tensor_dist_attr.dims_mapping
             in_var_dims_mapping = op_dist_attr.get_input_dims_mapping(
                 in_varname)
             if tensor_dims_mapping != in_var_dims_mapping:
                 equal = False
         for out_varname in dist_ops[i].desc.output_arg_names():
             out_var = dist_main_prog.global_block().var(out_varname)
-            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                 out_var)
-            tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
+            tensor_dims_mapping = tensor_dist_attr.dims_mapping
             out_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
                 out_varname)
             if tensor_dims_mapping != out_var_dims_mapping:
                 equal = False
-
-        dist_op_process_mesh = op_dist_attr.get_process_mesh()
-        dist_op_impl_idx = op_dist_attr.get_impl_idx()
+        dist_op_process_mesh = op_dist_attr.process_mesh
+        dist_op_impl_idx = op_dist_attr.impl_idx
         if serial_op.desc.id() == dist_ops[i].desc.id() or \
             serial_process_mesh != dist_op_process_mesh or \
             serial_impl_idx != dist_op_impl_idx:
@@ -242,13 +234,13 @@ def distributed_attr_check_for_program(dist_main_prog, dist_context):
     have_dist_attr = True
     for block in dist_main_prog.blocks:
         for tensor in block.vars.values():
-            var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                 tensor)
             if var_dist_attr is None:
                 have_dist_attr = False
 
         for op in block.ops:
-            op_dist_attr = dist_context.get_op_distributed_attr_for_program(op)
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
             if op_dist_attr is None:
                 have_dist_attr = False
 
@@ -278,21 +270,43 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[0, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
         else:
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh,
-                dim_mapping=[-1, -1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, -1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh,
-                dim_mapping=[-1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, -1]
+                })
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -316,10 +330,18 @@ def mlp_pretrain_forward(train_program, start_program):
 
         if _global_parallel_strategy == "dp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -335,8 +357,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
 
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             mlp_pretrain_forward)
@@ -372,8 +393,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             mlp_pretrain_forward)
 
@@ -437,7 +457,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             mlp_pretrain_forward)
 
@@ -535,10 +555,18 @@ class AttentionLayer(nn.Layer):
     def forward(self, input):
         if _global_parallel_strategy == "dp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
 
         q = self.q_proj(input)
         q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
@@ -549,18 +577,42 @@ class AttentionLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -593,12 +645,18 @@ class AttentionLayer(nn.Layer):
         out = self.out_proj(out)
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[0, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[1, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
 
         return out
 
@@ -630,8 +688,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
 
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             attn_pretrain_forward)
@@ -666,8 +723,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
 
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             attn_pretrain_forward)
@@ -735,7 +791,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             attn_pretrain_forward)
@@ -871,10 +927,18 @@ class DecoderLayer(nn.Layer):
     def forward(self, input_ids, position_ids):
         if _global_parallel_strategy == "dp":
             auto.shard_tensor(
-                input_ids, _global_process_mesh, dim_mapping=[0, -1])
+                input_ids,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                input_ids, _global_process_mesh, dim_mapping=[0, -1])
+                input_ids,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
 
         input_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
@@ -882,13 +946,17 @@ class DecoderLayer(nn.Layer):
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.word_embeddings.weight,
-                _global_process_mesh,
-                dim_mapping=[0, -1])
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.word_embeddings.weight,
-                _global_process_mesh,
-                dim_mapping=[1, -1])
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
 
         embeddings = input_embeddings + position_embeddings
         embeddings = self.dropout1(embeddings)
@@ -906,18 +974,42 @@ class DecoderLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -951,17 +1043,25 @@ class DecoderLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[0, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[1, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
         else:
             auto.shard_tensor(
                 self.out_proj.weight,
-                _global_process_mesh,
-                dim_mapping=[-1, -1])
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, -1]
+                })
 
         # Add residual
         residual = embeddings + self.dropout2(out)
@@ -976,14 +1076,30 @@ class DecoderLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[0, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
 
         # Add residual
         final = residual + self.dropout3(out3)
@@ -1022,7 +1138,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             decoder_pretrain_forward)
 
@@ -1105,7 +1221,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         _global_parallel_strategy = "None"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
         serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
             decoder_pretrain_forward)
 

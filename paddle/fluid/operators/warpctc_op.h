@@ -17,7 +17,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
@@ -152,7 +151,7 @@ class WarpCTCFunctor {
     PADDLE_ENFORCE_EQ(
         CTC_STATUS_SUCCESS, status,
         platform::errors::PreconditionNotMet(
-            "warp-ctc [version %d] Error in ComputeCtcLossFunctor: %s",
+            "warp-ctc [version %d] Error in get_workspace_size: %s",
             warpctc_version_, platform::dynload::ctcGetStatusString(status)));
   }
 
@@ -315,8 +314,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       math::PaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *logits,
-          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */, false,
-          false, math::kLengthBatchWidth);
+          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */,
+          math::kLengthBatchWidth);
     }
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
@@ -351,7 +350,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
             ctx.template device_context<DeviceContext>(), *label,
             &warpctc_label, label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
-            false /*norm_by_times*/, false, false, math::kBatchLengthWidth);
+            false /*norm_by_times*/, math::kBatchLengthWidth);
       } else {
         LoDTensor gpu_label;
         gpu_label.mutable_data<int>(
@@ -361,7 +360,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
             ctx.template device_context<DeviceContext>(), *label, &gpu_label,
             label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
-            false /*norm_by_times*/, false, false, math::kBatchLengthWidth);
+            false /*norm_by_times*/, math::kBatchLengthWidth);
         TensorCopySync(gpu_label, platform::CPUPlace(), &warpctc_label);
       }
     } else {
@@ -390,23 +389,12 @@ template <typename DeviceContext, typename T>
 class WarpCTCGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
     auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
+    const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
-    bool norm_by_batchsize = ctx.Attr<bool>("norm_by_batchsize");
-    bool norm_by_total_logits_len = ctx.Attr<bool>("norm_by_total_logits_len");
-
-    if ((norm_by_times && norm_by_batchsize) ||
-        (norm_by_times && norm_by_total_logits_len) ||
-        (norm_by_batchsize && norm_by_total_logits_len)) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "[warpctc grad] norm_by_times, norm_by_batchsize and "
-          "norm_by_total_logits_len "
-          "should one be true."));
-    }
 
     if (ctx.HasInput("LogitsLength")) {
       int max_seq_length = warpctc_grad->dims()[0];  // Tmax
@@ -430,20 +418,7 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
                       loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
 
       auto* place = ctx.template device_context<DeviceContext>().eigen_device();
-      if (norm_by_total_logits_len) {
-        // Compute the avg. log-probability per batch sample and frame.
-        // Rank is 0
-        auto inv_len = logits_len_e.sum().cast<T>().inverse().eval();
-        logits_grad_e.device(*place) =
-            logits_g *
-            inv_len.reshape(Eigen::DSizes<int, 3>{1, 1, 1})
-                .broadcast(Eigen::DSizes<int, 3>{max_seq_length, num_sequences,
-                                                 seq_width});
-      } else if (norm_by_batchsize) {
-        // Compute the avg. log-probability per batch sample.
-        T scale = 1.0 / static_cast<T>(num_sequences);
-        logits_grad_e.device(*place) = logits_g * scale;
-      } else if (norm_by_times) {
+      if (norm_by_times) {
         auto scales = logits_len_e.cast<T>()
                           .inverse()
                           .reshape(grad_shape)
@@ -456,8 +431,7 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     } else {
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *warpctc_grad,
-          logits_grad, -1, 0, norm_by_times, norm_by_batchsize,
-          norm_by_total_logits_len, math::kLengthBatchWidth);
+          logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
 
       const T* loss_grad_data = loss_grad->data<T>();
       math::ScaleLoDTensorFunctor<DeviceContext, T>()(

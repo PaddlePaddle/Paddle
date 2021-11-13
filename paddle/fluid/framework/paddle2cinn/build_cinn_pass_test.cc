@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <memory>
+#include <string>
 
 #include "gtest/gtest.h"
 
@@ -50,9 +51,10 @@ inline int CountNode(const std::unordered_set<Node*>& nodes,
 
 inline Node* GetNode(const std::unordered_set<Node*>& nodes,
                      const std::string& op_name) {
-  return *std::find_if(
-      nodes.begin(), nodes.end(),
-      [&op_name](const Node* node) { return node->Name() == op_name; });
+  return *std::find_if(nodes.begin(), nodes.end(),
+                       [&op_name](const Node* node) {
+                         return node->Name().find(op_name) != std::string::npos;
+                       });
 }
 
 inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
@@ -185,22 +187,25 @@ std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
   ir::Node* mul = g->CreateOpNode(&mul_op);
   ir::Node* relu = g->CreateOpNode(&relu_op);
 
+  ir::Node* v0 = g->CreateEmptyNode("var0", Node::Type::kVariable);
   ir::Node* v1 = g->CreateVarNode(&var1);
   ir::Node* v2 = g->CreateVarNode(&var2);
   ir::Node* v3 = g->CreateVarNode(&var3);
   ir::Node* v4 = g->CreateVarNode(&var4);
   ir::Node* v5 = g->CreateVarNode(&var5);
   ir::Node* v6 = g->CreateVarNode(&var6);
+  ir::Node* v7 = g->CreateControlDepVar();
 
   // fill op node
-  mul->inputs = {v1, v2};
+  mul->inputs = {v0, v1, v2};
   mul->outputs = {v3};
   add->inputs = {v3, v4};
   add->outputs = {v5};
   relu->inputs = {v5};
-  relu->outputs = {v6};
+  relu->outputs = {v6, v7};
 
   // fill variable node
+  v0->outputs = {mul};
   v1->outputs = {mul};
   v2->outputs = {mul};
 
@@ -213,6 +218,7 @@ std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
   v5->outputs = {relu};
 
   v6->inputs = {relu};
+  v7->inputs = {relu};
 
   return g;
 }
@@ -225,25 +231,28 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   pass->Apply(g.get());
 
   // After search, the graph should as following
-  // v1 --|
-  // v2 --| --> kCinnLaunchOp --> v6
+  // v0 --|
+  // v1 --|                   |--> v6
+  // v2 --| --> kCinnLaunchOp |--> v7
   // v4 --|
   const auto& nodes = g->Nodes();
-  ASSERT_EQ(nodes.size(), static_cast<size_t>(5));
+  ASSERT_EQ(nodes.size(), static_cast<size_t>(7));
   ASSERT_TRUE(CheckGraphIndependence(nodes));
 
   // A new op named kCinnLaunchOp should be added
   ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
   auto* cinn_op = GetNode(nodes, kCinnLaunchOp);
+  auto* v0 = GetNode(nodes, "var0");
   auto* v1 = GetNode(nodes, "var1");
   auto* v2 = GetNode(nodes, "var2");
   auto* v4 = GetNode(nodes, "var4");
   auto* v6 = GetNode(nodes, "var6");
+  auto* v7 = GetNode(nodes, Node::kControlDepVarName);
 
   ASSERT_EQ(
       std::unordered_set<Node*>(cinn_op->inputs.begin(), cinn_op->inputs.end()),
-      std::unordered_set<Node*>({v1, v2, v4}));
-  ASSERT_EQ(cinn_op->outputs, std::vector<Node*>({v6}));
+      std::unordered_set<Node*>({v0, v1, v2, v4}));
+  ASSERT_EQ(cinn_op->outputs, std::vector<Node*>({v6, v7}));
   ASSERT_EQ(v1->outputs, std::vector<Node*>({cinn_op}));
   ASSERT_EQ(v6->inputs, std::vector<Node*>({cinn_op}));
 

@@ -25,7 +25,16 @@ struct StlThreadEnvironment {
   class EnvThread {
    public:
     explicit EnvThread(std::function<void()> f) : thr_(std::move(f)) {}
-    ~EnvThread() { thr_.join(); }
+    void WaitExit() {
+      if (thr_.joinable()) {
+        thr_.join();
+      }
+    }
+    ~EnvThread() {
+      if (thr_.joinable()) {
+        thr_.join();
+      }
+    }
 
    private:
     std::thread thr_;

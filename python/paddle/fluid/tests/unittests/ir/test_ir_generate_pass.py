@@ -33,12 +33,12 @@ def generate_fc_fuse():
                 return ewadd
 
         def replace(x, w, b):
-            fc = ir.PassDesc.OP.fc
-            fc.Attr("in_num_col_dims").ReusePattern(
-                "mul", name="x_num_col_dims")
+            fc = ir.PassDesc.OP.fc(Input=x, W=w, Bias=b)
+            fc.Attr("in_num_col_dims").MappedPattern(
+                op="mul", name="x_num_col_dims")
             if with_relu:
                 fc.SetAttr("activation_type", "relu")
-            return fc(Input=x, W=w, Bias=b)
+            return fc
 
         return pattern, replace
 
@@ -96,8 +96,8 @@ def generate_combine_mul_v1():
 @ir.RegisterPass
 def generate_combine_mul_v2():
     def pattern(x, y1, y2):
-        mul1 = ir.PassDesc.OP.matmul_v2(x, y1)
-        mul2 = ir.PassDesc.OP.matmul_v2(x, y2)
+        mul1 = ir.PassDesc.OP.matmul_v2(X=x, Y=y1)
+        mul2 = ir.PassDesc.OP.matmul_v2(X=x, Y=y2)
         return mul1, mul2
 
     def replace(x, y1, y2):
@@ -126,9 +126,69 @@ def generate_simplify_inference_v2():
         op1 = ir.PassDesc.OP.transpose2
         op2 = ir.PassDesc.OP.transpose2
         # op2.Attr("axis").EQ(op1.Attr("axis"))
-        return op2(X=op1(X=x))
+        return op2(X=op1(X=x).Output("Out")).Output("Out")
 
     return pattern, lambda x: x
+
+
+@ir.RegisterPass
+def generate_layer_norm_fuse_pass():
+    def pattern(x, gamma, beta):
+        gamma.Attr("shape").Size().EQ(1)
+        gamma.Attr("shape")[0].EQ(x.Attr("shape")[-1])
+        beta.Attr("shape").EQ(gamma.Attr("shape"))
+
+        mean1 = ir.PassDesc.OP.reduce_mean(X=x)
+        mean1.SetAttr("dim", [-1])
+        mean1.SetAttr("reduce_all", False)
+        mean1.SetAttr("keep_dim", True)
+        ewsub = ir.PassDesc.OP.elementwise_sub(X=x, Y=mean1)
+        pow = ir.PassDesc.OP.pow(X=ewsub)
+        pow.SetAttr("factor", 2.0)
+        mean2 = ir.PassDesc.OP.reduce_mean(X=pow)
+        mean2.SetAttr("dim", [-1])
+        mean2.SetAttr("reduce_all", False)
+        mean2.SetAttr("keep_dim", True)
+        scale = ir.PassDesc.OP.scale(X=mean2)
+        sqrt = ir.PassDesc.OP.sqrt(X=scale)
+        ewdiv = ir.PassDesc.OP.elementwise_sub(X=ewsub, Y=sqrt)
+        ewmul = ir.PassDesc.OP.elementwise_mul(X=ewdiv, Y=gamma)
+        return ir.PassDesc.OP.elementwise_add(X=ewmul, Y=beta)
+
+    def replace(x, gamma, beta):
+        layer_norm = ir.PassDesc.OP.layer_norm(X=x, Scale=gamma, Bias=beta)
+        layer_norm.SetAttr("begin_norm_axis", x.Attr("shape").Size() - 1)
+        layer_norm.Attr("epsilon").MappedPattern(op="scale", name="bias")
+        layer_norm.SetAttr("is_test", True)
+        return layer_norm.Output("Y")
+
+    return pattern, replace
+
+
+@ir.RegisterPass
+def unimplemented_operand_exception():
+    def pattern(x, y):
+        return ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+
+    def replace(x, y):
+        out = ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+        out.SetAttr("axis", x.Attr("shape") - 1)
+        return out
+
+    return pattern, replace
+
+
+@ir.RegisterPass
+def unimplemented_operation_exception():
+    def pattern(x, y):
+        return ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+
+    def replace(x, y):
+        out = ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+        out.SetAttr("axis", x.Attr("shape").Size() + 1)
+        return out
+
+    return pattern, replace
 
 
 def get_multi_pass_desc_from_str(s):
@@ -151,12 +211,24 @@ class TestGeneratePass(unittest.TestCase):
     def test_has_attr(self):
         self.assertFalse(hasattr(ir.PassDesc.OP, '__name__'))
 
+    def test_exception(self):
+        paddle.enable_static()
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [10, 10], "float32")
+            y = paddle.static.data("y", [10, 10], "float32")
+            paddle.add(x, y)
+        graph = core.Graph(program.desc)
+        with self.assertRaises(NotImplementedError):
+            core.get_pass("unimplemented_operand_exception").apply(graph)
+        with self.assertRaises(NotImplementedError):
+            core.get_pass("unimplemented_operation_exception").apply(graph)
+
     def test_generate_fc_fuse(self):
         def _check_fc_fuse_pass(pass_desc, with_relu):
-            pattern_op_dicts = self.convert_ops_to_op_dicts(
-                pass_desc.pattern.blocks[0].ops)
-            replace_op_dicts = self.convert_ops_to_op_dicts(
-                pass_desc.replace.blocks[0].ops)
+            pattern_op_dicts = self.convert_ops_to_op_dicts(pass_desc.pattern)
+            replace_op_dicts = self.convert_ops_to_op_dicts(pass_desc.replace)
             self.assertEqual(len(pattern_op_dicts.get("mul", [])), 1)
             self.assertEqual(
                 len(pattern_op_dicts.get("elementwise_add", [])), 1)
@@ -166,10 +238,9 @@ class TestGeneratePass(unittest.TestCase):
             else:
                 pattern_op_num = 2  # ewadd, mul
             self.assertEqual(len(pass_desc.var_maps), 4)
-            self.assertEqual(
-                len(pass_desc.pattern.blocks[0].ops), pattern_op_num)
-            self.assertEqual(len(pass_desc.replace.blocks[0].ops), 1)
-            self.assertEqual(len(pass_desc.attr_maps), 1)
+            self.assertEqual(len(pass_desc.pattern), pattern_op_num)
+            self.assertEqual(len(pass_desc.replace), 1)
+            self.assertEqual(len(pass_desc.op_attr_maps), 1)
 
         helper = ir.RegisterPassHelper(generate_fc_fuse())
         s = helper.SerializeMultiPassDesc()
@@ -253,12 +324,10 @@ class TestGeneratePass(unittest.TestCase):
         self.assertEqual(len(multi_pass_desc.pass_descs), 1)
         pass_desc = multi_pass_desc.pass_descs[0]
         self.assertEqual(len(pass_desc.var_maps), 5)
-        self.assertEqual(len(pass_desc.pattern.blocks[0].ops), 2)
-        self.assertEqual(len(pass_desc.replace.blocks[0].ops), 4)
-        pattern_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.pattern.blocks[0].ops)
-        replace_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.replace.blocks[0].ops)
+        self.assertEqual(len(pass_desc.pattern), 2)
+        self.assertEqual(len(pass_desc.replace), 4)
+        pattern_op_dicts = self.convert_ops_to_op_dicts(pass_desc.pattern)
+        replace_op_dicts = self.convert_ops_to_op_dicts(pass_desc.replace)
         self.assertEqual(len(pattern_op_dicts.get("matmul_v2", [])), 2)
         self.assertEqual(len(replace_op_dicts.get("concat", [])), 1)
         self.assertEqual(len(replace_op_dicts.get("matmul_v2", [])), 1)
@@ -292,3 +361,33 @@ class TestGeneratePass(unittest.TestCase):
     def test_generate_simplify_inference(self):
         self.check_generate_simplify_inference("generate_simplify_inference_v1")
         self.check_generate_simplify_inference("generate_simplify_inference_v2")
+
+    def test_generate_layer_norm_fuse_pass(self):
+        paddle.enable_static()
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [3, 64, 120], "float32")
+            gamma = paddle.static.create_parameter(
+                shape=[120], dtype="float32", is_bias=True)
+            beta = paddle.static.create_parameter(
+                shape=[120], dtype="float32", is_bias=True)
+
+            x_sub_mean = x - paddle.mean(x, axis=-1, keepdim=True)
+            std_dev = paddle.mean(x_sub_mean.pow(2), axis=-1, keepdim=True)
+            lnorm = x_sub_mean - (std_dev + 1e-5).sqrt()
+            out = lnorm * gamma + beta
+        graph = core.Graph(program.desc)
+        before_node_nums = len(graph.nodes())
+        core.get_pass("generate_layer_norm_fuse_pass").apply(graph)
+        after_node_nums = len(graph.nodes())
+        self.assertEqual(after_node_nums, before_node_nums - 14)
+        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        executor = paddle.static.Executor(paddle.CPUPlace())
+        executor.run(startup_program)
+        feed = {"x": np.random.random([3, 64, 120]).astype("float32")}
+        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
+        after_out = executor.run(after_program,
+                                 feed=feed,
+                                 fetch_list=[out.name])
+        self.assertTrue(np.allclose(before_out, after_out))

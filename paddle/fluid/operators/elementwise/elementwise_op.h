@@ -129,7 +129,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
@@ -138,6 +138,17 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
     }
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (Type() == "elementwise_add") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("elementwise_add", {"X", "Y"},
+                                          {"axis"}, {"Out"});
+      }
+    }
+    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
   }
 };
 

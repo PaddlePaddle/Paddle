@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -25,6 +26,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -33,6 +35,7 @@ namespace framework {
 namespace paddle2cinn {
 
 struct CinnCompiledObject {
+  std::unique_ptr<::cinn::hlir::framework::GraphCompiler> compiler;
   std::unique_ptr<::cinn::hlir::framework::Program> runtime_program;
   std::shared_ptr<::cinn::hlir::framework::Scope> scope;
   std::unordered_map<std::string, std::string> paddle2cinn_varmap;
@@ -61,9 +64,17 @@ class CinnCompiler {
 
   std::string AddGraph(std::unique_ptr<ir::Graph> graph);
 
-  const ir::Graph& FindGraph(const std::string& key) const;
+  const ir::Graph& FindGraph(const std::string& graph_key) const;
 
-  std::int64_t real_compiled_num() const { return real_compiled_num_; }
+  std::string VizGraph(const std::string& graph_key) const;
+
+  std::string VizGraph(const ir::Graph& graph) const;
+
+  std::string ReadableKey(const std::string& compilation_key) const;
+
+  void Clear();
+
+  std::int64_t real_compiled_num() const { return real_compiled_num_.load(); }
 
   ~CinnCompiler() = default;
 
@@ -72,13 +83,14 @@ class CinnCompiler {
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target) const;
+      const ::cinn::common::Target& target, std::int64_t compiled_num) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,
                      CinnCacheKey::Hash>
       cache_;
   std::atomic_int64_t real_compiled_num_{0};
+  mutable RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };
