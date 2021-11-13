@@ -67,6 +67,9 @@ class Carrier final {
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
+
+  std::vector<InterceptorMessage> tmp_stack_;
+  bool creating_interceptors_{true};
 };
 
 }  // namespace distributed

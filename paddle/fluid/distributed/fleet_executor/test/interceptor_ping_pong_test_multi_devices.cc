@@ -39,7 +39,8 @@ class PingPongInterceptor : public Interceptor {
     if (count_ == 20) {
       InterceptorMessage stop;
       stop.set_message_type(STOP);
-      Send(GetInterceptorId() == 0 ? 1 : 0, stop);
+      Send(0, stop);
+      Send(1, stop);
       return;
     }
 
@@ -65,9 +66,8 @@ TEST(InterceptorTestRemote, RemotePingPong) {
                  "127.0.0.1:7950");
 
     Carrier& carrier = Carrier::Instance();
-
-    Interceptor* a = carrier.SetInterceptor(
-        1, std::make_unique<PingPongInterceptor>(1, nullptr));
+    carrier.Init({{1, nullptr}});
+    Interceptor* a = carrier.GetInterceptor(1);
 
     InterceptorMessage msg;
     while (!a->Send(0, msg)) {
@@ -79,9 +79,8 @@ TEST(InterceptorTestRemote, RemotePingPong) {
                  "127.0.0.1:6912");
 
     Carrier& carrier = Carrier::Instance();
-
-    Interceptor* a = carrier.SetInterceptor(
-        0, std::make_unique<PingPongInterceptor>(0, nullptr));
+    carrier.Init({{0, nullptr}});
+    Interceptor* a = carrier.GetInterceptor(0);
 
     InterceptorMessage msg;
     while (!a->Send(1, msg)) {

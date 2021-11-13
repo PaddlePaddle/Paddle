@@ -33,6 +33,10 @@ bool Carrier::EnqueueInterceptorMessage(
     // handle control message
     return true;
   } else {
+    if (creating_interceptors_) {
+      tmp_stack_.emplace_back(interceptor_message);
+      return true;
+    }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
     bool rst =
@@ -80,6 +84,10 @@ void Carrier::CreateInterceptors() {
     auto interceptor = std::make_unique<Interceptor>(interceptor_id, task_node);
     SetInterceptor(interceptor_id, std::move(interceptor));
     VLOG(3) << "Create Interceptor for " << interceptor_id;
+  }
+  creating_interceptors_ = false;
+  for (const auto& msg : tmp_stack_) {
+    EnqueueInterceptorMessage(msg);
   }
 }
 
