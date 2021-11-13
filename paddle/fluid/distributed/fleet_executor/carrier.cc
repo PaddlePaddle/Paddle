@@ -20,9 +20,9 @@
 namespace paddle {
 namespace distributed {
 
-Carrier::Carrier(
-    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node)
-    : interceptor_id_to_node_(interceptor_id_to_node) {
+void Carrier::Init(
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+  interceptor_id_to_node_ = interceptor_id_to_node;
   CreateInterceptors();
 }
 
@@ -56,20 +56,29 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   return iter->second.get();
 }
 
+Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
+                                     std::unique_ptr<Interceptor> interceptor) {
+  auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
+  PADDLE_ENFORCE_EQ(iter, interceptor_idx_to_interceptor_.end(),
+                    platform::errors::AlreadyExists(
+                        "The interceptor id %lld has already been created! "
+                        "The interceptor id should be unique.",
+                        interceptor_id));
+  auto* ptr = interceptor.get();
+  interceptor_idx_to_interceptor_.insert(
+      std::make_pair(interceptor_id, std::move(interceptor)));
+  return ptr;
+}
+
 void Carrier::CreateInterceptors() {
   // create each Interceptor
   for (const auto& item : interceptor_id_to_node_) {
     int64_t interceptor_id = item.first;
     TaskNode* task_node = item.second;
-    const auto& iter = interceptor_idx_to_interceptor_.find(interceptor_id);
-    PADDLE_ENFORCE_EQ(iter, interceptor_idx_to_interceptor_.end(),
-                      platform::errors::AlreadyExists(
-                          "The interceptor id %lld has already been created! "
-                          "The interceptor is should be unique.",
-                          interceptor_id));
-    interceptor_idx_to_interceptor_.insert(std::make_pair(
-        interceptor_id,
-        std::make_unique<Interceptor>(interceptor_id, task_node)));
+
+    // TODO(wangxi): use node_type to select different Interceptor
+    auto interceptor = std::make_unique<Interceptor>(interceptor_id, task_node);
+    SetInterceptor(interceptor_id, std::move(interceptor));
     VLOG(3) << "Create Interceptor for " << interceptor_id;
   }
 }
