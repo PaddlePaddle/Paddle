@@ -56,11 +56,12 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
   int64_t dst_id = interceptor_message.dst_id();
   if (IsSameRank(src_id, dst_id)) {
     VLOG(3) << "Send a message from interceptor " << src_id
-            << " to interceptor " << dst_id << ", which are same ranks.";
+            << " to interceptor " << dst_id << ", which are in the same ranks.";
     return SendIntraRank(interceptor_message);
   } else {
     VLOG(3) << "Send a message from interceptor " << src_id
-            << " to interceptor " << dst_id << ", which are different ranks.";
+            << " to interceptor " << dst_id
+            << ", which are in different ranks.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
     int retry_time = 0;  // message bus will retry sending for 10 times

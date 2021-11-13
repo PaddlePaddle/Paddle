@@ -88,10 +88,10 @@ void Carrier::CreateInterceptors() {
             << ".";
   }
   creating_interceptors_ = false;
+  VLOG(3) << "Carrier has received " << tmp_stack_.size()
+          << " messages during creating interceptors.";
   for (const auto& msg : tmp_stack_) {
-    VLOG(3) << "Received " << tmp_stack_.size()
-            << " messages during creating interceptors.";
-    EnqueueInterceptorMessage(msg);
+    EnqueueInterceptorMessage(std::move(msg));
   }
 }
 
