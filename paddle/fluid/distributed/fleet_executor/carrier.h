@@ -53,6 +53,8 @@ class Carrier final {
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
 
+  void SetCreatingFlag(bool flag);
+
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
  private:

@@ -76,7 +76,7 @@ TEST(InterceptorTestRemote, RemotePingPong) {
     InterceptorMessage msg;
     while (!a->Send(0, msg)) {
     }
-    while (!a.IsFinish()) {
+    while (!(static_cast<PingPongInterceptor*>(a))->IsFinish()) {
     }
   } else {
     MessageBus& msg_bus = MessageBus::Instance();
@@ -91,7 +91,7 @@ TEST(InterceptorTestRemote, RemotePingPong) {
     InterceptorMessage msg;
     while (!a->Send(1, msg)) {
     }
-    while (!a.IsFinish()) {
+    while (!(static_cast<PingPongInterceptor*>(a))->IsFinish()) {
     }
   }
 }
