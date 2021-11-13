@@ -22,27 +22,27 @@
 namespace paddle {
 namespace experimental {
 
-Tensor full(const std::vector<int64_t>& shape,
-            const Scalar& value,
-            DataType dtype = DataType::FLOAT32,
-            Backend backend = Backend::CPU,
-            DataLayout layout = DataLayout::NCHW);
+PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
+                        const Scalar& value,
+                        DataType dtype = DataType::FLOAT32,
+                        Backend backend = Backend::CPU,
+                        DataLayout layout = DataLayout::NCHW);
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 DataType dtype = DataType::UNDEFINED,
-                 Backend backend = Backend::UNDEFINED,
-                 DataLayout layout = DataLayout::UNDEFINED);
+PD_DLL_DECL Tensor full_like(const Tensor& x,
+                             const Scalar& value,
+                             DataType dtype = DataType::UNDEFINED,
+                             Backend backend = Backend::UNDEFINED,
+                             DataLayout layout = DataLayout::UNDEFINED);
 
-Tensor ones_like(const Tensor& x,
-                 DataType dtype = DataType::UNDEFINED,
-                 Backend backend = Backend::UNDEFINED,
-                 DataLayout layout = DataLayout::UNDEFINED);
+PD_DLL_DECL Tensor ones_like(const Tensor& x,
+                             DataType dtype = DataType::UNDEFINED,
+                             Backend backend = Backend::UNDEFINED,
+                             DataLayout layout = DataLayout::UNDEFINED);
 
-Tensor zeros_like(const Tensor& x,
-                  DataType dtype = DataType::UNDEFINED,
-                  Backend backend = Backend::UNDEFINED,
-                  DataLayout layout = DataLayout::UNDEFINED);
+PD_DLL_DECL Tensor zeros_like(const Tensor& x,
+                              DataType dtype = DataType::UNDEFINED,
+                              Backend backend = Backend::UNDEFINED,
+                              DataLayout layout = DataLayout::UNDEFINED);
 
 }  // namespace experimental
 }  // namespace paddle
