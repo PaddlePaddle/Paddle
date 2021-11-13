@@ -498,13 +498,15 @@ def launch():
 
         - ``--workers``: User defined workers ip:port, e.g., ``--workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172"``
 
-        - ``--heter_workers``: User defined heter workers ip:port, e.g., ``--heter_workers="192.168.0.16:6172,192.168.0.17:6172"``
+        - ``--heter_workers``: User defined heter workers ip1:port1;ip2:port2, e.g., ``--heter_workers="192.168.0.16:6172;192.168.0.17:6172"``
 
         - ``--worker_num``: Number of workers (It recommend to set when in the emulated distributed environment using single node)
 
         - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
 
-        - ``--heter_worker_num``: Number of heter_workers (It recommend to set when in the emulated distributed environment using single node)
+        - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
+        
+        - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--http_port``: Gloo http Port
 
