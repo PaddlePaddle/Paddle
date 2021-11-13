@@ -156,6 +156,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
                         "Cannot find rank for dst interceptor id %lld. "
                         "Init error.",
                         dst_id));
+  VLOG(3) << "Message bus sending to addr: " << dst_ip->second;
   const char* dst_ip_for_brpc = dst_ip->second.c_str();
   brpc::Channel channel;
   brpc::ChannelOptions options;

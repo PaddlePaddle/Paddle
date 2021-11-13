@@ -72,6 +72,7 @@ TEST(InterceptorTestRemote, RemotePingPong) {
     Carrier& carrier = Carrier::Instance();
     Interceptor* a = carrier.SetInterceptor(
         1, std::make_unique<PingPongInterceptor>(1, nullptr));
+    carrier.SetCreatingFlag(false);
 
     InterceptorMessage msg;
     while (!a->Send(0, msg)) {
@@ -87,6 +88,7 @@ TEST(InterceptorTestRemote, RemotePingPong) {
     Carrier& carrier = Carrier::Instance();
     Interceptor* a = carrier.SetInterceptor(
         0, std::make_unique<PingPongInterceptor>(0, nullptr));
+    carrier.SetCreatingFlag(false);
 
     InterceptorMessage msg;
     while (!a->Send(1, msg)) {

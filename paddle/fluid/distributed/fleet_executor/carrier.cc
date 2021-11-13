@@ -34,7 +34,8 @@ bool Carrier::EnqueueInterceptorMessage(
     return true;
   } else {
     if (creating_interceptors_) {
-      // cannot handle the messag to interceptor since sting creating
+      // Cannot handle the message to interceptor since interceptors
+      // are still under creating. Will enqueue into a tmp stack.
       VLOG(3) << "Receiving message while creating interceptors.";
       tmp_stack_.emplace_back(interceptor_message);
       return true;
