@@ -39,8 +39,7 @@ class PingPongInterceptor : public Interceptor {
     if (count_ == 20) {
       InterceptorMessage stop;
       stop.set_message_type(STOP);
-      Send(0, stop);
-      Send(1, stop);
+      Send(GetInterceptorId() == 0 ? 1 : 0, stop);
       return;
     }
 
@@ -61,19 +60,23 @@ TEST(InterceptorTestRemote, RemotePingPong) {
     std::cout << "Fork error, exit remote ping pong test." << std::endl;
   } else if (pid == 0) {
     MessageBus& msg_bus = MessageBus::Instance();
-    msg_bus.Init({{0, 0}, {1, 0}},
-                 {{0, "127.0.0.1:8000"}, {1, "127.0.0.1:8001"}},
-                 "127.0.0.1:8001");
+    msg_bus.Init({{0, 0}, {1, 1}},
+                 {{0, "127.0.0.1:6912"}, {1, "127.0.0.1:7950"}},
+                 "127.0.0.1:7950");
 
     Carrier& carrier = Carrier::Instance();
 
-    carrier.SetInterceptor(1,
-                           std::make_unique<PingPongInterceptor>(1, nullptr));
+    Interceptor* a = carrier.SetInterceptor(
+        1, std::make_unique<PingPongInterceptor>(1, nullptr));
+
+    InterceptorMessage msg;
+    while (!a->Send(0, msg)) {
+    }
   } else {
     MessageBus& msg_bus = MessageBus::Instance();
     msg_bus.Init({{0, 0}, {1, 1}},
-                 {{0, "127.0.0.1:8000"}, {1, "127.0.0.1:8001"}},
-                 "127.0.0.1:8000");
+                 {{0, "127.0.0.1:6912"}, {1, "127.0.0.1:7950"}},
+                 "127.0.0.1:6912");
 
     Carrier& carrier = Carrier::Instance();
 
