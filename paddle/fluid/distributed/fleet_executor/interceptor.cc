@@ -81,6 +81,7 @@ void Interceptor::PoolTheMailbox() {
             << " with message: " << message_type << ".";
     if (message_type == STOP) {
       // break the pooling thread
+      VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
       break;
     }
 

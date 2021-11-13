@@ -79,6 +79,8 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
 
 void Carrier::SetCreatingFlag(bool flag) {
   // set the creating flag
+  VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
+          << " to " << flag << ".";
   creating_interceptors_ = flag;
 }
 
