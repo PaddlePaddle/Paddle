@@ -184,7 +184,7 @@ def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
 
 
 def iterates(func,
-             x0, 
+             x0,
              dtype='float32',
              H0=None,
              gtol=1e-8,
@@ -234,7 +234,10 @@ def iterates(func,
     f0, g0 = vjp(func, x0)
     
     # If function is applied to batched input, the last axis of the input
-    # tensor holds the input dimensions.
+    # tensor holds the input dimensions. However, it's tricky to determine
+    # whether a function is actually applied in the batch mode. We assume here
+    # that the input being multi-dimensional necessarily implies batching.
+    batching = len(x0.shape) > 1
     input_dim = x0.shape[-1]
     hessian_shape = x0.shape + [input_dim]
     
@@ -277,8 +280,10 @@ def iterates(func,
                        max_iters=ls_iters)
         
             # Uses the obtained search steps to generate next iterates.
-            next_xk = xk + einsum('..., ...i -> ...i', state.ak, pk)
-    
+            if batching:
+                next_xk = xk + state.ak.unsqueeze(-1) * pk
+            else:
+                next_xk = xk + state.ak * pk
             # Calculates displacement s_k = x_k+1 - x_k
             sk = next_xk - xk
 
