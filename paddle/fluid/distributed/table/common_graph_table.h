@@ -240,6 +240,19 @@ class RandomSampleLRU {
     }
   }
 
+  void fetch(LRUNode<K, V> *node) {
+    if (node->pre) {
+      node->pre->next = node->next;
+    } else {
+      node_head = node->next;
+    }
+    if (node->next) {
+      node->next->pre = node->pre;
+    } else {
+      node_end = node->pre;
+    }
+  }
+
  private:
   std::unordered_map<K, LRUNode<K, V> *> key_map;
   ScaledLRU<K, V> *father;
@@ -266,7 +279,7 @@ class ScaledLRU {
       while (true) {
         {
           std::unique_lock<std::mutex> lock(mutex_);
-          cv_.wait_for(lock, std::chrono::milliseconds(3000));
+          cv_.wait_for(lock, std::chrono::milliseconds(20000));
           if (stop) {
             return;
           }
@@ -298,12 +311,12 @@ class ScaledLRU {
 
     if (node_size <= size_t(1.1 * size_limit) + 1) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
-      // std::cerr<<"in shrink\n";
+      // VLOG(0)<"in shrink\n";
       global_count = 0;
       for (size_t i = 0; i < lru_pool.size(); i++) {
         global_count += lru_pool[i].node_size - lru_pool[i].remove_count;
       }
-      // std::cerr<<"global_count "<<global_count<<"\n";
+      // VLOG(0)<<"global_count "<<global_count<<"\n";
       if (global_count > size_limit) {
         size_t remove = global_count - size_limit;
         for (int i = 0; i < lru_pool.size(); i++) {
@@ -311,7 +324,7 @@ class ScaledLRU {
           lru_pool[i].remove_count +=
               1.0 * (lru_pool[i].node_size - lru_pool[i].remove_count) /
               global_count * remove;
-          // std::cerr<<i<<" "<<lru_pool[i].remove_count<<std::endl;
+          // VLOG(0)<<i<<" "<<lru_pool[i].remove_count<<std::endl;
         }
       }
       pthread_rwlock_unlock(&rwlock);
