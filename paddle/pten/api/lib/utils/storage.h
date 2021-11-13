@@ -76,10 +76,6 @@ class SharedStorage : public pten::Storage {
   // system, we need to allow the SharedStorage realloc,
   // and it can be removed after the compatibility phase is over in the future
   void Realloc(size_t n) override {
-    if (data() != nullptr) {
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "The external shared storage cannot be reallocated."));
-    }
     ResetAllocation(paddle::memory::AllocShared(place(), n), 0);
   }
 

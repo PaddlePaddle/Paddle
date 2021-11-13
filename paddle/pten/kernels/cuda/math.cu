@@ -134,6 +134,8 @@ void ElementwiseAdd(const CUDAContext& dev_ctx,
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   inputs.emplace_back(&y);
+  // allocate memory for out
+  out->mutable_data<T>();
   outputs.emplace_back(out);
   LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
       dev_ctx, inputs, &outputs, axis, general::AddFunctor<T>());

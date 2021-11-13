@@ -267,6 +267,12 @@ void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
   }
 }
 
+static bool IsSameAllocation(const std::shared_ptr<memory::Allocation>& a,
+                             const std::shared_ptr<memory::Allocation>& b) {
+  return a->ptr() == b->ptr() && a->size() == b->size() &&
+         platform::is_same_place(a->place(), b->place());
+}
+
 void MakeVariableFromPtenTensor(pten::DenseTensor* src,
                                 framework::Variable* variable) {
   if (variable->IsType<framework::LoDTensor>()) {
@@ -276,10 +282,13 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     tensor->Resize(src->dims());
     SetLoD(tensor->mutable_lod(), src->lod());
 
-    if (tensor->IsInitialized()) {
-    } else {
-      auto storage = dynamic_cast<SharedStorage*>(
-          pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+    // here dynamic_cast is slow
+    auto* storage = static_cast<SharedStorage*>(
+        pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+
+    if (!tensor->IsInitialized() ||
+        (tensor->IsInitialized() &&
+         !IsSameAllocation(tensor->Holder(), storage->GetAllocation()))) {
       tensor->ResetHolderWithType(std::move(storage->GetAllocation()), dtype);
     }
 
