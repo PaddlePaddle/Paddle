@@ -271,6 +271,8 @@ class Communicator {
 
   virtual void InitParams(const RecvCtxMap &recv_varname_to_ctx);
 
+  virtual void PullDense(const RecvCtxMap &recv_varname_to_ctx);
+
   virtual void Start() = 0;
 
   virtual void Stop() = 0;

@@ -50,3 +50,7 @@ set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600) 
 set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300) 
+
+if(NOT WITH_COVERAGE)
+    LIST(REMOVE_ITEM TEST_OPS test_hapi_hub)
+endif()

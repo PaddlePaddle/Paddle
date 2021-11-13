@@ -98,8 +98,10 @@ from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
+from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
+from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
 from .tensor.logic import is_empty  # noqa: F401
@@ -228,6 +230,7 @@ from .tensor.random import uniform  # noqa: F401
 from .tensor.random import randn  # noqa: F401
 from .tensor.random import rand  # noqa: F401
 from .tensor.random import randint  # noqa: F401
+from .tensor.random import randint_like  # noqa: F401
 from .tensor.random import randperm  # noqa: F401
 from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
@@ -295,6 +298,7 @@ from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
 from . import fft  # noqa: F401
+from . import signal  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -373,6 +377,7 @@ __all__ = [  # noqa
            'ParamAttr',
            'stanh',
            'randint',
+           'randint_like',
            'assign',
            'gather',
            'scale',
@@ -390,7 +395,6 @@ __all__ = [  # noqa
            'roll',
            'batch',
            'max',
-           'norm',
            'logical_or',
            'bitwise_and',
            'bitwise_or',
@@ -398,6 +402,7 @@ __all__ = [  # noqa
            'bitwise_not',
            'mm',
            'flip',
+           'bincount',
            'histogram',
            'multiplex',
            'CUDAPlace',
@@ -418,7 +423,6 @@ __all__ = [  # noqa
            'load',
            'numel',
            'median',
-           'inverse',
            'no_grad',
            'set_grad_enabled',
            'mod',
@@ -499,7 +503,6 @@ __all__ = [  # noqa
            'expand_as',
            'stack',
            'sqrt',
-           'cholesky',
            'randperm',
            'linspace',
            'reshape',

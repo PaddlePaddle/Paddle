@@ -436,5 +436,67 @@ void NpuOpRunner::Run(aclrtStream stream) const {
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
 
+void NpuOpRunner::TypeAdapter(
+    const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
+    const NPUAttributeMap &attrs, const platform::NPUDeviceContext &dev_ctx,
+    std::function<void(const std::vector<Tensor> &, const std::vector<Tensor> &,
+                       const NPUAttributeMap &,
+                       const platform::NPUDeviceContext &)>
+        op_runner,
+    const std::vector<framework::proto::VarType::Type> &input_type,
+    const std::vector<framework::proto::VarType::Type> &output_type) {
+  PADDLE_ENFORCE_EQ(
+      inputs.size(), input_type.size(),
+      platform::errors::InvalidArgument(
+          "The number of inputs must be equal to input_type.size()."));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(), output_type.size(),
+      platform::errors::InvalidArgument(
+          "The number of outputs must be equal to output_type.size()."));
+
+  std::vector<Tensor> tmp_inputs(inputs.size());
+  std::vector<Tensor> tmp_outputs(outputs.size());
+
+  for (size_t i = 0; i < input_type.size(); ++i) {
+    bool cast_input =
+        (input_type[i] == -1 || input_type[i] != inputs[i].type());
+    if (!cast_input) {
+      tmp_inputs[i].ShareDataWith(inputs[i]);
+    } else {
+      tmp_inputs[i].Resize(inputs[i].dims());
+      tmp_inputs[i].mutable_data(dev_ctx.GetPlace(), input_type[i]);
+
+      const auto &cast_runner = NpuOpRunner(
+          "Cast", {inputs[i]}, {tmp_inputs[i]},
+          {{"dst_type", static_cast<int>(ConvertToNpuDtype(input_type[i]))}});
+      cast_runner.Run(dev_ctx.stream());
+    }
+  }
+  for (size_t i = 0; i < output_type.size(); ++i) {
+    bool cast_output =
+        (output_type[i] == -1 || output_type[i] != outputs[i].type());
+    if (!cast_output) {
+      tmp_outputs[i].ShareDataWith(outputs[i]);
+    } else {
+      tmp_outputs[i].Resize(outputs[i].dims());
+      tmp_outputs[i].mutable_data(dev_ctx.GetPlace(), output_type[i]);
+    }
+  }
+
+  op_runner(tmp_inputs, tmp_outputs, attrs, dev_ctx);
+
+  for (size_t i = 0; i < output_type.size(); ++i) {
+    bool cast_output =
+        (output_type[i] == -1 || output_type[i] != outputs[i].type());
+    if (cast_output) {
+      const auto &cast_runner = NpuOpRunner(
+          "Cast", {tmp_outputs[i]}, {outputs[i]},
+          {{"dst_type",
+            static_cast<int>(ConvertToNpuDtype(outputs[i].type()))}});
+      cast_runner.Run(dev_ctx.stream());
+    }
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

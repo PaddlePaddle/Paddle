@@ -38,6 +38,8 @@ list(APPEND DIST_TEST_OPS test_hybrid_parallel_inference_helper)
 list(APPEND DIST_TEST_OPS test_parallel_class_center_sample)
 list(APPEND DIST_TEST_OPS test_parallel_margin_cross_entropy)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
+list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
+list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -58,6 +60,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_rank_mapping)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
@@ -98,7 +101,10 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
 endforeach()
 
 if(NOT WITH_GPU)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -136,6 +142,8 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
     LIST(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_executor)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
 endif()
 
 # Temporally disable test_deprecated_decorator
@@ -212,6 +220,7 @@ if (NOT WITH_GLOO)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_unused_variables_gloo)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_over_height_gloo)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_diff_length_gloo)
 endif()
 
 if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
@@ -249,6 +258,8 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp)
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model)
     LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard)
+    LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
+    LIST(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
 elseif(WITH_GPU)
     if (${CUDNN_VERSION} VERSION_LESS 7100)
         LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -377,14 +388,14 @@ function(bash_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -419,14 +430,14 @@ function(parallel_bash_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
-            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
             bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -652,6 +663,7 @@ if(WITH_DISTRIBUTE)
         bash_test_modules(test_fleet_launch_async START_BASH test_fleet_launch_async.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         bash_test_modules(test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         bash_test_modules(test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch_rank_mapping START_BASH test_fleet_launch_rank_mapping.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         if(WITH_ASCEND OR WITH_ASCEND_CL)
             bash_test_modules(test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             bash_test_modules(test_ascend_group START_BASH test_ascend_group.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -1011,7 +1023,6 @@ set_tests_properties(test_dataloader_unkeep_order PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_solve_op PROPERTIES TIMEOUT 120)
 if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
     set_tests_properties(test_parallel_dygraph_dataparallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_unused_variables PROPERTIES TIMEOUT 120)
@@ -1027,6 +1038,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
     set_tests_properties(test_parallel_class_center_sample PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_margin_cross_entropy PROPERTIES TIMEOUT 120)
     set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
     if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
         set_tests_properties(test_parallel_dygraph_sparse_embedding PROPERTIES TIMEOUT 120)
         set_tests_properties(test_parallel_dygraph_transformer PROPERTIES TIMEOUT 120)

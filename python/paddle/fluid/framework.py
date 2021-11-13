@@ -467,7 +467,7 @@ def is_compiled_with_cuda():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_cuda()
+            support_gpu = paddle.device.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
@@ -482,7 +482,7 @@ def is_compiled_with_rocm():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_rocm()
+            support_gpu = paddle.device.is_compiled_with_rocm()
     """
     return core.is_compiled_with_rocm()
 
@@ -1308,13 +1308,12 @@ class Variable(object):
         if self.persistable:
             var_str = "persist " + var_str
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
-            self)
-        if var_dist_attr is not None:
+        dist_tensor = dist_context.get_dist_tensor_for_program(self)
+        if dist_tensor is not None:
             var_str += ", {name} = {value}".format(
-                name="dist_attr", value=var_dist_attr)
+                name="dist_attr", value=dist_tensor)
 
         return var_str
 
@@ -2529,12 +2528,12 @@ class Operator(object):
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        op_dist_attr = dist_context.get_op_distributed_attr_for_program(self)
-        if op_dist_attr is not None:
+        dist_op = dist_context.get_dist_op_for_program(self)
+        if dist_op is not None:
             attrs_str += ", {name} = {value}".format(
-                name="dist_attr", value=op_dist_attr)
+                name="dist_attr", value=dist_op)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
@@ -4477,6 +4476,9 @@ class Program(object):
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+
+        # assigned if this program has been parsed by a heter pipeline parameter server optimizer
+        self._heter_pipeline_opt = None
 
         # appending gradients times
         self._appending_grad_times = 0

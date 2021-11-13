@@ -22,9 +22,9 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import Program, OpProtoHolder
 import paddle.fluid.layers.utils as utils
 from ..collective import _get_global_env
-from .context import DistributedContext
-from .attribute import OperatorDistributedAttribute, TensorDistributedAttribute
-from .process import new_process_group, ProcessGroup, PROCESS_GROUP_MAP
+from .dist_context import DistributedContext
+from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
+from .process_group import new_process_group, ProcessGroup, _g_process_group_map
 
 
 class AllGatherOpDesc:
@@ -276,20 +276,22 @@ def _is_overlapped(shape_x, shape_y):
     return overlapped
 
 
-def _need_reshard(tensor_dist_attr, op_dist_attr):
+def _need_reshard(dist_tensor, dist_op):
     """Judge the tensor whether needs to be resharded."""
     is_reshard = False
-    tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
-    tensor_process_mesh = tensor_dist_attr.get_process_mesh()
-    op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(
-        tensor_dist_attr.get_owner_tensor().name)
-    op_process_mesh = op_dist_attr.get_process_mesh()
+    tensor_dist_attr = dist_tensor.dist_attr
+    tensor_name = dist_tensor.serial_tensor.name
+    tensor_dims_mapping = tensor_dist_attr.dims_mapping
+    tensor_process_mesh = tensor_dist_attr.process_mesh
+    op_dist_attr = dist_op.dist_attr
+    op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
+    op_process_mesh = op_dist_attr.process_mesh
     if all(
             map(lambda x: x is not None, [
                 tensor_dims_mapping, tensor_process_mesh, op_input_dims_mapping,
                 op_process_mesh
             ])):
-        if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh._id != op_process_mesh._id:
+        if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh != op_process_mesh:
             is_reshard = True
     return is_reshard
 
@@ -305,28 +307,30 @@ def _compute_complete_shape(slice_shape, process_shape, dims_mapping):
     return complete_shape
 
 
-def find_op_desc_seq(source_tensor, tensor_dist_attr, op_dist_attr):
+def find_op_desc_seq(dist_tensor, dist_op):
     """
     Find the op description sequence to reshard the source tensor for matching the op requirement.
 
     Args:
-        source_tensor (Variable): A tensor with distributed attribute.
-        tensor_dist_attr (TensorDistributedAttribute): The distributed attribute of tensor.
-        op_dist_attr (OperatorDistributedAttribute): The distributed attribute of operator.
+        dist_tensor (DistributedTensor): A distributed tensor.
+        dist_op (DistributedOperator): A distributed operator.
 
     Returns:
         Dict, the dict represents the required op description sequence corresponding to process, The key of dict is
         process and value is a list containing op description.
     """
-    source_dims_mapping = tensor_dist_attr.get_dims_mapping()
-    source_process_mesh = tensor_dist_attr.get_process_mesh()
-    source_process_group = source_process_mesh.process_group
+    tensor_dist_attr = dist_tensor.dist_attr
+    source_tensor = dist_tensor.serial_tensor
+    tensor_name = source_tensor.name
+    source_dims_mapping = tensor_dist_attr.dims_mapping
+    source_process_mesh = tensor_dist_attr.process_mesh
+    source_process_group = source_process_mesh.processes
     source_process_shape = source_process_mesh.topology
 
-    target_process_mesh = op_dist_attr.get_process_mesh()
-    target_dims_mapping = op_dist_attr.get_input_dims_mapping(
-        tensor_dist_attr.get_owner_tensor().name)
-    target_process_group = target_process_mesh.process_group
+    op_dist_attr = dist_op.dist_attr
+    target_process_mesh = op_dist_attr.process_mesh
+    target_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
+    target_process_group = target_process_mesh.processes
     target_process_shape = target_process_mesh.topology
 
     complete_shape = _compute_complete_shape(
@@ -662,11 +666,11 @@ def _concat_partitions_with_op(partition_tensor_list, tensor, partition_index,
 
 
 def _init_comm_for_send_recv():
-    if not PROCESS_GROUP_MAP:
+    if not _g_process_group_map:
         genv = _get_global_env()
-        PROCESS_GROUP_MAP["global_group"] = ProcessGroup(
+        _g_process_group_map["global_group"] = ProcessGroup(
             0, list(range(genv.world_size)))
-        PROCESS_GROUP_MAP["global_group"].instantiate()
+        _g_process_group_map["global_group"].instantiate()
 
 
 HAS_SENT = {}
@@ -773,31 +777,29 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
                 axes=op_desc.axes,
                 new_var_name=new_name)
 
-            tensor_attr = TensorDistributedAttribute(target_tensor,
-                                                     dist_context)
-            process_mesh = dist_context.get_op_distributed_attr_for_program(
-                matched_op).get_process_mesh()
-            dims_mapping = dist_context.get_op_distributed_attr_for_program(
+            tensor_attr = TensorDistributedAttribute()
+            process_mesh = dist_context.get_op_dist_attr_for_program(
+                matched_op).process_mesh
+            dims_mapping = dist_context.get_op_dist_attr_for_program(
                 matched_op).get_input_dims_mapping(var_name)
-            tensor_attr.set_dims_mapping(dims_mapping)
-            tensor_attr.set_process_mesh(process_mesh)
-            dist_context.set_tensor_distributed_attr_for_program(target_tensor,
-                                                                 tensor_attr)
+            tensor_attr.dims_mapping = dims_mapping
+            tensor_attr.process_mesh = process_mesh
+            dist_context.set_tensor_dist_attr_for_program(target_tensor,
+                                                          tensor_attr)
 
             # rename op input name according to new name
             for op in block.ops:
                 for name in op.input_arg_names:
-                    op_dist_attr = dist_context.get_op_distributed_attr_for_program(
-                        op)
+                    op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
                     if name == var_name and op_dist_attr is not None:
-                        op_process_mesh = op_dist_attr.get_process_mesh()
+                        op_process_mesh = op_dist_attr.process_mesh
                         op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(
                             var_name)
-                        if op_process_mesh._id == process_mesh._id and op_input_dims_mapping == dims_mapping:
+                        if op_process_mesh == process_mesh and op_input_dims_mapping == dims_mapping:
                             op.desc._rename_input(name, target_tensor.name)
                             op_dist_attr.set_input_dims_mapping(
                                 target_tensor.name, dims_mapping)
-                            op_dist_attr._dims_mapping.pop(name, None)
+                            op_dist_attr.set_input_dist_attr(name, None)
 
 
 def _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id):
@@ -825,9 +827,9 @@ def _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id):
         if op.type == "c_sync_comm_stream":
             need_save = []
             for var_name in op.input_arg_names:
-                process_mesh = dist_context.get_tensor_distributed_attr_for_program(
-                    vars[var_name]).get_process_mesh()
-                if rank_id in process_mesh.process_group:
+                process_mesh = dist_context.get_tensor_dist_attr_for_program(
+                    vars[var_name]).process_mesh
+                if rank_id in process_mesh.processes:
                     need_save.append(var_name)
             if not need_save:
                 remove_op_idx.append(idx)
@@ -839,10 +841,10 @@ def _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id):
             continue
 
         # judge the other op whether should be removed.
-        op_dist_attr = dist_context.get_op_distributed_attr_for_program(op)
+        op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
         if op_dist_attr is not None:
-            op_process_mesh = op_dist_attr.get_process_mesh()
-            if rank_id not in op_process_mesh.process_group and op.type not in not_remove_op_ref:
+            op_process_mesh = op_dist_attr.process_mesh
+            if rank_id not in op_process_mesh.processes and op.type not in not_remove_op_ref:
                 remove_op_idx.append(idx)
 
     for idx in remove_op_idx[::-1]:
@@ -974,20 +976,18 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
     while idx < len(block.ops):
         pre_op_count = len(block.ops)
         op = block.ops[idx]
-        op_dist_attr = dist_context.get_op_distributed_attr_for_program(op)
-        if op_dist_attr is not None:
+        dist_op = dist_context.get_dist_op_for_program(op)
+        if dist_op is not None:
             idx_offset = 0
             for var_name in op.input_arg_names:
                 # skip lod_tensor_blocking_queue_0
                 if var_name == "lod_tensor_blocking_queue_0":
                     continue
                 var = block.vars[var_name]
-                tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
-                    var)
-                if tensor_dist_attr is not None and _need_reshard(
-                        tensor_dist_attr, op_dist_attr):
-                    reshard_op_desc = find_op_desc_seq(var, tensor_dist_attr,
-                                                       op_dist_attr)
+                dist_tensor = dist_context.get_dist_tensor_for_program(var)
+                if dist_tensor is not None and _need_reshard(dist_tensor,
+                                                             dist_op):
+                    reshard_op_desc = find_op_desc_seq(dist_tensor, dist_op)
                     parse_op_desc(auto_parallel_main_prog, rank_id,
                                   reshard_op_desc, var_name, op, dist_context)
                     cur_op_count = len(block.ops)
