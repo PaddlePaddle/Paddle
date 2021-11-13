@@ -120,21 +120,21 @@ void CinnLaunchContext::MutableTensorData(const std::string& var_name,
 }
 
 void CinnLaunchContext::CheckTensorEquivalent(const std::string& paddle_name,
-                                              const LoDTensor* paddle_tensor,
+                                              const LoDTensor& paddle_tensor,
                                               const CinnTensor& cinn_tensor) {
   PADDLE_ENFORCE_EQ(
-      paddle_tensor->IsInitialized(), true,
+      paddle_tensor.IsInitialized(), true,
       platform::errors::InvalidArgument(
           "Tensor in variable(%s) is not initialized.", paddle_name));
 
   // check dimension
   auto cinn_dims = framework::make_ddim(cinn_tensor->shape().data());
-  PADDLE_ENFORCE_EQ(paddle_tensor->dims(), cinn_dims,
+  PADDLE_ENFORCE_EQ(paddle_tensor.dims(), cinn_dims,
                     platform::errors::InvalidArgument(
-                        "Tensors dimension in variable(%s) "
+                        "Dimensions of tensors in variable(%s) "
                         "are not equivalent, paddle is [%s] "
                         "but cinn is [%s].",
-                        paddle_name, paddle_tensor->dims(), cinn_dims));
+                        paddle_name, paddle_tensor.dims(), cinn_dims));
 
   // TODO(CtfGo): check the underlying data type after CINN ready
 }
@@ -146,7 +146,7 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& paddle_name,
                         "Paddle variable(%s) not used by cinn", paddle_name));
 
   const auto& cinn_name = paddle2cinn_varmap_.at(paddle_name);
-  CheckTensorEquivalent(paddle_name, paddle_tensor, GetCinnTensor(cinn_name));
+  CheckTensorEquivalent(paddle_name, *paddle_tensor, GetCinnTensor(cinn_name));
   return SetArgument(cinn_name, paddle_tensor);
 }
 
@@ -155,7 +155,7 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name,
   PADDLE_ENFORCE_GT(cinn_variable_names_.count(cinn_name), 0,
                     platform::errors::InvalidArgument(
                         "Variable(%s) not found in cinn socpe.", cinn_name));
-  CheckTensorEquivalent(cinn_name, paddle_tensor, GetCinnTensor(cinn_name));
+  CheckTensorEquivalent(cinn_name, *paddle_tensor, GetCinnTensor(cinn_name));
   return SetArgument(cinn_name, paddle_tensor);
 }
 
@@ -192,7 +192,7 @@ CinnLaunchContext::FinalizeArguments() const {
                 [this](const auto& var_name) {
                   PADDLE_ENFORCE_GT(name2argument_.count(var_name), 0,
                                     platform::errors::InvalidArgument(
-                                        "Variable(%s) is missed for launch "
+                                        "Variable(%s) is missed for launching "
                                         "compiled program execution",
                                         var_name));
                 });

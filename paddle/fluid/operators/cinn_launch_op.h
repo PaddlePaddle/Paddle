@@ -73,7 +73,7 @@ class CinnLaunchContext {
   // Check whether tensors from Paddle and CINN of the same variable
   // are equivalent in type and dimension
   void CheckTensorEquivalent(const std::string& var_name,
-                             const LoDTensor* paddle_tensor,
+                             const LoDTensor& paddle_tensor,
                              const CinnTensor& cinn_tensor);
 
   // Share the buffer of a Paddle tensor to CINN by delivering memory address
@@ -156,7 +156,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     //     equiality between tensors of paddle and cinn.
     for (const auto& var_name : input_variable_names) {
       if (!launch_context->IsVariableUsed(var_name)) {
-        // some input variables doesn't need for cinn because they are
+        // some input variables don't need for cinn because they are
         // eliminated by optimized passes or some cinn operators use
         // less variables
         VLOG(4) << "Input variable(" << var_name << ") not used by cinn";
