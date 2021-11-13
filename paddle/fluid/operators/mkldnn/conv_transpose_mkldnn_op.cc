@@ -231,9 +231,12 @@ class ConvTransposeMKLDNNHandlerT
 
     platform::MKLDNNEngine engine = dev_ctx.GetEngine();
     platform::MKLDNNStream engine_stream(engine);
-    auto source_data_md = platform::MKLDNNMemDesc(weights_tz, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::iohw);
-    auto reordered_data_md = platform::MKLDNNMemDesc(weights_tz, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::oihw);
-    auto source_data_mem = platform::MKLDNNMemory(source_data_md, engine, platform::to_void_cast<K>(filter_data));
+    auto source_data_md = platform::MKLDNNMemDesc(
+        weights_tz, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::iohw);
+    auto reordered_data_md = platform::MKLDNNMemDesc(
+        weights_tz, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::oihw);
+    auto source_data_mem = platform::MKLDNNMemory(
+        source_data_md, engine, platform::to_void_cast<K>(filter_data));
     auto reordered_data_mem = platform::MKLDNNMemory(reordered_data_md, engine);
     platform::Reorder(source_data_mem, reordered_data_mem, engine);
     engine_stream.wait();
