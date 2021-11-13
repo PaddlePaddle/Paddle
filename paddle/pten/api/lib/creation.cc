@@ -63,10 +63,10 @@ PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
 }
 
 PD_DLL_DECL Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 DataType dtype,
-                 Backend backend,
-                 DataLayout layout) {
+                             const Scalar& value,
+                             DataType dtype,
+                             Backend backend,
+                             DataLayout layout) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -108,16 +108,16 @@ PD_DLL_DECL Tensor full_like(const Tensor& x,
 }
 
 PD_DLL_DECL Tensor ones_like(const Tensor& x,
-                 DataType dtype,
-                 Backend backend,
-                 DataLayout layout) {
+                             DataType dtype,
+                             Backend backend,
+                             DataLayout layout) {
   return full_like(x, 1, dtype, backend, layout);
 }
 
-PD_DLL_DECLTensor zeros_like(const Tensor& x,
-                  DataType dtype,
-                  Backend backend,
-                  DataLayout layout) {
+PD_DLL_DECL Tensor zeros_like(const Tensor& x,
+                              DataType dtype,
+                              Backend backend,
+                              DataLayout layout) {
   return full_like(x, 0, dtype, backend, layout);
 }
 
