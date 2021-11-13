@@ -131,9 +131,9 @@ void CinnLaunchContext::CheckTensorEquivalent(const std::string& paddle_name,
   auto cinn_dims = framework::make_ddim(cinn_tensor->shape().data());
   PADDLE_ENFORCE_EQ(paddle_tensor.dims(), cinn_dims,
                     platform::errors::InvalidArgument(
-                        "Dimensions of tensors in variable(%s) "
-                        "are not equivalent, paddle is [%s] "
-                        "but cinn is [%s].",
+                        "Tensors' shape in variable(%s) "
+                        "are not equivalent, paddle's shape = [%s] "
+                        "but cinn's shape = [%s].",
                         paddle_name, paddle_tensor.dims(), cinn_dims));
 
   // TODO(CtfGo): check the underlying data type after CINN ready
