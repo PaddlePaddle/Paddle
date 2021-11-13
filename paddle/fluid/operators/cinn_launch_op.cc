@@ -92,11 +92,9 @@ CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& var_name) {
 
 std::vector<std::string> CinnLaunchContext::GetInternalVariableNames() {
   std::unordered_set<std::string> all_parameters(cinn_variable_names_);
-  std::for_each(paddle2cinn_varmap_.begin(), paddle2cinn_varmap_.end(),
-                [&all_parameters, this](const auto& name_pd2cinn) {
-                  if (IsVariableUsed(name_pd2cinn.first)) {
-                    all_parameters.erase(name_pd2cinn.second);
-                  }
+  std::for_each(name2argument_.begin(), name2argument_.end(),
+                [&all_parameters](const auto& name2arg) {
+                  all_parameters.erase(name2arg.first);
                 });
   return {all_parameters.begin(), all_parameters.end()};
 }
@@ -131,9 +129,8 @@ void CinnLaunchContext::CheckTensorEquivalent(const std::string& paddle_name,
   auto cinn_dims = framework::make_ddim(cinn_tensor->shape().data());
   PADDLE_ENFORCE_EQ(paddle_tensor.dims(), cinn_dims,
                     platform::errors::InvalidArgument(
-                        "Tensors' shape in variable(%s) "
-                        "are not equivalent, paddle's shape = [%s] "
-                        "but cinn's shape = [%s].",
+                        "Tensors' shape in variable(%s) are not equivalent, "
+                        "paddle's shape = [%s], but cinn's shape = [%s].",
                         paddle_name, paddle_tensor.dims(), cinn_dims));
 
   // TODO(CtfGo): check the underlying data type after CINN ready
