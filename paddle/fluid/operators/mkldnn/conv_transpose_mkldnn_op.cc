@@ -101,7 +101,7 @@ class ConvTransposeMKLDNNHandlerT
                                             "i.e. X, but got dimension = %d .",
                                             bias->dims().size()));
     }
-    
+
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
     mkldnn::memory::dims strides(begin(strides_temp), end(strides_temp));
 
