@@ -1,7 +1,6 @@
 add_subdirectory(utils)
 
 cc_library(ext_compat_utils SRCS ext_compat_utils.cc DEPS place)
-cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS place)
 
 if (WITH_GPU)
   nv_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils enforce)
@@ -10,6 +9,8 @@ elseif (WITH_ROCM)
 else()
   cc_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils enforce)
 endif()
+
+cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor device_context kernel_factory)
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
 

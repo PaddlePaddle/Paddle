@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor dot(const Tensor& x, const Tensor& y) {
+PD_DLL_DECL Tensor dot(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -65,10 +65,10 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   return out;
 }
 
-Tensor matmul(const Tensor& x,
-              const Tensor& y,
-              bool transpose_x,
-              bool transpose_y) {
+PD_DLL_DECL Tensor matmul(const Tensor& x,
+                          const Tensor& y,
+                          bool transpose_x,
+                          bool transpose_y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x, y);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();

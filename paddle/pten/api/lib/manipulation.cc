@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
+PD_DLL_DECL Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();

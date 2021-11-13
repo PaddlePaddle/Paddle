@@ -27,11 +27,11 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor full(const std::vector<int64_t>& shape,
-            const Scalar& value,
-            DataType dtype,
-            Backend backend,
-            DataLayout layout) {
+PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
+                        const Scalar& value,
+                        DataType dtype,
+                        Backend backend,
+                        DataLayout layout) {
   // 1. Get kernel signature and kernel
   pten::KernelKey kernel_key{backend, layout, dtype};
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -62,9 +62,9 @@ Tensor full(const std::vector<int64_t>& shape,
   return out;
 }
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 paddle::experimental::DataType dtype) {
+PD_DLL_DECL Tensor full_like(const Tensor& x,
+                             const Scalar& value,
+                             paddle::experimental::DataType dtype) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -105,11 +105,11 @@ Tensor full_like(const Tensor& x,
   return out;
 }
 
-Tensor ones_like(const Tensor& x, DataType dtype) {
+PD_DLL_DECL Tensor ones_like(const Tensor& x, DataType dtype) {
   return full_like(x, 1, dtype);
 }
 
-Tensor zeros_like(const Tensor& x, DataType dtype) {
+PD_DLL_DECL Tensor zeros_like(const Tensor& x, DataType dtype) {
   return full_like(x, 0, dtype);
 }
 

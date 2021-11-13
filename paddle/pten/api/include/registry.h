@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/api/ext/dll_decl.h"
+
 namespace paddle {
 namespace experimental {
 
@@ -35,7 +37,7 @@ namespace experimental {
 
 // use to declare symbol
 #define PT_REGISTER_API(name) \
-  int RegisterSymbolsFor##name() { return 0; }
+  PD_DLL_DECL int RegisterSymbolsFor##name() { return 0; }
 
 #define PT_DECLARE_API(name)             \
   extern int RegisterSymbolsFor##name(); \
