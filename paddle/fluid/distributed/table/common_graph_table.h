@@ -442,39 +442,6 @@ class GraphTable : public SparseTable {
     return 0;
   }
 
-  virtual int32_t test_sample_with_cache(int size, int batch_size,
-                                         int sample_size) {
-    std::vector<int> actual_sizes1, actual_sizes2;
-    std::vector<std::shared_ptr<char>> buffers1, buffers2;
-    std::vector<uint64_t> node_ids1(batch_size), node_ids2;
-    for (int i = 0; i <= size - batch_size; i += batch_size) {
-      for (int j = 0; j < batch_size; j++) {
-        node_ids1[j] = i + j;
-      }
-      actual_sizes1.resize(batch_size);
-      buffers1.resize(batch_size);
-      random_sample_neighbors(node_ids1.data(), sample_size, buffers1,
-                              actual_sizes1);
-      node_ids2.clear();
-      for (int j = 0; j < batch_size; j++) {
-        if (actual_sizes1[j] != 0) {
-          int offset = 0;
-          char *p = buffers1[j].get();
-          while (offset < actual_sizes1[j]) {
-            node_ids2.push_back(*(uint64_t *)(p + offset));
-            offset += Node::id_size + Node::weight_size;
-          }
-        }
-      }
-      buffers2.resize(node_ids2.size());
-      actual_sizes2.resize(node_ids2.size());
-      random_sample_neighbors(node_ids2.data(), sample_size, buffers2,
-                              actual_sizes2);
-    }
-
-    return 0;
-  }
-
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
