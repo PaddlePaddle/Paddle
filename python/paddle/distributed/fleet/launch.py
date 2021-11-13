@@ -199,19 +199,19 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--heter_workers",
         type=str,
         default="",
-        help="User defined heter workers in all stage ip1:port1;ip2:port2")
+        help="User defined heter workers in each stage ip1:port1;ip2:port2")
     ps_group.add_argument(
         "--heter_devices",
         type=str,
         default="",
-        help="User defined heter devices in all stage cpu;gpu;cpu")
+        help="User defined heter devices in each stage cpu;gpu;cpu")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument(
         "--heter_worker_num",
         type=str,
-        help="number of heter_workers in all stage")
+        help="number of heter_workers in each stage 1;2;3")
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
     # parameter elastic mode
