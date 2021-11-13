@@ -80,16 +80,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept { return meta_.dims; }
-
-  /// \brief Returns the lod of the tensor.
-  /// \return The lod of the tensor.
-  const std::vector<std::vector<size_t>>& lod() const noexcept {
-    return meta_.lod;
-  }
-
-  /// \brief Set the lod of the tensor.
-  void set_lod(const std::vector<std::vector<size_t>>& lod) { meta_.lod = lod; }
+  const DDim& dims() const noexcept { return meta_.shape.dims; }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
@@ -97,7 +88,14 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept { return meta_.layout; }
+  DataLayout layout() const noexcept { return meta_.shape.layout; }
+
+  /// \brief Returns the shape of the tensor.
+  /// \return The shape of the tensor.
+  const DenseTensorShape& shape() const noexcept { return meta_.shape; }
+
+  /// \brief Returns Set the shape of the tensor.
+  void set_shape(const DenseTensorShape& shape);
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
@@ -124,11 +122,6 @@ class DenseTensor : public TensorBase,
   /// to avoid wrong access.
   /// \param dims The new dims of the dense tensor.
   void Resize(const DDim& dims);
-
-  /// \brief Change the dims information in the metadata.
-  /// \param dims The new dims of the dense tensor. The product of the dims
-  /// elements must be consistent with the original value.
-  void set_dims(const DDim& dims);
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.

@@ -20,6 +20,36 @@ limitations under the License. */
 namespace pten {
 namespace tests {
 
+TEST(dense_tensor, shape) {
+  const DDim dims({1, 2});
+  const DataLayout layout{DataLayout::NHWC};
+  const std::vector<std::vector<size_t>> lod{};
+
+  DenseTensorShape shape_0;
+  CHECK(!shape_0.valid());
+
+  DenseTensorShape shape_1(dims);
+  CHECK(shape_1.dims == dims);
+  CHECK(shape_1.valid());
+
+  DenseTensorShape shape_2(dims, layout);
+  CHECK(shape_2.dims == dims);
+  CHECK(shape_2.layout == layout);
+  CHECK(shape_2.valid());
+
+  DenseTensorShape shape_3(dims, layout, lod);
+  CHECK(shape_3.dims == dims);
+  CHECK(shape_3.layout == layout);
+  CHECK(shape_3.lod == lod);
+  CHECK(shape_3.valid());
+
+  DenseTensorShape shape_4(shape_3);
+  CHECK(shape_3 == shape_4);
+
+  DenseTensorShape shape_5(std::move(shape_3));
+  CHECK(shape_5 == shape_4);
+}
+
 TEST(dense_tensor, meta) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
@@ -27,40 +57,27 @@ TEST(dense_tensor, meta) {
   // TODO(Shixiaowei02): need to check the lod is valid.
   const std::vector<std::vector<size_t>> lod{};
 
+  DenseTensorShape shape(dims, layout, lod);
+  DenseTensorShape shape_1(shape);
+
   DenseTensorMeta meta_0;
   CHECK(!meta_0.valid());
 
-  DenseTensorMeta meta_1(dtype, dims);
+  DenseTensorMeta meta_1(dtype, shape);
   CHECK(meta_1.type == dtype);
-  CHECK(meta_1.dims == dims);
+  CHECK(meta_1.shape == shape);
   CHECK(meta_1.valid());
 
-  DenseTensorMeta meta_2(dtype, dims, layout);
+  DenseTensorMeta meta_2(dtype, std::move(shape));
   CHECK(meta_2.type == dtype);
-  CHECK(meta_2.dims == dims);
-  CHECK(meta_2.layout == layout);
+  CHECK(meta_2.shape == shape_1);
   CHECK(meta_2.valid());
 
-  DenseTensorMeta meta_3(dtype, dims, layout, lod);
-  CHECK(meta_3.type == dtype);
-  CHECK(meta_3.dims == dims);
-  CHECK(meta_3.layout == layout);
-  CHECK(meta_3.lod == lod);
-  CHECK(meta_3.valid());
+  DenseTensorMeta meta_3(meta_2);
+  CHECK(meta_2 == meta_3);
 
-  DenseTensorMeta meta_4(meta_3);
-  CHECK(meta_4.type == dtype);
-  CHECK(meta_4.dims == dims);
-  CHECK(meta_4.layout == layout);
-  CHECK(meta_4.lod == lod);
-  CHECK(meta_4.valid());
-
-  DenseTensorMeta meta_5(std::move(meta_4));
-  CHECK(meta_5.type == dtype);
-  CHECK(meta_5.dims == dims);
-  CHECK(meta_5.layout == layout);
-  CHECK(meta_5.lod == lod);
-  CHECK(meta_5.valid());
+  DenseTensorMeta meta_4(std::move(meta_3));
+  CHECK(meta_4 == meta_2);
 }
 
 TEST(dense_tensor, def_ctor) {
@@ -73,17 +90,17 @@ TEST(dense_tensor, ctor) {
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
   const std::vector<std::vector<size_t>> lod{};
-  DenseTensorMeta meta(dtype, dims, layout, lod);
+  DenseTensorMeta meta(dtype, DenseTensorShape(dims, layout, lod));
 
   auto alloc = std::make_shared<FancyAllocator>();
 
   auto check_dense_tensor = [](const DenseTensor& t,
                                const DenseTensorMeta& m) -> bool {
     bool r{true};
-    r = r && (t.numel() == product(m.dims));
-    r = r && (t.dims() == m.dims);
+    r = r && (t.numel() == product(m.shape.dims));
+    r = r && (t.dims() == m.shape.dims);
     r = r && (t.data_type() == m.type);
-    r = r && (t.layout() == m.layout);
+    r = r && (t.layout() == m.shape.layout);
     r = r && (t.place() == paddle::platform::CPUPlace());
     r = r && t.initialized();
     r = r && t.IsSharedWith(t);
@@ -107,7 +124,7 @@ TEST(dense_tensor, resize) {
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
   const std::vector<std::vector<size_t>> lod{};
-  DenseTensorMeta meta(dtype, dims, layout, lod);
+  DenseTensorMeta meta(dtype, DenseTensorShape(dims, layout, lod));
 
   auto alloc = std::make_shared<FancyAllocator>();
   DenseTensor tensor_0(alloc, meta);
@@ -116,9 +133,12 @@ TEST(dense_tensor, resize) {
   tensor_0.check_memory_size();
   tensor_0.Resize({1, 2, 3});
   CHECK_EQ(tensor_0.memory_size(), 0u);
-  tensor_0.set_dims({2, 3});
-  CHECK_EQ(tensor_0.memory_size(), 0u);
   tensor_0.mutable_data<int8_t>();
+  CHECK_EQ(tensor_0.memory_size(), 6u);
+
+  auto shape_0 = tensor_0.shape();
+  shape_0.dims = {2, 3};
+  tensor_0.set_shape(shape_0);
   CHECK_EQ(tensor_0.memory_size(), 6u);
 
   auto storage = tensor_0.release();
@@ -130,7 +150,7 @@ TEST(dense_tensor, shallow_clone) {
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
   const std::vector<std::vector<size_t>> lod{};
-  DenseTensorMeta meta(dtype, dims, layout, lod);
+  DenseTensorMeta meta(dtype, DenseTensorShape(dims, layout, lod));
 
   auto alloc = std::make_shared<FancyAllocator>();
   DenseTensor tensor_0(alloc, meta);

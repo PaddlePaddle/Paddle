@@ -31,20 +31,57 @@ namespace pten {
 using DDim = paddle::framework::DDim;
 using LoD = std::vector<std::vector<size_t>>;
 
+struct DenseTensorShape {
+  using DataType = paddle::experimental::DataType;
+  using DataLayout = paddle::experimental::DataLayout;
+
+  DenseTensorShape() = default;
+  explicit DenseTensorShape(const DDim& dims);
+  DenseTensorShape(const DDim& dims, DataLayout layout);
+  DenseTensorShape(const DDim& dims,
+                   DataLayout layout,
+                   const std::vector<std::vector<size_t>>& lod);
+
+  bool valid() const noexcept;
+
+  DDim dims{std::initializer_list<int64_t>{}};
+  DataLayout layout{DataLayout::NCHW};
+  LoD lod;
+};
+
+inline DenseTensorShape::DenseTensorShape(const DDim& dims) : dims(dims) {}
+
+inline DenseTensorShape::DenseTensorShape(const DDim& dims, DataLayout layout)
+    : dims(dims), layout(layout) {}
+
+inline DenseTensorShape::DenseTensorShape(
+    const DDim& dims,
+    DataLayout layout,
+    const std::vector<std::vector<size_t>>& lod)
+    : dims(dims), layout(layout), lod(lod) {}
+
+inline bool DenseTensorShape::valid() const noexcept {
+  bool valid{true};
+  valid = valid && (dims.size() > 0);
+  valid = valid && (layout != DataLayout::UNDEFINED);
+  valid = valid && (product(dims) >= 0);
+  return valid;
+}
+
+inline bool operator==(const DenseTensorShape& lhs,
+                       const DenseTensorShape& rhs) {
+  bool ret = true;
+  return ret && (lhs.dims == rhs.dims) && (lhs.layout == rhs.layout) &&
+         (lhs.lod == rhs.lod);
+}
+
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
 struct DenseTensorMeta {
-  using DataType = paddle::experimental::DataType;
-  using DataLayout = paddle::experimental::DataLayout;
-
   DenseTensorMeta() = default;
-  DenseTensorMeta(DataType type, const DDim& dims);
-  DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout);
-  DenseTensorMeta(DataType type,
-                  const DDim& dims,
-                  DataLayout layout,
-                  const std::vector<std::vector<size_t>>& lod);
+  DenseTensorMeta(DataType type, const DenseTensorShape& shape);
+  DenseTensorMeta(DataType type, DenseTensorShape&& shape);
 
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
@@ -52,41 +89,27 @@ struct DenseTensorMeta {
 
   /// During the entire life cycle of a DenseTensor, the following attributes
   /// marked with `const` are expected to remain unchanged.
-  const bool is_scalar{false};
-  DDim dims;
-  const DataType type{DataType::UNDEFINED};
-  const DataLayout layout{DataLayout::NCHW};
-  LoD lod;
+  DataType type{DataType::UNDEFINED};
+  DenseTensorShape shape;
 };
 
-inline DenseTensorMeta::DenseTensorMeta(DataType type, const DDim& dims)
-    : dims(dims), type(type) {}
-
 inline DenseTensorMeta::DenseTensorMeta(DataType type,
-                                        const DDim& dims,
-                                        DataLayout layout)
-    : dims(dims), type(type), layout(layout) {}
+                                        const DenseTensorShape& shape)
+    : type(type), shape(shape) {}
 
-inline DenseTensorMeta::DenseTensorMeta(
-    DataType type,
-    const DDim& dims,
-    DataLayout layout,
-    const std::vector<std::vector<size_t>>& lod)
-    : dims(dims), type(type), layout(layout), lod(lod) {}
+inline DenseTensorMeta::DenseTensorMeta(DataType type, DenseTensorShape&& shape)
+    : type(type), shape(std::move(shape)) {}
 
 inline bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
   valid = valid && (type != DataType::UNDEFINED);
-  valid = valid && (layout != DataLayout::UNDEFINED);
-  valid = valid && (is_scalar || product(dims) >= 0);
+  valid = valid && (shape.valid());
   return valid;
 }
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   bool ret = true;
-  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
-         (lhs.type == rhs.type) && (lhs.layout == rhs.layout) &&
-         (lhs.lod == rhs.lod);
+  return ret && (lhs.type == rhs.type) && (lhs.shape == rhs.shape);
 }
 
 }  // namespace pten

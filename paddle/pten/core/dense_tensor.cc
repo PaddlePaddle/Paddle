@@ -35,12 +35,7 @@ DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
     : meta_(std::move(meta)), storage_(std::move(storage)) {}
 
-int64_t DenseTensor::numel() const {
-  if (meta_.is_scalar) {
-    return 1;
-  }
-  return product(meta_.dims);
-}
+int64_t DenseTensor::numel() const { return product(dims()); }
 
 bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
   return storage_.get() == b.storage_.get() && storage_.get() != nullptr;
@@ -113,18 +108,17 @@ void DenseTensor::check_memory_size() const {
                         bytes));
 }
 
-void DenseTensor::Resize(const DDim& dims) {
-  if (product(dims) == product(meta_.dims)) {
-    set_dims(dims);
-  } else {
-    meta_.dims = dims;
-    storage_->Clear();
-  }
+void DenseTensor::set_shape(const DenseTensorShape& shape) {
+  CHECK(product(shape.dims) == product(meta_.shape.dims));
+  CHECK(shape.layout == meta_.shape.layout);
+  meta_.shape = shape;
 }
 
-void DenseTensor::set_dims(const DDim& dims) {
-  CHECK(product(dims) == product(meta_.dims));
-  meta_.dims = dims;
+void DenseTensor::Resize(const DDim& dims) {
+  if (product(dims) != product(meta_.shape.dims)) {
+    storage_->Clear();
+  }
+  meta_.shape.dims = dims;
 }
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \
