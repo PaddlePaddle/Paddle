@@ -240,19 +240,6 @@ class RandomSampleLRU {
     }
   }
 
-  void fetch(LRUNode<K, V> *node) {
-    if (node->pre) {
-      node->pre->next = node->next;
-    } else {
-      node_head = node->next;
-    }
-    if (node->next) {
-      node->next->pre = node->pre;
-    } else {
-      node_end = node->pre;
-    }
-  }
-
  private:
   std::unordered_map<K, LRUNode<K, V> *> key_map;
   ScaledLRU<K, V> *father;
