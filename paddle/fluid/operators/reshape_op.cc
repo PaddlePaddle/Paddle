@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-// only can include the headers in paddle/top/api dirs
+// only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/manipulation.h"
@@ -377,10 +377,10 @@ class ReshapeKernel {
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
 
     // we can't MakePtenDenseTensor by out, because reshape will realloc memory
-    // and this
-    // will throw error(can't realloc shared memory) in current DenseTensor
-    // design. So, codes
-    // below create a tmp densetensor for output.
+    // and this will throw error(can't realloc shared memory) in current
+    // DenseTensor
+    // design. So, codes below create a tmp densetensor for output.
+    // TODO(YuanRisheng) we can use MakePtenDenseTensor after #36916 merge.
     const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
         paddle::platform::CPUPlace());
     pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),

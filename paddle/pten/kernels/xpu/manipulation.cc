@@ -87,7 +87,7 @@ void ReshapeFromVectorDT(const XPUContext& dev_ctx,
             "the element's shape must be [1]. But received the element's shape "
             "is [%s]",
             tensor.dims()));
-    vector_shape.push_back(static_cast<int32_t>(*tensor.data<int32_t>()));
+    vector_shape.push_back(*tensor.data<int32_t>());
   }
   ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
 }
