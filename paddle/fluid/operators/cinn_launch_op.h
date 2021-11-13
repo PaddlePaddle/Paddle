@@ -41,55 +41,55 @@ using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
 namespace details {
 
-// Tranform Paddle place to CINN target
-const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place);
-
-// Print detailed compilation result of graph for debug
-void DebugCinnCompiledResult(const CinnCompiledObject& result);
-
-// Check whether tensors from Paddle and CINN respectively
-// of the same variable are equivalent in type and dimension
-void CheckTensorEquivalent(const std::string& paddle_name,
-                           const LoDTensor* paddle_tensor,
-                           const CinnTensor& cinn_tensor);
-
-// Allocate buffer to a Paddle tensor with assginment information from CINN
-void MutableTensorDataWithCompiledInfo(const platform::Place& place,
-                                       const CinnTensor& cinn_tensor,
-                                       LoDTensor* paddle_tensor);
-
 class CinnLaunchContext {
  public:
   explicit CinnLaunchContext(const CinnCompiledObject& compiled_obj);
 
-  // return whether a Paddle variable used on compiled kernels
+  // Return whether a Paddle variable used on compiled kernels
   bool IsVariableUsed(const std::string& var_name);
 
-  const std::string& PaddleVarNameToCinn(const std::string& paddle_name);
+  // Allocate buffer to a Paddle tensor with assginment information from CINN
+  void MutableTensorData(const std::string& var_name,
+                         const platform::Place& place, LoDTensor* paddle_tensor,
+                         bool is_internal_var = false);
 
+  // Assign tensor buffer to input or output variables
+  void AssignExternalVariable(const std::string& var_name, LoDTensor* tensor);
+
+  // Assign tensor buffer to internal variables
+  void AssignInternalVariable(const std::string& var_name, LoDTensor* tensor);
+
+  // Extract internal variable names from CinnScope
+  // by excluding used input and output variables
+  std::vector<std::string> GetInternalVariableNames();
+
+  // Finalize all execution arguments and return them
+  const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
+
+ private:
   // Get CinnTensor with CINN variable name
   CinnTensor GetCinnTensor(const std::string& var_name);
 
-  // Set an argument with name and tensor
-  void SetArgument(const std::string& paddle_name, LoDTensor* paddle_tensor);
+  // Check whether tensors from Paddle and CINN of the same variable
+  // are equivalent in type and dimension
+  void CheckTensorEquivalent(const std::string& var_name,
+                             const LoDTensor* paddle_tensor,
+                             const CinnTensor& cinn_tensor);
 
-  // Extract temporary variable names from CinnScope by excluding
-  // processed arguments in input and output variables
-  std::vector<std::string> GetUnSetParameters();
-
-  // Finalize all execution arguments and return them
-  const std::map<std::string, cinn_pod_value_t>& FinalizeExecutionArguments();
-
- private:
   // Share the buffer of a Paddle tensor to CINN by delivering memory address
   // to a cinn_buffer_t object
   std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(LoDTensor* tensor);
 
+  // Set an argument with (cinn name)->(paddle tensor) pair
+  void SetArgument(const std::string& cinn_name, LoDTensor* paddle_tensor);
+
  private:
+  // a variable name map from paddle to cinn
   const std::unordered_map<std::string, std::string>& paddle2cinn_varmap_;
+  // the variable scope of cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
-  // all variables used in cinn compilation result
+  // all variables used by compiled executable program
   std::unordered_set<std::string> cinn_variable_names_;
 
   // because a cinn_pod_value_t does not own the cinn_buffer_t object,
@@ -101,6 +101,15 @@ class CinnLaunchContext {
   std::map<std::string, cinn_pod_value_t> name2argument_;
 };
 
+// Tranform Paddle place to CINN target
+const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place);
+
+// Print detailed compilation result of graph for debug
+void DebugCinnCompiledResult(const CinnCompiledObject& result);
+
+// Launch cinn to execute compiled executable program and wait done
+void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
+                         const CinnLaunchContext& context);
 }  // namespace details
 
 template <typename DeviceContext, typename T>
@@ -136,7 +145,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         compilation_key, inputs_name2tensor, target);
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
-    const auto& cinn_runtime_program = cinn_compiled_object.runtime_program;
     auto launch_context =
         std::make_unique<details::CinnLaunchContext>(cinn_compiled_object);
 
@@ -155,11 +163,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         continue;
       }
 
-      auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
-      const auto& cinn_name = launch_context->PaddleVarNameToCinn(var_name);
-      auto cinn_tensor = launch_context->GetCinnTensor(cinn_name);
-      details::CheckTensorEquivalent(var_name, tensor, cinn_tensor);
-      launch_context->SetArgument(cinn_name, tensor);
+      launch_context->AssignExternalVariable(
+          var_name, scope.GetVar(var_name)->GetMutable<LoDTensor>());
     }
 
     // 3.2 Prepare output variables: all output variables should
@@ -173,17 +178,14 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     for (const auto var_name : output_variable_names) {
       PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name), true,
                         platform::errors::InvalidArgument(
-                            "Output variable(%s) not used in cinn", var_name));
+                            "Output variable(%s) not used by cinn", var_name));
 
       auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
-      const auto& cinn_name = launch_context->PaddleVarNameToCinn(var_name);
-      auto cinn_tensor = launch_context->GetCinnTensor(cinn_name);
       if (!tensor->IsInitialized()) {
-        details::MutableTensorDataWithCompiledInfo(place, cinn_tensor, tensor);
+        launch_context->MutableTensorData(var_name, place, tensor);
       }
-
-      details::CheckTensorEquivalent(var_name, tensor, cinn_tensor);
-      launch_context->SetArgument(cinn_name, tensor);
+      launch_context->AssignExternalVariable(
+          var_name, scope.GetVar(var_name)->GetMutable<LoDTensor>());
     }
 
     // 3.3 Prepare internal or temporary variables: Create a temporary
@@ -192,21 +194,16 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     //     Here we directly use the names from CinnScope as Paddle variable
     //     names, because they will not be used outside the graph
     //     and should be destructed after computation finished.
-    auto temp_variable_names = launch_context->GetUnSetParameters();
+    auto internal_variable_names = launch_context->GetInternalVariableNames();
     auto temp_scope = scope.NewTmpScope();
-    if (!temp_variable_names.empty()) {
-      for (const auto& var_name : temp_variable_names) {
-        auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
-        auto cinn_tensor = launch_context->GetCinnTensor(var_name);
-        details::MutableTensorDataWithCompiledInfo(place, cinn_tensor, tensor);
-        details::CheckTensorEquivalent(var_name, tensor, cinn_tensor);
-        launch_context->SetArgument(var_name, tensor);
-      }
+    for (const auto& var_name : internal_variable_names) {
+      auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
+      launch_context->MutableTensorData(var_name, place, tensor, true);
+      launch_context->AssignInternalVariable(var_name, tensor);
     }
 
-    // Step 4. Launch CINN to execute the compiled runtime program
-    const auto& name2argument = launch_context->FinalizeExecutionArguments();
-    cinn_runtime_program->Execute(&name2argument);
+    // Step 4. Launch CINN to execute the compiled executable program
+    details::LaunchCinnExecution(cinn_compiled_object, *launch_context);
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }
 };
