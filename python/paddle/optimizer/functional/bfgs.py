@@ -121,7 +121,7 @@ class SearchState(object):
         return BfgsResult(**kw)
 
 
-def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
+def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
     r"""Updates the approximate inverse Hessian.
     
     Given the input displacement s_k and the change of gradients y_k,
@@ -146,14 +146,15 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     Args:
         
     """
-    rho_k = 1. / einsum('...i, ...i', sk, yk)
-    rho_k = ternary(paddle.isinf(rho_k), paddle.zeros_like(rho_k), rho_k)
+    batch = len(s.shape) > 1
+    rho = 1. / einsum('...i, ...i', s, y)
+    rho = ternary(paddle.isinf(rho), paddle.zeros_like(rho), rho)
 
     # Enforces the curvature condition before updating the inverse Hessian.
     if enforce_curvature:
-        assert not any_active_with_predicates(rho_k <= 0)
+        assert not any_active_with_predicates(rho <= 0)
     else:
-        update_state(state.state, rho_k <= 0, 'failed')
+        update_state(state.state, rho <= 0, 'failed')
 
     # By expanding the updating formula we obtain a sum of tensor products
     #
@@ -165,19 +166,19 @@ def update_approx_inverse_hessian(state, Hk, sk, yk, enforce_curvature=False):
     #
     # Since H_k is symmetric, (3) is (2)'s transpose.
     # H_k * y_k
-    Hy = einsum('...ij, ...j', Hk, yk)
-    
+    Hy = einsum('...ij, ...j', H, y)
     # T(y_k) * H_y * y_k
-    yHy = einsum('...i, ...i', Hy, yk)
-
-    term23 = einsum('...i, ...j', Hy, sk) + einsum('...i, ...j', sk, Hy)
-
+    yHy = einsum('...i, ...i', y, Hy)
+    term23 = einsum('...i, ...j', Hy, s) + einsum('...i, ...j', s, Hy)
     # T(s_k) * s_k
-    sTs = einsum('...i, ...i', sk, sk)
+    sTs = einsum('...i, ...j', s, s)
 
-    term45 = sTs * (1 + rho_k * yHy).unsqueeze(-1).unsqueeze(-1)
-
-    Hk_next = Hk + (term45 - term23) * rho_k.unsqueeze(-1).unsqueeze(-1)
+    if batch:
+        term45 = einsum('...ij, ...', sTs, 1 + rho * yHy)
+        Hk_next = H + einsum('...ij, ...', term45 - term23, rho)
+    else:
+        term45 = sTs * (1 + rho * yHy)
+        Hk_next = H + (term45 - term23) * rho
 
     return Hk_next
 
