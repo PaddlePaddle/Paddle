@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_DECLARE_MODULE(ManipulationCPU);
@@ -45,16 +46,14 @@ TEST(DEV_API, flatten) {
     dense_x_data[i] = i;
   }
   int start_axis = 1, stop_axis = 2;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto out = pten::Flatten<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      start_axis,
-      stop_axis);
+  auto out = pten::Flatten<float>(*(static_cast<pten::CPUContext*>(dev_ctx)),
+                                  dense_x,
+                                  start_axis,
+                                  stop_axis);
 
   // 3. check result
   std::vector<int> expect_shape = {3, 4, 3};

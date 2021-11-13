@@ -19,6 +19,7 @@
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
@@ -114,15 +115,15 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::KernelSignature& kernel_signature,
                        const pten::Kernel& pt_kernel,
                        pten::KernelContext* pt_kernel_context,
-                       platform::DeviceContext* dev_ctx)
+                       pten::DeviceContext* pt_dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_type_(kernel_type),
       func_(nullptr),
-      dev_ctx_(dev_ctx),
       run_pten_kernel_(true),
       pt_kernel_signature_(kernel_signature),
       pt_kernel_(pt_kernel),
+      pt_dev_ctx_(pt_dev_ctx),
       pt_kernel_context_(pt_kernel_context) {}
 
 template <typename VarType>
@@ -135,6 +136,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        pten::KernelContext* pt_kernel_context) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
+  pten::DeviceContextPool& pt_pool = pten::DeviceContextPool::Instance();
+  auto* pt_dev_ctx = pt_pool.Get(place);
 
   framework::RuntimeContext ctx({}, {});
 
@@ -175,7 +178,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                        pt_kernel, pt_kernel_context, dev_ctx);
+                        pt_kernel, pt_kernel_context, pt_dev_ctx);
     } else {
       VLOG(1) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
               << "` not found.";
@@ -256,8 +259,8 @@ static void BuildDygraphPtenKernelContext(
     const framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs,
-    platform::DeviceContext* dev_ctx, pten::KernelContext* kernel_ctx) {
+    const framework::AttributeMap& default_attrs, pten::DeviceContext* dev_ctx,
+    pten::KernelContext* kernel_ctx) {
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
@@ -441,7 +444,7 @@ static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
     const framework::KernelSignature& pt_kernel_signature,
     const pten::Kernel& pt_kernel, pten::KernelContext* pt_kernel_context,
-    platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
+    pten::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
@@ -468,8 +471,8 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, pt_kernel_signature_, pt_kernel_,
-                                 pt_kernel_context_, dev_ctx_, ins, outs, attrs,
-                                 default_attrs);
+                                 pt_kernel_context_, pt_dev_ctx_, ins, outs,
+                                 attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
                                outs, attrs, default_attrs);
@@ -482,7 +485,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(op_, pt_kernel_signature_, pt_kernel_,
-                                         pt_kernel_context_, dev_ctx_, ins,
+                                         pt_kernel_context_, pt_dev_ctx_, ins,
                                          outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,

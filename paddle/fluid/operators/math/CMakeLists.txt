@@ -56,7 +56,7 @@ math_library(sampler DEPS generator)
 math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)
 
-cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
+cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context pten)
 math_library(math_function DEPS blas)
 math_library(maxouting)
 math_library(pooling)

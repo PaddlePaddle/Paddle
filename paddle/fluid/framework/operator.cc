@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/core/context.h"
+#include "paddle/pten/core/device_context_pool.h"
 
 namespace paddle {
 namespace framework {
@@ -1111,6 +1113,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
+  pten::DeviceContextPool& pten_pool = pten::DeviceContextPool::Instance();
+  auto* pten_dev_ctx = pten_pool.Get(place);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
@@ -1181,7 +1185,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (pt_kernel_context_ == nullptr) {
         pt_kernel_context_.reset(new pten::KernelContext());
       }
-      BuildPtenKernelContext(*runtime_ctx, dev_ctx);
+      BuildPtenKernelContext(*runtime_ctx, pten_dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
       pt_kernel_context_->ClearData();
     } else {
@@ -1770,7 +1774,7 @@ KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
 }
 
 void OperatorWithKernel::BuildPtenKernelContext(
-    const RuntimeContext& ctx, platform::DeviceContext* dev_ctx) const {
+    const RuntimeContext& ctx, pten::DeviceContext* dev_ctx) const {
   // TODO(chenweihang): now only work for very simple case,
   // many cases need to be deal with later:
   // 1. the input and output are not tensor

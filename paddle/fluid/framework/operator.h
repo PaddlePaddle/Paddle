@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/pten/core/device_context.h"
 #include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/pten/include/core.h"
@@ -587,7 +588,7 @@ class OperatorWithKernel : public OperatorBase {
   void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx) const;
+                              pten::DeviceContext* dev_ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

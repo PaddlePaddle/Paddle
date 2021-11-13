@@ -66,7 +66,10 @@ class MeanKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    auto* pten_dev_ctx = reinterpret_cast<
+        typename framework::ConvertContextType<DeviceContext>::TYPE*>(
+        framework::ConvertContext(dev_ctx));
+    pten::Mean<T>(*pten_dev_ctx, *pt_x.get(), pt_out.get());
   }
 };
 

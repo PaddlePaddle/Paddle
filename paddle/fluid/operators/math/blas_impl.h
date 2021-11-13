@@ -24,6 +24,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/core/backends/host/context.h"
 
 namespace paddle {
 namespace operators {
@@ -861,10 +862,33 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                  CBLAS_TRANSPOSE transB, int M, int N, int K,
+                                  T alpha, const T *A, const T *B, T beta,
+                                  T *C) const {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+                 beta, C, ldc);
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
                                             int N, int K, T alpha, const T *A,
                                             int lda, const T *B, int ldb,
                                             T beta, T *C, int ldc) const {
+  CBlas<T>::GEMM(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+                 transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+                 lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM(bool transA, bool transB, int M, int N, int K,
+                                  T alpha, const T *A, int lda, const T *B,
+                                  int ldb, T beta, T *C, int ldc) const {
   CBlas<T>::GEMM(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
                  transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
                  lda, B, ldb, beta, C, ldc);
@@ -877,6 +901,16 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                             int N, int K, T alpha, const T *A,
                                             int lda, const T *B, int ldb,
                                             T beta, T *C, int ldc) const {
+  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+                 beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                  CBLAS_TRANSPOSE transB, int M, int N, int K,
+                                  T alpha, const T *A, int lda, const T *B,
+                                  int ldb, T beta, T *C, int ldc) const {
   CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
                  beta, C, ldc);
 }
@@ -931,6 +965,21 @@ template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
                                             T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VADD(n, x, y, z);
+#else
+  if (x == z) {
+    this->template AXPY<T>(n, (T)(1.), y, z);
+  } else {
+    this->template VCOPY<T>(n, y, z);
+    this->template AXPY<T>(n, (T)(1.), x, z);
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VADD(n, x, y, z);
 #else
@@ -1077,6 +1126,14 @@ void Blas<platform::CPUDeviceContext>::GEMV(bool trans_a, int M, int N, T alpha,
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::GEMV(bool trans_a, int M, int N, T alpha,
+                                  const T *A, const T *B, T beta, T *C) const {
+  CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
+  CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
@@ -1115,9 +1172,71 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, T alpha, const T *A, const T *B,
+                                         T beta, T *C, int batchCount,
+                                         int64_t strideA,
+                                         int64_t strideB) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      A, platform::errors::InvalidArgument("Pointer A should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      B, platform::errors::InvalidArgument("Pointer B should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      C, platform::errors::InvalidArgument("Pointer C should not be null."));
+#ifdef PADDLE_WITH_MKLML
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  auto a_array = std::vector<const T *>(batchCount);
+  auto b_array = std::vector<const T *>(batchCount);
+  auto c_array = std::vector<T *>(batchCount);
+  for (int k = 0; k < batchCount; ++k) {
+    a_array[k] = &A[k * strideA];
+    b_array[k] = &B[k * strideB];
+    c_array[k] = &C[k * M * N];
+  }
+
+  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
+                       a_array.data(), &lda, b_array.data(), &ldb, &beta,
+                       c_array.data(), &ldc, 1 /* group_count */, &batchCount);
+#else
+  for (int k = 0; k < batchCount; ++k) {
+    auto *Ak = &A[k * strideA];
+    auto *Bk = &B[k * strideB];
+    auto *Ck = &C[k * M * N];
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, Bk, beta, Ck);
+  }
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, const T **A, const T **B, T beta, T **C, int batchCount) const {
+#ifdef PADDLE_WITH_MKLML
+  const int lda = (std::max)((transA == CblasNoTrans) ? K : M, 1);
+  const int ldb = (std::max)((transB == CblasNoTrans) ? N : K, 1);
+  const int ldc = (std::max)(N, 1);
+  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha, A,
+                       &lda, B, &ldb, &beta, C, &ldc, 1 /* group_count */,
+                       &batchCount);
+#else
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, T alpha, const T **A,
+                                         const T **B, T beta, T **C,
+                                         int batchCount) const {
 #ifdef PADDLE_WITH_MKLML
   const int lda = (std::max)((transA == CblasNoTrans) ? K : M, 1);
   const int ldb = (std::max)((transB == CblasNoTrans) ? N : K, 1);

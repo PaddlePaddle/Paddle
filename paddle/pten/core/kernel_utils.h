@@ -20,18 +20,14 @@
 #include "paddle/pten/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace pten {
-
-// TODO(shixiaowei): replaced by new DeviceContext later
-using CPUContext = paddle::platform::CPUDeviceContext;
+#include "paddle/pten/core/backends/host/context.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
+#include "paddle/pten/core/backends/gpu/context.h"
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNContext = paddle::platform::MKLDNNDeviceContext;
+// using MKLDNNContext = paddle::platform::MKLDNNDeviceContext;
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
 using NPUContext = paddle::platform::NPUDeviceContext;
@@ -40,6 +36,7 @@ using NPUContext = paddle::platform::NPUDeviceContext;
 using XPUContext = paddle::platform::XPUDeviceContext;
 #endif
 
+namespace pten {
 #define PT_KERNEL(...) \
   ::pten::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 

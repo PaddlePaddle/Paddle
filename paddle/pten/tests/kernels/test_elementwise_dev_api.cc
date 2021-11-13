@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_DECLARE_MODULE(MathCPU);
@@ -57,16 +58,12 @@ TEST(DEV_API, elementwise_add) {
     dense_y_data[i] = i * 2.0;
   }
   int axis = 1;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
   auto dense_out = pten::ElementwiseAdd<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dense_y,
-      axis);
+      *(static_cast<pten::CPUContext*>(dev_ctx)), dense_x, dense_y, axis);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);

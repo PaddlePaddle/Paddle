@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/pten/core/device_context_pool.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -194,6 +195,9 @@ void InitDevices(const std::vector<int> devices) {
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
   platform::DeviceContextPool::Init(places);
+  // Temporary transition phase: the context of pten will be initialized in pten
+  // in the future
+  pten::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);

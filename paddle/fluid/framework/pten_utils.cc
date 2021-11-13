@@ -204,5 +204,16 @@ std::string KernelSignatureToString(const KernelSignature& signature) {
   return os.str();
 }
 
+pten::DeviceContext* ConvertContext(const platform::DeviceContext& context) {
+  pten::DeviceContextPool& pt_pool = pten::DeviceContextPool::Instance();
+  if (platform::is_cpu_place(context.GetPlace())) {
+    auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
+    return reinterpret_cast<pten::CPUContext*>(pt_dev_ctx);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument("Unsupported type"));
+    return nullptr;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

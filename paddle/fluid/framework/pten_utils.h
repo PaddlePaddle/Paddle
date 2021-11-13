@@ -26,6 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/context.h"
+#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
@@ -89,6 +91,23 @@ class KernelArgsNameMaker {
 };
 
 std::string KernelSignatureToString(const KernelSignature& signature);
+
+// Temporary transition phase: the conversion of context between the fluid frame
+// and the pten frame
+pten::DeviceContext* ConvertContext(const platform::DeviceContext& context);
+
+template <typename DeviceContext>
+struct ConvertContextType;
+
+template <>
+struct ConvertContextType<platform::CPUDeviceContext> {
+  using TYPE = pten::CPUContext;
+};
+
+// template <>
+// struct struct ConvertContext<platform::CUDADeviceContext> {
+//   using TYPE = pten::CUDAContext;
+// };
 
 }  // namespace framework
 }  // namespace paddle

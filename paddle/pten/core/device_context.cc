@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/pten/core/device_context.h"
 
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/core/backends/host/context.h"
-#include "paddle/pten/core/dense_tensor.h"
-
-namespace pten {
-
-template <typename T>
-void FillAnyLike(const CPUContext& dev_ctx,
-                 const Scalar& val,
-                 DenseTensor* out);
-
-template <typename T>
-void FillConstant(const CPUContext& dev_ctx,
-                  const Scalar& val,
-                  DenseTensor* out);
-
-}  // namespace pten
+namespace pten {}  // namespace pten

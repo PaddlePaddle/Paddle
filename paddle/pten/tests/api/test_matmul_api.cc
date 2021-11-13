@@ -121,7 +121,7 @@ TEST(API, matmul_cuda) {
                             framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = pten::DeviceContextPool::Instance();
   auto place = paddle::platform::CUDAPlace();
   auto* dev_ctx = pool.GetByPlace(place);
 

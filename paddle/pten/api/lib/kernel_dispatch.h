@@ -27,17 +27,11 @@ limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/core/context.h"
+#include "paddle/pten/core/device_context_pool.h"
 
 namespace paddle {
 namespace experimental {
-
-// TODO(shixiaowei): replaced by new DeviceContext later
-using CPUContext = paddle::platform::CPUDeviceContext;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
-#endif
 
 namespace detail {
 BackendSet GetTensorBackendSet(const Tensor& t) {
@@ -144,9 +138,8 @@ KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
   return detail::KernelKeyParser().apply(args...).key_set;
 }
 
-paddle::platform::DeviceContext* GetDeviceContextByBackend(
-    pten::Backend backend) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend) {
+  auto& pool = pten::DeviceContextPool::Instance();
   return pool.Get(pten::TransToFluidPlace(backend));
 }
 

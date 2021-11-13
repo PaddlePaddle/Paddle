@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_DECLARE_MODULE(MathCPU);
@@ -47,17 +48,15 @@ TEST(DEV_API, scale) {
   float bias = 1;
   bool bias_after_scale = true;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto out = pten::Scale<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      scale,
-      bias,
-      bias_after_scale);
+  auto out = pten::Scale<float>(*(static_cast<pten::CPUContext*>(dev_ctx)),
+                                dense_x,
+                                scale,
+                                bias,
+                                bias_after_scale);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -92,17 +91,15 @@ TEST(DEV_API, scale_host) {
   float bias = 1;
   bool bias_after_scale = true;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto out = pten::Scale<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      scale,
-      bias,
-      bias_after_scale);
+  auto out = pten::Scale<float>(*(static_cast<pten::CPUContext*>(dev_ctx)),
+                                dense_x,
+                                scale,
+                                bias,
+                                bias_after_scale);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

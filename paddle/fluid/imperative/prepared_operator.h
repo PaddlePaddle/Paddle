@@ -27,6 +27,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
+#include "paddle/pten/core/device_context.h"
 #include "paddle/pten/include/core.h"
 
 DECLARE_bool(use_mkldnn);
@@ -157,7 +158,7 @@ class PreparedOp {
              const framework::KernelSignature& kernel_signature,
              const pten::Kernel& pt_kernel,
              pten::KernelContext* pt_kernel_context,
-             platform::DeviceContext* dev_ctx);
+             pten::DeviceContext* pt_dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -198,6 +199,7 @@ class PreparedOp {
   bool run_pten_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
   pten::Kernel pt_kernel_;
+  pten::DeviceContext* pt_dev_ctx_{nullptr};
   // In order to reduce the compatibility phase
   // performance overhead, temporarily cache KernelContext
   pten::KernelContext* pt_kernel_context_;

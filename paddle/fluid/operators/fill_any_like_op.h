@@ -65,7 +65,10 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx = context.template device_context<DeviceContext>();
     // call new kernel
-    pten::FillAnyLike<T>(dev_ctx, value, pt_out.get());
+    auto* pten_dev_ctx = reinterpret_cast<
+        typename framework::ConvertContextType<DeviceContext>::TYPE*>(
+        framework::ConvertContext(dev_ctx));
+    pten::FillAnyLike<T>(*pten_dev_ctx, value, pt_out.get());
   }
 };
 
