@@ -63,6 +63,9 @@ class CastOpKernel : public framework::OpKernel<InT> {
     auto in_dtype = context.Attr<int>("in_dtype");
 
     auto& dev_ctx = context.device_context<DeviceContext>();
+    out->mutable_data(dev_ctx.GetPlace(),
+                      static_cast<framework::proto::VarType::Type>(out_dtype));
+
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
