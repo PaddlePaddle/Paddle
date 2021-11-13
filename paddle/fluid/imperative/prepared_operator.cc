@@ -413,7 +413,7 @@ static void BuildDygraphPtenKernelContext(
 }
 
 template <typename VarType>
-static void PtenKernelContextToNameVarMap(
+static void WriteBackToOutputs(
     const framework::KernelSignature& pt_kernel_signature,
     const NameVarMap<VarType>& outs, pten::KernelContext* kernel_ctx) {
   auto& output_names = std::get<2>(pt_kernel_signature.args);
@@ -517,8 +517,7 @@ static void PreparedOpRunPtImpl(
 #endif
   }
 
-  PtenKernelContextToNameVarMap<VarType>(pt_kernel_signature, outs,
-                                         pt_kernel_context);
+  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, pt_kernel_context);
 
   // Ensure that it does not affect the VarBase life cycle management
   pt_kernel_context->ClearData();

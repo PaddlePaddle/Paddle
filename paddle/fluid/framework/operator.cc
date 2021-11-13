@@ -1184,7 +1184,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
 
-      PtenKernelContexToRuntimeContext(runtime_ctx);
+      WriteBackToOutputs(runtime_ctx);
 
       pt_kernel_context_->ClearData();
     } else {
@@ -1930,8 +1930,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
   }
 }
 
-void OperatorWithKernel::PtenKernelContexToRuntimeContext(
-    RuntimeContext* ctx) const {
+void OperatorWithKernel::WriteBackToOutputs(RuntimeContext* ctx) const {
   // auto& input_names = std::get<0>(pt_kernel_signature_->args);
   // auto& attr_names = std::get<1>(pt_kernel_signature_->args);
   auto& output_names = std::get<2>(pt_kernel_signature_->args);

@@ -105,25 +105,6 @@ class CastOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(tensor->type(), tensor_place);
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("cast", {"X"}, {"out_dtype", "in_dtype"},
-                                      {"Out"});
-  }
-};
-
-class CastVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto var_data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
-    if (var_data_type < 0) {
-      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
-    } else {
-      ctx->SetOutputDataType("Out", var_data_type);
-    }
-  }
 };
 
 }  // namespace operators
@@ -134,7 +115,7 @@ using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(cast, ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CastOpProtoMaker, ops::CastVarTypeInference);
+                  ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(
     cast, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>,
     ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,

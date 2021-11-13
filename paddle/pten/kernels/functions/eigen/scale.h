@@ -30,8 +30,8 @@ void Scale(const DevCtx& dev_ctx,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
+  // calc
   out->mutable_data<T>();
-
   auto eigen_out = pten::EigenVector<T>::Flatten(*out);
   auto eigen_x = pten::EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();
