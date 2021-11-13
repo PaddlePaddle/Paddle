@@ -25,6 +25,7 @@ void ElementwiseAdd(const DevCtx& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  out->mutable_data<T>();
   auto eigen_x = pten::EigenVector<T>::Flatten(x);
   auto eigen_y = pten::EigenVector<T>::Flatten(y);
   auto eigen_z = pten::EigenVector<T>::Flatten(*out);
