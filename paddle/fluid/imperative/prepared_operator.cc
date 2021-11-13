@@ -19,6 +19,7 @@
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/core/vector_tensor.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
@@ -346,11 +347,45 @@ static void BuildDygraphPtenKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
+    if (attr_defs[i].type_index ==
+        std::type_index(typeid(pten::VectorTensor))) {
+      auto attr_iter = attrs.find(attr_names[i]);
+      if (attr_iter != attrs.end()) {  // shape is in the attribute
+        if (std::type_index(attr_iter->second.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(pten::VectorTensor(
+              BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "unsupported cast op attribute `%s` to VectorTensor when "
+              "construct "
+              "KernelContext.",
+              attr_names[i]));
+        }
+      } else {  // shape is in the input
+        auto& ins_vector = ins.at(attr_names[i]);
+        if (ins_vector.size() == 1) {  // ShapeTensor
+          VLOG(1) << "########## push a shape tensor";
+          kernel_ctx->EmplaceBackAttr(std::move(
+              experimental::MakePtenVectorTensorFromVar(ins_vector[0]->Var())));
+        } else {  // ShapeTensorList
+          VLOG(1) << "########## push a ShapeTensorList";
+          std::vector<framework::Variable*> variables;
+          variables.reserve(ins_vector.size());
+          for (const auto& var_base : ins_vector) {
+            variables.push_back(var_base->MutableVar());
+          }
+          kernel_ctx->EmplaceBackAttr(std::move(
+              experimental::MakePtenVectorTensorFromVarList(variables)));
+        }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(pten::Scalar))) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
+      VLOG(1) << "######### PUSH A Scalar";
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         kernel_ctx->EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
@@ -366,6 +401,8 @@ static void BuildDygraphPtenKernelContext(
       }
     } else {
       // TODO(chenweihang): support other attrs later
+      VLOG(1) << "####### putong attr";
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {

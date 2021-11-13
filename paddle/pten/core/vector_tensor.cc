@@ -27,6 +27,24 @@ VectorTensor::VectorTensor(const std::vector<int64_t>& vec)
   }
 }
 
+VectorTensor::VectorTensor(const int64_t* date_value, int64_t n)
+    : data_type_(DataType::INT64), size_(n) {
+  data_ = malloc(size_ * paddle::experimental::SizeOf(data_type_));
+  auto* data = static_cast<int64_t*>(data_);
+  for (auto i = 0; i < size_; i++) {
+    data[i] = date_value[i];
+  }
+}
+
+VectorTensor::VectorTensor(const int32_t* date_value, int64_t n)
+    : data_type_(DataType::INT32), size_(n) {
+  data_ = malloc(size_ * paddle::experimental::SizeOf(data_type_));
+  auto* data = static_cast<int32_t*>(data_);
+  for (auto i = 0; i < size_; i++) {
+    data[i] = date_value[i];
+  }
+}
+
 VectorTensor::VectorTensor(const DenseTensor& dense_tensor)
     : data_type_(dense_tensor.data_type()), size_(dense_tensor.numel()) {
   PADDLE_ENFORCE_EQ(TransToPtenBackend(dense_tensor.place()),
@@ -46,12 +64,10 @@ VectorTensor::VectorTensor(const DenseTensor& dense_tensor)
   // TODO(zhangyunfei) replace switch-case with data_type_visit
   switch (data_type_) {
     case DataType::INT32:
-      // dense_tensor.data<int32_t>();
       AssignData<int32_t>(dense_tensor.data<int32_t>());
       break;
     case DataType::INT64:
       AssignData<int64_t>(dense_tensor.data<int64_t>());
-      // dense_tensor.data<int64_t>();
       break;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -108,6 +124,18 @@ VectorTensor::VectorTensor(const std::vector<DenseTensor>& vec)
           "only supports int32 and int64, but now received %s.",
           data_type_));
   }
+}
+
+VectorTensor::VectorTensor(const VectorTensor& other)
+    : data_type_(other.data_type_), size_(other.size_) {
+  auto bytes = size_ * paddle::experimental::SizeOf(data_type_);
+  data_ = malloc(bytes);
+  memcpy(data_, other.data_, bytes);
+}
+
+VectorTensor::VectorTensor(VectorTensor&& other)
+    : data_type_(other.data_type_), size_(other.size_), data_(other.data_) {
+  other.data_ = nullptr;
 }
 
 VectorTensor::~VectorTensor() {

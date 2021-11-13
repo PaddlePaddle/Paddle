@@ -54,6 +54,99 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
                                              std::move(meta));
 }
 
+pten::VectorTensor MakePtenVectorTensor(
+    const paddle::framework::LoDTensor& src) {
+  if (src.type() == paddle::framework::proto::VarType::INT64) {
+    return {src.data<int64_t>(), src.numel()};
+  } else if (src.type() == paddle::framework::proto::VarType::INT32) {
+    return {src.data<int32_t>(), src.numel()};
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Data type error. When cast a LoDTensor to VectorTensor, "
+        "the data type of LoDTensor must be int32 or int64, "
+        "but now data type is %s.",
+        src.type()));
+  }
+}
+
+pten::VectorTensor MakePtenVectorTensorFromVar(
+    const framework::Variable& variable) {
+  auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
+  if (variable.IsType<framework::LoDTensor>()) {
+    const auto& tensor = variable.Get<framework::LoDTensor>();
+    if (!platform::is_same_place(tensor.place(), expected_place)) {
+      framework::LoDTensor tmp_tensor;
+      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+      return MakePtenVectorTensor(tmp_tensor);
+    } else {
+      return MakePtenVectorTensor(tensor);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to VectorTensor when call pt "
+        "kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+}
+
+pten::VectorTensor MakePtenVectorTensorFromVarList(
+    const std::vector<framework::Variable*>& variables) {
+  if (variables.size() == 0) {
+    return pten::VectorTensor();
+  }
+
+  auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
+
+  paddle::framework::proto::VarType::Type data_type;
+  auto* first_var = variables.front();
+  if (first_var->IsType<framework::LoDTensor>()) {
+    const auto& tensor = first_var->Get<framework::LoDTensor>();
+    data_type = tensor.type();
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to VectorTensor when call pt "
+        "kernel.",
+        framework::ToTypeName(variables.front()->Type())));
+  }
+
+  std::vector<int64_t> vector_data;
+  vector_data.reserve(variables.size());
+
+  if (data_type == paddle::framework::proto::VarType::INT64) {
+    for (auto* var : variables) {
+      if (var->IsType<framework::LoDTensor>()) {
+        const auto& tensor = var->Get<framework::LoDTensor>();
+        vector_data.push_back(*tensor.data<int64_t>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupport casting input `%s` type to VectorTensor when call pt "
+            "kernel.",
+            framework::ToTypeName(variables.front()->Type())));
+      }
+    }
+
+  } else if (data_type == paddle::framework::proto::VarType::INT32) {
+    for (auto* var : variables) {
+      if (var->IsType<framework::LoDTensor>()) {
+        const auto& tensor = var->Get<framework::LoDTensor>();
+        vector_data.push_back(*tensor.data<int32_t>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupport casting input `%s` type to VectorTensor when call pt "
+            "kernel.",
+            framework::ToTypeName(variables.front()->Type())));
+      }
+    }
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Data type error. When cast a LoDTensor to VectorTensor, "
+        "the data type of LoDTensor must be int32 or int64, "
+        "but now data type is %s.",
+        data_type));
+  }
+  return {vector_data};
+}
+
 std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def) {
   auto expected_place = pten::TransToFluidPlace(arg_def.backend);

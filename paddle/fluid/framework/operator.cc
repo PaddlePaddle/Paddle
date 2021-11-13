@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/core/vector_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -1857,11 +1858,37 @@ void OperatorWithKernel::BuildPtenKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    auto& attr = Attrs().at(attr_names[i]);
-    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
+    if (attr_defs[i].type_index ==
+        std::type_index(typeid(pten::VectorTensor))) {
+      auto attr_iter = Attrs().find(attr_names[i]);
+      if (attr_iter != Attrs().end()) {  // shape is in the attribute
+        if (std::type_index(attr_iter->second.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          pt_kernel_context_->EmplaceBackAttr(std::move(pten::VectorTensor(
+              BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "unsupported cast op attribute `%s` to VectorTensor when "
+              "construct "
+              "KernelContext.",
+              attr_names[i]));
+        }
+      } else {  // shape is in the input
+        auto& ins_vector = ctx.inputs.at(attr_names[i]);
+        if (ins_vector.size() == 1) {  // ShapeTensor
+          pt_kernel_context_->EmplaceBackAttr(std::move(
+              experimental::MakePtenVectorTensorFromVar(*ins_vector.front())));
+        } else {  // ShapeTensorList
+          pt_kernel_context_->EmplaceBackAttr(std::move(
+              experimental::MakePtenVectorTensorFromVarList(ins_vector)));
+        }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(pten::Scalar))) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
+      auto& attr = Attrs().at(attr_names[i]);
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         pt_kernel_context_->EmplaceBackAttr(
             std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
@@ -1877,6 +1904,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
       }
     } else {
       // TODO(chenweihang): support other attrs later
+      auto& attr = Attrs().at(attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {

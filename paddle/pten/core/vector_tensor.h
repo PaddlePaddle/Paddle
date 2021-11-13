@@ -27,13 +27,23 @@ class VectorTensor : public TensorBase,
                      public TypeInfoTraits<TensorBase, VectorTensor> {
  public:
   // Constructor support implicit
+  VectorTensor() : data_type_(DataType::INT64), size_(0) {}
+
   VectorTensor(const std::vector<int64_t>& vec);  // NOLINT
+
+  VectorTensor(const int64_t* date_value, int64_t n);
+
+  VectorTensor(const int32_t* date_value, int64_t n);
 
   // The dense_tensor must have one dim
   VectorTensor(const DenseTensor& dense_tensor);  // NOLINT
 
   // The DenseTensor in vec must have only one element
   VectorTensor(const std::vector<DenseTensor>& vec);  // NOLINT
+
+  VectorTensor(const VectorTensor& other);
+
+  VectorTensor(VectorTensor&& other);
 
   virtual ~VectorTensor();
 

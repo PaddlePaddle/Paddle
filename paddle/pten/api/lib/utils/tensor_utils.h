@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/vector_tensor.h"
 
 namespace paddle {
 namespace experimental {
@@ -33,6 +34,15 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::LoDTensor& src);
+
+pten::VectorTensor MakePtenVectorTensor(
+    const paddle::framework::LoDTensor& src);
+
+pten::VectorTensor MakePtenVectorTensorFromVar(
+    const framework::Variable& variable);
+
+pten::VectorTensor MakePtenVectorTensorFromVarList(
+    const std::vector<framework::Variable*>& variables);
 
 std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def);

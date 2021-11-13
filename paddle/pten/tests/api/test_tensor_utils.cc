@@ -112,8 +112,11 @@ TEST(PtenUtils, VarToPtTensor) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   expect_backend = pten::Backend::CUDA;
 #endif
-  auto tensor_def = pten::TensorArgDef(
-      expect_backend, pten::DataLayout::NCHW, pten::DataType::INT32);
+  auto tensor_def =
+      pten::TensorArgDef(expect_backend,
+                         pten::DataLayout::NCHW,
+                         pten::DataType::INT32,
+                         std::type_index(typeid(const DenseTensor&)));
   // 2. test API
   auto tensor_x = MakePtenTensorBaseFromVar(v, tensor_def);
   // 3. check result
