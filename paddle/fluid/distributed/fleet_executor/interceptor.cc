@@ -76,9 +76,9 @@ void Interceptor::PoolTheMailbox() {
     const InterceptorMessage interceptor_message = local_mailbox_.front();
     local_mailbox_.pop();
     const MessageType message_type = interceptor_message.message_type();
-    VLOG(3) << "Interceptor " << interceptor_id_
-            << " has received a message: " << message_type
-            << " from interceptor " << interceptor_message.src_id() << ".";
+    VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
+            << " from interceptor " << interceptor_message.src_id()
+            << " with message: " << message_type << ".";
     if (message_type == STOP) {
       // break the pooling thread
       break;
