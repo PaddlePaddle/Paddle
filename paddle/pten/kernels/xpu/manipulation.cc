@@ -47,7 +47,9 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
     xshape_dims[i + 1] = in_dims[i];
   }
   xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->set_lod(x.lod());
+  auto shape = xshape->shape();
+  shape.lod = shape.lod;
+  xshape->set_shape(shape);
 }
 
 }  // namespace pten
