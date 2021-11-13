@@ -94,11 +94,13 @@ class TestCustomLinearJit(unittest.TestCase):
                                    self.np_bias)
             self.check_output(pten_out, pd_out, "pten_out")
 
-    # def test_dynamic(self):
-    #     for dtype in self.dtypes:
-    #         pten_out = linear_dynamic(custom_ops.pten_linear, dtype, self.np_x, self.np_weight, self.np_bias)
-    #         pd_out = linear_dynamic(F.linear, dtype, self.np_x, self.np_weight, self.np_bias)
-    #         self.check_output(pten_out, pd_out, "pten_out")
+    def test_dynamic(self):
+        for dtype in self.dtypes:
+            pten_out = linear_dynamic(custom_ops.pten_linear, dtype, self.np_x,
+                                      self.np_weight, self.np_bias)
+            pd_out = linear_dynamic(F.linear, dtype, self.np_x, self.np_weight,
+                                    self.np_bias)
+            self.check_output(pten_out, pd_out, "pten_out")
 
 
 if __name__ == "__main__":
