@@ -110,6 +110,11 @@ class SharedStorage : public pten::Storage {
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
+  void ResetAllocationPlace(const paddle::platform::Place& place) {
+    data_ = pten::Allocation(nullptr, place);
+  }
+
+  // Temporary method: For compatible with fluid Tensor and improve performance
   void Reset() {
     if (allocation_ != nullptr) {
       allocation_.reset();
