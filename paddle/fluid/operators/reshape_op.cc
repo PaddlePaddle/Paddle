@@ -425,7 +425,12 @@ class ReshapeKernel {
         pten::ReshapeFromVectorDT(dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
       }
 #endif
-
+#ifdef PADDLE_WITH_XPU
+      if (platform::is_xpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+        pten::ReshapeFromVectorDT(dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
+      }
+#endif
     } else if (shape_tensor) {
       std::unique_ptr<pten::DenseTensor> pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
@@ -447,6 +452,12 @@ class ReshapeKernel {
         pten::ReshapeFromDT(dev_ctx, *pt_x.get(), *pt_shape.get(), pt_out);
       }
 #endif
+#ifdef PADDLE_WITH_XPU
+      if (platform::is_xpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+        pten::ReshapeFromDT(dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
+      }
+#endif
     } else {
       auto &shape_vec = ctx.Attr<std::vector<int>>("shape");
       if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -457,6 +468,12 @@ class ReshapeKernel {
       if (platform::is_gpu_place(ctx.GetPlace())) {
         auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
         pten::ReshapeFromVectorVal(dev_ctx, *pt_x.get(), shape_vec, pt_out);
+      }
+#endif
+#ifdef PADDLE_WITH_XPU
+      if (platform::is_xpu_place(ctx.GetPlace())) {
+        auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+        pten::ReshapeFromVectorVal(dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
       }
 #endif
     }
