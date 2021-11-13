@@ -70,7 +70,7 @@ class Carrier final {
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
 
-  std::vector<InterceptorMessage> tmp_stack_;
+  std::vector<InterceptorMessage> message_tmp_queue_{};
   bool creating_interceptors_{true};
 };
 

@@ -37,7 +37,7 @@ bool Carrier::EnqueueInterceptorMessage(
       // Cannot handle the message to interceptor since interceptors
       // are still under creating. Will enqueue into a tmp stack.
       VLOG(3) << "Receiving message while creating interceptors.";
-      tmp_stack_.emplace_back(interceptor_message);
+      message_tmp_queue_.emplace_back(interceptor_message);
       return true;
     }
     int64_t dst_id = interceptor_message.dst_id();
@@ -102,9 +102,9 @@ void Carrier::CreateInterceptors() {
     // The carrier will be always waiting for outside initializer
     // since there is no interceptor has been created during auto init
     creating_interceptors_ = false;
-    VLOG(3) << "Carrier has received " << tmp_stack_.size()
+    VLOG(3) << "Carrier has received " << message_tmp_queue_.size()
             << " messages during creating interceptors.";
-    for (const auto& msg : tmp_stack_) {
+    for (const auto& msg : message_tmp_queue_) {
       EnqueueInterceptorMessage(std::move(msg));
     }
   }
