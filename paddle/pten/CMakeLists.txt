@@ -10,8 +10,8 @@ add_subdirectory(api)
 add_subdirectory(core)
 # pten kernels for diff device
 add_subdirectory(kernels)
-# pten infershape
-add_subdirectory(infershape)
+# pten infermeta
+add_subdirectory(infermeta)
 # pten tests
 add_subdirectory(tests)
 

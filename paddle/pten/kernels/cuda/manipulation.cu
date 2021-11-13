@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
 

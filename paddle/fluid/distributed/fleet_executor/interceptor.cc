@@ -56,11 +56,10 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
   return true;
 }
 
-void Interceptor::Send(int64_t dst_id,
-                       std::unique_ptr<InterceptorMessage> msg) {
-  msg->set_src_id(interceptor_id_);
-  msg->set_dst_id(dst_id);
-  MessageBus::Instance().Send(*msg.get());
+void Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  msg.set_src_id(interceptor_id_);
+  msg.set_dst_id(dst_id);
+  MessageBus::Instance().Send(msg);
 }
 
 void Interceptor::PoolTheMailbox() {

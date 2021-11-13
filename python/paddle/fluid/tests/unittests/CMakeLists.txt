@@ -104,6 +104,7 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -142,6 +143,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
     LIST(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_executor)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
 endif()
 
 # Temporally disable test_deprecated_decorator

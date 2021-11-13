@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/xpu/manipulation.h"
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {

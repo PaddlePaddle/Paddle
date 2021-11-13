@@ -92,10 +92,6 @@ class MessageBus final {
   // brpc server
   brpc::Server server_;
 #endif
-
-  // thread keeps listening to the port to receive remote message
-  // this thread runs ListenPort() function
-  std::thread listen_port_thread_;
 };
 
 }  // namespace distributed

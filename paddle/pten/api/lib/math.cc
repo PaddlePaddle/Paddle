@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infershape.h"
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
 
 namespace paddle {
 namespace experimental {
