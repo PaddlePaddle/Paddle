@@ -73,4 +73,18 @@ DenseTensor Scale(const ContextT& dev_ctx,
   ScaleHost<T>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;
 }
+
+template <typename T, typename ContextT>
+DenseTensor ElementwiseAdd(const ContextT& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& y,
+                           int axis) {
+  auto out_meta = ElementwiseInferShape(x.meta(), y.meta(), axis);
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
+  ElementwiseAdd<T>(dev_ctx, x, y, axis, &dense_out);
+  return dense_out;
+}
 }  // namespace pten

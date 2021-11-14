@@ -1480,7 +1480,8 @@ void BindImperative(py::module *m_ptr) {
                 #   one of the variables needed for gradient computation has been modified by an inplace operation.
              
        )DOC")
-      .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
+      .def("clear_gradient", &imperative::VarBase::ClearGradient,
+           py::arg("set_to_zero") = true, R"DOC(
 
         Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 
@@ -1500,6 +1501,9 @@ void BindImperative(py::module *m_ptr) {
                 linear.weight.clear_gradient()
                 print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
       )DOC")
+      .def("_gradient_set_empty", &imperative::VarBase::_GradientSetEmpty,
+           py::arg("set_is_empty") = true)
+      .def("_is_gradient_set_empty", &imperative::VarBase::_IsGradientSetEmpty)
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
              const auto &tensor = self->Var().Get<framework::LoDTensor>();

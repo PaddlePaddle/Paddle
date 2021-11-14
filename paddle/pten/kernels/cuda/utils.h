@@ -26,7 +26,10 @@ namespace pten {
 
 using CUDAContext = paddle::platform::CUDADeviceContext;
 
-void Copy(const CUDAContext& dev_ctx, const DenseTensor& src, DenseTensor* dst);
+void Copy(const CUDAContext& dev_ctx,
+          const DenseTensor& src,
+          bool is_sync,
+          DenseTensor* dst);
 
 }  // namespace pten
 

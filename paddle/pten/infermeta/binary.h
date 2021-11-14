@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace pten {
 
-// Common InferShape Functions for unary operators, The format like:
+// Common InferShape Functions for binary operators, The format like:
 //
 //   1. DenseTensorMeta [OpName]InferShape(const DenseTensorMeta& x_meta, ...)
 //   {}
@@ -33,12 +33,15 @@ namespace pten {
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta);
+DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
+                              const DenseTensorMeta& y_meta);
 
-DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta);
+DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
+                                 const DenseTensorMeta& y_meta,
+                                 bool trans_x,
+                                 bool trans_y);
 
-DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
-                                  int start_axis,
-                                  int stop_axis);
-
+DenseTensorMeta ElementwiseInferShape(const DenseTensorMeta& x_meta,
+                                      const DenseTensorMeta& y_meta,
+                                      int axis);
 }  // namespace pten
