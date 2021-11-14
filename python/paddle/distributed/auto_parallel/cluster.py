@@ -43,8 +43,9 @@ class LinkType(IntEnum):
 
 
 class Device:
-    def __init__(self, id, machine):
-        self._id = id
+    def __init__(self, global_id, local_id, machine):
+        self._global_id = global_id
+        self._local_id = local_id
         self._machine = machine
         self._type = None
         # different device have different models, such as 
@@ -56,12 +57,20 @@ class Device:
         self._memory = None
 
     @property
-    def id(self):
-        return self._id
+    def global_id(self):
+        return self._global_id
 
-    @id.setter
-    def id(self, value):
-        self._id = value
+    @global_id.setter
+    def global_id(self, value):
+        self._global_id = value
+
+    @property
+    def local_id(self):
+        return self._local_id
+
+    @local_id.setter
+    def local_id(self, value):
+        self._local_id = value
 
     @property
     def machine(self):
@@ -113,9 +122,9 @@ class Device:
 
     def __str__(self):
         str = ""
-        str += "device_id: {}, machine_id: {}, type: {}, model: {}, dp_flops: {}, sp_flops: {}, memory: {}".format(
-            self.id, self.machine.id, self.type.name, self.model,
-            self.dp_gflops, self.sp_gflops, self.memory)
+        str += "global_id: {}, local_id: {}, machine_id: {}, type: {}, model: {}, dp_flops: {}, sp_flops: {}, memory: {}".format(
+            self.global_id, self.local_id, self.machine.id, self.type.name,
+            self.model, self.dp_gflops, self.sp_gflops, self.memory)
         return str
 
     def __repr__(self):
@@ -174,9 +183,9 @@ class Link:
 
     def __str__(self):
         str = ""
-        str += "source_id: {}, target_id: {}, type: {}, bandwidth: {}, latency: {}".format(
-            self.source.id, self.target.id, self.type, self.bandwidth,
-            self.latency)
+        str += "source_global_id: {}, target_global_id: {}, type: {}, bandwidth: {}, latency: {}".format(
+            self.source.global_id, self.target.global_id, self.type,
+            self.bandwidth, self.latency)
         return str
 
     def __repr__(self):
@@ -233,12 +242,12 @@ class Machine:
         return self._links
 
     def add_device(self, device):
-        # Use the device id as the key
-        self._devices[device.id] = device
+        # Use the device global_id as the key
+        self._devices[device.global_id] = device
 
     def add_link(self, link):
-        # Use the source device id and target device id as the key
-        self._links[(link.source.id, link.target.id)] = link
+        # Use the source device global_id and target device global_id as the key
+        self._links[(link.source.global_id, link.target.global_id)] = link
 
     def __str__(self):
         str = ""
@@ -283,11 +292,11 @@ class Cluster:
         # Only add the link to the source machine
         link.source.machine.add_link(link)
 
-    def get_device(self, device_id):
+    def get_device(self, device_global_id):
         device = None
         for machine in self.machines.values():
-            if device_id in machine.devices.keys():
-                device = machine.devices[device_id]
+            if device_global_id in machine.devices.keys():
+                device = machine.devices[device_global_id]
         return device
 
     def build_from_file(self, json_file_path):
@@ -302,8 +311,9 @@ class Cluster:
             machine.port = machine_info.get("port")
             devices_info = machine_info.get("devices", [])
             for device_info in devices_info:
-                device_id = device_info.get("id")
-                device = Device(device_id, machine)
+                device_global_id = device_info.get("global_id")
+                device_local_id = device_info.get("local_id")
+                device = Device(device_global_id, device_local_id, machine)
                 device_type = device_info.get("type", None)
                 if device_type is not None:
                     device_type = DeviceType[device_type]
@@ -319,10 +329,10 @@ class Cluster:
         for machine_info in machines_info:
             links_info = machine_info.get("links", [])
             for link_info in links_info:
-                source_id = link_info.get("source_id")
-                target_id = link_info.get("target_id")
-                source = self.get_device(source_id)
-                target = self.get_device(target_id)
+                source_global_id = link_info.get("source_global_id")
+                target_global_id = link_info.get("target_global_id")
+                source = self.get_device(source_global_id)
+                target = self.get_device(target_global_id)
                 link = Link(source, target)
                 link_type = link_info.get("type", None)
                 if link_type is not None:
