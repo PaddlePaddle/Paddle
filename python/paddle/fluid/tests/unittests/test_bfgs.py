@@ -74,12 +74,13 @@ def update_inv_hessian_proper(H, s, y):
     dtype = H.dtype
     dim = s.shape[-1]
     rho = paddle.einsum('...i, ...i', s, y) if batch else 1. / paddle.dot(s, y)
-    rho = rho.unsqueeze(-1)
+    rho = rho.unsqueeze(-1).unsqueeze(-1) if batch else rho.unsqueeze(-1)
     l = paddle.eye(dim) - paddle.einsum('...ij,...i,...j->...ij', rho, s, y)
     r = paddle.eye(dim) - paddle.einsum('...ij,...i,...j->...ij', rho, y, s)
     lH = paddle.matmul(l, H)
     lHr = paddle.matmul(lH, r)
-    H_next = lHr + paddle.einsum('...ij,...i,...j->...ij', rho, s, s)
+    rsTs = paddle.einsum('...ij,...i,...j->...ij', rho, s, s)
+    H_next = lHr + rsTs
     
     return H_next
 
@@ -114,11 +115,11 @@ class TestBFGS(unittest.TestCase):
     def gen_configs(self):
         dtypes = ['float32', 'float64']
         shapes = {
-            '1d2v': [2],
+            # '1d2v': [2],
             # '2d2v': [2, 2],
             # '1d50v': [50],
             # '10d10v': [10, 10]
-            # '1d1v': [1],
+            '1d1v': [1],
             # '2d1v': [2, 1],
         }
         for shape, dtype in zip(shapes.values(), dtypes):
@@ -142,6 +143,14 @@ class TestBFGS(unittest.TestCase):
             # true value. 
             s = center - x0
             y = -g0
+
+            # # Have to use manual inputs to verify the results are consistent
+            # h0 = paddle.to_tensor([[0.5, -0.5], [-0.5, 0.5]])
+            # s = paddle.to_tensor([-0.1, 0])
+            # y = paddle.to_tensor([-1.0, 0.0])
+            h0 = paddle.to_tensor([[1.]])
+            s = paddle.to_tensor([-0.01])
+            y = paddle.to_tensor([-1.0])
 
             h1 = update_approx_inverse_hessian(state, h0, s, y)
             print(f'approx H: {h1}')

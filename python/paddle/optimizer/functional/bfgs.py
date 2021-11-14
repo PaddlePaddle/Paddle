@@ -151,7 +151,7 @@ def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
     # batch = len(s.shape) > 1
     bat = state.bat
     
-    rho =  1. / einsum('...i, ...i', s, y) if bat else paddle.dot(s, y)
+    rho =  1. / einsum('...i, ...i', s, y) if bat else 1. / paddle.dot(s, y)
     rho = ternary(paddle.isinf(rho), paddle.zeros_like(rho), rho)
 
     # Enforces the curvature condition before updating the inverse Hessian.
