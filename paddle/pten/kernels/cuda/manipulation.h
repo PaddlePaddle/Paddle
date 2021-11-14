@@ -40,6 +40,39 @@ void Cast(const CUDAContext& dev_ctx,
           DataType in_dtype,
           DenseTensor* out);
 
+void ReshapeFromDT(const CUDAContext& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& shape,
+                   DenseTensor* out);
+
+void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int>& shape,
+                          DenseTensor* out);
+
+void ReshapeFromVectorDT(const CUDAContext& dev_ctx,
+                         const DenseTensor& x,
+                         const std::vector<DenseTensor>& shape,
+                         DenseTensor* out);
+
+void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& shape,
+                             DenseTensor* xshape,
+                             DenseTensor* out);
+
+void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const std::vector<int>& shape,
+                                    DenseTensor* xshape,
+                                    DenseTensor* out);
+
+void ReshapeFromVectorDTWithXShape(const CUDAContext& dev_ctx,
+                                   const DenseTensor& x,
+                                   const std::vector<DenseTensor>& shape,
+                                   DenseTensor* xshape,
+                                   DenseTensor* out);
+
 }  // namespace pten
 
 #endif

@@ -402,6 +402,9 @@ static void BuildDygraphPtenKernelContext(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         kernel_ctx->EmplaceBackAttr(data_type);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int>))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "

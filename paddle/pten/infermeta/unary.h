@@ -47,4 +47,6 @@ DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
                                    DataType dtype,
                                    DataLayout layout);
 
+DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
+                                       const std::vector<int>& shape);
 }  // namespace pten
