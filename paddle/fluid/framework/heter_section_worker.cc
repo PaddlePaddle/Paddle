@@ -218,15 +218,21 @@ void HeterSectionWorker::CreateMicrobatchScopes() {
       minibatch_scope_,
       platform::errors::InvalidArgument(
           "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
-  microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
-  (*microbatch_scopes_).resize(num_microbatches_);
-  VLOG(3) << "Create microbatch scopes...";
-  std::shared_ptr<framework::ProgramDesc> program;
-  program.reset(new ProgramDesc(
-      trainer_desc_.heter_section_param().section_config().program_desc()));
-  for (int j = 0; j < num_microbatches_; ++j) {
-    (*microbatch_scopes_)[j] = &minibatch_scope_->NewScope();
-    CopyParameters(j, *program, place_);
+  if (microbatch_scopes_.get() == nullptr) {
+    microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
+    (*microbatch_scopes_).resize(num_microbatches_);
+    VLOG(3) << "Create microbatch scopes...";
+    for (int j = 0; j < num_microbatches_; ++j) {
+      (*microbatch_scopes_)[j] = &minibatch_scope_->NewScope();
+    }
+  }
+  if (thread_id_ >= 0) {
+    std::shared_ptr<framework::ProgramDesc> program;
+    program.reset(new ProgramDesc(
+        trainer_desc_.heter_section_param().section_config().program_desc()));
+    for (int j = 0; j < num_microbatches_; ++j) {
+      CopyParameters(j, *program, place_);
+    }
   }
 }
 
@@ -258,6 +264,8 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
       VLOG(5) << "Create persistable var: " << var->Name()
               << ", which pointer is " << ptr;
     } else if (!var->Persistable()) {
+      if ((*microbatch_scopes_)[microbatch_id]->FindVar(var->Name()) != nullptr)
+        continue;
       auto* ptr = (*microbatch_scopes_)[microbatch_id]->Var(var->Name());
       VLOG(5) << "Create variable " << var->Name() << " for microbatch "
               << microbatch_id << ", which pointer is " << ptr;

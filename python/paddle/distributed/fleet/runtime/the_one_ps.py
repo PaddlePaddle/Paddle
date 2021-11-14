@@ -889,7 +889,6 @@ class TheOnePSRuntime(RuntimeBase):
         self._init_worker()
 
     def _run_heter_worker(self,
-                          dataset=None,
                           scope=None,
                           thread=0,
                           debug=False,
@@ -900,7 +899,7 @@ class TheOnePSRuntime(RuntimeBase):
         executor = self._get_executor()
         executor.train_from_dataset(
             program=fluid.default_main_program(),
-            dataset=dataset,
+            dataset=None,
             debug=debug,
             fetch_list=fetch_list,
             fetch_info=fetch_info,
