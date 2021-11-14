@@ -51,6 +51,7 @@ DenseTensor Cast(const ContextT& dev_ctx,
   return dense_out;
 }
 
+template <typename T, typename ContextT>
 DenseTensor Reshape(const ContextT& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int>& shape) {
