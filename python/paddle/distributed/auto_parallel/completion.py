@@ -755,6 +755,7 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
                     input_var)
                 assert input_var_dist_attr is not None, "[{}] has not dist attribute".format(
                     input_var.name)
+
                 ref_dims_mapping = None
                 if "@GRAD" in input_name:
                     ref_dims_mapping = input_var_dist_attr.dims_mapping

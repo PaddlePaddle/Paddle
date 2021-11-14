@@ -642,7 +642,7 @@ def _load_distributed_state_dict(checkpoint_path):
     """ Load parameters' state_dict from checkpoint_path """
     all_state_dict = {}
     for idx, ckpt_file in enumerate(checkpoint_path):
-        state_dict_info = paddle.load(ckpt_file)
+        state_dict_info = paddle.load(ckpt_file, return_numpy=True)
         pre_world_size = state_dict_info["world_size"]
         assert pre_world_size == len(checkpoint_path), \
             "The number of 'checkpoint_path' must be equal to the last training world size."

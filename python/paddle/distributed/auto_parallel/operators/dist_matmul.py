@@ -17,7 +17,7 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import copy_distributed_attr_for_var
-from .common import copy_distributed_attr_for_dist_op
+from .common import copy_distributed_attr_for_dist_op, copy_distributed_attr_for_dist_op_sum
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -237,12 +237,6 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
                                           process_mesh.topology, axis, rank_id)
             sync_group = new_process_group(group_ranks)
 
-            print("_init_param_sync *******************")
-            print(Weight_var.name)
-            print(rank_id)
-            print(group_ranks)
-            print(sync_group.id)
-
             startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -401,7 +395,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs)
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(ctx, c_identity_op, main_block,
+        copy_distributed_attr_for_dist_op_sum(ctx, c_identity_op, main_block,
                                           op_dist_attr)
         copy_distributed_attr_for_dist_op(ctx, matmul_op, main_block,
                                           op_dist_attr)
@@ -554,7 +548,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         # copy serial op's dist_attr to dist op's dist_attr
         copy_distributed_attr_for_dist_op(ctx, matmul_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(ctx, c_allreduce_sum_op, main_block,
+        copy_distributed_attr_for_dist_op_sum(ctx, c_allreduce_sum_op, main_block,
                                           op_dist_attr)
 
         # init param sync
@@ -809,7 +803,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             attrs=attrs)
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(ctx, c_identity_op, main_block,
+        copy_distributed_attr_for_dist_op_sum(ctx, c_identity_op, main_block,
                                           op_dist_attr)
         copy_distributed_attr_for_dist_op(ctx, matmul_v2_op, main_block,
                                           op_dist_attr)
@@ -903,20 +897,6 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                     return False 
             if x_shard_dims != y_shard_dims:
                 return False
-
-            print("dist_matmul =================")
-            print(x_name)
-            print(x_dims_mapping)
-            print(x_shard_dim_count)
-            print(x_shard_dims)
-            print("************")
-            print(y_name)
-            print(y_dims_mapping)
-            print(y_shard_dim_count)
-            print(y_shard_dims)
-            print("************")
-            print(out_name)
-            print(out_dims_mapping)
 
         else:
             # [0, 1] [1, -1] [1, -1] -> [0, -1]
@@ -1026,7 +1006,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         # copy serial op's dist_attr to dist op's dist_attr
         copy_distributed_attr_for_dist_op(ctx, matmul_v2_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(ctx, c_allreduce_sum_op, main_block,
+        copy_distributed_attr_for_dist_op_sum(ctx, c_allreduce_sum_op, main_block,
                                           op_dist_attr)
 
         # init param sync
