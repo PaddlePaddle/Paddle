@@ -25,6 +25,7 @@ from .creation import ones  # noqa: F401
 from .creation import ones_like  # noqa: F401
 from .creation import zeros  # noqa: F401
 from .creation import zeros_like  # noqa: F401
+from .creation import zeropad2d  # noqa: F401
 from .creation import arange  # noqa: F401
 from .creation import full  # noqa: F401
 from .creation import full_like  # noqa: F401
