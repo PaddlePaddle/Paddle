@@ -42,6 +42,30 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         self._backward_implemented = True
 
     def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
+        if len(x_dims_mapping) != len(out_dims_mapping):
+            return False
+        x_shard_dims = []
+        out_shard_dims = []
+        for dim in x_dims_mapping:
+            if is_dim_shard(dim):
+                for dim in out_dims_mapping:
+                    if not is_dim_shard(dim):
+                        return False
+            if is_dim_replicate(dim):
+                for dim in out_dims_mapping:
+                    if is_dim_shard(dim):
+                        return False
+        print('*************')
+        print('x_dims_mapping', x_dims_mapping)
+        print('out_dims_mapping', out_dims_mapping)
+        print('&&&&&&&&&&&&&')
         return True
 
     def is_output_compatible(self, dist_op):

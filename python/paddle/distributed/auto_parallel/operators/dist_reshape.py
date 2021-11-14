@@ -7,7 +7,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,=
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
@@ -55,7 +55,22 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
         if len(x_dims_mapping) != len(out_dims_mapping) - 1:
             return False
+        #print('x dims mapping len', len(x_dims_mapping))
+        #print('qnmd',x_name.shape)
+        if len(x_dims_mapping) != len(x_name.shape):
+            return False
+        # [0, 1] [0, -1]
+        # x_shard_dims = []
+        # y_shard_dims = []
+        # for dim in x_dims_mapping:
+        #     if is_dim_shard(dim):
+        #         x_shard_dims.append(dim)
 
+        # for dim in out_dims_mapping:
+        #     if is_dim_shard(dim):
+        #         out_shard_dims.append(dim)
+        # print('x_shard_dims', x_shard_dims)
+        # print('out_shard_dims', out_shard_dims)        
         return True
 
     def is_output_compatible(self, dist_op):
@@ -185,7 +200,29 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         if is_dim_shard(x_dims_mapping[-1]):
             return False
+        #print('x dims mapping len', len(x_dims_mapping))
+        #print('qnmd',op_desc.attr("shape"))
+        #if len(x_dims_mapping) != op_desc.attr("shape"):
+        #    return False
+        # [0, 1] [0, -1]
+        x_shard_dims = []
+        out_shard_dims = []
+        for dim in x_dims_mapping:
+            if is_dim_shard(dim):
+                for dim in out_dims_mapping:
+                    if not is_dim_shard(dim):
+                        return False
+            if is_dim_replicate(dim):
+                for dim in out_dims_mapping:
+                    if is_dim_shard(dim):
+                        return False
+        print('*************')
+        print('x_dims_mapping', x_dims_mapping)
+        print('out_dims_mapping', out_dims_mapping)
+        print('&&&&&&&&&&&&&')
 
+        # print('x_shard_dims', x_shard_dims)
+        # print('out_shard_dims', out_shard_dims)
         return True
 
     def is_output_compatible(self, dist_op):

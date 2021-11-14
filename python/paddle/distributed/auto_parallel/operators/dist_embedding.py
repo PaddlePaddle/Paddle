@@ -79,6 +79,15 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         for mapping in out_dims_mapping[1:]:
             if is_dim_shard(mapping):
                 return False
+        if is_dim_replicate(w_dims_mapping[-1]) and is_dim_shard(
+                out_dims_mapping[-1]):
+            return False
+        if is_dim_shard(w_dims_mapping[-1]) and is_dim_replicate(
+                out_dims_mapping[-1]):
+            return False
+        print('******************')
+        print('w_dims_mapping', w_dims_mapping)
+        print('out_dims_mapping', out_dims_mapping)
         return True
 
     def update_dims_mapping(self, dist_op):
