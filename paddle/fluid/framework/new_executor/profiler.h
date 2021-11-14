@@ -20,84 +20,41 @@
 
 namespace paddle {
 namespace framework {
-
-static void GetTensors(Variable* var, std::unordered_set<Tensor*>* tensor_set) {
-  if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
-    tensor_set->insert(var->GetMutable<LoDTensor>());
-  } else if (var->IsType<SelectedRows>() &&
-             var->Get<SelectedRows>().value().IsInitialized()) {
-    tensor_set->insert(var->GetMutable<SelectedRows>()->mutable_value());
-  } else if (var->IsType<LoDTensorArray>()) {
-    auto* tensor_arr = var->GetMutable<LoDTensorArray>();
-    for (auto& t : *tensor_arr) {
-      if (t.IsInitialized()) {
-        tensor_set->insert(&t);
-      }
-    }
-  }
-}
-
-static std::pair<size_t, size_t> GetTensorMemorySize(
-    const std::vector<Variable*>& var_list) {
-  std::unordered_set<Tensor*> tensor_set;
-  for (auto* var : var_list) {
-    GetTensors(var, &tensor_set);
-  }
-  size_t host_memory_bytes = 0;
-  size_t device_memory_bytes = 0;
-  std::unordered_set<memory::Allocation*> allocation_set;
-  for (auto* tensor : tensor_set) {
-    auto allocation = tensor->Holder().get();
-    if (!allocation_set.count(allocation)) {
-      allocation_set.insert(allocation);
-      if (platform::is_cuda_pinned_place(tensor->place()) ||
-          platform::is_cpu_place(tensor->place())) {
-        VLOG(3) << "found host memory : " << allocation->size();
-        host_memory_bytes += allocation->size();
-      } else {
-        VLOG(3) << "found device memory : " << allocation->size();
-        device_memory_bytes += allocation->size();
-      }
-    }
-  }
-  return {host_memory_bytes, device_memory_bytes};
-}
-
+namespace interpreter {
 struct CostInfo {
   double total_time{0.};          // ms
   size_t device_memory_bytes{0};  // total allocated memory size
 };
 
-class InterpreterProfiler {
+class ProfilerGuard {
  public:
-  void Start() { timer_.Start(); }
+  ProfilerGuard(const platform::Place& place, CostInfo* cost_info)
+      : place_(place), cost_info_(cost_info) {
+    timer_.Start();
+  }
 
-  void Pause() {
+  ~ProfilerGuard() {
     timer_.Pause();
-    cost_info_.total_time += timer_.ElapsedMS();
+    cost_info_->total_time += timer_.ElapsedMS();
+    TotalCUDAAllocatedMemorySize(place_);
   }
 
-  void Reset() {
-    timer_.Reset();
-    cost_info_.total_time = 0.;
-    cost_info_.device_memory_bytes = 0;
-  }
-
+ private:
   void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
-      cost_info_.device_memory_bytes =
+      cost_info_->device_memory_bytes =
           platform::RecordedCudaMallocSize(cuda_place.device);
 #endif
     }
   }
 
-  const CostInfo& GetCostInfo() const { return cost_info_; }
-
- private:
+  const platform::Place& place_;
+  CostInfo* cost_info_;
   platform::Timer timer_;
-  CostInfo cost_info_;
 };
+
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

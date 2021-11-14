@@ -334,6 +334,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.amp',
+          'paddle.cost_model',
           'paddle.hapi',
           'paddle.vision',
           'paddle.vision.models',
@@ -404,6 +405,7 @@ if os.name != 'nt':
 else:
     package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
+package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
 
@@ -461,6 +463,10 @@ if '${WITH_LITE}' == 'ON':
         if '${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}' == 'ON':
             shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
             package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
+
+if '${WITH_CINN}' == 'ON':
+    shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
+    package_data['paddle.libs']+=['libcinnapi.so']
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
