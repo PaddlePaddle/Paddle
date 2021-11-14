@@ -579,6 +579,9 @@ class TheOnePSRuntime(RuntimeBase):
 
         if not is_test:
             self._communicator.init_params(init_params)
+            fleet.util.barrier()
+        self._communicator.pull_dense(init_params)
+        fleet.util.barrier()
 
         if not self._communicator.is_running():
             self._communicator.start()
