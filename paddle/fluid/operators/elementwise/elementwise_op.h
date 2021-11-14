@@ -148,6 +148,12 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                                           {"axis"}, {"Out"});
       }
     }
+    if (Type() == "elementwise_sub") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("elementwise_sub", {"X", "Y"},
+                                          {"axis"}, {"Out"});
+      }
+    }
     return framework::KernelSignature("None", {"X"}, {}, {"Out"});
   }
 };
