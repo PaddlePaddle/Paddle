@@ -176,9 +176,10 @@ def build_cluster_graph(cluster):
     graph = Graph()
     for machine in cluster.machines.values():
         for device in machine.devices.values():
-            graph.add_node(device.id, device=device)
+            graph.add_node(device.global_id, device=device)
         for link in machine.links.values():
-            graph.add_edge(link.source.id, link.target.id, link=link)
+            graph.add_edge(
+                link.source.global_id, link.target.global_id, link=link)
     return graph
 
 
@@ -272,16 +273,21 @@ def mapping(distributed_program, cluster):
             rank_mapping[machine.id]["hostname"] = machine.hostname
             rank_mapping[machine.id]["addr"] = machine.addr
             rank_mapping[machine.id]["port"] = machine.port
-            rank_mapping[machine.id]["ranks"].append(rank)
+            if rank not in rank_mapping[machine.id]["ranks"]:
+                rank_mapping[machine.id]["ranks"][rank] = []
+                rank_mapping[machine.id]["ranks"][rank].append(device.local_id)
+            else:
+                rank_mapping[machine.id]["ranks"][rank].append(device.local_id)
         else:
             rank_mapping[machine.id] = {}
-            rank_mapping[machine.id]["ranks"] = []
             rank_mapping[machine.id]["hostname"] = machine.hostname
             rank_mapping[machine.id]["addr"] = machine.addr
             rank_mapping[machine.id]["port"] = machine.port
-            if rank not in rank_mapping[machine.id]["ranks"]:
-                rank_mapping[machine.id]["ranks"].append(rank)
-    for mapping in rank_mapping.values():
-        mapping["ranks"].sort()
+            rank_mapping[machine.id]["ranks"] = {}
+            rank_mapping[machine.id]["ranks"][rank] = []
+            rank_mapping[machine.id]["ranks"][rank].append(device.local_id)
+    for machine_mapping in rank_mapping.values():
+        for rank_devices in machine_mapping["ranks"].values():
+            rank_devices.sort()
 
     return rank_mapping

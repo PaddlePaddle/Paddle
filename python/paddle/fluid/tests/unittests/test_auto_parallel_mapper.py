@@ -62,7 +62,8 @@ cluster_json = """
       "port": "768",
       "devices": [
         {
-          "id": 0,
+          "global_id": 0,
+          "local_id": 0,
           "type": "GPU",
           "model": "A100-SXM4-40GB",
           "sp_gflops": 19500,
@@ -70,7 +71,8 @@ cluster_json = """
           "memory": 40
         },
         {
-          "id": 1,
+          "global_id": 1,
+          "local_id": 1,
           "type": "GPU",
           "model": "A100-SXM4-40GB",
           "sp_gflops": 19500,
@@ -78,7 +80,8 @@ cluster_json = """
           "memory": 40
         },
         {
-          "id": 2,
+          "global_id": 2,
+          "local_id": 2,
           "type": "GPU",
           "model": "A100-SXM4-40GB",
           "sp_gflops": 19500,
@@ -86,92 +89,122 @@ cluster_json = """
           "memory": 40
         },
         {
-          "id": 3,
+          "global_id": 3,
+          "local_id": 3,
           "type": "GPU",
           "model": "A100-SXM4-40GB",
           "sp_gflops": 19500,
           "dp_gflops": 9700,
           "memory": 40
+        },
+        {
+          "global_id": 4,
+          "local_id": 0,
+          "type": "NIC"
         }
       ],
       "links": [
         {
-          "source_id": 0,
-          "target_id": 1,
+          "source_global_id": 0,
+          "target_global_id": 1,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 0,
-          "target_id": 2,
+          "source_global_id": 0,
+          "target_global_id": 2,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 0,
-          "target_id": 3,
+          "source_global_id": 0,
+          "target_global_id": 3,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 1,
-          "target_id": 0,
+          "source_global_id": 0,
+          "target_global_id": 4,
+          "type": "PHB",
+          "bandwidth": 12 
+        },
+        {
+          "source_global_id": 1,
+          "target_global_id": 0,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 1,
-          "target_id": 2,
+          "source_global_id": 1,
+          "target_global_id": 2,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 1,
-          "target_id": 3,
+          "source_global_id": 1,
+          "target_global_id": 3,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 2,
-          "target_id": 0,
+          "source_global_id": 1,
+          "target_global_id": 4,
+          "type": "PHB",
+          "bandwidth": 12 
+        },
+        {
+          "source_global_id": 2,
+          "target_global_id": 0,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 2,
-          "target_id": 1,
+          "source_global_id": 2,
+          "target_global_id": 1,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 2,
-          "target_id": 3,
+          "source_global_id": 2,
+          "target_global_id": 3,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 3,
-          "target_id": 0,
+          "source_global_id": 2,
+          "target_global_id": 4,
+          "type": "PHB",
+          "bandwidth": 12
+        },
+        {
+          "source_global_id": 3,
+          "target_global_id": 0,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 3,
-          "target_id": 1,
+          "source_global_id": 3,
+          "target_global_id": 1,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 3,
-          "target_id": 2,
+          "source_global_id": 3,
+          "target_global_id": 2,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 3,
-          "target_id": 7,
-          "type": "NVL",
-          "bandwidth": 10 
+          "source_global_id": 3,
+          "target_global_id": 4,
+          "type": "PHB",
+          "bandwidth": 12 
+        },
+        {
+          "source_global_id": 4,
+          "target_global_id": 9,
+          "type": "NET",
+          "bandwidth": 1 
         }
       ]
     },
@@ -181,7 +214,8 @@ cluster_json = """
       "port": "768",
       "devices": [
         {
-          "id": 4,
+          "global_id": 5,
+          "local_id": 0,
           "type": "GPU",
           "model": "Tesla V100-SXM2-32GB",
           "sp_gflops": 15700,
@@ -189,7 +223,8 @@ cluster_json = """
           "memory": 32
         },
         {
-          "id": 5,
+          "global_id": 6,
+          "local_id": 1,
           "type": "GPU",
           "model": "Tesla V100-SXM2-32GB",
           "sp_gflops": 15700,
@@ -197,7 +232,8 @@ cluster_json = """
           "memory": 32
         },
         {
-          "id": 6,
+          "global_id": 7,
+          "local_id": 2,
           "type": "GPU",
           "model": "Tesla V100-SXM2-32GB",
           "sp_gflops": 15700,
@@ -205,92 +241,122 @@ cluster_json = """
           "memory": 32
         },
         {
-          "id": 7,
+          "global_id": 8,
+          "local_id": 3,
           "type": "GPU",
           "model": "Tesla V100-SXM2-32GB",
           "sp_gflops": 15700,
           "dp_gflops": 7800,
           "memory": 32
+        },
+        {
+          "global_id": 9,
+          "local_id": 0,
+          "type": "NIC"
         }
       ],
       "links": [
         {
-          "source_id": 4,
-          "target_id": 5,
+          "source_global_id": 5,
+          "target_global_id": 6,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 4,
-          "target_id": 6,
+          "source_global_id": 5,
+          "target_global_id": 7,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 4,
-          "target_id": 7,
+          "source_global_id": 5,
+          "target_global_id": 8,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 5,
-          "target_id": 4,
+          "source_global_id": 5,
+          "target_global_id": 9,
+          "type": "PHB",
+          "bandwidth": 12 
+        },
+        {
+          "source_global_id": 6,
+          "target_global_id": 5,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 5,
-          "target_id": 6,
+          "source_global_id": 6,
+          "target_global_id": 7,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 5,
-          "target_id": 7,
+          "source_global_id": 6,
+          "target_global_id": 8,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 6,
-          "target_id": 4,
+          "source_global_id": 6,
+          "target_global_id": 9,
+          "type": "PHB",
+          "bandwidth": 12 
+        },
+        {
+          "source_global_id": 7,
+          "target_global_id": 5,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 6,
-          "target_id": 5,
+          "source_global_id": 7,
+          "target_global_id": 6,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 6,
-          "target_id": 7,
+          "source_global_id": 7,
+          "target_global_id": 8,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 7,
-          "target_id": 4,
+          "source_global_id": 7,
+          "target_global_id": 9,
+          "type": "PHB",
+          "bandwidth": 12 
+        },
+        {
+          "source_global_id": 8,
+          "target_global_id": 5,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 7,
-          "target_id": 5,
+          "source_global_id": 8,
+          "target_global_id": 6,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 7,
-          "target_id": 6,
+          "source_global_id": 8,
+          "target_global_id": 7,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 7,
-          "target_id": 3,
-          "type": "NVL",
-          "bandwidth": 10 
+          "source_global_id": 8,
+          "target_global_id": 9,
+          "type": "PHB",
+          "bandwidth": 12 
+        },
+        {
+          "source_global_id": 9,
+          "target_global_id": 4,
+          "type": "NET",
+          "bandwidth": 1 
         }
       ]
     } 
@@ -1177,9 +1243,18 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     return dist_main_prog, dist_startup_prog
 
 
-def check_rank_mapping(rank_mapping):
-    for machine_id, mapping in rank_mapping.items():
-        print("machine_id: ", rank, "mapping: ", mapping)
+def is_in_machine(device_local_id, machine):
+    for device in machine.devices.values():
+        if device_local_id == device.local_id:
+            return True
+    return False
+
+
+def get_device_local_ids(machine):
+    local_ids = []
+    for device in machine.devices.values():
+        local_ids.append[device.local_id]
+    return local_ids
 
 
 class TestAutoParallelMapper(unittest.TestCase):
@@ -1215,10 +1290,22 @@ class TestAutoParallelMapper(unittest.TestCase):
 
         rank_mapping = mapping(dist_programs, cluster)
 
-        ranks = []
-        for machine_id, cur_mapping in rank_mapping.items():
-            ranks.extend(cur_mapping["ranks"])
-        self.assertEqual(sorted(_global_process_mesh.processes), sorted(ranks))
+        all_mapped_ranks = set()
+        for machine_id, machine_mapping in rank_mapping.items():
+            machine = cluster.machines[machine_id]
+            machine_mapped_ranks = set()
+            machine_mapped_device_local_ids = set()
+            for rank, device_ids in machine_mapping["ranks"].items():
+                # Only allow one process to one device mapping
+                self.assertEqual(len(device_ids), 1)
+                self.assertTrue(is_in_machine(device_ids[0], machine))
+                machine_mapped_ranks.add(rank)
+                machine_mapped_device_local_ids.add(device_ids[0])
+            self.assertEqual(
+                len(machine_mapped_ranks), len(machine_mapped_device_local_ids))
+            all_mapped_ranks.update(machine_mapped_ranks)
+        print(_global_process_mesh.processes, all_mapped_ranks)
+        self.assertEqual(set(_global_process_mesh.processes), all_mapped_ranks)
 
     def test_mapper_dp_mp_pp(self):
         cluster_json_file = ""
@@ -1250,10 +1337,21 @@ class TestAutoParallelMapper(unittest.TestCase):
 
         rank_mapping = mapping(dist_programs, cluster)
 
-        ranks = []
-        for machine_id, cur_mapping in rank_mapping.items():
-            ranks.extend(cur_mapping["ranks"])
-        self.assertEqual(sorted(processes), sorted(ranks))
+        all_mapped_ranks = set()
+        for machine_id, machine_mapping in rank_mapping.items():
+            machine = cluster.machines[machine_id]
+            machine_mapped_ranks = set()
+            machine_mapped_device_local_ids = set()
+            for rank, device_ids in machine_mapping["ranks"].items():
+                # Only allow one process to one device mapping
+                self.assertEqual(len(device_ids), 1)
+                self.assertTrue(is_in_machine(device_ids[0], machine))
+                machine_mapped_ranks.add(rank)
+                machine_mapped_device_local_ids.add(device_ids[0])
+            self.assertEqual(
+                len(machine_mapped_ranks), len(machine_mapped_device_local_ids))
+            all_mapped_ranks.update(machine_mapped_ranks)
+        self.assertEqual(set(processes), all_mapped_ranks)
 
 
 if __name__ == '__main__':
