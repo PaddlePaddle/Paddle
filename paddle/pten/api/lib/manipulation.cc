@@ -58,5 +58,39 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
 
   return out;
 }
+
+Tensor reshape(const Tensor& x, const std::vector<int>& shape) {
+  // 1. Get kernel signature and kernel
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      "reshape2", kernel_key);
+
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(dev_ctx);
+
+  // 3. Auto data transform
+  auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+  kernel_context.EmplaceBackInput(dense_x);
+  kernel_context.EmplaceBackAttr(shape);
+
+  // 4. InferShape
+  auto out_meta = InferShapeFromVecValue(dense_x->meta(), shape);
+
+  // 5. Prepare outputs
+  Tensor out;
+  const auto allocator = std::make_shared<DefaultAllocator>(
+      pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  kernel_context.EmplaceBackOutput(dense_out);
+  out.set_impl(dense_out);
+
+  // 6. Call kernel
+  kernel(&kernel_context);
+
+  return out;
+}
+
 }  // namespace experimental
 }  // namespace paddle

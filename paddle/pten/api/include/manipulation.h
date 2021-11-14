@@ -21,5 +21,6 @@ namespace experimental {
 
 Tensor flatten(const Tensor& x, int start_axis, int stop_axis);
 
+Tensor reshape(const Tensor& x, const std::vector<int>& shape);
 }  // namespace experimental
 }  // namespace paddle
