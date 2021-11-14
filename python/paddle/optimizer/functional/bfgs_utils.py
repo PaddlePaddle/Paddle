@@ -25,7 +25,8 @@ def ternary(cond, x, y):
     for _ in range(expanding_dim):
         cond = cond.unsqueeze(-1)
 
-    cond = cond.broadcast_to(x.shape)
+    if cond.shape != x.shape:
+        cond = cond.broadcast_to(x.shape)
 
     return paddle.where(cond, x, y)
 

@@ -118,7 +118,7 @@ def bracket(state, phi, c, iter_count):
     # f0 = phi(0)
     f0 = state.fk
 
-    # The following loop repeatedly applies B3 if condition allows
+    # The following loop repeatedly applies (B3) if condition allows
     expanding = True
     prev_c = make_const(c, .0)
 
@@ -128,7 +128,7 @@ def bracket(state, phi, c, iter_count):
     state.nf += 1
     state.ng += 1
 
-    # Initialize B3 condition
+    # Initializes condition B3
     B3_cond = make_const(c, True, dtype='bool')
 
     while expanding:
@@ -139,7 +139,7 @@ def bracket(state, phi, c, iter_count):
         prev_c = ternary(B3_cond, c, prev_c)
         c = ternary(B3_cond, rho * c, c)
 
-        # Calculates function values and gradients for the new step size.
+        # Calculates the function values and gradients.
         f, g = vjp(phi, c)
         iter_count.increment()
         state.nf += 1
@@ -626,7 +626,7 @@ def hz_linesearch(state,
     # It's also the gradient of phi    
     deriv = einsum('...i, ...i', gk, pk)                # dot(gk, pk)
 
-    # Marks inputs with invalid function values and non-negative derivatives 
+    # Marks invalid inputs
     invalid_input = paddle.isinf(fk) | (deriv >= .0)
     state.state = update_state(state.state, invalid_input, 'failed')
 
@@ -650,20 +650,19 @@ def hz_linesearch(state,
         c = initial(state)
         ls_stepsize = c
         iter_count.increment()
-        
+              
         # Initial stopping test. Those already converged instances are likely
-        # to succeed. 
-        stopped = stopped | stopping_condition(state, phi, c, deriv)
+        # to succeed.
+        stopped = stopping_condition(state, phi, c, deriv)
 
-        init = True       
+        a_j, b_j = None, None
         # Continues if there's line search still active
         while any_active_with_predicates(state.state, ~stopped):
             # Brackets to find the first interval with opposite slopes
-            if init:
+            if a_j is None:
                 a_j, b_j = bracket(state, phi, c, iter_count)
-            else:
-                init = False
-            # Applies secant2 to the located opposite slope interval
+
+            # Applies secant2 to the located intervals
             a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
 
             new_stopped = ~stopped & stopping_condition(state, phi, b, deriv)
