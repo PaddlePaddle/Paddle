@@ -207,6 +207,11 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     }
   }
 
+  int GetThreadNum() {
+    std::unique_lock<std::mutex> lk(scope_mutex_);
+    return (*task_queue_).size();
+  }
+
   void SetTaskQueue(SharedTaskQueue task_queue) { task_queue_ = task_queue; }
 
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
@@ -352,6 +357,8 @@ class HeterServer {
   void SetMicroBatchScopes(SharedMicroScope micro_scopes) {
     request_handler_->SetMicroScopes(micro_scopes);
   }
+
+  int GetThreadNum() { return request_handler_->GetThreadNum(); }
 
   void SetTaskQueue(SharedTaskQueue task_queue) {
     request_handler_->SetTaskQueue(task_queue);

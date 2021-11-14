@@ -222,14 +222,16 @@ void HeterPipelineTrainer::Run() {
       }
     }
     bool epoch_finish = false;
+    auto heter_server = paddle::distributed::HeterServer::GetInstance();
     while (!epoch_finish) {
-      auto heter_server = paddle::distributed::HeterServer::GetInstance();
       if (heter_server->IsStop()) {
         epoch_finish = true;
         continue;
       }
       // create new thread_worker
-      size_t thread_num = (*micro_scopes_).size();
+      // size_t thread_num = (*micro_scopes_).size();
+      // size_t thread_num = (*task_queue_).size();
+      size_t thread_num = heter_server->GetThreadNum();
       while (thread_num > threads_.size()) {
         for (auto& worker_pair : (*micro_scopes_)) {
           auto worker_index = worker_pair.first;
@@ -259,8 +261,9 @@ void HeterPipelineTrainer::Run() {
           // (*mini_scopes_)[worker_index] = minibatch_scope;
           this_worker->SetMinibatchScope(minibatch_scope);
           // after set micro num & mini batch scope
-          this_worker->CreateMicrobatchScopes();
           this_worker->SetMicrobatchScopes((*micro_scopes_)[worker_index]);
+          this_worker->CreateMicrobatchScopes();
+          // this_worker->SetMicrobatchScopes((*micro_scopes_)[worker_index]);
           this_worker->SetThreadQueue((*task_queue_)[worker_index]);
 
           if (!debug_) {

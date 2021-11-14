@@ -195,7 +195,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             "section_program"]
         print(real_program)
 
-        train_file_list = ctr_dataset_reader.prepare_fake_data()
+        #train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         #exe = fluid.Executor(fluid.CPUPlace())
         #exe.run(fluid.default_startup_program())
@@ -205,21 +205,23 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         batch_size = 128
 
         #filelist = fleet.util.get_file_shard(train_file_list)
-        block_size = len(train_file_list) // fleet.worker_num()
-        filelist = train_file_list[0:block_size]
-        print("filelist: {}".format(filelist))
+        #block_size = len(train_file_list) // fleet.worker_num()
+        #filelist = train_file_list[0:block_size]
+        #print("filelist: {}".format(filelist))
 
         # config dataset
-        dataset = fluid.DatasetFactory().create_dataset()
-        dataset.set_batch_size(batch_size)
-        dataset.set_use_var(self.feeds)
-        pipe_command = 'python3 ctr_dataset_reader.py'
-        dataset.set_pipe_command(pipe_command)
+        #dataset = fluid.DatasetFactory().create_dataset()
+        #dataset.set_batch_size(batch_size)
+        #dataset.set_use_var(self.feeds)
+        #pipe_command = 'python3 ctr_dataset_reader.py'
+        #dataset.set_pipe_command(pipe_command)
 
-        dataset.set_filelist(filelist)
-        dataset.set_thread(thread_num)
+        #dataset.set_filelist(filelist)
+        #dataset.set_thread(thread_num)
 
-        fleet.run_heter_worker(dataset)
+        pass_start = time.time()
+        fleet.run_heter_worker()
+        pass_time = time.time() - pass_start
         print("do_dataset_heter_training done. using time {}".format(pass_time))
 
         #for epoch_id in range(1):
