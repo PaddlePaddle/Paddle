@@ -30,7 +30,8 @@ cluster_json = """
       "port": "768",
       "devices": [
         {
-          "id": 0,
+          "global_id": 0,
+          "local_id": 0,
           "type": "GPU",
           "model": "A100-SXM4-40GB",
           "sp_gflops": 19500,
@@ -38,7 +39,8 @@ cluster_json = """
           "memory": 40
         },
         {
-          "id": 1,
+          "global_id": 1,
+          "local_id": 1,
           "type": "GPU",
           "model": "A100-SXM4-40GB",
           "sp_gflops": 19500,
@@ -46,7 +48,8 @@ cluster_json = """
           "memory": 40
         },
         {
-          "id": 2,
+          "global_id": 2,
+          "local_id": 0,
           "type": "CPU",
           "model": "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GH",
           "arch": "x86_64",
@@ -56,50 +59,51 @@ cluster_json = """
           "memory": 1510
         },
         {
-          "id": 3,
+          "global_id": 3,
+          "local_id": 0,
           "type": "NIC"
         }
       ],
       "links": [
         {
-          "source_id": 0,
-          "target_id": 1,
+          "source_global_id": 0,
+          "target_global_id": 1,
           "type": "NVL",
           "bandwidth": 252
         },
         {
-          "source_id": 0,
-          "target_id": 2,
+          "source_global_id": 0,
+          "target_global_id": 2,
           "type": "PHB",
           "bandwidth": 12
         },
         {
-          "source_id": 1,
-          "target_id": 2,
+          "source_global_id": 1,
+          "target_global_id": 2,
           "type": "PHB",
           "bandwidth": 12 
         },
         {
-          "source_id": 0,
-          "target_id": 3,
+          "source_global_id": 0,
+          "target_global_id": 3,
           "type": "NET",
           "bandwidth": 1
         },
         {
-          "source_id": 1,
-          "target_id": 3,
+          "source_global_id": 1,
+          "target_global_id": 3,
           "type": "NET",
           "bandwidth": 1
         },
         {
-          "source_id": 2,
-          "target_id": 3,
+          "source_global_id": 2,
+          "target_global_id": 3,
           "type": "NET",
           "bandwidth": 1
         },
         {
-          "source_id": 3,
-          "target_id": 7,
+          "source_global_id": 3,
+          "target_global_id": 7,
           "type": "NET",
           "bandwidth": 1
         }
@@ -111,7 +115,8 @@ cluster_json = """
       "port": "768",
       "devices": [
         {
-          "id": 4,
+          "global_id": 4,
+          "local_id": 0,
           "type": "GPU",
           "model": "Tesla V100-SXM2-32GB",
           "sp_gflops": 15700,
@@ -119,7 +124,8 @@ cluster_json = """
           "memory": 32
         },
         {
-          "id": 5,
+          "global_id": 5,
+          "local_id": 1,
           "type": "GPU",
           "model": "Tesla V100-SXM2-32GB",
           "sp_gflops": 15700,
@@ -127,7 +133,8 @@ cluster_json = """
           "memory": 32
         },
         {
-          "id": 6,
+          "global_id": 6,
+          "local_id": 0,
           "type": "CPU",
           "model": "Intel(R) Xeon(R) Gold 6271C CPU @ 2.60G",
           "arch": "x86_64",
@@ -137,50 +144,51 @@ cluster_json = """
           "memory": "503"
         },
         {
-          "id": 7,
+          "global_id": 7,
+          "local_id": 0,
           "type": "NIC"
         }
       ],
       "links": [
         {
-          "source_id": 4,
-          "target_id": 5,
+          "source_global_id": 4,
+          "target_global_id": 5,
           "type": "NVL",
           "bandwidth": 42
         },
         {
-          "source_id": 4,
-          "target_id": 6,
+          "source_global_id": 4,
+          "target_global_id": 6,
           "type": "PHB",
           "bandwidth": 12
         },
         {
-          "source_id": 5,
-          "target_id": 6,
+          "source_global_id": 5,
+          "target_global_id": 6,
           "type": "PHB",
           "bandwidth": 12
         },
         {
-          "source_id": 4,
-          "target_id": 7,
+          "source_global_id": 4,
+          "target_global_id": 7,
           "type": "NET",
           "bandwidth": 1
         },
         {
-          "source_id": 5,
-          "target_id": 7,
+          "source_global_id": 5,
+          "target_global_id": 7,
           "type": "NET",
           "bandwidth": 1
         },
         {
-          "source_id": 6,
-          "target_id": 7,
+          "source_global_id": 6,
+          "target_global_id": 7,
           "type": "NET",
           "bandwidth": 1
         },
         {
-          "source_id": 7,
-          "target_id": 3,
+          "source_global_id": 7,
+          "target_global_id": 3,
           "type": "NET",
           "bandwidth": 1
         }
@@ -205,6 +213,7 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # machine0
         machine0 = cluster.machines[0]
+        self.assertEqual(machine0.id, 0)
         self.assertEqual(machine0.hostname, "machine0")
         self.assertEqual(machine0.addr, "0.0.0.1")
         self.assertEqual(machine0.port, "768")
@@ -213,7 +222,8 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device0
         device0_machine0 = machine0.devices[0]
-        self.assertEqual(device0_machine0.id, 0)
+        self.assertEqual(device0_machine0.global_id, 0)
+        self.assertEqual(device0_machine0.local_id, 0)
         self.assertEqual(device0_machine0.type, DeviceType.GPU)
         self.assertEqual(device0_machine0.model, "A100-SXM4-40GB")
         self.assertAlmostEqual(device0_machine0.sp_gflops, 19500)
@@ -222,31 +232,32 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device0, link0
         link0_machine0 = machine0.links[(0, 1)]
-        self.assertEqual(link0_machine0.source.id, 0)
-        self.assertEqual(link0_machine0.target.id, 1)
+        self.assertEqual(link0_machine0.source.global_id, 0)
+        self.assertEqual(link0_machine0.target.global_id, 1)
         self.assertEqual(link0_machine0.type, LinkType.NVL)
         self.assertAlmostEqual(link0_machine0.bandwidth, 252)
         self.assertAlmostEqual(link0_machine0.latency, 0)
 
         # device 0, link 1
         link1_machine0 = machine0.links[(0, 2)]
-        self.assertEqual(link1_machine0.source.id, 0)
-        self.assertEqual(link1_machine0.target.id, 2)
+        self.assertEqual(link1_machine0.source.global_id, 0)
+        self.assertEqual(link1_machine0.target.global_id, 2)
         self.assertEqual(link1_machine0.type, LinkType.PHB)
         self.assertAlmostEqual(link1_machine0.bandwidth, 12)
         self.assertAlmostEqual(link1_machine0.latency, 0)
 
         # device0, link2
         link2_machine0 = machine0.links[(0, 3)]
-        self.assertEqual(link2_machine0.source.id, 0)
-        self.assertEqual(link2_machine0.target.id, 3)
+        self.assertEqual(link2_machine0.source.global_id, 0)
+        self.assertEqual(link2_machine0.target.global_id, 3)
         self.assertEqual(link2_machine0.type, LinkType.NET)
         self.assertAlmostEqual(link2_machine0.bandwidth, 1)
         self.assertAlmostEqual(link2_machine0.latency, 0)
 
         # device1
         device1_machine0 = machine0.devices[1]
-        self.assertEqual(device1_machine0.id, 1)
+        self.assertEqual(device1_machine0.global_id, 1)
+        self.assertEqual(device1_machine0.local_id, 1)
         self.assertEqual(device1_machine0.type, DeviceType.GPU)
         self.assertEqual(device1_machine0.model, "A100-SXM4-40GB")
         self.assertAlmostEqual(device1_machine0.sp_gflops, 19500)
@@ -255,23 +266,24 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device1, link0
         link0_machine0 = machine0.links[(1, 2)]
-        self.assertEqual(link0_machine0.source.id, 1)
-        self.assertEqual(link0_machine0.target.id, 2)
+        self.assertEqual(link0_machine0.source.global_id, 1)
+        self.assertEqual(link0_machine0.target.global_id, 2)
         self.assertEqual(link0_machine0.type, LinkType.PHB)
         self.assertAlmostEqual(link0_machine0.bandwidth, 12)
         self.assertAlmostEqual(link0_machine0.latency, 0)
 
         # device1, link1
         link1_machine0 = machine0.links[(1, 3)]
-        self.assertEqual(link1_machine0.source.id, 1)
-        self.assertEqual(link1_machine0.target.id, 3)
+        self.assertEqual(link1_machine0.source.global_id, 1)
+        self.assertEqual(link1_machine0.target.global_id, 3)
         self.assertEqual(link1_machine0.type, LinkType.NET)
         self.assertAlmostEqual(link1_machine0.bandwidth, 1)
         self.assertAlmostEqual(link1_machine0.latency, 0)
 
         # device2
         device2_machine0 = machine0.devices[2]
-        self.assertEqual(device2_machine0.id, 2)
+        self.assertEqual(device2_machine0.global_id, 2)
+        self.assertEqual(device2_machine0.local_id, 0)
         self.assertEqual(device2_machine0.type, DeviceType.CPU)
         self.assertEqual(device2_machine0.model,
                          "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GH")
@@ -281,15 +293,16 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device2, link0
         link0_machine0 = machine0.links[(2, 3)]
-        self.assertEqual(link0_machine0.source.id, 2)
-        self.assertEqual(link0_machine0.target.id, 3)
+        self.assertEqual(link0_machine0.source.global_id, 2)
+        self.assertEqual(link0_machine0.target.global_id, 3)
         self.assertEqual(link0_machine0.type, LinkType.NET)
         self.assertAlmostEqual(link0_machine0.bandwidth, 1)
         self.assertAlmostEqual(link0_machine0.latency, 0)
 
         # device3
         device3_machine0 = machine0.devices[3]
-        self.assertEqual(device3_machine0.id, 3)
+        self.assertEqual(device3_machine0.global_id, 3)
+        self.assertEqual(device3_machine0.local_id, 0)
         self.assertEqual(device3_machine0.type, DeviceType.NIC)
         self.assertAlmostEqual(device3_machine0.model, None)
         self.assertAlmostEqual(device3_machine0.sp_gflops, 0)
@@ -298,24 +311,25 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         link0_machine0 = machine0.links[(3, 7)]
         # device3, link0
-        self.assertEqual(link0_machine0.source.id, 3)
-        self.assertEqual(link0_machine0.target.id, 7)
+        self.assertEqual(link0_machine0.source.global_id, 3)
+        self.assertEqual(link0_machine0.target.global_id, 7)
         self.assertEqual(link0_machine0.type, LinkType.NET)
         self.assertAlmostEqual(link0_machine0.bandwidth, 1)
         self.assertAlmostEqual(link0_machine0.latency, 0)
 
         # machine1
         machine1 = cluster.machines[1]
-        self.assertEqual(len(machine1.devices), 4)
+        self.assertEqual(machine1.id, 1)
         self.assertEqual(machine1.hostname, "machine1")
         self.assertEqual(machine1.addr, "0.0.0.2")
         self.assertEqual(machine1.port, "768")
-        self.assertEqual(len(machine0.devices), 4)
-        self.assertEqual(len(machine0.links), 7)
+        self.assertEqual(len(machine1.devices), 4)
+        self.assertEqual(len(machine1.links), 7)
 
         # device4
         device4_machine1 = machine1.devices[4]
-        self.assertEqual(device4_machine1.id, 4)
+        self.assertEqual(device4_machine1.global_id, 4)
+        self.assertEqual(device4_machine1.local_id, 0)
         self.assertEqual(device4_machine1.type, DeviceType.GPU)
         self.assertEqual(device4_machine1.model, "Tesla V100-SXM2-32GB")
         self.assertAlmostEqual(device4_machine1.sp_gflops, 15700)
@@ -324,31 +338,32 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device4, link0
         link0_machine1 = machine1.links[(4, 5)]
-        self.assertEqual(link0_machine1.source.id, 4)
-        self.assertEqual(link0_machine1.target.id, 5)
+        self.assertEqual(link0_machine1.source.global_id, 4)
+        self.assertEqual(link0_machine1.target.global_id, 5)
         self.assertEqual(link0_machine1.type, LinkType.NVL)
         self.assertAlmostEqual(link0_machine1.bandwidth, 42)
         self.assertAlmostEqual(link0_machine1.latency, 0)
 
         # device 4, link 1
         link1_machine1 = machine1.links[(4, 6)]
-        self.assertEqual(link1_machine1.source.id, 4)
-        self.assertEqual(link1_machine1.target.id, 6)
+        self.assertEqual(link1_machine1.source.global_id, 4)
+        self.assertEqual(link1_machine1.target.global_id, 6)
         self.assertEqual(link1_machine1.type, LinkType.PHB)
         self.assertAlmostEqual(link1_machine1.bandwidth, 12)
         self.assertAlmostEqual(link1_machine1.latency, 0)
 
         # device4, link2
         link2_machine1 = machine1.links[(4, 7)]
-        self.assertEqual(link2_machine1.source.id, 4)
-        self.assertEqual(link2_machine1.target.id, 7)
+        self.assertEqual(link2_machine1.source.global_id, 4)
+        self.assertEqual(link2_machine1.target.global_id, 7)
         self.assertEqual(link2_machine1.type, LinkType.NET)
         self.assertAlmostEqual(link2_machine1.bandwidth, 1)
         self.assertAlmostEqual(link2_machine1.latency, 0)
 
         # device5
         device5_machine1 = machine1.devices[5]
-        self.assertEqual(device5_machine1.id, 5)
+        self.assertEqual(device5_machine1.global_id, 5)
+        self.assertEqual(device5_machine1.local_id, 1)
         self.assertEqual(device5_machine1.type, DeviceType.GPU)
         self.assertEqual(device4_machine1.model, "Tesla V100-SXM2-32GB")
         self.assertAlmostEqual(device4_machine1.sp_gflops, 15700)
@@ -357,23 +372,24 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device5, link0
         link0_machine1 = machine1.links[(5, 6)]
-        self.assertEqual(link0_machine1.source.id, 5)
-        self.assertEqual(link0_machine1.target.id, 6)
+        self.assertEqual(link0_machine1.source.global_id, 5)
+        self.assertEqual(link0_machine1.target.global_id, 6)
         self.assertEqual(link0_machine1.type, LinkType.PHB)
         self.assertAlmostEqual(link0_machine1.bandwidth, 12)
         self.assertAlmostEqual(link0_machine1.latency, 0)
 
         # device5, link1
         link1_machine1 = machine1.links[(5, 7)]
-        self.assertEqual(link1_machine1.source.id, 5)
-        self.assertEqual(link1_machine1.target.id, 7)
+        self.assertEqual(link1_machine1.source.global_id, 5)
+        self.assertEqual(link1_machine1.target.global_id, 7)
         self.assertEqual(link1_machine1.type, LinkType.NET)
         self.assertAlmostEqual(link1_machine1.bandwidth, 1)
         self.assertAlmostEqual(link1_machine1.latency, 0)
 
         # device6
         device6_machine1 = machine1.devices[6]
-        self.assertEqual(device6_machine1.id, 6)
+        self.assertEqual(device6_machine1.global_id, 6)
+        self.assertEqual(device6_machine1.local_id, 0)
         self.assertEqual(device6_machine1.type, DeviceType.CPU)
         self.assertEqual(device6_machine1.model,
                          "Intel(R) Xeon(R) Gold 6271C CPU @ 2.60G")
@@ -383,15 +399,16 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device6, link0
         link0_machine1 = machine1.links[(6, 7)]
-        self.assertEqual(link0_machine1.source.id, 6)
-        self.assertEqual(link0_machine1.target.id, 7)
+        self.assertEqual(link0_machine1.source.global_id, 6)
+        self.assertEqual(link0_machine1.target.global_id, 7)
         self.assertEqual(link0_machine1.type, LinkType.NET)
         self.assertAlmostEqual(link0_machine1.bandwidth, 1)
         self.assertAlmostEqual(link0_machine1.latency, 0)
 
         # device7
         device7_machine1 = machine1.devices[7]
-        self.assertEqual(device7_machine1.id, 7)
+        self.assertEqual(device7_machine1.global_id, 7)
+        self.assertEqual(device7_machine1.local_id, 0)
         self.assertEqual(device7_machine1.type, DeviceType.NIC)
         self.assertAlmostEqual(device7_machine1.model, None)
         self.assertAlmostEqual(device7_machine1.sp_gflops, 0)
@@ -400,8 +417,8 @@ class TestAutoParallelCluster(unittest.TestCase):
 
         # device3, link0
         link0_machine1 = machine1.links[(7, 3)]
-        self.assertEqual(link0_machine1.source.id, 7)
-        self.assertEqual(link0_machine1.target.id, 3)
+        self.assertEqual(link0_machine1.source.global_id, 7)
+        self.assertEqual(link0_machine1.target.global_id, 3)
         self.assertEqual(link0_machine1.type, LinkType.NET)
         self.assertAlmostEqual(link0_machine1.bandwidth, 1)
         self.assertAlmostEqual(link0_machine1.latency, 0)
