@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import einsum
+from paddle import dot, einsum
 from .bfgs_utils import vjp
 from .bfgs_utils import (StopCounter,
                          StopCounterException,
@@ -601,7 +601,7 @@ def hz_linesearch(state,
     # For each line search, the input location, function value, gradients and
     # the approximate inverse hessian are already present in the state date
     # struture. No need to recompute.
-    k, xk, fk, gk, Hk = state.k, state.xk, state.fk, state.gk, state.Hk  
+    bat, xk, fk, gk, Hk = state.bat, state.xk, state.fk, state.gk, state.Hk  
 
     # Updates C_k, the weighted average of the absolute function values, 
     # used for assessing the relative change of function values over succesive
@@ -624,7 +624,7 @@ def hz_linesearch(state,
 
     # deriv is the directional derivative of f at x_k on the direction of p_k.
     # It's also the gradient of phi    
-    deriv = einsum('...i, ...i', gk, pk)                # dot(gk, pk)
+    deriv = einsum('...i, ...i', gk, pk) if bat else dot(gk, pk)
 
     # Marks invalid inputs
     invalid_input = paddle.isinf(fk) | (deriv >= .0)

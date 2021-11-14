@@ -50,7 +50,7 @@ def hesfn_gen(f):
     """
     def hess(x):
         y = f(x)
-        batch_mode = len(y.shape) > 1
+        batch_mode = len(x.shape) > 1
         dim = x.shape[-1]
         vs = []
         for i in range(dim):
@@ -73,35 +73,27 @@ def update_inv_hessian_proper(H, s, y):
     batch = len(s.shape) > 1
     dtype = H.dtype
     dim = s.shape[-1]
-    if not batch:
-        rho = 1. / paddle.dot(s, y)
-        l = paddle.eye(dim, dtype=dtype) - rho * s.unsqueeze(-1) * y.unsqueeze(0)
-        r = paddle.eye(dim, dtype=dtype) - rho * y.unsqueeze(-1) * s.unsqueeze(0)
-        lH = paddle.matmul(l, H)
-        lHr = paddle.matmul(lH, r)
-        H_next = lHr + rho * s.unsqueeze(-1) * s.unsqueeze(0)
-    else:
-        rho = 1. / paddle.einsum('...i, ...i', s, y)
-        l = paddle.eye(dim) - paddle.einsum('...,...i,...j->...ij', rho, s, y)
-        r = paddle.eye(dim) - paddle.einsum('...,...i,...j->...ij', rho, y, s)
-        lH = paddle.matmul(l, H)
-        lHr = paddle.matmul(lH, r)
-        H_next = lHr + paddle.einsum('...,...i,...j->...ij', rho, s, s)
+    rho = paddle.einsum('...i, ...i', s, y) if batch else 1. / paddle.dot(s, y)
+    rho = rho.unsqueeze(-1)
+    l = paddle.eye(dim) - paddle.einsum('...ij,...i,...j->...ij', rho, s, y)
+    r = paddle.eye(dim) - paddle.einsum('...ij,...i,...j->...ij', rho, y, s)
+    lH = paddle.matmul(l, H)
+    lHr = paddle.matmul(lH, r)
+    H_next = lHr + paddle.einsum('...ij,...i,...j->...ij', rho, s, s)
     
     return H_next
 
 def quadratic_gen(shape, dtype):
-    paddle.seed(12345)
     center = paddle.rand(shape, dtype=dtype)
     hessian_shape = shape + shape[-1:]
     rotation = paddle.rand(hessian_shape, dtype=dtype)
     hessian = paddle.einsum('...ik, ...jk', rotation, rotation)
 
-    if len(hessian.shape) > 1:
+    if shape[-1] > 1:
         verify_symmetric_positive_definite_matrix(hessian)
     else:
         hessian = paddle.abs(hessian)
-        f = lambda x: x * hessian * x
+        f = lambda x: paddle.matmul(x - center, hessian) * (x - center)
         return f, center
 
     def f(x):
@@ -109,6 +101,7 @@ def quadratic_gen(shape, dtype):
                           x - center,
                           hessian,
                           x - center)
+        print(y)
         return y
     
     return f, center
@@ -121,48 +114,49 @@ class TestBFGS(unittest.TestCase):
     def gen_configs(self):
         dtypes = ['float32', 'float64']
         shapes = {
-            '1d1v': [1],
-            # '1d2v': [2],
-            # '2d1v': [2, 1],
+            '1d2v': [2],
             # '2d2v': [2, 2],
-            # '1d100v': [100],
+            # '1d50v': [50],
             # '10d10v': [10, 10]
+            # '1d1v': [1],
+            # '2d1v': [2, 1],
         }
         for shape, dtype in zip(shapes.values(), dtypes):
             yield shape, dtype
 
-    # def test_update_approx_inverse_hessian(self):
-    #     paddle.seed(12345)
-    #     for shape, dtype in self.gen_configs():
-    #         print(f'update_inv_hession for shape= {shape},  dtype= {dtype}')
-
-    #         f, center = quadratic_gen(shape, dtype)
-    #         x0 = paddle.ones(shape, dtype=dtype)
-            
-    #         # The true inverse hessian value at x0
-    #         hess = hesfn_gen(f)(x0)
-    #         h0 = paddle.inverse(hess)
-    #         f0, g0 = vjp(f, x0)
-    #         state = SearchState(x0, f0, g0, h0)
-            
-    #         # Verifies the estimated invese Hessian at the center equals the 
-    #         # true value. 
-    #         s = center - x0
-    #         y = -g0
-
-    #         h1 = update_approx_inverse_hessian(state, h0, s, y)
-    #         h1_proper = update_inv_hessian_proper(h0, s, y)
-
-    #         self.assertTrue(paddle.allclose(h1, h1_proper))
-
-    def test_quadratic(self):
-        paddle.seed(12345)
+    def test_update_approx_inverse_hessian(self):
+        paddle.seed(1234)
         for shape, dtype in self.gen_configs():
+            bat = len(shape) > 1
+
             f, center = quadratic_gen(shape, dtype)
             x0 = paddle.ones(shape, dtype=dtype)
-            result = bfgs_optimize(f, x0, dtype=dtype)
-            self.assertTrue(paddle.all(result.converged))
-            self.assertTrue(paddle.allclose(result.location, center))
+
+            # The true inverse hessian value at x0
+            hess = hesfn_gen(f)(x0)
+            h0 = paddle.inverse(hess)
+            f0, g0 = vjp(f, x0)
+            state = SearchState(bat, x0, f0, g0, h0)
+            
+            # Verifies the estimated invese Hessian at the center equals the 
+            # true value. 
+            s = center - x0
+            y = -g0
+
+            h1 = update_approx_inverse_hessian(state, h0, s, y)
+            print(f'approx H: {h1}')
+            h1_proper = update_inv_hessian_proper(h0, s, y)
+            print(f'proper H: {h1_proper}')
+            self.assertTrue(paddle.allclose(h1, h1_proper))
+
+    # def test_quadratic(self):
+    #     paddle.seed(12345)
+    #     for shape, dtype in self.gen_configs():
+    #         f, center = quadratic_gen(shape, dtype)
+    #         x0 = paddle.ones(shape, dtype=dtype)
+    #         result = bfgs_optimize(f, x0, dtype=dtype, iters=100, ls_iters=100)
+    #         self.assertTrue(paddle.all(result.converged))
+    #         self.assertTrue(paddle.allclose(result.location, center))
 
 
 # shape = [2]
@@ -221,11 +215,6 @@ class TestBFGS(unittest.TestCase):
 # h1_pp = update_approx_inverse_hessian(state, h0_pp, s_pp, y_pp)
 
 # h1_pp_proper = update_inv_hessian_proper(h0_pp, s_pp, y_pp)
-
-x = paddle.rand([1, 1, 1])
-y = paddle.rand([1, 1])
-
-z = paddle.einsum('...ij, ...j', x, y)
 
 if __name__ == "__main__":
     unittest.main()

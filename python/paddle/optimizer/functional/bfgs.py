@@ -15,7 +15,7 @@
 import contextlib
 import collections
 import paddle
-from paddle import einsum
+from paddle import dot, einsum
 from .bfgs_utils import vjp, ternary
 from .bfgs_utils import make_state, make_const, update_state
 from .bfgs_utils import active_state, any_active, any_active_with_predicates
@@ -75,6 +75,7 @@ class SearchState(object):
     the BFGS minimization.
 
     Pulic instance members:    
+        bat (Boolean): True if the input is batched.
         k: the iteration number.
         state (Tensor): an int tensor of shape [...], holding the set of
             searching states for the batch inputs. For each element,
@@ -92,7 +93,8 @@ class SearchState(object):
         gk (Tensor): the ``func``'s gradients. 
         Hk (Tensor): the approximated inverse hessian of ``func``.
     """
-    def __init__(self, xk, fk, gk, Hk, ak=None, k=0, nf=1, ng=1):
+    def __init__(self, bat, xk, fk, gk, Hk, ak=None, k=0, nf=1, ng=1):
+        self.bat = bat
         self.xk = xk
         self.fk = fk
         self.gk = gk
@@ -146,8 +148,10 @@ def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
     Args:
         
     """
-    batch = len(s.shape) > 1
-    rho = 1. / einsum('...i, ...i', s, y)
+    # batch = len(s.shape) > 1
+    bat = state.bat
+    
+    rho =  1. / einsum('...i, ...i', s, y) if bat else paddle.dot(s, y)
     rho = ternary(paddle.isinf(rho), paddle.zeros_like(rho), rho)
 
     # Enforces the curvature condition before updating the inverse Hessian.
@@ -168,12 +172,12 @@ def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
     # H_k * y_k
     Hy = einsum('...ij, ...j', H, y)
     # T(y_k) * H_y * y_k
-    yHy = einsum('...i, ...i', y, Hy)
-    term23 = einsum('...i, ...j', Hy, s) + einsum('...i, ...j', s, Hy)
+    yHy = einsum('...i, ...i', y, Hy) if bat else dot(y, Hy)
+    term23 = einsum('...i, ...j -> ...ji', Hy, s) + einsum('...i, ...j', Hy, s)
     # T(s_k) * s_k
     sTs = einsum('...i, ...j', s, s)
 
-    if batch:
+    if bat:
         term45 = einsum('...ij, ...', sTs, 1 + rho * yHy)
         Hk_next = H + einsum('...ij, ...', term45 - term23, rho)
     else:
@@ -237,7 +241,7 @@ def iterates(func,
     # tensor holds the input dimensions. However, it's tricky to determine
     # whether a function is actually applied in the batch mode. We assume here
     # that the input being multi-dimensional necessarily implies batching.
-    batching = len(x0.shape) > 1
+    bat = len(x0.shape) > 1
     input_dim = x0.shape[-1]
     hessian_shape = x0.shape + [input_dim]
     
@@ -252,7 +256,7 @@ def iterates(func,
     # Puts the starting points in the initial state and kicks off the
     # minimization process.
     gnorm = vnorm_inf(g0)
-    state = SearchState(x0, f0, g0, H0)
+    state = SearchState(bat, x0, f0, g0, H0)
 
     # Calculates the gradient norms
     gnorm = vnorm_inf(state.gk)
@@ -280,7 +284,7 @@ def iterates(func,
                        max_iters=ls_iters)
         
             # Uses the obtained search steps to generate next iterates.
-            if batching:
+            if bat:
                 next_xk = xk + state.ak.unsqueeze(-1) * pk
             else:
                 next_xk = xk + state.ak * pk
