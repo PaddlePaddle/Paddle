@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -35,15 +36,21 @@ namespace distributed {
 
 class Carrier;
 
+// A singleton MessageBus
 class MessageBus final {
  public:
-  MessageBus() = delete;
+  static MessageBus& Instance() {
+    static MessageBus msg_bus;
+    return msg_bus;
+  }
 
-  MessageBus(const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-             const std::unordered_map<int64_t, std::string>& rank_to_addr,
-             const std::string& addr);
+  void Init(const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
+            const std::unordered_map<int64_t, std::string>& rank_to_addr,
+            const std::string& addr);
 
-  ~MessageBus();
+  bool IsInit() const;
+
+  void Release();
 
   // called by Interceptor, send InterceptorMessage to dst
   bool Send(const InterceptorMessage& interceptor_message);
@@ -51,6 +58,8 @@ class MessageBus final {
   DISABLE_COPY_AND_ASSIGN(MessageBus);
 
  private:
+  MessageBus() = default;
+
   // function keep listen the port and handle the message
   void ListenPort();
 
@@ -66,6 +75,9 @@ class MessageBus final {
   // send the message intra rank (dst is the same rank with src)
   bool SendIntraRank(const InterceptorMessage& interceptor_message);
 
+  bool is_init_{false};
+  std::once_flag once_flag_;
+
   // handed by above layer, save the info mapping interceptor id to rank id
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
 
@@ -80,10 +92,6 @@ class MessageBus final {
   // brpc server
   brpc::Server server_;
 #endif
-
-  // thread keeps listening to the port to receive remote message
-  // this thread runs ListenPort() function
-  std::thread listen_port_thread_;
 };
 
 }  // namespace distributed
