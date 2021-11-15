@@ -43,6 +43,8 @@ using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 using OpKernelMap =
     std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
 
+constexpr int kEmptyVarIndex = 0;
+
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
   InterpretercoreInferShapeContext(const OperatorBase& op,

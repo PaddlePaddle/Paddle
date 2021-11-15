@@ -480,7 +480,7 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::OutputVars(
 VariableScope::VariableScope(Scope* scope) {
   // for @EMPTY@ variable
   var_list_.push_back(nullptr);
-  name2id_[kEmptyVarName] = 0;
+  name2id_[kEmptyVarName] = kEmptyVarIndex;
   vec_meta_info_.emplace_back(0, nullptr);
   scope_ = scope;
   PADDLE_ENFORCE_NE(
