@@ -213,9 +213,10 @@ TEST(CinnCompilerTest, FlagController) {
     ASSERT_EQ(compilation_keys.size(), 1);
     const auto& compiling_graph = cinn_compiler->FindGraph(compilation_keys[0]);
     auto op_types = ExtractOpTypes(compiling_graph);
-    ASSERT_EQ(op_types.size(), 2);
+    ASSERT_EQ(op_types.size(), 3);
     ASSERT_EQ(op_types.count("feed"), 1);
     ASSERT_EQ(op_types.count("mul"), 1);
+    ASSERT_EQ(op_types.count("fetch"), 1);
   }
   // recover flags
   FLAGS_allow_cinn_ops = "";
