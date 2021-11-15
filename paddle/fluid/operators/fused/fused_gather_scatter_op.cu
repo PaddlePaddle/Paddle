@@ -122,6 +122,25 @@ __global__ void ManipulateMeanGradCUDAKernel(const T* params,
   }
 }
 
+// For backward min and max
+template <typename T, typename IndexT>
+__global__ void ManipulateMinMaxGradCUDAKernel(
+    const T* params, const IndexT* gather_indices,
+    const IndexT* scatter_indices, T* output, size_t index_size,
+    size_t slice_size, const T* ptr_input, const T* ptr_output) {
+  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
+    int64_t indices_i = i / slice_size;
+    int64_t slice_i = i - indices_i * slice_size;
+    IndexT gather_i = gather_indices[indices_i];
+    IndexT scatter_i = scatter_indices[indices_i];
+    int64_t in_i = gather_i * slice_size + slice_i;
+    int64_t out_i = scatter_i * slice_size + slice_i;
+    paddle::platform::CudaAtomicAdd(
+        output + out_i,
+        *(params + in_i) * (*(ptr_input + out_i) == *(ptr_output + in_i)));
+  }
+}
+
 template <typename DeviceContext, typename T, typename IndexT>
 class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -254,17 +273,7 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
       memset_size *= src_dims[i];
     }
     const size_t& memset_bytes = memset_size * sizeof(T);
-    if (pool_type == "SUM" || pool_type == "MEAN") {
-      cudaMemset(p_output, 0, memset_bytes);
-    } else if (pool_type == "MAX") {
-      thrust::device_ptr<T> p_output_ptr(p_output);
-      thrust::fill(thrust::device, p_output_ptr, p_output_ptr + memset_size,
-                   std::numeric_limits<T>::min());
-    } else if (pool_type == "MIN") {
-      thrust::device_ptr<T> p_output_ptr(p_output);
-      thrust::fill(thrust::device, p_output_ptr, p_output_ptr + memset_size,
-                   std::numeric_limits<T>::max());
-    }
+    cudaMemset(p_output, 0, memset_bytes);
 
     int64_t slice_size = 1;
     for (int i = 1; i < src_dims.size(); ++i) {
@@ -286,36 +295,6 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
                                            index_size, slice_size, functor);
-    } else if (pool_type == "MAX") {
-      GatherScatterMaxCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterMaxCUDAFunctor<T, IndexT>><<<
-          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
-                                           index_size, slice_size, functor);
-
-      int64_t grid_max = (input_size * slice_size + block - 1) / block;
-      InputResetCUDAKernel<
-          T><<<grid_max, block, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(
-                   ctx.device_context())
-                   .stream()>>>(p_output, input_size, slice_size);
-    } else if (pool_type == "MIN") {
-      GatherScatterMinCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterMinCUDAFunctor<T, IndexT>><<<
-          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
-                                           index_size, slice_size, functor);
-
-      int64_t grid_min = (input_size * slice_size + block - 1) / block;
-      InputResetCUDAKernel<
-          T><<<grid_min, block, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(
-                   ctx.device_context())
-                   .stream()>>>(p_output, input_size, slice_size);
     } else if (pool_type == "MEAN") {
       auto* scatter_count = ctx.Input<Tensor>("Scatter_count");
       const int* s_count = scatter_count->data<int>();
@@ -324,6 +303,17 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
                                            index_size, slice_size, s_count);
+    } else if (pool_type == "MAX" || pool_type == "MIN") {
+      auto* input = ctx.Input<Tensor>("X");
+      auto* output = ctx.Input<Tensor>("Out");
+      const T* ptr_input = input->data<T>();
+      const T* ptr_output = output->data<T>();
+      ManipulateMinMaxGradCUDAKernel<T, IndexT><<<
+          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
+                              ctx.device_context())
+                              .stream()>>>(p_src, g_index, s_index, p_output,
+                                           index_size, slice_size, ptr_input,
+                                           ptr_output);
     }
   }
 };

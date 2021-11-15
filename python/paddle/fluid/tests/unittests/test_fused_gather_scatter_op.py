@@ -22,7 +22,7 @@ class TestFusedGatherScatterMaxOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "fused_gather_scatter"
-        x = np.random.randint(0, 50, (10, 10)).astype("float64")
+        x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2))
         gather_index = index[:, 0]
         scatter_index = index[:, 1]

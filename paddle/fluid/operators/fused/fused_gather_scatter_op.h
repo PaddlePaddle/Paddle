@@ -241,8 +241,8 @@ class FusedGatherScatterGradOpKernel : public framework::OpKernel<T> {
                                        FusedGatherScatterSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type, s_count);
     } else if (pool_type == "MIN" || pool_type == "MAX") {
-      auto* input = ctx.Input<Tensor>("X");
-      auto* output = ctx.Input<Tensor>("Out");
+      const auto* input = ctx.Input<Tensor>("X");
+      const auto* output = ctx.Input<Tensor>("Out");
       // Functor not used here.
       gather_scatter_cpu_for_loop_grad<T, IndexT,
                                        FusedGatherScatterMinFunctor<T>>(
