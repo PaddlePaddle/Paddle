@@ -22,6 +22,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
+#include "paddle/fluid/platform/cuda_graph.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 #include "paddle/fluid/memory/malloc.h"
@@ -557,6 +558,7 @@ class RecordedCudaMallocHelper {
 #ifdef PADDLE_WITH_HIP
     auto result = hipMalloc(ptr, size);
 #else
+    CUDAGraphCaptureModeGuard capture_mode_guard;
     auto result = cudaMalloc(ptr, size);
 #endif
     if (result == gpuSuccess) {

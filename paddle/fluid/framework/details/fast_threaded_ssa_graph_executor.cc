@@ -130,10 +130,12 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     }
   }
   // Wait FetchOps.
-  ClearFetchOp(graph_, &fetch_ops);
+  if (!fetch_ops.empty()) {
+    ClearFetchOp(graph_, &fetch_ops);
 
-  for (auto &place : places_) {
-    fetch_ctxs_.Get(place)->Wait();
+    for (auto &place : places_) {
+      fetch_ctxs_.Get(place)->Wait();
+    }
   }
 
   return fetches;

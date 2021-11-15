@@ -1041,9 +1041,15 @@ class Executor(object):
             lr_value = lr_sheduler()
             lr_var = program._program.global_block().vars[lr_sheduler._var_name]
             lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
-            exe.feed_and_split_tensor_into_local_scopes({
-                lr_sheduler._var_name: lr_tensor
-            })
+            if core.is_cuda_graph_capturing():
+                warnings.warn(
+                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                    "take any effect! Please set the learning rate manually before each batch!"
+                )
+            else:
+                exe.feed_and_split_tensor_into_local_scopes({
+                    lr_sheduler._var_name: lr_tensor
+                })
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
