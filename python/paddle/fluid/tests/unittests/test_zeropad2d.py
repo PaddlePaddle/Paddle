@@ -41,7 +41,7 @@ class TestZeroPad2dOpError(unittest.TestCase):
             pad = 2
             x = np.random.randint(-255, 255, size=self.shape)
             x_tensor = to_tensor(x).astype(dtype)
-            self.assertRaises(TypeError, zeropad2d, x=x_tensor, pad=pad)
+            self.assertRaises(TypeError, zeropad2d, x=x_tensor, padding=pad)
 
 
 class TestZeroPadOp2d(unittest.TestCase):
@@ -104,8 +104,8 @@ class TestZeroPadOp2d(unittest.TestCase):
         expect_res = np.pad(
             x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]])
 
-        x_tensor = to_tensor(x, dtype='int32')
-        pad_tensor = to_tensor(pad)
+        x_tensor = to_tensor(x)
+        pad_tensor = to_tensor(pad, dtype='int32')
         ret_res = zeropad2d(x_tensor, pad_tensor).numpy()
         self.assertTrue(np.allclose(expect_res, ret_res))
 
