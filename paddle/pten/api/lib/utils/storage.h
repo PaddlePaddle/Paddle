@@ -34,6 +34,11 @@ class ExternalStorage : public pten::Storage {
         "The external shared storage cannot be reallocated."));
   }
 
+  void Clear() override {
+    data_.Clear();
+    size_ = 0;
+  }
+
   size_t size() const noexcept override { return size_; }
   const paddle::platform::Place& place() const override {
     return data_.place();
@@ -41,7 +46,7 @@ class ExternalStorage : public pten::Storage {
   bool OwnsMemory() const noexcept override { return false; }
 
  private:
-  const int64_t size_{0};
+  int64_t size_{0};
 };
 
 class SharedStorage : public pten::Storage {
@@ -63,6 +68,11 @@ class SharedStorage : public pten::Storage {
   void Realloc(size_t n) override {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "The external shared storage cannot be reallocated."));
+  }
+
+  void Clear() override {
+    data_.Clear();
+    size_ = 0;
   }
 
   size_t size() const noexcept override { return size_; }

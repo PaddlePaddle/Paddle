@@ -125,8 +125,8 @@ TEST(API, matmul_cuda) {
   auto place = paddle::platform::CUDAPlace();
   auto* dev_ctx = pool.GetByPlace(place);
 
-  pten::Copy(*dev_ctx, *ref_x.get(), dense_x.get());
-  pten::Copy(*dev_ctx, *ref_y.get(), dense_y.get());
+  pten::Copy(*dev_ctx, *ref_x.get(), false, dense_x.get());
+  pten::Copy(*dev_ctx, *ref_y.get(), false, dense_y.get());
 
   paddle::experimental::Tensor x(dense_x);
   paddle::experimental::Tensor y(dense_y);
@@ -150,7 +150,7 @@ TEST(API, matmul_cuda) {
       pten::DenseTensorMeta(
           pten::DataType::FLOAT32, out.shape(), pten::DataLayout::NCHW));
 
-  pten::Copy(*dev_ctx, *dense_out.get(), ref_out.get());
+  pten::Copy(*dev_ctx, *dense_out.get(), false, ref_out.get());
 
   for (size_t i = 0; i < 9; i++) {
     ASSERT_NEAR(sum[i], ref_out->data<float>()[i], 1e-6f);

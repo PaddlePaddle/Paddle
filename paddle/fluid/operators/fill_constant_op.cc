@@ -87,6 +87,9 @@ class FillConstantOp : public framework::OperatorWithKernel {
         case 3:
           kt.place_ = platform::XPUPlace();
           break;
+        case 4:
+          kt.place_ = platform::NPUPlace();
+          break;
         default:
           PADDLE_THROW(platform::errors::Unimplemented(
               "Could NOT determine the place of variable, place_type = %d .",
@@ -164,7 +167,8 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "0: CPUPlace. "
                  "1: CUDAPlace. "
                  "2: CUDAPinnedPlace. "
-                 "3: XPUPlace. ")
+                 "3: XPUPlace. "
+                 "4: NPUPlace. ")
         .SetDefault(-1);
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
