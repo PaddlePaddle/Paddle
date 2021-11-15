@@ -27,40 +27,26 @@ import hypothesis.strategies as st
 
 class TestFcFusePass(PassAutoScanTest):
     '''
-    Fuse pattern:
-        `mul -> elementwise_add -> relu(optional)`
-    Fused operator: `fc`
+        x_var   y_var(persistable)
+          \       /
+             mul     bias_var(persistable)
+              |
+          mul_out_var  bias_var(persistable)
+                \        / 
+              elementwise_add
     '''
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # fuse only support axis>=1 or axis==-1
         if program_config.ops[1].attrs["axis"] == 0:
             return False
+        x_shape = program_config.inputs["mul_x"].shape
+        y_shape = program_config.weights["mul_y"].shape
+        x_num_col_dims = program_config.ops[0].attrs["x_num_col_dims"]
+        if y_shape[0] != int(np.prod(x_shape[x_num_col_dims:])):
+            return False
         return True
 
     def sample_program_configs(self, *args, **kwargs):
-        def generate_legal_parameters(x_shape, y_shape, x_num_col_dims, axis,
-                                      bias_rank, use_broadcast):
-            # make x_num_col_dims be legal, in range of [1, x_rank)
-            x_num_col_dims = x_num_col_dims % (len(x_shape) - 1) + 1
-            # make shape of mul:y be legal
-            y_shape[0] = int(np.prod(x_shape[x_num_col_dims:]))
-            # get shape of mul:out, rank(out) = x_num_col_dims + 1
-            mul_out_shape = x_shape[:x_num_col_dims] + y_shape[1:]
-            # make axis be legal, in range of [-1, out_rank)
-            if axis > 0:
-                axis = axis % len(mul_out_shape)
-                # make rank of bias be legal, in range of [1, out_rank-axis]
-                bias_rank = bias_rank % (len(mul_out_shape) - axis) + 1
-                bias_shape = mul_out_shape[axis:axis + bias_rank]
-            else:
-                bias_rank = 1
-                bias_shape = [mul_out_shape[-1]]
-
-            # random choose if broadcast, e.g [3, 4] -> [1, 4]
-            if bias_rank > 1 and use_broadcast:
-                bias_shape[0] = 1
-            return y_shape, x_num_col_dims, axis, bias_shape
-
         x_shape = kwargs["x_shape"]
         y_shape = kwargs["y_shape"]
         x_num_col_dims = kwargs["x_num_col_dims"]
@@ -69,8 +55,13 @@ class TestFcFusePass(PassAutoScanTest):
         use_broadcast = kwargs["use_broadcast"]
         has_relu = kwargs["has_relu"]
 
-        y_shape, x_num_col_dims, axis, bias_shape = generate_legal_parameters(
-            x_shape, y_shape, x_num_col_dims, axis, bias_rank, use_broadcast)
+        mul_out_shape = x_shape[:x_num_col_dims] + y_shape[1:]
+        if axis > 0:
+            bias_shape = mul_out_shape[axis:][:bias_rank]
+        else:
+            bias_shape = mul_out_shape[-1 * bias_rank:]
+        if use_broadcast:
+            bias_shape[0] = 1
 
         def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
@@ -141,40 +132,48 @@ class TestFcFusePass(PassAutoScanTest):
             use_calib_mode=False)
         yield config, (before_num_ops, 3), (1e-5, 1e-5)
 
-        # pass for trt static_shape
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=8,
-            workspace_size=102400,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False)
-        yield config, (before_num_ops, 3), (1e-5, 1e-5)
-
     def add_skip_pass_case(self):
         def teller1(program_config, predictor_config):
             # TODO fuse has bug while axis != -1
             if program_config.ops[1].attrs["axis"] != -1:
                 return True
+            return False
 
-        self.add_skip_case(teller1, SkipReasons.PASS_ACCURACY_ERROR,
-                           "The pass output has diff in a specific case.")
+        def teller2(program_config, predictor_config):
+            # shape of bias should be [1, mul_y_shape[-1]] or [mul_y_shape[-1]]
+            x_shape = program_config.inputs["mul_x"].shape
+            y_shape = program_config.weights["mul_y"].shape
+            bias_shape = program_config.weights["bias"].shape
+            if bias_shape != y_shape[-1] or bias_shape != [1, y_shape[-1]]:
+                return True
+            return False
 
-    @given(
-        # set max_size=3 temporarily, large max_size may cause error while using tensorrt
-        x_shape=st.lists(st.integers(min_value=1, max_value=8),
-                         min_size=2,
-                         max_size=3),
-        y_shape=st.lists(st.integers(min_value=1, max_value=8),
-                         min_size=2,
-                         max_size=2),
-        x_num_col_dims=st.integers(min_value=1, max_value=8),
-        axis=st.integers(min_value=-1, max_value=8),
-        bias_rank=st.integers(min_value=0, max_value=8),
-        use_broadcast=st.booleans(),
-        has_relu=st.booleans())
+        self.add_skip_case(
+            teller1, SkipReasons.PASS_ACCURACY_ERROR,
+            "The pass output has diff while axis of elementwise_add is not -1.")
+        self.add_skip_case(
+            teller2, SkipReasons.PASS_ACCURACY_ERROR,
+            "The pass output has diff while shape of bias is not [1, out_size] or [out_size]."
+        )
+
+    @given(x_shape=st.lists(st.integers(min_value=1, max_value=8),
+                            min_size=2,
+                            max_size=8),
+           y_shape=st.lists(st.integers(min_value=1, max_value=8),
+                            min_size=2,
+                            max_size=2),
+           x_num_col_dims=st.integers(min_value=1, max_value=8),
+           y_num_col_dims=st.integers(min_value=1, max_value=8),
+           axis=st.integers(min_value=-1, max_value=8),
+           bias_rank=st.integers(min_value=1, max_value=8),
+           use_broadcast=st.booleans(),
+           has_relu=st.booleans())
     def test(self, *args, **kwargs):
+        # filter illegal parameters
+        assume(kwargs["y_num_col_dims"] == 1)
+        assume(kwargs["x_num_col_dims"] < len(kwargs["x_shape"]))
+        assume(kwargs["axis"] < 0 or kwargs["axis"] <= kwargs["x_num_col_dims"])
+        assume(kwargs["bias_rank"] <= kwargs["x_num_col_dims"] + 1)
         self.add_skip_pass_case()
         self.run_test(quant=False, *args, **kwargs)
 
