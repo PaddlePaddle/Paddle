@@ -1300,13 +1300,13 @@ def fftshift(x, axes=None, name=None):
     shape = paddle.shape(x)
     if axes is None:
         # shift all axes
-        rank = paddle.rank(x).reshape([1])
-        axes = axes or paddle.arange(0, rank)
-        shifts = [size // 2 for size in shape]
+        rank = len(x.shape)
+        axes = list(range(0, rank))
+        shifts = shape // 2
     elif isinstance(axes, int):
         shifts = shape[axes] // 2
     else:
-        shifts = [shape[ax] // 2 for ax in axes]
+        shifts = paddle.concat([shape[ax] // 2 for ax in axes])
     return paddle.roll(x, shifts, axes, name=name)
 
 
@@ -1343,13 +1343,13 @@ def ifftshift(x, axes=None, name=None):
     shape = paddle.shape(x)
     if axes is None:
         # shift all axes
-        rank = paddle.rank(x).reshape([1])
-        axes = axes or paddle.arange(0, rank)
-        shifts = [-size // 2 for size in shape]
+        rank = len(x.shape)
+        axes = list(range(0, rank))
+        shifts = -shape // 2
     elif isinstance(axes, int):
         shifts = -shape[axes] // 2
     else:
-        shifts = [-shape[ax] // 2 for ax in axes]
+        shifts = paddle.concat([-shape[ax] // 2 for ax in axes])
     return paddle.roll(x, shifts, axes, name=name)
 
 

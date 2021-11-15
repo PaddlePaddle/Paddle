@@ -106,11 +106,28 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
     Out->Resize(out_dims);
     Out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& runner = NpuOpRunner("ExpandD", {*X}, {*Out}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+    const auto& dev_ctx =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>();
+    auto op_func = [](const std::vector<Tensor>& inputs,
+                      const std::vector<Tensor>& outputs,
+                      const NPUAttributeMap& attrs,
+                      const platform::NPUDeviceContext& dev_ctx) {
+      const auto& runner = NpuOpRunner("ExpandD", inputs, outputs, attrs);
+      runner.Run(dev_ctx.stream());
+    };
+
+    if (X->type() == framework::proto::VarType::BOOL) {
+      NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
+                               {framework::proto::VarType::UINT8},
+                               {framework::proto::VarType::UINT8});
+    } else if (X->type() == framework::proto::VarType::INT64) {
+      NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
+                               {framework::proto::VarType::INT32},
+                               {framework::proto::VarType::INT32});
+    } else {
+      const auto& runner = NpuOpRunner("ExpandD", {*X}, {*Out}, attr_input);
+      runner.Run(dev_ctx.stream());
+    }
   }
 };
 
@@ -181,7 +198,9 @@ REGISTER_OP_NPU_KERNEL(
     ops::ExpandV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ExpandV2NPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>,
-    ops::ExpandV2NPUKernel<paddle::platform::NPUDeviceContext, int>);
+    ops::ExpandV2NPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::ExpandV2NPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::ExpandV2NPUKernel<paddle::platform::NPUDeviceContext, bool>);
 
 REGISTER_OP_NPU_KERNEL(
     expand_v2_grad,

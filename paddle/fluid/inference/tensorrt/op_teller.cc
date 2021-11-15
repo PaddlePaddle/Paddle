@@ -76,26 +76,54 @@ struct SimpleOpTypeSetTeller : public Teller {
  private:
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{"mul",
-                                                  "conv2d",
                                                   "matmul",
-                                                  "stack",
+                                                  "conv2d",
                                                   "conv2d_fusion",
                                                   "pool2d",
                                                   "relu",
-                                                  "depthwise_conv2d",
                                                   "softmax",
                                                   "sigmoid",
+                                                  "hard_swish",
+                                                  "depthwise_conv2d",
                                                   "batch_norm",
+                                                  "concat",
+                                                  "tanh",
+                                                  "pad",
                                                   "elementwise_add",
+                                                  "elementwise_mul",
+                                                  "dropout",
+                                                  "prelu",
+                                                  "conv2d_transpose",
+                                                  "depthwise_conv2d_transpose",
                                                   "leaky_relu",
                                                   "fc",
-                                                  "concat",
+                                                  "shuffle_channel",
+                                                  "swish",
+                                                  "split",
+                                                  "instance_norm",
+                                                  "gelu",
+                                                  "layer_norm",
                                                   "scale",
-                                                  "elementwise_mul",
-                                                  "conv2d_transpose",
-                                                  "hard_swish",
+                                                  "stack",
+                                                  "transpose2",
                                                   "transpose",
-                                                  "transpose2"};
+                                                  "flatten2",
+                                                  "flatten",
+                                                  "gather",
+                                                  "gather_nd",
+                                                  "yolo_box",
+                                                  "roi_align",
+                                                  "affine_channel",
+                                                  "nearest_interp",
+                                                  "anchor_generator",
+                                                  "reduce_sum",
+                                                  "reduce_mean",
+                                                  "conv3d",
+                                                  "conv3d_transpose",
+                                                  "mish",
+                                                  "nearest_interp_v2",
+                                                  "pool3d",
+                                                  "deformable_conv"};
   std::unordered_set<std::string> teller_set{"mul",
                                              "matmul",
                                              "conv2d",
@@ -143,7 +171,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "conv3d_transpose",
                                              "mish",
                                              "nearest_interp_v2",
-                                             "pool3d"};
+                                             "pool3d",
+                                             "deformable_conv"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -330,6 +359,51 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
 #endif
+    }
+
+    if (op_type == "deformable_conv") {
+      if (with_dynamic_shape) {
+        VLOG(3) << "Deformable conv trt plugin does not support dynamic shape";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto input_name = desc.Input("Input")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+
+      if (input_shape.size() != 4) {
+        VLOG(3) << "Input of deformable conv should be 4-D Tensor, but got "
+                << input_shape.size();
+        return false;
+      }
+
+      auto filter_name = desc.Input("Filter")[0];
+      auto* filter_desc = block->FindVar(filter_name);
+      const auto filter_shape = filter_desc->GetShape();
+
+      int groups = BOOST_GET_CONST(int, desc.GetAttr("groups"));
+      if (input_shape[1] != filter_shape[1] * groups) {
+        VLOG(3) << "The number of input channels should be equal to filter "
+                << "channels * groups. But got input channels "
+                << input_shape[1] << "filter channels " << filter_shape[1];
+        return false;
+      }
+
+      const std::vector<int> strides =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+      if (strides.size() != 2) {
+        VLOG(3) << "The size of strides should be 2, but got "
+                << strides.size();
+        return false;
+      }
+
+      const std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+      if (paddings.size() != 2) {
+        VLOG(3) << "The size of paddings shoule be 2, but got "
+                << paddings.size();
+        return false;
+      }
     }
 
     if (op_type == "matmul") {
@@ -1504,7 +1578,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
-      if (desc.HasAttr("reduce_all")) {
+      if (desc.HasAttr("out_dtype")) {
         int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
         if (out_dtype != -1) {
           return false;

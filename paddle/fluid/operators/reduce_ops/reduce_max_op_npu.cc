@@ -73,20 +73,33 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
       attr_input = {{"axes", dim_vec}, {"keep_dims", keep_dim}};
     }
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    const auto& dev_ctx =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>();
+    if (x->type() == framework::proto::VarType::INT64) {
+      auto op_func = [](const std::vector<Tensor>& inputs,
+                        const std::vector<Tensor>& outputs,
+                        const NPUAttributeMap& attrs,
+                        const platform::NPUDeviceContext& dev_ctx) {
+        const auto& runner =
+            NpuOpRunner("ReduceMaxD", {inputs[0]}, {outputs[0]}, attrs);
+        runner.Run(dev_ctx.stream());
+      };
 
-    const auto& runner =
-        NpuOpRunner("ReduceMaxD", {*x}, {cast_out}, attr_input);
-    runner.Run(stream);
+      NpuOpRunner::TypeAdapter({*x}, {cast_out}, attr_input, dev_ctx, op_func,
+                               {framework::proto::VarType::INT32},
+                               {framework::proto::VarType::INT32});
+    } else {
+      const auto& runner =
+          NpuOpRunner("ReduceMaxD", {*x}, {cast_out}, attr_input);
+      runner.Run(dev_ctx.stream());
+    }
 
     if (x->type() != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
-      runner_cast.Run(stream);
+      runner_cast.Run(dev_ctx.stream());
     }
   }
 };
@@ -98,4 +111,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
     reduce_max, ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, float>,
-    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, plat::float16>);
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int64_t>,
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int>);

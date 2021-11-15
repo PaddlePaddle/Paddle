@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid import core, dygraph_utils
 from paddle import _C_ops
@@ -43,6 +43,8 @@ def fused_feedforward(x,
                       ln1_epsilon=1e-5,
                       ln2_epsilon=1e-5,
                       pre_layer_norm=False,
+                      training=True,
+                      mode='upscale_in_train',
                       name=None):
     """
     This is a fusion operator to compute feed forward layer in transformer model architecture.
@@ -74,6 +76,8 @@ def fused_feedforward(x,
         ln1_epsilon (float, optional): Small float of first layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
         ln2_epsilon (float, optional): Small float of second layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
         pre_layer_norm (bool, optional): add layer_norm in the pre-processing stage or post-processing state.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -98,13 +102,27 @@ def fused_feedforward(x,
     _verify_dropout_rate(dropout1_rate)
     _verify_dropout_rate(dropout2_rate)
 
+    seed = None
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
     if in_dygraph_mode():
+        if default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
         out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
             x, None, None, linear1_weight, linear1_bias, linear2_weight,
             linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias,
             'pre_layer_norm', pre_layer_norm, 'ln1_epsilon', ln1_epsilon,
             'ln2_epsilon', ln2_epsilon, 'act_method', activation,
-            'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate)
+            'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate,
+            "dropout1_is_test", not training, "dropout2_is_test", not training,
+            "dropout1_fix_seed", seed is not None, "dropout2_fix_seed",
+            seed is not None, "dropout1_seed", seed
+            if seed is not None else 0, "dropout2_seed", seed
+            if seed is not None else 0, 'dropout1_implementation', mode,
+            'dropout2_implementation', mode)
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -135,6 +153,9 @@ def fused_feedforward(x,
         x.dtype, stop_gradient=True)
     dropout2_out = helper.create_variable_for_type_inference(
         x.dtype, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
 
     helper.append_op(
         type='fused_feedforward',
@@ -169,6 +190,14 @@ def fused_feedforward(x,
             'pre_layer_norm': pre_layer_norm,
             'ln1_epsilon': ln1_epsilon,
             'ln2_epsilon': ln2_epsilon,
+            'dropout1_is_test': not training,
+            'dropout2_is_test': not training,
+            'dropout1_fix_seed': seed is not None,
+            'dropout2_fix_seed': seed is not None,
+            'dropout1_seed': seed if seed is not None else 0,
+            'dropout2_seed': seed if seed is not None else 0,
+            'dropout1_implementation': mode,
+            'dropout2_implementation': mode
         })
     return out
 
@@ -188,37 +217,42 @@ def fused_multi_head_attention(x,
                                dropout_rate=0.5,
                                attn_dropout_rate=0.5,
                                ln_epsilon=1e-05,
+                               training=True,
+                               mode='upscale_in_train',
                                name=None):
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
-    if pre_layer_norm:
-    	out = layer_norm(x);
-        out = linear(out) + qkv)bias
-    else:
-	out = linear(x) + bias;
-    out = transpose(out, perm=[2, 0, 3, 1, 4]);
-    # extract q, k and v from out.
-    q = out[0:1,::]
-    k = out[1:2,::]
-    v = out[2:3,::]
-    out = q * k^t;
-    out = attn_mask + out;
-    out = softmax(out);
-    out = dropout(out);
-    out = out * v;
-    out = transpose(out, perm=[0, 2, 1, 3]);
-    out = out_linear(out);
-    out = layer_norm(x + dropout(linear_bias + out));
+
+    .. code-block:: python
+
+    	if pre_layer_norm:
+    	    out = layer_norm(x)
+            out = linear(out) + qkv) + bias
+    	else:
+	    out = linear(x) + bias
+    	out = transpose(out, perm=[2, 0, 3, 1, 4])
+    	# extract q, k and v from out.
+    	q = out[0:1,::]
+    	k = out[1:2,::]
+    	v = out[2:3,::]
+    	out = q * k^t
+    	out = attn_mask + out
+    	out = softmax(out)
+    	out = dropout(out)
+    	out = out * v
+    	out = transpose(out, perm=[0, 2, 1, 3])
+    	out = out_linear(out)
+    	out = layer_norm(x + dropout(linear_bias + out))
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
             `[batch\_size, sequence\_len, embed\_dim]`.
         qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
-        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture 
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
 	    (False). Default False.
         pre_ln_scale (Tensor, optional): The weight tensor of pre layernorm. Default None.
         pre_ln_bias (Tensor, optional): The bias tensor of pre layernorm. Default None.
@@ -229,12 +263,12 @@ def fused_multi_head_attention(x,
         qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
-        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to 
- 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor 
-            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the 
-            data type is bool, the unwanted positions have `False` values and the others have `True` values. 
-            When the data type is int, the unwanted positions have 0 values and the others have 1 values. 
-            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values. 
+        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
+ 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
+            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
+            data type is bool, the unwanted positions have `False` values and the others have `True` values.
+            When the data type is int, the unwanted positions have 0 values and the others have 1 values.
+            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values.
             It can be None when nothing wanted or needed to be prevented attention to. Default None.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention.
@@ -244,6 +278,12 @@ def fused_multi_head_attention(x,
             0 for no dropout. Default 0.5.
         ln_epsilon (float, optional): Small float value added to denominator of layer_norm
             to avoid dividing by zero. Default is 1e-5.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor, the data type and shape is same as `x`.
 
     Examples:
 
@@ -274,7 +314,16 @@ def fused_multi_head_attention(x,
             # [2, 4, 128]
             print(output.shape)
     """
+
+    seed = None
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
     if in_dygraph_mode():
+        if default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
@@ -289,7 +338,12 @@ def fused_multi_head_attention(x,
             linear_weight, linear_bias, ln_scale, ln_bias, 'pre_layer_norm',
             pre_layer_norm, 'epsilon', pre_ln_epsilon, 'dropout_rate',
             dropout_rate, 'attn_dropout_rate', attn_dropout_rate, 'ln_epsilon',
-            ln_epsilon)
+            ln_epsilon, 'attn_dropout_is_test', not training, 'dropout_is_test',
+            not training, 'attn_dropout_fix_seed', seed is not None,
+            'dropout_fix_seed', seed is not None, 'attn_dropout_seed', seed
+            if seed is not None else 0, 'dropout_seed', seed
+            if seed is not None else 0, 'attn_dropout_implementation', mode,
+            'dropout_implementation', mode)
         return final_out
     else:
         helper = LayerHelper('fused_multi_head_attention', **locals())
@@ -317,13 +371,24 @@ def fused_multi_head_attention(x,
         if ln_bias:
             inputs['Ln2Bias'] = [ln_bias]
 
+        if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+            seed = helper.main_program.random_seed
+
         # set attrs
         attrs = {
             'pre_layer_norm': pre_layer_norm,
             'epsilon': pre_ln_epsilon,
             'ln_epsilon': ln_epsilon,
             'dropout_rate': dropout_rate,
-            'attn_dropout_rate': attn_dropout_rate
+            'attn_dropout_rate': attn_dropout_rate,
+            'attn_dropout_is_test': not training,
+            'dropout_is_test': not training,
+            'attn_dropout_fix_seed': seed is not None,
+            'dropout_fix_seed': seed is not None,
+            'attn_dropout_seed': seed if seed is not None else 0,
+            'dropout_seed': seed if seed is not None else 0,
+            'attn_dropout_implementation': mode,
+            'dropout_implementation': mode,
         }
 
         # set outputs

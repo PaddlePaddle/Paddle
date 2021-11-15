@@ -18,6 +18,8 @@ from .resnet import resnet34  # noqa: F401
 from .resnet import resnet50  # noqa: F401
 from .resnet import resnet101  # noqa: F401
 from .resnet import resnet152  # noqa: F401
+from .resnet import wide_resnet50_2  # noqa: F401
+from .resnet import wide_resnet101_2  # noqa: F401
 from .mobilenetv1 import MobileNetV1  # noqa: F401
 from .mobilenetv1 import mobilenet_v1  # noqa: F401
 from .mobilenetv2 import MobileNetV2  # noqa: F401
@@ -28,6 +30,12 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
+from .densenet import DenseNet  # noqa: F401
+from .densenet import densenet121  # noqa: F401
+from .densenet import densenet161  # noqa: F401
+from .densenet import densenet169  # noqa: F401
+from .densenet import densenet201  # noqa: F401
+from .densenet import densenet264  # noqa: F401
 from .alexnet import AlexNet  # noqa: F401
 from .alexnet import alexnet  # noqa: F401
 from .resnext import ResNeXt  # noqa: F401
@@ -39,6 +47,19 @@ from .resnext import resnext152_32x4d  # noqa: F401
 from .resnext import resnext152_64x4d  # noqa: F401
 from .inceptionv3 import InceptionV3  # noqa: F401
 from .inceptionv3 import inception_v3  # noqa: F401
+from .squeezenet import SqueezeNet  # noqa: F401
+from .squeezenet import squeezenet1_0  # noqa: F401
+from .squeezenet import squeezenet1_1  # noqa: F401
+from .googlenet import GoogLeNet  # noqa: F401
+from .googlenet import googlenet  # noqa: F401
+from .shufflenetv2 import ShuffleNetV2  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x0_25  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x0_33  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x0_5  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x1_0  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x1_5  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_x2_0  # noqa: F401
+from .shufflenetv2 import shufflenet_v2_swish  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -47,6 +68,8 @@ __all__ = [ #noqa
     'resnet50',
     'resnet101',
     'resnet152',
+    'wide_resnet50_2',
+    'wide_resnet101_2',
     'VGG',
     'vgg11',
     'vgg13',
@@ -57,6 +80,12 @@ __all__ = [ #noqa
     'MobileNetV2',
     'mobilenet_v2',
     'LeNet',
+    'DenseNet',
+    'densenet121',
+    'densenet161',
+    'densenet169',
+    'densenet201',
+    'densenet264',
     'AlexNet',
     'alexnet',
     'ResNeXt',
@@ -67,5 +96,18 @@ __all__ = [ #noqa
     'resnext152_32x4d',
     'resnext152_64x4d',
     'InceptionV3',
-    'inception_v3'
+    'inception_v3',
+    'SqueezeNet',
+    'squeezenet1_0',
+    'squeezenet1_1',
+    'GoogLeNet',
+    'googlenet',
+    'ShuffleNetV2',
+    'shufflenet_v2_x0_25',
+    'shufflenet_v2_x0_33',
+    'shufflenet_v2_x0_5',
+    'shufflenet_v2_x1_0',
+    'shufflenet_v2_x1_5',
+    'shufflenet_v2_x2_0',
+    'shufflenet_v2_swish'
 ]
