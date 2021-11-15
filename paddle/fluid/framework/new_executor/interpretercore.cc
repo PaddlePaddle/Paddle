@@ -77,31 +77,108 @@ paddle::framework::FetchList InterpreterCore::Run(
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
+void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
+                          std::map<int, std::list<int>>& var2min_rw_op,
+                          int cur_op, int rw_var) {
+  // rw_var is inputs or outputs of cur_op
+  // this function update the var2min_rw_op set .
+  if (var2min_rw_op.find(rw_var) == var2min_rw_op.end())
+    var2min_rw_op[rw_var] = std::list<int>();
+  for (auto dep_op : op2dependences[cur_op]) {
+    var2min_rw_op[rw_var].remove(dep_op);
+  }
+  var2min_rw_op[rw_var].push_back(cur_op);
+}
+
+std::map<int, std::list<int>> get_downstream_map(
+    const std::map<int, std::set<int>>& op2dependences) {
+  // op2dependences is op -> it's dependences. we want to get op -> [ops] map,
+  // where ops is the next instruction of op.
+  std::map<int, std::list<int>> result;
+  for (auto& item : op2dependences) {
+    int op = item.first;
+    for (auto dep_op : item.second) {
+      if (result.find(dep_op) == result.end())
+        result[dep_op] = std::list<int>();
+      result[dep_op].push_back(op);
+    }
+  }
+  return std::move(result);
+}
+
 void InterpreterCore::BuildOperatorDependences() {
-  // set the dependecy_count_ and next Ops
+  // set the dependecy_count_ and Call Schedule
+  // refer to http://agroup.baidu.com/share/md/92946214aa4c4785a2cc4c1f361a023c
+  // for pesudo code
   auto op_nums = vec_func_list_.size();
+  auto var2min_rw_op = std::map<
+      int, std::list<int>>();  // # map from variable id to read / write op id.
+  auto var2recent_write_op =
+      std::map<int, int>();  // # map from variable to recent write op.
+  auto op2dependences =
+      std::map<int, std::set<int>>();  //# map from op to the dependence list,
+                                       // op must run after the dependence.
+  std::set<int> remove_duplicate;
+
+  // reserve
+  for (size_t op = 0; op < vec_instruction_.size(); ++op) {
+    op2dependences[op] = std::set<int>();
+  }
   dependecy_count_.resize(op_nums);
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    std::vector<size_t> vec_temp;
-    for (auto& item : vec_instruction_[i].Outputs()) {
-      for (auto id : item.second) {
-        vec_temp = interpreter::merge_vector(vec_temp, input_var2op_info_[id]);
+
+  for (size_t op = 0; op < vec_instruction_.size(); ++op) {
+    remove_duplicate.clear();
+    // step1: update the op2dependences structure
+    for (auto& item :
+         vec_instruction_[op].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        if (var2recent_write_op.count(var))
+          op2dependences[op].insert(var2recent_write_op[var]);
       }
     }
 
-    // In Program, op order is a very important information.
-    // Op can only add op after it as next as next ops.
-    std::vector<size_t> filter_next;
-    filter_next.reserve(vec_temp.size());
-    for (auto item : vec_temp) {
-      if (item > i) {
-        filter_next.push_back(item);
+    for (auto& item : vec_instruction_[op].Outputs()) {  // for all write vars
+      for (auto var : item.second) {
+        if (var2min_rw_op.count(var)) {
+          for (auto dep_op : var2min_rw_op[var]) {
+            op2dependences[op].insert(dep_op);
+          }
+        }
       }
     }
 
-    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
+    // step2: update 2 var2xxxx data structure
+    for (auto& item :
+         vec_instruction_[op].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        update_var_min_rw_op(op2dependences, var2min_rw_op, op, var);
+        remove_duplicate.insert(var);
+      }
+    }
 
-    for (auto inst_id : filter_next) {
+    for (auto& item : vec_instruction_[op].Outputs()) {  // for all write vars
+      for (auto var : item.second) {
+        var2recent_write_op[var] = op;
+        if (remove_duplicate.count(var) ==
+            0) {  // var in input list and in output list, so remove it.
+          update_var_min_rw_op(op2dependences, var2min_rw_op, op, var);
+        }
+      }
+    }
+  }
+
+  auto op2downstream = get_downstream_map(op2dependences);
+
+  VLOG(5) << "the size of vec_instruction_ : " << vec_instruction_.size();
+
+  for (size_t op = 0; op < vec_instruction_.size(); ++op) {
+    VLOG(5) << "the op2downstream : " << op;
+    auto op_list = op2downstream[op];
+    std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
+    stream_analyzer_.Schedule(downsteam_vector, &vec_instruction_, op);
+
+    for (auto inst_id : op_list) {
+      VLOG(5) << "\t " << inst_id;
       dependecy_count_[inst_id]++;
     }
   }
