@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/xpu/manipulation.h"
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/functions/general/manipulation.h"
 #include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {
@@ -50,6 +51,47 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
   xshape->set_lod(x.lod());
 }
 
+void ReshapeFromVectorVal(const XPUContext& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int>& shape,
+                          DenseTensor* out) {
+  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  if (&x == out) {
+    out->Resize(out_meta.dims);
+    return;
+  }
+  pten::Copy(dev_ctx, x, out);
+  out->Resize(out_meta.dims);
+}
+
+void ReshapeFromDT(const XPUContext& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& shape,
+                   DenseTensor* out) {
+  auto* shape_data = shape.data<int>();
+  auto vector_shape = std::vector<int>(shape_data, shape_data + shape.numel());
+  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+}
+
+void ReshapeFromVectorDT(const XPUContext& dev_ctx,
+                         const DenseTensor& x,
+                         const std::vector<DenseTensor>& shape,
+                         DenseTensor* out) {
+  std::vector<int> vector_shape;
+  for (auto& tensor : shape) {
+    PADDLE_ENFORCE_EQ(
+        tensor.dims(),
+        paddle::framework::make_ddim({1}),
+        paddle::platform::errors::InvalidArgument(
+            "If the element type of 'shape' in ReshapeOp is Tensor, "
+            "the element's shape must be [1]. But received the element's shape "
+            "is [%s]",
+            tensor.dims()));
+    vector_shape.push_back(*tensor.data<int32_t>());
+  }
+  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -80,3 +122,10 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+
+// TODO(yuanrisheng): "reshape2" is compatible with old kernel
+// architecture, kernel_name should be "reshape".
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
+                                XPU,
+                                ANY,
+                                pten::ReshapeFromVectorVal) {}

@@ -5,15 +5,15 @@ add_subdirectory(api)
 add_subdirectory(core)
 # pten kernels for diff device
 add_subdirectory(kernels)
-# pten infershape
-add_subdirectory(infershape)
+# pten infermeta
+add_subdirectory(infermeta)
 # pten tests
 add_subdirectory(tests)
 
 # make an unity target for compile deps
 set(PTEN_DEPS convert_utils dense_tensor kernel_factory kernel_context)
 set(PTEN_DEPS ${PTEN_DEPS} math_cpu linalg_cpu creation_cpu manipulation_cpu)
-set(PTEN_DEPS ${PTEN_DEPS} unary binary)
+set(PTEN_DEPS ${PTEN_DEPS} nary unary binary)
 if(WITH_GPU OR WITH_ROCM)
   set(PTEN_DEPS ${PTEN_DEPS} math_cuda linalg_cuda creation_cuda manipulation_cuda)
 endif()

@@ -23,7 +23,19 @@ template <typename DeviceContext, typename T>
 class LerpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(1) << "LerpKernel Computing...";
+    auto x = ctx.Input<framework::Tensor>("X");
+    auto y = ctx.Input<framework::Tensor>("Y");
+    auto w = ctx.Input<framework::Tensor>("Weight");
+    auto out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto eigen_x = framework::EigenTensor<T, 1>::From(*x);
+    auto eigen_y = framework::EigenTensor<T, 1>::From(*y);
+    auto eigen_w = framework::EigenTensor<T, 1>::From(*w);
+    auto eigen_out = framework::EigenTensor<T, 1>::From(*out);
+
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    eigen_out.device(place) = eigen_x + eigen_w * (eigen_y - eigen_x);
   }
 };
 

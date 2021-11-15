@@ -27,7 +27,13 @@ class LerpOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "lerp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "lerp");
 
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    auto w_dims = ctx->GetInputDim("Weight");
+    VLOG(3) << "lerp x.shape = " << x_dims << ", y.shape = " << y_dims
+            << ", weight.shape = " << w_dims;
+
+    ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -41,6 +47,16 @@ class LerpOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor), The output tensor of lerp op.");
     AddComment(R"DOC(
 Lerp Operator.
+
+This operator is used to do a linear interpolation of input $X$ and $Y$ with $Weight$.
+
+The equation is:
+
+$$Out = X + Weight * (Y - X)$$
+
+Both the input $X$ and $Y$ can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD information with input $X$.
+
 )DOC");
   }
 };
@@ -50,15 +66,23 @@ class LerpGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lerp");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "lerp");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "lerp_grad");
-  }
+                   "Out@GRAD", "lerp");
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto dtype = framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, y_dims);
+    }
   }
 };
 
@@ -68,7 +92,13 @@ class LerpOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> op) const override {
-    //
+    op->SetType("mul_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->OutputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->OutputGrad("Y"));
   }
 };
 

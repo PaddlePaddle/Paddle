@@ -44,6 +44,8 @@ class Storage : public intrusive_ref_counter<Storage> {
   /// \return The mutable data pointer of the storage.
   void* data() const noexcept { return data_.operator->(); }
 
+  virtual void Clear() = 0;
+
   virtual size_t size() const = 0;
   virtual const Place& place() const = 0;
   virtual bool OwnsMemory() const = 0;
@@ -68,6 +70,12 @@ class TensorStorage : public Storage {
   void Realloc(size_t size) override;
 
   size_t size() const noexcept override { return size_; }
+
+  void Clear() override {
+    data_.Clear();
+    size_ = 0;
+  }
+
   const Place& place() const override { return data_.place(); }
   bool OwnsMemory() const noexcept override { return true; }
   const std::shared_ptr<Allocator>& allocator() const noexcept {

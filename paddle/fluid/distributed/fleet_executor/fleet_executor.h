@@ -37,14 +37,12 @@ class FleetExecutor final {
   void Run();
   void Release();
   static std::shared_ptr<Carrier> GetCarrier();
-  static std::shared_ptr<MessageBus> GetMessageBus();
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   FleetExecutorDesc exe_desc_;
   std::unique_ptr<RuntimeGraph> runtime_graph_;
-  static std::shared_ptr<Carrier> global_carrier_;
-  static std::shared_ptr<MessageBus> global_message_bus_;
+  void InitMessageBus();
 };
 
 }  // namespace distributed

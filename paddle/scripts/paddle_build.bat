@@ -317,6 +317,8 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
+rem set vs language to english to block showIncludes, this need vs has installed English language package.
+set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 set DISTUTILS_USE_SDK=1
@@ -675,6 +677,8 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
@@ -692,6 +696,8 @@ echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
 goto:eof
