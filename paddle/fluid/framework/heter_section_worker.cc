@@ -417,22 +417,24 @@ void HeterSectionWorker::PrintFetchVars() {
 }
 
 void HeterSectionWorker::TrainFilesWithProfiler() {
-  VLOG(3) << "begin section_worker TrainFilesWithProfiler";
-  batch_num_ = 0;
-  epoch_finish_ = false;
-  total_ins_num_ = 0;
-  op_name_.clear();
-  op_total_time_.clear();
-  if (pipeline_stage_ == 0) {
-    device_reader_->Start();
-  }
-  while (!epoch_finish_) {
-    Run();
-    dev_ctx_->Wait();
-    if (epoch_finish_) {
-      // dump param for debug
-      if (need_dump_field_ || need_dump_param_) {
-        writer_.Flush();
+  if (thread_id_ >= 0) {
+    VLOG(3) << "begin section_worker TrainFilesWithProfiler";
+    batch_num_ = 0;
+    epoch_finish_ = false;
+    total_ins_num_ = 0;
+    op_name_.clear();
+    op_total_time_.clear();
+    if (pipeline_stage_ == 0) {
+      device_reader_->Start();
+    }
+    while (!epoch_finish_) {
+      Run();
+      dev_ctx_->Wait();
+      if (epoch_finish_) {
+        // dump param for debug
+        if (need_dump_field_ || need_dump_param_) {
+          writer_.Flush();
+        }
       }
     }
   }
