@@ -22,6 +22,7 @@ import signal
 import random
 import threading
 import traceback
+import subprocess
 from paddle.distributed.fleet import cloud_utils
 from paddle.distributed.fleet import launch_utils
 
@@ -329,6 +330,22 @@ class ElasticManager(object):
         hosts = [i for i in self.etcd.get_prefix(self.node_prefix)]
         if len(hosts) == 0:
             self.etcd.delete_prefix(self.prefix)
+
+    def pre_hook(self):
+        if not self.args.elastic_pre_hook:
+            logger.info("skip pre_hook")
+            return
+        current_env = copy.copy(os.environ.copy())
+        out, err = subprocess.Popen(
+            self.args.elastic_pre_hook,
+            env=current_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True).communicate()
+        if err:
+            logger.warn("pre_hook exec failed")
+        else:
+            logger.info(f"pre_hook exec result: {out.decode('utf-8').strip()}")
 
     def _parse_np(self, np: str):
         """
