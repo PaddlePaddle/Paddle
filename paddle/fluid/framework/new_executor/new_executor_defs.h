@@ -30,6 +30,8 @@ using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 using OpKernelMap =
     std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
 
+constexpr int kEmptyVarIndex = 0;
+
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
   InterpretercoreInferShapeContext(const OperatorBase& op,
@@ -479,10 +481,10 @@ struct VariableMetaInfo {
 // Scope. We can make it a membership of VariableScope. Here we use inherent.
 class VariableScope : public ScopeBase, public ScopeListener {
  public:
-  VariableScope(Scope* outer_scope) {
+  explicit VariableScope(Scope* outer_scope) {
     // for @EMPTY@ variable
     var_list_.push_back(nullptr);
-    name2id_[kEmptyVarName] = 0;
+    name2id_[kEmptyVarName] = kEmptyVarIndex;
     VariableMetaInfo info;
     info.var_ref_count_ = 0;
     info.vardesc_ = nullptr;
