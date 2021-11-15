@@ -23,7 +23,7 @@ class TestFusedGatherScatterMaxOp(OpTest):
         paddle.enable_static()
         self.op_type = "fused_gather_scatter"
         x = np.random.random((10, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2))
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
         scatter_index = index[:, 1]
 
@@ -51,7 +51,7 @@ class TestFusedGatherScatterMinOp(OpTest):
         paddle.enable_static()
         self.op_type = "fused_gather_scatter"
         x = np.random.random((10, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2))
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
         scatter_index = index[:, 1]
 
@@ -80,7 +80,7 @@ class TestFusedGatherScatterSumOp(OpTest):
         paddle.enable_static()
         self.op_type = "fused_gather_scatter"
         x = np.random.random((10, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2))
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
         scatter_index = index[:, 1]
 
@@ -108,7 +108,7 @@ class TestFusedGatherScatterMeanOp(OpTest):
         paddle.enable_static()
         self.op_type = "fused_gather_scatter"
         x = np.random.random((10, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2))
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
         scatter_index = index[:, 1]
 
