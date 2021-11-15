@@ -465,6 +465,18 @@ class TrainerProc(object):
         self.cmd = None
 
 
+_run_with_coverage = False
+
+
+def run_with_coverage(*args):
+    global _run_with_coverage
+    assert len(args) <= 1, "len(args) {} should <= 1".format(len(args))
+    if len(args) == 1:
+        assert isinstance(args[0], bool)
+        _run_with_coverage = args[0]
+    return _run_with_coverage
+
+
 def start_local_trainers(cluster,
                          pod,
                          training_script,
@@ -518,7 +530,11 @@ def start_local_trainers(cluster,
 
         current_env.update(proc_env)
 
-        cmd = [sys.executable, "-u", training_script] + training_script_args
+        coverage_args = []
+        if run_with_coverage():
+            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+        cmd = [sys.executable, "-u"] + coverage_args + [training_script
+                                                        ] + training_script_args
 
         logger.debug("start trainer proc{}  env:{}".format(cmd, current_env))
 
