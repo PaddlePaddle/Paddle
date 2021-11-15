@@ -59,12 +59,8 @@ class Partitioner(object):
         self._serial2dist_varname_mapping = {}
         self._dist_varname_suffix = ""
 
-    def partition(serial_main_program, serial_startup_program, params_grads):
-
-        transpile_forward_impl
-        dist_main_program, dist_startup_program = self.transpile_forward_impl(serial_main_program, serial_startup_program)
-        new_main_prog, new_startup_program = self._dist_var_op_forward_transpile(
-            main_program, startup_program)
+    def partition(self, serial_main_program, serial_startup_program,
+                  params_grads):
 
         if not isinstance(serial_main_program, (Program)):
             raise TypeError(
@@ -76,11 +72,8 @@ class Partitioner(object):
             raise RuntimeError(
                 "Not all vars or ops are annotated in main program !")
 
-
         # init distop helper
         dist_op_context = self._dist_context.dist_op_context
-        dist_op_context.set_dst_main_program(partitioned_main_prog)
-        dist_op_context.set_dst_startup_program(partitioned_startup_prog)
         dist_op_context.set_varname_mapping(self._serial2dist_varname_mapping)
         dist_op_context.set_rank_id(self._rank_id)
 
@@ -88,14 +81,18 @@ class Partitioner(object):
         if serial_startup_program == None:
             partitioned_startup_prog = None
         else:
-            partitioned_startup_prog = self.partition_startup_program(serial_main_program, serial_startup_program)
-            
+            partitioned_startup_prog = self.partition_startup_program(
+                serial_main_program, serial_startup_program)
+        dist_op_context.set_dst_startup_program(partitioned_startup_prog)
+
         # partition main program 
-        partitioned_main_prog, partitioned_params_grads = partition_main_program(serial_main_program, params_grads)
+        partitioned_main_prog, partitioned_params_grads = self.partition_main_program(
+            serial_main_program, params_grads)
 
         return partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads
 
-    def partition_startup_program(self, serial_main_program, serial_startup_program):
+    def partition_startup_program(self, serial_main_program,
+                                  serial_startup_program):
 
         if not isinstance(serial_startup_program, (Program)):
             raise TypeError(
@@ -119,8 +116,7 @@ class Partitioner(object):
                 new_name = var.name + self._dist_varname_suffix
                 temp_varname_map[var.name] = new_name
                 _partition_parameter(self._dist_context, serial_main_var,
-                                    target_block,
-                                    new_name, target_shape)
+                                     target_block, new_name, target_shape)
                 param2shape[new_name] = target_shape
 
         # ops
@@ -137,17 +133,16 @@ class Partitioner(object):
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             new_op_desc._rename_output(output_vars[0],
-                                    temp_varname_map[output_vars[0]])
-            new_op_desc._set_attr(
-                "shape", param2shape[temp_varname_map[output_vars[0]]])
+                                       temp_varname_map[output_vars[0]])
+            new_op_desc._set_attr("shape",
+                                  param2shape[temp_varname_map[output_vars[0]]])
             target_block._sync_with_cpp()
 
             # set distribute atrribute
             new_op = target_block.ops[-1]
             assert new_op.type == new_op_desc.type()
             assert new_op.desc == new_op_desc
-            output_var = target_block.var(output_vars[
-                0])
+            output_var = target_block.var(output_vars[0])
             output_var_attr = self._dist_context.get_tensor_dist_attr_for_program(
                 output_var)
             op_attr = OperatorDistributedAttribute()
@@ -155,7 +150,7 @@ class Partitioner(object):
             op_attr.set_output_dims_mapping(output_var.name,
                                             output_var_attr.dims_mapping)
             op_attr.set_input_dims_mapping(output_var.name,
-                                        output_var_attr.dims_mapping)
+                                           output_var_attr.dims_mapping)
             self._dist_context.set_op_dist_attr_for_program(new_op, op_attr)
 
         return partitioned_startup_prog
@@ -166,18 +161,20 @@ class Partitioner(object):
         2. replace local op with corresponding dist op
         """
 
+        dist_op_context = self._dist_context.dist_op_context
         partitioned_main_prog = fluid.Program()
+        dist_op_context.set_dst_main_program(partitioned_main_prog)
         target_block = partitioned_main_prog.global_block()
         ref_block = serial_main_program.global_block()
         serial_ops = serial_main_program.global_block().ops
-        dist_op_context = self._dist_context.dist_op_context
 
         # init mapping
         first_backward_op_idx = -1
         forward_op_id2forward_op = {}
         for idx in range(len(serial_ops)):
             if is_forward_op(serial_ops[idx]):
-                forward_op_id2forward_op[serial_ops[idx].desc.id()] = serial_ops[idx]
+                forward_op_id2forward_op[serial_ops[idx].desc.id(
+                )] = serial_ops[idx]
 
         # partiiton
         for op in serial_ops:
@@ -188,8 +185,8 @@ class Partitioner(object):
                     new_varname = serial_input_varname + self._dist_varname_suffix
                     if ref_block.has_var(serial_input_varname):
                         _partition_var(self._dist_context, ref_block,
-                                       target_block,
-                                       serial_input_varname, new_varname)
+                                       target_block, serial_input_varname,
+                                       new_varname)
                     else:
                         assert serial_input_varname in __varname_not_in_block__
 
@@ -200,8 +197,7 @@ class Partitioner(object):
             for serial_output_varname in op.desc.output_arg_names():
                 if serial_output_varname not in self._serial2dist_varname_mapping:
                     new_varname = serial_output_varname + self._dist_varname_suffix
-                    _partition_var(self._dist_context, ref_block,
-                                   target_block,
+                    _partition_var(self._dist_context, ref_block, target_block,
                                    serial_output_varname, new_varname)
                     self._serial2dist_varname_mapping[
                         serial_output_varname] = new_varname
@@ -209,17 +205,22 @@ class Partitioner(object):
             # partition op
             if is_forward_op(op):
                 kinputs, koutputs = dist_op_context.prepare_context(op)
-                dist_op_forward_impl = _get_dist_op_forward_implement(op, self._dist_context)
-                dist_op_impl.forward(self._dist_context, **kinputs, **koutputs)
+                dist_op_forward_impl = _get_dist_op_forward_implement(
+                    op, self._dist_context)
+                dist_op_forward_impl.forward(self._dist_context, **kinputs,
+                                             **koutputs)
 
             elif is_backward_op(op):
+                print(str(op))
                 kinputs, koutputs = dist_op_context.prepare_context(op)
-                dist_op_backward_impl = _get_dist_op_backward_implement(op, dist_op_context, forward_op_id2forward_op)
-                dist_op_backward_impl.backward(self._dist_context, **kinputs, **koutputs)
+                dist_op_backward_impl = _get_dist_op_backward_implement(
+                    op, self._dist_context, forward_op_id2forward_op)
+                dist_op_backward_impl.backward(self._dist_context, **kinputs,
+                                               **koutputs)
             else:
                 raise NotImplementedError(
-                    "partitioner only support forward op and backward op, but got {}".format(str(op)))
-
+                    "partitioner only support forward op and backward op, but got {}".
+                    format(str(op)))
 
         partitioned_params_and_grads = []
         for p, g in params_and_grads:
@@ -227,7 +228,7 @@ class Partitioner(object):
             dist_p_name = self._serial2dist_varname_mapping[p.name]
             assert target_block.has_var(dist_p_name)
             dist_p = target_block.var(dist_p_name)
-            if g = None:
+            if g is None:
                 dist_g = None
             else:
                 assert g.name in self._serial2dist_varname_mapping
@@ -237,7 +238,6 @@ class Partitioner(object):
             partitioned_params_and_grads.append((dist_p, dist_g))
 
         return partitioned_main_prog, partitioned_params_and_grads
-
 
     def _is_valid_annotated_program(self, program):
 
@@ -258,6 +258,7 @@ class Partitioner(object):
                                  for dist_attr in var_dist_attrs)
 
         return all_ops_annotated and all_vars_annotated
+
 
 def _get_dist_shape(var, dist_attr):
 
@@ -361,27 +362,34 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
             _partition_intermediate_var(dist_context, src_var, dst_block,
                                         dst_varname, target_shape)
 
-def _get_dist_op_backward_implement(backward_op, dist_op_context, forward_op_id2forward_op):
+
+def _get_dist_op_backward_implement(backward_op, dist_context,
+                                    forward_op_id2forward_op):
+    dist_op_context = dist_context.dist_op_context
     if backward_op.desc.id() in dist_op_context.gradopidx2opidx:
         forward_op_id = dist_op_context.gradopidx2opidx[backward_op.desc.id()]
         forward_op = forward_op_id2forward_op[forward_op_id]
-        forward_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(forward_op)
+        forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
+            forward_op)
         dist_ops = get_distributed_operator_impl_container(forward_op.type)
-        
+
+        # TODO backward should have its own impl_idx
         if dist_ops and forward_op_dist_attr.impl_idx >= 0 and dist_ops.get_impl( \
             forward_op_dist_attr.impl_idx)._backward_implemented:
-            return  dist_ops.get_impl(forward_op_dist_attr.impl_idx)
-    else:
-        dist_ops = get_distributed_operator_impl_container("default")
-        return dist_ops.get_impl(0)
+            return dist_ops.get_impl(forward_op_dist_attr.impl_idx)
+
+    dist_ops = get_distributed_operator_impl_container("default")
+    return dist_ops.get_impl(0)
+
 
 def _get_dist_op_forward_implement(forward_op, dist_context):
     dist_attr = dist_context.get_op_dist_attr_for_program(forward_op)
     dist_ops = get_distributed_operator_impl_container(forward_op.type)
 
-    if dist_ops and dist_attr.impl_idx >= 0 and dist_ops.get_impl(dist_attr.impl_idx)._forward_implemented :
+    if dist_ops and dist_attr.impl_idx >= 0 and dist_ops.get_impl(
+            dist_attr.impl_idx)._forward_implemented:
         return dist_ops.get_impl(dist_attr.impl_idx)
-    
+
     else:
         dist_ops = get_distributed_operator_impl_container("default")
-        return dist_ops.get_impl(0)        
+        return dist_ops.get_impl(0)

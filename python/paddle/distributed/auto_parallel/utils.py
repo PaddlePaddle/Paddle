@@ -502,16 +502,22 @@ def load_distributed_checkpoint(checkpoint_path,
 # NOTE(JZ-LIANG) in auto parallel we need to distinguish the recompute ops and grad ops in 
 # backward segment, so we give recompute op a new op_role which is 9 (0x0009) temporary.
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OpRole = core.op_proto_and_checker_maker.OpRole
+
+
 def is_forward_op(op):
-    ref_role = int(core.op_proto_and_checker_maker.OpRole.Forward) | int(
-        core.op_proto_and_checker_maker.OpRole.Loss)
+    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
+    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
     op_role = int(op.attr('op_role'))
-    return OP_ROLE_KEY in op.attr_names and op_role & ref_role
+    return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1 or
+                                             op_role == ref_role2)
+
 
 def is_backward_op(op):
     return OP_ROLE_KEY in op.attr_names and \
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
 
+
 def is_recompute_op(op):
     return OP_ROLE_KEY in op.attr_names and \
-            int(op.all_attrs()[OP_ROLE_KEY]) == 9  
+            int(op.all_attrs()[OP_ROLE_KEY]) == 9

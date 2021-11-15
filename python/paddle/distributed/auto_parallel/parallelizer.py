@@ -15,6 +15,7 @@
 import paddle
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
+from paddle.fluid import program_guard
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
@@ -40,8 +41,8 @@ class AutoParallelizer:
         self._optimizer = self._fleet.user_defined_optimizer
         self._dist_strategy = self._fleet._user_defined_strategy
         self._dist_context = DistributedContext()
-        self._pass_context = PassContext()
-
+        # self._pass_context = PassContext()
+        self._pass_context = None
 
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
@@ -57,46 +58,55 @@ class AutoParallelizer:
 
         # apply amp forward pass
         if self._dist_strategy.amp:
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp_pass", self._dist_strategy.amp_configs)
-            auto_parallel_amp_pass.apply_forward(main_program, startup_program, self._pass_context)
+            auto_parallel_amp_pass = new_pass("auto_parallel_amp_pass",
+                                              self._dist_strategy.amp_configs)
+            auto_parallel_amp_pass.apply_forward(main_program, startup_program,
+                                                 self._pass_context)
 
         # apply recompute forward pass
         if self._dist_strategy.recompute:
-            auto_parallel_recompute_pass = new_pass("auto_parallel_recompute_pass", self._dist_strategy.recompute_configs)
-            auto_parallel_recompute_pass.apply_forward(main_program, startup_program, self._pass_context)
+            auto_parallel_recompute_pass = new_pass(
+                "auto_parallel_recompute_pass",
+                self._dist_strategy.recompute_configs)
+            auto_parallel_recompute_pass.apply_forward(
+                main_program, startup_program, self._pass_context)
 
-    def _generate_backward(self, main_program, startup_program, parameter_list, no_grad_set):
+    def _generate_backward(self, main_program, startup_program, loss,
+                           parameter_list, no_grad_set, callbacks):
 
         # apply recompute backward pass
         if self._dist_strategy.recompute:
             assert auto_parallel_recompute_pass
-            auto_parallel_recompute_pass.apply_forward(main_program, startup_program, parameter_list, no_grad_set, self._pass_context)
+            auto_parallel_recompute_pass.apply_forward(
+                main_program, startup_program, parameter_list, no_grad_set,
+                self._pass_context)
         else:
             from paddle.fluid.backward import append_backward
             with program_guard(main_program, startup_program):
                 params_grads = append_backward(
                     loss,
                     parameter_list,
-                    act_no_grad_set,
+                    no_grad_set,
                     callbacks,
                     distop_context=self._dist_context.dist_op_context)
             complete_backward_annotation(
-                main_program, dist_context=self._dist_context.dist_op_context)
+                main_program, dist_context=self._dist_context)
 
         # apply amp forward pass
         if self._dist_strategy.amp:
             assert auto_parallel_amp_pass
-            auto_parallel_amp_pass.apply_backward(main_program, startup_program, self._pass_context)
+            auto_parallel_amp_pass.apply_backward(main_program, startup_program,
+                                                  self._pass_context)
 
         return params_grads
 
-    def _apply_serial_passes_and_backward(
-        self, 
-        main_program, 
-        startup_program, 
-        parameter_list=None, 
-        no_grad_set=None):
-
+    def _apply_serial_passes_and_backward(self,
+                                          main_program,
+                                          startup_program,
+                                          loss,
+                                          parameter_list=None,
+                                          no_grad_set=None,
+                                          callbacks=None):
         """
         generate serial backward program.
         apply user defined serial calc optimizaiton pass (by now, only AMP and Recompute are supported). 
@@ -106,31 +116,36 @@ class AutoParallelizer:
         self._apply_serial_forward_pass(main_program, startup_program)
 
         # backward pass
-        params_grads = self._generate_backward(main_program, startup_program, parameter_list, no_grad_set)
+        params_grads = self._generate_backward(main_program, startup_program,
+                                               loss, parameter_list,
+                                               no_grad_set, callbacks)
 
         return params_grads
 
-    def _apply_optimize(self,
-                        main_program,
-                        startup_program,
-                        params_grads):
+    def _apply_optimize(self, main_program, startup_program, params_grads):
 
         if self._dist_strategy.sharding:
-            auto_parallel_sharding_pass = new_pass("auto_parallel_sharding_pass", self._dist_strategy)
-            params_grads = auto_parallel_sharding_pass.apply(main_program, startup_program, params_grads, self._pass_context)
+            auto_parallel_sharding_pass = new_pass(
+                "auto_parallel_sharding_pass", self._dist_strategy)
+            params_grads = auto_parallel_sharding_pass.apply(
+                main_program, startup_program, params_grads, self._pass_context)
 
         if self._dist_strategy.gradient_merge:
-            auto_parallel_gradient_merge_pass = new_pass("auto_parallel_gradient_merge_pass", self._dist_strategy.gradient_merge_configs)
-            auto_parallel_gradient_merge_pass.apply(main_program, startup_program, params_grads, self._pass_context)
+            auto_parallel_gradient_merge_pass = new_pass(
+                "auto_parallel_gradient_merge_pass",
+                self._dist_strategy.gradient_merge_configs)
+            auto_parallel_gradient_merge_pass.apply(
+                main_program, startup_program, params_grads, self._pass_context)
 
         else:
-            optimize_ops = self._dist_strategy.user_define_optimizer.apply_gradients(params_grads)
+            optimize_ops = self._dist_strategy.user_define_optimizer.apply_gradients(
+                params_grads)
 
         # update completion 
-        complete_update_annotation(main_program, dist_context=self._dist_context) 
+        complete_update_annotation(
+            main_program, dist_context=self._dist_context)
 
         return optimize_ops
-
 
     def parallelize(self,
                     loss,
@@ -144,12 +159,15 @@ class AutoParallelizer:
         completed_main_program = complete_annotation(main_program,
                                                      self._dist_context)
 
-        params_grads = self._apply_serial_passes_and_backward(completed_main_program, startup_program, parameter_list, no_grad_set)
+        params_grads = self._apply_serial_passes_and_backward(
+            completed_main_program, startup_program, parameter_list,
+            no_grad_set)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
-        partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)
-        partitioned_main_prog, partitioned_startup_prog, params_grads = partitioner.partition(completed_main_program, startup_program, params_grads)
+        partitioner = Partitioner(self._dist_context, rank)
+        partitioned_main_prog, partitioned_startup_prog, params_grads = partitioner.partition(
+            completed_main_program, startup_program, loss, params_grads)
 
         # Traverse different rank programs and traverse each op of them,
         # instantiate communication by process_mapping.
@@ -169,8 +187,8 @@ class AutoParallelizer:
                 self._dist_context)
 
         # generate optimize program
-        optimize_ops = self._apply_optimize(main_program, startup_program, params_grads)
-
+        optimize_ops = self._apply_optimize(main_program, startup_program,
+                                            params_grads)
 
         # Copy distributed info to the default context
         set_default_distributed_context(self._dist_context)
