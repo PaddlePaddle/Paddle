@@ -162,7 +162,12 @@ class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
     }
     const size_t& memset_bytes = memset_size * sizeof(T);
     if (pool_type == "SUM" || pool_type == "MEAN") {
+#ifdef PADDLE_WITH_HIP
+      hipMemset(p_output, 0, memset_bytes);
+#else
       cudaMemset(p_output, 0, memset_bytes);
+#endif
+
     } else if (pool_type == "MAX") {
       thrust::device_ptr<T> p_output_ptr(p_output);
       thrust::fill(thrust::device, p_output_ptr, p_output_ptr + memset_size,
@@ -234,7 +239,13 @@ class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
 
       auto* scatter_count = ctx.Output<Tensor>("Scatter_count");
       int* p_scatter_count = scatter_count->mutable_data<int>(ctx.GetPlace());
+
+#ifdef PADDLE_WITH_HIP
+      hipMemset(p_scatter_count, 0, input_size * sizeof(int));
+#else
       cudaMemset(p_scatter_count, 0, input_size * sizeof(int));
+#endif
+
       int64_t grid_count = (index_size + block - 1) / block;
       ComputeCountCUDAKernel<
           T, IndexT><<<grid_count, block, 0,
@@ -273,7 +284,12 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
       memset_size *= src_dims[i];
     }
     const size_t& memset_bytes = memset_size * sizeof(T);
+
+#ifdef PADDLE_WITH_HIP
+    hipMemset(p_output, 0, memset_bytes);
+#else
     cudaMemset(p_output, 0, memset_bytes);
+#endif
 
     int64_t slice_size = 1;
     for (int i = 1; i < src_dims.size(); ++i) {
