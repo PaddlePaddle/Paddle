@@ -28,6 +28,22 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -35,6 +51,9 @@ class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input of fill-zeros-like op.");
     AddOutput("Out", "The variable will be filled up with zeros.");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     ExtraMake();
     AddComment(R"DOC(
 FillZerosLike Operator.
@@ -56,9 +75,17 @@ class FillZerosLikeOp2 : public FillZerosLikeOp {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
+    auto input_data_type =
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+#ifdef PADDLE_WITH_MKLDNN
+
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
