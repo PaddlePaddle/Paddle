@@ -55,16 +55,16 @@ std::vector<size_t> StreamAnalyzer::GetNeedEventVarIds(
     for (auto var_id : item.second) {
       if (unique_var_ids.count(var_id) > 0) {
         if (next_instr.NoDataTransformVars().count(var_id)) {
-          continue;
           VLOG(4) << "Skip inserting event at variable " << item.first
                   << " of operator " << next_instr.OpBase()->Type()
                   << " since it is NoDataTransform";
+          continue;
         }
         if (is_no_need_buffer(item.first)) {
-          continue;
           VLOG(4) << "Skip inserting event at variable " << item.first
                   << " of operator " << next_instr.OpBase()->Type()
                   << " since it is NoNeedBufferVar";
+          continue;
         }
 
         need_event_var_ids.push_back(var_id);
