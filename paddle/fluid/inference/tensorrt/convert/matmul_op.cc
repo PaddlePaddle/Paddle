@@ -61,6 +61,38 @@ class MatMulOpConverter : public OpConverter {
     if (fabs(alpha - 1.0) < std::numeric_limits<float>::epsilon()) {
       engine_->SetITensor(output_name, layer->getOutput(0));
     } else {
+      // IScaleLayer requires the input must have at least
+      // three dimensions in static shape mode and at least
+      // four dimensions in dynamic shape mode.
+      auto* matmul_out = layer->getOutput(0);
+      nvinfer1::Dims out_shape = matmul_out->getDimensions();
+      const int out_dims = out_shape.nbDims;
+      bool need_change_dim = false;
+
+      if (engine_->with_dynamic_shape()) {
+        if (out_dims == 3) {
+          need_change_dim = true;
+        }
+      } else {
+        if (out_dims == 2) {
+          need_change_dim = true;
+        }
+      }
+
+      if (need_change_dim) {
+        nvinfer1::Dims reshape_dim;
+        reshape_dim.nbDims = out_dims + 1;
+        reshape_dim.d[out_dims] = 1;
+        for (int i = 0; i < out_dims; i++) {
+          reshape_dim.d[i] = out_shape.d[i];
+        }
+
+        auto* reshape_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *matmul_out);
+        reshape_layer->setReshapeDimensions(reshape_dim);
+        matmul_out = reshape_layer->getOutput(0);
+      }
+
       auto create_weights = [&](float data, const std::string& type) -> float* {
         std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
         tmp_tensor->Resize({1});
@@ -80,9 +112,18 @@ class MatMulOpConverter : public OpConverter {
       TensorRTEngine::Weight nv_power{nvinfer1::DataType::kFLOAT,
                                       static_cast<void*>(power_data), 1};
       auto* scale_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *layer->getOutput(0), nvinfer1::ScaleMode::kUNIFORM,
+          engine_, Scale, *matmul_out, nvinfer1::ScaleMode::kUNIFORM,
           nv_shift.get(), nv_alpha.get(), nv_power.get());
-      engine_->SetITensor(output_name, scale_layer->getOutput(0));
+      auto* scale_out = scale_layer->getOutput(0);
+
+      if (need_change_dim) {
+        auto* reshape_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *scale_out);
+        reshape_layer->setReshapeDimensions(out_shape);
+        scale_out = reshape_layer->getOutput(0);
+      }
+
+      engine_->SetITensor(output_name, scale_out);
     }
     if (test_mode) {  // the test framework can not determine which is the
                       // output, so place the declaration inside.

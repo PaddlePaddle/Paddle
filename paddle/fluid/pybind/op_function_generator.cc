@@ -567,7 +567,9 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    if (!all_kernels.count(op_type)) {
+    // if the pten lib contains op kernel, we still generate ops method
+    if (!all_kernels.count(op_type) &&
+        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 

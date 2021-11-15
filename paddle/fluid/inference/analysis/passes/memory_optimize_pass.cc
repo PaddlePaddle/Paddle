@@ -104,7 +104,8 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                         "equal",
                                         "sequence_pool",
                                         "recurrent",
-                                        "lod_reset"};
+                                        "lod_reset",
+                                        "fetch"};
     for (auto* tmp : node->inputs) {
       CHECK(tmp->IsOp());
       std::string op_type = tmp->Op()->Type();

@@ -173,6 +173,12 @@ class ThreadPoolTempl {
     ec_.Notify(true);
   }
 
+  void WaitThreadsExit() {
+    for (size_t i = 0; i < thread_data_.size(); ++i) {
+      thread_data_[i].thread->WaitExit();
+    }
+  }
+
   size_t NumThreads() const { return num_threads_; }
 
   int CurrentThreadId() const {
@@ -388,16 +394,16 @@ class ThreadPoolTempl {
     // We already did best-effort emptiness check in Steal, so prepare for
     // blocking.
     ec_.Prewait();
+    if (cancelled_) {
+      ec_.CancelWait();
+      return false;
+    }
     // Now do a reliable emptiness check.
     int victim = NonEmptyQueueIndex();
     if (victim != -1) {
       ec_.CancelWait();
-      if (cancelled_) {
-        return false;
-      } else {
-        *t = thread_data_[victim].queue.PopBack();
-        return true;
-      }
+      *t = thread_data_[victim].queue.PopBack();
+      return true;
     }
     // Number of blocked threads is used as termination condition.
     // If we are shutting down and all worker threads blocked without work,

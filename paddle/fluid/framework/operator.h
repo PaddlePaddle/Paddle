@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -38,6 +39,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
+
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace framework {
@@ -151,7 +154,7 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const Scope* scope) const;
+  virtual std::string DebugStringEx(const ScopeBase* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
@@ -529,6 +532,17 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
+  /* member functions for adapting to pten lib */
+  /** In the Tensor calculation library, the new Kernel adopts a clearer and
+    * more streamlined design. The arguments of the Kernel and the input and
+    * output arguments registered in the original OpMaker do not match in some
+    * cases, so we use map to record the arguments required by the kernel.
+    * When selecting Kernel during Op execution, select the arguments of the
+    * original Op according to the GetExpectedPtenKernelArgs returned arguments.
+    */
+  virtual KernelSignature GetExpectedPtenKernelArgs(
+      const ExecutionContext& ctx) const;
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
@@ -550,8 +564,9 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
-                    const platform::Place& place) const;
+  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
+
+  void ChooseKernel(const ExecutionContext& ctx) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;
@@ -561,11 +576,18 @@ class OperatorWithKernel : public OperatorBase {
   // By default all input data must be same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   // used for IndicateDataType
-  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
-                          proto::VarType::Type* type) const;
+  void ParseInputDataType(const std::vector<Variable*>& vars,
+                          const std::string& name,
+                          proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
+
+  /* member functions for adapting to pten lib */
+  void ChoosePtenKernel(const ExecutionContext& ctx) const;
+
+  void BuildPtenKernelContext(const RuntimeContext& ctx,
+                              platform::DeviceContext* dev_ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -577,6 +599,15 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
+  // NOTE(chenweihang): Similar op members are used to adapt to
+  // new pten kernel, if there is a better design in the future,
+  // we may polish the implementation here
+  mutable bool run_pten_kernel_ = false;
+  mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<pten::Kernel> pt_kernel_;
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  mutable std::unique_ptr<pten::KernelContext> pt_kernel_context_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

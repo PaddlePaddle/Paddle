@@ -18,10 +18,12 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.nn.layer import transformer
 import paddle.nn.functional as F
+import paddle.incubate.nn.functional as incubate_f
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 import unittest
 from op_test import OpTest
+from paddle.fluid.framework import default_main_program
 
 
 class TestFusedFFNOp(OpTest):
@@ -90,7 +92,7 @@ class TestFusedFFNOp(OpTest):
     def Base(self):
         paddle.disable_static()
         tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
-        residual = paddle.to_tensor(self.src)
+        residual = tensor_src
         if self.pre_layer_norm:
             ln1_out = self.norm1(tensor_src)
             linear2_out = self.linear2(
@@ -121,7 +123,7 @@ class TestFusedFFNOp(OpTest):
         ln2_scale = paddle.to_tensor(self.norm2.weight, stop_gradient=False)
         ln2_bias = paddle.to_tensor(self.norm2.bias, stop_gradient=False)
         x = paddle.to_tensor(self.src, stop_gradient=False)
-        out = F.fused_feedforward(
+        out = incubate_f.fused_feedforward(
             x,
             linear1_weight,
             linear2_weight,
@@ -139,6 +141,7 @@ class TestFusedFFNOp(OpTest):
         return out, x.grad
 
     def test_out_and_grad(self):
+        default_main_program().random_seed = 42
         base_out, base_grad = self.Base()
         fused_out, fused_grad = self.FusedFFN()
         np.testing.assert_allclose(
@@ -191,6 +194,7 @@ class TestFusedFFNOpNormalizeBefore(TestFusedFFNOp):
 class APITestStaticFusedFFN(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
+        default_main_program().random_seed = 42
         dtype = "float32"
         layer_norm_dtype = "float32"
         batch_size = 1
@@ -215,7 +219,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
         ln2_scale = paddle.static.data(name='ln2_scale', shape=[d_model])
         ln2_bias = paddle.static.data(name='ln2_scale', shape=[d_model])
 
-        fused_out = F.fused_feedforward(
+        fused_out = incubate_f.fused_feedforward(
             x,
             linear1_weight,
             linear2_weight,
@@ -295,8 +299,7 @@ class TestFusedFFNOpError(unittest.TestCase):
                     name='linear1_weight', shape=[1, 10, 10], dtype="float32")
                 linear2_weight = paddle.static.data(
                     name='linear2_weight', shape=[1, 10, 10], dtype="float32")
-                paddle.nn.functional.fused_feedforward(x, linear1_weight,
-                                                       linear2_weight)
+                incubate_f.fused_feedforward(x, linear1_weight, linear2_weight)
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -307,7 +310,7 @@ class TestFusedFFNOpError(unittest.TestCase):
                     name='linear1_weight1', shape=[10, 10], dtype="float32")
                 linear2_weight = paddle.static.data(
                     name='linear2_weight1', shape=[10, 10], dtype="float32")
-                paddle.nn.functional.fused_feedforward(
+                incubate_f.fused_feedforward(
                     x, linear1_weight, linear2_weight, dropout1_rate="a")
 
             self.assertRaises(TypeError, test_dropout_rate_type)
@@ -319,10 +322,22 @@ class TestFusedFFNOpError(unittest.TestCase):
                     name='linear1_weight2', shape=[10, 10], dtype="float32")
                 linear2_weight = paddle.static.data(
                     name='linear2_weight2', shape=[10, 10], dtype="float32")
-                paddle.nn.functional.fused_feedforward(
+                incubate_f.fused_feedforward(
                     x, linear1_weight, linear2_weight, dropout2_rate=-1)
 
             self.assertRaises(ValueError, test_dropout_rate_value)
+
+            def test_dropout_mode():
+                x = paddle.static.data(
+                    name='x3', shape=[1, 10, 10], dtype="float32")
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight3', shape=[10, 10], dtype="float32")
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight3', shape=[10, 10], dtype="float32")
+                incubate_f.fused_feedforward(
+                    x, linear1_weight, linear2_weight, mode='test')
+
+            self.assertRaises(ValueError, test_dropout_mode)
 
 
 if __name__ == "__main__":

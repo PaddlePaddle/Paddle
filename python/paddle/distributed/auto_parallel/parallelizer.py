@@ -15,11 +15,12 @@
 import paddle
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
-from .context import DistributedContext
-from .context import get_default_distributed_context
+from .dist_context import DistributedContext
+from .dist_context import get_default_distributed_context
+from .dist_context import set_default_distributed_context
 from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
-from .process import get_all_process_groups
+from .process_group import get_all_process_groups
 from .utils import make_data_unshard
 from .reshard import reshard
 
@@ -38,8 +39,7 @@ class AutoParallelizer:
         self._fleet = fleet
         self._optimizer = self._fleet.user_defined_optimizer
         self._dist_strategy = self._fleet._user_defined_strategy
-        # self._dist_context = DistributedContext()
-        self._dist_context = get_default_distributed_context()
+        self._dist_context = DistributedContext()
 
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
@@ -53,24 +53,15 @@ class AutoParallelizer:
 
     def parallelize(self,
                     loss,
-                    startup_program=None,
+                    startup_program,
                     parameter_list=None,
                     no_grad_set=None):
-        self._original_main_program = loss.block.program
-        # For now, we only allow user to use the default startup and main program
         assert startup_program is not None
-        if startup_program == None:
-            self._original_startup_program = \
-                paddle.static.default_startup_program().clone(for_test=False)
-            startup_program = paddle.static.default_startup_program()
-        else:
-            self._original_startup_program = \
-                startup_program.clone(for_test=False)
+        main_program = loss.block.program
 
         # Annotation completion
-        completed_main_program = complete_annotation(
-            self._original_main_program, self._dist_context)
-
+        completed_main_program = complete_annotation(main_program,
+                                                     self._dist_context)
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)
@@ -94,9 +85,13 @@ class AutoParallelizer:
         # The last step: remove all distributed attributes to be compatiable
         # with inference.
         self._remove_distributed_attrs(partitioned_main_prog)
-        make_data_unshard(partitioned_main_prog, partitioned_startup_prog)
+        make_data_unshard(partitioned_main_prog, partitioned_startup_prog,
+                          self._dist_context)
 
         reshard(partitioned_main_prog, partitioned_startup_prog, rank,
                 self._dist_context)
+
+        # Copy distributed info to the default context
+        set_default_distributed_context(self._dist_context)
 
         return dist_optimize_ops, dist_params_grads, partitioned_startup_prog, partitioned_main_prog

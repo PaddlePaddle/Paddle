@@ -61,8 +61,8 @@ class GraphBrpcClient : public BrpcPsClient {
  public:
   GraphBrpcClient() {}
   virtual ~GraphBrpcClient() {}
-  // given a batch of nodes, sample graph_neighboors for each of them
-  virtual std::future<int32_t> batch_sample_neighboors(
+  // given a batch of nodes, sample graph_neighbors for each of them
+  virtual std::future<int32_t> batch_sample_neighbors(
       uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
       std::vector<std::vector<std::pair<uint64_t, float>>>& res,
       int server_index = -1);
@@ -89,6 +89,9 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual std::future<int32_t> add_graph_node(
       uint32_t table_id, std::vector<uint64_t>& node_id_list,
       std::vector<bool>& is_weighted_list);
+  virtual std::future<int32_t> use_neighbors_sample_cache(uint32_t table_id,
+                                                          size_t size_limit,
+                                                          size_t ttl);
   virtual std::future<int32_t> remove_graph_node(
       uint32_t table_id, std::vector<uint64_t>& node_id_list);
   virtual int32_t initialize();
