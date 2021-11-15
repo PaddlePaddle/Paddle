@@ -76,8 +76,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
     FillConstantMKLDNNHandler<T> handler(out, fill_value, dnnl_engine,
                                          ctx.GetPlace());
 
-    static const T nan =
-        static_cast<T>(std::numeric_limits<float>::quiet_NaN());
+    static T nan = static_cast<T>(std::numeric_limits<float>::quiet_NaN());
     static dnnl::memory nan_memory = dnnl::memory(
         FillConstantMKLDNNHandler<T>::src1_md, mkldnn_engine, &nan);
 
