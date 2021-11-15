@@ -82,7 +82,10 @@ void Carrier::SetCreatingFlag(bool flag) {
   VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
           << " to " << flag << ".";
   creating_interceptors_ = flag;
-  HandleTmpMessages();
+  if (!flag) {
+    // finish create interceptors outside, handle tmp messsages
+    HandleTmpMessages();
+  }
 }
 
 void Carrier::HandleTmpMessages() {
