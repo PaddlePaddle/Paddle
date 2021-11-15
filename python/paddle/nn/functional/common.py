@@ -940,6 +940,7 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
+            input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
@@ -950,7 +951,7 @@ def dropout(x,
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
             for i in drop_axes:
-                mask_shape[i] = input_shape[i]
+                mask_shape[i] = input_shape_tensor[i]
 
             #get mask
             random_tensor = paddle.uniform(
