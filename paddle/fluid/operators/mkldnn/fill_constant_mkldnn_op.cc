@@ -38,11 +38,9 @@ class FillConstantMKLDNNHandler
     attrs.set_post_ops(post_ops);
 
     // we use binary_eq + linear combination to achieve set_constant behavior
-    // binary_eq is done because operation NaN = X is always false, even if X is
-    // also a NaN, that operation sets zeros to output memory, then linear
-    // post-op sets desired constant in all out tensor. We cannot do only linear
-    // activation, because newly allocated memory may contain NaN values and
-    // adding to NaN results in another NaN
+    // binary_eq is to get rid of NaN values and then linear postop with
+    // scale 0 zeroes memory and bias applies desired constant. Only linear
+    // activation cannot be used because uninitialized memory may contain NaNs
     this->AcquireForwardPrimitiveDescriptor(attrs, dnnl::algorithm::binary_eq,
                                             src0_md, src1_md, src0_md);
   }
@@ -76,8 +74,8 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
     FillConstantMKLDNNHandler<T> handler(out, fill_value, dnnl_engine,
                                          ctx.GetPlace());
 
-    static T nan = static_cast<T>(std::numeric_limits<float>::quiet_NaN());
-    static dnnl::memory nan_memory = dnnl::memory(
+    static T zero(0);
+    static dnnl::memory zero_memory = dnnl::memory(
         FillConstantMKLDNNHandler<T>::src1_md, mkldnn_engine, &nan);
 
     auto src0_memory_p = handler.AcquireDstMemory(out);
@@ -85,7 +83,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     fill_constant_p->execute(astream, {{DNNL_ARG_SRC_0, *src0_memory_p},
-                                       {DNNL_ARG_SRC_1, nan_memory},
+                                       {DNNL_ARG_SRC_1, zero_memory},
                                        {DNNL_ARG_DST, *src0_memory_p}});
     astream.wait();
 
