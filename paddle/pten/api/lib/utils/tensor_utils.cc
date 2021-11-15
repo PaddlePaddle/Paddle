@@ -69,6 +69,48 @@ pten::VectorTensor MakePtenVectorTensor(
   }
 }
 
+pten::VectorTensor MakePtenVectorTensorFromTensorList(
+    const std::vector<const paddle::framework::Tensor*>& src_list) {
+  if (src_list.size() == 0) {
+    return pten::VectorTensor();
+  }
+
+  std::vector<int64_t> vector_data;
+  vector_data.reserve(src_list.size());
+
+  auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
+  paddle::framework::proto::VarType::Type data_type = src_list.front()->type();
+
+  if (data_type == paddle::framework::proto::VarType::INT64) {
+    for (auto* tensor : src_list) {
+      if (!platform::is_cpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vector_data.push_back(*temp.data<int64_t>());
+      } else {
+        vector_data.push_back(*tensor->data<int64_t>());
+      }
+    }
+  } else if (data_type == paddle::framework::proto::VarType::INT32) {
+    for (auto* tensor : src_list) {
+      if (!platform::is_cpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vector_data.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
+      } else {
+        vector_data.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
+      }
+    }
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Data type error. When cast a Tensor List to VectorTensor, "
+        "the data type of Tensor in the list must be int32 or int64, "
+        "but now data type is %s.",
+        data_type));
+  }
+  return {vector_data};
+}
+
 pten::VectorTensor MakePtenVectorTensorFromVar(
     const framework::Variable& variable) {
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);

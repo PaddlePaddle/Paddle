@@ -38,6 +38,9 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 pten::VectorTensor MakePtenVectorTensor(
     const paddle::framework::LoDTensor& src);
 
+pten::VectorTensor MakePtenVectorTensorFromTensorList(
+    const std::vector<const paddle::framework::Tensor*>& src_list);
+
 pten::VectorTensor MakePtenVectorTensorFromVar(
     const framework::Variable& variable);
 
