@@ -102,6 +102,9 @@ class TestFillZerosLikeBF16OneDNNOp(TestFillZerosLike2DOneDNNOp):
     def set_dtype(self):
         self.dtype = np.uint16
 
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
 
 class TestFillZerosLikeINT8OneDNNOp(TestFillZerosLike2DOneDNNOp):
     def set_dtype(self):
