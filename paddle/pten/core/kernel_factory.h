@@ -154,16 +154,8 @@ struct TensorArgDef {
   DataLayout layout;
   DataType dtype;
 
-  std::type_index type_index;
-
-  TensorArgDef(Backend in_backend,
-               DataLayout in_layout,
-               DataType in_dtype,
-               std::type_index in_tidx)
-      : backend(in_backend),
-        layout(in_layout),
-        dtype(in_dtype),
-        type_index(in_tidx) {}
+  TensorArgDef(Backend in_backend, DataLayout in_layout, DataType in_dtype)
+      : backend(in_backend), layout(in_layout), dtype(in_dtype) {}
 
   TensorArgDef& SetBackend(Backend in_backend) {
     backend = in_backend;
@@ -192,18 +184,12 @@ class KernelArgsDef {
  public:
   KernelArgsDef() = default;
 
-  void AppendInput(Backend backend,
-                   DataLayout layout,
-                   DataType dtype,
-                   std::type_index type_index) {
-    input_defs_.emplace_back(TensorArgDef(backend, layout, dtype, type_index));
+  void AppendInput(Backend backend, DataLayout layout, DataType dtype) {
+    input_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
   }
 
-  void AppendOutput(Backend backend,
-                    DataLayout layout,
-                    DataType dtype,
-                    std::type_index type_index) {
-    output_defs_.emplace_back(TensorArgDef(backend, layout, dtype, type_index));
+  void AppendOutput(Backend backend, DataLayout layout, DataType dtype) {
+    output_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
   }
 
   void AppendAttribute(std::type_index type_index) {

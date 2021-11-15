@@ -365,11 +365,9 @@ static void BuildDygraphPtenKernelContext(
       } else {  // shape is in the input
         auto& ins_vector = ins.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
-          VLOG(1) << "########## push a shape tensor";
           kernel_ctx->EmplaceBackAttr(std::move(
               experimental::MakePtenVectorTensorFromVar(ins_vector[0]->Var())));
         } else {  // ShapeTensorList
-          VLOG(1) << "########## push a ShapeTensorList";
           std::vector<framework::Variable*> variables;
           variables.reserve(ins_vector.size());
           for (const auto& var_base : ins_vector) {
@@ -384,7 +382,6 @@ static void BuildDygraphPtenKernelContext(
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
-      VLOG(1) << "######### PUSH A Scalar";
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
         kernel_ctx->EmplaceBackAttr(
@@ -401,7 +398,6 @@ static void BuildDygraphPtenKernelContext(
       }
     } else {
       // TODO(chenweihang): support other attrs later
-      VLOG(1) << "####### putong attr";
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
