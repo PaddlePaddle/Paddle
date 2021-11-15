@@ -1209,15 +1209,17 @@ set +x
         single_card_tests_high_parallel='^job$'             # cases list which would run 24 job each time with single GPU
         single_card_tests_secondary_high_parallel='^job$'   # cases list which would run 15 job each time with single GPU
         single_card_tests_third_high_parallel='^job$'       # cases list which would run 12 job each time with single GPU
-        single_card_tests_medium_parallel='^job$'           # cases list which would run 7 job each time with single GPU
-        single_card_tests_non_parallel='^job$'              # cases list which would run 2 job each time with single GPU
+        single_card_tests_forth_high_parallel='^job$'       # cases list which would run 7 job each time with single GPU
+        single_card_tests_fifth_high_parallel='^job$'       # cases list which would run 4 job each time with single GPU  
+        single_card_tests_lowest_parallel='^job$'           # cases list which would run 2 job each time with single GPU  
+        single_card_tests_non_parallel='^job$'              # cases list which would run 4 job each time with single GPU
         single_card_tests='^job$'                           # all cases list which would take single GPU
         
         multiple_card_tests_medium_parallel='^job$'         # cases list which would run 4 job each time with multiple GPUs, most cases would be two GPUs
-        multiple_card_tests_non_parallel='^job$'            # cases list which would run 2 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests_non_parallel='^job$'            # cases list which would run 3 job each time with multiple GPUs, most cases would be two GPUs
         
-        exclusive_tests_high_parallel='^job$'               # cases list which would run 5 job exclusively(with all GPUs)
-        exclusive_tests_medium_parallel='^job$'             # cases list which would run 3 job exclusively(with all GPUs)
+        exclusive_tests_high_parallel='^job$'               # cases list which would run 7 job exclusively(with all GPUs)
+        exclusive_tests_medium_parallel='^job$'             # cases list which would run 4 job exclusively(with all GPUs)
         exclusive_tests_non_parallel='^job$'                # cases list which would run 2 job exclusively(with all GPUs)
         
         is_exclusive=''           # indicate whether the case is exclusive type
@@ -1227,12 +1229,15 @@ set +x
 
         UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
         output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-        cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
-        secondary_cpu_parallel_job=$(echo $output | cut -d ";" -f 2)
-        third_cpu_parallel_job=$(echo $output | cut -d ";" -f 3)
-        tetrad_parallel_job=$(echo $output | cut -d ";" -f 4)
-        two_parallel_job=$(echo $output | cut -d ";" -f 5)
-        non_parallel_job=$(echo $output | cut -d ";" -f 6)
+        high_parallel_job=$(echo $output | cut -d ";" -f 1)
+        secondary_high_parallel_job=$(echo $output | cut -d ";" -f 2)
+        third_high_parallel_job=$(echo $output | cut -d ";" -f 3)
+        fourth_high_parallel_job=$(echo $output | cut -d ";" -f 4)
+        fifth_high_parallel_job=$(echo $output | cut -d ";" -f 5)
+        sixth_high_parallel_job=$(echo $output | cut -d ";" -f 6)
+        lowest_high_parallel_job=$(echo $output | cut -d ";" -f 7)
+        non_parallel_job=$(echo $output | cut -d ";" -f 8)
+        
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1274,28 +1279,32 @@ set +x
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         exclusive_tests_high_parallel="$exclusive_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    elif [[ $(echo $fourth_high_parallel_job$fifth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         exclusive_tests_medium_parallel="$exclusive_tests_medium_parallel|^$testcase$"
                     else
                         exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    if [[ $(echo $high_parallel_job$fourth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         multiple_card_tests_medium_parallel="$multiple_card_tests_medium_parallel|^$testcase$"
                     else
                         multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
-                    if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $secondary_cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    elif [[ $(echo $secondary_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_secondary_high_parallel="$single_card_tests_secondary_high_parallel|^$testcase$"
-                    elif [[ $(echo $third_cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    elif [[ $(echo $third_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_third_high_parallel="$single_card_tests_third_high_parallel|^$testcase$"           
-                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
-                        single_card_tests_medium_parallel="$single_card_tests_medium_parallel|^$testcase$"
+                    elif [[ $(echo $fourth_high_parallel_job$fifth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_forth_high_parallel="$single_card_tests_forth_high_parallel|^$testcase$"
+                    elif [[ $(echo $sixth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_fifth_high_parallel="$single_card_tests_fifth_high_parallel|^$testcase$"               
+                    elif [[ $(echo $lowest_high_parallel_job| grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_lowest_parallel="$single_card_tests_lowest_parallel|^$testcase$"
                     else
                         single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
                     fi
@@ -1312,41 +1321,24 @@ set +x
 
         single_ut_startTime_s=`date +%s`
         card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
-        echo "single_card_tests_high_parallel finished!!!"
         card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
-        echo "single_card_tests_secondary_high_parallel finished!!!"
         card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
-        echo "single_card_tests_third_high_parallel finished!!!"
-        card_test "$single_card_tests_medium_parallel" 1 7              # run cases 7 job each time with single GPU
-        echo "single_card_tests_medium_parallel finished!!!"
-        card_test "$single_card_tests_non_parallel" 1 2                 # run cases 2 job each time with single GPU
-        echo "single_card_tests_non_parallel finished!!!"
+        card_test "$single_card_tests_forth_high_parallel" 1 7          # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_fifth_high_parallel" 1 4          # run cases 4 job each time with single GPU
+        card_test "$single_card_tests_lowest_parallel" 1 2              # run cases 2 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU
         single_ut_endTime_s=`date +%s`
-        echo "single_card_tests finished!!!"
         
         multi_ut_startTime_s=`date +%s`
-        echo "multiple_card_tests begined!!!!!"
         card_test "$multiple_card_tests_medium_parallel" 2 4            # run cases 2 job each time with two GPUs
-        echo "multiple_card_tests_medium_parallel finished!!!"
-        card_test "$multiple_card_tests_non_parallel" 2 2               # run cases 1 job each time with two GPUs
-        echo "multiple_card_tests_non_parallel finished!!!"
+        card_test "$multiple_card_tests_non_parallel" 2 3               # run cases 1 job each time with two GPUs
         multi_ut_endTime_s=`date +%s`
-        echo "multiple_card_tests finished!!!"
         
         exclu_ut_startTime_s=`date +%s`
-        echo "exclu_card_tests begined!!!!!"
-        card_test "$exclusive_tests_high_parallel" -1 5                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        echo "exclusive_tests_high_parallel finished!!!"
-        card_test "$exclusive_tests_medium_parallel" -1 3                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        echo "exclusive_tests_medium_parallel finished!!!"
-        card_test "$exclusive_tests_non_parallel" -1 2                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        echo "exclusive_tests_non_parallel finished!!!"
+        card_test "$exclusive_tests_high_parallel" -1 7                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_medium_parallel" -1 4                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_non_parallel" -1 2                # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         exclu_ut_endTime_s=`date +%s`
-        echo "exclusive_tests finished!!!"
-
-        echo "ipipe_log_param_1aaa_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
-        echo "ipipe_log_param_2aaa_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s"
-        echo "ipipe_log_param_Exclusiveaaaa_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s"
 
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
