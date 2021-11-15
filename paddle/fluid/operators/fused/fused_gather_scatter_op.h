@@ -236,6 +236,7 @@ class FusedGatherScatterGradOpKernel : public framework::OpKernel<T> {
     } else if (pool_type == "MEAN") {
       auto* scatter_count = ctx.Input<Tensor>("Scatter_count");
       const int* s_count = scatter_count->data<int>();
+      // Functor not used here.
       gather_scatter_cpu_for_loop_grad<T, IndexT,
                                        FusedGatherScatterSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type, s_count);

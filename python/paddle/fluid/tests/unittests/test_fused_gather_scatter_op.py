@@ -22,7 +22,7 @@ class TestFusedGatherScatterMaxOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "fused_gather_scatter"
-        x = np.random.random((10, 20)).astype("float64")
+        x = np.random.randint(0, 50, (10, 10)).astype("float64")
         index = np.random.randint(0, 10, (15, 2))
         gather_index = index[:, 0]
         scatter_index = index[:, 1]
@@ -35,16 +35,15 @@ class TestFusedGatherScatterMaxOp(OpTest):
 
         self.attrs = {'pool_type': 'MAX'}
 
-        out, gradient = compute_gather_scatter_for_min_max(self.inputs,
-                                                           self.attrs)
-
+        out, self.gradient = compute_gather_scatter_for_min_max(self.inputs,
+                                                                self.attrs)
         self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
 class TestFusedGatherScatterMinOp(OpTest):
@@ -200,9 +199,9 @@ def compute_gather_scatter_for_min_max(inputs, attributes):
     # Calculate backward gradient
     index_size = len(gather_index)
     for i in range(index_size):
-        forward_src_idx = scatter_index[i]
-        forward_dst_idx = gather_index[i]
+        forward_src_idx = gather_index[i]
+        forward_dst_idx = scatter_index[i]
         gradient[forward_src_idx] += 1 * (
             x[forward_src_idx] == results[forward_dst_idx])
 
-    return results, gradient
+    return results, gradient / results.size
