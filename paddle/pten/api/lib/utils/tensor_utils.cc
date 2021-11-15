@@ -290,6 +290,12 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
         (tensor->IsInitialized() &&
          !IsSameAllocation(tensor->Holder(), storage->GetAllocation()))) {
       tensor->ResetHolderWithType(std::move(storage->GetAllocation()), dtype);
+    } else {
+      // Even the pten tensor and Variable have the same Alloctation (both have
+      // the same pointer address, same size and same place)
+      // but there is possible that they do not have the same data_type.
+      // so, here we set the variable's type with the pten tensor dtype.
+      tensor->setType(dtype);
     }
 
   } else if (variable->IsType<framework::SelectedRows>()) {

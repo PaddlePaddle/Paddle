@@ -113,7 +113,9 @@ class DenseTensor : public TensorBase,
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
-  bool initialized() const { return storage_->data(); }
+  bool initialized() const override {
+    return storage_ != nullptr && storage_->data() != nullptr;
+  }
 
   /// \brief Check if storage is shared with other objects.
   /// \return Whether the storage is shared with other objects.

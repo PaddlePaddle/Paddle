@@ -273,6 +273,8 @@ class Tensor {
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
                            const proto::VarType::Type type);
 
+  void setType(const proto::VarType::Type type);
+
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;
   }

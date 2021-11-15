@@ -209,5 +209,7 @@ void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
   type_ = type;
 }
 
+void Tensor::setType(const proto::VarType::Type type) { type_ = type; }
+
 }  // namespace framework
 }  // namespace paddle
