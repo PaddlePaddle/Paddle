@@ -30,9 +30,9 @@ class FillZerosLikeMKLDNNHandler
                                           dnnl::eltwise_backward>(engine,
                                                                   cpu_place) {
     // uint8_t is always used to treat float NaNs like normal numbers
-    auto md = dnnl::memory::desc({out->numel() * sizeof(T)},
-                                 dnnl::memory::data_type::u8,
-                                 dnnl::memory::format_tag::a);
+    auto md = dnnl::memory::desc(
+        {out->numel() * static_cast<int64_t>(sizeof(T))},
+        dnnl::memory::data_type::u8, dnnl::memory::format_tag::a);
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             dnnl::algorithm::eltwise_linear, md,
