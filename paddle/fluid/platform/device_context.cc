@@ -439,14 +439,14 @@ CUDAContext::~CUDAContext() {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
-  compute_capability_ = GetCUDAComputeCapability(place_.device);
-  multi_process_ = GetCUDAMultiProcessors(place_.device);
-  max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  compute_capability_ = GetGPUComputeCapability(place_.device);
+  multi_process_ = GetGPUMultiProcessors(place_.device);
+  max_threads_per_mp_ = GetGPUMaxThreadsPerMultiProcessor(place_.device);
   max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
-  max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
+  max_threads_per_block_ = GetGPUMaxThreadsPerBlock(place_.device);
 
-  driver_version_ = GetCUDADriverVersion(place_.device);
-  runtime_version_ = GetCUDARuntimeVersion(place_.device);
+  driver_version_ = GetGPUDriverVersion(place_.device);
+  runtime_version_ = GetGPURuntimeVersion(place_.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
                           << ", GPU Compute Capability: "

@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.pb.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 namespace paddle {

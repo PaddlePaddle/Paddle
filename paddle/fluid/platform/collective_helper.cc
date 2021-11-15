@@ -15,7 +15,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include <utility>
 
-#include "paddle/fluid/platform/cuda_resource_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 
 namespace paddle {
 namespace platform {

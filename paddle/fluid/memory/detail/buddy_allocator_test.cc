@@ -25,7 +25,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_ASCEND_CL)

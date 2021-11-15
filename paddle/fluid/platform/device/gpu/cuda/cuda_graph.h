@@ -21,7 +21,7 @@
 #include <vector>
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
-#include "paddle/fluid/platform/type_defs.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"

@@ -27,7 +27,7 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
 DECLARE_bool(sync_nccl_allreduce);
 

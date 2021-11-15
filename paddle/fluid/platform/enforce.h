@@ -96,7 +96,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/type_defs.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
 #include "paddle/fluid/platform/flags.h"
 

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_transpose_flatten_concat_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {

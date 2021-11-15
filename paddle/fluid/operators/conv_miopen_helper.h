@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
-#include "paddle/fluid/platform/miopen_desc.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {

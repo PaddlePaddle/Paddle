@@ -23,8 +23,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/miopen_helper.h"
 
 namespace paddle {
 namespace framework {

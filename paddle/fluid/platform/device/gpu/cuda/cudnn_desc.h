@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {

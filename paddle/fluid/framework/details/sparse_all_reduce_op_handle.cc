@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(sync_nccl_allreduce);

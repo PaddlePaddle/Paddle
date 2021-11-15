@@ -16,14 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/pool_op.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/miopen_helper.h"
 #endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {

@@ -17,7 +17,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
 

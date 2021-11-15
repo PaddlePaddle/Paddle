@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {

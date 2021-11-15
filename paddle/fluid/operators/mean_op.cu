@@ -19,7 +19,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/mean_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
