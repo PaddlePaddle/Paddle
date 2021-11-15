@@ -84,7 +84,7 @@ void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
   // this function update the var2min_rw_op set .
   if (var2min_rw_op.find(rw_var) == var2min_rw_op.end())
     var2min_rw_op[rw_var] = std::list<int>();
-  for (auto dep_op : op2dependences[cur_op]) {
+  for (auto dep_op : op2dependences.at(cur_op)) {
     var2min_rw_op[rw_var].remove(dep_op);
   }
   var2min_rw_op[rw_var].push_back(cur_op);
