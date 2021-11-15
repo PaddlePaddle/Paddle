@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/pten/api/ext/op_meta_info.h"
 
 namespace paddle {
 namespace inference {
