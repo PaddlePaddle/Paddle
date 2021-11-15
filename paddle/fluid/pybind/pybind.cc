@@ -113,9 +113,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifndef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/cuda_profiler.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -545,7 +545,7 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("disable_signal_handler", &DisableSignalHandler);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("cudnn_version", &platform::CudnnVersion);
+  m.def("cudnn_version", &platform::DnnVersion);
   m.def("gpu_memory_available", []() {
     size_t available = 0;
     size_t total = 0;
@@ -553,6 +553,7 @@ PYBIND11_MODULE(core_noavx, m) {
     return available;
   });
 #endif
+
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
 #endif
@@ -1633,8 +1634,8 @@ All parameter, weight, gradient are variables in Paddle.
                std::exit(-1);
              }
 
-             if (UNLIKELY(dev_id >= platform::GetCUDADeviceCount())) {
-               if (platform::GetCUDADeviceCount() == 0) {
+             if (UNLIKELY(dev_id >= platform::GetGPUDeviceCount())) {
+               if (platform::GetGPUDeviceCount() == 0) {
                  LOG(ERROR) << "Cannot use GPU because there is no GPU "
                                "detected on your "
                                "machine.";
@@ -1643,8 +1644,8 @@ All parameter, weight, gradient are variables in Paddle.
                  LOG(ERROR) << string::Sprintf(
                      "Invalid CUDAPlace(%d), must inside [0, %d), because GPU "
                      "number on your machine is %d",
-                     dev_id, platform::GetCUDADeviceCount(),
-                     platform::GetCUDADeviceCount());
+                     dev_id, platform::GetGPUDeviceCount(),
+                     platform::GetGPUDeviceCount());
                  std::exit(-1);
                }
              }
@@ -2206,7 +2207,7 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
-    return platform::GetCUDAComputeCapability(place.device) >= 53;
+    return platform::GetGPUComputeCapability(place.device) >= 53;
   });
 #endif
 
@@ -2386,7 +2387,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+  m.def("get_cuda_device_count", platform::GetGPUDeviceCount);
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(

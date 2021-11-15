@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_resource_pool.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
 
 CudaStreamResourcePool::CudaStreamResourcePool() {
-  int dev_cnt = platform::GetCUDADeviceCount();
+  int dev_cnt = platform::GetGPUDeviceCount();
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {
@@ -69,7 +69,7 @@ std::shared_ptr<CudaStreamObject> CudaStreamResourcePool::New(int dev_idx) {
 }
 
 CudaEventResourcePool::CudaEventResourcePool() {
-  int dev_cnt = platform::GetCUDADeviceCount();
+  int dev_cnt = platform::GetGPUDeviceCount();
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {

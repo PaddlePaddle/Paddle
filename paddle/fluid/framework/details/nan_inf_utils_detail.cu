@@ -40,7 +40,7 @@ static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
 }
 
 static void InitMultiGPUOpVarMap() {
-  int dev_count = platform::GetCUDADeviceCount();
+  int dev_count = platform::GetGPUDeviceCount();
   PADDLE_ENFORCE_GT(dev_count, 0,
                     platform::errors::NotFound(
                         "cuda device must > 0, now dev_count=%d", dev_count));

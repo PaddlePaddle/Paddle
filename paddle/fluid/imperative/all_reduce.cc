@@ -28,8 +28,8 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/parallel_context.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {

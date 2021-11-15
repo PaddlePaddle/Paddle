@@ -22,7 +22,7 @@
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 #include <cudnn.h>
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
@@ -30,8 +30,8 @@
 #endif
 #ifdef PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"  // NOLINT
-#include "paddle/fluid/platform/nccl_helper.h"            // NOLINT
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
 #endif
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"  // NOLINT
 #include "paddle/fluid/operators/miopen_rnn_cache.h"

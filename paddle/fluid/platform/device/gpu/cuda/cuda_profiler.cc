@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/cuda_profiler.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 
 namespace paddle {
 namespace platform {

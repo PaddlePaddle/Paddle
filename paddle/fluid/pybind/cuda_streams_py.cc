@@ -264,7 +264,7 @@ void BindCudaStream(py::module *m_ptr) {
             auto stream_flag =
                 paddle::platform::stream::StreamFlag::kStreamNonBlocking;
 
-            int device_count = platform::GetCUDADeviceCount();
+            int device_count = platform::GetGPUDeviceCount();
             if (device < 0) {
               device = platform::GetCurrentDeviceId();
             }

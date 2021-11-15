@@ -26,12 +26,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/instance_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {

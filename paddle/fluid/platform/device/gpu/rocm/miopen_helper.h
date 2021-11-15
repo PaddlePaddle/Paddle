@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -36,13 +37,6 @@ DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
 namespace platform {
-
-// MIOPEN only support NCHW, just for compatibility with CUDNN API
-typedef enum {
-  MIOPEN_TENSOR_NCHW = 0,
-  MIOPEN_TENSOR_NHWC = 1,
-} miopenTensorFormat_t;
-
 inline const char* miopenGetErrorString(miopenStatus_t status) {
   switch (status) {
     case miopenStatusSuccess:

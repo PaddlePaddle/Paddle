@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
@@ -28,17 +28,17 @@ limitations under the License. */
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/cuda_helper.h"  // NOLINT
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"  // NOLINT
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"  // NOLINT
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)

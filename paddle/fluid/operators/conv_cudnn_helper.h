@@ -25,7 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
 namespace paddle {
 namespace operators {
 

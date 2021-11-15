@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/prelu.h"
 #include "paddle/fluid/operators/prelu_op.h"
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

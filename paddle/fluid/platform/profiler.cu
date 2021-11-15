@@ -29,7 +29,7 @@ __global__ void DummyKernel(int *a) { a[0] = 0; }
 
 static void ForEachDevice(std::function<void(int)> func) {
   auto original_device = platform::GetCurrentDeviceId();
-  int count = platform::GetCUDADeviceCount();
+  int count = platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     platform::SetDeviceId(i);
     func(i);

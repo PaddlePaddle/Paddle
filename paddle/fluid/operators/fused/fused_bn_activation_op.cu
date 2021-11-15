@@ -22,7 +22,7 @@
 #include "paddle/fluid/operators/fused/fused_bn_activation_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/norm_utils.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
