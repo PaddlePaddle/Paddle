@@ -257,7 +257,7 @@ function run_unittest_gpu() {
     echo "************************************************************************"
     export CUDA_VISIBLE_DEVICES=0
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
     wait;
 }
 
