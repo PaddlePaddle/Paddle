@@ -48,6 +48,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
 class PSGPUWrapper {
  public:
@@ -83,13 +85,13 @@ class PSGPUWrapper {
                    const std::vector<int64_t>& slot_lengths,
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
-  
+
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
-                  const int64_t total_length,
-                   const int batch_size, size_t grad_value_size);
+                   const int64_t total_length, const int batch_size,
+                   size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -126,7 +128,6 @@ class PSGPUWrapper {
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
-      batch_grad_pool_.resize(resource_->total_gpu());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -272,7 +273,7 @@ class PSGPUWrapper {
   void SetSlotVector(const std::vector<int>& slot_vector) {
     slot_vector_ = slot_vector;
   }
-  
+
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
   }
@@ -283,7 +284,7 @@ class PSGPUWrapper {
     for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
-    
+
     std::unordered_set<int> dims_set;
     for (auto& it : slot_dim_map_) {
       dims_set.insert(it.second);
@@ -303,6 +304,10 @@ class PSGPUWrapper {
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
       slot_index_vec_[i] = dim_index_map_[slot_mf_dim_vector_[i]];
     }
+    val_type_size_ =
+        TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
+    grad_type_size_ =
+        TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
   }
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
@@ -330,7 +335,8 @@ class PSGPUWrapper {
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
   std::vector<std::vector<robin_hood::unordered_set<uint64_t>>> thread_keys_;
-  std::vector<std::vector<std::vector<robin_hood::unordered_set<uint64_t>>>> thread_dim_keys_;
+  std::vector<std::vector<std::vector<robin_hood::unordered_set<uint64_t>>>>
+      thread_dim_keys_;
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;
@@ -343,8 +349,10 @@ class PSGPUWrapper {
   std::vector<int> index_dim_vec_;
   int multi_mf_dim_{0};
   int max_mf_dim_;
-  std::vector<HBMMemoryPool*> batch_grad_pool_; 
-  std::vector<HBMMemoryPool*> hbm_pools_; // in multi mfdim, one table need hbm pools of totol dims number
+  size_t val_type_size_;
+  size_t grad_type_size_;
+  std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
+                                           // pools of totol dims number
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
@@ -374,7 +382,8 @@ class PSGPUWrapper {
 /*
 class MemoryPool {
  public:
-  MemoryPool(size_t capacity, size_t block_size) : _capacity(capacity), _block_size(block_size) {
+  MemoryPool(size_t capacity, size_t block_size) : _capacity(capacity),
+_block_size(block_size) {
     _mem = (char*)malloc(block_size * _capacity);
   }
   ~MemoryPool() {
@@ -386,7 +395,7 @@ class MemoryPool {
   char *mem() {
     return _mem;
   }
-  
+
   size_t capacity() {
     return _capacity;
   }

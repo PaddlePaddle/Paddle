@@ -38,8 +38,9 @@ struct FeatureValue {
 
   friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
     out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
-        << " lr: " << val.lr <<" mf_dim: " << val.mf_size <<  " mf_size: " << val.mf_size << " mf:";
-    for (int i = 0; i < val.mf_size; ++i) {
+        << " lr: " << val.lr << " mf_dim: " << val.mf_dim
+        << " mf_size: " << val.mf_size << " mf:";
+    for (int i = 0; i < val.mf_dim + 1; ++i) {
       out << " " << val.mf[i];
     }
     return out;
@@ -54,36 +55,11 @@ struct FeatureValue {
     mf_size = in.mf_size;
     mf_dim = in.mf_dim;
     cpu_ptr = in.cpu_ptr;
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < mf_dim + 1; i++) {
       mf[i] = in.mf[i];
     }
-    //printf("yxf::operator====show: %f clk: %f mf_dim: %d mf[0]: %f mf[8]: %f slot: %d\n", in.clk, in.show, in.mf_dim, in.mf[0], in.mf[8], in.slot);
   }
 };
-/*
-struct FeaturePushValue {
-  float show;
-  float clk;
-  int slot;
-  float lr_g;
-  int mf_dim;
-  float mf_g[0];
-
-  __device__ __forceinline__ FeaturePushValue
-  operator+(const FeaturePushValue& a) const {
-    FeaturePushValue out;
-    out.slot = a.slot;
-    out.mf_dim = a.mf_dim;
-    out.show = a.show + show;
-    out.clk = a.clk + clk;
-    out.lr_g = a.lr_g + lr_g;
-    for (int i = 0; i < out.mf_dim; ++i) {
-      out.mf_g[i] = a.mf_g[i] + mf_g[i];
-    }
-    return out;
-  }
-};
-*/
 
 struct FeaturePushValue {
   float show;
@@ -101,7 +77,7 @@ struct FeaturePushValue {
     out.show = a.show + show;
     out.clk = a.clk + clk;
     out.lr_g = a.lr_g + lr_g;
-    //out.mf_g = a.mf_g;
+    // out.mf_g = a.mf_g;
     for (int i = 0; i < out.mf_dim; ++i) {
       out.mf_g[i] = a.mf_g[i] + mf_g[i];
     }
@@ -116,10 +92,8 @@ struct FeaturePushValue {
     for (int i = 0; i < mf_dim; i++) {
       mf_g[i] = in.mf_g[i];
     }
-    //printf("yxf::operator====show: %f clk: %f mf_dim: %d mf[0]: %f mf[8]: %f slot: %d\n", in.clk, in.show, in.mf_dim, in.mf[0], in.mf[8], in.slot);
   }
 };
-
 
 }  // end namespace framework
 }  // end namespace paddle

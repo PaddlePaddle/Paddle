@@ -42,12 +42,12 @@ struct CustomGradMerger {
     out.show = a.show + b.show;
     out.clk = a.clk + b.clk;
     out.lr_g = a.lr_g + b.lr_g;
-    // out.mf_g = a.mf_g;
-    for (int i = 0; i < 1; ++i) {
-      printf("mf_g: %f\n", a.mf_g[0]);
+    for (int i = 0; i < out.mf_dim; ++i) {
+      //printf("mf_g: %f\n", a.mf_g[0]);
       // a.mf_g[0] = b.mf_g[0];
       //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; //
       // for local test
+      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
     }
 
     return out;
@@ -106,8 +106,10 @@ class HeterComm {
   }
 
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+    
     multi_mf_dim_ = multi_mf_dim;
     max_mf_dim_ = max_mf_dim;
+    VLOG(0) << "yxf:heter comm set multi multi_mf_dim_: " << multi_mf_dim_ << " max_mf_dim_: " << max_mf_dim_;
   }
 
   bool need_transfer(int send_id, int receive_id) {

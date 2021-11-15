@@ -40,7 +40,6 @@ __global__ void insert_kernel(Table* table,
     kv.second = vals[i];
     auto it = table->insert(kv, op);
     assert(it != table->end() && "error: insert fails: table is full");
-    printf("yxf::i: %d key: %d second: \n", i, keys[i]);
   }
 }
 
@@ -55,20 +54,10 @@ __global__ void insert_kernel(Table* table,
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (i < len) {
-    // printf("yxf::i: %d key: %d second\n", i, keys[i]);
-    /*
-    if (start_index + i >= 146607) {
-      printf("yxf::errrrrr index: %d\n", start_index+i);
-    }
-    */
     kv.first = keys[i];
     kv.second = (uint64_t)pool->mem_address(start_index + i);
-    // kv.second = (uint64_t)pool->mem_address(0);
-    // kv.second = (uint64_t)0;
     auto it = table->insert(kv, op);
     assert(it != table->end() && "error: insert fails: table is full");
-    // printf("yxf::i: %d key: %d second: %d\n", i, keys[i],
-    // (uint64_t)pool->mem_address(start_index + i));
   }
 }
 
@@ -97,8 +86,7 @@ __global__ void dy_mf_search_kernel(Table* table,
 
     if (it != table->end()) {
       *(FeatureValue*)(vals + i * pull_feature_value_size) =
-          *(FeatureValue*)(it->second);  // for tmp test featurevalue size: 80
-      //*(FeatureValue*)(vals)= *(FeatureValue*)(it->second);
+          *(FeatureValue*)(it->second);
     }
   }
 }
@@ -131,22 +119,6 @@ __global__ void dy_mf_update_kernel(Table* table,
     }
   }
 }
-
-/*
-template <typename Table, typename GradType, typename Sgd>
-__global__ void update_kernel(Table* table,
-                              const typename Table::key_type* const keys,
-                              const GradType* const grads, size_t len,
-                              Sgd sgd) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    auto it = table->find(keys[i]);
-    if (it != table->end()) {
-      sgd.update_value((it.getter())->second, grads[i]);
-    }
-  }
-}
-*/
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
@@ -183,7 +155,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-
+  VLOG(0) << "yxf;:hashtable pull size: " << pull_feature_value_size_;
   dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len, pull_feature_value_size_);
 }
@@ -263,7 +235,9 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::dy_mf_dump_to_cpu(int devid,
                                                     cudaStream_t stream) {
-  container_->prefetch(cudaCpuDeviceId, stream);
+  container_->clear_async(stream);
+  VLOG(0) << "yxf clear container";
+  //container_->prefetch(cudaCpuDeviceId, stream);
   /*
   size_t num = container_->size();
   KeyType unuse_key = std::numeric_limits<KeyType>::max();
@@ -296,7 +270,7 @@ void HashTable<KeyType, ValType>::dy_mf_dump_to_cpu(int devid,
 #endif
   }
   */
-  container_->prefetch(devid, stream);
+  //container_->prefetch(devid, stream);
 }
 
 template <typename KeyType, typename ValType>

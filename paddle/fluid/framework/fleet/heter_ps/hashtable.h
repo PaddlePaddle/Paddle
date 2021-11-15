@@ -74,17 +74,13 @@ class HashTable {
 
   int size() { return container_->size(); }
 
-  void set_use_ptr_val(bool use_ptr_val) { use_ptr_val_ = use_ptr_val; }
-
   void set_feature_value_size(size_t pull_feature_value_size,
                               size_t push_grad_value_size) {
     pull_feature_value_size_ = pull_feature_value_size;
     push_grad_value_size_ = push_grad_value_size;
-    VLOG(0) << "yxf:::pull value size: " << pull_feature_value_size_
+    VLOG(1) << "hashtable set pull value size: " << pull_feature_value_size_
             << " push value size: " << push_grad_value_size_;
   }
-
-  bool use_ptr_val() { return use_ptr_val_; }
 
   std::unique_ptr<RWLock> rwlock_{nullptr};
 
@@ -93,7 +89,6 @@ class HashTable {
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
-  bool use_ptr_val_ = true;
   size_t max_mf_dim_ = 8;
   size_t pull_feature_value_size_;
   size_t push_grad_value_size_;
