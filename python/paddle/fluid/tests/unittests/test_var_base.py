@@ -702,6 +702,11 @@ class TestVarBase(unittest.TestCase):
         assert_getitem_ellipsis_index(var_fp32, np_fp32_value)
         assert_getitem_ellipsis_index(var_int, np_int_value)
 
+        # test 1 dim tensor
+        var_one_dim = paddle.to_tensor([1, 2, 3, 4])
+        self.assertTrue(
+            np.array_equal(var_one_dim[..., 0].numpy(), np.array([1])))
+
     def _test_none_index(self):
         shape = (8, 64, 5, 256)
         np_value = np.random.random(shape).astype('float32')
