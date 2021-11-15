@@ -101,7 +101,7 @@ class TestJITLoad(unittest.TestCase):
         except OSError as e:
             caught_exception = True
             self.assertTrue(
-                "function \"relu_cpu_forward\" is not implemented for data type `int32_t`"
+                "function \"relu_cpu_forward\" is not implemented for data type `int32`"
                 in str(e))
             if IS_WINDOWS:
                 self.assertTrue(
@@ -123,7 +123,7 @@ class TestJITLoad(unittest.TestCase):
         except OSError as e:
             caught_exception = True
             self.assertTrue(
-                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32_t`"
+                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32`"
                 in str(e))
             self.assertTrue(
                 "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in
