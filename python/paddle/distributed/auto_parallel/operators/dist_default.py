@@ -153,26 +153,26 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         rank_id = dist_op_context.get_rank_id()
 
         # check validation of inputs / outputs
-        for input_name in src_op.desc.input_names():
+        for input_name in backward_op.desc.input_names():
             assert input_name in kwargs, "input [{}] is not given".format(
                 input_name)
             assert len(kwargs[input_name]) == len(
-                src_op.desc.input(input_name)
+                backward_op.desc.input(input_name)
             ), "number of tensor for input [{}] is not match".format(input_name)
-        for output_name in src_op.desc.output_names():
+        for output_name in backward_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name)
             assert len(kwargs[output_name]) == len(
-                src_op.desc.output(output_name)
+                backward_op.desc.output(output_name)
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
-        dist_op_desc.copy_from(src_op.desc)
-        for input_name in src_op.desc.input_names():
+        dist_op_desc.copy_from(backward_op.desc)
+        for input_name in backward_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
-        for output_name in src_op.desc.output_names():
+        for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
         main_block._sync_with_cpp()
