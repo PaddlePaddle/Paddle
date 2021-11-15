@@ -167,9 +167,7 @@ TEST(HeterPipelineTrainerTest, GPU) {
   std::shared_ptr<TrainerBase> tmp1;
   tmp1 = TrainerFactory::CreateTrainer(t.class_name());
   tmp1->SetScope(&root_scope);
-
   tmp1->Initialize(t, dataset.get());
-
   tmp1->InitTrainerEnv(p, place);
   tmp1->InitOtherEnv(p);
   tmp1->GetWorkerScope(0);
