@@ -17,7 +17,6 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import copy_distributed_attr_for_var
-from .common import copy_distributed_attr_for_dist_op
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -207,11 +206,32 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 'use_model_parallel': True,
             })
 
-        # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(ctx, c_embedding_op, main_block,
-                                          op_dist_attr)
-        copy_distributed_attr_for_dist_op(ctx, c_allreduce_sum_op, main_block,
-                                          op_dist_attr)
+        # embedding
+        embedding_op_dist_attr = OperatorDistributedAttribute()
+        embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
+        for input_varname in c_embedding_op.desc.input_arg_names():
+            tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+            embedding_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+        for output_varname in c_embedding_op.desc.output_arg_names():
+            output_var = main_block.var(output_varname)
+            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
+            embedding_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+        ctx.set_op_dist_attr_for_program(c_embedding_op, embedding_op_dist_attr)
+
+        # allreduce
+        allreduce_op_dist_attr = OperatorDistributedAttribute()
+        allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
+        for input_varname in c_allreduce_sum_op.desc.input_arg_names():
+            input_var = main_block.var(input_varname)
+            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
+            allreduce_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+        for output_varname in c_allreduce_sum_op.desc.output_arg_names():
+            output_var = main_block.var(output_varname)
+            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
+            allreduce_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+        ctx.set_op_dist_attr_for_program(c_allreduce_sum_op, allreduce_op_dist_attr)
 
         # param initialization sync
         assert Weight_var.name not in dist_op_context.already_init_sync_vars

@@ -110,9 +110,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     rank_id = _get_corresponding_rank(ctx, process_mesh,
                                                       rank_id)
 
-                if src_op.type == "elementwise_add":
-                    dims_mapping = ctx.get_tensor_dist_attr_for_program(main_block.var(list(dist_op_desc.input_arg_names())[0])).dims_mapping
-
                 # NOTE all not splited axis should be presented in mesh
                 for axis, size in enumerate(process_mesh.topology):
                     if size <= 1 or axis in dims_mapping:

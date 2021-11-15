@@ -45,6 +45,7 @@ from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 from paddle.cost_model import CostModel
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.auto_parallel.cost_model import estimate_cost
+from .reshard import HAS_SENT, HAS_RECV, HAS_ALLGATHER
 
 paddle.enable_static()
 
@@ -747,6 +748,9 @@ def get_distributed_program(train_program, startup_program, dist_context, loss,
     opt_ops = partitioner.apply_optimize(
         optimizer, dist_params_grads, dist_main_program, dist_startup_program)
     make_data_unshard(dist_main_program, dist_startup_program, dist_context)
+    HAS_SENT.clear()
+    HAS_RECV.clear()
+    HAS_ALLGATHER.clear()
     reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
     return dist_main_program, dist_startup_program
 
