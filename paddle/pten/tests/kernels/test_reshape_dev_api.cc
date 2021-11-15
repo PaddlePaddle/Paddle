@@ -48,7 +48,7 @@ TEST(DEV_API, reshape) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-  std::vector<int> shape{12, 3};
+  std::vector<int64_t> shape{12, 3};
 
   // 2. test API
   auto out = pten::Reshape<float>(
@@ -56,7 +56,7 @@ TEST(DEV_API, reshape) {
       dense_x,
       shape);
   // 3. check result
-  std::vector<int> expect_shape = {12, 3};
+  std::vector<int64_t> expect_shape = {12, 3};
   ASSERT_EQ(out.dims()[0], expect_shape[0]);
   ASSERT_EQ(out.dims()[1], expect_shape[1]);
   ASSERT_EQ(out.numel(), 36);

@@ -47,11 +47,11 @@ TEST(API, reshape) {
   }
 
   paddle::experimental::Tensor x(dense_x);
-  std::vector<int> shape{12, 3};
+  std::vector<int64_t> shape{12, 3};
   // 2. test API
   auto out = paddle::experimental::reshape(x, shape);
   // 3. check result
-  std::vector<int> expect_shape = {12, 3};
+  std::vector<int64_t> expect_shape = {12, 3};
   ASSERT_EQ(out.shape()[0], expect_shape[0]);
   ASSERT_EQ(out.shape()[1], expect_shape[1]);
   ASSERT_EQ(out.numel(), 36);

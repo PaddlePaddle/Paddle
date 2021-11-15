@@ -59,7 +59,7 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   return out;
 }
 
-Tensor reshape(const Tensor& x, const std::vector<int>& shape) {
+Tensor reshape(const Tensor& x, const std::vector<int64_t>& shape) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
