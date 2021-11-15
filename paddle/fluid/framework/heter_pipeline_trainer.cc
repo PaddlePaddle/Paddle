@@ -301,7 +301,11 @@ void HeterPipelineTrainer::Finalize() {
 }
 
 Scope* HeterPipelineTrainer::GetWorkerScope(int thread_id) {
-  return workers_[thread_id]->GetThreadScope();
+  if (workers_.find(thread_id) != workers_.end()) {
+    return workers_[thread_id]->GetThreadScope();
+  } else {
+    return nullptr;
+  }
 }
 
 }  // end namespace framework
