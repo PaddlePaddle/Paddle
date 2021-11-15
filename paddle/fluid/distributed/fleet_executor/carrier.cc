@@ -92,8 +92,9 @@ void Carrier::HandleTmpMessages() {
   VLOG(3) << "Carrier has received " << message_tmp_.size()
           << " messages during creating interceptors.";
   for (const auto& msg : message_tmp_) {
-    EnqueueInterceptorMessage(std::move(msg));
+    EnqueueInterceptorMessage(msg);
   }
+  message_tmp_.clear();
 }
 
 void Carrier::CreateInterceptors() {
