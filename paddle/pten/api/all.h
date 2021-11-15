@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-// develop apis
-#include "paddle/pten/api/include/core.h"
+// user apis
 #include "paddle/pten/api/include/creation.h"
-#include "paddle/pten/api/include/infershape.h"
 #include "paddle/pten/api/include/linalg.h"
 #include "paddle/pten/api/include/manipulation.h"
 #include "paddle/pten/api/include/math.h"
+#include "paddle/pten/api/include/tensor.h"
