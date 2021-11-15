@@ -144,6 +144,8 @@ class FileDataReader {
     ret.reserve(batch_size_);
     int start_index = GetStartIndex();
     for (int32_t i = start_index; i < start_index + batch_size_; ++i) {
+      // FIXME
+      i %= image_label_pairs_.size();
       framework::LoDTensor tmp = ReadSample(image_label_pairs_[i].first);
       ret.push_back(std::move(tmp));
     }
@@ -217,6 +219,7 @@ class FileLabelReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    LOG(ERROR) << "FileLabelReaderOp RunImpl start";
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(dev_place);
     framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
@@ -232,6 +235,7 @@ class FileLabelReaderOp : public framework::OperatorBase {
     for (size_t i = 0; i < samples.size(); ++i) {
       copy_tensor(samples[i], &out_array[i]);
     }
+    LOG(ERROR) << "FileLabelReaderOp RunImpl finish";
   }
 
   void copy_tensor(const framework::LoDTensor& lod_tensor,

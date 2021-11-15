@@ -22,6 +22,7 @@ template <typename DeviceContext, typename T>
 class DataLoaderOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(ERROR) << "DataLoaderOpKernel enter";
     // Step1: get output vars and attrs
     auto output_vars = ctx.MultiOutputVar("Out");
     auto output_var_names = ctx.OutputNames("Out");
@@ -37,7 +38,9 @@ class DataLoaderOpKernel : public framework::OpKernel<T> {
         program_id, global_block, ctx.GetPlace(), start_op_index, end_op_index,
         output_var_names, prefetch_depth);
 
+    LOG(ERROR) << "Get Pipeline finsih";
     pipeline->ReadNext(output_vars);
+    LOG(ERROR) << "ReadNext finish";
   }
 };
 

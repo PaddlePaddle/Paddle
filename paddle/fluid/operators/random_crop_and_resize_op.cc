@@ -27,7 +27,7 @@ class RandomCropAndResizeOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
                    "RandomCropAndResize");
 
-    auto size = ctx->Attrs().Get<std::vector<int>>("size");
+    auto size = ctx->Attrs().Get<std::vector<int64_t>>("size");
     PADDLE_ENFORCE_EQ(size.size(), 2,
                       platform::errors::InvalidArgument(
                           "The length of Attrs(size) should be 2."));
@@ -39,11 +39,11 @@ class RandomCropAndResizeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "w in Attr(size) of Op(RandomCropAndResize) "
                           "should be greater than 0."));
-    auto x_dim = ctx->GetInputsDim("X");  // NCHW format
-
-    std::vector<int64_t> out_dim = {static_cast<int64_t>(x_dim.size()),
-                                    x_dim[0][0], size[0], size[1]};
-    ctx->SetOutputDim("Out", framework::make_ddim({out_dim}));
+    // auto x_dim = ctx->GetInputsDim("X");  // NCHW format
+    //
+    // std::vector<int64_t> out_dim = {static_cast<int64_t>(x_dim.size()),
+    //                                 x_dim[0][0], size[0], size[1]};
+    // ctx->SetOutputDim("Out", framework::make_ddim({out_dim}));
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -68,7 +68,7 @@ class RandomCropAndResizeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(LoDTensorArray). A batch of instances to random crop.");
     AddOutput("Out", "(Tensor). The cropped instance batch.");
-    AddAttr<std::vector<int>>(
+    AddAttr<std::vector<int64_t>>(
         "size", "expected output size of the crop, for each edge.");
     AddAttr<std::vector<float>>(
         "scale",

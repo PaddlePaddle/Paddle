@@ -68,6 +68,7 @@ void Pipeline::StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
                                    const std::vector<std::string> &skip_vars) {
   thread_pool_.enqueue([this, executor, skip_vars]() -> void {
     while (!closed_.load()) {
+      LOG(ERROR) << "Executor run a iter start";
       // Step1: run ops by executor without fetch
       executor->RunWithoutFetch(skip_vars);
 
@@ -92,6 +93,7 @@ void Pipeline::StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
 
       // Step3: put LoDTensorArray to prefetch blocking_queue
       prefetch_queue_.Push(t_arr);
+      LOG(ERROR) << "Executor run a iter finish";
     }
   });
 }

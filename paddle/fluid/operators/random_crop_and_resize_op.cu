@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
+using framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
@@ -162,14 +162,14 @@ __global__ void KeBilinearInterpFw(
 template <typename T>
 static void RandomCropAndResizeFwd(
     const framework::ExecutionContext& ctx, const framework::LoDTensor& input,
-    framework::Tensor* output, const std::vector<int> out_size,
+    framework::Tensor* output, const std::vector<int64_t> out_size,
     const std::string interp_method, const bool align_corners,
     const int align_mode, const int img_h, const int img_w, const int c,
     const int idx_h, const int idx_w, const int crop_h, const int crop_w,
     const DataLayout data_layout) {
   auto input_data = input.template data<T>();
-  int out_h = out_size[0];
-  int out_w = out_size[1];
+  int out_h = static_cast<int>(out_size[0]);
+  int out_w = static_cast<int>(out_size[1]);
 
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
@@ -177,7 +177,8 @@ static void RandomCropAndResizeFwd(
   } else {
     dim_out = {out_h, out_w, c};
   }
-  auto output_data = output->template mutable_data<T>(ctx.GetPlace());
+  // auto output_data = output->template mutable_data<T>(ctx.GetPlace());
+  auto output_data = output->data<T>();
 
   if (img_h == crop_h && img_w == crop_w) {
     framework::TensorCopy(input, ctx.GetPlace(), output);
@@ -271,6 +272,7 @@ template <typename T>
 class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(ERROR) << "RandomCropAndResizeCUDAKernel Compute start";
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
@@ -280,9 +282,9 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(x->size(), 0,
                       platform::errors::InvalidArgument(
                           "The size of X must be greater than 0."));
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
     // get size, scale, ratio
-    auto size = ctx.Attr<std::vector<int>>("size");
+    auto size = ctx.Attr<std::vector<int64_t>>("size");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     auto ratio = ctx.Attr<std::vector<float>>("ratio");
     // get random seed
@@ -297,15 +299,21 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
     int align_mode = ctx.Attr<int>("align_mode");
 
     auto* img = &x->at(0);
-    int img_h, img_w, img_c, idx_h, idx_w, crop_h, crop_w;
+    int64_t img_c = data_layout == DataLayout::kNCHW ? \
+                  img->dims()[0] : img->dims()[2];
+
+    std::vector<int64_t> out_dim = {static_cast<int64_t>(x->size()),
+                                    img_c, size[0], size[1]};
+    out->Resize(framework::make_ddim(out_dim));
+    out->mutable_data<T>(ctx.GetPlace());
+
+    int img_h, img_w, idx_h, idx_w, crop_h, crop_w;
     for (int i = 0; i < x->size(); i++) {
       img = &x->at(i);
       img_h =
           data_layout == DataLayout::kNCHW ? img->dims()[1] : img->dims()[0];
       img_w =
           data_layout == DataLayout::kNCHW ? img->dims()[2] : img->dims()[1];
-      img_c =
-          data_layout == DataLayout::kNCHW ? img->dims()[0] : img->dims()[2];
       GetCropParameters(img_h, img_w, scale, ratio, &idx_h, &idx_w, &crop_h,
                         &crop_w, seed);
 
@@ -314,6 +322,7 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
                                 align_corners, align_mode, img_h, img_w, img_c,
                                 idx_h, idx_w, crop_h, crop_w, data_layout);
     }
+    LOG(ERROR) << "RandomCropAndResizeCUDAKernel Compute finish";
   }
 };
 

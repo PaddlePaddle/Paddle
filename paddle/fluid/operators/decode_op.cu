@@ -37,6 +37,7 @@ template <typename T>
 class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start";
     // Create nvJPEG handle
     if (batch_nvjpeg_handle == nullptr) {
       nvjpegStatus_t create_status =
@@ -139,6 +140,7 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
           batch_nvjpeg_handle, nvjpeg_state, x_data, x.numel(), output_format,
           &out_image, batch_nvjpeg_stream);
     }
+    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute finish";
   }
 };
 
