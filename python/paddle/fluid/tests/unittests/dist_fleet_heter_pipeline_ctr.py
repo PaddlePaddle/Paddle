@@ -154,14 +154,14 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         fleet.init_worker()
 
         thread_num = int(os.getenv("CPU_NUM", 2))
-        batch_size = 128
+        batch_size = 4
 
-        block_size = len(train_file_list) // fleet.worker_num()
-        worker_id = fleet.worker_index()
-        filelist = train_file_list[worker_id * block_size:(worker_id + 1) *
-                                   block_size]
+        #block_size = len(train_file_list) // fleet.worker_num()
+        #worker_id = fleet.worker_index()
+        #filelist = train_file_list[worker_id * block_size:(worker_id + 1) *
+        #                           block_size]
 
-        #filelist = fleet.util.get_file_shard(train_file_list)
+        filelist = fleet.util.get_file_shard(train_file_list)
         print("filelist: {}".format(filelist))
 
         # config dataset
@@ -202,7 +202,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         #fleet.init_worker()
 
         thread_num = int(os.getenv("CPU_NUM", 2))
-        batch_size = 128
+        batch_size = 4
 
         #filelist = fleet.util.get_file_shard(train_file_list)
         #block_size = len(train_file_list) // fleet.worker_num()

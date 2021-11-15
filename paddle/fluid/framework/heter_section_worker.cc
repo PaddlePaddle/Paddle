@@ -367,22 +367,25 @@ void HeterSectionWorker::BatchPostProcess() {
 }
 
 void HeterSectionWorker::TrainFiles() {
-  total_ins_num_ = 0;
-  batch_num_ = 0;
-  platform::SetNumThreads(1);
-  timeline_.Start();
-  VLOG(3) << "begin section_worker TrainFiles";
-  epoch_finish_ = false;
-  if (pipeline_stage_ == 0) {
-    device_reader_->Start();
+  if (thread_id_ >= 0) {
+    total_ins_num_ = 0;
+    batch_num_ = 0;
+    platform::SetNumThreads(1);
+    timeline_.Start();
+    VLOG(3) << "begin section_worker TrainFiles";
+    epoch_finish_ = false;
+    if (pipeline_stage_ == 0) {
+      device_reader_->Start();
+    }
+    while (!epoch_finish_) {
+      Run();
+      dev_ctx_->Wait();
+    }
+    timeline_.Pause();
+    VLOG(3) << "worker " << thread_id_ << " train cost "
+            << timeline_.ElapsedSec()
+            << " seconds, ins_num: " << total_ins_num_;
   }
-  while (!epoch_finish_) {
-    Run();
-    dev_ctx_->Wait();
-  }
-  timeline_.Pause();
-  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline_.ElapsedSec()
-          << " seconds, ins_num: " << total_ins_num_;
 }
 
 void HeterSectionWorker::PrintFetchVars() {

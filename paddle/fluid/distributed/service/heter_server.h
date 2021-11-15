@@ -263,6 +263,8 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
       // create mini scope & micro scopes
       auto* minibatch_scope = &(scope_->NewScope());
       (*mini_scopes_)[minibatch_index] = minibatch_scope;
+      (*micro_scopes_)[minibatch_index].reset(
+          new std::vector<paddle::framework::Scope*>{});
       for (int i = 0; i < num_microbatch_; i++) {
         auto* micro_scope = &(minibatch_scope->NewScope());
         (*((*micro_scopes_)[minibatch_index])).push_back(micro_scope);
@@ -278,7 +280,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
     distributed::DeserializeFromMultiVarMsgAndIOBuf(
         *request, &request_io_buffer, *dev_ctx_, micro_scope);
-
     // blocking queue handles multi thread
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));

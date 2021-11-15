@@ -265,7 +265,6 @@ void HeterPipelineTrainer::Run() {
           this_worker->CreateMicrobatchScopes();
           // this_worker->SetMicrobatchScopes((*micro_scopes_)[worker_index]);
           this_worker->SetThreadQueue((*task_queue_)[worker_index]);
-
           if (!debug_) {
             threads_.push_back(
                 std::thread(&DeviceWorker::TrainFiles, this_worker.get()));
