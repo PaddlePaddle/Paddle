@@ -25,9 +25,9 @@
 
 #include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
-
+#ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
-
+#endif
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
@@ -49,11 +49,13 @@ TEST(Benchmark, EagerScalePerformance) {
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
+#ifdef WITH_GPERFTOOLS
       ProfilerStart("eager_scale_cuda.out");
-
+#endif
       benchmark_eager_scale(tensor);
-
+#ifdef WITH_GPERFTOOLS
       ProfilerStop();
+#endif
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();
@@ -94,11 +96,13 @@ TEST(Benchmark, EagerIntermediateMatmulPerformance) {
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
+#ifdef WITH_GPERFTOOLS
       ProfilerStart("eager_intermediate_matmul_cuda.out");
-
+#endif
       benchmark_eager_intermediate_matmul(X, Y);
-
+#ifdef WITH_GPERFTOOLS
       ProfilerStop();
+#endif
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();

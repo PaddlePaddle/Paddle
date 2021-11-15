@@ -30,8 +30,9 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 
+#ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
-
+#endif
 namespace paddle {
 namespace imperative {
 
@@ -60,11 +61,13 @@ TEST(Benchmark, FluidScalePerformance) {
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
+#ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_scale_cpu.out");
-
+#endif
       benchmark_fluid_scale(X, Out, platform::Place(place));
-
+#ifdef WITH_GPERFTOOLS
       ProfilerStop();
+#endif
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();
@@ -110,11 +113,13 @@ TEST(Benchmark, FluidMatmulAccuracy) {
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
+#ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_matmul_cpu.out");
-
+#endif
       benchmark_fluid_matmul(X, Y, Out, platform::Place(place));
-
+#ifdef WITH_GPERFTOOLS
       ProfilerStop();
+#endif
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();
