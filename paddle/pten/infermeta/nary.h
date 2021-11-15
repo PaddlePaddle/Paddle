@@ -19,26 +19,16 @@ limitations under the License. */
 
 namespace pten {
 
-// Common InferShape Functions for binary operators, The format like:
+// Common InferShape Functions for 0-nary operators(no input tensor), The format
+// like:
 //
-//   1. DenseTensorMeta [OpName]InferShape(const DenseTensorMeta& x_meta, ...)
-//   {}
-//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferShape(const
-//   DenseTensorMeta&
-//   x_meta, ...) {}
-//   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
-//   [OpName]InferShape(const
-//   DenseTensorMeta& x_meta, ...)
+//   1. DenseTensorMeta [OpName]InferShape( ...)
 //  NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
-                              const DenseTensorMeta& y_meta);
-
-DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
-                                 const DenseTensorMeta& y_meta,
-                                 bool trans_x,
-                                 bool trans_y);
+DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
+                               DataType dtype,
+                               DataLayout layout);
 
 }  // namespace pten
