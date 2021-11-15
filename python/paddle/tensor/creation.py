@@ -18,7 +18,6 @@ from paddle.common_ops_import import fill_constant
 from ..fluid.layers import utils
 
 from ..fluid.layers import tensor
-from ..nn import functional as F
 from ..fluid.framework import Variable
 from ..fluid.framework import unique_name
 from ..fluid.framework import _current_expected_place, _get_paddle_place
@@ -805,12 +804,12 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
             #    [0. 0. 0. 0. 0. 0.]]]]
     """
 
-    return F.pad(x,
-                 pad=pad,
-                 mode='constant',
-                 value=0,
-                 data_format=data_format,
-                 name=name)
+    return paddle.nn.functional.pad(x,
+                                    pad=pad,
+                                    mode='constant',
+                                    value=0,
+                                    data_format=data_format,
+                                    name=name)
 
 
 def diagflat(x, offset=0, name=None):
