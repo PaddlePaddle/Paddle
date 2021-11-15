@@ -183,7 +183,7 @@ void CinnCompiler::Clear() {
     graphs_.clear();
     cache_.clear();
   }
-  real_compiled_num_.store(1);
+  real_compiled_num_.store(0);
 }
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(

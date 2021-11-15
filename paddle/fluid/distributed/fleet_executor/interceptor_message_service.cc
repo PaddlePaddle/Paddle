@@ -31,10 +31,7 @@ void InterceptorMessageServiceImpl::InterceptorMessageService(
           << ", with the message: " << request->message_type();
   response->set_rst(true);
   // call interceptor manager's method to handle the message
-  std::shared_ptr<Carrier> carrier = FleetExecutor::GetCarrier();
-  if (carrier != nullptr) {
-    carrier->EnqueueInterceptorMessage(*request);
-  }
+  Carrier::Instance().EnqueueInterceptorMessage(*request);
 }
 
 }  // namespace distributed

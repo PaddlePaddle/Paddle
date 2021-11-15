@@ -266,14 +266,14 @@ Variable* Scope::FindVarLocally(const std::string& name) const {
   return nullptr;
 }
 
-void Scope::AddListener(ScopeListener* listener) {
+void Scope::AddListener(const std::shared_ptr<ScopeListener>& listener) {
   auto it = std::find(listeners_.begin(), listeners_.end(), listener);
   if (it == listeners_.end()) {
     listeners_.push_back(listener);
   }
 }
 
-void Scope::DelListener(ScopeListener* listener) {
+void Scope::DelListener(const std::shared_ptr<ScopeListener>& listener) {
   listeners_.remove(listener);
 }
 
