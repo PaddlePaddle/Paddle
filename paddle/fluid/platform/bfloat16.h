@@ -29,8 +29,7 @@ namespace std {
 
 template <>
 struct is_pod<paddle::platform::bfloat16> {
-  static const bool value =
-      is_standard_layout<paddle::platform::bfloat16>::value;
+  static const bool value = true;
 };
 
 template <>
