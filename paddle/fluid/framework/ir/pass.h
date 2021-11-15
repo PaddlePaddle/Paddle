@@ -244,6 +244,7 @@ class PassRegistry {
 
  private:
   PassRegistry() = default;
+  ~PassRegistry() {}
   std::unordered_map<std::string, PassCreator> map_;
 
   DISABLE_COPY_AND_ASSIGN(PassRegistry);
