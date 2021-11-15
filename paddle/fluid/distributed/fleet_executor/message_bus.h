@@ -48,6 +48,8 @@ class MessageBus final {
             const std::unordered_map<int64_t, std::string>& rank_to_addr,
             const std::string& addr);
 
+  bool IsInit() const;
+
   void Release();
 
   // called by Interceptor, send InterceptorMessage to dst
@@ -90,10 +92,6 @@ class MessageBus final {
   // brpc server
   brpc::Server server_;
 #endif
-
-  // thread keeps listening to the port to receive remote message
-  // this thread runs ListenPort() function
-  std::thread listen_port_thread_;
 };
 
 }  // namespace distributed

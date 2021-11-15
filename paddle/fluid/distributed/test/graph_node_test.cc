@@ -1,11 +1,8 @@
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -681,28 +678,6 @@ void testCache() {
   }
   st.query(0, &skey, 1, r);
   ASSERT_EQ((int)r.size(), 0);
-  ::paddle::distributed::ScaledLRU<::paddle::distributed::SampleKey,
-                                   ::paddle::distributed::SampleResult>
-      cache1(2, 1, 4);
-  str = new char[18];
-  strcpy(str, "3433776521");
-  result = new ::paddle::distributed::SampleResult(strlen(str), str);
-  cache1.insert(1, &skey, result, 1);
-  ::paddle::distributed::SampleKey skey1 = {8, 1};
-  char* str1 = new char[18];
-  strcpy(str1, "3xcf2eersfd");
-  usleep(3000);  // sleep 3ms to guaruntee that skey1's time stamp is larger
-                 // than skey;
-  auto result1 = new ::paddle::distributed::SampleResult(strlen(str1), str1);
-  cache1.insert(0, &skey1, result1, 1);
-  sleep(1);  // sleep 1 s to guarantee that shrinking work is done
-  cache1.query(1, &skey, 1, r);
-  ASSERT_EQ((int)r.size(), 0);
-  cache1.query(0, &skey1, 1, r);
-  ASSERT_EQ((int)r.size(), 1);
-  char* p1 = (char*)r[0].second.buffer.get();
-  for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p1[j], str1[j]);
-  r.clear();
 }
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;

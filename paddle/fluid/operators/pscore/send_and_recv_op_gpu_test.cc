@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSCORE)
+
 #include <stdlib.h>
 #include <memory>
 #include <string>
@@ -295,3 +297,4 @@ TEST(SENDANDRECV, GPU) {
   server_thread.join();
   LOG(INFO) << "end server thread join";
 }
+#endif
