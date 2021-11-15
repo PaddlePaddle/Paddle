@@ -14,23 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 namespace pten {
+namespace general {
 
-using CUDAContext = paddle::platform::CUDADeviceContext;
+inline void SetXShape(const DenseTensor& x, DenseTensor* xshape) {
+  const auto& in_dims = x.meta().dims;
+  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    xshape_dims[i + 1] = in_dims[i];
+  }
+  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
+  xshape->set_lod(x.meta().lod);
+}
 
-void Copy(const CUDAContext& dev_ctx,
-          const DenseTensor& src,
-          bool is_sync,
-          DenseTensor* dst);
-
+}  // namespace general
 }  // namespace pten
-
-#endif
