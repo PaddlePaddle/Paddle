@@ -86,8 +86,8 @@ class CinnGraphSymbolization {
     return var_model_to_program_map_;
   }
 
-  // get fetch var names used in CINN
-  std::vector<std::string> GetFetchNames() const;
+  // get fetch var ids used in CINN
+  std::unordered_set<std::string> GetFetchIds() const;
 
   using OpMapperContext = ::cinn::frontend::OpMapperContext;
   using FeedInfoMap =
@@ -105,7 +105,7 @@ class CinnGraphSymbolization {
   std::unordered_map<std::string, std::string> var_model_to_program_map_;
 
   // fetch var names used in paddle
-  std::vector<std::string> fetch_var_names_;
+  std::unordered_set<std::string> fetch_var_names_;
 
   // transform all paddle var desc in feed list into cinn_var_descs_
   FeedInfoMap GetFeedInfoMapFromInput() const;

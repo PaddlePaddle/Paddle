@@ -293,7 +293,7 @@ TEST_F(CinnGraphSymbolizationTest, basic) {
   ASSERT_NO_THROW((*symbol_)());
   ASSERT_FALSE(symbol_->var_map().empty());
   ASSERT_FALSE(symbol_->var_model_to_program_map().empty());
-  ASSERT_TRUE(symbol_->GetFetchNames().empty());
+  ASSERT_TRUE(symbol_->GetFetchIds().empty());
 }
 
 }  // namespace paddle2cinn

@@ -201,11 +201,12 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   ApplyPass(cinn_graph.get(), "OpFusion");
   auto scope = BuildScope(target, cinn_graph);
 
-  auto fetch_names = symbol.GetFetchNames();
-  VLOG(4) << "All fetch var names: " << string::join_strings(fetch_names, ',');
+  auto fetch_names = symbol.GetFetchIds();
+  VLOG(4) << "All fetch var ids in CINN: "
+          << string::join_strings(fetch_names, ',');
 
   auto graph_compiler =
-      std::make_unique<GraphCompiler>(target, scope, cinn_graph);
+      std::make_unique<GraphCompiler>(target, scope, cinn_graph, fetch_names);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
   auto compiled_res = graph_compiler->Build(options);

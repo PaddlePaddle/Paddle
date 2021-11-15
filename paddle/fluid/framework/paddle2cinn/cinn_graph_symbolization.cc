@@ -28,7 +28,6 @@ limitations under the License. */
 #include "cinn/frontend/var_type_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -227,16 +226,16 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   }
 }
 
-std::vector<std::string> CinnGraphSymbolization::GetFetchNames() const {
-  std::vector<std::string> fetch_names(fetch_var_names_.size());
-  std::transform(
-      fetch_var_names_.begin(), fetch_var_names_.end(), fetch_names.begin(),
-      [this](const std::string& name) {
+std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
+  std::unordered_set<std::string> fetch_names(fetch_var_names_.size());
+  std::for_each(
+      fetch_var_names_.begin(), fetch_var_names_.end(),
+      [this, &fetch_names](const std::string& name) {
         PADDLE_ENFORCE_EQ(
             var_model_to_program_map_.count(name), 1,
             platform::errors::PreconditionNotMet(
                 "Cannot find %s in var_model_to_program_map_", name.c_str()));
-        return var_model_to_program_map_.at(name);
+        fetch_names.insert(var_model_to_program_map_.at(name));
       });
   return fetch_names;
 }
