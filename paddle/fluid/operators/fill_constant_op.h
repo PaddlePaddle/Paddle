@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
 
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/creation.h"
+
 namespace paddle {
 namespace operators {
 
@@ -121,9 +124,17 @@ class FillConstantKernel : public framework::OpKernel<T> {
               << ((data_type == framework::proto::VarType::BF16) ? "<bfloat16>"
                                                                  : "<T>");
       tensor->mutable_data(platform::CPUPlace(), data_type);
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
-      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
-              tensor, static_cast<T>(value));
+      auto pt_out = paddle::experimental::MakePtenDenseTensor(*tensor);
+
+      // const auto& dev_ctx1 =
+      // ctx.device_context<platform::CPUDeviceContext>();
+      pten::FillConstant<T>(
+          reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx), value,
+          pt_out.get());
+
+      // math::SetConstant<platform::CPUDeviceContext, T> functor;
+      // functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+      //         tensor, static_cast<T>(value));
     } else if (actual_place == 1) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(ctx.GetPlace(), data_type);
