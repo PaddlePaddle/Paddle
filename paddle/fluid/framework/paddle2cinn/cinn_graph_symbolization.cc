@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <queue>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -27,6 +28,7 @@ limitations under the License. */
 #include "cinn/frontend/var_type_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -225,6 +227,20 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   }
 }
 
+std::vector<std::string> CinnGraphSymbolization::GetFetchNames() const {
+  std::vector<std::string> fetch_names(fetch_var_names_.size());
+  std::transform(
+      fetch_var_names_.begin(), fetch_var_names_.end(), fetch_names.begin(),
+      [this](const std::string& name) {
+        PADDLE_ENFORCE_EQ(
+            var_model_to_program_map_.count(name), 1,
+            platform::errors::PreconditionNotMet(
+                "Cannot find %s in var_model_to_program_map_", name.c_str()));
+        return var_model_to_program_map_.at(name);
+      });
+  return fetch_names;
+}
+
 ::cinn::frontend::Program CinnGraphSymbolization::operator()() {
   std::string builder_name = "NetBuilder_of_graph_" + std::to_string(graph_id_);
   VLOG(4) << "NetBuilder Name " << builder_name;
@@ -235,7 +251,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   auto cinn_scope = CreateCinnScope(feed_map);
 
   OpMapperContext ctx(*cinn_scope, target_, &builder, &var_map_,
-                      &var_model_to_program_map_);
+                      &var_model_to_program_map_, &fetch_var_names_);
   // add all tensor's feed info into context
   for (auto& feed_pair : feed_map) {
     ctx.AddFeedInfo(feed_pair.first, feed_pair.second);
