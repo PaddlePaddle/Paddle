@@ -72,9 +72,9 @@ inline size_t SizeOf(DataType data_type) {
       return 16;
     case DataType::UNDEFINED:
     case DataType::NUM_DATA_TYPES:
-      PD_THROW("Data type ",
+      PD_THROW("Data type `",
                static_cast<int>(data_type),
-               " is not supported by tensor.");
+               "` is not supported by tensor.");
   }
   return 0;
 }

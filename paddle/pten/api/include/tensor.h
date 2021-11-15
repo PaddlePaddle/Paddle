@@ -222,7 +222,7 @@ class PD_DLL_DECL Tensor final {
   bool is_cpu() const;
 
   /**
-   * @brief Determine whether the tensor device is CPU
+   * @brief Determine whether the tensor device is CUDA
    *
    * @return true
    * @return false
@@ -321,7 +321,7 @@ class PD_DLL_DECL Tensor final {
    * This is a deprecated method and may be removed in the future!
    *
    * @tparam T
-   * @param target_place of target place, of which the tensor will copy to.
+   * @param target_place, the target place of which the tensor will copy to.
    * @return Tensor
    */
   template <typename T>
@@ -330,7 +330,7 @@ class PD_DLL_DECL Tensor final {
   /**
    * @brief Transfer the current Tensor to the specified device and return.
    *
-   * @param place of target place, of which the tensor will copy to.
+   * @param place, the target place of which the tensor will copy to.
    * @return Tensor
    */
   Tensor to(const PlaceType& place) const;

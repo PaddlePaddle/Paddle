@@ -55,6 +55,15 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+namespace detail {
+
+inline bool IsDenseTensor(
+    const std::shared_ptr<pten::TensorBase> &tensor_impl) {
+  return tensor_impl->type_info().name() == "DenseTensor";
+}
+
+}  // namespace detail
+
 /////// Tensor Methods ////////
 
 /* Part 1: Construction and destruction methods */
@@ -126,7 +135,7 @@ bool Tensor::is_cuda() const {
 
 template <typename T>
 T *Tensor::mutable_data() {
-  if (impl_->type_info().name() == "DenseTensor") {
+  if (detail::IsDenseTensor(impl_)) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)
         ->mutable_data<T>();
   }
@@ -182,7 +191,7 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 
 template <typename T>
 const T *Tensor::data() const {
-  if (impl_->type_info().name() == "DenseTensor") {
+  if (detail::IsDenseTensor(impl_)) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
   }
   return nullptr;
