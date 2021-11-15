@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
@@ -63,6 +64,8 @@ class Carrier final {
   // create each Interceptor
   void CreateInterceptors();
 
+  void HandleTmpMessages();
+
   // interceptor logic id to the Nodes info
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
 
@@ -70,7 +73,7 @@ class Carrier final {
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
 
-  std::vector<InterceptorMessage> message_tmp_queue_{};
+  std::vector<InterceptorMessage> message_tmp_{};
   bool creating_interceptors_{true};
 };
 
