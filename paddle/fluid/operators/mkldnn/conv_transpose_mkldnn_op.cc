@@ -223,27 +223,13 @@ class ConvTransposeMKLDNNHandlerT
       const framework::Tensor* filter, const int& groups) {
     const K* filter_data = filter->data<K>();
     auto weights_tz = GetWeightsTz(filter, groups);
-    int g = std::max(groups, 1);
 
     auto user_src_md = platform::MKLDNNMemDesc(
-        weights_tz, platform::MKLDNNGetDataType<K>(),
-        (g == 1) ? filter->format() : MKLDNNMemoryFormat::goihw);
-
-    const platform::MKLDNNEngine& engine = dev_ctx.GetEngine();
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    auto source_data_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::iohw);
-    auto reordered_data_md = platform::MKLDNNMemDesc(
-        weights_tz, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::oihw);
-    auto source_data_mem = platform::MKLDNNMemory(
-        source_data_md, engine, platform::to_void_cast<K>(filter_data));
-    auto reordered_data_mem = platform::MKLDNNMemory(reordered_data_md, engine);
-    platform::Reorder(source_data_mem, reordered_data_mem, engine);
-    astream.wait();
 
     return this->template AcquireMemoryWithReorder<K>(
         dev_ctx, user_src_md, this->fwd_pd_->weights_desc(),
-        reordered_data_mem.get_data_handle(), key, "@weights_mem_p", is_test_);
+        platform::to_void_cast<K>(filter_data), key, "@weights_mem_p", is_test_);
   }
 
   template <typename F = T>
