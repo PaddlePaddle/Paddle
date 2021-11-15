@@ -15,8 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/api/ext/exception.h"
 
 namespace paddle {
 namespace experimental {
@@ -34,6 +35,18 @@ class Scalar {
 
   Scalar(bool val) : tag(Tag::HAS_B) { data_.b = val; }  // NOLINT
 
+  Scalar(const std::string& str_value) : tag(Tag::HAS_D) {  // NOLINT
+    if (str_value == "inf") {
+      data_.d = std::numeric_limits<double>::infinity();
+    } else if (str_value == "-inf") {
+      data_.d = -std::numeric_limits<double>::infinity();
+    } else if (str_value == "nan") {
+      data_.d = std::numeric_limits<double>::quiet_NaN();
+    } else {
+      data_.d = std::stod(str_value);
+    }
+  }
+
   template <typename T>
   inline T to() const {
     switch (tag) {
@@ -48,8 +61,7 @@ class Scalar {
       case Tag::HAS_B:
         return static_cast<T>(data_.b);
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid enum scalar type tag `%d`.", static_cast<int>(tag)));
+        PD_THROW("Invalid enum scalar type tag `", static_cast<int>(tag), "`.");
     }
   }
 
@@ -71,4 +83,4 @@ class Scalar {
 
 namespace pten {
 using Scalar = paddle::experimental::Scalar;
-}
+}  // namespace pten

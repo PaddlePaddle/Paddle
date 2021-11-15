@@ -168,5 +168,35 @@ class TestRNNOp4(TestRNNOp):
         self.is_bidirec = True
 
 
+class TestRNNOp5(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+
+
+class TestRNNOp6(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+
+
+class TestRNNOp7(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+        self.is_test = True
+
+
+class TestRNNOp8(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+        self.sequence_length = None
+
+
+class TestRNNOp9(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 3
+
+
 if __name__ == '__main__':
     unittest.main()

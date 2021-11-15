@@ -297,5 +297,59 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestElementwiseMulTripleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape, False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_mul(x, y)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        gradient_checker.triple_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape[:-1], False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_add(x, y, axis=0)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
+
+        gradient_checker.triple_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()

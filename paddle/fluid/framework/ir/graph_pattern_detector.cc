@@ -1061,6 +1061,27 @@ PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
   return act_out;
 }
 
+PDNode *patterns::SoftplusActivation::operator()(std::string activation_type) {
+  // Create Operators
+  auto *softplus_op =
+      pattern->NewNode(softplus_repr())->assert_is_op("softplus");
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *softplus_out = pattern->NewNode(softplus_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("softplus")
+                           ->assert_is_op_input(activation_type);
+  // output
+  auto *activation_out = pattern->NewNode(activation_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output(activation_type);
+
+  softplus_op->LinksTo({softplus_out});
+  activation_op->LinksFrom({softplus_out}).LinksTo({activation_out});
+  return activation_out;
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =

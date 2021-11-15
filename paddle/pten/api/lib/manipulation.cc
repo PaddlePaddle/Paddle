@@ -17,15 +17,16 @@ limitations under the License. */
 #include <memory>
 
 #include "glog/logging.h"
+#include "paddle/pten/api/include/registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
 
 namespace paddle {
 namespace experimental {
 
-Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
+PD_DLL_DECL Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -34,7 +35,7 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-  auto kernel_context = pten::KernelContext(*dev_ctx);
+  auto kernel_context = pten::KernelContext(dev_ctx);
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
@@ -60,3 +61,5 @@ Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
 }
 }  // namespace experimental
 }  // namespace paddle
+
+PT_REGISTER_API(Manipulation);
