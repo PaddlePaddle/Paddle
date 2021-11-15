@@ -76,7 +76,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
 
     static T zero(0);
     static dnnl::memory zero_memory = dnnl::memory(
-        FillConstantMKLDNNHandler<T>::src1_md, mkldnn_engine, &nan);
+        FillConstantMKLDNNHandler<T>::src1_md, mkldnn_engine, &zero);
 
     auto src0_memory_p = handler.AcquireDstMemory(out);
     auto fill_constant_p = handler.AcquireForwardPrimitive();
