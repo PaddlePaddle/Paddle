@@ -87,7 +87,8 @@ __global__ void BroadcastKernelBinary(
   kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
       result, arg0, arg1, func);
   // store
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1, true>(out + fix, result,
+                                                          num);
 }
 
 // bias add forward impl for "[m, n] + [n] = [m, n]"
@@ -267,25 +268,24 @@ __global__ void BiasAddBw1DReduceKernel(const ReduceParamType<T>* temp_sum,
 }
 
 template <typename T>
-void Launch2DColumnReduce(gpuStream_t stream, const int max_threads,
-                          const int reduce_num, const int left_num,
-                          const T* d_out, T* d_bias) {
+void Launch2DColumnReduce(const platform::CUDADeviceContext& dev_ctx,
+                          const int max_threads, const int reduce_num,
+                          const int left_num, const T* d_out, T* d_bias) {
   dim3 block;
   dim3 grid;
   bool should_reduce_again = false;
   int blocking_size = 1;
   SetConfigForColumnReduce(max_threads, reduce_num, left_num, &blocking_size,
                            &should_reduce_again, &block, &grid);
+  const auto& stream = dev_ctx.stream();
 
   if (!should_reduce_again) {
     BiasAddBwSinglePassKernel<T><<<grid, block, 0, stream>>>(d_out, reduce_num,
                                                              left_num, d_bias);
   } else {
     framework::Tensor tmp_sum;
-    tmp_sum.mutable_data<ReduceParamType<T>>(
-        framework::make_ddim({static_cast<int64_t>(
-            left_num * grid.y * sizeof(ReduceParamType<T>))}),
-        paddle::platform::CUDAPlace());
+    tmp_sum.Resize({grid.y, left_num});
+    tmp_sum.mutable_data<ReduceParamType<T>>(dev_ctx.GetPlace());
 
     BiasAddBw2DReduceKernel<T><<<grid, block, 0, stream>>>(
         d_out, reduce_num, left_num, blocking_size,
@@ -311,8 +311,8 @@ void LaunchBiasAddBwKernel(const platform::CUDADeviceContext& dev_ctx, int m,
     Launch1DColumnReduce(dev_ctx.stream(), max_threads, reduce_num, left_num,
                          d_out, d_bias);
   } else {
-    Launch2DColumnReduce(dev_ctx.stream(), max_threads, reduce_num, left_num,
-                         d_out, d_bias);
+    Launch2DColumnReduce(dev_ctx, max_threads, reduce_num, left_num, d_out,
+                         d_bias);
   }
 }
 

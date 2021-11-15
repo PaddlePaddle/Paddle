@@ -98,6 +98,7 @@ case $1 in
   ;;
   run_all)
     compile_install_paddle
+    init_benchmark
     prepare_data
     run_model_benchmark
   ;;
