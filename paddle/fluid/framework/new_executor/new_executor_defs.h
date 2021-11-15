@@ -364,6 +364,11 @@ static bool IsMemcpyH2D(const Instruction& instr) {
 static bool IsMemcpyD2H(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyD2H;
 }
+
+static bool IsCpuOp(const Instruction& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
 }  // namespace interpreter
 
 }  // namespace framework
