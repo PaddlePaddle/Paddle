@@ -28,7 +28,7 @@ uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
       (static_cast<uint8_t>(key.layout()) << KernelKey::kBackendBitLength);
   hash_value |=
       (static_cast<uint16_t>(key.dtype())
-       << (KernelKey::kBackendBitLength + KernelKey::kDataTypeBitLength));
+       << (KernelKey::kBackendBitLength + KernelKey::kDataLayoutBitLength));
   return hash_value;
 }
 
@@ -60,7 +60,8 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
 
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
-  if (kernel_key.layout() != pten::DataLayout::ANY) {
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.layout() != pten::DataLayout::ANY) {
     pten::KernelKey any_layout_kernel_key(
         kernel_key.backend(), pten::DataLayout::ANY, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);

@@ -25,6 +25,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/linalg.h"
+
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #endif
@@ -380,15 +385,17 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto* Out = ctx.Output<Tensor>("Out");
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
-    PADDLE_ENFORCE_NE(framework::product(X->dims()), 0,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) dims size must not be equal 0,"
-                          " but reviced dims size is 0. "));
-    PADDLE_ENFORCE_NE(framework::product(Y->dims()), 0,
-                      platform::errors::InvalidArgument(
-                          "The Input(Y) dims size must not be equal 0,"
-                          " but reviced dims size is 0. "));
-    MatMulFunction<DeviceContext, T>(X, Y, Out, trans_x, trans_y, ctx);
+
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    Out->mutable_data<T>(X->place());
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*X);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*Y);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
+
+    // call new kernel
+    pten::Matmul<T>(dev_ctx, *pt_x.get(), *pt_y.get(), trans_x, trans_y,
+                    pt_out.get());
   }
 };
 

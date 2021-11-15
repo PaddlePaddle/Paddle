@@ -366,9 +366,9 @@ if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${GIT_PR_ID}" ]; then
                wanghuancoder or luotao1) approval for modifying
                unity_build_rule.cmake which the rules of Unity Build."
     echo_line=$(echo ${echo_line})
-    # Avin0323(16167147) zhouwei25(52485244)
+    # Avin0323(23427135) zhouwei25(52485244)
     # wanghuancoder(26922892) luotao1(6836917)
-    check_approval 1 16167147 52485244 26922892 6836917
+    check_approval 1 23427135 52485244 26922892 6836917
 fi
 
 if [ -n "${echo_list}" ];then

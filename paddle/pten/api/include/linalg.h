@@ -14,6 +14,17 @@
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/kernels/cpu/linalg.h"
-#include "paddle/pten/kernels/cuda/linalg.h"
+#include "paddle/pten/api/include/tensor.h"
+
+namespace paddle {
+namespace experimental {
+
+Tensor dot(const Tensor& x, const Tensor& y);
+
+Tensor matmul(const Tensor& x,
+              const Tensor& y,
+              bool transpose_x,
+              bool transpose_y);
+
+}  // namespace experimental
+}  // namespace paddle

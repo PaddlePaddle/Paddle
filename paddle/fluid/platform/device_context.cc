@@ -222,8 +222,12 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
 
   context_ = xpu::create_context();
   const int MAX_XPU_NUM = 16;
-  const int l3_size = 13.5 * 1024 * 1024;
   static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
+
+  int l3_size = 13.5 * 1024 * 1024;
+  if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
+    l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
+  }
 
   auto selected_xpus = GetXPUSelectedDevices();
   for (unsigned int i = 0; i < selected_xpus.size(); i++) {
