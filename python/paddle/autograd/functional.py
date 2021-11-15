@@ -244,7 +244,7 @@ def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
 
 
 @framework.dygraph_only
-def jacobian(func, inputs, create_graph=False, allow_unused=False):
+def jacobian(func, inputs, create_graph=False, allow_unused=False, batch=False):
     ''' 
     .. note::
         **This API is ONLY available in the imperative mode.**
@@ -355,6 +355,12 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
     '''
     inputs = _tensors(inputs, "inputs")
     outputs = _tensors(func(*inputs), "outputs")
+    if batch:
+        batch_size = inputs[0].shape[0]
+        for input in inputs:
+            assert input.shape[0] == batch_size
+        for output in outputs:
+            assert output.shape[0] == batch_size
     fin_size = len(inputs)
     fout_size = len(outputs)
     flat_outputs = tuple(reshape(output, shape=[-1]) for output in outputs)
@@ -386,7 +392,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 
 
 @framework.dygraph_only
-def hessian(func, inputs, create_graph=False, allow_unused=False):
+def hessian(func, inputs, create_graph=False, allow_unused=False, batch=False):
     ''' 
     .. note::
         **This API is ONLY available in the imperative mode.**
@@ -492,9 +498,17 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
     '''
     inputs = _tensors(inputs, "inputs")
     outputs = func(*inputs)
-    assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
-        1
-    ], "The function to compute Hessian matrix should return a Tensor with a single element"
+    if batch:
+        batch_size = inputs[0].shape[0]
+        for input in inputs:
+            assert input.shape[0] == batch_size
+        assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
+            batch_size, 1
+        ], "The function to compute batched Hessian matrix should return a Tensor of shape [batch_size, 1]"
+    else:
+        assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
+            1
+        ], "The function to compute Hessian matrix should return a Tensor with a single element"
 
     def jac_func(*ins):
         grad_inputs = grad(
@@ -508,7 +522,11 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
             for i in range(len(inputs)))
 
     return jacobian(
-        jac_func, inputs, create_graph=create_graph, allow_unused=allow_unused)
+        jac_func,
+        inputs,
+        create_graph=create_graph,
+        allow_unused=allow_unused,
+        batch=batch)
 
 
 @framework.dygraph_only
