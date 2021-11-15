@@ -1,0 +1,1 @@
+cc_test(test_grad_elementwise_api SRCS test_grad_elementwise_api.cc DEPS pten_api pten_api_utils)

@@ -1,0 +1,5 @@
+if(WITH_GPU)
+  nv_library(grad_math_cuda SRCS grad_math.cu DEPS dense_tensor kernel_context kernel_factory utils_cuda blas)
+elseif(WITH_ROCM)
+  hip_library(grad_math_cuda SRCS grad_math.cu DEPS dense_tensor kernel_context kernel_factory utils_cuda blas)
+endif()
