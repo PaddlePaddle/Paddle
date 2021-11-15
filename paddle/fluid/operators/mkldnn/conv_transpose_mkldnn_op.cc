@@ -231,7 +231,8 @@ class ConvTransposeMKLDNNHandlerT
 
     return this->template AcquireMemoryWithReorder<K>(
         dev_ctx, user_src_md, this->fwd_pd_->weights_desc(),
-        platform::to_void_cast<K>(filter_data), key, "@weights_mem_p", is_test_);
+        platform::to_void_cast<K>(filter_data), key, "@weights_mem_p",
+        is_test_);
   }
 
   template <typename F = T>
