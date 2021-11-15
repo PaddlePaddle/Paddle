@@ -50,12 +50,12 @@ void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           DenseTensor* out) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
   if (&x == out) {
-    LOG(INFO) << "out_meta dims:" << out_meta.dims;
-    out->Resize(out_meta.dims);
+    LOG(INFO) << "out_meta dims:" << out_meta.shape.dims;
+    out->Resize(out_meta.shape.dims);
     return;
   }
   pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_meta.dims);
+  out->Resize(out_meta.shape.dims);
 }
 
 void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,

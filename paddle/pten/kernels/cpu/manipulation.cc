@@ -50,11 +50,11 @@ void ReshapeFromVectorVal(const CPUContext& dev_ctx,
                           DenseTensor* out) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
   if (&x == out) {
-    out->Resize(out_meta.dims);
+    out->Resize(out_meta.shape.dims);
     return;
   }
   pten::Copy(dev_ctx, x, out);
-  out->Resize(out_meta.dims);
+  out->Resize(out_meta.shape.dims);
 }
 
 void ReshapeFromVectorValWithXShape(const CPUContext& dev_ctx,

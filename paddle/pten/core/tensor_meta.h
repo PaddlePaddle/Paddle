@@ -52,6 +52,7 @@ struct DenseTensorShape {
   DDim dims{std::initializer_list<int64_t>{}};
   DataLayout layout{DataLayout::NCHW};
   LoD lod;
+  size_t offset{0};
 };
 
 inline DenseTensorShape::DenseTensorShape(const DDim& dims) : dims(dims) {}
@@ -77,7 +78,7 @@ inline bool operator==(const DenseTensorShape& lhs,
                        const DenseTensorShape& rhs) {
   bool ret = true;
   return ret && (lhs.dims == rhs.dims) && (lhs.layout == rhs.layout) &&
-         (lhs.lod == rhs.lod);
+         (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
 
 /// \brief The meta data of dense tensor. Take the structure type

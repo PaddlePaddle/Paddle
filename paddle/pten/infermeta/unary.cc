@@ -212,13 +212,14 @@ DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
                     paddle::platform::errors::InvalidArgument(
                         "The parameter 'shape' in ReshapeOp must be set. "
                         "But received 'shape' is empty."));
-  auto x_dims = x_meta.dims;
+  auto x_dims = x_meta.shape.dims;
   auto out_dims = ValidateShape(shape, x_dims);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
-  if (x_dims[0] == return_meta.dims[0]) {
+  DenseTensorMeta return_meta(x_meta.dtype,
+                              DenseTensorShape(out_dims, x_meta.shape.layout));
+  if (x_dims[0] == return_meta.shape.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
-    return_meta.lod = x_meta.lod;
+    return_meta.shape.lod = x_meta.shape.lod;
   }
   return return_meta;
 }

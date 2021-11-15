@@ -383,9 +383,10 @@ class ReshapeKernel {
     // TODO(YuanRisheng) we can use MakePtenDenseTensor after #36916 merge.
     const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
         paddle::platform::CPUPlace());
-    pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
-                               in->dims(),
-                               pten::TransToPtenDataLayout(in->layout())};
+    pten::DenseTensorMeta meta{
+        pten::TransToPtenDataType(in->type()),
+        pten::DenseTensorShape(in->dims(),
+                               pten::TransToPtenDataLayout(in->layout()))};
     auto pt_out_tmp =
         std::make_shared<pten::DenseTensor>(alloc, std::move(meta));
     pten::DenseTensor *pt_out = nullptr;
