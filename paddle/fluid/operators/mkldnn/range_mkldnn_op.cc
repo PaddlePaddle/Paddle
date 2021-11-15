@@ -81,6 +81,7 @@ class RangeMKLDNNKernel : public framework::OpKernel<T> {
       for (int i = 1; i < RangeMKLDNNHandler<T>::RANGE_SHIFT; ++i) {
         data[i] = data[i - 1] + step;
       }
+
       RangeMKLDNNHandler<T> handler(step, size, dnnl_engine, ctx.GetPlace());
 
       auto src_memory_p = handler.AcquireSrcMemory(out);
@@ -89,9 +90,18 @@ class RangeMKLDNNKernel : public framework::OpKernel<T> {
       auto range_p = handler.AcquireForwardPrimitive();
 
       auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+      // range kernel can only work single-threaded since
+      // the memories overlaps and execution must be done
+      // sequentially because only part of it is initialized
+      int prev_num_threads = omp_get_num_threads();
+      omp_set_num_threads(1);
+
       range_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory_p},
                                  {MKLDNN_ARG_DST, *dst_memory_p}});
       astream.wait();
+
+      omp_set_num_threads(prev_num_threads);
     }
 
     out->set_layout(framework::DataLayout::kMKLDNN);
