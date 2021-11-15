@@ -67,6 +67,21 @@ class RangeOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", {-1});
   }
 
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Start");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
@@ -88,6 +103,9 @@ class RangeOpMaker : public framework::OpProtoAndCheckerMaker {
              "shape=[1].");
     AddInput("Step", "Spacing between values. It is a tensor with shape=[1].");
     AddOutput("Out", "A sequence of numbers.");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
     Return evenly spaced values within a given interval. Values are generated within the half-open interval [start, stop) (in other words, the interval including start but excluding stop). Like arange function of numpy.
 )DOC");
