@@ -223,9 +223,11 @@ class ConvTransposeMKLDNNHandlerT
       const framework::Tensor* filter, const int& groups) {
     const K* filter_data = filter->data<K>();
     auto weights_tz = GetWeightsTz(filter, groups);
+    int g = std::max(groups, 1);
 
     auto user_src_md = platform::MKLDNNMemDesc(
-        weights_tz, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::iohw);
+        weights_tz, platform::MKLDNNGetDataType<K>(),
+        (g == 1) ? MKLDNNMemoryFormat::iohw : MKLDNNMemoryFormat::giohw);
 
     return this->template AcquireMemoryWithReorder<K>(
         dev_ctx, user_src_md, this->fwd_pd_->weights_desc(),
