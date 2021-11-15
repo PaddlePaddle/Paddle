@@ -577,6 +577,24 @@ struct FCActOneDNN : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
+// Fuse softplus with activation
+// ops: softplus + activation
+// nodes:
+// softplus, softplus_out,
+// activation, activation_out
+struct SoftplusActivation : public PatternBase {
+  SoftplusActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "softplus_activation") {}
+
+  PDNode* operator()(std::string activation_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(softplus);
+  PATTERN_DECL_NODE(activation);
+  PATTERN_DECL_NODE(softplus_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // Embedding
 struct Embedding : public PatternBase {
   Embedding(PDPattern* pattern, const std::string& name_scope)
@@ -976,17 +994,28 @@ struct Matmul : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
 };
 
-// Matmul_v2 op
-// Forward pass for matmul_v2.
+// MatmulV2: tensor * weight
+struct MatmulV2Weight : public PatternBase {
+  MatmulV2Weight(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2_weight") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(matmul_v2_out);
+};
+
+// MatmulV2: tensor * tensor or tensor * weight
 struct MatmulV2 : public PatternBase {
   MatmulV2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "matmul_v2") {}
 
   PDNode* operator()();
-  PATTERN_DECL_NODE(matmul_in_x);
-  PATTERN_DECL_NODE(matmul_in_y);
-  PATTERN_DECL_NODE(matmul_op);
-  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(matmul_v2_out);
 };
 
 // Squeeze2 + Matmul

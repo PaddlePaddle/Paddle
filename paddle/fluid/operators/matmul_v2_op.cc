@@ -347,6 +347,76 @@ class MatMulV2OpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* context) const override {
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("DOut"), "Input", "DOut",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("DDX"), "Input", "DDX",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("DDY"), "Input", "DDY",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("D_DX"), "Input", "D_DX",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("D_DY"), "Input", "D_DY",
+                   "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("D_DDOut"), "Input", "D_DDOut",
+                   "matmul_v2_triple_grad");
+
+    if (context->HasOutput("D_X_out")) {
+      context->ShareDim("X", "D_X_out");
+    }
+    if (context->HasOutput("D_Y_out")) {
+      context->ShareDim("Y", "D_Y_out");
+    }
+    if (context->HasOutput("D_DOut_out")) {
+      context->ShareDim("DOut", "D_DOut_out");
+    }
+    if (context->HasOutput("D_DDX_out")) {
+      context->ShareDim("X", "D_DDX_out");
+    }
+    if (context->HasOutput("D_DDY_out")) {
+      context->ShareDim("Y", "D_DDY_out");
+    }
+  }
+};
+
+template <typename T>
+class MatMulV2OpTripleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("matmul_v2_triple_grad");
+
+    // get input from double grad
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->Input("DOut"));
+    op->SetInput("DDX", this->Input("DDX"));
+    op->SetInput("DDY", this->Input("DDY"));
+    op->SetInput("D_DX", this->OutputGrad("DX"));
+    op->SetInput("D_DY", this->OutputGrad("DY"));
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+
+    // set outputs
+    op->SetOutput("D_X_out", this->InputGrad("X"));
+    op->SetOutput("D_Y_out", this->InputGrad("Y"));
+    op->SetOutput("D_DOut_out", this->InputGrad("DOut"));
+    op->SetOutput("D_DDX_out", this->InputGrad("DDX"));
+    op->SetOutput("D_DDY_out", this->InputGrad("DDY"));
+
+    op->SetAttrMap(this->Attrs());
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -359,7 +429,11 @@ REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad);
+REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad,
+                  ops::MatMulV2OpTripleGradMaker<paddle::framework::OpDesc>,
+                  ops::MatMulV2OpTripleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(matmul_v2_triple_grad, ops::MatMulV2OpTripleGrad);
 
 REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
@@ -384,4 +458,13 @@ REGISTER_OP_CPU_KERNEL(
     ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
                                   paddle::platform::complex<float>>,
     ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex<double>>);
+
+REGISTER_OP_CPU_KERNEL(
+    matmul_v2_triple_grad,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex<float>>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
                                   paddle::platform::complex<double>>);

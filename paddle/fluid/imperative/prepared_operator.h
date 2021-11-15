@@ -21,9 +21,13 @@
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+
+#include "paddle/pten/include/core.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -147,19 +151,29 @@ class PreparedOp {
              const framework::OperatorWithKernel::OpKernelFunc& func,
              platform::DeviceContext* dev_ctx);
 
+  PreparedOp(const framework::OperatorBase& op,
+             const framework::RuntimeContext& ctx,
+             const framework::OpKernelType& kernel_type,
+             const framework::KernelSignature& kernel_signature,
+             const pten::Kernel& pt_kernel,
+             pten::KernelContext* pt_kernel_context,
+             platform::DeviceContext* dev_ctx);
+
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
-                            const framework::AttributeMap& default_attrs);
+                            const framework::AttributeMap& default_attrs,
+                            pten::KernelContext* pt_kernel_context = nullptr);
 
   static PreparedOp Prepare(const NameVarMap<VariableWrapper>& ins,
                             const NameVarMap<VariableWrapper>& outs,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
-                            const framework::AttributeMap& default_attrs);
+                            const framework::AttributeMap& default_attrs,
+                            pten::KernelContext* pt_kernel_context = nullptr);
 
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs,
@@ -178,6 +192,15 @@ class PreparedOp {
   framework::OpKernelType kernel_type_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
+  // NOTE(chenweihang): Similar op members are used to adapt to
+  // new pten kernel, if there is a better design in the future,
+  // we may polish the implementation here
+  bool run_pten_kernel_{false};
+  framework::KernelSignature pt_kernel_signature_;
+  pten::Kernel pt_kernel_;
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  pten::KernelContext* pt_kernel_context_;
 };
 
 }  // namespace imperative

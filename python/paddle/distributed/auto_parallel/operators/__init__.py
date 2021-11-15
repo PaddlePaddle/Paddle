@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperator
+from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
-from .common import register_distributed_operator
+from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import find_best_compatible_distributed_operator_impl
 from . import dist_embedding

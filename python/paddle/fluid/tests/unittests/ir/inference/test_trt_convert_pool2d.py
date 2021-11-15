@@ -33,6 +33,10 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
                 for index in range(len(ksize)):
                     if ksize[index] <= paddings[index]:
                         return False
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if program_config.ops[0].attrs['pooling_type'] == 'avg':
+                return False
         return True
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:

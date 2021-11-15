@@ -461,7 +461,7 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
       pattern->NewNode(transpose2_0_repr())->assert_is_op("transpose2");
   auto* transpose2_0_out_var = pattern->NewNode(transpose2_0_out_repr())
                                    ->assert_is_op_output("transpose2");
-  transpose2_0_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops);
+  transpose2_0_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops, "X");
 
   auto* matmul_qk =
       pattern->NewNode(matmul_qk_repr())->assert_is_ops(matmul_ops);
@@ -1171,6 +1171,23 @@ MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
       .IsBoolEQ(false)
       .End()
       .AddAttr("transpose_Y")  // QK(true) QKV(false)
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("trans_y")  // QK(true) QKV(false)
       .IsType<bool>()
       .End();
 
