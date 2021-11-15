@@ -77,6 +77,36 @@ paddle::framework::FetchList InterpreterCore::Run(
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
+void InterpreterCore::BuildOperatorDependences() {
+  // set the dependecy_count_ and next Ops
+  auto op_nums = vec_func_list_.size();
+  dependecy_count_.resize(op_nums);
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    std::vector<size_t> vec_temp;
+    for (auto& item : vec_instruction_[i].Outputs()) {
+      for (auto id : item.second) {
+        vec_temp = interpreter::merge_vector(vec_temp, input_var2op_info_[id]);
+      }
+    }
+
+    // In Program, op order is a very important information.
+    // Op can only add op after it as next as next ops.
+    std::vector<size_t> filter_next;
+    filter_next.reserve(vec_temp.size());
+    for (auto item : vec_temp) {
+      if (item > i) {
+        filter_next.push_back(item);
+      }
+    }
+
+    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
+
+    for (auto inst_id : filter_next) {
+      dependecy_count_[inst_id]++;
+    }
+  }
+}
+
 void InterpreterCore::Convert() {
   auto& vec_meta_info = global_scope_->MutableVecMetaInfo();
   auto var_nums = global_scope_->VarSize();
@@ -84,7 +114,6 @@ void InterpreterCore::Convert() {
 
   auto op_nums = vec_func_list_.size();
   vec_instruction_.reserve(op_nums);
-  dependecy_count_.resize(op_nums);
 
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = vec_func_list_[op_idx];
@@ -144,30 +173,7 @@ void InterpreterCore::Convert() {
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    std::vector<size_t> vec_temp;
-    for (auto& item : vec_instruction_[i].Outputs()) {
-      for (auto id : item.second) {
-        vec_temp = interpreter::merge_vector(vec_temp, input_var2op_info_[id]);
-      }
-    }
-
-    // In Program, op order is a very important information.
-    // Op can only add op after it as next as next ops.
-    std::vector<size_t> filter_next;
-    filter_next.reserve(vec_temp.size());
-    for (auto item : vec_temp) {
-      if (item > i) {
-        filter_next.push_back(item);
-      }
-    }
-
-    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
-
-    for (auto inst_id : filter_next) {
-      dependecy_count_[inst_id]++;
-    }
-  }
+  BuildOperatorDependences();
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
@@ -287,7 +293,7 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  VLOG(4) << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "Start run" << place << " " << op->DebugStringEx(global_scope_);
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
@@ -318,7 +324,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
   }
 
-  VLOG(3) << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "End run" << place << " " << op->DebugStringEx(global_scope_);
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
@@ -492,6 +498,8 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
       continue;
     }
     if (is_ready) {
+      VLOG(6) << "Async delete variable with name : "
+              << var_scope.GetNameById(var_id);
       gc_->Add(var_scope.Var(var_id), gc_event_.at(instr_id),
                &instr.DeviceContext());
     }
