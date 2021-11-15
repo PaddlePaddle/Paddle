@@ -743,8 +743,15 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
   // called
   // VLOG(1) << "_worker_ptr=" << pserver_ptr_->_worker_ptr;
   auto* communicator = Communicator::GetInstance();
-  return communicator->_worker_ptr->registe_client2client_msg_handler(msg_type,
-                                                                      handler);
+  // for unittest which does not call fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler communicator is "
+               "null";
+    return -1;
+  } else {
+    return communicator->_worker_ptr->registe_client2client_msg_handler(
+        msg_type, handler);
+  }
   // return
   // pserver_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type,
   //                                                                    handler);

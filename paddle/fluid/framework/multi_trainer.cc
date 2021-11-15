@@ -158,9 +158,15 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 #ifdef PADDLE_WITH_PSCORE
   // pull dense param first
   auto communicator = paddle::distributed::Communicator::GetInstance();
-  auto& recv_ctx = communicator->GetRecvCtxMap();
-  communicator->PullDense(recv_ctx);
-  VLOG(3) << "init other env done.";
+  // for unittest which call train_from_dataset but does not call
+  // fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(0) << "MultiTrainer::InitOtherEnv Communicator is null!";
+  } else {
+    auto& recv_ctx = communicator->GetRecvCtxMap();
+    communicator->PullDense(recv_ctx);
+    VLOG(3) << "init other env done.";
+  }
 #endif
 }
 
@@ -264,8 +270,13 @@ void MultiTrainer::Finalize() {
 
 #if defined PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
-  communicator->_worker_ptr->flush();
-  VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+  // for unittest which does not call fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(0) << "MultiTrainer::Finalize communicator is null!";
+  } else {
+    communicator->_worker_ptr->flush();
+    VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+  }
 #endif
   root_scope_->DropKids();
 }
