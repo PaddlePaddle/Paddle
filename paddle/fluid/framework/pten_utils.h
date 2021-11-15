@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/api/include/core.h"
-#include "paddle/pten/hapi/lib/utils/tensor_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -67,8 +67,6 @@ class KernelSignatureMap {
 
   bool Has(const std::string& op_type) const;
 
-  void Emplace(const std::string& op_type, KernelSignature&& signature);
-
   const KernelSignature& Get(const std::string& op_type) const;
 
  private:
@@ -77,7 +75,7 @@ class KernelSignatureMap {
 
  private:
   static KernelSignatureMap* kernel_signature_map_;
-  static std::mutex mutex_;
+  static std::once_flag init_flag_;
 
   paddle::flat_hash_map<std::string, KernelSignature> map_;
 };
@@ -88,27 +86,6 @@ class KernelArgsNameMaker {
   virtual const paddle::SmallVector<std::string>& GetInputArgsNames() = 0;
   virtual const paddle::SmallVector<std::string>& GetOutputArgsNames() = 0;
   virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
-};
-
-class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
- public:
-  explicit KernelArgsNameMakerByOpProto(framework::proto::OpProto* op_proto)
-      : op_proto_(op_proto) {}
-
-  ~KernelArgsNameMakerByOpProto() {}
-
-  const paddle::SmallVector<std::string>& GetInputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetOutputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetAttrsArgsNames() override;
-
-  KernelSignature GetKernelSignature();
-
- private:
-  framework::proto::OpProto* op_proto_;
-
-  paddle::SmallVector<std::string> input_names_;
-  paddle::SmallVector<std::string> output_names_;
-  paddle::SmallVector<std::string> attr_names_;
 };
 
 std::string KernelSignatureToString(const KernelSignature& signature);

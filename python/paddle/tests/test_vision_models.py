@@ -70,6 +70,12 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet152(self):
         self.models_infer('resnet152')
 
+    def test_wide_resnet50_2(self):
+        self.models_infer('wide_resnet50_2')
+
+    def test_wide_resnet101_2(self):
+        self.models_infer('wide_resnet101_2')
+
     def test_densenet121(self):
         self.models_infer('densenet121')
 
@@ -84,6 +90,12 @@ class TestVisonModels(unittest.TestCase):
 
     def test_densenet264(self):
         self.models_infer('densenet264')
+
+    def test_squeezenet1_0(self):
+        self.models_infer('squeezenet1_0')
+
+    def test_squeezenet1_1(self):
+        self.models_infer('squeezenet1_1')
 
     def test_alexnet(self):
         self.models_infer('alexnet')

@@ -15,14 +15,44 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
+
+class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
+ public:
+  explicit KernelArgsNameMakerByOpProto(
+      const framework::proto::OpProto* op_proto)
+      : op_proto_(op_proto) {
+    PADDLE_ENFORCE_NOT_NULL(op_proto_, platform::errors::InvalidArgument(
+                                           "Op proto cannot be nullptr."));
+  }
+
+  ~KernelArgsNameMakerByOpProto() {}
+
+  const paddle::SmallVector<std::string>& GetInputArgsNames() override;
+  const paddle::SmallVector<std::string>& GetOutputArgsNames() override;
+  const paddle::SmallVector<std::string>& GetAttrsArgsNames() override;
+
+  KernelSignature GetKernelSignature();
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(KernelArgsNameMakerByOpProto);
+
+ private:
+  const framework::proto::OpProto* op_proto_;
+
+  paddle::SmallVector<std::string> input_names_;
+  paddle::SmallVector<std::string> output_names_;
+  paddle::SmallVector<std::string> attr_names_;
+};
 
 OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
@@ -60,30 +90,34 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
 }
 
 KernelSignatureMap* KernelSignatureMap::kernel_signature_map_ = nullptr;
-std::mutex KernelSignatureMap::mutex_;
+std::once_flag KernelSignatureMap::init_flag_;
 
 KernelSignatureMap& KernelSignatureMap::Instance() {
-  if (kernel_signature_map_ == nullptr) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (kernel_signature_map_ == nullptr) {
-      kernel_signature_map_ = new KernelSignatureMap;
+  std::call_once(init_flag_, [] {
+    kernel_signature_map_ = new KernelSignatureMap();
+    for (const auto& pair : OpInfoMap::Instance().map()) {
+      const auto& op_type = pair.first;
+      const auto* op_proto = pair.second.proto_;
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+        KernelArgsNameMakerByOpProto maker(op_proto);
+        VLOG(10) << "Register kernel signature for " << op_type;
+        auto success =
+            kernel_signature_map_->map_
+                .emplace(op_type, std::move(maker.GetKernelSignature()))
+                .second;
+        PADDLE_ENFORCE_EQ(
+            success, true,
+            platform::errors::PermissionDenied(
+                "Kernel signature of the operator %s has been registered.",
+                op_type));
+      }
     }
-  }
+  });
   return *kernel_signature_map_;
 }
 
 bool KernelSignatureMap::Has(const std::string& op_type) const {
   return map_.find(op_type) != map_.end();
-}
-
-void KernelSignatureMap::Emplace(const std::string& op_type,
-                                 KernelSignature&& signature) {
-  if (!Has(op_type)) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (!Has(op_type)) {
-      map_.emplace(op_type, signature);
-    }
-  }
 }
 
 const KernelSignature& KernelSignatureMap::Get(
