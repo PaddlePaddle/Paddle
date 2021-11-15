@@ -98,6 +98,9 @@ void InterpreterCore::Convert() {
 
     for (auto& item : op_func_node.input_index) {
       for (auto id : item.second) {
+        if (id == kEmptyVarIndex) {
+          continue;
+        }
         input_var2op_info_.at(id).push_back(op_idx);
         // var can be gc-ed
         if (!info.IsBuilt()) {
