@@ -91,17 +91,21 @@ class RangeMKLDNNKernel : public framework::OpKernel<T> {
 
       auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
+#if defined(_OPENMP)
       // range kernel can only work single-threaded since
       // the memories overlaps and execution must be done
       // sequentially because only part of it is initialized
       int prev_num_threads = omp_get_num_threads();
       omp_set_num_threads(1);
+#endif
 
       range_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory_p},
                                  {MKLDNN_ARG_DST, *dst_memory_p}});
       astream.wait();
 
+#if defined(_OPENMP)
       omp_set_num_threads(prev_num_threads);
+#endif
     }
 
     out->set_layout(framework::DataLayout::kMKLDNN);
