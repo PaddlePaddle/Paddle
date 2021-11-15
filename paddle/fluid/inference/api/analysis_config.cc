@@ -527,6 +527,9 @@ void AnalysisConfig::Update() {
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
   if (enable_memory_optim_ && !use_mkldnn_) {
+    LOG(WARNING) << "You tried to enable memory optim, but now you are under "
+                    "mkldnn ON, so enable_memory_optim_ will not work. You can "
+                    "limit memory usage by setting SetCacheCapacity";
 #else
   if (enable_memory_optim_) {
 #endif
