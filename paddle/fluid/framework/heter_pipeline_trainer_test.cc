@@ -170,34 +170,22 @@ TEST(HeterPipelineTrainerTest, GPU) {
 
   tmp1->Initialize(t, dataset.get());
 
-  std::cout << "after tmp1 initialize" << std::endl;
   tmp1->InitTrainerEnv(p, place);
-  std::cout << "after tmp1 init TrainerEnv" << std::endl;
   tmp1->InitOtherEnv(p);
-  std::cout << "after tmp1 init OtherEnv" << std::endl;
   tmp1->GetWorkerScope(0);
-  std::cout << "after tmp1 get worker scope" << std::endl;
   tmp1->ResetDataset(dataset.get());
-  std::cout << "after tmp1 reset data" << std::endl;
   tmp1->Finalize();
-  std::cout << "after tmp1 finalize" << std::endl;
 
   // tmp2
   std::shared_ptr<TrainerBase> tmp2;
   tmp2 = TrainerFactory::CreateTrainer(t2.class_name());
   tmp2->SetScope(&root_scope2);
   tmp2->Initialize(t2, dataset.get());
-  std::cout << "after tmp2 initialize" << std::endl;
   tmp2->InitTrainerEnv(p2, place2);
-  std::cout << "after tmp2 init TrainerEnv" << std::endl;
   tmp2->InitOtherEnv(p2);
-  std::cout << "after tmp2 init OtherEnv" << std::endl;
   tmp2->GetWorkerScope(0);
-  std::cout << "after tmp2 get worker scope" << std::endl;
   tmp2->ResetDataset(dataset.get());
-  std::cout << "after tmp2 reset data" << std::endl;
   tmp2->Finalize();
-  std::cout << "after tmp2 finalize" << std::endl;
 
   // tmp3
   std::shared_ptr<TrainerBase> tmp3;
@@ -214,7 +202,6 @@ TEST(HeterPipelineTrainerTest, GPU) {
   tmp3->GetWorkerScope(0);
   tmp3->ResetDataset(dataset.get());
   tmp3->Finalize();
-  std::cout << "after tmp3 finalize" << std::endl;
 
   // tmp4 for coverage
   std::shared_ptr<TrainerBase> tmp4;
