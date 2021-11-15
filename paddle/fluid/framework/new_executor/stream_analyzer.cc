@@ -32,7 +32,7 @@ namespace framework {
  *  1. the variable is marked as NoDataTransformVar
  *  2. the variable is marked as NoNeedDataBuffer
  */
-std::vector<size_t> StreamAnalyzer::ParseEventVarIds(
+std::vector<size_t> StreamAnalyzer::GetNeedEventVarIds(
     const Instruction& cur_instr, const Instruction& next_instr) {
   std::unordered_set<size_t> unique_var_ids;
   for (auto& item : cur_instr.Outputs()) {
@@ -50,7 +50,7 @@ std::vector<size_t> StreamAnalyzer::ParseEventVarIds(
     return false;
   };
 
-  std::vector<size_t> new_event_var_ids;
+  std::vector<size_t> need_event_var_ids;
   for (auto& item : next_instr.Inputs()) {
     for (auto var_id : item.second) {
       if (unique_var_ids.count(var_id) > 0) {
@@ -67,20 +67,20 @@ std::vector<size_t> StreamAnalyzer::ParseEventVarIds(
                   << " since it is NoNeedBufferVar";
         }
 
-        new_event_var_ids.push_back(var_id);
+        need_event_var_ids.push_back(var_id);
       }
     }
   }
-  return new_event_var_ids;
+  return need_event_var_ids;
 }
 
-void StreamAnalyzer::AssociateInputWithEvents(
+void StreamAnalyzer::ConstructEventForVar(
     const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
-    platform::DeviceType waiter_type) {
+    platform::DeviceType waiter_type, const platform::Place& place) {
   for (auto var_id : new_event_var_id) {
     if (var_id2event_.count(var_id) == 0) {
       auto device_event = std::make_shared<platform::DeviceEvent>(
-          place_, platform::GenerateDeviceEventFlag());
+          place, platform::GenerateDeviceEventFlag());
       var_id2event_.emplace(var_id, std::move(device_event));
     }
     // Add events for next_instr.inputs
@@ -102,12 +102,13 @@ void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
       next_instruction.AddDirectRun(next_op_id);
     } else {
       // Always insert events between different stream
-      auto new_event_var_ids = ParseEventVarIds(cur_instr, next_instr);
-      event_var_ids.insert(event_var_ids.end(), new_event_var_ids.begin(),
-                           new_event_var_ids.end());
+      auto need_event_var_ids = GetNeedEventVarIds(cur_instr, next_instr);
+      event_var_ids.insert(event_var_ids.end(), need_event_var_ids.begin(),
+                           need_event_var_ids.end());
 
       auto waiter_type = GetWaiterType(next_instr);
-      AssociateInputWithEvents(new_event_var_ids, &next_instr, waiter_type);
+      ConstructEventForVar(need_event_var_ids, &next_instr, waiter_type,
+                           cur_instr.DeviceContext().GetPlace());
 
       if (waiter_type == platform::kCPU) {  // GPU -> CPU
         VLOG(4) << "SyncRun: " << cur_instr.OpBase()->Type() << "->"
