@@ -23,10 +23,10 @@ import paddle
 paddle.enable_static()
 
 
-class TestDistHeterPyreaderAsync2x2(TestFleetHeterBase):
+class TestDistHeterDatasetAsync2x2(TestFleetHeterBase):
     def _setup_config(self):
         self._mode = "async"
-        self._reader = "pyreader"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,
@@ -45,14 +45,16 @@ class TestDistHeterPyreaderAsync2x2(TestFleetHeterBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_v"] = "4"
             required_envs["GLOG_logtostderr"] = "1"
 
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_heter_ctr.py", delta=1e-5, check_error_log=True)
+            "dist_fleet_heter_pipeline_ctr.py",
+            delta=1e-5,
+            check_error_log=True)
 
 
 if __name__ == "__main__":

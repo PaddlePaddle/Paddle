@@ -37,4 +37,17 @@ DenseTensor Flatten(const ContextT& dev_ctx,
   return dense_out;
 }
 
+template <typename T, typename ContextT>
+DenseTensor Reshape(const ContextT& dev_ctx,
+                    const DenseTensor& x,
+                    const std::vector<int>& shape) {
+  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
+  ReshapeFromVectorVal(dev_ctx, x, shape, &dense_out);
+  return dense_out;
+}
+
 }  // namespace pten

@@ -89,7 +89,7 @@ class CinnCompiler {
   std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,
                      CinnCacheKey::Hash>
       cache_;
-  std::atomic_int64_t real_compiled_num_{1};
+  std::atomic_int64_t real_compiled_num_{0};
   mutable RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
