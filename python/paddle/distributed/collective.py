@@ -349,8 +349,8 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
 
     Broadcast a tensor from the source to all others.
-    As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
-    by the GPU number.
+    As shown below, 4 GPUs each start 4 processes and GPU0 owns data 0. Through broadcast operator,
+    the data 0 will be sent to all GPUs from GPU0.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/broadcast.png
         :width: 800
@@ -371,6 +371,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
@@ -446,6 +447,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import ReduceOp
@@ -510,7 +512,9 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
-    Reduce a tensor to the destination from all others, as shown below.
+    Reduce a tensor to the destination from all others. As shown below, 4 GPUs each start 4 processes and the data on each GPU is respresnted
+    by the GPU number. The destination of the reduce operator is GPU0 and the process is sum. Through reduce operator,
+    the GPU0 will owns the sum of all data from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/reduce.png
         :width: 800
@@ -532,6 +536,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
@@ -634,6 +639,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
@@ -694,7 +700,8 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     """
 
-    Scatter a tensor to all participators, as shown below.
+    Scatter a tensor to all participators. As shown below, 4 GPUs each start 4 processes and the source of the scatter
+    is GPU0. Through scatter operator, the data in GPU0 will be sent to all GPUs averagely.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/scatter.png
         :width: 800
@@ -717,6 +724,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
@@ -1314,14 +1322,18 @@ def split(x,
         With row parallel linear, the weight is split into num_partitions partitions, each
         of which is a matrix with N/num_partitions rows and M column.
 
-        The linear layer put on single card is shown as below:
+        The linear layer put on single card is shown as below, the input variable is represented by X,
+        the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is 
+        simple matrix multiplication operation, O = X * W.
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_single.png
             :width: 800
             :alt: single_linear
             :align: center
 
-        Row Parallel Linear is shown as below:
+        Row Parallel Linear is shown as below. As the name suggests, Row Parallel Linear splits the weight matrix W into
+        [[W_row1], [W_row2]] along the row. And accordingly the input is splitted along the column into [X_col1, X_col2] and multiply their
+        respective weight matrices. Finally apply AllReduce on the output from each card to get the final output.
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_row.png
             :width: 800
@@ -1334,7 +1346,8 @@ def split(x,
         of which is a matrix with N rows and M/num_partitions column.
 
         The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
-        is shown as below:
+        is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and 
+        these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output. 
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_col.png
             :width: 800
@@ -1472,9 +1485,10 @@ def split(x,
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
-    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
+    Scatter tensors in in_tensor_list to all participators averagely and gather the result tensors in out_tensor_list.
     As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
-    Through alltoall operator, the out_tensor_list in GPU0 includes 0_0 and 1_0, and GPU1 includes 0_1 and 1_1.
+    Through alltoall operator, the 0_0 in GPU0 will be sent to GPU0 and 0_1 to GPU1, 1_0 in GPU1 sent to GPU0 and 1_1 to GPU1.
+    Finally the out_tensor_list in GPU0 includes 0_0 and 1_0, and GPU1 includes 0_1 and 1_1.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/alltoall.png
         :width: 800
