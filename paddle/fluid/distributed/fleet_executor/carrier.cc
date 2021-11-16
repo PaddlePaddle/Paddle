@@ -33,6 +33,13 @@ bool Carrier::EnqueueInterceptorMessage(
     // handle control message
     return true;
   } else {
+    if (creating_interceptors_) {
+      // Cannot handle the message to interceptor since interceptors
+      // are still under creating. Will enqueue into a tmp stack.
+      VLOG(3) << "Receiving message while creating interceptors.";
+      message_tmp_.emplace_back(interceptor_message);
+      return true;
+    }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
     bool rst =
@@ -70,16 +77,45 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
   return ptr;
 }
 
+void Carrier::SetCreatingFlag(bool flag) {
+  // set the creating flag
+  VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
+          << " to " << flag << ".";
+  creating_interceptors_ = flag;
+  if (!flag) {
+    // finish create interceptors outside, handle tmp messsages
+    HandleTmpMessages();
+  }
+}
+
+void Carrier::HandleTmpMessages() {
+  VLOG(3) << "Carrier has received " << message_tmp_.size()
+          << " messages during creating interceptors.";
+  for (const auto& msg : message_tmp_) {
+    EnqueueInterceptorMessage(msg);
+  }
+  message_tmp_.clear();
+}
+
 void Carrier::CreateInterceptors() {
   // create each Interceptor
-  for (const auto& item : interceptor_id_to_node_) {
-    int64_t interceptor_id = item.first;
-    TaskNode* task_node = item.second;
+  if (!interceptor_id_to_node_.empty()) {
+    // no auto init since there is no config
+    for (const auto& item : interceptor_id_to_node_) {
+      int64_t interceptor_id = item.first;
+      TaskNode* task_node = item.second;
 
-    // TODO(wangxi): use node_type to select different Interceptor
-    auto interceptor = std::make_unique<Interceptor>(interceptor_id, task_node);
-    SetInterceptor(interceptor_id, std::move(interceptor));
-    VLOG(3) << "Create Interceptor for " << interceptor_id;
+      // TODO(wangxi): use node_type to select different Interceptor
+      auto interceptor =
+          std::make_unique<Interceptor>(interceptor_id, task_node);
+      SetInterceptor(interceptor_id, std::move(interceptor));
+      VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
+              << ".";
+    }
+    // The carrier will be always waiting for outside initializer
+    // since there is no interceptor has been created during auto init
+    creating_interceptors_ = false;
+    HandleTmpMessages();
   }
 }
 
