@@ -254,7 +254,10 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
-    type_ = tensor.type_;
+    // NOTE(chenfeiyu): when sharing buffer, by definition only holder
+    // to the memory allocation and offset should be shared. Shape,
+    // data type, layout, and other metadata associated with a Tensor
+    // should not be copied.
   }
 
   bool IsSharedBufferWith(const Tensor& src) const {
