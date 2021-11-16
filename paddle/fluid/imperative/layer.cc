@@ -28,7 +28,6 @@
 #endif
 
 DECLARE_bool(use_mkldnn);
-
 namespace paddle {
 namespace imperative {
 
@@ -186,7 +185,7 @@ size_t VarBase::GradOpNum() const {
   return grad_node_ ? grad_node_->size() : 0;
 }
 
-void VarBase::ClearGradient() {
+void VarBase::ClearGradient(bool set_to_zero) {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {
@@ -204,9 +203,13 @@ void VarBase::ClearGradient() {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
-        auto* dev_ctx =
-            platform::DeviceContextPool::Instance().Get(grad_t->place());
-        operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+        if (set_to_zero) {
+          auto* dev_ctx =
+              platform::DeviceContextPool::Instance().Get(grad_t->place());
+          operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+        } else {
+          grad_t->clear();
+        }
 #ifdef PADDLE_WITH_MKLDNN
         if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
@@ -217,6 +220,28 @@ void VarBase::ClearGradient() {
     // After fix this bug, function SetIsEmpty() isn't need
     grad_var_->SharedVar()->SetIsEmpty(true);
   }
+}
+
+void VarBase::_GradientSetEmpty(bool is_empty) {
+  VLOG(4) << "Set gradient " << Name() << " is_empty:" << is_empty;
+  if (grad_var_) {
+    auto share_var = grad_var_->SharedVar();
+    if (share_var) {
+      share_var->SetIsEmpty(is_empty);
+    }
+  }
+}
+
+bool VarBase::_IsGradientSetEmpty() {
+  bool res = true;
+  if (grad_var_) {
+    auto share_var = grad_var_->SharedVar();
+    if (share_var) {
+      res = share_var->is_empty_;
+      VLOG(4) << "Check gradient " << Name() << " is empty:" << res;
+    }
+  }
+  return res;
 }
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
@@ -356,6 +381,36 @@ void VarBase::BumpInplaceVersion() {
   MutableVar()->BumpInplaceVersion();
 }
 
+// NOTE(weilong wu):
+// This function try to copy the data from target varbase,
+// and fill into the grad_var_ of the current varbase.
+void VarBase::_CopyGradientFrom(const VarBase& src) {
+  if (Var().IsInitialized()) {
+    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different data type with Tensor %s",
+                          Name(), src.Name()));
+    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different type with Tensor %s, Tensor "
+                          "ShareGradientDataWith cannot be performed!",
+                          Name(), src.Name()));
+  }
+  VLOG(4) << " VarBase copy gradient with " << src.Name();
+  if (grad_var_) {
+    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "tensor has not been initialized", src.Name()));
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
+    grad_t->ShareDataWith(src_tensor);
+    grad_t->Resize(var_->dims());
+  }
+}
+
+pten::KernelContext OpBase::pt_kernel_context_;
+
 void OpBase::SetType(const std::string& type) {
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
 }
@@ -371,7 +426,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const NameVarMap<VarType>& outs,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
-                          const platform::Place& place) {
+                          const platform::Place& place,
+                          pten::KernelContext* pt_kernel_context) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel, platform::errors::PermissionDenied(
@@ -412,8 +468,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto prepared_op =
-      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
+  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs,
+                                         default_attrs, pt_kernel_context);
   auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {
@@ -441,7 +497,8 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place);
+  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place,
+                         &pt_kernel_context_);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -450,7 +507,8 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place);
+  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place,
+                                 &pt_kernel_context_);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

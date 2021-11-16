@@ -614,6 +614,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         send_ctx = self.compiled_strategy.get_the_one_send_context(
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True,
             ep_list=endpoints)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
@@ -631,8 +632,8 @@ class TheOnePSRuntime(RuntimeBase):
         kwargs['need_global_step'] = "0"
         kwargs["trainer_id"] = self.role_maker._role_id()
         kwargs["trainers"] = self.role_maker._worker_num()
-        if self.role_maker._is_heter_worker():
-            kwargs["trainer_id"] += kwargs["trainers"]
+        #if self.role_maker._is_heter_worker():
+        #    kwargs["trainer_id"] += kwargs["trainers"]
 
         for table in server.servers[0].tables:
             if table.table_class == "BarrierTable":
@@ -694,15 +695,19 @@ class TheOnePSRuntime(RuntimeBase):
         if launch_barrier and launch_barrier_flag:
             # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
-
-            # for ps-heter mode, wait heter worker ready
-            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-            ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
-
-                self._heter_client = HeterClient(
-                    self.role_maker._get_heter_worker_endpoints(),
-                    self.role_maker._role_id())
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_next_trainers(
+            ) != []:
+                wait_server_ready(self.role_maker._get_next_trainers())
+            if self.role_maker._is_heter_parameter_server_mode:
+                previous_trainers = []
+                if self.role_maker._get_previous_trainers() != []:
+                    previous_trainers = self.role_maker._get_previous_trainers()
+                next_trainers = []
+                if self.role_maker._get_next_trainers() != []:
+                    next_trainers = self.role_maker._get_next_trainers()
+                self._heter_client = HeterClient(next_trainers,
+                                                 previous_trainers,
+                                                 self.role_maker._role_id())
 
     def _push_sparse_param(self,
                            var_name,
@@ -713,18 +718,16 @@ class TheOnePSRuntime(RuntimeBase):
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
         if self.role_maker._is_heter_parameter_server_mode:
-            heter_worker_device_guard = self.context[
-                "valid_strategy"].a_sync_configs[
-                    "heter_worker_device_guard"].upper()
-            if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
-                raise ValueError("Heter Worker Not Support Device {}".format(
-                    heter_worker_device_guard))
             if self.role_maker._is_heter_worker():
-                if heter_worker_device_guard == "GPU":
+                heter_device_type = self.role_maker._heter_device_type().upper()
+                if heter_device_type not in ["GPU", "XPU", "CPU"]:
+                    raise ValueError("Heter Worker Not Support Device {}".
+                                     format(device_type))
+                if heter_device_type == "GPU":
                     executor = Executor(
                         fluid.CUDAPlace(
                             int(os.getenv("FLAGS_selected_gpus", "0"))))
-                elif heter_worker_device_guard == "XPU":
+                elif heter_device_type == "XPU":
                     executor = Executor(
                         fluid.XPUPlace(
                             int(os.getenv("FLAGS_selected_xpus", "0"))))
@@ -966,14 +969,12 @@ class TheOnePSRuntime(RuntimeBase):
             return worker
 
     def _init_server(self, dirname=None, var_names=None, **kwargs):
-        if self.role_maker._is_heter_worker():
-            self._init_heter_worker()
-            return
         role_id = self.compiled_strategy.get_role_id()
         endpoints = self.compiled_strategy.get_ps_endpoints()
         is_sync = self.compiled_strategy.is_sync_mode()
         trainers = self.compiled_strategy.get_trainers()
-
+        if self.role_maker._is_heter_parameter_server_mode:
+            trainers += len(self.role_maker._get_heter_worker_endpoints())
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
         fs_client = fsClient(self.context["user_defined_strategy"]
@@ -1027,29 +1028,42 @@ class TheOnePSRuntime(RuntimeBase):
 
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
-            path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
-                                "{}.block{}.txt".format(var_name, pserver_id))
-            meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
-                                "{}.block{}.meta".format(var_name, pserver_id))
-            self._server.load_sparse(path, meta, table_id)
+            # path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
+            #                     "{}.block{}.txt".format(var_name, pserver_id))
+            # meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
+            #                     "{}.block{}.meta".format(var_name, pserver_id))
+            self._server.load_sparse(dirname, "0", table_id)
 
     def _run_server(self):
-        if self.role_maker._is_heter_worker():
-            self._run_heter_worker()
-            return
-
         ep = self.compiled_strategy.get_ps_endpoint()
         host, port = ep.split(":")
         self._server.run_server(host, int(port))
 
     def _init_heter_worker(self):
         executor = self._get_executor()
-        executor.run(fluid.default_startup_program())
+        startup_program = fluid.default_startup_program()
+        #real_startup_program = startup_program._heter_pipeline_opt[
+        #    "startup_program"]
+        executor.run(startup_program)
         self._init_worker()
 
-    def _run_heter_worker(self):
+    def _run_heter_worker(self,
+                          dataset=None,
+                          scope=None,
+                          thread=0,
+                          debug=False,
+                          fetch_list=None,
+                          fetch_info=None,
+                          print_period=100,
+                          fetch_handler=None):
         executor = self._get_executor()
-        executor.run(fluid.default_main_program())
+        executor.train_from_dataset(
+            program=fluid.default_main_program(),
+            dataset=dataset,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
 
     def _stop_worker(self):
         self._communicator.stop()
@@ -1130,6 +1144,8 @@ class TheOnePSRuntime(RuntimeBase):
             filter(
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
+
+        self._communicator.pull_dense(denses)
 
         import paddle
         for var in remaining_vars:
@@ -1279,10 +1295,8 @@ class TheOnePSRuntime(RuntimeBase):
             values.extend(names)
         return values
 
-    def _ps_inference_load_inference_model(self,
-                                           dirname,
-                                           mode=0,
-                                           main_program=None):
+    def _load_distributed_persistables(self, dirname, main_program=None,
+                                       mode=0):
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 

@@ -242,30 +242,6 @@ int32_t CommonDenseTable::load(const std::string& path,
         auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
         size_t file_start_idx = start_dim_idx - i * dim_num_per_file;
 
-        /*
-        size_t fixed_len_param_idx = 0;
-        for (int x = 0; x < size; ++x) {
-          auto& dim = common.dims()[x];
-          if (dim != param_dim_) {
-            for (int y = 0; y < dim; ++y) {
-              if (read_channel->read_line(line_data) != 0) {
-                break;
-              }
-              auto str_len = paddle::string::str_to_float(line_data.data(),
-        data_buff_ptr);
-              CHECK(str_len == 1) << "only expect 1 float: " << str_len;
-              values_[x][y] = data_buffer[0];
-              ++fixed_len_param_idx;
-              VLOG(2) << "CommonDenseTable::load fixed_len_param x: " << x << "
-        y: " << y << " value: " << values_[x][y];
-            }
-          }
-        }
-        CHECK(fixed_len_param_idx == fixed_len_params_dim_) << "dense table load
-        expect fixed_len_params_dim_ "
-            << fixed_len_params_dim_ << " but got " << fixed_len_param_idx;
-        */
-
         // not all file contains param and the length of last file containing
         // param may not equal to others
         size_t file_dim_idx = 0;
@@ -345,12 +321,10 @@ int32_t CommonDenseTable::save(const std::string& path,
   channel_config.deconverter =
       _value_accesor->converter(save_param).deconverter;
 
-  // float dim_data_buffer[_data.cols()];
   bool is_write_failed = false;
   std::vector<std::vector<std::string>> result_buffer_param(
       param_dim_, std::vector<std::string>());
   std::vector<std::string> result_buffer_fixed_len;
-  // result_buffer_param.reserve(param_dim_);
   result_buffer_fixed_len.reserve(fixed_len_params_dim_);
 
   auto common = _config.common();
@@ -381,18 +355,6 @@ int32_t CommonDenseTable::save(const std::string& path,
     // 40M
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
-    /*
-    for (auto& t : result_buffer_fixed_len) {
-        if (0 != write_channel->write_line(t)) {
-            ++retry_num;
-            is_write_failed = true;
-            LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
-                "path:" << channel_config.path << ", retry_num=" << retry_num;
-            break;
-        }
-    }
-    VLOG(0) << "result_buffer_param.size(): " << result_buffer_param.size();
-    */
     for (auto& t : result_buffer_param) {
       if (_config.common().name() == "adam_d2sum") {
         t.insert(t.begin() + 1, "0");  // avg_w

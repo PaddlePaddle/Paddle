@@ -79,7 +79,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable)
       .def("create_client2client_connection",
            &FleetWrapper::CreateClient2ClientConnection);
-      //.def("get_client_info", &FleetWrapper::GetClientsInfo);
+  //.def("get_client_info", &FleetWrapper::GetClientsInfo);
 }
 
 void BindPSHost(py::module* m) {
@@ -163,7 +163,8 @@ void BindDistCommunicator(py::module* m) {
       .def("is_running", &Communicator::IsRunning)
       .def("init_params", &Communicator::InitParams)
       .def("pull_dense", &Communicator::PullDense)
-      .def("create_client_to_client_connection", &Communicator::CreateC2CConnection)
+      .def("create_client_to_client_connection",
+           &Communicator::CreateC2CConnection)
       .def("get_client_info", &Communicator::GetClientInfo)
       .def("set_clients", &Communicator::SetClients);
   //  .def("recv", &Communicator::RecvNoBarrier);
@@ -171,10 +172,12 @@ void BindDistCommunicator(py::module* m) {
 
 void BindHeterClient(py::module* m) {
   py::class_<HeterClient, std::shared_ptr<HeterClient>>(*m, "HeterClient")
-      .def(py::init(
-          [](const std::vector<std::string>& endpoint, const int& trainer_id) {
-            return HeterClient::GetInstance(endpoint, trainer_id);
-          }))
+      .def(py::init([](const std::vector<std::string>& endpoints,
+                       const std::vector<std::string>& previous_endpoints,
+                       const int& trainer_id) {
+        return HeterClient::GetInstance(endpoints, previous_endpoints,
+                                        trainer_id);
+      }))
       .def("stop", &HeterClient::Stop);
 }
 
@@ -211,7 +214,8 @@ void BindGraphPyClient(py::module* m) {
       .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
-      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)
+      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighbors)
+      .def("batch_sample_neighbors", &GraphPyClient::batch_sample_neighbors)
       .def("remove_graph_node", &GraphPyClient::remove_graph_node)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
       .def("stop_server", &GraphPyClient::stop_server)

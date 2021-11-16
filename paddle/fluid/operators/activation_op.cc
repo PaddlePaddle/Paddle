@@ -447,6 +447,26 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Only used in cudnn kernel, need install cudnn.")
         .SetDefault(false)
         .AsExtra();
+    AddAttr<std::string>(
+        "fuse_activation_type",
+        "Fused activation type used in softplus OneDNN kernel.")
+        .SetDefault("")
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_alpha",
+        "Fused activation alpha parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_beta",
+        "Fused activation beta parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_scale",
+        "Fused activation scale parameter type used in softplus OneDNN kernel.")
+        .SetDefault(1.0f)
+        .AsExtra();
     AddComment(R"DOC(
 :strong:`Softplus Activation Operator`
 
@@ -548,6 +568,10 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output is a multi-dimensional Tensor which has same "
               "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 ELU Activation Operator.
 
@@ -723,6 +747,10 @@ class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(6.0f);
     AddAttr<float>("offset", "The offset parameter of HardSwish operator")
         .SetDefault(3.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 HardSwish Activation Operator.
 
@@ -940,6 +968,34 @@ class TanhDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class TanhTripleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("tanh_triple_grad");
+    // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    // D_OutNew, D_DOut, D_DDx               // output
+    // input1: Out
+    op->SetInput("Out", this->Input("Out"));
+    // input2: ddx
+    op->SetInput("DDX", this->Input("DDX"));
+    // input3: dout
+    op->SetInput("DOut", this->Input("DOut"));
+    // input4: d_ddout
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+    // input5: d_dout_new
+    op->SetInput("D_DOut_New", this->OutputGrad("DOutNew"));
+    op->SetAttrMap(this->Attrs());
+
+    // output: d_dOut, d_OutNew, d_ddx
+    op->SetOutput("D_OutNew", this->InputGrad("Out"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDx", this->InputGrad("DDX"));
+  }
+};
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
 template <typename T>
@@ -1299,7 +1355,14 @@ REGISTER_OPERATOR(tanh_grad, ops::ActivationOpGrad,
 REGISTER_OPERATOR(
     tanh_grad_grad,
     ops::ActivationOpDoubleGrad<ops::TanhGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
+    ops::ActivationDoubleGradOpInplaceInferer,
+    ops::TanhTripleGradMaker<paddle::framework::OpDesc>,
+    ops::TanhTripleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    tanh_triple_grad,
+    ops::ActivationOpTripleGrad<ops::TanhTripleGradFunctor<float>::FwdDeps()>,
+    ops::ActivationTripleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(tanh, Tanh, TanhFunctor, TanhGradFunctor);
 REGISTER_OP_CPU_KERNEL(
@@ -1309,6 +1372,15 @@ REGISTER_OP_CPU_KERNEL(
                               ops::TanhGradGradFunctor<double>>,
     ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
                               ops::TanhGradGradFunctor<plat::float16>>);
+// Register TripleGrad Kernel
+REGISTER_OP_CPU_KERNEL(
+    tanh_triple_grad,
+    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
+                             ops::TanhTripleGradFunctor<float>>,
+    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
+                             ops::TanhTripleGradFunctor<double>>,
+    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
+                             ops::TanhTripleGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================    relu register  ============================= */

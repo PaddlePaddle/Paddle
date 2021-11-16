@@ -631,8 +631,8 @@ class CudnnBNAddReluTester {
     op::CudnnScaleBiasAddRelu<T> sbar_op(ctx, act_type_, fuse_add_,
                                          has_shortcut_, data_shape, param_shape,
                                          bitmask_shape);
-    sbar_op.Forward(ctx, x, equiv_scale_x, equiv_bias_x, z, equiv_scale_z,
-                    equiv_bias_z, &y, &bitmask);
+    sbar_op.Forward(ctx, x, equiv_scale_x, equiv_bias_x, &z, &equiv_scale_z,
+                    &equiv_bias_z, &y, &bitmask);
 
     TensorCopySync(mean_x, platform::CPUPlace(), cpu_mean_x);
     TensorCopySync(var_x, platform::CPUPlace(), cpu_var_x);
@@ -690,7 +690,7 @@ class CudnnBNAddReluTester {
     op::CudnnScaleBiasAddRelu<T> sbar_op(ctx, act_type, true, false, data_shape,
                                          param_shape, bitmask_shape);
     sbar_op.Backward(ctx, dy, x, bn_scale, bn_bias, saved_mean, saved_var,
-                     bitmask, &dx, &dz, &dscale, &dbias, eps_);
+                     &bitmask, &dx, &dz, &dscale, &dbias, eps_);
 
     TensorCopySync(dx, platform::CPUPlace(), cpu_dx);
     TensorCopySync(dz, platform::CPUPlace(), cpu_dz);

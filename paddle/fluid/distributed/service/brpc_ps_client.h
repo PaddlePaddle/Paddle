@@ -139,16 +139,21 @@ class BrpcPsClient : public PSClient {
  public:
   BrpcPsClient() {}
   virtual ~BrpcPsClient() {
-    // VLOG(0) << "debug brpc_client: client deconstructor begin";
-    // finalize_worker();
-    // _running = false;
-    // try {
-    // _async_push_dense_thread.join();
-    // _async_push_sparse_thread.join();
-    //  VLOG(0) << "debug brpc_client: client deconstructor done";
-    //} catch (...) {
-    //}
-    std::cout << "BrpcPsClient::deconstructor";
+    if (_running) {
+      flush();
+      _running = false;
+    }
+    if (_async_push_dense_thread.joinable()) {
+      _async_push_dense_thread.join();
+    }
+    if (_async_push_sparse_thread.joinable()) {
+      _async_push_sparse_thread.join();
+    }
+    if (_server_started) {
+      _server.Stop(1000);
+      _server.Join();
+      _server_started = false;
+    }
   }
   virtual int32_t create_client2client_connection(
       int pserver_timeout_ms, int pserver_connect_timeout_ms, int max_retry);
@@ -248,20 +253,16 @@ class BrpcPsClient : public PSClient {
   // 异步push dense task
   std::thread _async_push_dense_thread;
   typedef AsyncRequestTask<std::shared_ptr<std::vector<float>>> DenseAsyncTask;
-  // typedef thread_queue<DenseAsyncTask *, store_value> DenseAsyncTaskQueue;
-  // std::unordered_map<uint32_t, std::shared_ptr<DenseAsyncTaskQueue>>
   std::unordered_map<uint32_t, paddle::framework::Channel<DenseAsyncTask *>>
       _push_dense_task_queue_map;
   // 异步push sparse task
   std::thread _async_push_sparse_thread;
   typedef AsyncRequestTask<std::shared_ptr<SparsePushTaskData>> SparseAsyncTask;
-  // typedef thread_queue<SparseAsyncTask *, store_value> SparseAsyncTaskQueue;
-  // std::unordered_map<uint32_t, std::shared_ptr<SparseAsyncTaskQueue>>
   std::unordered_map<uint32_t, paddle::framework::Channel<SparseAsyncTask *>>
       _push_sparse_task_queue_map;
   std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
 
-  // std::thread _print_thread;
+  std::thread _print_thread;
 
   int push_sparse_async_shard_merge(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
@@ -314,6 +315,7 @@ class BrpcPsClient : public PSClient {
   uint16_t _push_times = 0;
   brpc::Server _server;
   DownpourPsClientService _service;
+  bool _server_started = false;
   std::atomic_uint grad_num_{0};
 };
 }  // namespace distributed

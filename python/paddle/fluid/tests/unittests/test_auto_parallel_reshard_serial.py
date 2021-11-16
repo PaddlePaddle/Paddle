@@ -26,16 +26,15 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.context import get_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import reshard
-from paddle.distributed.auto_parallel.process import new_process_group
+from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
-ROOT_MESH = auto.ProcessMesh([0])
 
 
 class MLPLayer(nn.Layer):
@@ -59,16 +58,30 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         if _global_parallel_strategy == "pp":
             auto.shard_tensor(
-                self.linear0.weight, PP_MESH_0, dim_mapping=[-1, -1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": PP_MESH_0,
+                    "dims_mapping": [-1, -1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, PP_MESH_1, dim_mapping=[-1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": PP_MESH_1,
+                    "dims_mapping": [-1, -1]
+                })
         else:
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh,
-                dim_mapping=[-1, -1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, -1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh,
-                dim_mapping=[-1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, -1]
+                })
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -90,12 +103,32 @@ def mlp_forward(train_program, start_program):
             name="label", shape=[batch_size, 1], dtype='float32')
 
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(input, PP_MESH_0, dim_mapping=[-1, -1])
-            auto.shard_tensor(label, PP_MESH_1, dim_mapping=[-1, -1])
+            auto.shard_tensor(
+                input,
+                dist_attr={
+                    "process_mesh": PP_MESH_0,
+                    "dims_mapping": [-1, -1]
+                })
+            auto.shard_tensor(
+                label,
+                dist_attr={
+                    "process_mesh": PP_MESH_1,
+                    "dims_mapping": [-1, -1]
+                })
         elif _global_parallel_strategy == "dp":
-            auto.shard_tensor(input, _global_process_mesh, dim_mapping=[0, -1])
+            auto.shard_tensor(
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         else:
-            auto.shard_tensor(input, _global_process_mesh, dim_mapping=[-1, -1])
+            auto.shard_tensor(
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, -1]
+                })
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -168,7 +201,7 @@ class TestMLPReshard(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = None
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0])
 
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()

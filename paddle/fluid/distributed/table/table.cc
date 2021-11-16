@@ -44,8 +44,6 @@ REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
 REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseTable);
 REGISTER_PSCORE_CLASS(ValueAccessor, CommMergeAccessor);
-// REGISTER_PSCORE_CLASS(ValueAccessor, CtrDoubleUnitAccessor);
-REGISTER_PSCORE_CLASS(ValueAccessor, CtrUnitAccessor);
 REGISTER_PSCORE_CLASS(ValueAccessor, CtrCommonAccessor);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);

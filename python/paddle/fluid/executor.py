@@ -34,6 +34,7 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
+from .compiler import _prune_feed_ops
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -485,10 +486,11 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor(object):
-    def __init__(self, place, main_program):
+    def __init__(self, place, main_program, scope):
         self._place = core.Place()
         self._place.set_place(place)
         self._main_program = main_program
+        self._scope = scope
         self._new_exe = self._create_new_executor()
 
     def run(self, feed, fetch_list, return_numpy=True):
@@ -522,9 +524,8 @@ class _StandaloneExecutor(object):
     def _create_new_executor(self):
         # NOTE: It's a trick to set empty start_up program.
         startup_program = Program()
-        outer_scope = global_scope()
         new_exe = core.StandaloneExecutor(self._place, startup_program.desc,
-                                          self._main_program.desc, outer_scope)
+                                          self._main_program.desc, self._scope)
 
         return new_exe
 
@@ -585,11 +586,11 @@ class _ExecutorCache(object):
         self._place = place
         self._cached_executors = {}
 
-    def run(self, program, feed, fetch_list, return_numpy=True):
-        new_exe = self._get_exe_from_cache(program)
+    def run(self, program, scope, feed, fetch_list, return_numpy=True):
+        new_exe = self._get_exe_from_cache(program, scope)
         return new_exe.run(feed, fetch_list, return_numpy)
 
-    def _get_exe_from_cache(self, program):
+    def _get_exe_from_cache(self, program, scope):
         """
         Return cached _StandaloneExecutor instance. If not found, create associated 
         _StandaloneExecutor instance with given program and cache it.
@@ -597,11 +598,13 @@ class _ExecutorCache(object):
         assert isinstance(
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
-        if program not in self._cached_executors:
-            new_exe = _StandaloneExecutor(self._place, program)
-            self._cached_executors[program] = new_exe
+        if str(program) not in self._cached_executors:
+            new_program = program.clone()
+            _prune_feed_ops(new_program)
+            new_exe = _StandaloneExecutor(self._place, new_program, scope)
+            self._cached_executors[str(program)] = new_exe
 
-        return self._cached_executors[program]
+        return self._cached_executors[str(program)]
 
 
 class Executor(object):
@@ -687,6 +690,7 @@ class Executor(object):
             self.place = framework._get_paddle_place(place)
         self.program_caches = dict()
         self.ctx_caches = dict()
+        self.trainer_caches = dict()
         self.scope_caches = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
@@ -710,6 +714,9 @@ class Executor(object):
     def _get_ctx_cache(self, program_cache_key):
         return self.ctx_caches.get(program_cache_key, None)
 
+    def _get_trainer_cache(self, program_cache_key):
+        return self.trainer_caches.get(program_cache_key, None)
+
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
 
@@ -730,6 +737,9 @@ class Executor(object):
 
     def _add_ctx_cache(self, ctx_cache_key, ctx):
         self.ctx_caches[ctx_cache_key] = ctx
+
+    def _add_trainer_cache(self, trainer_cache_key, ctx):
+        self.trainer_caches[trainer_cache_key] = ctx
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
@@ -792,9 +802,11 @@ class Executor(object):
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 var = global_block.var(feed_target_name)
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place, var.dtype)
-                check_feed_shape_type(var, cur_feed)
+                if var.dtype != core.VarDesc.VarType.STRINGS:
+                    if not isinstance(cur_feed, core.LoDTensor):
+                        cur_feed = _as_lodtensor(cur_feed, self.place,
+                                                 var.dtype)
+                    check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
@@ -990,8 +1002,11 @@ class Executor(object):
               exe.close()
         """
         if not self._closed:
-            self._default_executor.close()
             self._closed = True
+            for k, trainer_instance in self.trainer_caches.items():
+                self._default_executor.release_trainer(trainer_instance)
+                del trainer_instance
+            self._default_executor.close()
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):
@@ -1269,6 +1284,11 @@ class Executor(object):
         fetch_list = self._check_fetch_list(fetch_list)
 
         if isinstance(program, Program) and program._pipeline_opt:
+            if "fleet_opt" in program._pipeline_opt:
+                return self._run_using_fleet_executor(
+                    program,
+                    fetch_list=fetch_list,
+                    use_program_cache=use_program_cache)
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
@@ -1276,6 +1296,12 @@ class Executor(object):
                     program,
                     fetch_list=fetch_list,
                     use_program_cache=use_program_cache)
+
+        if isinstance(program, Program) and program._heter_pipeline_opt:
+            if "startup_program" in program._heter_pipeline_opt:
+                program = program._heter_pipeline_opt["startup_program"]
+            # TODO(zhangminxu): support heterps pipeline training using exe.run
+
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
             if use_default_main_program:
@@ -1294,9 +1320,13 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and not program._is_start_up_program_:
-            return self._executor_cache.run(program, feed, fetch_list,
-                                            return_numpy)
+        if self._enable_interpreter_core:
+            inner_program_ = program._program if isinstance(
+                program, compiler.CompiledProgram) else program
+            assert isinstance(inner_program_, framework.Program)
+            if not inner_program_._is_start_up_program_:
+                return self._executor_cache.run(inner_program_, scope, feed,
+                                                fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1517,7 +1547,9 @@ class Executor(object):
 
     def _dump_debug_info(self, program=None, trainer=None):
         import random
-        with open(str(int(random.random()*1000000)) + str(id(program)) + "_train_desc.prototxt", "w") as fout:
+        with open(
+                str(int(random.random() * 1000000)) + str(id(program)) +
+                "_train_desc.prototxt", "w") as fout:
             fout.write(str(trainer))
         if program._fleet_opt and "fleet_desc" in program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
@@ -1575,6 +1607,9 @@ class Executor(object):
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
                     program._pipeline_opt)
+            elif program._heter_pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program._heter_pipeline_opt)
             else:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
@@ -1585,6 +1620,9 @@ class Executor(object):
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
                     program.program._pipeline_opt)
+            elif program._heter_pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program.program._heter_pipeline_opt)
             else:
                 trainer = TrainerFactory()._create_trainer(
                     program.program._fleet_opt)
@@ -1668,7 +1706,6 @@ class Executor(object):
                         'op_role',
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -1682,15 +1719,29 @@ class Executor(object):
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
 
-        #if program._pipeline_opt is None:
-        self._dump_debug_info(program=program, trainer=trainer)
+        if program._pipeline_opt is None:
+            if program._heter_pipeline_opt is None:
+                self._dump_debug_info(program=program, trainer=trainer)
         # in case of calling _set_use_ps_gpu explicitly
         if dataset.use_ps_gpu is False:
             dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        trainer_instance = self._default_executor.init_for_dataset(
-            program.desc, trainer._desc(), scope, dataset.dataset)
+        if program._heter_pipeline_opt is None:
+            trainer_instance = self._default_executor.init_for_dataset(
+                program.desc, trainer._desc(), scope, dataset.dataset)
+        else:
+            # cache trainer instance for heterps pipeline training
+            if fetch_list == None:
+                fetch_list = []
+            cache_key = _get_strong_program_cache_key(program, None, fetch_list)
+            trainer_instance = self._get_trainer_cache(cache_key)
+            if trainer_instance is None:
+                trainer_instance = self._default_executor.init_for_dataset(
+                    program.desc, trainer._desc(), scope, dataset.dataset)
+                self._add_trainer_cache(cache_key, trainer_instance)
+            else:
+                trainer_instance.ResetDataset(dataset.dataset)
 
         if fetch_handler is not None:
             scope0 = trainer_instance.get_worker_scope(0)
@@ -1698,11 +1749,12 @@ class Executor(object):
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()
-            self._default_executor.release_trainer(trainer_instance)
+            if program._heter_pipeline_opt is None:
+                self._default_executor.release_trainer(trainer_instance)
         else:
-
             self._default_executor.run_from_dataset(trainer_instance)
-            self._default_executor.release_trainer(trainer_instance)
+            if program._heter_pipeline_opt is None:
+                self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
@@ -1818,6 +1870,43 @@ class Executor(object):
         if use_program_cache: self._add_ctx_cache(cache_key, ctx)
 
         return ctx
+
+    def _run_using_fleet_executor(self,
+                                  program=None,
+                                  dataset=None,
+                                  scope=None,
+                                  thread=0,
+                                  is_infer=False,
+                                  debug=False,
+                                  fetch_list=None,
+                                  fetch_info=None,
+                                  print_period=100,
+                                  fetch_handler=None,
+                                  use_program_cache=False):
+        scope, real_fetch_list, trainer_instance = \
+            self._prepare_pipeline_ctx(program, dataset, scope, thread,
+                                       is_infer, debug, fetch_list, fetch_info,
+                                       print_period, fetch_handler,
+                                       use_program_cache)
+        from ..distributed.fleet.proto import fleet_executor_desc_pb2
+        from google.protobuf import text_format
+        cur_rank = os.getenv("PADDLE_TRAINER_ID")
+        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+        fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+        if cur_rank and trainer_endpoints_str:
+            fleet_exe_desc.cur_rank = int(cur_rank)
+            trainer_endpoints = trainer_endpoints_str.split(',')
+            for rank, endpoint in enumerate(trainer_endpoints):
+                rank_info = fleet_executor_desc_pb2.RankInfo()
+                rank_info.rank = rank
+                rank_info.ip_port = endpoint
+                fleet_exe_desc.cluster_info.append(rank_info)
+        else:
+            logging.warning("Fleet Executor will run on single device only.")
+        fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
+        fleet_exe.init(program._pipeline_opt["section_program"].desc)
+        fleet_exe.run()
+        return None
 
     def _run_pipeline(self,
                       program=None,

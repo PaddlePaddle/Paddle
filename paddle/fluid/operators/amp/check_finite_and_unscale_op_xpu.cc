@@ -22,6 +22,7 @@ template <typename T>
 class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
   using MPDType = typename details::MPTypeTrait<T>::Type;
   using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using float16 = typename XPUTypeTrait<paddle::platform::float16>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -74,27 +75,15 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
             platform::errors::External("XPU API(logical_not) return wrong "
                                        "value[%d %s]",
                                        r, XPUAPIErrorMsg[r]));
-        r = xpu::isnan(dev_ctx.x_context(),
-                       reinterpret_cast<const XPUTyp*>(x->data<T>()),
-                       is_nan.data<bool>(), x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(isnan) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
-        r = xpu::logical_or(dev_ctx.x_context(), is_finite.data<bool>(),
-                            is_nan.data<bool>(), is_finite.data<bool>(),
-                            x->numel());
-        PADDLE_ENFORCE_EQ(
-            r, XPU_SUCCESS,
-            platform::errors::External("XPU API(logical_or) return wrong "
-                                       "value[%d %s]",
-                                       r, XPUAPIErrorMsg[r]));
         r = xpu::any(dev_ctx.x_context(), is_finite.data<bool>(),
                      found_inf_data, x->numel());
         PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
                                               "XPU API(any) return wrong "
                                               "value[%d %s]",
                                               r, XPUAPIErrorMsg[r]));
+        if (dev_ctx.x_context()->xpu_stream) {
+          dev_ctx.Wait();
+        }
         memory::Copy(platform::CPUPlace(), &cpu_found_inf_data,
                      BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
                      found_inf_data, sizeof(bool));
@@ -103,12 +92,12 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
       if (cpu_found_inf_data) {
         inverse_scale = 0.0;
       }
-      auto dev_env = XPUEnv::getenv("XPUSIM_DEVICE_MODEL");
 
+      paddle::platform::XPUVersion version = dev_ctx.xpu_version();
+      framework::Tensor float_x;
+      framework::Tensor float_out;
       if (std::is_same<T, paddle::platform::float16>::value &&
-          (dev_env == nullptr || std::strcmp(dev_env, "KUNLUN1"))) {
-        framework::Tensor float_x;
-        framework::Tensor float_out;
+          (version == paddle::platform::XPUVersion::XPU1)) {
         float_x.mutable_data<MPDType>(dev_ctx.GetPlace(),
                                       x->numel() * sizeof(MPDType));
         float_out.mutable_data<MPDType>(dev_ctx.GetPlace(),
@@ -137,10 +126,6 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
                                               "XPU API(cast_v2) return wrong "
                                               "value[%d %s]",
                                               r, XPUAPIErrorMsg[r]));
-        if (dev_ctx.x_context()->xpu_stream) {
-          dev_ctx.Wait();
-        }
-
       } else {
         int r = xpu::scale(dev_ctx.x_context(),
                            reinterpret_cast<const XPUTyp*>(x->data<T>()),
@@ -151,6 +136,9 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
                                               "value[%d %s]",
                                               r, XPUAPIErrorMsg[r]));
       }
+    }
+    if (dev_ctx.x_context()->xpu_stream) {
+      dev_ctx.Wait();
     }
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
                  found_inf_data, platform::CPUPlace(), &cpu_found_inf_data,

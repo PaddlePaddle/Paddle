@@ -20,13 +20,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/distributed/common/cost_timer.h"
 
 namespace paddle {
 namespace distributed {
@@ -37,7 +37,7 @@ using paddle::distributed::PsResponseMessage;
 typedef std::function<void(void *)> PSClientCallBack;
 class PSClientClosure : public google::protobuf::Closure {
  public:
-  PSClientClosure(PSClientCallBack callback) : _callback(callback) {}
+  explicit PSClientClosure(PSClientCallBack callback) : _callback(callback) {}
   virtual ~PSClientClosure() {}
   virtual void set_promise_value(int value) {
     for (auto &promise : _promises) {
@@ -45,12 +45,12 @@ class PSClientClosure : public google::protobuf::Closure {
     }
   }
 
-  void add_promise(std::shared_ptr<std::promise<int32_t>> &promise) {
+  void add_promise(std::shared_ptr<std::promise<int32_t>> &promise) {  // NOLINT
     _promises.push_back(promise);
   }
 
-  void add_timer(std::shared_ptr<CostTimer>& timer) {
-      _timers.push_back(timer);
+  void add_timer(std::shared_ptr<CostTimer> &timer) {  // NOLINT
+    _timers.push_back(timer);
   }
 
  protected:
@@ -66,11 +66,11 @@ class PSClient {
   PSClient(PSClient &&) = delete;
   PSClient(const PSClient &) = delete;
 
-  virtual int32_t configure(
+  virtual int32_t configure(  // NOLINT
       const PSParameter &config,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>
           &regions,
-      PSEnvironment &_env, size_t client_id) final;
+      PSEnvironment &_env, size_t client_id) final;  // NOLINT
 
   virtual int32_t create_client2client_connection(
       int pserver_timeout_ms, int pserver_connect_timeout_ms,
@@ -93,7 +93,7 @@ class PSClient {
   virtual std::future<int32_t> save(uint32_t table_id, const std::string &epoch,
                                     const std::string &mode) = 0;
 
-  //清空table数据
+  // 清空table数据
   virtual std::future<int32_t> clear() = 0;
   virtual std::future<int32_t> clear(uint32_t table_id) = 0;
 
@@ -105,7 +105,7 @@ class PSClient {
   // server将参数区块中配置的某一维提取返回
   // 返回数据解包后填充到累计的多个buffer中
   virtual std::future<int32_t> pull_dense(Region *regions, size_t region_num,
-                                          size_t table_id) = 0;  //保留
+                                          size_t table_id) = 0;  // 保留
 
   // firstly push dense param for parameter server
   // this is neccessary because dense weight initialized in trainer on cold
@@ -113,10 +113,10 @@ class PSClient {
   virtual std::future<int32_t> push_dense_param(const Region *regions,
                                                 size_t region_num,
                                                 size_t table_id) = 0;
-  
+
   virtual std::future<int32_t> push_dense(const Region *regions,
-                                              size_t region_num,
-                                              size_t table_id) = 0;
+                                          size_t region_num,
+                                          size_t table_id) = 0;
   // 使用keys进行pull请求，结果填充values
   // keys和values的个数均为num个，每个value占用select_size空间
   // future结束前keys和values缓冲区不能再次使用
@@ -223,9 +223,10 @@ class PSClient {
                                                  const float **update_values,
                                                  size_t num, void *done) = 0;
   virtual std::future<int32_t> push_sparse(size_t table_id,
-                                           const uint64_t* keys,
-                                           const float** update_values,
+                                           const uint64_t *keys,
+                                           const float **update_values,
                                            size_t num) = 0;
+
  protected:
   virtual int32_t initialize() = 0;
   size_t _client_id;
@@ -235,49 +236,41 @@ class PSClient {
   PSEnvironment *_env;
   std::unordered_map<uint32_t, std::shared_ptr<ValueAccessor>> _table_accessors;
   std::unordered_map<int32_t, MsgHandlerFunc>
-      _msg_handler_map;  //处理client2client消息
+      _msg_handler_map;  // 处理client2client消息
 };
 
 template <class T>
 class AsyncRequestTask {
-public:
-    AsyncRequestTask() : _promise(std::make_shared<std::promise<int32_t>>()){}
-    AsyncRequestTask(T& data, size_t table_id, std::shared_ptr<CostTimer>& timer) : 
-        _table_id(table_id), _timer(timer), 
+ public:
+  AsyncRequestTask() : _promise(std::make_shared<std::promise<int32_t>>()) {}
+  AsyncRequestTask(T &data, size_t table_id, std::shared_ptr<CostTimer> &timer)
+      : _table_id(table_id),
+        _timer(timer),
         _promise(std::make_shared<std::promise<int32_t>>()) {
-        _data = std::move(data);
-    }
+    _data = std::move(data);
+  }
 
-    AsyncRequestTask(AsyncRequestTask& data) : 
-    _table_id(data.table_id()), _timer(data.timer()), 
-    _promise(data.promise()) {
-        _data = std::move(data.data());
-    }
-  
-    ~AsyncRequestTask() {}
+  AsyncRequestTask(AsyncRequestTask &data)  // NOLINT
+      : _table_id(data.table_id()),
+        _timer(data.timer()),
+        _promise(data.promise()) {
+    _data = std::move(data.data());
+  }
 
-    inline T& data() {
-        return _data;
-    }
-    inline size_t table_id() {
-        return _table_id;
-    }
-    inline std::shared_ptr<CostTimer>& timer() {
-        return _timer;
-    }
-    inline std::future<int32_t> get_future() {
-        return _promise->get_future();
-    }
-    inline std::shared_ptr<std::promise<int32_t>>& promise() {
-        return _promise;
-    }
-private:
-    T _data;
-    size_t _table_id;
-    std::shared_ptr<CostTimer> _timer;
-    std::shared_ptr<std::promise<int32_t>> _promise;
+  ~AsyncRequestTask() {}
+
+  inline T &data() { return _data; }
+  inline size_t table_id() { return _table_id; }
+  inline std::shared_ptr<CostTimer> &timer() { return _timer; }
+  inline std::future<int32_t> get_future() { return _promise->get_future(); }
+  inline std::shared_ptr<std::promise<int32_t>> &promise() { return _promise; }
+
+ private:
+  T _data;
+  size_t _table_id;
+  std::shared_ptr<CostTimer> _timer;
+  std::shared_ptr<std::promise<int32_t>> _promise;
 };
-
 REGISTER_PSCORE_REGISTERER(PSClient);
 
 class PSClientFactory {

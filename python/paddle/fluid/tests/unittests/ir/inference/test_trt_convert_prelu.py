@@ -18,6 +18,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
 class TrtConvertPreluTest(TrtLayerAutoScanTest):
@@ -175,16 +176,18 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
                            "Trt does not support 1-dimensional input.")
 
-        def teller2(program_config, predictor_config):
-            if (len(self.dynamic_shape.min_input_shape) == 0):
-                if self.dim1 != 0 and self.dim2 == 0 and self.dim3 == 0:
-                    return True
-            return False
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
 
-        self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: the output of GPU and tensorrt has diff when the input dimension is 2 in static shape mode."
-        )
+            def teller(program_config, predictor_config):
+                if not predictor_config.tensorrt_dynamic_shape_enabled():
+                    return True
+                return False
+
+            self.add_skip_case(
+                teller, SkipReasons.TRT_NOT_IMPLEMENTED,
+                "Need to repair the case: the output of GPU and tensorrt has diff in trt6, the prelu static plugin has bug."
+            )
 
     def test(self):
         self.add_skip_trt_case()

@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include <sstream>
-#include "paddle/fluid/distributed/common/afs_warpper.h"
+
+#include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include "paddle/fluid/framework/io/fs.h"
 
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
-
-namespace paddle {
-namespace distributed {
-class ValueBlock;
-}  // namespace distributed
-}  // namespace paddle
 
 namespace paddle {
 namespace distributed {
@@ -41,7 +35,7 @@ int32_t MemorySparseTable::initialize() {
     shards_task_pool_[i].reset(new ::ThreadPool(1));
   }
   initialize_value();
-  VLOG(0) << "initalize ctrSparseTable succ";
+  VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
 }
 
@@ -56,7 +50,8 @@ int32_t MemorySparseTable::initialize_value() {
     real_local_shard_num_ =
         real_local_shard_num_ < 0 ? 0 : real_local_shard_num_;
   }
-  VLOG(0) << "ctr sparse table avg_local_shard_num_: " << avg_local_shard_num_
+  VLOG(1) << "memory sparse table avg_local_shard_num_: "
+          << avg_local_shard_num_
           << " real_local_shard_num_: " << real_local_shard_num_;
 
   shard_values_.reserve(real_local_shard_num_);
@@ -70,7 +65,6 @@ int32_t MemorySparseTable::initialize_value() {
 
 int32_t MemorySparseTable::load(const std::string& path,
                                 const std::string& param) {
-  //                                const std::string& prefix) {
   std::string table_path = table_dir(path);
   auto file_list = _afs_client.list(table_path);
 
@@ -101,8 +95,6 @@ int32_t MemorySparseTable::load(const std::string& path,
   for (size_t i = 0; i < real_local_shard_num_; ++i) {
     FsChannelConfig channel_config;
     channel_config.path = file_list[file_start_idx + i];
-    // channel_config.path = paddle::string::format_string(
-    //      "%s/part-%03d-%05d", table_path.c_str(), _shard_idx, i);
     VLOG(1) << "MemorySparseTable::load begin load " << channel_config.path
             << " into local shard " << i;
     channel_config.converter = _value_accesor->converter(load_param).converter;
@@ -234,7 +226,6 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
 
 int32_t MemorySparseTable::save(const std::string& dirname,
                                 const std::string& param) {
-  //                                const std::string& prefix) {
   VLOG(0) << "MemorySparseTable::save dirname: " << dirname;
   int save_param =
       atoi(param.c_str());  // checkpoint:0  xbox delta:1  xbox base:2
@@ -346,7 +337,6 @@ int32_t MemorySparseTable::save_local_fs(const std::string& dirname,
               value.second->data(), value.second->size());
           std::string out_line = paddle::string::format_string(
               "%lu %s\n", value.first, format_value.c_str());
-          // LOG(INFO) << out_line.c_str();
           os.write(out_line.c_str(), sizeof(char) * out_line.size());
           ++feasign_cnt;
         }
@@ -398,8 +388,6 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
               float data_buffer[value_size];  // NOLINT
               float* data_buffer_ptr = data_buffer;
 
-              // std::vector<int> offsets;
-              // pull_value.Fission(shard_id, shard_num, &offsets);
               auto& keys = task_keys[shard_id];
               for (size_t i = 0; i < keys.size(); i++) {
                 uint64_t key = keys[i].first;
@@ -412,8 +400,6 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
                   } else {
                     auto* feature_value = local_shard->Init(key);
                     feature_value->resize(data_size);
-                    // float* data_ptr =
-                    // const_cast<float*>(feature_value->data());
                     float* data_ptr = feature_value->data();
                     _value_accesor->create(&data_buffer_ptr, 1);
                     memcpy(data_ptr, data_buffer_ptr,
@@ -440,17 +426,6 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-
-  /*
-  VLOG(3) << "debug sparse table::pull_sparse";
-  for (int i = 0; i < pull_value.numel_; ++i) {
-    VLOG(3) << "key: " << i << ": " << pull_value.feasigns_[i];
-    for (int j = 0; j < select_value_size; ++j)
-      VLOG(3) << " value " << j << ": "
-              << pull_values[i * select_value_size + j];
-  }
-  VLOG(3) << "debug sparse table::pull_sparse end";
-  */
 
   return 0;
 }
@@ -499,8 +474,6 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
               auto* feature_value = local_shard->Init(key);
               feature_value->resize(value_size);
               _value_accesor->create(&data_buffer_ptr, 1);
-              // memcpy(const_cast<float*>(feature_value->data()),
-              // data_buffer_ptr,
               memcpy(feature_value->data(), data_buffer_ptr,
                      value_size * sizeof(float));
               itr = local_shard->Find(key);
@@ -509,18 +482,8 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
             }
 
             auto* feature_value = itr->second;
-            // float* value_data = const_cast<float*>(feature_value->data());
             float* value_data = feature_value->data();
             size_t value_size = feature_value->size();
-
-            // VLOG(3) << "push sparse, key: " << key << " value: ";
-            // for (int i = 0; i < value_size; ++i)
-            //   VLOG(3) << value_data[i] << " ";
-            // VLOG(3) << "\n";
-            // VLOG(3) << "update_data: ";
-            // for (int i = 0; i < update_value_col; ++i)
-            //   VLOG(3) << update_data[i] << " ";
-            // VLOG(3) << "\n";
 
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
               _value_accesor->update(&value_data, &update_data, 1);
@@ -531,18 +494,11 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
 
               if (_value_accesor->need_extend_mf(data_buffer)) {
                 feature_value->resize(value_col);
-                // value_data = const_cast<float*>(feature_value->data());
                 value_data = feature_value->data();
                 _value_accesor->create(&value_data, 1);
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
-            /*
-            std::cout << "after update key:" << key << "\n";
-            for(int i = 0; i < feature_value->size(); ++ i)
-                std::cout << value_data[i] << " ";
-            std::cout << "\n";
-            */
           }
           return 0;
         });
@@ -597,14 +553,11 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
               auto* feature_value = local_shard->Init(key);
               feature_value->resize(value_size);
               _value_accesor->create(&data_buffer_ptr, 1);
-              // memcpy(const_cast<float*>(feature_value->data()),
-              // data_buffer_ptr,
               memcpy(feature_value->data(), data_buffer_ptr,
                      value_size * sizeof(float));
               itr = local_shard->Find(key);
             }
             auto* feature_value = itr->second;
-            // float* value_data = const_cast<float*>(feature_value->data());
             float* value_data = feature_value->data();
             size_t value_size = feature_value->size();
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
@@ -615,7 +568,6 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
               _value_accesor->update(&data_buffer_ptr, &update_data, 1);
               if (_value_accesor->need_extend_mf(data_buffer)) {
                 feature_value->resize(value_col);
-                // value_data = const_cast<float*>(feature_value->data());
                 value_data = feature_value->data();
                 _value_accesor->create(&value_data, 1);
               }

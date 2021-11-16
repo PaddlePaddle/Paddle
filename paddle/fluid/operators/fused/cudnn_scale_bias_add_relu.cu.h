@@ -94,13 +94,13 @@ template <typename T>
 class CudnnScaleBiasAddRelu {
  public:
   CudnnScaleBiasAddRelu(const platform::CUDADeviceContext &ctx,
-                        const std::string &act_type, bool fused_add,
+                        const std::string &act_type, bool fuse_add,
                         bool has_shortcut, const std::vector<int> &data_shape,
                         const std::vector<int> &param_shape,
                         const std::vector<int> &bitmask_shape)
       : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK),
         bwd_op_(CUDNN_FUSED_DACTIVATION_FORK_DBATCHNORM) {
-    fused_add_ = fused_add;
+    fuse_add_ = fuse_add;
     has_shortcut_ = has_shortcut;
     args_.Set(act_type, data_shape, param_shape, bitmask_shape);
   }
@@ -108,8 +108,8 @@ class CudnnScaleBiasAddRelu {
   ~CudnnScaleBiasAddRelu() {}
 
   void Forward(const platform::CUDADeviceContext &ctx, const Tensor &x,
-               const Tensor &x_scale, const Tensor &x_bias, const Tensor &z,
-               const Tensor &z_scale, const Tensor &z_bias, Tensor *out,
+               const Tensor &x_scale, const Tensor &x_bias, const Tensor *z,
+               const Tensor *z_scale, const Tensor *z_bias, Tensor *out,
                Tensor *bitmask) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
@@ -125,15 +125,15 @@ class CudnnScaleBiasAddRelu {
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, x_scale_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, x_bias_ptr);
     if (has_shortcut_) {
-      T *z_ptr = const_cast<T *>(z.data<T>());
-      T *z_scale_ptr = const_cast<T *>(z_scale.data<T>());
-      T *z_bias_ptr = const_cast<T *>(z_bias.data<T>());
+      T *z_ptr = const_cast<T *>(z->data<T>());
+      T *z_scale_ptr = const_cast<T *>(z_scale->data<T>());
+      T *z_bias_ptr = const_cast<T *>(z_bias->data<T>());
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQSCALE, z_scale_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQBIAS, z_bias_ptr);
     } else {
-      if (fused_add_) {
-        T *z_ptr = const_cast<T *>(z.data<T>());
+      if (fuse_add_) {
+        T *z_ptr = const_cast<T *>(z->data<T>());
         fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       }
     }
@@ -160,7 +160,7 @@ class CudnnScaleBiasAddRelu {
   void Backward(const platform::CUDADeviceContext &ctx, const Tensor &dy,
                 const Tensor &x, const Tensor &scale, const Tensor &bias,
                 const Tensor &saved_mean, const Tensor &saved_invstd,
-                const Tensor &bitmask, Tensor *dx, Tensor *dz, Tensor *dscale,
+                const Tensor *bitmask, Tensor *dx, Tensor *dz, Tensor *dscale,
                 Tensor *dbias, double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
@@ -175,7 +175,8 @@ class CudnnScaleBiasAddRelu {
     float *bias_ptr = const_cast<float *>(bias.data<float>());
     float *saved_mean_ptr = const_cast<float *>(saved_mean.data<float>());
     float *saved_invstd_ptr = const_cast<float *>(saved_invstd.data<float>());
-    int32_t *bitmask_ptr = const_cast<int32_t *>(bitmask.data<int32_t>());
+    int32_t *bitmask_ptr =
+        bitmask ? const_cast<int32_t *>(bitmask->data<int32_t>()) : nullptr;
     T *dx_ptr = dx->mutable_data<T>(place);
     T *dz_ptr = dz ? dz->mutable_data<T>(place) : nullptr;
     float *dscale_ptr = dscale ? dscale->mutable_data<float>(place) : nullptr;
@@ -199,7 +200,7 @@ class CudnnScaleBiasAddRelu {
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_DBIAS, dbias_ptr);
     bwd_op_.SetOpVariantParamAttrPtr<double>(CUDNN_SCALAR_DOUBLE_BN_EPSILON,
                                              &eps);
-    if (has_shortcut_ || fused_add_) {
+    if (has_shortcut_ || fuse_add_) {
       bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DZDATA, dz_ptr);
     }
 
@@ -226,14 +227,14 @@ class CudnnScaleBiasAddRelu {
           {CUDNN_PARAM_ZDATA_PLACEHOLDER, CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
            CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER},
           CUDNN_PTR_16B_ALIGNED);
-    } else if (fused_add_) {
+    } else if (fuse_add_) {
       fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_ZDATA_PLACEHOLDER,
                                   CUDNN_PTR_16B_ALIGNED);
     }
 
     // input desc
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, args_.in_desc.desc());
-    if (has_shortcut_ || fused_add_) {
+    if (has_shortcut_ || fuse_add_) {
       fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ZDESC, args_.in_desc.desc());
     }
 
@@ -271,7 +272,7 @@ class CudnnScaleBiasAddRelu {
          CUDNN_PARAM_BN_DSCALE_PLACEHOLDER, CUDNN_PARAM_BN_DBIAS_PLACEHOLDER,
          CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
-    if (has_shortcut_ || fused_add_) {
+    if (has_shortcut_ || fuse_add_) {
       bwd_op_.SetOpConstParamAttr(CUDNN_PARAM_DZDATA_PLACEHOLDER,
                                   CUDNN_PTR_16B_ALIGNED);
     }
@@ -279,7 +280,7 @@ class CudnnScaleBiasAddRelu {
     // input desc
     bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, args_.in_desc.desc());
     bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_DXDESC, args_.in_desc.desc());
-    if (has_shortcut_ || fused_add_) {
+    if (has_shortcut_ || fuse_add_) {
       bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_DZDESC, args_.in_desc.desc());
     }
 
@@ -303,7 +304,7 @@ class CudnnScaleBiasAddRelu {
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
   }
 
-  bool fused_add_ = false;
+  bool fuse_add_ = false;
   bool has_shortcut_ = false;
   size_t fwd_workspace_byte_;
   size_t bwd_workspace_byte_;

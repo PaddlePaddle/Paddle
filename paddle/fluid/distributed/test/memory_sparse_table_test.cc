@@ -27,16 +27,16 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-// CommonSparseTable + SSGD
-TEST(CommonSparseTable, SGD) {
+TEST(MemorySparseTable, SGD) {
   int emb_dim = 8;
   int trainers = 2;
 
   TableParameter table_config;
   table_config.set_table_class("MemorySparseTable");
+  table_config.set_shard_num(10);
   FsClientParameter fs_config;
   Table *table = new MemorySparseTable();
-  // Table* table = CREATE_PSCORE_CLASS(Table, table_config.table_class());
+  table->set_shard(0, 1);
 
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
   accessor_config->set_accessor_class("CtrCommonAccessor");
@@ -127,14 +127,13 @@ TEST(CommonSparseTable, SGD) {
       auto update_val = init_values[i * (emb_dim + 1) + j] -
                         0.1 * total_gradients[3 + i * (emb_dim + 4) + j];
       VLOG(3) << total_gradients[i * (emb_dim + 4) + j + 3] << ":"
-              << init_values[i * (emb_dim + 1) + j] << "\n";
-      VLOG(3) << update_val << ": " << pull_values[i * (emb_dim + 1) + j]
-              << "\n";
+              << init_values[i * (emb_dim + 1) + j];
+      VLOG(3) << update_val << ": " << pull_values[i * (emb_dim + 1) + j];
     }
   }
 
   MemorySparseTable *ctr_table = dynamic_cast<MemorySparseTable *>(table);
-  ctr_table->save_local_fs("/work/table.save", "0", "test");
+  ctr_table->save_local_fs("./work/table.save", "0", "test");
 }
 
 }  // namespace distributed

@@ -18,6 +18,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
 class TrtConvertClipTest(TrtLayerAutoScanTest):
@@ -84,8 +85,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
+    def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}

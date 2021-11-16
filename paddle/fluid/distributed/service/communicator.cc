@@ -88,8 +88,6 @@ void Communicator::InitBrpcClient(
     servers_ = host_sign_list.size();
     _ps_env = paddle::distributed::PaddlePSEnvironment();
     _ps_env.set_ps_servers(&host_sign_list, servers_);
-    // _ps_env.set_ps_clients(&trainer_host_sign_list,
-    // trainer_host_sign_list.size());
     _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
         paddle::distributed::PSClientFactory::create(_ps_param));
     _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
@@ -108,8 +106,6 @@ std::vector<uint64_t> Communicator::GetClientInfo() {
 
 int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
   int node = host_sign_list.size();
-  // return _ps_env.set_ps_clients(const_cast<uint64_t
-  // *>(host_sign_list.data()),
   return _ps_env.set_ps_clients(host_sign_list.data(), node);
 }
 
@@ -304,6 +300,18 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
     push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
   }
+
+  // TODO(wangguanqun): padding_idx is not ignored, this is a bug.
+  // if padding_idx == padding in datareader, the server will core.
+  /*
+  for (size_t i = 0; i < tensor->rows().size(); ++i) {
+    uint64_t real_id = static_cast<uint64_t>(tensor->rows()[i]);
+    if (real_id != 0) {
+      sparse_push_keys.push_back(real_id);
+      push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
+    }
+  }
+  */
 
   ++_async_call_num;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
@@ -634,13 +642,13 @@ void AsyncCommunicator::Start() {
 }
 
 void AsyncCommunicator::Stop() {
-  VLOG(0) << "Communicator stop begin";
+  VLOG(1) << "Communicator stop begin";
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     _worker_ptr->finalize_worker();
-    VLOG(0) << "client finalize_worker done";
+    VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(0) << "stop recv thread";
       recv_thread_->join();

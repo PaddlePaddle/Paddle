@@ -1487,6 +1487,15 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::TanhGradGradFunctor<double>>,
     ops::TanhDoubleGradKernel<plat::CUDADeviceContext,
                               ops::TanhGradGradFunctor<plat::float16>>);
+
+REGISTER_OP_CUDA_KERNEL(
+    tanh_triple_grad,
+    ops::TanhTripeGradKernel<paddle::platform::CUDADeviceContext,
+                             ops::TanhTripleGradFunctor<float>>,
+    ops::TanhTripeGradKernel<paddle::platform::CUDADeviceContext,
+                             ops::TanhTripleGradFunctor<double>>,
+    ops::TanhTripeGradKernel<plat::CUDADeviceContext,
+                             ops::TanhTripleGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ===========================   sqrt register  ============================= */

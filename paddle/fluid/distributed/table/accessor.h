@@ -17,16 +17,13 @@
 #include <stdio.h>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/common/afs_warpper.h"
+#include "paddle/fluid/distributed/common/afs_warpper.h"
+#include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 
 namespace paddle {
 namespace distributed {
-//struct FsDataConverter {
-//  std::string converter;
-//  std::string deconverter;
-//};
 
 struct Region {
   Region() : data(NULL), size(0) {}
@@ -51,8 +48,8 @@ struct DataConverter {
 
 class ValueAccessor {
  public:
-  explicit ValueAccessor(){};
-  virtual ~ValueAccessor(){};
+  ValueAccessor() {}
+  virtual ~ValueAccessor() {}
 
   virtual int configure(const TableAccessorParameter& parameter) {
     _config = parameter;

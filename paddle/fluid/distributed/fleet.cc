@@ -135,7 +135,6 @@ uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 
 std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
   VLOG(3) << "Going to get client info";
-  // return pserver_ptr_->get_client_info();
   auto* communicator = Communicator::GetInstance();
   std::vector<uint64_t> res = communicator->GetClientInfo();
   return res;
@@ -143,7 +142,6 @@ std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
 
 void FleetWrapper::CreateClient2ClientConnection() {
   VLOG(1) << "Going to create client2client connection";
-  // pserver_ptr_->create_client2client_connection(
   auto* communicator = Communicator::GetInstance();
   communicator->_worker_ptr->create_client2client_connection(
       client2client_request_timeout_ms_, client2client_connect_timeout_ms_,
@@ -396,18 +394,13 @@ void FleetWrapper::PushDenseVarsAsync(
     float* g = tensor->mutable_data<float>(place);
     paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
-    VLOG(1) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
+    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
             << table_id << " Temp_data[0] " << g[0] << " Temp_data[-1] "
             << g[tensor->numel() - 1];
   }
 
   auto* communicator =
       dynamic_cast<AsyncCommunicator*>(Communicator::GetInstance());
-  // PADDLE_ENFORCE_EQ(
-  //    communicator->Check(table_id), true,
-  //    platform::errors::InvalidArgument(
-  //        "can not find table: %s, please check your config", table_id));
-  // communicator->Send(var_names, scope);
   auto push_status = communicator->_worker_ptr->push_dense(
       regions.data(), regions.size(), table_id);
 
@@ -458,8 +451,6 @@ void FleetWrapper::PushSparseFromTensorAsync(
     platform::Place place, std::vector<const LoDTensor*>* inputs,
     const LoDTensor* shows, const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs) {
-  // VLOG(3) << "FleetWrapper::PushSparseFromTensorAsync push sparse padding_id:
-  // " << padding_id;
   int batch_size = -1;
   for (auto* input : *inputs) {
     int cur_batch_size =
@@ -571,17 +562,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
   CHECK(output_len == g.size());
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
-
-  // std::cout << "debug PushSparseFromTensorAsync push sparse\n";
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
-
-    /*
-    std::cout << "key: " << push_keys[i] << " ";
-    for (int j = 0; j < fea_dim + 3; ++ j)
-        std::cout << push_g_vec[i][j] << " ";
-    std::cout << "\n";
-    */
   }
 
   auto* communicator = Communicator::GetInstance();
@@ -739,22 +721,9 @@ void FleetWrapper::ClientFlush() {
 int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
                                                    MsgHandlerFunc handler) {
   VLOG(1) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
-  // VLOG(1) << "pserver_ptr_=" << pserver_ptr_; //NULL if InitWorker is not
-  // called
-  // VLOG(1) << "_worker_ptr=" << pserver_ptr_->_worker_ptr;
   auto* communicator = Communicator::GetInstance();
-  // for unittest which does not call fleet.init_worker() first
-  if (communicator == nullptr) {
-    VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler communicator is "
-               "null";
-    return -1;
-  } else {
-    return communicator->_worker_ptr->registe_client2client_msg_handler(
-        msg_type, handler);
-  }
-  // return
-  // pserver_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type,
-  //                                                                    handler);
+  return communicator->_worker_ptr->registe_client2client_msg_handler(msg_type,
+                                                                      handler);
 }
 
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(

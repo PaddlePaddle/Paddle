@@ -249,5 +249,45 @@ class TestNPUCumSumWithFlatten2(TestNPUCumSumOp1):
         self.outputs = {'Out': self.inputs['X'].cumsum()}
 
 
+#----------------Cumsum Int64----------------
+class TestNPUCumSumOpInt64(TestNPUCumSumOp1):
+    def init_testcase(self):
+        self.attrs = {'axis': -1, 'reverse': True}
+        self.inputs = {
+            'X': np.random.randint(
+                1, 10000, size=(5, 6, 10)).astype(self.dtype)
+        }
+        self.outputs = {
+            'Out': np.flip(
+                np.flip(
+                    self.inputs['X'], axis=2).cumsum(axis=2), axis=2)
+        }
+
+
+def create_test_int64(parent):
+    class TestCumSumInt64(parent):
+        def init_dtype(self):
+            self.dtype = np.int64
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Int64")
+    TestCumSumInt64.__name__ = cls_name
+    globals()[cls_name] = TestCumSumInt64
+
+
+create_test_int64(TestNPUCumSumOp1)
+create_test_int64(TestNPUCumSumOp2)
+create_test_int64(TestNPUCumSumOp3)
+create_test_int64(TestNPUCumSumOp4)
+create_test_int64(TestNPUCumSumOp5)
+create_test_int64(TestNPUCumSumOp7)
+create_test_int64(TestNPUCumSumExclusive1)
+create_test_int64(TestNPUCumSumExclusive2)
+create_test_int64(TestNPUCumSumExclusive3)
+create_test_int64(TestNPUCumSumExclusive4)
+create_test_int64(TestNPUCumSumExclusive5)
+create_test_int64(TestNPUCumSumReverseExclusive)
+create_test_int64(TestNPUCumSumWithFlatten1)
+create_test_int64(TestNPUCumSumWithFlatten2)
+
 if __name__ == '__main__':
     unittest.main()

@@ -313,6 +313,18 @@ def _current_expected_place():
                     "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_xpu():
+            try:
+                device_count = core.get_xpu_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.XPUPlace(0)
+            else:
+                warnings.warn(
+                    "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -455,7 +467,7 @@ def is_compiled_with_cuda():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_cuda()
+            support_gpu = paddle.device.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
@@ -470,7 +482,7 @@ def is_compiled_with_rocm():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_rocm()
+            support_gpu = paddle.device.is_compiled_with_rocm()
     """
     return core.is_compiled_with_rocm()
 
@@ -967,6 +979,10 @@ class Variable(object):
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if dtype == core.VarDesc.VarType.STRINGS:
+            type = core.VarDesc.VarType.STRINGS
+            lod_level = None
+
         self.belong_to_optimizer = belong_to_optimizer
 
         self.error_clip = error_clip
@@ -1292,13 +1308,12 @@ class Variable(object):
         if self.persistable:
             var_str = "persist " + var_str
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
-            self)
-        if var_dist_attr is not None:
+        dist_tensor = dist_context.get_dist_tensor_for_program(self)
+        if dist_tensor is not None:
             var_str += ", {name} = {value}".format(
-                name="dist_attr", value=var_dist_attr)
+                name="dist_attr", value=dist_tensor)
 
         return var_str
 
@@ -2513,12 +2528,12 @@ class Operator(object):
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        op_dist_attr = dist_context.get_op_distributed_attr_for_program(self)
-        if op_dist_attr is not None:
+        dist_op = dist_context.get_dist_op_for_program(self)
+        if dist_op is not None:
             attrs_str += ", {name} = {value}".format(
-                name="dist_attr", value=op_dist_attr)
+                name="dist_attr", value=dist_op)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
@@ -4462,6 +4477,9 @@ class Program(object):
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
 
+        # assigned if this program has been parsed by a heter pipeline parameter server optimizer
+        self._heter_pipeline_opt = None
+
         # appending gradients times
         self._appending_grad_times = 0
 
@@ -6085,7 +6103,7 @@ class ParamBase(core.VarBase):
 
         self.need_clip = kwargs.get('need_clip', True)
 
-        self.is_distributed = False
+        self.is_distributed = kwargs.get('is_distributed', False)
         # self.block = default_main_program().global_block()
 
     @property

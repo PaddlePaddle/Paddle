@@ -249,6 +249,22 @@ call :test_unit || goto test_unit_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
+rem ------PR CI windows check for unittests and inference in CUDA11-MKL-AVX----------
+:CASE_wincheck_inference
+set WITH_MKL=ON
+set WITH_GPU=ON
+set WITH_AVX=ON
+set MSVC_STATIC_CRT=ON
+set ON_INFER=ON
+
+call :cmake || goto cmake_error
+call :build || goto build_error
+call :test_whl_pacakage || goto test_whl_pacakage_error
+:: call :test_unit || goto test_unit_error
+::call :test_inference || goto test_inference_error
+:: call :check_change_of_unittest || goto check_change_of_unittest_error
+goto:success
+
 rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
@@ -301,6 +317,8 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
+rem set vs language to english to block showIncludes, this need vs has installed English language package.
+set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 set DISTUTILS_USE_SDK=1
@@ -381,7 +399,7 @@ if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
     pip install wget
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
-    cd %THIRD_PARTY_HOME%
+    cd /d %THIRD_PARTY_HOME%
     echo Getting third party: downloading ...
     %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
     if !ERRORLEVEL! EQU 0 (
@@ -397,7 +415,7 @@ if not exist %THIRD_PARTY_PATH% (
         echo Get third party failed, reason: download failed, will build locally.
     )
     if not exist %THIRD_PARTY_PATH% set UPLOAD_TP_FILE=ON
-    cd %work_dir%\%BUILD_DIR%
+    cd /d %work_dir%\%BUILD_DIR%
 ) else (
     echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
 )
@@ -519,16 +537,16 @@ if "%UPLOAD_TP_FILE%"=="ON" (
     echo Uploading third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-0.8.33 (
         echo There is no bce in this PC, will install bce.
-        cd %cache_dir%
+        cd /d %cache_dir%
         echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
         %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
         %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
-        cd %cache_dir%\bce-python-sdk-0.8.33
+        cd /d %cache_dir%\bce-python-sdk-0.8.33
         %PYTHON_ROOT%\python.exe setup.py install 1>nul
         del %cache_dir%\bce-python-sdk-0.8.33.tar.gz
     )
     if !errorlevel! EQU 0 (
-        cd %THIRD_PARTY_HOME%
+        cd /d %THIRD_PARTY_HOME%
         echo Uploading third_party: compressing ...
         tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
@@ -546,7 +564,7 @@ if "%UPLOAD_TP_FILE%"=="ON" (
     ) else (
         echo Failed upload third party to bos, reason: install bce failed.
     )
-    cd %work_dir%\%BUILD_DIR%
+    cd /d %work_dir%\%BUILD_DIR%
 )
 
 echo Build Paddle successfully!
@@ -659,6 +677,8 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
@@ -676,6 +696,8 @@ echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
 goto:eof
@@ -711,7 +733,7 @@ for /F %%i in ("%libsize%") do (
     echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 )
 
-cd %work_dir%\paddle\fluid\inference\api\demo_ci
+cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
 goto:eof
 
@@ -811,7 +833,7 @@ echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
-cd %work_dir%\paddle\fluid\inference\tests\infer_ut
+cd /d %work_dir%\paddle\fluid\inference\tests\infer_ut
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
 goto:eof
 
