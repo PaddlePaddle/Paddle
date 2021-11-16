@@ -117,7 +117,8 @@ static inline std::shared_ptr<egr::EagerTensor> CastToType(
 
   {
     AutoCastGuard guard(0);
-    RunOp("cast", ins, outs, std::move(attrs), {});
+    paddle::framework::AttributeMap default_attrs;
+    RunOp("cast", ins, outs, std::move(attrs), {}, &default_attrs, true);
   }
 
   return out;

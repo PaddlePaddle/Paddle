@@ -92,6 +92,8 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
 void RunOp(const std::string& type, const NameTensorMap& ins,
            const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
            const paddle::platform::Place& place,
+           paddle::framework::AttributeMap* default_attrs,
+           bool override_default_attr_map,
            const std::map<std::string, std::string>& inplace_map) {
   VLOG(1) << "Run Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -108,16 +110,24 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
     }
   }
   auto op = paddle::framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
-  const auto& op_info = op->Info();
-  auto* attr_checker = op_info.Checker();
-  if (attr_checker) {
-    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+
+  PADDLE_ENFORCE_NOT_NULL(default_attrs,
+                          paddle::platform::errors::PermissionDenied(
+                              "Detected default_attrs = nullptr."));
+
+  if (override_default_attr_map) {
+    const auto& op_info = op->Info();
+    auto* attr_checker = op_info.Checker();
+    if (attr_checker) {
+      attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+    }
+
+    static paddle::framework::AttributeMap empty_attrs_map = {};
+    *default_attrs = attr_checker == nullptr
+                         ? empty_attrs_map
+                         : attr_checker->GetDefaultAttrMap();
   }
 
-  static paddle::framework::AttributeMap empty_attrs_map = {};
-  const paddle::framework::AttributeMap& default_attrs =
-      attr_checker == nullptr ? empty_attrs_map
-                              : attr_checker->GetDefaultAttrMap();
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
   NameTensorMap new_ins = ins;
   if (amp_level == 1) {
@@ -155,7 +165,7 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
 #endif
     }
 
-    OpRunImpl(*op, new_ins, outs, attrs, default_attrs, place);
+    OpRunImpl(*op, new_ins, outs, attrs, *default_attrs, place);
   } catch (paddle::platform::EnforceNotMet& exception) {
     paddle::framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);

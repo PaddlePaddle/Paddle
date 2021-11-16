@@ -49,9 +49,9 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
   }
 
   for (int i = 0; i < grad_dense->numel(); i++) {
-    if (ptr[i] != value) {
-      return false;
-    }
+    PADDLE_ENFORCE(value == ptr[i],
+                   paddle::platform::errors::Fatal(
+                       "Numerical Error, Expected %f, got %f", value, ptr[i]));
   }
   return true;
 }
@@ -77,7 +77,9 @@ bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
   }
 
   for (int i = 0; i < dense_t->numel(); i++) {
-    if (ptr[i] != value) return false;
+    PADDLE_ENFORCE(value == ptr[i],
+                   paddle::platform::errors::Fatal(
+                       "Numerical Error, Expected %f, got %f", value, ptr[i]));
   }
   return true;
 }
@@ -103,9 +105,9 @@ bool CompareVariableWithValue(const egr::EagerTensor& target, T value) {
   }
 
   for (int i = 0; i < lod_tensor.numel(); i++) {
-    if (ptr[i] != value) {
-      return false;
-    }
+    PADDLE_ENFORCE(value == ptr[i],
+                   paddle::platform::errors::Fatal(
+                       "Numerical Error, Expected %f, got %f", value, ptr[i]));
   }
   return true;
 }
@@ -132,11 +134,9 @@ bool CompareGradVariableWithValue(const egr::EagerTensor& target, T value) {
   }
 
   for (int i = 0; i < lod_tensor.numel(); i++) {
-    if (ptr[i] != value) {
-      std::cout << " current value is: " << ptr[i] << " i is: " << i
-                << std::endl;
-      return false;
-    }
+    PADDLE_ENFORCE(value == ptr[i],
+                   paddle::platform::errors::Fatal(
+                       "Numerical Error, Expected %f, got %f", value, ptr[i]));
   }
   return true;
 }
