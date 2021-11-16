@@ -188,7 +188,8 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
-    export FLAGS_fraction_of_gpu_memory_to_use=0.92
+    # set it smaller so that malloc_test can run successfully
+    export FLAGS_fraction_of_gpu_memory_to_use=0.88
     export CUDA_VISIBLE_DEVICES=0
 
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -353,6 +354,11 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
             echo "========================================"
             exit 8;
         fi
+
+        if nvcc --version | grep 11.2; then
+            echo "In PR-CI-Windows-Inference, only test added_ut temporarily."
+            exit 0;
+        fi 
     fi
     run_unittest_gpu $cpu_parallel_job 10
     run_unittest_gpu $tetrad_parallel_job 4
