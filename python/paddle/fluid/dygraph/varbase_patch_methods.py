@@ -386,21 +386,18 @@ def monkey_patch_varbase():
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
+            if type(dtype) is str:
+                dtype = framework.convert_np_dtype_to_dtype_(dtype)
 
             # 1. gpu place need to determine whether the memory is sufficient for allocation.
             if t.place.is_gpu_place():
-                gpu_memory_available = core.gpu_memory_available()
-                # for gpu, minimum memory allocation unit is 256 bytes.
-                if type(dtype) is str:
-                    size_dtype = core.size_of_dtype(
-                        framework.convert_np_dtype_to_dtype_(dtype))
-                else:
-                    size_dtype = core.size_of_dtype(dtype)
+                size_dtype = core.size_of_dtype(dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
                 # waiting_alloc_memory will compute the memory space occupied by 't'.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
                 waiting_alloc_memory = (
                     (t._numel() * size_dtype) / 256 + 1) * 256 * 1.2
+                gpu_memory_available = core.gpu_memory_available()
                 if gpu_memory_available < waiting_alloc_memory:
                     # Copy Tensor to cpu
                     t_used = t._copy_to(paddle.CPUPlace(), blocking)
@@ -414,12 +411,17 @@ def monkey_patch_varbase():
 
             # 2. cast Tensor to dtype
             if dtype is not None and dtype != t_used.dtype:
-                t_casted = t_used.cast(dtype=dtype)
+                with paddle.fluid.framework._dygraph_place_guard(
+                        place=t_used.place):
+                    t_casted = t_used.cast(dtype=dtype)
             else:
                 t_casted = t_used
 
             # 3. Copy casted Tensor(in CPU or GPU) to device
-            new_t = t_casted._copy_to(device, blocking)
+            if device is not None and not t_casted.place._equals(device):
+                new_t = t_casted._copy_to(device, blocking)
+            else:
+                new_t = t_casted
 
             # 4. Share Tensor to origin Tensor
             dst_tensor = t.value().get_tensor()
