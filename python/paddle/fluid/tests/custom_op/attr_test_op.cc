@@ -132,8 +132,7 @@ std::vector<paddle::Tensor> AttrTestForward(
     std::vector<float> float_vec_attr,
     std::vector<int64_t> int64_vec_attr,
     std::vector<std::string> str_vec_attr) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -161,8 +160,7 @@ std::vector<paddle::Tensor> AttrTestBackward(
     int int_attr,
     std::vector<float> float_vec_attr,
     std::vector<std::string> str_vec_attr) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU);
-  grad_x.reshape(grad_out.shape());
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, grad_out.shape());
 
   PD_DISPATCH_FLOATING_TYPES(grad_out.type(), "assign_cpu_kernel", ([&] {
                                assign_cpu_kernel<data_t>(
@@ -187,8 +185,7 @@ std::vector<paddle::Tensor> ConstAttrTestForward(
     const std::vector<float>& float_vec_attr,
     const std::vector<int64_t>& int64_vec_attr,
     const std::vector<std::string>& str_vec_attr) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -216,8 +213,7 @@ std::vector<paddle::Tensor> ConstAttrTestBackward(
     const int& int_attr,
     const std::vector<float>& float_vec_attr,
     const std::vector<std::string>& str_vec_attr) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU);
-  grad_x.reshape(grad_out.shape());
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, grad_out.shape());
 
   PD_DISPATCH_FLOATING_TYPES(grad_out.type(), "assign_cpu_kernel", ([&] {
                                assign_cpu_kernel<data_t>(

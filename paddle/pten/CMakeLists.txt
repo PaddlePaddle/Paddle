@@ -1,3 +1,8 @@
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file, remove it after moving
+# float16.h/complex.h/bfloat16.h into pten
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+
 # pten (low level) api headers: include
 # pten (high level) api
 add_subdirectory(api)
@@ -20,4 +25,5 @@ endif()
 if(WITH_XPU)
   set(PTEN_DEPS ${PTEN_DEPS} manipulation_xpu)
 endif()
+
 cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})

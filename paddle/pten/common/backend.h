@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <ostream>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/api/ext/exception.h"
 
 namespace paddle {
 namespace experimental {
@@ -80,8 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       os << "CUDNN";
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid enum backend type `%d`.", static_cast<int>(backend)));
+      PD_THROW("Invalid enum backend type `", static_cast<int>(backend), "`.");
   }
   return os;
 }
