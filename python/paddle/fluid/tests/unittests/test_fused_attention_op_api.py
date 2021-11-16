@@ -89,27 +89,32 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     qkv_weight = qkv_weight.reshape(qkv_weight.shape[0], qkv_weight.shape[1] *
                                     qkv_weight.shape[2] * qkv_weight.shape[3])
 
+    qkv_bias = qkv_bias.reshape(qkv_bias.shape[0] * qkv_bias.shape[1] *
+                                qkv_bias.shape[2])
     if (pre_layer_norm):
         ln_out = ln_out.reshape(batch_size * seq_len, embed_dim)
         qkv = fc(ln_out, qkv_weight)
+        qkv_bias_out = qkv + qkv_bias
         ln_out = ln_out.reshape(batch_size, seq_len, embed_dim)
     else:
         query = query.reshape(batch_size * seq_len, embed_dim)
         qkv = fc(query, qkv_weight)
+        qkv_bias_out = qkv + qkv_bias
         query = query.reshape(batch_size, seq_len, embed_dim)
 
-    qkv = qkv.reshape(batch_size, seq_len, 3, num_head, head_dim)
+    qkv_bias_out = qkv_bias_out.reshape(batch_size, seq_len, 3, num_head,
+                                        head_dim)
     # q*k^t
-    qkv = qkv.transpose(
+    qkv_bias_out = qkv_bias_out.transpose(
         (2, 0, 1, 3, 4))  # 3, batch_size, seq_len, num_head, head_dim
-    qkv = qkv.transpose(
+    qkv_bias_out = qkv_bias_out.transpose(
         (0, 1, 3, 2, 4))  # 3, batch_size, num_head, seq_len, head_dim
 
-    q = qkv[0:1, ::]
+    q = qkv_bias_out[0:1, ::]
     q = q.reshape(batch_size, num_head, seq_len, head_dim)
-    k = qkv[1:2, ::]  #[1, batch_size, num_head, seq_len, head_dim]
+    k = qkv_bias_out[1:2, ::]  #[1, batch_size, num_head, seq_len, head_dim]
     k = k.reshape(batch_size, num_head, seq_len, head_dim)
-    v = qkv[2::]
+    v = qkv_bias_out[2::]
     v = v.reshape(batch_size, num_head, seq_len, head_dim)
 
     k = k.transpose([0, 1, 3, 2])  #[batch_size, num_head, head_dim, seq_len]
@@ -200,6 +205,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
             self.embed_dim, self.num_heads, self.dropout_prob,
             self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
             self.need_weight, self.weight_attr, self.bias_attr)
+        qkv_bias = np.random.random(fused_attn.qkv_bias.shape).astype('float32')
+        fused_attn.qkv_bias.set_value(paddle.to_tensor(qkv_bias))
         out = fused_attn(
             paddle.to_tensor(self.query),
             paddle.to_tensor(self.query),

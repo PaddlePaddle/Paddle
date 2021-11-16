@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/functions/general/manipulation.h"
 
 namespace pten {
 
@@ -25,7 +26,7 @@ void Flatten(const CUDAContext& dev_ctx,
              int stop_axis,
              DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
 }
 
@@ -40,14 +41,78 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  const auto& in_dims = x.meta().dims;
-  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < in_dims.size(); ++i) {
-    xshape_dims[i + 1] = in_dims[i];
+  general::SetXShape(x, xshape);
+}
+
+void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int64_t>& shape,
+                          DenseTensor* out) {
+  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  if (&x == out) {
+    LOG(INFO) << "out_meta dims:" << out_meta.dims;
+    out->Resize(out_meta.dims);
+    return;
   }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->set_lod(x.lod());
+  pten::Copy(dev_ctx, x, false, out);
+  out->Resize(out_meta.dims);
+}
+
+void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const std::vector<int64_t>& shape,
+                                    DenseTensor* xshape,
+                                    DenseTensor* out) {
+  ReshapeFromVectorVal(dev_ctx, x, shape, out);
+  general::SetXShape(x, xshape);
+}
+
+void ReshapeFromDT(const CUDAContext& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& shape,
+                   DenseTensor* out) {
+  auto* shape_data = shape.data<int>();
+  auto vector_shape =
+      std::vector<int64_t>(shape_data, shape_data + shape.numel());
+  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+  out->set_lod(x.lod());
+}
+
+void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& shape,
+                             DenseTensor* xshape,
+                             DenseTensor* out) {
+  ReshapeFromDT(dev_ctx, x, shape, out);
+  general::SetXShape(x, xshape);
+}
+
+void ReshapeFromVectorDT(const CUDAContext& dev_ctx,
+                         const DenseTensor& x,
+                         const std::vector<DenseTensor>& shape,
+                         DenseTensor* out) {
+  std::vector<int64_t> vector_shape;
+  for (auto& tensor : shape) {
+    PADDLE_ENFORCE_EQ(
+        tensor.dims(),
+        paddle::framework::make_ddim({1}),
+        paddle::platform::errors::InvalidArgument(
+            "If the element type of 'shape' in ReshapeOp is Tensor, "
+            "the element's shape must be [1]. But received the element's shape "
+            "is [%s]",
+            tensor.dims()));
+    vector_shape.push_back(*tensor.data<int32_t>());
+  }
+  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+}
+
+void ReshapeFromVectorDTWithXShape(const CUDAContext& dev_ctx,
+                                   const DenseTensor& x,
+                                   const std::vector<DenseTensor>& shape,
+                                   DenseTensor* xshape,
+                                   DenseTensor* out) {
+  ReshapeFromVectorDT(dev_ctx, x, shape, out);
+  general::SetXShape(x, xshape);
 }
 
 }  // namespace pten
@@ -80,3 +145,13 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorVal) {}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mid",
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorValWithXShape) {}

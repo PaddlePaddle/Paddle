@@ -1,9 +1,3 @@
-IF(WITH_MKLDNN)
-    set(MKLDNN_CTX_DEPS mkldnn)
-ELSE()
-    set(MKLDNN_CTX_DEPS)
-ENDIF()
-
 if(WITH_GPU)
   cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
 elseif(WITH_ROCM)

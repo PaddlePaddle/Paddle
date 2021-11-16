@@ -20,9 +20,9 @@
 namespace paddle {
 namespace distributed {
 
-Carrier::Carrier(
-    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node)
-    : interceptor_id_to_node_(interceptor_id_to_node) {
+void Carrier::Init(
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+  interceptor_id_to_node_ = interceptor_id_to_node;
   CreateInterceptors();
 }
 
@@ -33,6 +33,13 @@ bool Carrier::EnqueueInterceptorMessage(
     // handle control message
     return true;
   } else {
+    if (creating_interceptors_) {
+      // Cannot handle the message to interceptor since interceptors
+      // are still under creating. Will enqueue into a tmp stack.
+      VLOG(3) << "Receiving message while creating interceptors.";
+      message_tmp_.emplace_back(interceptor_message);
+      return true;
+    }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
     bool rst =
@@ -56,21 +63,59 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   return iter->second.get();
 }
 
+Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
+                                     std::unique_ptr<Interceptor> interceptor) {
+  auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
+  PADDLE_ENFORCE_EQ(iter, interceptor_idx_to_interceptor_.end(),
+                    platform::errors::AlreadyExists(
+                        "The interceptor id %lld has already been created! "
+                        "The interceptor id should be unique.",
+                        interceptor_id));
+  auto* ptr = interceptor.get();
+  interceptor_idx_to_interceptor_.insert(
+      std::make_pair(interceptor_id, std::move(interceptor)));
+  return ptr;
+}
+
+void Carrier::SetCreatingFlag(bool flag) {
+  // set the creating flag
+  VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
+          << " to " << flag << ".";
+  creating_interceptors_ = flag;
+  if (!flag) {
+    // finish create interceptors outside, handle tmp messsages
+    HandleTmpMessages();
+  }
+}
+
+void Carrier::HandleTmpMessages() {
+  VLOG(3) << "Carrier has received " << message_tmp_.size()
+          << " messages during creating interceptors.";
+  for (const auto& msg : message_tmp_) {
+    EnqueueInterceptorMessage(msg);
+  }
+  message_tmp_.clear();
+}
+
 void Carrier::CreateInterceptors() {
   // create each Interceptor
-  for (const auto& item : interceptor_id_to_node_) {
-    int64_t interceptor_id = item.first;
-    TaskNode* task_node = item.second;
-    const auto& iter = interceptor_idx_to_interceptor_.find(interceptor_id);
-    PADDLE_ENFORCE_EQ(iter, interceptor_idx_to_interceptor_.end(),
-                      platform::errors::AlreadyExists(
-                          "The interceptor id %lld has already been created! "
-                          "The interceptor is should be unique.",
-                          interceptor_id));
-    interceptor_idx_to_interceptor_.insert(std::make_pair(
-        interceptor_id,
-        std::make_unique<Interceptor>(interceptor_id, task_node)));
-    VLOG(3) << "Create Interceptor for " << interceptor_id;
+  if (!interceptor_id_to_node_.empty()) {
+    // no auto init since there is no config
+    for (const auto& item : interceptor_id_to_node_) {
+      int64_t interceptor_id = item.first;
+      TaskNode* task_node = item.second;
+
+      // TODO(wangxi): use node_type to select different Interceptor
+      auto interceptor =
+          std::make_unique<Interceptor>(interceptor_id, task_node);
+      SetInterceptor(interceptor_id, std::move(interceptor));
+      VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
+              << ".";
+    }
+    // The carrier will be always waiting for outside initializer
+    // since there is no interceptor has been created during auto init
+    creating_interceptors_ = false;
+    HandleTmpMessages();
   }
 }
 

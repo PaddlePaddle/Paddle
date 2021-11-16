@@ -21,7 +21,9 @@ namespace experimental {
 
 // TODO(chenweihang): add scale API
 // TODO(chenweihang): move mean API into stat.h/cc
-Tensor mean(const Tensor& x);
+PD_DLL_DECL Tensor mean(const Tensor& x);
+
+PD_DLL_DECL Tensor add(const Tensor& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle
