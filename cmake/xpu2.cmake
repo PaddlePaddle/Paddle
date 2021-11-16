@@ -74,6 +74,7 @@ macro(compile_kernel kernel_path kernel_name rule device_o_extra_flags host_o_ex
 
   set(XTDK_DIR ${XPU_TOOLCHAIN})
   set(CXX_DIR ${HOST_SYSROOT})
+  
 
   add_custom_command(
     OUTPUT
