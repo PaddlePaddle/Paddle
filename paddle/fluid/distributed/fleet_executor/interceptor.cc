@@ -51,7 +51,7 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
     VLOG(3) << "Interceptor is using default msg handler, the default msg"
                " handler is only used for test purpose.";
     switch (msg.message_type()) {
-      case DATA_IS_READY:
+      case DATA_IS_READY: {
         if (current_step_ == number_of_micro_steps_) {
           PADDLE_THROW(platform::errors::PreconditionNotMet(
               "Current interceptor has already finish all micro steps, but "
@@ -81,9 +81,28 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
           }
         }
         break;
-      case DATE_IS_USELESS:
+      }
+      case DATE_IS_USELESS: {
         --slot_has_been_used_;
+        bool all_set = true;
+        for (const auto& pair : upstream_flag_[msg.scope_id()]) {
+          all_set = all_set && pair.second;
+        }
+        if (all_set) {
+          MessageBus& message_bus_instance = MessageBus::Instance();
+          InterceptorMessage new_msg;
+          new_msg.set_src_id(interceptor_id_);
+          new_msg.set_message_type(DATA_IS_READY);
+          new_msg.set_scope_id(current_step_);
+          for (int64_t dst_id : node_->downstream()) {
+            msg.set_dst_id(dst_id);
+            message_bus_instance.Send(new_msg);
+          }
+          ++current_step_;
+          ++slot_has_been_used_;
+        }
         break;
+      }
       default:
         VLOG(3) << "Default msg handler will only handle DATA_IS_READY and "
                    "DATA_IS_USELESS msg";
