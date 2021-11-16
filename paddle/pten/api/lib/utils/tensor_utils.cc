@@ -122,6 +122,7 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move storage."));
   dst->Resize(src->dims());
+  dst->setType(pten::TransToProtoVarType(src->data_type()));
   auto storage = src->release();
   std::shared_ptr<paddle::memory::allocation::Allocation> holder(
       new TensorStorage(std::move(storage)));
