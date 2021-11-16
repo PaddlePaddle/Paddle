@@ -26,7 +26,7 @@ void Flatten(const CPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
 }
 
@@ -53,7 +53,7 @@ void ReshapeFromVectorVal(const CPUContext& dev_ctx,
     out->Resize(out_meta.dims);
     return;
   }
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_meta.dims);
 }
 

@@ -31,6 +31,7 @@ using gpuStream_t = hipStream_t;
 
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/place.h"
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
@@ -316,9 +317,10 @@ class PD_DLL_DECL Tensor final {
 
   /**
    * @brief Copy the current Tensor data to the specified device
-   * and return the new Tensor.
-   * It's usually used to set the input tensor data.
-   * This is a deprecated method and may be removed in the future!
+   * and return the new Tensor. It's usually used to set the input tensor data.
+   * Note: The Tensor `copy_to` method is deprecated since version 2.3, and
+   * will be removed in version 2.4, please use `to` method instead. reasion:
+   * copying a Tensor to another device does not need to specify the data type.
    *
    * @tparam T
    * @param target_place, the target place of which the tensor will copy to.
@@ -333,7 +335,8 @@ class PD_DLL_DECL Tensor final {
    * @param place, the target place of which the tensor will copy to.
    * @return Tensor
    */
-  Tensor to(const PlaceType& place) const;
+  // TODO(chnweihang): replace Backend by new Place
+  Tensor to(Backend backend, bool blocking) const;
 
   /**
    * @brief Cast datatype from one to another
