@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/pten/api/include/registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/include/core.h"
@@ -26,11 +27,11 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor full(const std::vector<int64_t>& shape,
-            const Scalar& value,
-            DataType dtype,
-            Backend backend,
-            DataLayout layout) {
+PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
+                        const Scalar& value,
+                        DataType dtype,
+                        Backend backend,
+                        DataLayout layout) {
   // 1. Get kernel signature and kernel
   pten::KernelKey kernel_key{backend, layout, dtype};
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -61,11 +62,11 @@ Tensor full(const std::vector<int64_t>& shape,
   return out;
 }
 
-Tensor full_like(const Tensor& x,
-                 const Scalar& value,
-                 DataType dtype,
-                 Backend backend,
-                 DataLayout layout) {
+PD_DLL_DECL Tensor full_like(const Tensor& x,
+                             const Scalar& value,
+                             DataType dtype,
+                             Backend backend,
+                             DataLayout layout) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -106,19 +107,21 @@ Tensor full_like(const Tensor& x,
   return out;
 }
 
-Tensor ones_like(const Tensor& x,
-                 DataType dtype,
-                 Backend backend,
-                 DataLayout layout) {
+PD_DLL_DECL Tensor ones_like(const Tensor& x,
+                             DataType dtype,
+                             Backend backend,
+                             DataLayout layout) {
   return full_like(x, 1, dtype, backend, layout);
 }
 
-Tensor zeros_like(const Tensor& x,
-                  DataType dtype,
-                  Backend backend,
-                  DataLayout layout) {
+PD_DLL_DECL Tensor zeros_like(const Tensor& x,
+                              DataType dtype,
+                              Backend backend,
+                              DataLayout layout) {
   return full_like(x, 0, dtype, backend, layout);
 }
 
 }  // namespace experimental
 }  // namespace paddle
+
+PT_REGISTER_API(Creation);
