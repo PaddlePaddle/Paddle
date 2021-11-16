@@ -152,8 +152,10 @@ class PartialProgramLayer:
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
-        custom_white_list, custom_black_list = framework._dygraph_tracer(
-        )._get_amp_op_list()
+        custom_white_list, custom_black_list = None, None
+        tracer = framework._dygraph_tracer()
+        if tracer:
+            custom_white_list, custom_black_list = tracer._get_amp_op_list()
         # For AMP training
         self._amp_list = AutoMixedPrecisionLists(
             custom_white_list=custom_white_list,
