@@ -729,8 +729,6 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            # required: gpu
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
