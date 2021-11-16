@@ -82,7 +82,7 @@ TEST(bfloat16, lod_tensor_on_gpu) {
 
 TEST(bfloat16, isinf) {
   bfloat16 a;
-  a.value = bfloat16(0x7f80);
+  a.value = 0x7f80;
   bfloat16 b = bfloat16(INFINITY);
   bfloat16 c = static_cast<bfloat16>(INFINITY);
   EXPECT_EQ(std::isinf(a), true);
@@ -92,7 +92,7 @@ TEST(bfloat16, isinf) {
 
 TEST(bfloat16, isnan) {
   bfloat16 a;
-  a.value = bfloat16(0x7fff);
+  a.value = 0x7fff;
   bfloat16 b = bfloat16(NAN);
   bfloat16 c = static_cast<bfloat16>(NAN);
   EXPECT_EQ(std::isnan(a), true);
@@ -102,7 +102,7 @@ TEST(bfloat16, isnan) {
 
 TEST(bfloat16, cast) {
   bfloat16 a;
-  a.value = bfloat16(0x0070);
+  a.value = 0x0070;
   auto b = a;
   {
     // change semantic, keep the same value
@@ -114,7 +114,7 @@ TEST(bfloat16, cast) {
     // use uint32 low 16 bit store float16
     uint32_t c = reinterpret_cast<uint32_t &>(b);
     bfloat16 d;
-    d.value = bfloat16(c);
+    d.value = c;
     EXPECT_EQ(b, d);
   }
 }
