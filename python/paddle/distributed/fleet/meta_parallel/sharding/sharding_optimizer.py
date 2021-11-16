@@ -268,10 +268,8 @@ class ShardingOptimizer(Optimizer):
         """
         Clean up the gradient of the optimizer's full parameters.
         """
-        for p in self._optim._parameter_list:
-            if p.trainable and p.grad is not None:
-                p.clear_gradient()
-                p._gradient_set_empty(False)
+        for dtype in self._optim.param_storages.keys():
+            self._optim.param_storages[dtype][self.rank].buffer.zero_()
 
     @paddle.no_grad()
     def _broadcast_params(self):
