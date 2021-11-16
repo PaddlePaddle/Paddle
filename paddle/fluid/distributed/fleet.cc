@@ -254,8 +254,6 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           bool is_training,
                                           std::vector<const LoDTensor*>* inputs,
                                           std::vector<LoDTensor*>* outputs) {
-  VLOG(3) << "FleetWrapper::PullSparseToTensorSync pull sparse padding_id: "
-          << padding_id;
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
@@ -300,17 +298,6 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
     LOG(ERROR) << "fleet pull sparse failed, status[" << ret << "]";
     sleep(sleep_seconds_before_fail_exit_);
   }
-
-  // for debug
-  /*
-  std::cout << "pull sparse check\n";
-  for (int i = 0; i < fea_keys.size(); ++ i) {
-    std::cout << "key " << fea_keys[i] << ": ";
-    for (int j = 0; j < fea_dim; ++ j) {
-        std::cout << pull_result_ptr[i][j] << " ";
-    }
-    std::cout << "\n";
-  }*/
 }
 
 void FleetWrapper::PullDenseVarsAsync(
@@ -562,6 +549,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   CHECK(output_len == g.size());
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
+
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
   }
@@ -731,8 +719,6 @@ std::future<int32_t> FleetWrapper::SendClientToClientMsg(
   auto* communicator = Communicator::GetInstance();
   return communicator->_worker_ptr->send_client2client_msg(msg_type,
                                                            to_client_id, msg);
-  // return pserver_ptr_->_worker_ptr->send_client2client_msg(msg_type,
-  //                                                         to_client_id, msg);
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {

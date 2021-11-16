@@ -119,7 +119,6 @@ message TableParameter {
 
 message TableAccessorParameter {
   optional string accessor_class = 1;
-  //  optional SparseSGDRuleParameter sparse_sgd_param = 2;
   optional uint32 fea_dim = 4 [ default = 11 ];
   optional uint32 embedx_dim = 5 [ default = 8 ];
   optional uint32 embedx_threshold = 6 [ default = 10 ];
