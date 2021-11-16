@@ -33,6 +33,21 @@ void Flatten(const XPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out);
 
+void ReshapeFromDT(const XPUContext& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& shape,
+                   DenseTensor* out);
+
+void ReshapeFromVectorVal(const XPUContext& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int>& shape,
+                          DenseTensor* out);
+
+void ReshapeFromVectorDT(const XPUContext& dev_ctx,
+                         const DenseTensor& x,
+                         const std::vector<DenseTensor>& shape,
+                         DenseTensor* out);
+
 }  // namespace pten
 
 #endif

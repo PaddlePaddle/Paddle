@@ -191,8 +191,9 @@ class LargeScaleKV(object):
 
 
 class HeterClient(object):
-    def __init__(self, endpoint, trainer_id):
-        self.heter_client_ = core.HeterClient(endpoint, trainer_id)
+    def __init__(self, endpoint, previous_endpoint, trainer_id):
+        self.heter_client_ = core.HeterClient(endpoint, previous_endpoint,
+                                              trainer_id)
 
     def stop(self):
         self.heter_client_.stop()
