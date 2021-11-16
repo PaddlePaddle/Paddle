@@ -1758,6 +1758,52 @@ set -x
     fi   
 }
 
+function parallel_test_base_cinn() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit cinn tests ...
+    ========================================
+EOF
+
+set +x
+        ut_startTime_s=`date +%s`
+        test_cases=$(ctest -N -V)        # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=CINN mean the case would run in CINN CI.
+                    read is_cinn <<< $(echo "$line"|grep -oEi "RUN_TYPE=CINN")
+                    continue
+                fi
+                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+                if [[ "$is_cinn" != "" ]]; then
+                    if [[ "$single_card_tests" == "" ]]; then
+                        single_card_tests="^$testcase$"
+                    else
+                        single_card_tests="$single_card_tests|^$testcase$"
+                    fi
+                fi
+                is_cinn=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+        card_test "$single_card_tests" 1
+        collect_failed_tests
+set -x
+        ut_endTime_s=`date +%s`
+        echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi   
+}
+
 function parallel_test_base_npu() {
     # skipping if no NPU related files changed
     if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
@@ -1903,7 +1949,9 @@ function parallel_test() {
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
-    if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
+    if [ "$WITH_CINN" == "ON" ];then
+        parallel_test_base_cinn
+    elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu

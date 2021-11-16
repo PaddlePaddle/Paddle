@@ -50,8 +50,8 @@ class StandaloneExecutor : public ExecutorBase {
       const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
-  void BuildVariableOuterScope(const framework::ProgramDesc& pdesc,
-                               VariableScope* var_scope, Scope* outer_scope);
+  void BuildVariableScope(const framework::ProgramDesc& pdesc,
+                          VariableScope* var_scope);
 
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
       const std::vector<std::string>& feed_names,
@@ -60,7 +60,6 @@ class StandaloneExecutor : public ExecutorBase {
   const platform::Place& place_;
   const ProgramDesc& startup_prog_;
   const ProgramDesc& main_prog_;
-  Scope* outer_scope_;
   VariableScope global_scope_;
 
   std::unordered_map<std::string, std::shared_ptr<ProgramDesc>> programs_;

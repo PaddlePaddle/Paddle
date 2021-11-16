@@ -77,20 +77,22 @@ paddle::framework::FetchList InterpreterCore::Run(
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
-void InterpreterCore::Convert() {
+void InterpreterCore::Convert(
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = global_scope_->MutableVecMetaInfo();
   auto var_nums = global_scope_->VarSize();
   input_var2op_info_.resize(var_nums);
+  auto nodes = *op_func_nodes;
 
-  auto op_nums = vec_func_list_.size();
+  auto op_nums = nodes.size();
   vec_instruction_.reserve(op_nums);
   dependecy_count_.resize(op_nums);
 
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
-    auto& op_func_node = vec_func_list_[op_idx];
+    auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
 
-    vec_instruction_.emplace_back(op_idx, op_func_node, *dev_ctx_);
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
     auto& instr = vec_instruction_.back();
 
     OpInOutInfo info;
@@ -98,14 +100,13 @@ void InterpreterCore::Convert() {
 
     for (auto& item : op_func_node.input_index) {
       for (auto id : item.second) {
-        if (id == 0) {
-          // id = 0, is @EMPTY@ variable, sikp
+        if (id == kEmptyVarIndex) {
           continue;
         }
         input_var2op_info_.at(id).push_back(op_idx);
         // var can be gc-ed
         if (!info.IsBuilt()) {
-          info.Build(op_func_node.operator_base_);
+          info.Build(op_func_node.operator_base_.get());
         }
         auto* var_desc = global_scope_->VarDesc(id);
         if (var_desc) {
@@ -125,6 +126,8 @@ void InterpreterCore::Convert() {
     for (auto var_id : gc_check_input_list) {
       vec_meta_info[var_id].var_ref_count_++;
       instr.AddGCCheckVar(var_id);
+      VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
+              << instr.OpBase()->Type();
     }
   }
 
@@ -135,6 +138,8 @@ void InterpreterCore::Convert() {
         if (input_var2op_info_.at(id).size() == 0) {
           // output var not be used by any kernel
           vec_instruction_[i].AddGCCheckVar(id);
+          VLOG(4) << "clear " << global_scope_->GetNameById(id) << " after "
+                  << vec_instruction_[i].OpBase()->Type();
           vec_meta_info[id].var_ref_count_++;
         }
       }
@@ -441,6 +446,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 
     try {
       RunInstruction(instr_node);
+      // GC infomation
+      CheckGC(instr_node);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -467,9 +474,6 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     interpreter::RecordEvent(instr_node, place_);
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
-    // GC infomation
-    CheckGC(instr_node);
-
     RunNextInstructions(instr_node, &ready_ops);
   }
 }
@@ -480,6 +484,9 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   auto& atomic_var_ref = async_work_queue_->AtomicVarRef();
 
   for (auto var_id : instr.GCCheckVars()) {
+    VLOG(4) << "GC " << global_scope_->GetNameById(var_id) << " "
+            << var_scope.VarDesc(var_id);
+
     bool is_ready =
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
     // ignore all persistable var while GC
@@ -517,11 +524,12 @@ void InterpreterCore::Prepare(
   if (!is_build_) {
     paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
     FeedInput();
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &vec_func_list_, global_scope_);
+        place_, block_, &op_func_nodes, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
-    Convert();
+    Convert(&op_func_nodes);
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::build_op_func_list, so we should

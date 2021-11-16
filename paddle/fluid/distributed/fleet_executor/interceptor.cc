@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
 namespace paddle {
 namespace distributed {
@@ -27,9 +28,7 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
 
 Interceptor::~Interceptor() { interceptor_thread_.join(); }
 
-void Interceptor::RegisterInterceptorHandle(InterceptorHandle handle) {
-  handle_ = handle;
-}
+void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
 void Interceptor::Handle(const InterceptorMessage& msg) {
   if (handle_) {
@@ -57,11 +56,10 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
   return true;
 }
 
-void Interceptor::Send(int64_t dst_id,
-                       std::unique_ptr<InterceptorMessage> msg) {
-  msg->set_src_id(interceptor_id_);
-  msg->set_dst_id(dst_id);
-  // send interceptor msg
+bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  msg.set_src_id(interceptor_id_);
+  msg.set_dst_id(dst_id);
+  return MessageBus::Instance().Send(msg);
 }
 
 void Interceptor::PoolTheMailbox() {
@@ -78,10 +76,12 @@ void Interceptor::PoolTheMailbox() {
     const InterceptorMessage interceptor_message = local_mailbox_.front();
     local_mailbox_.pop();
     const MessageType message_type = interceptor_message.message_type();
-    VLOG(3) << interceptor_id_ << " has received a message: " << message_type
-            << ".";
+    VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
+            << " from interceptor " << interceptor_message.src_id()
+            << " with message: " << message_type << ".";
     if (message_type == STOP) {
       // break the pooling thread
+      VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
       break;
     }
 

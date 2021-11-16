@@ -22,11 +22,23 @@ namespace pten {
 
 void Copy(const CUDAContext& dev_ctx,
           const DenseTensor& src,
+          bool is_sync,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
-  auto* dst_ptr = dst->mutable_data();
   const auto& src_place = src.place();
   const auto& dst_place = dst->place();
+
+  if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The src and dst tensor are all CPU tensor, you should call copy "
+        "function in CPU mode."));
+  }
+
+  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
+          << dst_place;
+
+  dst->Resize(src.dims());
+  auto* dst_ptr = dst->mutable_data();
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -34,11 +46,8 @@ void Copy(const CUDAContext& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
-  dst->Resize(src.dims());
   CHECK(dst->layout() == src.layout());
+
   auto size = src.numel() * paddle::framework::SizeOfType(
                                 TransToProtoVarType(src.data_type()));
 
@@ -88,8 +97,10 @@ void Copy(const CUDAContext& dev_ctx,
                           src_gpu_place,
                           ctx_gpu_place));
     auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+        is_sync ? nullptr
+                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                      dev_ctx)
+                      .stream();
     paddle::memory::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
@@ -114,8 +125,10 @@ void Copy(const CUDAContext& dev_ctx,
                           dst_gpu_place,
                           ctx_gpu_place));
     auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+        is_sync ? nullptr
+                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                      dev_ctx)
+                      .stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -142,8 +155,10 @@ void Copy(const CUDAContext& dev_ctx,
                           src_gpu_place.device,
                           ctx_gpu_place.device));
     auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+        is_sync ? nullptr
+                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                      dev_ctx)
+                      .stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
@@ -170,8 +185,10 @@ void Copy(const CUDAContext& dev_ctx,
                           dst_gpu_place.device,
                           ctx_gpu_place.device));
     auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+        is_sync ? nullptr
+                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                      dev_ctx)
+                      .stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -188,8 +205,10 @@ void Copy(const CUDAContext& dev_ctx,
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+        is_sync ? nullptr
+                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                      dev_ctx)
+                      .stream();
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       paddle::memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
@@ -213,7 +232,6 @@ void Copy(const CUDAContext& dev_ctx,
     }
   }
 }
-
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl

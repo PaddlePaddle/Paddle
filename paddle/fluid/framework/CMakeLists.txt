@@ -302,17 +302,24 @@ if(WITH_DISTRIBUTE)
   elseif(WITH_PSCORE)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-            heterxpu_trainer.cc
+            heterxpu_trainer.cc heter_pipeline_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
             downpour_worker.cc downpour_worker_opt.cc
-            pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+            pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
-            graph_to_program_pass variable_helper timer monitor heter_service_proto fleet fleet_executor)
+            graph_to_program_pass variable_helper timer monitor heter_service_proto fleet heter_server brpc fleet_executor)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(DISTRIBUTE_COMPILE_FLAGS
+                "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(multi_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heter_section_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   else()
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -367,6 +374,8 @@ if(WITH_PSCORE)
     get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
         conditional_block_op executor gloo_wrapper ${RPC_DEPS})
+    cc_test(heter_pipeline_trainer_test SRCS heter_pipeline_trainer_test.cc DEPS
+           conditional_block_op scale_op heter_listen_and_serv_op executor heter_server gloo_wrapper ${RPC_DEPS})
 else()
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
         conditional_block_op executor gloo_wrapper)
@@ -422,34 +431,7 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-# Adapt to custom op mechanism: Include the header files related to the data type
-# to avoid exposing the path of the underlying file
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
-
-if (WITH_GPU)
-  if (WIN32)
-    windows_symbolic(ext_tensor_cu SRCS ext_tensor.cu PATH ../extension/src)
-    nv_library(custom_tensor SRCS ../extension/src/.ext_tensor.cu DEPS lod_tensor memory enforce)
-    add_dependencies(custom_tensor ext_tensor_cu)
-  else()
-    nv_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
-  endif(WIN32)
-elseif (WITH_ROCM)
-  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
-else()
-  cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
-endif()
-
-cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
-cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
-
-if(WITH_ROCM)
-  hip_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
-else()
-  cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
-endif()
+cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
 
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)

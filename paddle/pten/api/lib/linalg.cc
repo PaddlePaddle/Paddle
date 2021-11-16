@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/pten/api/include/registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/convert_utils.h"
@@ -29,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor dot(const Tensor& x, const Tensor& y) {
+PD_DLL_DECL Tensor dot(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -64,10 +65,10 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   return out;
 }
 
-Tensor matmul(const Tensor& x,
-              const Tensor& y,
-              bool transpose_x,
-              bool transpose_y) {
+PD_DLL_DECL Tensor matmul(const Tensor& x,
+                          const Tensor& y,
+                          bool transpose_x,
+                          bool transpose_y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x, y);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -108,3 +109,5 @@ Tensor matmul(const Tensor& x,
 
 }  // namespace experimental
 }  // namespace paddle
+
+PT_REGISTER_API(Linalg);
