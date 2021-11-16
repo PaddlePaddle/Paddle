@@ -120,7 +120,7 @@ TEST(API, subtract) {
   auto out = paddle::experimental::subtract(x, y);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 30);
   ASSERT_EQ(out.is_cpu(), true);
