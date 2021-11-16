@@ -337,10 +337,10 @@ TEST(DataTypeTransform, CPUTransform) {
       EXPECT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
     }
 
-    paddle::framework::TransDataType(kernel_int32, kernel_int32, in, &out);
-    int* out_data_int = out.data<int>();
+    paddle::framework::TransDataType(kernel_int32, kernel_bf16, in, &out);
+    int* out_data_int = out.data<int32_t>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
+      EXPECT_EQ(out_data_int[i], static_cast<int32_t>(ptr[i]));
     }
 
     paddle::framework::TransDataType(kernel_int32, kernel_int64, in, &out);
@@ -381,11 +381,18 @@ TEST(DataTypeTransform, CPUTransform) {
       EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_double[i]));
     }
 
-    // transform int to int32
-    int* in_data_int =
-        in.mutable_data<int>(paddle::framework::make_ddim({2, 3}), place);
+    // transform bfloat16 to int32
+    paddle::platform::bfloat16* in_data_bf16 =
+        in.mutable_data<paddle::platform::bfloat16>(
+            paddle::framework::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
-      in_data_int[i] = i;
+      in_data_bf16[i] = i;
+    }
+
+    paddle::framework::TransDataType(kernel_bf16, kernel_int32, in, &out);
+    ptr = out.data<int32_t>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_bf16[i]));
     }
 
     // transform int64 to int32
