@@ -1924,6 +1924,15 @@ void OperatorWithKernel::BuildPtenKernelContext(
                  std::type_index(typeid(std::vector<int>))) {
         pt_kernel_context_->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<int>, attr));
+      } else if (attr_defs[i].type_index ==
+                     std::type_index(typeid(std::vector<int64_t>)) &&
+                 std::type_index(attr.type()) ==
+                     std::type_index(typeid(std::vector<int>))) {
+        // Emplace Back Attr according to the type of Pten_Kernel args.
+        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                     vector_int_attr.end());
+        pt_kernel_context_->EmplaceBackAttr(vector_int64_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
