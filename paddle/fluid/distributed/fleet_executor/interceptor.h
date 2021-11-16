@@ -101,6 +101,7 @@ class Interceptor {
   int64_t number_of_slot_;
   int64_t slot_has_been_used_{0};
   int64_t current_step_{0};
+  std::unordered_map<int64_t, std::unordered_map<int64_t, bool>> upstream_flag_;
 };
 
 }  // namespace distributed

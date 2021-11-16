@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
 namespace distributed {
@@ -25,6 +26,13 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
   // current init is faking 1F1B schedule
   number_of_micro_steps_ = 8;
   number_of_slot_ = 4;
+  for (int64_t i = 0; i < number_of_micro_steps_; ++i) {
+    std::unordered_map<int64_t, bool> scope_flag;
+    for (auto& upstream_id : node_->upstream()) {
+      scope_flag.insert({upstream_id, false});
+    }
+    upstream_flag_.insert({i, scope_flag});
+  }
   interceptor_thread_ = std::thread([this]() {
     VLOG(3) << "Start pooling local mailbox's thread.";
     PoolTheMailbox();
@@ -40,8 +48,8 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
     handle_(msg);
   } else {
     // default handler, for fake run only
-    VLOG(3) << "Interceptor is using default msg handler, the default one is "
-               "used for test only.";
+    VLOG(3) << "Interceptor is using default msg handler, the default msg"
+               " handler is only used for test purpose.";
     switch (msg.message_type()) {
       case DATA_IS_READY:
         if (current_step_ == number_of_micro_steps_) {
@@ -53,17 +61,24 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
           Carrier& carrier_instance = Carrier::Instance();
           carrier_instance.EnqueueInterceptorMessage(msg);
         } else {
-          MessageBus& message_bus_instance = MessageBus::Instance();
-          InterceptorMessage new_msg;
-          new_msg.set_src_id(interceptor_id_);
-          new_msg.set_message_type(DATA_IS_READY);
-          new_msg.set_scope_id(current_step_);
-          for (int64_t dst_id : node_->downstream()) {
-            msg.set_dst_id(dst_id);
-            message_bus_instance.Send(new_msg);
+          upstream_flag_[msg.scope_id()][msg.src_id()] = true;
+          bool all_set = true;
+          for (const auto& pair : upstream_flag_[msg.scope_id()]) {
+            all_set = all_set && pair.second;
           }
-          ++current_step_;
-          ++slot_has_been_used_;
+          if (all_set) {
+            MessageBus& message_bus_instance = MessageBus::Instance();
+            InterceptorMessage new_msg;
+            new_msg.set_src_id(interceptor_id_);
+            new_msg.set_message_type(DATA_IS_READY);
+            new_msg.set_scope_id(current_step_);
+            for (int64_t dst_id : node_->downstream()) {
+              msg.set_dst_id(dst_id);
+              message_bus_instance.Send(new_msg);
+            }
+            ++current_step_;
+            ++slot_has_been_used_;
+          }
         }
         break;
       case DATE_IS_USELESS:
