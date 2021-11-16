@@ -264,8 +264,7 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
                   "2.3, and will be removed in version 2.4, please use `to` "
                   "method instead. "
                   "reasion: copying a Tensor to another device does not need "
-                  "to specify the "
-                  "data type.";
+                  "to specify the data type.";
   return to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
 }
 
