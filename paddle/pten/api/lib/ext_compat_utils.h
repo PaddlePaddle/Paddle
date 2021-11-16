@@ -12,16 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/infershape/nary.h"
+#pragma once
 
-namespace pten {
+#include "paddle/fluid/platform/place.h"
+#include "paddle/pten/api/ext/place.h"
 
-DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
-                               DataType dtype,
-                               DataLayout layout) {
-  const auto& out_dims = paddle::framework::make_ddim(shape);
-  return {dtype, out_dims, layout};
-}
+namespace paddle {
+namespace experimental {
 
-}  // namespace pten
+platform::Place ConvertExtPlaceToInnerPlace(const PlaceType& p);
+
+PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p);
+
+}  // namespace experimental
+}  // namespace paddle

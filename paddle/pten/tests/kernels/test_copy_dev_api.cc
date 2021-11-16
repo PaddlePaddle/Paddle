@@ -22,8 +22,6 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 
-PT_DECLARE_MODULE(UtilsCPU);
-
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 

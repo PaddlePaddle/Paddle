@@ -34,11 +34,7 @@ using CPUPlace = paddle::platform::CPUPlace;
 
 class CPUContext : public DeviceContext {
  public:
-  explicit CPUContext(CPUPlace place) : place_(place) {
-#ifdef PADDLE_WITH_EIGEN
-// eigen_device_.reset(new Eigen::DefaultDevice());
-#endif
-  }
+  explicit CPUContext(CPUPlace place) : place_(place) {}
 
   Place GetPlace() const noexcept override { return place_; }
 

@@ -226,19 +226,22 @@ class TestVariable(unittest.TestCase):
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog):
             x = paddle.assign(data)
+            y = paddle.assign([1, 2, 3, 4])
             out1 = x[0:, ..., 1:]
             out2 = x[0:, ...]
             out3 = x[..., 1:]
             out4 = x[...]
             out5 = x[[1, 0], [0, 0]]
             out6 = x[([1, 0], [0, 0])]
+            out7 = y[..., 0]
 
         exe = paddle.static.Executor(place)
-        result = exe.run(prog, fetch_list=[out1, out2, out3, out4, out5, out6])
+        result = exe.run(prog,
+                         fetch_list=[out1, out2, out3, out4, out5, out6, out7])
 
         expected = [
             data[0:, ..., 1:], data[0:, ...], data[..., 1:], data[...],
-            data[[1, 0], [0, 0]], data[([1, 0], [0, 0])]
+            data[[1, 0], [0, 0]], data[([1, 0], [0, 0])], np.array([1])
         ]
 
         self.assertTrue((result[0] == expected[0]).all())
@@ -247,6 +250,7 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[3] == expected[3]).all())
         self.assertTrue((result[4] == expected[4]).all())
         self.assertTrue((result[5] == expected[5]).all())
+        self.assertTrue((result[6] == expected[6]).all())
 
         with self.assertRaises(IndexError):
             res = x[[1.2, 0]]

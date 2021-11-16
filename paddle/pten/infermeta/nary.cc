@@ -12,21 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/infermeta/nary.h"
 
-#if !defined(_MSC_VER) && __cplusplus < 201402L
-#error C++14 or later compatible compiler is required to use Paddle.
-#endif
+namespace pten {
 
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#endif
+DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
+                               DataType dtype,
+                               DataLayout layout) {
+  const auto& out_dims = paddle::framework::make_ddim(shape);
+  return {dtype, out_dims, layout};
+}
 
-#include "ext_dispatch.h"      // NOLINT
-#include "ext_dtype.h"         // NOLINT
-#include "ext_exception.h"     // NOLINT
-#include "ext_op_meta_info.h"  // NOLINT
-#include "ext_place.h"         // NOLINT
-#include "ext_tensor.h"        // NOLINT
+}  // namespace pten

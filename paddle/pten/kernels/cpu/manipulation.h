@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/pten/core/backends/host/context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
 
@@ -26,5 +25,38 @@ void Flatten(const CPUContext& dev_ctx,
              int start_axis,
              int stop_axis,
              DenseTensor* out);
+
+void ReshapeFromDT(const CPUContext& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& shape,
+                   DenseTensor* out);
+
+void ReshapeFromVectorVal(const CPUContext& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int64_t>& shape,
+                          DenseTensor* out);
+
+void ReshapeFromVectorDT(const CPUContext& dev_ctx,
+                         const DenseTensor& x,
+                         const std::vector<DenseTensor>& shape,
+                         DenseTensor* out);
+
+void ReshapeFromDTWithXShape(const CPUContext& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& shape,
+                             DenseTensor* xshape,
+                             DenseTensor* out);
+
+void ReshapeFromVectorValWithXShape(const CPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const std::vector<int64_t>& shape,
+                                    DenseTensor* xshape,
+                                    DenseTensor* out);
+
+void ReshapeFromVectorDTWithXShape(const CPUContext& dev_ctx,
+                                   const DenseTensor& x,
+                                   const std::vector<DenseTensor>& shape,
+                                   DenseTensor* xshape,
+                                   DenseTensor* out);
 
 }  // namespace pten
