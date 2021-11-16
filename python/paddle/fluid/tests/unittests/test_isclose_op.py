@@ -27,6 +27,7 @@ class TestIscloseOp(OpTest):
         self.equal_nan = False
 
     def setUp(self):
+        paddle.enable_static()
         self.set_args()
         self.op_type = "isclose"
         self.inputs = {
@@ -109,21 +110,50 @@ class TestIscloseOpNanTrue(TestIscloseOp):
         self.equal_nan = True
 
 
-class TestIscloseDygraph(unittest.TestCase):
+class TestIscloseStatic(unittest.TestCase):
     def test_api_case(self):
-        paddle.disable_static()
+        paddle.enable_static()
         x_data = np.random.rand(10, 10)
         y_data = np.random.rand(10, 10)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
-        expected_out = np.isclose(x_data, y_data, rtol=1e-05, atol=1e-08)
-        self.assertTrue((out.numpy() == expected_out).all(), True)
+        places = [paddle.fluid.CPUPlace()]
+        if paddle.fluid.core.is_compiled_with_cuda():
+            places.append(paddle.fluid.CUDAPlace(0))
+        for place in places:
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+                y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
+                result = paddle.isclose(x, y)
+                exe = paddle.fluid.Executor(place)
+                fetches = exe.run(paddle.fluid.default_main_program(),
+                                  feed={"x": x_data,
+                                        "y": y_data},
+                                  fetch_list=[result])
+                expected_out = np.isclose(x_data, y_data)
+                self.assertTrue((fetches[0] == expected_out).all(), True)
+
+
+class TestIscloseDygraph(unittest.TestCase):
+    def test_api_case(self):
+        places = [paddle.CPUPlace()]
+        if paddle.fluid.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static()
+            x_data = np.random.rand(10, 10)
+            y_data = np.random.rand(10, 10)
+            x = paddle.to_tensor(x_data, place=place)
+            y = paddle.to_tensor(y_data, place=place)
+            out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
+            expected_out = np.isclose(x_data, y_data, rtol=1e-05, atol=1e-08)
+            self.assertTrue((out.numpy() == expected_out).all(), True)
         paddle.enable_static()
 
 
 class TestIscloseError(unittest.TestCase):
     def test_input_dtype(self):
+        paddle.enable_static()
+
         def test_x_dtype():
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
@@ -143,6 +173,7 @@ class TestIscloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_y_dtype)
 
     def test_attr(self):
+        paddle.enable_static()
         x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
         y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
 

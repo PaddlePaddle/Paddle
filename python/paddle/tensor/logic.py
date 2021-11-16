@@ -656,5 +656,4 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
     helper.append_op(
         type='isclose', inputs=inputs, outputs=outputs, attrs=attrs)
-
     return out
