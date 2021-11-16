@@ -121,7 +121,7 @@ SendRecv Operator.
 
 $Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
 
-This operator is mainly used in Graph domain. We use this operator to perform message passing process. We can gather feature according to Src_index, and then use different pool types to define how to receive the result tensors of Dst_index.
+This operator is mainly used in Graph domain, and the main purpose is to reduce intermediate memory consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index` to gather the corresponding positions, and then scatter the corresponding output tensor in different pooling types, like sum, mean, max, or min.
 
 )DOC");
   }
