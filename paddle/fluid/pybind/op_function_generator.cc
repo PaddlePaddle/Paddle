@@ -201,7 +201,8 @@ std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
     {"unsqueeze2", {"X", "Out"}},
     {"reshape2", {"X", "Out"}},
     {"flatten_contiguous_range", {"X", "Out"}},
-};
+    {"view_as_complex", {"X", "Out"}},
+    {"view_as_real", {"X", "Out"}}};
 
 // NOTE(pangyoki): Inplace OP with duplicable input.
 // The set includes inplace ops that have duplicable input.

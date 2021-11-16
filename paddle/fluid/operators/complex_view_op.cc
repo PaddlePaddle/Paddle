@@ -149,11 +149,13 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(view_as_complex, ops::ViewAsComplexOp,
                   ops::ViewAsComplexOpMaker,
                   ops::ViewAsComplexGradMaker<paddle::framework::OpDesc>,
-                  ops::ViewAsComplexGradMaker<paddle::imperative::OpBase>);
+                  ops::ViewAsComplexGradMaker<paddle::imperative::OpBase>,
+                  ops::ViewAsComplexOpInplaceInferer);
 
 REGISTER_OPERATOR(view_as_real, ops::ViewAsRealOp, ops::ViewAsRealOpMaker,
                   ops::ViewAsRealGradMaker<paddle::framework::OpDesc>,
-                  ops::ViewAsRealGradMaker<paddle::imperative::OpBase>);
+                  ops::ViewAsRealGradMaker<paddle::imperative::OpBase>,
+                  ops::ViewAsRealOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     view_as_complex,
