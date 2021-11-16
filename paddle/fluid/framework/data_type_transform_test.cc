@@ -338,9 +338,11 @@ TEST(DataTypeTransform, CPUTransform) {
     }
 
     paddle::framework::TransDataType(kernel_int32, kernel_bf16, in, &out);
-    int* out_data_int = out.data<int32_t>();
+    paddle::platform::bfloat16* out_data_bf16 =
+        out.data<paddle::platform::bfloat16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(out_data_int[i], static_cast<int32_t>(ptr[i]));
+      EXPECT_EQ(out_data_bf16[i],
+                static_cast<paddle::platform::bfloat16>(ptr[i]));
     }
 
     paddle::framework::TransDataType(kernel_int32, kernel_int64, in, &out);
