@@ -692,7 +692,7 @@ class Fleet(object):
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def run_heter_worker(self, dataset):
+    def run_heter_worker(self, dataset=None):
         """
         run_heter_worker will run heter trainer main program with executor.
 
