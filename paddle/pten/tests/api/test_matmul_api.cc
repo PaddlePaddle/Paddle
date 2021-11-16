@@ -138,7 +138,7 @@ TEST(API, matmul_cuda) {
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
-  ASSERT_EQ(out.numel(), 9);
+  ASSERT_EQ(out.size(), 9);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);

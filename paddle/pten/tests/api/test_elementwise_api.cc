@@ -68,7 +68,7 @@ TEST(API, add) {
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 3);
-  ASSERT_EQ(out.numel(), 30);
+  ASSERT_EQ(out.size(), 30);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
