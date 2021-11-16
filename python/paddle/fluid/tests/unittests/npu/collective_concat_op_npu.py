@@ -50,7 +50,7 @@ class TestCollectiveConcat(TestCollectiveRunnerBase):
 
     def test_c_concat(self, rows, cols, nranks, rank, dtype, main_program,
                       startup_program):
-
+        assert cols % nranks == 0, f"cols({cols}) must be divided by nanks({nranks})"
         block = main_program.global_block()
 
         total_init = np.random.random((rows, cols)).astype(dtype)
