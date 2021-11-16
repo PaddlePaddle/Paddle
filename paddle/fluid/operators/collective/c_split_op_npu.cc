@@ -52,6 +52,11 @@ class CSplitOpNPUKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     int axis = dims.size() - 1;
     auto dims_size = dims.size();
+    PADDLE_ENFORCE_EQ(
+        dims[dims_size - 1] % nranks, 0,
+        platform::errors::PreconditionNotMet("The last dim size (%d) must be "
+                                             "devided by nranks (%d).",
+                                             dims[dims_size - 1], nranks));
     dims[dims_size - 1] /= nranks;
     out->mutable_data<T>(dims, place);
 
