@@ -174,12 +174,6 @@ class DenseTensor : public TensorBase,
   /// \return The const data pointer value of raw type.
   const void* data() const;
 
-  /// \brief Get the shallow clone of current tensor.
-  /// \return The shallow clone of current tensor.
-  DenseTensor shallow_clone() const {
-    return DenseTensor(copy_intrusive(storage_), meta_);
-  }
-
  private:
   friend class CompatibleDenseTensorUtils;
 
