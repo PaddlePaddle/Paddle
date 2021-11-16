@@ -52,7 +52,7 @@ FCFusePass::FCFusePass() {
       .End()
       .AddAttr("axis")
       .IsNumMatch<int>([](int axis) -> bool {
-        if (axis == -1 || axis >= 1) {
+        if (axis == -1) {
           return true;
         }
         return false;
@@ -135,6 +135,11 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     std::vector<int64_t> w_shape = w->Var()->GetShape();
     size_t w_rank = w_shape.size();
     if (w_rank != 2) return;
+
+    // Shape of bias should be [1, out_size]
+    std::vector<int64_t> b_shape = bias->Var()->GetShape();
+    if (b_shape.size() != 2) return;
+    if (b_shape[0] != 1 or b_shape[1] != w_shape[1]) return;
 
     Node* relu = nullptr;
     Node* relu_out = nullptr;

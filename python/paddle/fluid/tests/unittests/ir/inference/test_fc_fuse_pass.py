@@ -55,6 +55,8 @@ class TestFcFusePass(PassAutoScanTest):
         use_broadcast = kwargs["use_broadcast"]
         has_relu = kwargs["has_relu"]
 
+        # make y_shape be legal
+        y_shape[0] = int(np.prod(x_shape[x_num_col_dims:]))
         mul_out_shape = x_shape[:x_num_col_dims] + y_shape[1:]
         if axis > 0:
             bias_shape = mul_out_shape[axis:][:bias_rank]
@@ -144,7 +146,7 @@ class TestFcFusePass(PassAutoScanTest):
             x_shape = program_config.inputs["mul_x"].shape
             y_shape = program_config.weights["mul_y"].shape
             bias_shape = program_config.weights["bias"].shape
-            if bias_shape != y_shape[-1] or bias_shape != [1, y_shape[-1]]:
+            if bias_shape != (y_shape[-1]) and bias_shape != (1, y_shape[-1]):
                 return True
             return False
 
@@ -158,7 +160,7 @@ class TestFcFusePass(PassAutoScanTest):
 
     @given(x_shape=st.lists(st.integers(min_value=1, max_value=8),
                             min_size=2,
-                            max_size=8),
+                            max_size=4),
            y_shape=st.lists(st.integers(min_value=1, max_value=8),
                             min_size=2,
                             max_size=2),
@@ -169,6 +171,10 @@ class TestFcFusePass(PassAutoScanTest):
            use_broadcast=st.booleans(),
            has_relu=st.booleans())
     def test(self, *args, **kwargs):
+        assume(kwargs["axis"] == -1)
+        assume(kwargs["bias_rank"] == 2)
+        assume(kwargs["use_broadcast"])
+        
         # filter illegal parameters
         assume(kwargs["y_num_col_dims"] == 1)
         assume(kwargs["x_num_col_dims"] < len(kwargs["x_shape"]))
