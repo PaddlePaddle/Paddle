@@ -26,6 +26,9 @@ from paddle import tensor
 from paddle.fluid import layers
 import unittest
 from op_test import OpTest
+from paddle.fluid.framework import default_main_program
+
+default_main_program().random_seed = 42
 
 
 class TestFusedAttentionOp(OpTest):
@@ -155,8 +158,8 @@ class TestFusedAttentionOp(OpTest):
         residual_out = residual + self.dropout(out)
         if not self.pre_layer_norm:
             final_out = self.norm1(residual_out)
-        if self.pre_layer_norm:
-            final_out = self.norm2(residual_out)
+        else:
+            final_out = residual_out
         paddle.autograd.backward(
             [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
         return final_out, tensor_query.grad
@@ -219,9 +222,9 @@ class TestFusedAttentionOp(OpTest):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-5)
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
         np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-5)
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
 
 
 class TestFusedAttentionOpPreLn(TestFusedAttentionOp):
@@ -249,9 +252,9 @@ class TestFusedAttentionOpPreLn(TestFusedAttentionOp):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
         np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
 
 
 class TestFusedAttentionOpNoneAttnMask(TestFusedAttentionOp):
@@ -279,9 +282,9 @@ class TestFusedAttentionOpNoneAttnMask(TestFusedAttentionOp):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
         np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
 
 
 class TestFusedAttentionOpFp16(TestFusedAttentionOp):
