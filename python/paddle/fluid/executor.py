@@ -1890,6 +1890,7 @@ class Executor(object):
         cur_rank = os.getenv("PADDLE_TRAINER_ID")
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+        nrank = 1
         if cur_rank and trainer_endpoints_str:
             fleet_exe_desc.cur_rank = int(cur_rank)
             trainer_endpoints = trainer_endpoints_str.split(',')
@@ -1898,8 +1899,16 @@ class Executor(object):
                 rank_info.rank = rank
                 rank_info.ip_port = endpoint
                 fleet_exe_desc.cluster_info.append(rank_info)
+            nrank = len(trainer_endpoints)
         else:
             logging.warning("Fleet Executor will run on single device only.")
+        fleet_opt = program._pipeline_opt["fleet_opt"]
+        if "dist_strategy" in fleet_opt:
+            fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
+            fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
+            fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
+        num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
+        assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         fleet_exe.init(program._pipeline_opt["section_program"].desc)
         fleet_exe.run()
