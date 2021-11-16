@@ -152,8 +152,12 @@ class PartialProgramLayer:
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
+        custom_white_list, custom_black_list = framework._dygraph_tracer(
+        )._get_amp_op_list()
         # For AMP training
-        self._amp_list = AutoMixedPrecisionLists()
+        self._amp_list = AutoMixedPrecisionLists(
+            custom_white_list=custom_white_list,
+            custom_black_list=custom_black_list)
 
     @LazyInitialized
     def _infer_program(self):
