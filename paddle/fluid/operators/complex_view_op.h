@@ -35,8 +35,9 @@ class ViewAsComplexKernel : public framework::OpKernel<T> {
     // TensorCopy also changes output's shape & dtype
     const framework::DDim out_dims_original = out->dims();
     framework::TensorCopy(*x, context.GetPlace(), out);
-    out->Resize(out_dims_original);
-    out->mutable_data<platform::complex<T>>(context.GetPlace());
+    out->Resize(out_dims_original);  // restored the shape
+    out->mutable_data<platform::complex<T>>(
+        context.GetPlace());  // restore the dtype
   }
 };
 
@@ -50,13 +51,13 @@ class ViewAsRealKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     const framework::DDim out_dims_original = out->dims();
     framework::TensorCopy(*x, context.GetPlace(), out);
-    out->Resize(out_dims_original);
-    out->mutable_data<T>(context.GetPlace());
+    out->Resize(out_dims_original);            // restored the shape
+    out->mutable_data<T>(context.GetPlace());  // restore the dtype
   }
 };
 
-// DECLARE_INPLACE_OP_INFERER(ViewAsComplexOpInplaceInferer, {"X", "Out"});
-// DECLARE_INPLACE_OP_INFERER(ViewAsRealOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ViewAsComplexOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ViewAsRealOpInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle

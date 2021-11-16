@@ -260,6 +260,7 @@ GetInplaceVars(const BlockDesc &block, bool use_cuda,
 
 void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
                                           ProgramDesc *startup_program) const {
+  VLOG(10) << "BufferSharedInplaceOpPass Running";
   bool use_cuda = Get<bool>(kUseCuda);
   auto skip_vars = Get<std::vector<std::string>>("mem_opt_skip_vars");
 
@@ -270,7 +271,9 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
                         "Inplace analysis error: op number not match."));
   int64_t n = static_cast<int64_t>(inplace_vars.size());
   for (int64_t i = n - 1; i >= 0; --i) {
+    VLOG(10) << "Visiting op: " << block->Op(i)->Type();
     if (inplace_vars[i].empty()) continue;
+    VLOG(10) << "Inserting a share_buffer op before " << block->Op(i)->Type();
     auto *op = block->InsertOp(i);
     std::vector<std::string> inputs, outputs;
     inputs.reserve(inplace_vars[i].size());

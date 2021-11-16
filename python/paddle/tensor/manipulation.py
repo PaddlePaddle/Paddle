@@ -34,6 +34,7 @@ from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
+from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 
 __all__ = []
 
@@ -2390,3 +2391,39 @@ def tensordot(x, y, axes=2, name=None):
         [contraction_size, not_contraction_size_y])
     out = x.matmul(y).reshape(shape_out)
     return out
+
+
+def view_as_complex(x, name=None):
+    if in_dygraph_mode():
+        return paddle._C_ops.view_as_complex(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'view_as_complex')
+    op_type = "view_as_complex"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_real_to_complex_dtype(x.dtype))
+    outputs = {"Out": out}
+    attrs = {}
+    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out
+
+
+def view_as_real(x, name=None):
+    if in_dygraph_mode():
+        return paddle._C_ops.view_as_real(x)
+
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'],
+                             'view_as_real')
+    op_type = "view_as_real"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(x.dtype))
+    outputs = {"Out": out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
+
+
+def complex(real, imag, name=None):
+    return real + 1j * imag
