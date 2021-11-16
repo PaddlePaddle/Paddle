@@ -31,6 +31,8 @@ from .normal import TruncatedNormal  # noqa: F401
 
 from .uniform import Uniform  # noqa: F401
 
+from .dirac import Dirac  # noqa: F401
+
 __all__ = [     #noqa
            'Bilinear',
            'Constant',
@@ -42,5 +44,6 @@ __all__ = [     #noqa
            'Normal',
            'TruncatedNormal',
            'Uniform',
+           'Dirac',
            'set_global_initializer'
 ]
