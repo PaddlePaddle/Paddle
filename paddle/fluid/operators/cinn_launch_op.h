@@ -29,9 +29,9 @@
 namespace paddle {
 namespace operators {
 
-static constexpr char kX[] = "X";
-static constexpr char kOutputs[] = "Out";
-static constexpr char kCompilationKey[] = "compilation_key";
+constexpr char kX[] = "X";
+constexpr char kOutputs[] = "Out";
+constexpr char kCompilationKey[] = "compilation_key";
 
 using LoDTensor = framework::LoDTensor;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
