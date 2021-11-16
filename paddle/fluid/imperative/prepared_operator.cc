@@ -160,8 +160,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   if (FLAGS_run_pten_kernel &&
       pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
-
-    VLOG(1) << framework::KernelSignatureToString(pt_kernel_signature);
+    VLOG(6) << framework::KernelSignatureToString(pt_kernel_signature);
 
     auto pt_kernel_name = pten::KernelName(pt_kernel_signature.name);
     auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
@@ -169,7 +168,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         pt_kernel_name, pt_kernel_key);
 
     if (pt_kernel.IsValid()) {
-      VLOG(1) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
+      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
 
@@ -177,7 +176,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, pt_kernel_context, dev_ctx);
     } else {
-      VLOG(1) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
+      VLOG(6) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
               << "` not found.";
     }
   }
@@ -373,8 +372,14 @@ static void BuildDygraphPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int>))) {
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
+                     std::type_index(typeid(std::vector<int64_t>)) &&
+                 std::type_index(attr.type()) ==
+                     std::type_index(typeid(std::vector<int>))) {
+        // Emplace Back Attr according to the type of Pten_Kernel args.
+        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                     vector_int_attr.end());
+        kernel_ctx->EmplaceBackAttr(vector_int64_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "

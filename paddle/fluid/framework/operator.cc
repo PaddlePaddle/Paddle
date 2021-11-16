@@ -1275,8 +1275,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
       new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
-
-  VLOG(1) << KernelSignatureToString(*pt_kernel_signature_.get());
+  VLOG(6) << KernelSignatureToString(*pt_kernel_signature_.get());
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
@@ -1288,11 +1287,11 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
           pt_kernel_name, pt_kernel_key)));
 
   if (pt_kernel_->IsValid()) {
-    VLOG(1) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
             << " | kernel key: " << pt_kernel_key
             << " | kernel: " << *pt_kernel_;
   } else {
-    VLOG(1) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
             << "` not found.";
   }
 }
@@ -1884,9 +1883,14 @@ void OperatorWithKernel::BuildPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int>))) {
-        pt_kernel_context_->EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<int>, attr));
+                     std::type_index(typeid(std::vector<int64_t>)) &&
+                 std::type_index(attr.type()) ==
+                     std::type_index(typeid(std::vector<int>))) {
+        // Emplace Back Attr according to the type of Pten_Kernel args.
+        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                     vector_int_attr.end());
+        pt_kernel_context_->EmplaceBackAttr(vector_int64_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
