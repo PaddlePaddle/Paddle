@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/fused/fused_gather_scatter_op.h"
+#include "paddle/fluid/operators/send_recv_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -27,7 +27,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T, typename IndexT>
-struct GatherScatterSumCUDAFunctor {
+struct SendRecvSumCUDAFunctor {
   DEVICE inline void operator()(const T* params, T* output, const IndexT& in_i,
                                 const IndexT& out_i) {
     paddle::platform::CudaAtomicAdd(output + out_i, *(params + in_i));
@@ -35,7 +35,7 @@ struct GatherScatterSumCUDAFunctor {
 };
 
 template <typename T, typename IndexT>
-struct GatherScatterMaxCUDAFunctor {
+struct SendRecvMaxCUDAFunctor {
   DEVICE inline void operator()(const T* params, T* output, const IndexT& in_i,
                                 const IndexT& out_i) {
     paddle::platform::CudaAtomicMax(output + out_i, *(params + in_i));
@@ -43,7 +43,7 @@ struct GatherScatterMaxCUDAFunctor {
 };
 
 template <typename T, typename IndexT>
-struct GatherScatterMinCUDAFunctor {
+struct SendRecvMinCUDAFunctor {
   DEVICE inline void operator()(const T* params, T* output, const IndexT& in_i,
                                 const IndexT& out_i) {
     paddle::platform::CudaAtomicMin(output + out_i, *(params + in_i));
@@ -51,11 +51,11 @@ struct GatherScatterMinCUDAFunctor {
 };
 
 template <typename T, typename IndexT, typename Functor>
-__global__ void GatherScatterCUDAKernel(const T* params,
-                                        const IndexT* gather_indices,
-                                        const IndexT* scatter_indices,
-                                        T* output, size_t index_size,
-                                        size_t slice_size, Functor functor) {
+__global__ void SendRecvCUDAKernel(const T* params,
+                                   const IndexT* gather_indices,
+                                   const IndexT* scatter_indices, T* output,
+                                   size_t index_size, size_t slice_size,
+                                   Functor functor) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;
@@ -142,12 +142,12 @@ __global__ void ManipulateMinMaxGradCUDAKernel(
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
+class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>("X");
-    auto* gather_index = ctx.Input<Tensor>("Gather_index");
-    auto* scatter_index = ctx.Input<Tensor>("Scatter_index");
+    auto* gather_index = ctx.Input<Tensor>("Src_index");
+    auto* scatter_index = ctx.Input<Tensor>("Dst_index");
     auto* Y = ctx.Output<Tensor>("Out");
     std::string pool_type = ctx.Attr<std::string>("pool_type");
 
@@ -191,17 +191,15 @@ class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
     int64_t grid = (n + block - 1) / block;
     int64_t input_size = src_dims[0];
     if (pool_type == "SUM") {
-      GatherScatterSumCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterSumCUDAFunctor<T, IndexT>><<<
+      SendRecvSumCUDAFunctor<T, IndexT> functor;
+      SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
                                            index_size, slice_size, functor);
     } else if (pool_type == "MAX") {
-      GatherScatterMaxCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterMaxCUDAFunctor<T, IndexT>><<<
+      SendRecvMaxCUDAFunctor<T, IndexT> functor;
+      SendRecvCUDAKernel<T, IndexT, SendRecvMaxCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
@@ -214,9 +212,8 @@ class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
                    ctx.device_context())
                    .stream()>>>(p_output, input_size, slice_size);
     } else if (pool_type == "MIN") {
-      GatherScatterMinCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterMinCUDAFunctor<T, IndexT>><<<
+      SendRecvMinCUDAFunctor<T, IndexT> functor;
+      SendRecvCUDAKernel<T, IndexT, SendRecvMinCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
@@ -229,9 +226,8 @@ class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
                    ctx.device_context())
                    .stream()>>>(p_output, input_size, slice_size);
     } else if (pool_type == "MEAN") {
-      GatherScatterSumCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterSumCUDAFunctor<T, IndexT>><<<
+      SendRecvSumCUDAFunctor<T, IndexT> functor;
+      SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
@@ -265,12 +261,12 @@ class FusedGatherScatterOpCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T, typename IndexT>
-class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
+class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* gather_index = ctx.Input<Tensor>("Scatter_index");
-    auto* scatter_index = ctx.Input<Tensor>("Gather_index");
+    auto* gather_index = ctx.Input<Tensor>("Dst_index");
+    auto* scatter_index = ctx.Input<Tensor>("Src_index");
     auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
     std::string pool_type = ctx.Attr<std::string>("pool_type");
 
@@ -304,9 +300,8 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
     int64_t grid = (n + block - 1) / block;
     int64_t input_size = src_dims[0];
     if (pool_type == "SUM") {
-      GatherScatterSumCUDAFunctor<T, IndexT> functor;
-      GatherScatterCUDAKernel<T, IndexT,
-                              GatherScatterSumCUDAFunctor<T, IndexT>><<<
+      SendRecvSumCUDAFunctor<T, IndexT> functor;
+      SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
                               .stream()>>>(p_src, g_index, s_index, p_output,
@@ -340,23 +335,21 @@ class FusedGatherScatterGradOpCUDAKernel : public framework::OpKernel<T> {
 using CUDA = paddle::platform::CUDADeviceContext;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    fused_gather_scatter, ops::FusedGatherScatterOpCUDAKernel<CUDA, float, int>,
-    ops::FusedGatherScatterOpCUDAKernel<CUDA, float, int64_t>,
-    ops::FusedGatherScatterOpCUDAKernel<CUDA, double, int>,
-    ops::FusedGatherScatterOpCUDAKernel<CUDA, double, int64_t>,
-    ops::FusedGatherScatterOpCUDAKernel<CUDA, int, int>,
-    ops::FusedGatherScatterOpCUDAKernel<CUDA, int, int64_t>,
-    ops::FusedGatherScatterOpCUDAKernel<CUDA, int64_t, int>,
-    ops::FusedGatherScatterOpCUDAKernel<CUDA, int64_t, int64_t>);
+REGISTER_OP_CUDA_KERNEL(send_recv, ops::SendRecvOpCUDAKernel<CUDA, float, int>,
+                        ops::SendRecvOpCUDAKernel<CUDA, float, int64_t>,
+                        ops::SendRecvOpCUDAKernel<CUDA, double, int>,
+                        ops::SendRecvOpCUDAKernel<CUDA, double, int64_t>,
+                        ops::SendRecvOpCUDAKernel<CUDA, int, int>,
+                        ops::SendRecvOpCUDAKernel<CUDA, int, int64_t>,
+                        ops::SendRecvOpCUDAKernel<CUDA, int64_t, int>,
+                        ops::SendRecvOpCUDAKernel<CUDA, int64_t, int64_t>);
 
-REGISTER_OP_CUDA_KERNEL(
-    fused_gather_scatter_grad,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, float, int>,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, float, int64_t>,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, double, int>,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, double, int64_t>,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, int, int>,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, int, int64_t>,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, int64_t, int>,
-    ops::FusedGatherScatterGradOpCUDAKernel<CUDA, int64_t, int64_t>);
+REGISTER_OP_CUDA_KERNEL(send_recv_grad,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, float, int>,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, float, int64_t>,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, double, int>,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, double, int64_t>,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, int, int>,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, int, int64_t>,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, int64_t, int>,
+                        ops::SendRecvGradOpCUDAKernel<CUDA, int64_t, int64_t>);

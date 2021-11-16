@@ -12,62 +12,60 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/fused_gather_scatter_op.h"
+#include "paddle/fluid/operators/send_recv_op.h"
 
 namespace paddle {
 namespace operators {
 
-class FusedGatherScatterOP : public framework::OperatorWithKernel {
+class SendRecvOP : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGatherScatter");
-    OP_INOUT_CHECK(ctx->HasInput("Gather_index"), "Input", "Gather_index",
-                   "FusedGatherScatter");
-    OP_INOUT_CHECK(ctx->HasInput("Scatter_index"), "Input", "Scatter_index",
-                   "FusedGatherScatter");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "FusedGatherScatter");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SendRecv");
+    OP_INOUT_CHECK(ctx->HasInput("Src_index"), "Input", "Src_index",
+                   "SendRecv");
+    OP_INOUT_CHECK(ctx->HasInput("Dst_index"), "Input", "Dst_index",
+                   "SendRecv");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SendRecv");
 
-    auto gather_index_dims = ctx->GetInputDim("Gather_index");
-    if (gather_index_dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(gather_index_dims[1], 1,
+    auto src_index_dims = ctx->GetInputDim("Src_index");
+    if (src_index_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(src_index_dims[1], 1,
                         platform::errors::InvalidArgument(
-                            "The last dim of Gather_index should be 1 when it "
+                            "The last dim of Src_index should be 1 when it "
                             "is 2D, but we get %d",
-                            gather_index_dims[1]));
+                            src_index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          gather_index_dims.size(), 1,
+          src_index_dims.size(), 1,
           platform::errors::InvalidArgument(
-              "The Gather_index should be 1D, when it is not 2D, but we get %d",
-              gather_index_dims.size()));
+              "The Src_index should be 1D, when it is not 2D, but we get %d",
+              src_index_dims.size()));
     }
 
-    auto scatter_index_dims = ctx->GetInputDim("Scatter_index");
-    if (scatter_index_dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(scatter_index_dims[1], 1,
+    auto dst_index_dims = ctx->GetInputDim("Dst_index");
+    if (dst_index_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(dst_index_dims[1], 1,
                         platform::errors::InvalidArgument(
-                            "The last dim of Scatter_index should be 1 when it "
+                            "The last dim of Dst_index should be 1 when it "
                             "is 2D, but we get %d",
-                            scatter_index_dims[1]));
+                            dst_index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          scatter_index_dims.size(), 1,
-          platform::errors::InvalidArgument("The Scatter_index should be 1D, "
+          dst_index_dims.size(), 1,
+          platform::errors::InvalidArgument("The Dst_index should be 1D, "
                                             "when it is not 2D, but we get %d",
-                                            scatter_index_dims.size()));
+                                            dst_index_dims.size()));
     }
 
-    // TODO(daisiming): If the shape of scatter_index and gather_index should be
-    // same?
+    // TODO(daisiming): If the shape of src_index and dst_index should be same?
     auto dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dims);
 
     if (ctx->Attrs().Get<std::string>("pool_type") == "MEAN") {
       OP_INOUT_CHECK(ctx->HasOutput("Scatter_count"), "Output", "Scatter_count",
-                     "FusedGatherScatter");
+                     "SendRecv");
       ctx->SetOutputDim("Scatter_count", {dims[0]});
     }
   }
@@ -81,7 +79,7 @@ class FusedGatherScatterOP : public framework::OperatorWithKernel {
   }
 };
 
-class FusedGatherScatterGradOp : public framework::OperatorWithKernel {
+class SendRecvGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -99,28 +97,28 @@ class FusedGatherScatterGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class FusedGatherScatterOpMaker : public framework::OpProtoAndCheckerMaker {
+class SendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
              "The input tensor with data type float32, "
              "float64 or float16");
-    AddInput("Gather_index", "The gather index tensor.");
-    AddInput("Scatter_index", "The scatter index tensor.");
-    AddOutput("Out", "Output tensor of fused_gather_scatter op.");
+    AddInput("Src_index", "The source index tensor.");
+    AddInput("Dst_index", "The destination index tensor.");
+    AddOutput("Out", "Output tensor of send_recv op.");
     AddOutput("Scatter_count",
-              "Count tensor of Scatter index, mainly for MEAN pool_type.")
+              "Count tensor of Dst_index, mainly for MEAN pool_type.")
         .AsIntermediate();
     AddAttr<std::string>(
         "pool_type",
         "(string, default 'SUM')"
-        "We use Gather_index to gather correspoinding place of X. "
+        "We use Src_index to gather correspoinding place of X. "
         "Then we need to use different pool type to scatter the result.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     // TODO(daisiming): Add a simple example here.
     AddComment(R"DOC(
-Fused Gather Scatter Operator.
+SendRecv Operator.
 
 $Out = Scatter(Gather(X, Gather_index), Scatter_index, pool_type)$
 
@@ -135,15 +133,15 @@ pass
 };
 
 template <typename T>
-class FusedGatherScatterGradOpMaker : public framework::SingleGradOpMaker<T> {
+class SendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("fused_gather_scatter_grad");
-    op->SetInput("Gather_index", this->Input("Gather_index"));
-    op->SetInput("Scatter_index", this->Input("Scatter_index"));
+    op->SetType("send_recv_grad");
+    op->SetInput("Src_index", this->Input("Src_index"));
+    op->SetInput("Dst_index", this->Input("Dst_index"));
 
     if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
       op->SetInput("Scatter_count", this->Output("Scatter_count"));
@@ -167,29 +165,25 @@ class FusedGatherScatterGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(
-    fused_gather_scatter, ops::FusedGatherScatterOP,
-    ops::FusedGatherScatterOpMaker,
-    ops::FusedGatherScatterGradOpMaker<paddle::framework::OpDesc>,
-    ops::FusedGatherScatterGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_gather_scatter_grad, ops::FusedGatherScatterGradOp);
-REGISTER_OP_CPU_KERNEL(fused_gather_scatter,
-                       ops::FusedGatherScatterOpKernel<CPU, float, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, float, int64_t>,
-                       ops::FusedGatherScatterOpKernel<CPU, double, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, double, int64_t>,
-                       ops::FusedGatherScatterOpKernel<CPU, int, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, int, int64_t>,
-                       ops::FusedGatherScatterOpKernel<CPU, int64_t, int>,
-                       ops::FusedGatherScatterOpKernel<CPU, int64_t, int64_t>);
+REGISTER_OPERATOR(send_recv, ops::SendRecvOP, ops::SendRecvOpMaker,
+                  ops::SendRecvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SendRecvGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(send_recv_grad, ops::SendRecvGradOp);
+REGISTER_OP_CPU_KERNEL(send_recv, ops::SendRecvOpKernel<CPU, float, int>,
+                       ops::SendRecvOpKernel<CPU, float, int64_t>,
+                       ops::SendRecvOpKernel<CPU, double, int>,
+                       ops::SendRecvOpKernel<CPU, double, int64_t>,
+                       ops::SendRecvOpKernel<CPU, int, int>,
+                       ops::SendRecvOpKernel<CPU, int, int64_t>,
+                       ops::SendRecvOpKernel<CPU, int64_t, int>,
+                       ops::SendRecvOpKernel<CPU, int64_t, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(
-    fused_gather_scatter_grad,
-    ops::FusedGatherScatterGradOpKernel<CPU, float, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, float, int64_t>,
-    ops::FusedGatherScatterGradOpKernel<CPU, double, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, double, int64_t>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int, int64_t>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int>,
-    ops::FusedGatherScatterGradOpKernel<CPU, int64_t, int64_t>);
+REGISTER_OP_CPU_KERNEL(send_recv_grad,
+                       ops::SendRecvGradOpKernel<CPU, float, int>,
+                       ops::SendRecvGradOpKernel<CPU, float, int64_t>,
+                       ops::SendRecvGradOpKernel<CPU, double, int>,
+                       ops::SendRecvGradOpKernel<CPU, double, int64_t>,
+                       ops::SendRecvGradOpKernel<CPU, int, int>,
+                       ops::SendRecvGradOpKernel<CPU, int, int64_t>,
+                       ops::SendRecvGradOpKernel<CPU, int64_t, int>,
+                       ops::SendRecvGradOpKernel<CPU, int64_t, int64_t>);

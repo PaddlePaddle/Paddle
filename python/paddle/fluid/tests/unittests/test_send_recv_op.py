@@ -18,10 +18,10 @@ import paddle
 import paddle.fluid as fluid
 
 
-class TestFusedGatherScatterMaxOp(OpTest):
+class TestSendRecvMaxOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "fused_gather_scatter"
+        self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
@@ -29,8 +29,8 @@ class TestFusedGatherScatterMaxOp(OpTest):
 
         self.inputs = {
             'X': x,
-            'Gather_index': gather_index,
-            'Scatter_index': scatter_index
+            'Src_index': gather_index,
+            'Dst_index': scatter_index
         }
 
         self.attrs = {'pool_type': 'MAX'}
@@ -46,10 +46,10 @@ class TestFusedGatherScatterMaxOp(OpTest):
         self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
-class TestFusedGatherScatterMinOp(OpTest):
+class TestSendRecvMinOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "fused_gather_scatter"
+        self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
@@ -57,8 +57,8 @@ class TestFusedGatherScatterMinOp(OpTest):
 
         self.inputs = {
             'X': x,
-            'Gather_index': gather_index,
-            'Scatter_index': scatter_index
+            'Src_index': gather_index,
+            'Dst_index': scatter_index
         }
 
         self.attrs = {'pool_type': 'MIN'}
@@ -75,10 +75,10 @@ class TestFusedGatherScatterMinOp(OpTest):
         self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
-class TestFusedGatherScatterSumOp(OpTest):
+class TestSendRecvSumOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "fused_gather_scatter"
+        self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
@@ -86,8 +86,8 @@ class TestFusedGatherScatterSumOp(OpTest):
 
         self.inputs = {
             'X': x,
-            'Gather_index': gather_index,
-            'Scatter_index': scatter_index
+            'Src_index': gather_index,
+            'Dst_index': scatter_index
         }
 
         self.attrs = {'pool_type': 'SUM'}
@@ -103,10 +103,10 @@ class TestFusedGatherScatterSumOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestFusedGatherScatterMeanOp(OpTest):
+class TestSendRecvMeanOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "fused_gather_scatter"
+        self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         gather_index = index[:, 0]
@@ -114,8 +114,8 @@ class TestFusedGatherScatterMeanOp(OpTest):
 
         self.inputs = {
             'X': x,
-            'Gather_index': gather_index,
-            'Scatter_index': scatter_index
+            'Src_index': gather_index,
+            'Dst_index': scatter_index
         }
 
         self.attrs = {'pool_type': 'MEAN'}
@@ -134,8 +134,8 @@ class TestFusedGatherScatterMeanOp(OpTest):
 
 def compute_gather_scatter_for_sum_mean(inputs, attributes):
     x = inputs['X']
-    gather_index = inputs['Gather_index']
-    scatter_index = inputs['Scatter_index']
+    gather_index = inputs['Src_index']
+    scatter_index = inputs['Dst_index']
 
     pool_type = attributes['pool_type']
 
@@ -164,8 +164,8 @@ def compute_gather_scatter_for_sum_mean(inputs, attributes):
 
 def compute_gather_scatter_for_min_max(inputs, attributes):
     x = inputs['X']
-    gather_index = inputs['Gather_index']
-    scatter_index = inputs['Scatter_index']
+    gather_index = inputs['Src_index']
+    scatter_index = inputs['Dst_index']
 
     pool_type = attributes['pool_type']
 

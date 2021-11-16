@@ -24,7 +24,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct FusedGatherScatterSumFunctor {
+struct SendRecvSumFunctor {
   void operator()(const bool& first_flag, const Tensor& src_slice,
                   Tensor* dst_slice) {
     auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
@@ -34,7 +34,7 @@ struct FusedGatherScatterSumFunctor {
 };
 
 template <typename T>
-struct FusedGatherScatterMinFunctor {
+struct SendRecvMinFunctor {
   void operator()(const bool& first_flag, const Tensor& src_slice,
                   Tensor* dst_slice) {
     auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
@@ -48,7 +48,7 @@ struct FusedGatherScatterMinFunctor {
 };
 
 template <typename T>
-struct FusedGatherScatterMaxFunctor {
+struct SendRecvMaxFunctor {
   void operator()(const int& first_flag, const Tensor& src_slice,
                   Tensor* dst_slice) {
     auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
@@ -164,12 +164,12 @@ void gather_scatter_cpu_for_loop_grad(
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-class FusedGatherScatterOpKernel : public framework::OpKernel<T> {
+class SendRecvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>("X");
-    auto* gather_index = ctx.Input<Tensor>("Gather_index");
-    auto* scatter_index = ctx.Input<Tensor>("Scatter_index");
+    auto* gather_index = ctx.Input<Tensor>("Src_index");
+    auto* scatter_index = ctx.Input<Tensor>("Dst_index");
     auto* Y = ctx.Output<Tensor>("Out");
 
     const int& index_size = gather_index->dims()[0];
@@ -187,19 +187,19 @@ class FusedGatherScatterOpKernel : public framework::OpKernel<T> {
 
     const std::string& pool_type = ctx.Attr<std::string>("pool_type");
     if (pool_type == "SUM") {
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
+      gather_scatter_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MIN") {
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterMinFunctor<T>>(
+      gather_scatter_cpu_for_loop<T, IndexT, SendRecvMinFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MAX") {
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterMaxFunctor<T>>(
+      gather_scatter_cpu_for_loop<T, IndexT, SendRecvMaxFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MEAN") {
       auto* scatter_count = ctx.Output<Tensor>("Scatter_count");
       int* p_scatter_count = scatter_count->mutable_data<int>(ctx.GetPlace());
       memset(p_scatter_count, 0, src_dims[0] * sizeof(int));
-      gather_scatter_cpu_for_loop<T, IndexT, FusedGatherScatterSumFunctor<T>>(
+      gather_scatter_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type,
           p_scatter_count);
     }
@@ -207,12 +207,12 @@ class FusedGatherScatterOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T, typename IndexT>
-class FusedGatherScatterGradOpKernel : public framework::OpKernel<T> {
+class SendRecvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* gather_index = ctx.Input<Tensor>("Scatter_index");
-    auto* scatter_index = ctx.Input<Tensor>("Gather_index");
+    auto* gather_index = ctx.Input<Tensor>("Dst_index");
+    auto* scatter_index = ctx.Input<Tensor>("Src_index");
     auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     const int& index_size = gather_index->dims()[0];
@@ -230,22 +230,19 @@ class FusedGatherScatterGradOpKernel : public framework::OpKernel<T> {
 
     const std::string& pool_type = ctx.Attr<std::string>("pool_type");
     if (pool_type == "SUM") {
-      gather_scatter_cpu_for_loop_grad<T, IndexT,
-                                       FusedGatherScatterSumFunctor<T>>(
+      gather_scatter_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
     } else if (pool_type == "MEAN") {
       auto* scatter_count = ctx.Input<Tensor>("Scatter_count");
       const int* s_count = scatter_count->data<int>();
       // Functor not used here.
-      gather_scatter_cpu_for_loop_grad<T, IndexT,
-                                       FusedGatherScatterSumFunctor<T>>(
+      gather_scatter_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type, s_count);
     } else if (pool_type == "MIN" || pool_type == "MAX") {
       const auto* input = ctx.Input<Tensor>("X");
       const auto* output = ctx.Input<Tensor>("Out");
       // Functor not used here.
-      gather_scatter_cpu_for_loop_grad<T, IndexT,
-                                       FusedGatherScatterMinFunctor<T>>(
+      gather_scatter_cpu_for_loop_grad<T, IndexT, SendRecvMinFunctor<T>>(
           src_dims[0], index_size, g_index, s_index, *X, Y, pool_type, nullptr,
           input, output);
     }
