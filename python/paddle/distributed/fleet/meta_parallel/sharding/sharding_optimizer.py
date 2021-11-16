@@ -264,13 +264,6 @@ class ShardingOptimizer(Optimizer):
         self._dtype_rank_params.clear()
         self._param2rank.clear()
 
-    def _clear_gradients(self):
-        """
-        Clean up the gradient of the optimizer's full parameters.
-        """
-        for dtype in self._optim.param_storages.keys():
-            self._optim.param_storages[dtype][self.rank].buffer.zero_()
-
     @paddle.no_grad()
     def _broadcast_params(self):
         """Broadcast the parameters of the current rank to each rank"""
