@@ -1,3 +1,19 @@
+- api : dot
+  args : (const Tensor& x, const Tensor& y)
+  output : Tensor
+  infer_meta : 
+    func : DotInferShape
+  kernel : 
+    func : dot
+
+- api : flatten
+  args : (const Tensor& x, int start_axis, int stop_axis)
+  output : Tensor
+  infer_meta : 
+    func : FlattenInferShape
+  kernel : 
+    func : flatten_contiguous_range
+
 - api : full
   args : (const std::vector<int64_t>& shape, const Scalar& value, DataType dtype=DataType::FLOAT32, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
   output: Tensor # Tensor or vector<Tensor>
@@ -24,18 +40,26 @@
     backend : [place, x]
     layout : [layout, x]
 
+- api : matmul
+  args : (const Tensor& x, const Tensor& y, bool transpose_x = false, bool transpose_y = false)
+  output : Tensor
+  infer_meta : 
+    func : MatmulInferShape
+  kernel : 
+    func : matmul_v2
+
+- api : mean
+  args : (const Tensor& x)
+  output : Tensor
+  infer_meta : 
+    func : ReductionInferShape
+  kernel : 
+    func : mean
+
 - api : ones_like
   args : (const Tensor& x, DataType dtype, Backend place, DataLayout layout)
   output : Tensor
   invoke : full_like(x, 1, dtype, place, layout)
-
-- api : dot
-  args : (const Tensor& x, const Tensor& y)
-  output : Tensor
-  infer_meta : 
-    func : DotInferShape
-  kernel : 
-    func : dot
 
 # - api : full_like
 #   args : (const Tensor& x, const Scalar& value, DataType dtype, Backend place)->Tensor
