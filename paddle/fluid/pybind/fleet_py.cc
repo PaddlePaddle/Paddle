@@ -311,6 +311,5 @@ void BindIndexSampler(py::module* m) {
       .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
       .def("sample", &IndexSampler::sample);
 }
-
 }  // end namespace pybind
 }  // namespace paddle
