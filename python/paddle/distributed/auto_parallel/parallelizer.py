@@ -19,7 +19,7 @@ from paddle.fluid import program_guard
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
-from .completion import complete_annotation, complete_backward_annotation
+from .completion import complete_annotation, complete_backward_annotation, complete_update_annotation
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .utils import make_data_unshard
@@ -138,8 +138,8 @@ class AutoParallelizer:
                 main_program, startup_program, params_grads, self._pass_context)
 
         else:
-            optimize_ops = self._dist_strategy.user_define_optimizer.apply_gradients(
-                params_grads)
+            with program_guard(main_program, startup_program):
+                optimize_ops = self._optimizer.apply_gradients(params_grads)
 
         # update completion 
         complete_update_annotation(
@@ -160,14 +160,19 @@ class AutoParallelizer:
                                                      self._dist_context)
 
         params_grads = self._apply_serial_passes_and_backward(
-            completed_main_program, startup_program, parameter_list,
+            completed_main_program, startup_program, loss, parameter_list,
             no_grad_set)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_context, rank)
-        partitioned_main_prog, partitioned_startup_prog, params_grads = partitioner.partition(
-            completed_main_program, startup_program, loss, params_grads)
+        partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads = partitioner.partition(
+            completed_main_program, startup_program, params_grads)
+
+        # generate optimize program
+        partitioned_optimize_ops = self._apply_optimize(
+            partitioned_main_prog, partitioned_startup_prog,
+            partitioned_params_grads)
 
         # Traverse different rank programs and traverse each op of them,
         # instantiate communication by process_mapping.
@@ -186,11 +191,7 @@ class AutoParallelizer:
         reshard(partitioned_main_prog, partitioned_startup_prog, rank,
                 self._dist_context)
 
-        # generate optimize program
-        optimize_ops = self._apply_optimize(main_program, startup_program,
-                                            params_grads)
-
         # Copy distributed info to the default context
         set_default_distributed_context(self._dist_context)
 
-        return dist_optimize_ops, dist_params_grads, partitioned_startup_prog, partitioned_main_prog
+        return partitioned_optimize_ops, partitioned_params_grads, partitioned_startup_prog, partitioned_main_prog
