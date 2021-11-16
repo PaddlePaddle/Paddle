@@ -945,7 +945,8 @@ class ForLoopTuplePreTransformer(gast.NodeTransformer):
     def is_for_iter(self, for_node):
         assert isinstance(for_node,
                           gast.For), "Input node is not gast.For node."
-        if isinstance(for_node.iter, (gast.Name, gast.Attribute)):
+        if isinstance(for_node.iter,
+                      (gast.Name, gast.Attribute, gast.List, gast.Tuple)):
             return True
         elif isinstance(for_node.iter, gast.Call) and isinstance(
                 for_node.iter.func,
