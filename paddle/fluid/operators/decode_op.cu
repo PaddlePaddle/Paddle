@@ -14,6 +14,7 @@
 
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
 
+#include <ThreadPool.h>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
@@ -23,8 +24,9 @@
 namespace paddle {
 namespace operators {
 
-static cudaStream_t batch_nvjpeg_stream = nullptr;
+static std::vector<cudaStream_t> nvjpeg_streams;
 static nvjpegHandle_t batch_nvjpeg_handle = nullptr;
+static std::unique_ptr<::ThreadPool> pool_;
 
 void batch_InitNvjpegImage(nvjpegImage_t* img) {
   for (int c = 0; c < NVJPEG_MAX_COMPONENT; c++) {
@@ -38,6 +40,8 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start";
+    int num_threads_ = ctx.Attr<int>("num_threads");
+    auto mode = ctx.Attr<std::string>("mode");
     // Create nvJPEG handle
     if (batch_nvjpeg_handle == nullptr) {
       nvjpegStatus_t create_status =
@@ -46,56 +50,77 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(create_status, NVJPEG_STATUS_SUCCESS,
                         platform::errors::Fatal("nvjpegCreateSimple failed: ",
                                                 create_status));
+
+      nvjpeg_streams.reserve(num_threads_);
+
+      for (int i = 0; i < num_threads_; i++) {
+        cudaStreamCreateWithFlags(&nvjpeg_streams[i], cudaStreamNonBlocking);
+      }
     }
 
-    nvjpegJpegState_t nvjpeg_state;
-    nvjpegStatus_t state_status = platform::dynload::nvjpegJpegStateCreate(
-        batch_nvjpeg_handle, &nvjpeg_state);
-
-    PADDLE_ENFORCE_EQ(state_status, NVJPEG_STATUS_SUCCESS,
-                      platform::errors::Fatal("nvjpegJpegStateCreate failed: ",
-                                              state_status));
+    pool_.reset(new ::ThreadPool(num_threads_));
 
     const framework::LoDTensorArray* ins =
         ctx.Input<framework::LoDTensorArray>("X");
-    // auto* outs = ctx.Output<framework::LoDTensorArray>("Out");
-    // auto *out = scope.FindVar(Output("Out"));
-    //   std::cout << "debug 0.05" << std::endl;
-    // auto &out_array = outs->GetMutable<framework::LoDTensorArray>();
+
     auto* out = ctx.OutputVar("Out");
     auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
     out_array.resize(ins->size());
-    // std::cout << "decode: " << ins->size() << std::endl;
+
+    std::vector<std::future<int>> tasks(ins->size());
+
+    auto dev = ctx.GetPlace();
     for (int i = 0; i < ins->size(); i++) {
-      const framework::LoDTensor x = ins->at(i);
-      // framework::LoDTensor out = out_array.at(i);
-      int components;
-      nvjpegChromaSubsampling_t subsampling;
-      int widths[NVJPEG_MAX_COMPONENT];
-      int heights[NVJPEG_MAX_COMPONENT];
+      auto nvjpeg_stream = nvjpeg_streams[i % num_threads_];
+      auto nvjpeg_handle = batch_nvjpeg_handle;
+      tasks[i] = pool_->enqueue([this, i, ins, &out_array, mode, nvjpeg_handle,
+                                 nvjpeg_stream, dev]() -> int {
+        nvjpegJpegState_t nvjpeg_state;
+        nvjpegStatus_t state_status = platform::dynload::nvjpegJpegStateCreate(
+            batch_nvjpeg_handle, &nvjpeg_state);
 
-      auto* x_data = x.data<T>();
+        PADDLE_ENFORCE_EQ(state_status, NVJPEG_STATUS_SUCCESS,
+                          platform::errors::Fatal(
+                              "nvjpegJpegStateCreate failed: ", state_status));
+        const framework::LoDTensor x = ins->at(i);
+        // framework::LoDTensor out = out_array.at(i);
+        int components;
+        nvjpegChromaSubsampling_t subsampling;
+        int widths[NVJPEG_MAX_COMPONENT];
+        int heights[NVJPEG_MAX_COMPONENT];
 
-      nvjpegStatus_t info_status = platform::dynload::nvjpegGetImageInfo(
-          batch_nvjpeg_handle, x_data, (size_t)x.numel(), &components,
-          &subsampling, widths, heights);
+        auto* x_data = x.data<T>();
 
-      PADDLE_ENFORCE_EQ(
-          info_status, NVJPEG_STATUS_SUCCESS,
-          platform::errors::Fatal("nvjpegGetImageInfo failed: ", info_status));
+        nvjpegStatus_t info_status = platform::dynload::nvjpegGetImageInfo(
+            batch_nvjpeg_handle, x_data, (size_t)x.numel(), &components,
+            &subsampling, widths, heights);
 
-      int width = widths[0];
-      int height = heights[0];
+        PADDLE_ENFORCE_EQ(info_status, NVJPEG_STATUS_SUCCESS,
+                          platform::errors::Fatal("nvjpegGetImageInfo failed: ",
+                                                  info_status));
 
-      nvjpegOutputFormat_t output_format;
-      int output_components;
+        int width = widths[0];
+        int height = heights[0];
 
-      auto mode = ctx.Attr<std::string>("mode");
-      if (mode == "unchanged") {
-        if (components == 1) {
+        nvjpegOutputFormat_t output_format;
+        int output_components;
+
+        if (mode == "unchanged") {
+          if (components == 1) {
+            output_format = NVJPEG_OUTPUT_Y;
+            output_components = 1;
+          } else if (components == 3) {
+            output_format = NVJPEG_OUTPUT_RGB;
+            output_components = 3;
+          } else {
+            platform::dynload::nvjpegJpegStateDestroy(nvjpeg_state);
+            PADDLE_THROW(platform::errors::Fatal(
+                "The provided mode is not supported for JPEG files on GPU"));
+          }
+        } else if (mode == "gray") {
           output_format = NVJPEG_OUTPUT_Y;
           output_components = 1;
-        } else if (components == 3) {
+        } else if (mode == "rgb") {
           output_format = NVJPEG_OUTPUT_RGB;
           output_components = 3;
         } else {
@@ -103,42 +128,39 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
           PADDLE_THROW(platform::errors::Fatal(
               "The provided mode is not supported for JPEG files on GPU"));
         }
-      } else if (mode == "gray") {
-        output_format = NVJPEG_OUTPUT_Y;
-        output_components = 1;
-      } else if (mode == "rgb") {
-        output_format = NVJPEG_OUTPUT_RGB;
-        output_components = 3;
-      } else {
-        platform::dynload::nvjpegJpegStateDestroy(nvjpeg_state);
-        PADDLE_THROW(platform::errors::Fatal(
-            "The provided mode is not supported for JPEG files on GPU"));
-      }
 
-      nvjpegImage_t out_image;
-      batch_InitNvjpegImage(&out_image);
+        nvjpegImage_t out_image;
+        batch_InitNvjpegImage(&out_image);
 
-      // create nvjpeg stream
-      if (batch_nvjpeg_stream == nullptr) {
-        cudaStreamCreateWithFlags(&batch_nvjpeg_stream, cudaStreamNonBlocking);
-      }
+        // create nvjpeg stream
+        // if (batch_nvjpeg_stream == nullptr) {
+        //   cudaStreamCreateWithFlags(&batch_nvjpeg_stream,
+        //   cudaStreamNonBlocking);
+        // }
 
-      int sz = widths[0] * heights[0];
+        int sz = widths[0] * heights[0];
 
-      // auto* out = ctx.Output<framework::LoDTensor>("Out");
-      std::vector<int64_t> out_shape = {output_components, height, width};
-      out_array.at(i).Resize(framework::make_ddim(out_shape));
+        // auto* out = ctx.Output<framework::LoDTensor>("Out");
+        std::vector<int64_t> out_shape = {output_components, height, width};
+        out_array.at(i).Resize(framework::make_ddim(out_shape));
 
-      T* data = out_array.at(i).mutable_data<T>(ctx.GetPlace());
+        uint8_t* data = out_array.at(i).mutable_data<uint8_t>(dev);
 
-      for (int c = 0; c < output_components; c++) {
-        out_image.channel[c] = data + c * sz;
-        out_image.pitch[c] = width;
-      }
+        for (int c = 0; c < output_components; c++) {
+          out_image.channel[c] = data + c * sz;
+          out_image.pitch[c] = width;
+        }
 
-      nvjpegStatus_t decode_status = platform::dynload::nvjpegDecode(
-          batch_nvjpeg_handle, nvjpeg_state, x_data, x.numel(), output_format,
-          &out_image, batch_nvjpeg_stream);
+        nvjpegStatus_t decode_status = platform::dynload::nvjpegDecode(
+            batch_nvjpeg_handle, nvjpeg_state, x_data, x.numel(), output_format,
+            &out_image, nvjpeg_stream);
+        // std:: cout << "task read ok: " << i << std:: endl;
+        return 0;
+      });
+    }
+
+    for (size_t i = 0; i < tasks.size(); ++i) {
+      tasks[i].wait();
     }
     LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute finish";
   }

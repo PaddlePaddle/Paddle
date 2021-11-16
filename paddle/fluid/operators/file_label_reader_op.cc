@@ -100,6 +100,7 @@ class FileDataReader {
     batch_size_ = ctx.Attr<int>("batch_size");
     current_epoch_ = 0;
     current_iter_ = 0;
+    iters_per_epoch_ = labels.size() / (batch_size_ * world_size_);
     is_closed_ = false;
     for (int i = 0, n = files.size(); i < n; i++)
       image_label_pairs_.emplace_back(std::move(files[i]), labels[i]);
@@ -107,7 +108,11 @@ class FileDataReader {
   }
 
   int GetStartIndex() {
-    return batch_size_ * world_size_ * current_iter_ + rank_ * batch_size_;
+    int start_idx =
+        batch_size_ * world_size_ * (current_iter_ % iters_per_epoch_) +
+        rank_ * batch_size_;
+    current_iter_++;
+    return start_idx;
   }
 
   framework::LoDTensor ReadSample(const std::string filename) {
@@ -172,6 +177,7 @@ class FileDataReader {
   int current_iter_;
   int rank_;
   int world_size_;
+  int iters_per_epoch_;
   std::atomic<bool> is_closed_;
   Buffer<LoDTensorArray> batch_buffer_;
   std::thread load_thrd_;
