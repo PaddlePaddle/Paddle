@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
 
 library_path=$1
 jni_path=$2
