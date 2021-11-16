@@ -110,7 +110,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // set the dependecy_count_ and Call Schedule
   // refer to http://agroup.baidu.com/share/md/92946214aa4c4785a2cc4c1f361a023c
   // for pesudo code
-  auto op_nums = vec_func_list_.size();
+  auto op_nums = vec_instruction_.size();
   auto var2min_rw_op = std::map<
       int, std::list<int>>();  // # map from variable id to read / write op id.
   auto var2recent_write_op =
