@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
-#include <tuple>
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -113,7 +112,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   for (const auto& op_desc : program.Block(0).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
-  std::unordered_map<OpRole, std::vector<OperatorBase*>> role_to_ops;
+  std::unordered_map<int64_t, std::vector<OperatorBase*>> role_to_ops;
   for (const auto& op : ops_) {
     int64_t op_role = op->Attr<int64_t>("op_role");
     OpRole new_op_role;
@@ -130,22 +129,23 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
           "The op %s is None of LRSched, Forward, Backward or Optimize.",
           op->Type()));
     }
-    if (role_to_ops.find(new_op_role) == role_to_ops.end()) {
-      role_to_ops.insert({new_op_role, {}});
+    int64_t new_op_role_id = static_cast<int64_t>(new_op_role);
+    if (role_to_ops.find(new_op_role_id) == role_to_ops.end()) {
+      role_to_ops.insert({new_op_role_id, {}});
     }
-    role_to_ops.at(new_op_role).emplace_back(op.get());
+    role_to_ops.at(new_op_role_id).emplace_back(op.get());
   }
   int64_t cur_rank = exe_desc_.cur_rank();
   int64_t task_id = cur_rank * functionality_order.size();
   for (std::size_t i = 0; i < functionality_order.size(); ++i) {
     OpRole role = functionality_order[i];
     int64_t role_id = static_cast<int64_t>(role);
-    if (role_to_ops.find(role) == role_to_ops.end()) {
+    if (role_to_ops.find(role_id) == role_to_ops.end()) {
       task_nodes_.emplace_back(
           TaskNode::CreateEmptyTaskNode(role_id, cur_rank, task_id));
     } else {
       task_nodes_.emplace_back(TaskNode::CreateTaskNode(
-          role_id, role_to_ops.at(role), cur_rank, task_id));
+          role_id, role_to_ops.at(role_id), cur_rank, task_id));
     }
     ++task_id;
   }
