@@ -147,7 +147,6 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
     std::string pool_type = ctx.Attr<std::string>("pool_type");
 
     const int& index_size = src_index->dims()[0];
-    if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
     const auto& src_dims = X->dims();
@@ -172,6 +171,8 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
       thrust::fill(thrust::device, p_output_ptr, p_output_ptr + memset_size,
                    std::numeric_limits<T>::max());
     }
+
+    if (index_size == 0) return;
 
     int64_t slice_size = 1;
     for (int i = 1; i < src_dims.size(); ++i) {

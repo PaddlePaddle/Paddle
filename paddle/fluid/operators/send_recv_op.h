@@ -175,7 +175,6 @@ class SendRecvOpKernel : public framework::OpKernel<T> {
     auto* Y = ctx.Output<Tensor>("Out");
 
     const int& index_size = src_index->dims()[0];
-    if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
     const auto& src_dims = X->dims();
@@ -183,6 +182,8 @@ class SendRecvOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
     const size_t& memset_bytes = memset_size * sizeof(T);
     memset(p_output, 0, memset_bytes);
+
+    if (index_size == 0) return;
 
     const IndexT* s_index = src_index->data<IndexT>();
     const IndexT* d_index = dst_index->data<IndexT>();

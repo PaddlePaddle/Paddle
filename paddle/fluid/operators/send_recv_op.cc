@@ -109,10 +109,10 @@ class SendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Dst_count",
               "Count tensor of Dst_index, mainly for MEAN pool_type.")
         .AsIntermediate();
-    AddAttr<std::string>(
-        "pool_type",
-        "(string, default 'SUM')"
-        "Define different pool types to receive the result tensors")
+    AddAttr<std::string>("pool_type",
+                         "(string, default 'SUM')"
+                         "Define different pool types to receive the result "
+                         "tensors of Dst_index.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     // TODO(daisiming): Add a simple example here.
@@ -121,11 +121,8 @@ SendRecv Operator.
 
 $Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
 
-This operator 
+This operator is mainly used in Graph domain. We use this operator to perform message passing process. We can gather feature according to Src_index, and then use different pool types to define how to receive the result tensors of Dst_index.
 
-Example:
-
-pass
 )DOC");
   }
 };
