@@ -53,7 +53,7 @@ TEST(API, cast) {
 
   // 3. check result
   std::vector<int> expect_shape = {3, 4};
-  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape().size(), size_t(2));
   ASSERT_EQ(out.shape()[0], expect_shape[0]);
   ASSERT_EQ(out.shape()[1], expect_shape[1]);
   ASSERT_EQ(out.numel(), 12);
