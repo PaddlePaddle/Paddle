@@ -59,12 +59,6 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   ParseDumpConfig(trainer_desc);
   SetDebug(trainer_desc.debug());
-  // for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
-  //     i++) {
-  //  need_merge_var_names_.push_back(
-  //      trainer_desc.downpour_param().stat_var_names(i));
-  //}
-  // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();

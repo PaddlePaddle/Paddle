@@ -100,7 +100,8 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 
 PT_REGISTER_KERNEL("sign", CPU, ANY, pten::Sign, float, double) {}
-PT_REGISTER_KERNEL("mean", CPU, ANY, pten::Mean, float, double) {}
+PT_REGISTER_KERNEL(
+    "mean", CPU, ANY, pten::Mean, float, double, paddle::platform::bfloat16) {}
 PT_REGISTER_KERNEL("scale",
                    CPU,
                    ANY,

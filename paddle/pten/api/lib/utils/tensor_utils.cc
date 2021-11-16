@@ -149,8 +149,14 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
 }
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
-  CHECK(src);
-  CHECK(dst);
+  PADDLE_ENFORCE_NOT_NULL(
+      src,
+      platform::errors::InvalidArgument(
+          "The source DenseTensor is nullptr when move storage."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dst,
+      platform::errors::InvalidArgument(
+          "The destination Tensor is nullptr when move storage."));
   dst->Resize(src->dims());
   auto storage = src->release();
   std::shared_ptr<paddle::memory::allocation::Allocation> holder(
@@ -159,8 +165,14 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
 }
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
-  CHECK(src);
-  CHECK(dst);
+  PADDLE_ENFORCE_NOT_NULL(
+      src,
+      platform::errors::InvalidArgument(
+          "The source DenseTensor is nullptr when move storage."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dst,
+      platform::errors::InvalidArgument(
+          "The destination LoDTensor is nullptr when move storage."));
   SetLoD(dst->mutable_lod(), src->lod());
   MovesStorage(src, static_cast<paddle::framework::Tensor*>(dst));
 }
