@@ -149,6 +149,8 @@ from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
 from .math import max  # noqa: F401
+from .math import amax  # noqa: F401
+from .math import amin  # noqa: F401
 from .math import maximum  # noqa: F401
 from .math import min  # noqa: F401
 from .math import minimum  # noqa: F401
@@ -288,6 +290,8 @@ tensor_method_func  = [ #noqa
            'add_n',
            'max',
            'maximum',
+           'amax',
+           'amin',
            'min',
            'minimum',
            'mm',
