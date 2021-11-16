@@ -61,7 +61,8 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
                              tensor.dims(),
                              pten::TransToPtenDataLayout(tensor.layout())};
 
-  if (tensor.IsInitialized()) {
+  if (tensor.IsInitialized() &&
+      tensor.place() == pten::TransToFluidPlace(arg_def.backend)) {
     auto shared_storage =
         pten::make_intrusive<SharedStorage>(tensor.Holder(), tensor.offset());
     return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
@@ -82,7 +83,8 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
                              pten::TransToPtenDataLayout(tensor.layout()),
                              pten::TransToPtenLoD(tensor.lod())};
 
-  if (tensor.IsInitialized()) {
+  if (tensor.IsInitialized() &&
+      tensor.place() == pten::TransToFluidPlace(arg_def.backend)) {
     auto shared_storage =
         pten::make_intrusive<SharedStorage>(tensor.Holder(), tensor.offset());
     return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
