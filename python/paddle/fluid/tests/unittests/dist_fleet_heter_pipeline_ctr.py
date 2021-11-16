@@ -154,7 +154,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         fleet.init_worker()
 
         thread_num = int(os.getenv("CPU_NUM", 2))
-        batch_size = 4
+        batch_size = 128
 
         filelist = fleet.util.get_file_shard(train_file_list)
         print("filelist: {}".format(filelist))
@@ -191,7 +191,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         print(real_program)
 
         thread_num = int(os.getenv("CPU_NUM", 2))
-        batch_size = 4
+        batch_size = 128
 
         pass_start = time.time()
         fleet.run_heter_worker()
