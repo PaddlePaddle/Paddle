@@ -30,6 +30,7 @@ message InterceptorMessage {
   optional int64 dst_id = 2 [ default = 0 ];
   optional MessageType message_type = 3 [ default = RESET ];
   optional bool ctrl_message = 4 [ default = false ];
+  optional int64 scope_id = 5 [ default = 0 ];
 }
 
 message InterceptorResponse { optional bool rst = 1 [ default = false ]; }

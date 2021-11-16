@@ -22,8 +22,11 @@ namespace distributed {
 
 void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
+                                         "Carrier is already init."));
   interceptor_id_to_node_ = interceptor_id_to_node;
   CreateInterceptors();
+  is_init_ = true;
 }
 
 bool Carrier::EnqueueInterceptorMessage(
@@ -87,6 +90,23 @@ void Carrier::SetCreatingFlag(bool flag) {
     HandleTmpMessages();
   }
 }
+
+void Carrier::Start() {
+  // Send a 'DATA_IS_READY' message to the first interceptor to
+  // start the pipeline
+  for (const auto& pair : interceptor_idx_to_interceptor_) {
+    if (pair.first == 0) {
+      InterceptorMessage start_msg;
+      start_msg.set_src_id(pair.first);
+      start_msg.set_dst_id(pair.first);
+      start_msg.set_message_type(DATA_IS_READY);
+      EnqueueInterceptorMessage(start_msg);
+      break;
+    }
+  }
+}
+
+bool Carrier::IsInit() { return is_init_; }
 
 void Carrier::HandleTmpMessages() {
   VLOG(3) << "Carrier has received " << message_tmp_.size()
