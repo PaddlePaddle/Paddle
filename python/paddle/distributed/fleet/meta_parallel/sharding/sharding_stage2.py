@@ -468,27 +468,12 @@ class ShardingStage2(nn.Layer):
         """
         Rebuild grad storages.
         """
-
-        only_fp32 = False
-
-        if len(self._grad_storages.keys(
-        )) == 1 and Type.fp32.value in self._grad_storages.keys():
-            only_fp32 = True
-
-        if not only_fp32:
-            # Rebuild fp16 grad storages
-            for dst_rank, grad_storage in self._grad_storages[
-                    Type.fp16.value].items():
+        # Rebuild fp16/fp32 grad storages
+        for dtype in self._grad_storages.keys():
+            for dst_rank, grad_storage in self._grad_storages[dtype].items():
                 if dst_rank != self._rank:
                     grad_storage.manumal_relase()
                     grad_storage.rebuild()
-
-        # Rebuild fp32 grad storages
-        for dst_rank, grad_storage in self._grad_storages[
-                Type.fp32.value].items():
-            if dst_rank != self._rank:
-                grad_storage.manumal_relase()
-                grad_storage.rebuild()
 
     def _rank_buffer_size(self, buffer_max_size, model_size):
         """
