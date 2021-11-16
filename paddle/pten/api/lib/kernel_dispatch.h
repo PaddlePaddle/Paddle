@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/core/context.h"
-#include "paddle/pten/core/device_context_pool.h"
 
 namespace paddle {
 namespace experimental {
@@ -139,7 +139,7 @@ KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
 }
 
 pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend) {
-  auto& pool = pten::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   return pool.Get(pten::TransToFluidPlace(backend));
 }
 

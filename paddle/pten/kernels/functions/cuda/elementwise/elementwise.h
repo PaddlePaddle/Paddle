@@ -20,12 +20,11 @@ limitations under the License. */
 namespace pten {
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
-void LaunchElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &cuda_ctx,
-    const std::vector<const DenseTensor *> &ins,
-    std::vector<DenseTensor *> *outs,
-    int axis,
-    Functor func) {
+void LaunchElementwiseCudaKernel(const CUDAContext &cuda_ctx,
+                                 const std::vector<const DenseTensor *> &ins,
+                                 std::vector<DenseTensor *> *outs,
+                                 int axis,
+                                 Functor func) {
   std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {

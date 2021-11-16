@@ -30,7 +30,7 @@ namespace pten {
 * 2x~4x) than number of SMs. Hence, SM count is took into account within
 * this function to determine the right number of threads per block.
 */
-inline int GetThreadsConfig(const paddle::platform::CUDADeviceContext &ctx,
+inline int GetThreadsConfig(const pten::CUDAContext &ctx,
                             int64_t numel,
                             int vec_size) {
   int threads = ELEMENTWISE_BLOCK_SIZE;
@@ -118,7 +118,7 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
 }
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
-void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
+void ElementwiseCudaKernel(const pten::CUDAContext &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
@@ -142,7 +142,7 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchSameDimsElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const pten::CUDAContext &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     Functor func) {

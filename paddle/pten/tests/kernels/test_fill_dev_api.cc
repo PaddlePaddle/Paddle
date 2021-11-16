@@ -17,9 +17,9 @@ limitations under the License. */
 
 #include "paddle/pten/include/creation.h"
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_DECLARE_MODULE(CreationCPU);
@@ -43,7 +43,7 @@ TEST(DEV_API, fill_any_like) {
   dense_x_data[0] = 0;
   float val = 1.0;
 
-  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API

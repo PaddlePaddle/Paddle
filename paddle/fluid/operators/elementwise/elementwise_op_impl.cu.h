@@ -66,8 +66,13 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(ctx, pt_inputs,
-                                                           &pt_outputs, func);
+  auto *pten_dev_ctx =
+      reinterpret_cast<typename paddle::framework::ConvertContextType<
+          platform::CUDADeviceContext>::TYPE *>(
+          framework::ConvertContext(
+              *reinterpret_cast<const platform::DeviceContext *>(&ctx)));
+  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(
+      *pten_dev_ctx, pt_inputs, &pt_outputs, func);
 }
 
 }  // namespace operators

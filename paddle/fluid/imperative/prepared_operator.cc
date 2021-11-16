@@ -18,8 +18,8 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/common/scalar.h"
-#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
@@ -136,7 +136,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        pten::KernelContext* pt_kernel_context) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-  pten::DeviceContextPool& pt_pool = pten::DeviceContextPool::Instance();
+  auto& pt_pool = paddle::experimental::DeviceContextPool::Instance();
   auto* pt_dev_ctx = pt_pool.Get(place);
 
   framework::RuntimeContext ctx({}, {});

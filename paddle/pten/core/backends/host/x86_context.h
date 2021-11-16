@@ -36,21 +36,24 @@ class CPUContext : public DeviceContext {
  public:
   explicit CPUContext(CPUPlace place) : place_(place) {
 #ifdef PADDLE_WITH_EIGEN
-    eigen_device_.reset(new Eigen::DefaultDevice());
+// eigen_device_.reset(new Eigen::DefaultDevice());
 #endif
   }
 
   Place GetPlace() const noexcept override { return place_; }
 
 #ifdef PADDLE_WITH_EIGEN
-  Eigen::DefaultDevice* eigen_device() const { return eigen_device_.get(); }
+  void SetEigenDevice(Eigen::DefaultDevice* eigen_device) {
+    eigen_device_ = eigen_device;
+  }
+  Eigen::DefaultDevice* eigen_device() const { return eigen_device_; }
 #endif
 
  private:
   CPUPlace place_;
 
 #ifdef PADDLE_WITH_EIGEN
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  Eigen::DefaultDevice* eigen_device_{nullptr};
 #endif
 };
 

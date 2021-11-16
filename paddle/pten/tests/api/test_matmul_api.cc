@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/linalg.h"
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -121,7 +122,7 @@ TEST(API, matmul_cuda) {
                             framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
-  auto& pool = pten::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto place = paddle::platform::CUDAPlace();
   auto* dev_ctx = pool.GetByPlace(place);
 

@@ -269,7 +269,7 @@ template <typename InT,
           int Arity,
           int VecSize,
           int Rank>
-void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
+void LaunchKernel(const pten::CUDAContext &ctx,
                   const std::vector<const DenseTensor *> &ins,
                   DenseTensor *out,
                   Functor func,
@@ -316,7 +316,7 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
 void LaunchBroadcastKernelForDifferentVecSize(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const pten::CUDAContext &ctx,
     const std::vector<const DenseTensor *> &ins,
     DenseTensor *out,
     int axis,
@@ -351,7 +351,7 @@ void LaunchBroadcastKernelForDifferentVecSize(
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchBroadcastElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const pten::CUDAContext &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     int axis,

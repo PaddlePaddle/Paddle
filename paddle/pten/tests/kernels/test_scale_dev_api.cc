@@ -17,9 +17,9 @@ limitations under the License. */
 
 #include "paddle/pten/include/math.h"
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_DECLARE_MODULE(MathCPU);
@@ -48,7 +48,7 @@ TEST(DEV_API, scale) {
   float bias = 1;
   bool bias_after_scale = true;
 
-  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
@@ -91,7 +91,7 @@ TEST(DEV_API, scale_host) {
   float bias = 1;
   bool bias_after_scale = true;
 
-  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API

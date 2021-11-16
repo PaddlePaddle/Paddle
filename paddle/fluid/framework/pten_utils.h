@@ -25,9 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/context.h"
-#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
@@ -104,10 +104,10 @@ struct ConvertContextType<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
 
-// template <>
-// struct struct ConvertContext<platform::CUDADeviceContext> {
-//   using TYPE = pten::CUDAContext;
-// };
+template <>
+struct ConvertContextType<platform::CUDADeviceContext> {
+  using TYPE = pten::CUDAContext;
+};
 
 }  // namespace framework
 }  // namespace paddle

@@ -87,9 +87,7 @@ void Copy(const CUDAContext& dev_ctx,
                           "place is %s, context place is %s.",
                           src_gpu_place,
                           ctx_gpu_place));
-    auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+    auto stream = dev_ctx.stream();
     paddle::memory::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
@@ -113,9 +111,7 @@ void Copy(const CUDAContext& dev_ctx,
                           "destination place is %s, context place is %s.",
                           dst_gpu_place,
                           ctx_gpu_place));
-    auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+    auto stream = dev_ctx.stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -141,9 +137,7 @@ void Copy(const CUDAContext& dev_ctx,
                           "device context GPU number is %d.",
                           src_gpu_place.device,
                           ctx_gpu_place.device));
-    auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+    auto stream = dev_ctx.stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
@@ -169,9 +163,7 @@ void Copy(const CUDAContext& dev_ctx,
                           "device context GPU number is %d.",
                           dst_gpu_place.device,
                           ctx_gpu_place.device));
-    auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+    auto stream = dev_ctx.stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -187,9 +179,7 @@ void Copy(const CUDAContext& dev_ctx,
         paddle::platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto stream =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext&>(dev_ctx)
-            .stream();
+    auto stream = dev_ctx.stream();
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       paddle::memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
@@ -197,13 +187,9 @@ void Copy(const CUDAContext& dev_ctx,
       if (paddle::platform::is_same_place(ctx_place, src_place)) {
         paddle::memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-        paddle::platform::DeviceContextPool::Instance()
-            .Get(src.place())
-            ->Wait();
+        dev_ctx.Wait(dev_ctx.stream());
       } else if (paddle::platform::is_same_place(ctx_place, dst_place)) {
-        paddle::platform::DeviceContextPool::Instance()
-            .Get(src.place())
-            ->Wait();
+        dev_ctx.Wait(dev_ctx.stream());
         paddle::memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {

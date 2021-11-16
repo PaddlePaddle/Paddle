@@ -17,9 +17,9 @@ limitations under the License. */
 
 #include "paddle/pten/include/linalg.h"
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/device_context_pool.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_DECLARE_MODULE(LinalgCPU);
@@ -56,7 +56,7 @@ TEST(DEV_API, dot) {
     }
   }
 
-  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API

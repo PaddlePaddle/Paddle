@@ -14,28 +14,8 @@
 
 #pragma once
 
-// TODO(wilber): need to replace fluid place.
-#include "paddle/fluid/platform/place.h"
-
-namespace pten {
-
-class Allocator;
-
-using Place = paddle::platform::Place;
-
-// TODO(wilber): should be a pure virtual class?
-class DeviceContext {
- public:
-  void SetAllocator(Allocator* allocator) noexcept { allocator_ = allocator; }
-  Allocator* GetAllocator() const noexcept { return allocator_; }
-
-  // TODO(wilber): code_style?
-  virtual Place GetPlace() const noexcept = 0;
-
-  virtual ~DeviceContext() {}
-
- protected:
-  Allocator* allocator_{nullptr};
-};
-
-}  // namespace pten
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/pten/core/backends/gpu/cuda_context.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/pten/core/backends/gpu/rocm_context.h"
+#endif

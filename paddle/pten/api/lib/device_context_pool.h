@@ -18,12 +18,15 @@
 #include <map>
 #include <vector>
 
+#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/context.h"
 
 // TODO(wilber): need to replace fluid place.
 #include "paddle/fluid/platform/place.h"
 
-namespace pten {
+namespace paddle {
+namespace experimental {
 
 using Place = paddle::platform::Place;
 
@@ -32,7 +35,12 @@ struct DefaultDeviceContextType;
 
 template <>
 struct DefaultDeviceContextType<paddle::platform::CPUPlace> {
-  using TYPE = CPUContext;
+  using TYPE = pten::CPUContext;
+};
+
+template <>
+struct DefaultDeviceContextType<paddle::platform::CUDAPlace> {
+  using TYPE = pten::CUDAContext;
 };
 
 /*! \brief device context pool singleton */
@@ -58,7 +66,7 @@ class DeviceContextPool {
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
-  DeviceContext* Get(const Place& place);
+  pten::DeviceContext* Get(const Place& place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
@@ -71,9 +79,11 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
+  std::map<Place, std::shared_future<std::unique_ptr<pten::DeviceContext>>>
       device_contexts_;
+  std::map<Place, std::unique_ptr<pten::Allocator>> allocators_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 
-}  // namespace pten
+}  // namespace experimental
+}  // namespace paddle

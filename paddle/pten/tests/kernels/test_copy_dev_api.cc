@@ -18,9 +18,9 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/cpu/utils.h"
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/device_context_pool.h"
 
 PT_DECLARE_MODULE(UtilsCPU);
 
@@ -55,7 +55,7 @@ TEST(DEV_API, copy) {
   const auto& a = paddle::platform::CPUPlace();
   std::cout << typeid(a).name() << std::endl;
   // 2. test API
-  auto& pool = pten::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(paddle::platform::CPUPlace());
   pten::Copy(*dev_ctx, *(dense_src.get()), dense_dst.get());
 

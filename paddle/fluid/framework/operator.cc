@@ -29,9 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/context.h"
-#include "paddle/pten/core/device_context_pool.h"
 
 namespace paddle {
 namespace framework {
@@ -1113,7 +1113,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-  pten::DeviceContextPool& pten_pool = pten::DeviceContextPool::Instance();
+  auto& pten_pool = paddle::experimental::DeviceContextPool::Instance();
   auto* pten_dev_ctx = pten_pool.Get(place);
 
 #ifdef PADDLE_WITH_ASCEND_CL

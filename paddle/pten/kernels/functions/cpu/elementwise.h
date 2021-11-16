@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/backends/host/x86_context.h"
+#include "paddle/pten/core/backends/host/context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/functions/general/elementwise_base.h"
 

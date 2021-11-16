@@ -17,14 +17,12 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/core/backends/gpu/context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 
 namespace pten {
-
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 void Flatten(const CUDAContext& dev_ctx,

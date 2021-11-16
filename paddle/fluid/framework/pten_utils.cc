@@ -205,10 +205,13 @@ std::string KernelSignatureToString(const KernelSignature& signature) {
 }
 
 pten::DeviceContext* ConvertContext(const platform::DeviceContext& context) {
-  pten::DeviceContextPool& pt_pool = pten::DeviceContextPool::Instance();
+  auto& pt_pool = paddle::experimental::DeviceContextPool::Instance();
   if (platform::is_cpu_place(context.GetPlace())) {
     auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
     return reinterpret_cast<pten::CPUContext*>(pt_dev_ctx);
+  } else if (platform::is_gpu_place(context.GetPlace())) {
+    auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
+    return reinterpret_cast<pten::CUDAContext*>(pt_dev_ctx);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument("Unsupported type"));
     return nullptr;
