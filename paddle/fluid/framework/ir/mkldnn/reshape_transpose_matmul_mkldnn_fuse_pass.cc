@@ -148,13 +148,14 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
 
   gpd(graph, handler);
   AddStatis(found_reshape_transpose_matmul_count);
-
-  std::stringstream msg_ss;
-  msg_ss << "---    Fused " << found_reshape_transpose_matmul_count
-         << " ReshapeTransposeMatmulMkldnn patterns";
-  if (with_reshape_xshape) msg_ss << " with reshape's xshape";
-  if (with_transpose_xshape) msg_ss << " with transpose's xshape";
-  string::PrettyLogDetail(msg_ss.str().c_str());
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+    std::stringstream msg_ss;
+    msg_ss << "---    Fused " << found_reshape_transpose_matmul_count
+           << " ReshapeTransposeMatmulMkldnn patterns";
+    if (with_reshape_xshape) msg_ss << " with reshape's xshape";
+    if (with_transpose_xshape) msg_ss << " with transpose's xshape";
+    string::PrettyLogDetail(msg_ss.str().c_str());
+  }
 }
 
 void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(ir::Graph *graph) const {
