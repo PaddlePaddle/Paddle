@@ -162,7 +162,8 @@ class ShardingStage2(nn.Layer):
         Set zero to the gradient of the optimizer's current rank trainable parameters.
         """
         for dtype in self._grad_storages.keys():
-            self._grad_storages[dtype][self._rank].buffer.zero_()
+            if self._rank in self._grad_storages[dtype].keys():
+                self._grad_storages[dtype][self._rank].buffer.zero_()
 
     def _init_internal_storage(self, needs_fresh):
         """
