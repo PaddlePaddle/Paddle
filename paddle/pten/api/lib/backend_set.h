@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <ostream>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/backend.h"
 namespace paddle {
 namespace experimental {
@@ -38,10 +38,7 @@ class BackendSet final {
   uint64_t bitset() const { return bitset_; }
 
   bool inline Has(Backend b) const {
-    PADDLE_ENFORCE_NE(b,
-                      Backend::UNDEFINED,
-                      platform::errors::InvalidArgument(
-                          "Backend argument can't be UNDEFINED."));
+    PD_CHECK(b != Backend::UNDEFINED, "Backend argument can't be UNDEFINED.");
     return static_cast<bool>(bitset_ & BackendSet(b).bitset());
   }
   bool IsEmpty() const { return bitset_ == 0; }

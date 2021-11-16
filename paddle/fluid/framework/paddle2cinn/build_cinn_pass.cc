@@ -193,8 +193,17 @@ void AddOutputVar(const GraphNodeSet& output_vars, const GraphNodeSet& cluster,
                   const GraphNodeMap& old_op2new_op,
                   const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : output_vars) {
+    // create fetch op
+    OpDesc desc;
+    desc.SetType("fetch");
+    desc.SetInput("X", {old_var->Name()});
+    auto op = graph->CreateOpNode(&desc);
+
     auto* var = old_var2new_var.at(old_var);
     VLOG(4) << "Add Output Var Node: " << var->Name();
+
+    // link fetch op and fetch var
+    IR_NODE_LINK_TO(var, op);
 
     for (auto* old_op : old_var->inputs) {
       if (cluster.count(old_op)) {

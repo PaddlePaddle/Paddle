@@ -465,6 +465,18 @@ class TrainerProc(object):
         self.cmd = None
 
 
+_run_with_coverage = False
+
+
+def run_with_coverage(*args):
+    global _run_with_coverage
+    assert len(args) <= 1, "len(args) {} should <= 1".format(len(args))
+    if len(args) == 1:
+        assert isinstance(args[0], bool)
+        _run_with_coverage = args[0]
+    return _run_with_coverage
+
+
 def start_local_trainers(cluster,
                          pod,
                          training_script,
@@ -518,7 +530,11 @@ def start_local_trainers(cluster,
 
         current_env.update(proc_env)
 
-        cmd = [sys.executable, "-u", training_script] + training_script_args
+        coverage_args = []
+        if run_with_coverage():
+            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+        cmd = [sys.executable, "-u"] + coverage_args + [training_script
+                                                        ] + training_script_args
 
         logger.debug("start trainer proc{}  env:{}".format(cmd, current_env))
 
@@ -768,44 +784,44 @@ def get_custom_endpoints(origin_endpoints, offset=0):
     return paddle_user_define_endpoints
 
 
-def cloud_ps_heter_env_set(args):
-    environs = {}
-
-    paddle_trainer_endpoints = os.getenv("TRAINER_IP_PORT_LIST", "")
-    assert paddle_trainer_endpoints != None
-
-    paddle_pserver_endpoints = os.getenv("PSERVER_IP_PORT_LIST", "")
-    assert paddle_pserver_endpoints != None
-
-    # hard code for paddlecloud custom-framework
-    avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
-    assert len(
-        avilable_ports
-    ) >= 2, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
-
-    # hard code for paddlecloud custom-framework
-    trainers_num = len(paddle_pserver_endpoints.split(","))
-    assert trainers_num != 0
-    environs["PADDLE_TRAINERS_NUM"] = trainers_num
-    environs["TRAINERS_NUM"] = trainers_num
-
-    # hard code for paddlecloud custom-framework
-    environs["PADDLE_HETER_TRAINER_IP_PORT_LIST"] = paddle_trainer_endpoints
-    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_pserver_endpoints
-    environs["PADDLE_TRAINER_ENDPOINTS"] = get_custom_endpoints(
-        paddle_pserver_endpoints, 1)
-    heter_worker_num = len(paddle_trainer_endpoints.split(","))
-    if (args.heter_worker_num != None) and (
-            heter_worker_num != args.heter_worker_num):
-        warnings.warn(
-            "Your fleetrun setting: heter_worker_num is {}, but we find {} device can be used, this setting has been changed.".
-            format(args.heter_worker_num, heter_worker_num))
-        args.heter_worker_num = heter_worker_num
-
-    for k, v in environs.items():
-        os.environ[k] = str(v)
-    logger.info("Set heter parameter server env: {}".format(
-        pretty_print_envs(environs)))
+#def cloud_ps_heter_env_set(args):
+#    environs = {}
+#
+#    paddle_trainer_endpoints = os.getenv("TRAINER_IP_PORT_LIST", "")
+#    assert paddle_trainer_endpoints != None
+#
+#    paddle_pserver_endpoints = os.getenv("PSERVER_IP_PORT_LIST", "")
+#    assert paddle_pserver_endpoints != None
+#
+#    # hard code for paddlecloud custom-framework
+#    avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
+#    assert len(
+#        avilable_ports
+#    ) >= 2, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
+#
+#    # hard code for paddlecloud custom-framework
+#    trainers_num = len(paddle_pserver_endpoints.split(","))
+#    assert trainers_num != 0
+#    environs["PADDLE_TRAINERS_NUM"] = trainers_num
+#    environs["TRAINERS_NUM"] = trainers_num
+#
+#    # hard code for paddlecloud custom-framework
+#    environs["PADDLE_HETER_TRAINER_IP_PORT_LIST"] = paddle_trainer_endpoints
+#    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_pserver_endpoints
+#    environs["PADDLE_TRAINER_ENDPOINTS"] = get_custom_endpoints(
+#        paddle_pserver_endpoints, 1)
+#    heter_worker_num = len(paddle_trainer_endpoints.split(","))
+#    if (args.heter_worker_num != None) and (
+#            heter_worker_num != args.heter_worker_num):
+#        warnings.warn(
+#            "Your fleetrun setting: heter_worker_num is {}, but we find {} device can be used, this setting has been changed.".
+#            format(args.heter_worker_num, heter_worker_num))
+#        args.heter_worker_num = heter_worker_num
+#
+#    for k, v in environs.items():
+#        os.environ[k] = str(v)
+#    logger.info("Set heter parameter server env: {}".format(
+#        pretty_print_envs(environs)))
 
 
 def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
@@ -997,7 +1013,7 @@ class ParameterServerLauncher(object):
 
             self.stage_heter_map[1] = self.worker_endpoints
             if args.heter_worker_num:
-                self.stage_heter_trainer_num = args.heter_worker_num.split(",")
+                self.stage_heter_trainer_num = args.heter_worker_num.split(";")
                 self.stage_heter_trainer_num = [
                     int(trainer_num)
                     for trainer_num in self.stage_heter_trainer_num

@@ -32,7 +32,9 @@ namespace paddle {
 struct PD_Exception : public std::exception {
  public:
   template <typename... Args>
-  explicit PD_Exception(const std::string& msg, const char* file, int line,
+  explicit PD_Exception(const std::string& msg,
+                        const char* file,
+                        int line,
                         const char* default_msg) {
     std::ostringstream sout;
     if (msg.empty()) {
@@ -75,24 +77,13 @@ class ErrorMessage {
   std::ostringstream oss;
 };
 
-#if defined _WIN32
-#define HANDLE_THE_ERROR try {
-#define END_HANDLE_THE_ERROR            \
-  }                                     \
-  catch (const std::exception& e) {     \
-    std::cerr << e.what() << std::endl; \
-    throw e;                            \
-  }
-#else
-#define HANDLE_THE_ERROR
-#define END_HANDLE_THE_ERROR
-#endif
-
 #define PD_CHECK(COND, ...)                                               \
   do {                                                                    \
     if (PD_UNLIKELY(!(COND))) {                                           \
       auto __message__ = ::paddle::ErrorMessage(__VA_ARGS__).to_string(); \
-      throw ::paddle::PD_Exception(__message__, __FILE__, __LINE__,       \
+      throw ::paddle::PD_Exception(__message__,                           \
+                                   __FILE__,                              \
+                                   __LINE__,                              \
                                    "Expected " #COND                      \
                                    ", but it's not satisfied.");          \
     }                                                                     \
@@ -101,8 +92,8 @@ class ErrorMessage {
 #define PD_THROW(...)                                                   \
   do {                                                                  \
     auto __message__ = ::paddle::ErrorMessage(__VA_ARGS__).to_string(); \
-    throw ::paddle::PD_Exception(__message__, __FILE__, __LINE__,       \
-                                 "An error occurred.");                 \
+    throw ::paddle::PD_Exception(                                       \
+        __message__, __FILE__, __LINE__, "An error occurred.");         \
   } while (0)
 
 }  // namespace paddle

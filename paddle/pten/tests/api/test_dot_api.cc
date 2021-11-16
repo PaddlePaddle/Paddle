@@ -65,8 +65,8 @@ TEST(API, dot) {
   auto out = paddle::experimental::dot(x, y);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 3);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);

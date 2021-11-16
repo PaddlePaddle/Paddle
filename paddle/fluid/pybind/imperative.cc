@@ -549,12 +549,19 @@ static void ParseIndexingSlice(
   // specified_dims is the number of dimensions which indexed by Interger,
   // Slices.
   int specified_dims = 0;
+  int ell_count = 0;
   for (int dim = 0; dim < size; ++dim) {
     PyObject *slice_item = PyTuple_GetItem(index, dim);
     if (PyCheckInteger(slice_item) || PySlice_Check(slice_item)) {
       specified_dims++;
+    } else if (slice_item == Py_Ellipsis) {
+      ell_count++;
     }
   }
+
+  PADDLE_ENFORCE_LE(ell_count, 1,
+                    platform::errors::InvalidArgument(
+                        "An index can only have a single ellipsis ('...')"));
 
   for (int i = 0, dim = 0; i < size; ++i) {
     PyObject *slice_item = PyTuple_GetItem(index, i);
@@ -660,7 +667,7 @@ static void ParseIndexingSlice(
   }
 
   // valid_index is the number of dimensions exclude None index
-  const int valid_indexs = size - none_axes->size();
+  const int valid_indexs = size - none_axes->size() - ell_count;
   PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
                     platform::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",

@@ -76,11 +76,11 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
-  int64_t numel() const;
+  int64_t numel() const override;
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept { return meta_.dims; }
+  const DDim& dims() const noexcept override { return meta_.dims; }
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
@@ -93,15 +93,15 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType data_type() const noexcept { return meta_.type; }
+  DataType data_type() const noexcept override { return meta_.type; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept { return meta_.layout; }
+  DataLayout layout() const noexcept override { return meta_.layout; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
-  const Place& place() const { return storage_->place(); }
+  const Place& place() const override { return storage_->place(); }
 
   /// \brief Returns the meta information of the tensor.
   /// \return The meta information of the tensor.
@@ -109,11 +109,13 @@ class DenseTensor : public TensorBase,
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
-  bool valid() const noexcept { return meta_.valid(); }
+  bool valid() const noexcept override { return meta_.valid(); }
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
-  bool initialized() const { return storage_->data(); }
+  bool initialized() const override {
+    return storage_ != nullptr && storage_->data() != nullptr;
+  }
 
   /// \brief Check if storage is shared with other objects.
   /// \return Whether the storage is shared with other objects.
@@ -171,12 +173,6 @@ class DenseTensor : public TensorBase,
   /// \brief Get the const data pointer value of raw type.
   /// \return The const data pointer value of raw type.
   const void* data() const;
-
-  /// \brief Get the shallow clone of current tensor.
-  /// \return The shallow clone of current tensor.
-  DenseTensor shallow_clone() const {
-    return DenseTensor(copy_intrusive(storage_), meta_);
-  }
 
  private:
   friend class CompatibleDenseTensorUtils;
