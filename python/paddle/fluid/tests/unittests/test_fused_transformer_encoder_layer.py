@@ -184,5 +184,18 @@ class TestFusedTransformerEncoderLayerPreLnTrueAttnMaskIsNone(
         self.has_attn_mask = False
 
 
+class TestFusedTransformerEncoderLayerAmp(TestFusedTransformerEncoderLayer):
+    def test_amp_guard(self):
+        with paddle.fluid.dygraph.amp_guard(True, level='O2'):
+            fused_encoder = FusedTransformerEncoderLayer(
+                self.d_model, self.nhead, self.dim_feedforward,
+                self.dropout_rate, self.activation, self.attn_dropout_rate,
+                self.act_dropout_rate, self.pre_layer_norm)
+            src = np.random.rand(self.batch_size, self.query_length,
+                                 self.embed_dim).astype(self.dtype)
+            out = fused_encoder(paddle.to_tensor(src))
+            self.assertTrue(out.dtype == paddle.float16)
+
+
 if __name__ == "__main__":
     unittest.main()
