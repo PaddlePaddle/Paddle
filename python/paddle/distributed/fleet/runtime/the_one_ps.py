@@ -577,6 +577,7 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
+        import paddle.distributed.fleet as fleet
         if not is_test:
             self._communicator.init_params(init_params)
             fleet.util.barrier()
