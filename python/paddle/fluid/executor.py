@@ -744,8 +744,13 @@ class Executor(object):
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
 
-    def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
-                            fetch_var_name):
+    def _add_feed_fetch_ops(self,
+                            program,
+                            feed,
+                            fetch_list,
+                            feed_var_name,
+                            fetch_var_name,
+                            skip_fetch=False):
         tmp_program = program.clone()
 
         global_block = tmp_program.global_block()
@@ -780,6 +785,9 @@ class Executor(object):
                     warnings.warn(
                         "The variable %s is not found in program. It is not declared or is pruned."
                         % name)
+        if skip_fetch:
+            return tmp_program
+
         # append fetch_operators
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
@@ -1325,6 +1333,32 @@ class Executor(object):
                 program, compiler.CompiledProgram) else program
             assert isinstance(inner_program_, framework.Program)
             if not inner_program_._is_start_up_program_:
+                program = self._add_feed_fetch_ops(
+                    program=inner_program_,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name)
+                self._feed_data(program, feed, feed_var_name, scope)
+                if hasattr(program, 'lr_sheduler'):
+                    assert isinstance(program.lr_sheduler,
+                                      LRScheduler), "must be LRScheduler"
+                    lr_sheduler = program.lr_sheduler
+                    lr_value = lr_sheduler()
+                    lr_var = program.global_block().vars[lr_sheduler._var_name]
+                    data = np.array(
+                        [lr_value]).astype(convert_dtype(lr_var.dtype))
+                    tensor = core.get_variable_tensor(scope,
+                                                      lr_sheduler._var_name)
+                    tensor.set(data, self.place)
+
+                arr = scope.find_var(fetch_var_name).get_fetch_list()
+                tensors = arr._move_to_list()
+                if return_numpy:
+                    return as_numpy(tensors)
+                else:
+                    return tensors
+
                 return self._executor_cache.run(inner_program_, scope, feed,
                                                 fetch_list, return_numpy)
 
