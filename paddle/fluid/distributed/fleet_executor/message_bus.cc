@@ -55,12 +55,13 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
   int64_t src_id = interceptor_message.src_id();
   int64_t dst_id = interceptor_message.dst_id();
   if (IsSameRank(src_id, dst_id)) {
-    VLOG(3) << "Send a message from rank " << src_id << " to rank " << dst_id
-            << ", which are same ranks.";
+    VLOG(3) << "Send a message from interceptor " << src_id
+            << " to interceptor " << dst_id << ", which are in the same ranks.";
     return SendIntraRank(interceptor_message);
   } else {
-    VLOG(3) << "Send a message from rank " << src_id << " to rank " << dst_id
-            << ", which are different ranks.";
+    VLOG(3) << "Send a message from interceptor " << src_id
+            << " to interceptor " << dst_id
+            << ", which are in different ranks.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
     int retry_time = 0;  // message bus will retry sending for 10 times
@@ -155,6 +156,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
                         "Cannot find rank for dst interceptor id %lld. "
                         "Init error.",
                         dst_id));
+  VLOG(3) << "Message bus sending to addr: " << dst_ip->second;
   const char* dst_ip_for_brpc = dst_ip->second.c_str();
   brpc::Channel channel;
   brpc::ChannelOptions options;
