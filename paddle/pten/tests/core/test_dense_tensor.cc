@@ -115,7 +115,9 @@ TEST(dense_tensor, resize) {
   CHECK_EQ(tensor_0.memory_size(), 2u);
   tensor_0.check_memory_size();
   tensor_0.Resize({1, 2, 3});
-  CHECK_EQ(tensor_0.memory_size(), 2u);
+  CHECK_EQ(tensor_0.memory_size(), 0u);
+  tensor_0.set_dims({2, 3});
+  CHECK_EQ(tensor_0.memory_size(), 0u);
   tensor_0.mutable_data<int8_t>();
   CHECK_EQ(tensor_0.memory_size(), 6u);
 

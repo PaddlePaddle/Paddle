@@ -10,7 +10,7 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License.*/
+limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
 
@@ -100,8 +100,7 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto recv_ptr = 0;
     auto send_buf = x->data<T>();
     auto recv_buf = out->mutable_data<T>(out_dims, place);
-    // Taken and modified for PaddlePaddle from:
-    // https://github.com/laekov/fastmoe
+
     for (auto i = 0; i < n_expert; ++i) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
       for (auto j = 0; j < nranks; ++j) {

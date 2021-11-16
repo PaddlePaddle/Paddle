@@ -33,6 +33,12 @@ model_urls = {
                   '02f35f034ca3858e1e54d4036443c92d'),
     'resnet152': ('https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
                   '7ad16a2f1e7333859ff986138630fd7a'),
+    'wide_resnet50_2':
+    ('https://paddle-hapi.bj.bcebos.com/models/wide_resnet50_2.pdparams',
+     '0282f804d73debdab289bd9fea3fa6dc'),
+    'wide_resnet101_2':
+    ('https://paddle-hapi.bj.bcebos.com/models/wide_resnet101_2.pdparams',
+     'd4360a2d23657f059216f5d5a1a9ac93'),
 }
 
 
@@ -153,23 +159,37 @@ class ResNet(nn.Layer):
     Args:
         Block (BasicBlock|BottleneckBlock): block module of model.
         depth (int): layers of resnet, default: 50.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        width (int): base width of resnet, default: 64.
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool): use pool before the last fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import ResNet
             from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
 
             resnet50 = ResNet(BottleneckBlock, 50)
 
+            wide_resnet50_2 = ResNet(BottleneckBlock, 50, width=64*2)
+
             resnet18 = ResNet(BasicBlock, 18)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = resnet18(x)
+
+            print(out.shape)
 
     """
 
-    def __init__(self, block, depth, num_classes=1000, with_pool=True):
+    def __init__(self,
+                 block,
+                 depth=50,
+                 width=64,
+                 num_classes=1000,
+                 with_pool=True):
         super(ResNet, self).__init__()
         layer_cfg = {
             18: [2, 2, 2, 2],
@@ -179,6 +199,8 @@ class ResNet(nn.Layer):
             152: [3, 8, 36, 3]
         }
         layers = layer_cfg[depth]
+        self.groups = 1
+        self.base_width = width
         self.num_classes = num_classes
         self.with_pool = with_pool
         self._norm_layer = nn.BatchNorm2D
@@ -225,11 +247,17 @@ class ResNet(nn.Layer):
 
         layers = []
         layers.append(
-            block(self.inplanes, planes, stride, downsample, 1, 64,
-                  previous_dilation, norm_layer))
+            block(self.inplanes, planes, stride, downsample, self.groups,
+                  self.base_width, previous_dilation, norm_layer))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, norm_layer=norm_layer))
+            layers.append(
+                block(
+                    self.inplanes,
+                    planes,
+                    groups=self.groups,
+                    base_width=self.base_width,
+                    norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 
@@ -268,14 +296,16 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
 
 
 def resnet18(pretrained=False, **kwargs):
-    """ResNet 18-layer model
-    
+    """ResNet 18-layer model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import resnet18
 
             # build model
@@ -283,19 +313,26 @@ def resnet18(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = resnet18(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _resnet('resnet18', BasicBlock, 18, pretrained, **kwargs)
 
 
 def resnet34(pretrained=False, **kwargs):
-    """ResNet 34-layer model
-    
+    """ResNet 34-layer model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
-    
+
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import resnet34
 
             # build model
@@ -303,19 +340,26 @@ def resnet34(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = resnet34(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _resnet('resnet34', BasicBlock, 34, pretrained, **kwargs)
 
 
 def resnet50(pretrained=False, **kwargs):
-    """ResNet 50-layer model
-    
+    """ResNet 50-layer model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import resnet50
 
             # build model
@@ -323,19 +367,26 @@ def resnet50(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = resnet50(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _resnet('resnet50', BottleneckBlock, 50, pretrained, **kwargs)
 
 
 def resnet101(pretrained=False, **kwargs):
-    """ResNet 101-layer model
-    
+    """ResNet 101-layer model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import resnet101
 
             # build model
@@ -343,19 +394,26 @@ def resnet101(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = resnet101(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _resnet('resnet101', BottleneckBlock, 101, pretrained, **kwargs)
 
 
 def resnet152(pretrained=False, **kwargs):
-    """ResNet 152-layer model
-    
+    """ResNet 152-layer model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import resnet152
 
             # build model
@@ -363,5 +421,67 @@ def resnet152(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = resnet152(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     return _resnet('resnet152', BottleneckBlock, 152, pretrained, **kwargs)
+
+
+def wide_resnet50_2(pretrained=False, **kwargs):
+    """Wide ResNet-50-2 model from
+    `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.models import wide_resnet50_2
+
+            # build model
+            model = wide_resnet50_2()
+
+            # build model and load imagenet pretrained weight
+            # model = wide_resnet50_2(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+    """
+    kwargs['width'] = 64 * 2
+    return _resnet('wide_resnet50_2', BottleneckBlock, 50, pretrained, **kwargs)
+
+
+def wide_resnet101_2(pretrained=False, **kwargs):
+    """Wide ResNet-101-2 model from
+    `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.models import wide_resnet101_2
+
+            # build model
+            model = wide_resnet101_2()
+
+            # build model and load imagenet pretrained weight
+            # model = wide_resnet101_2(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+    """
+    kwargs['width'] = 64 * 2
+    return _resnet('wide_resnet101_2', BottleneckBlock, 101, pretrained,
+                   **kwargs)

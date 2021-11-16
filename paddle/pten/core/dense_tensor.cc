@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/float16.h"
+
 namespace pten {
 
 DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
@@ -74,9 +79,16 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
 
 template <typename T>
 T* DenseTensor::mutable_data() {
+  // In order to be compatible with the original Tensor design and
+  // execution system, we have to reset the datatype in mutable_data<T>.
+  // When the compatibility phase is over in the future, we can delete it
+  if (meta_.type == DataType::UNDEFINED) {
+    const_cast<DataType&>(meta_.type) =
+        paddle::experimental::CppTypeToDataType<T>::Type();
+  }
   PADDLE_ENFORCE(
       (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::PreconditionNotMet(
+      paddle::platform::errors::InvalidArgument(
           "The type of data (%d) we are trying to retrieve does not match the "
           "type of data currently contained in the container (%d).",
           static_cast<int>(paddle::experimental::CppTypeToDataType<T>::Type()),
@@ -88,7 +100,7 @@ template <typename T>
 const T* DenseTensor::data() const {
   PADDLE_ENFORCE(
       (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::PreconditionNotMet(
+      paddle::platform::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
   return static_cast<const T*>(data());
@@ -111,6 +123,20 @@ void DenseTensor::check_memory_size() const {
                         "volume required by metadata %d.",
                         memory_size(),
                         bytes));
+}
+
+void DenseTensor::Resize(const DDim& dims) {
+  if (product(dims) == product(meta_.dims)) {
+    set_dims(dims);
+  } else {
+    meta_.dims = dims;
+    storage_->Clear();
+  }
+}
+
+void DenseTensor::set_dims(const DDim& dims) {
+  CHECK(product(dims) == product(meta_.dims));
+  meta_.dims = dims;
 }
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \

@@ -357,6 +357,83 @@ def monkey_patch_varbase():
         helper = TensorHookRemoveHelper(self, hook_id)
         return helper
 
+    @framework.dygraph_only
+    def _to(self, device=None, dtype=None, blocking=None):
+
+        if device is None and dtype is None and blocking is None:
+            return self
+
+        if device is not None:
+            if isinstance(device, str):
+                device = paddle.device._convert_to_place(device)
+            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
+                                     core.CUDAPinnedPlace, core.XPUPlace)):
+                pass
+            else:
+                raise ValueError(
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    + type(device).__name__)
+
+        if blocking is None:
+            blocking = True
+        else:
+            assert isinstance(
+                blocking,
+                bool), "blocking value error, must be the True, False or None"
+
+        def transform(t, device, dtype, blocking):
+            if device is None:
+                device = t.place
+            if dtype is None:
+                dtype = t.dtype
+            if type(dtype) is str:
+                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+
+            # 1. gpu place need to determine whether the memory is sufficient for allocation.
+            if t.place.is_gpu_place():
+                size_dtype = core.size_of_dtype(dtype)
+                # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
+                # waiting_alloc_memory will compute the memory space occupied by 't'.
+                # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
+                waiting_alloc_memory = (
+                    (t._numel() * size_dtype) / 256 + 1) * 256 * 1.2
+                gpu_memory_available = core.gpu_memory_available()
+                if gpu_memory_available < waiting_alloc_memory:
+                    # Copy Tensor to cpu
+                    t_used = t._copy_to(paddle.CPUPlace(), blocking)
+                    # Release memory of t
+                    t._clear()
+                else:
+                    # Tensor still in GPU
+                    t_used = t
+            else:
+                t_used = t
+
+            # 2. cast Tensor to dtype
+            if dtype is not None and dtype != t_used.dtype:
+                with paddle.fluid.framework._dygraph_place_guard(
+                        place=t_used.place):
+                    t_casted = t_used.cast(dtype=dtype)
+            else:
+                t_casted = t_used
+
+            # 3. Copy casted Tensor(in CPU or GPU) to device
+            if device is not None and not t_casted.place._equals(device):
+                new_t = t_casted._copy_to(device, blocking)
+            else:
+                new_t = t_casted
+
+            # 4. Share Tensor to origin Tensor
+            dst_tensor = t.value().get_tensor()
+            src_tensor = new_t.value().get_tensor()
+            dst_tensor._share_data_with(src_tensor)
+
+            return t
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            return transform(self, device, dtype, blocking)
+
     @property
     def grad(self):
         """
@@ -650,7 +727,7 @@ def monkey_patch_varbase():
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
-        ("__setitem__", __setitem__)):
+        ("__setitem__", __setitem__), ("_to", _to)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
