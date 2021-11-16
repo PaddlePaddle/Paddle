@@ -260,7 +260,7 @@ set ON_INFER=ON
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-:: call :test_unit || goto test_unit_error
+call :test_unit || goto test_unit_error
 ::call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
@@ -686,6 +686,10 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% >> %work_dir%\win_cmake.sh
 set FLAGS_fraction_of_gpu_memory_to_use=0.92
+
+cd /d %work_dir%\%BUILD_DIR%
+set UT_list=test_strided_slice_op
+%PYTHON_ROOT%\python.exe %work_dir%\tools\parallel_UT_rule.py "${UT_list}"
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
