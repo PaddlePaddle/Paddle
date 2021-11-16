@@ -64,9 +64,9 @@ class SendRecvOP : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", dims);
 
     if (ctx->Attrs().Get<std::string>("pool_type") == "MEAN") {
-      OP_INOUT_CHECK(ctx->HasOutput("Scatter_count"), "Output", "Scatter_count",
+      OP_INOUT_CHECK(ctx->HasOutput("Dst_count"), "Output", "Dst_count",
                      "SendRecv");
-      ctx->SetOutputDim("Scatter_count", {dims[0]});
+      ctx->SetOutputDim("Dst_count", {dims[0]});
     }
   }
 
@@ -106,24 +106,22 @@ class SendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
     AddOutput("Out", "Output tensor of send_recv op.");
-    AddOutput("Scatter_count",
+    AddOutput("Dst_count",
               "Count tensor of Dst_index, mainly for MEAN pool_type.")
         .AsIntermediate();
     AddAttr<std::string>(
         "pool_type",
         "(string, default 'SUM')"
-        "We use Src_index to gather correspoinding place of X. "
-        "Then we need to use different pool type to scatter the result.")
+        "Define different pool types to receive the result tensors")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     // TODO(daisiming): Add a simple example here.
     AddComment(R"DOC(
 SendRecv Operator.
 
-$Out = Scatter(Gather(X, Gather_index), Scatter_index, pool_type)$
+$Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
 
-This operator helps perform fused computation of gather operator and scatter operator, so as to 
-decrease intermediate GPU memory occupation of using gather op and scatter op successively.
+This operator 
 
 Example:
 
@@ -144,7 +142,7 @@ class SendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Dst_index", this->Input("Dst_index"));
 
     if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
-      op->SetInput("Scatter_count", this->Output("Scatter_count"));
+      op->SetInput("Dst_count", this->Output("Dst_count"));
     }
 
     if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||

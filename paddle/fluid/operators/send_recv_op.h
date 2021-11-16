@@ -73,41 +73,41 @@ void elementwise_inner_operation(const Tensor& src, Tensor* dst,
 }
 
 template <typename T, typename IndexT, typename Functor>
-void gather_scatter_cpu_for_loop(const int& input_size, const int& index_size,
-                                 const IndexT* g_index, const IndexT* s_index,
-                                 const Tensor& src, Tensor* dst,
-                                 const std::string& pool_type,
-                                 int* scatter_count = NULL) {
+void send_recv_cpu_for_loop(const int& input_size, const int& index_size,
+                            const IndexT* s_index, const IndexT* d_index,
+                            const Tensor& src, Tensor* dst,
+                            const std::string& pool_type,
+                            int* dst_count = NULL) {
   Functor functor;
   if (pool_type == "SUM") {
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = g_index[i];
-      IndexT dst_idx = s_index[i];
+      IndexT src_idx = s_index[i];
+      IndexT dst_idx = d_index[i];
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                       dst_idx, false, functor);
     }
   } else if (pool_type == "MEAN") {
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = g_index[i];
-      IndexT dst_idx = s_index[i];
+      IndexT src_idx = s_index[i];
+      IndexT dst_idx = d_index[i];
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                       dst_idx, false, functor);
     }
     for (int i = 0; i < index_size; ++i) {
-      IndexT dst_idx = s_index[i];
-      *(scatter_count + dst_idx) += 1;
+      IndexT dst_idx = d_index[i];
+      *(dst_count + dst_idx) += 1;
     }
     for (int i = 0; i < input_size; ++i) {
-      if (*(scatter_count + i) == 0) continue;
+      if (*(dst_count + i) == 0) continue;
       auto dst_slice = dst->Slice(i, i + 1);
       auto eigen_dst = framework::EigenVector<T>::Flatten(dst_slice);
-      eigen_dst = eigen_dst / static_cast<T>(*(scatter_count + i));
+      eigen_dst = eigen_dst / static_cast<T>(*(dst_count + i));
     }
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     std::set<IndexT> existed_dst;
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = g_index[i];
-      IndexT dst_idx = s_index[i];
+      IndexT src_idx = s_index[i];
+      IndexT dst_idx = d_index[i];
       bool in_set = existed_dst.find(dst_idx) != existed_dst.end();
       if (!in_set) {
         elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
@@ -122,33 +122,35 @@ void gather_scatter_cpu_for_loop(const int& input_size, const int& index_size,
 }
 
 template <typename T, typename IndexT, typename Functor>
-void gather_scatter_cpu_for_loop_grad(
-    const int& input_size, const int& index_size, const IndexT* g_index,
-    const IndexT* s_index, const Tensor& src, Tensor* dst,
-    const std::string& pool_type, const int* scatter_count = nullptr,
-    const Tensor* input = nullptr, const Tensor* output = nullptr) {
+void send_recv_cpu_for_loop_grad(const int& input_size, const int& index_size,
+                                 const IndexT* s_index, const IndexT* d_index,
+                                 const Tensor& src, Tensor* dst,
+                                 const std::string& pool_type,
+                                 const int* dst_count = nullptr,
+                                 const Tensor* input = nullptr,
+                                 const Tensor* output = nullptr) {
   if (pool_type == "SUM") {
     Functor functor;
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = g_index[i];
-      IndexT dst_idx = s_index[i];
+      IndexT src_idx = s_index[i];
+      IndexT dst_idx = d_index[i];
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                       dst_idx, false, functor);
     }
   } else if (pool_type == "MEAN") {
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = g_index[i];
-      IndexT dst_idx = s_index[i];
+      IndexT src_idx = s_index[i];
+      IndexT dst_idx = d_index[i];
       auto src_slice = src.Slice(src_idx, src_idx + 1);
       auto dst_slice = dst->Slice(dst_idx, dst_idx + 1);
       auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
       auto eigen_dst = framework::EigenVector<T>::Flatten(dst_slice);
-      eigen_dst += (eigen_src / static_cast<T>(scatter_count[src_idx]));
+      eigen_dst += (eigen_src / static_cast<T>(dst_count[src_idx]));
     }
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     for (int i = 0; i < index_size; ++i) {
-      auto forward_src_idx = s_index[i];
-      auto forward_dst_idx = g_index[i];
+      auto forward_src_idx = d_index[i];
+      auto forward_dst_idx = s_index[i];
       auto input_slice = input->Slice(forward_src_idx, forward_src_idx + 1);
       auto output_slice = output->Slice(forward_dst_idx, forward_dst_idx + 1);
       auto eigen_input = framework::EigenVector<T>::Flatten(input_slice);
@@ -168,11 +170,11 @@ class SendRecvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>("X");
-    auto* gather_index = ctx.Input<Tensor>("Src_index");
-    auto* scatter_index = ctx.Input<Tensor>("Dst_index");
+    auto* src_index = ctx.Input<Tensor>("Src_index");
+    auto* dst_index = ctx.Input<Tensor>("Dst_index");
     auto* Y = ctx.Output<Tensor>("Out");
 
-    const int& index_size = gather_index->dims()[0];
+    const int& index_size = src_index->dims()[0];
     if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
@@ -182,26 +184,26 @@ class SendRecvOpKernel : public framework::OpKernel<T> {
     const size_t& memset_bytes = memset_size * sizeof(T);
     memset(p_output, 0, memset_bytes);
 
-    const IndexT* g_index = gather_index->data<IndexT>();
-    const IndexT* s_index = scatter_index->data<IndexT>();
+    const IndexT* s_index = src_index->data<IndexT>();
+    const IndexT* d_index = dst_index->data<IndexT>();
 
     const std::string& pool_type = ctx.Attr<std::string>("pool_type");
     if (pool_type == "SUM") {
-      gather_scatter_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
+      send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
+          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
     } else if (pool_type == "MIN") {
-      gather_scatter_cpu_for_loop<T, IndexT, SendRecvMinFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
+      send_recv_cpu_for_loop<T, IndexT, SendRecvMinFunctor<T>>(
+          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
     } else if (pool_type == "MAX") {
-      gather_scatter_cpu_for_loop<T, IndexT, SendRecvMaxFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
+      send_recv_cpu_for_loop<T, IndexT, SendRecvMaxFunctor<T>>(
+          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
     } else if (pool_type == "MEAN") {
-      auto* scatter_count = ctx.Output<Tensor>("Scatter_count");
-      int* p_scatter_count = scatter_count->mutable_data<int>(ctx.GetPlace());
-      memset(p_scatter_count, 0, src_dims[0] * sizeof(int));
-      gather_scatter_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type,
-          p_scatter_count);
+      auto* dst_count = ctx.Output<Tensor>("Dst_count");
+      int* p_dst_count = dst_count->mutable_data<int>(ctx.GetPlace());
+      memset(p_dst_count, 0, src_dims[0] * sizeof(int));
+      send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
+          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type,
+          p_dst_count);
     }
   }
 };
@@ -211,11 +213,11 @@ class SendRecvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* gather_index = ctx.Input<Tensor>("Dst_index");
-    auto* scatter_index = ctx.Input<Tensor>("Src_index");
+    auto* src_index = ctx.Input<Tensor>("Dst_index");
+    auto* dst_index = ctx.Input<Tensor>("Src_index");
     auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    const int& index_size = gather_index->dims()[0];
+    const int& index_size = src_index->dims()[0];
     if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
@@ -225,25 +227,25 @@ class SendRecvGradOpKernel : public framework::OpKernel<T> {
     const size_t& memset_bytes = memset_size * sizeof(T);
     memset(p_output, 0, memset_bytes);
 
-    const IndexT* g_index = gather_index->data<IndexT>();
-    const IndexT* s_index = scatter_index->data<IndexT>();
+    const IndexT* s_index = src_index->data<IndexT>();
+    const IndexT* d_index = dst_index->data<IndexT>();
 
     const std::string& pool_type = ctx.Attr<std::string>("pool_type");
     if (pool_type == "SUM") {
-      gather_scatter_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type);
+      send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
+          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
     } else if (pool_type == "MEAN") {
-      auto* scatter_count = ctx.Input<Tensor>("Scatter_count");
-      const int* s_count = scatter_count->data<int>();
+      auto* dst_count = ctx.Input<Tensor>("Dst_count");
+      const int* s_count = dst_count->data<int>();
       // Functor not used here.
-      gather_scatter_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type, s_count);
+      send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
+          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, s_count);
     } else if (pool_type == "MIN" || pool_type == "MAX") {
       const auto* input = ctx.Input<Tensor>("X");
       const auto* output = ctx.Input<Tensor>("Out");
       // Functor not used here.
-      gather_scatter_cpu_for_loop_grad<T, IndexT, SendRecvMinFunctor<T>>(
-          src_dims[0], index_size, g_index, s_index, *X, Y, pool_type, nullptr,
+      send_recv_cpu_for_loop_grad<T, IndexT, SendRecvMinFunctor<T>>(
+          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, nullptr,
           input, output);
     }
   }

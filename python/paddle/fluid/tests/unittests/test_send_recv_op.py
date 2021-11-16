@@ -24,19 +24,15 @@ class TestSendRecvMaxOp(OpTest):
         self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        gather_index = index[:, 0]
-        scatter_index = index[:, 1]
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
 
-        self.inputs = {
-            'X': x,
-            'Src_index': gather_index,
-            'Dst_index': scatter_index
-        }
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
         self.attrs = {'pool_type': 'MAX'}
 
-        out, self.gradient = compute_gather_scatter_for_min_max(self.inputs,
-                                                                self.attrs)
+        out, self.gradient = compute_send_recv_for_min_max(self.inputs,
+                                                           self.attrs)
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -52,19 +48,15 @@ class TestSendRecvMinOp(OpTest):
         self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        gather_index = index[:, 0]
-        scatter_index = index[:, 1]
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
 
-        self.inputs = {
-            'X': x,
-            'Src_index': gather_index,
-            'Dst_index': scatter_index
-        }
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
         self.attrs = {'pool_type': 'MIN'}
 
-        out, self.gradient = compute_gather_scatter_for_min_max(self.inputs,
-                                                                self.attrs)
+        out, self.gradient = compute_send_recv_for_min_max(self.inputs,
+                                                           self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -81,18 +73,14 @@ class TestSendRecvSumOp(OpTest):
         self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        gather_index = index[:, 0]
-        scatter_index = index[:, 1]
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
 
-        self.inputs = {
-            'X': x,
-            'Src_index': gather_index,
-            'Dst_index': scatter_index
-        }
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
         self.attrs = {'pool_type': 'SUM'}
 
-        out, _ = compute_gather_scatter_for_sum_mean(self.inputs, self.attrs)
+        out, _ = compute_send_recv_for_sum_mean(self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -109,21 +97,16 @@ class TestSendRecvMeanOp(OpTest):
         self.op_type = "send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        gather_index = index[:, 0]
-        scatter_index = index[:, 1]
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
 
-        self.inputs = {
-            'X': x,
-            'Src_index': gather_index,
-            'Dst_index': scatter_index
-        }
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
         self.attrs = {'pool_type': 'MEAN'}
 
-        out, scatter_count = compute_gather_scatter_for_sum_mean(self.inputs,
-                                                                 self.attrs)
+        out, dst_count = compute_send_recv_for_sum_mean(self.inputs, self.attrs)
 
-        self.outputs = {'Out': out, 'Scatter_count': scatter_count}
+        self.outputs = {'Out': out, 'Dst_count': dst_count}
 
     def test_check_output(self):
         self.check_output()
@@ -132,22 +115,22 @@ class TestSendRecvMeanOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-def compute_gather_scatter_for_sum_mean(inputs, attributes):
+def compute_send_recv_for_sum_mean(inputs, attributes):
     x = inputs['X']
-    gather_index = inputs['Src_index']
-    scatter_index = inputs['Dst_index']
+    src_index = inputs['Src_index']
+    dst_index = inputs['Dst_index']
 
     pool_type = attributes['pool_type']
 
-    gather_x = x[gather_index]
+    gather_x = x[src_index]
     target_shape = list(x.shape)
     results = np.zeros(target_shape, dtype=x.dtype)
     if pool_type == 'SUM':
-        for index, s_id in enumerate(scatter_index):
+        for index, s_id in enumerate(dst_index):
             results[s_id, :] += gather_x[index, :]
     elif pool_type == 'MEAN':
         count = np.zeros(target_shape[0], dtype=np.int32)
-        for index, s_id in enumerate(scatter_index):
+        for index, s_id in enumerate(dst_index):
             results[s_id, :] += gather_x[index, :]
             count[s_id] += 1
         results = results / count.reshape([-1, 1])
@@ -156,20 +139,20 @@ def compute_gather_scatter_for_sum_mean(inputs, attributes):
         raise ValueError("Invalid pool_type, only SUM, MEAN supported!")
 
     count = np.zeros(target_shape[0], dtype=np.int32)
-    for index, s_id in enumerate(scatter_index):
+    for index, s_id in enumerate(dst_index):
         count[s_id] += 1
 
     return results, count
 
 
-def compute_gather_scatter_for_min_max(inputs, attributes):
+def compute_send_recv_for_min_max(inputs, attributes):
     x = inputs['X']
-    gather_index = inputs['Src_index']
-    scatter_index = inputs['Dst_index']
+    src_index = inputs['Src_index']
+    dst_index = inputs['Dst_index']
 
     pool_type = attributes['pool_type']
 
-    gather_x = x[gather_index]
+    gather_x = x[src_index]
     target_shape = list(x.shape)
     results = np.zeros(target_shape, dtype=x.dtype)
     gradient = np.zeros_like(x)
@@ -177,7 +160,7 @@ def compute_gather_scatter_for_min_max(inputs, attributes):
     # Calculate forward output 
     if pool_type == "MAX":
         first_set = set()
-        for index, s_id in enumerate(scatter_index):
+        for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
                 results[s_id, :] += gather_x[index, :]
                 first_set.add(s_id)
@@ -186,7 +169,7 @@ def compute_gather_scatter_for_min_max(inputs, attributes):
                                               gather_x[index, :])
     elif pool_type == "MIN":
         first_set = set()
-        for index, s_id in enumerate(scatter_index):
+        for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
                 results[s_id, :] += gather_x[index, :]
                 first_set.add(s_id)
@@ -197,10 +180,10 @@ def compute_gather_scatter_for_min_max(inputs, attributes):
         raise ValueError("Invalid pool_type, only MAX, MIN supported!")
 
     # Calculate backward gradient
-    index_size = len(gather_index)
+    index_size = len(src_index)
     for i in range(index_size):
-        forward_src_idx = gather_index[i]
-        forward_dst_idx = scatter_index[i]
+        forward_src_idx = src_index[i]
+        forward_dst_idx = dst_index[i]
         gradient[forward_src_idx] += 1 * (
             x[forward_src_idx] == results[forward_dst_idx])
 

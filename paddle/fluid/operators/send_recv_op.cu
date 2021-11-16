@@ -51,18 +51,17 @@ struct SendRecvMinCUDAFunctor {
 };
 
 template <typename T, typename IndexT, typename Functor>
-__global__ void SendRecvCUDAKernel(const T* params,
-                                   const IndexT* gather_indices,
-                                   const IndexT* scatter_indices, T* output,
+__global__ void SendRecvCUDAKernel(const T* params, const IndexT* src_indices,
+                                   const IndexT* dst_indices, T* output,
                                    size_t index_size, size_t slice_size,
                                    Functor functor) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;
-    IndexT gather_i = gather_indices[indices_i];
-    IndexT scatter_i = scatter_indices[indices_i];
-    int64_t in_i = gather_i * slice_size + slice_i;
-    int64_t out_i = scatter_i * slice_size + slice_i;
+    IndexT src_i = src_indices[indices_i];
+    IndexT dst_i = dst_indices[indices_i];
+    int64_t in_i = src_i * slice_size + slice_i;
+    int64_t out_i = dst_i * slice_size + slice_i;
     functor(params, output, in_i, out_i);
   }
 }
@@ -79,14 +78,13 @@ __global__ void InputResetCUDAKernel(T* output, size_t input_size,
   }
 }
 
-// Get scatter_count
+// Get dst_count
 template <typename T, typename IndexT>
-__global__ void ComputeCountCUDAKernel(int* count,
-                                       const IndexT* scatter_indices,
+__global__ void ComputeCountCUDAKernel(int* count, const IndexT* dst_indices,
                                        size_t index_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size, int64_t) {
-    IndexT scatter_i = scatter_indices[i];
-    paddle::platform::CudaAtomicAdd(count + scatter_i, 1);
+    IndexT dst_i = dst_indices[i];
+    paddle::platform::CudaAtomicAdd(count + dst_i, 1);
   }
 }
 
@@ -104,37 +102,34 @@ __global__ void ManipulateMeanCUDAKernel(T* output, int* count,
 
 // For backward mean
 template <typename T, typename IndexT>
-__global__ void ManipulateMeanGradCUDAKernel(const T* params,
-                                             const IndexT* gather_indices,
-                                             const IndexT* scatter_indices,
-                                             T* output, size_t index_size,
-                                             size_t slice_size,
-                                             const int* scatter_count) {
+__global__ void ManipulateMeanGradCUDAKernel(
+    const T* params, const IndexT* src_indices, const IndexT* dst_indices,
+    T* output, size_t index_size, size_t slice_size, const int* dst_count) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;
-    IndexT gather_i = gather_indices[indices_i];
-    IndexT scatter_i = scatter_indices[indices_i];
-    int64_t in_i = gather_i * slice_size + slice_i;
-    int64_t out_i = scatter_i * slice_size + slice_i;
+    IndexT src_i = src_indices[indices_i];
+    IndexT dst_i = dst_indices[indices_i];
+    int64_t in_i = src_i * slice_size + slice_i;
+    int64_t out_i = dst_i * slice_size + slice_i;
     paddle::platform::CudaAtomicAdd(output + out_i,
-                                    *(params + in_i) / scatter_count[gather_i]);
+                                    *(params + in_i) / dst_count[src_i]);
   }
 }
 
 // For backward min and max
 template <typename T, typename IndexT>
 __global__ void ManipulateMinMaxGradCUDAKernel(
-    const T* params, const IndexT* gather_indices,
-    const IndexT* scatter_indices, T* output, size_t index_size,
-    size_t slice_size, const T* ptr_input, const T* ptr_output) {
+    const T* params, const IndexT* src_indices, const IndexT* dst_indices,
+    T* output, size_t index_size, size_t slice_size, const T* ptr_input,
+    const T* ptr_output) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;
-    IndexT gather_i = gather_indices[indices_i];
-    IndexT scatter_i = scatter_indices[indices_i];
-    int64_t in_i = gather_i * slice_size + slice_i;
-    int64_t out_i = scatter_i * slice_size + slice_i;
+    IndexT src_i = src_indices[indices_i];
+    IndexT dst_i = dst_indices[indices_i];
+    int64_t in_i = src_i * slice_size + slice_i;
+    int64_t out_i = dst_i * slice_size + slice_i;
     paddle::platform::CudaAtomicAdd(
         output + out_i,
         *(params + in_i) * (*(ptr_input + out_i) == *(ptr_output + in_i)));
@@ -146,12 +141,12 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>("X");
-    auto* gather_index = ctx.Input<Tensor>("Src_index");
-    auto* scatter_index = ctx.Input<Tensor>("Dst_index");
+    auto* src_index = ctx.Input<Tensor>("Src_index");
+    auto* dst_index = ctx.Input<Tensor>("Dst_index");
     auto* Y = ctx.Output<Tensor>("Out");
     std::string pool_type = ctx.Attr<std::string>("pool_type");
 
-    const int& index_size = gather_index->dims()[0];
+    const int& index_size = src_index->dims()[0];
     if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
@@ -183,8 +178,8 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
       slice_size *= src_dims[i];
     }
     const T* p_src = X->data<T>();
-    const IndexT* g_index = gather_index->data<IndexT>();
-    const IndexT* s_index = scatter_index->data<IndexT>();
+    const IndexT* s_index = src_index->data<IndexT>();
+    const IndexT* d_index = dst_index->data<IndexT>();
 
     int block = 512;
     int64_t n = slice_size * index_size;
@@ -195,14 +190,14 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
       SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
+                              .stream()>>>(p_src, s_index, d_index, p_output,
                                            index_size, slice_size, functor);
     } else if (pool_type == "MAX") {
       SendRecvMaxCUDAFunctor<T, IndexT> functor;
       SendRecvCUDAKernel<T, IndexT, SendRecvMaxCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
+                              .stream()>>>(p_src, s_index, d_index, p_output,
                                            index_size, slice_size, functor);
 
       int64_t grid_max = (input_size * slice_size + block - 1) / block;
@@ -216,7 +211,7 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
       SendRecvCUDAKernel<T, IndexT, SendRecvMinCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
+                              .stream()>>>(p_src, s_index, d_index, p_output,
                                            index_size, slice_size, functor);
 
       int64_t grid_min = (input_size * slice_size + block - 1) / block;
@@ -230,16 +225,16 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
       SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
+                              .stream()>>>(p_src, s_index, d_index, p_output,
                                            index_size, slice_size, functor);
 
-      auto* scatter_count = ctx.Output<Tensor>("Scatter_count");
-      int* p_scatter_count = scatter_count->mutable_data<int>(ctx.GetPlace());
+      auto* dst_count = ctx.Output<Tensor>("Dst_count");
+      int* p_dst_count = dst_count->mutable_data<int>(ctx.GetPlace());
 
 #ifdef PADDLE_WITH_HIP
-      hipMemset(p_scatter_count, 0, input_size * sizeof(int));
+      hipMemset(p_dst_count, 0, input_size * sizeof(int));
 #else
-      cudaMemset(p_scatter_count, 0, input_size * sizeof(int));
+      cudaMemset(p_dst_count, 0, input_size * sizeof(int));
 #endif
 
       int64_t grid_count = (index_size + block - 1) / block;
@@ -247,15 +242,14 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
           T, IndexT><<<grid_count, block, 0,
                        reinterpret_cast<const platform::CUDADeviceContext&>(
                            ctx.device_context())
-                           .stream()>>>(p_scatter_count, s_index, index_size);
+                           .stream()>>>(p_dst_count, d_index, index_size);
 
       int64_t grid_mean = (input_size * slice_size + block - 1) / block;
       ManipulateMeanCUDAKernel<
           T><<<grid_mean, block, 0,
                reinterpret_cast<const platform::CUDADeviceContext&>(
                    ctx.device_context())
-                   .stream()>>>(p_output, p_scatter_count, input_size,
-                                slice_size);
+                   .stream()>>>(p_output, p_dst_count, input_size, slice_size);
     }
   }
 };
@@ -265,12 +259,12 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* gather_index = ctx.Input<Tensor>("Dst_index");
-    auto* scatter_index = ctx.Input<Tensor>("Src_index");
+    auto* src_index = ctx.Input<Tensor>("Dst_index");
+    auto* dst_index = ctx.Input<Tensor>("Src_index");
     auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
     std::string pool_type = ctx.Attr<std::string>("pool_type");
 
-    const int& index_size = gather_index->dims()[0];
+    const int& index_size = src_index->dims()[0];
     if (index_size == 0) return;
 
     T* p_output = Y->mutable_data<T>(ctx.GetPlace());
@@ -292,8 +286,8 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
       slice_size *= src_dims[i];
     }
     const T* p_src = X->data<T>();
-    const IndexT* g_index = gather_index->data<IndexT>();
-    const IndexT* s_index = scatter_index->data<IndexT>();
+    const IndexT* s_index = src_index->data<IndexT>();
+    const IndexT* d_index = dst_index->data<IndexT>();
 
     int block = 512;
     int64_t n = slice_size * index_size;
@@ -304,15 +298,15 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
       SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
+                              .stream()>>>(p_src, s_index, d_index, p_output,
                                            index_size, slice_size, functor);
     } else if (pool_type == "MEAN") {
-      auto* scatter_count = ctx.Input<Tensor>("Scatter_count");
-      const int* s_count = scatter_count->data<int>();
+      auto* dst_count = ctx.Input<Tensor>("Dst_count");
+      const int* s_count = dst_count->data<int>();
       ManipulateMeanGradCUDAKernel<T, IndexT><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
+                              .stream()>>>(p_src, s_index, d_index, p_output,
                                            index_size, slice_size, s_count);
     } else if (pool_type == "MAX" || pool_type == "MIN") {
       auto* input = ctx.Input<Tensor>("X");
@@ -322,7 +316,7 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
       ManipulateMinMaxGradCUDAKernel<T, IndexT><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               ctx.device_context())
-                              .stream()>>>(p_src, g_index, s_index, p_output,
+                              .stream()>>>(p_src, s_index, d_index, p_output,
                                            index_size, slice_size, ptr_input,
                                            ptr_output);
     }
