@@ -184,19 +184,21 @@ void InterpreterCore::BuildOperatorDependences() {
   }
 }
 
-void InterpreterCore::Convert() {
+void InterpreterCore::Convert(
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = global_scope_->MutableVecMetaInfo();
   auto var_nums = global_scope_->VarSize();
   input_var2op_info_.resize(var_nums);
+  auto nodes = *op_func_nodes;
 
-  auto op_nums = vec_func_list_.size();
+  auto op_nums = nodes.size();
   vec_instruction_.reserve(op_nums);
 
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
-    auto& op_func_node = vec_func_list_[op_idx];
+    auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
 
-    vec_instruction_.emplace_back(op_idx, op_func_node, *dev_ctx_);
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
     auto& instr = vec_instruction_.back();
 
     OpInOutInfo info;
@@ -210,7 +212,7 @@ void InterpreterCore::Convert() {
         input_var2op_info_.at(id).push_back(op_idx);
         // var can be gc-ed
         if (!info.IsBuilt()) {
-          info.Build(op_func_node.operator_base_);
+          info.Build(op_func_node.operator_base_.get());
         }
         auto* var_desc = global_scope_->VarDesc(id);
         if (var_desc) {
@@ -607,11 +609,12 @@ void InterpreterCore::Prepare(
   if (!is_build_) {
     paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
     FeedInput();
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &vec_func_list_, global_scope_);
+        place_, block_, &op_func_nodes, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
-    Convert();
+    Convert(&op_func_nodes);
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::build_op_func_list, so we should

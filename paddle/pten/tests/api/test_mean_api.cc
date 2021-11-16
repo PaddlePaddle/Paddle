@@ -54,8 +54,8 @@ TEST(API, mean) {
   auto out = paddle::experimental::mean(x);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 1);
-  ASSERT_EQ(out.shape()[0], 1);
+  ASSERT_EQ(out.dims().size(), 1);
+  ASSERT_EQ(out.dims()[0], 1);
   ASSERT_EQ(out.numel(), 1);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);

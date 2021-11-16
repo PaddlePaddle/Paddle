@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-// develop apis
+// developer apis
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/creation.h"
 #include "paddle/pten/include/infershape.h"
