@@ -53,7 +53,7 @@ TEST(API, full_like) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
-  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.size(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
@@ -86,7 +86,7 @@ TEST(API, zeros_like) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
-  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.size(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::INT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
@@ -119,7 +119,7 @@ TEST(API, ones_like) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
-  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.size(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::INT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
@@ -145,7 +145,7 @@ TEST(API, full) {
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 3);
-  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.size(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);

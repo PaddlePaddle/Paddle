@@ -93,8 +93,6 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
 
 /* Part 2: Dimension, DataType and DataLayout methods */
 
-int64_t Tensor::numel() const { return impl_->numel(); }
-
 int64_t Tensor::size() const { return impl_->numel(); }
 
 paddle::framework::DDim Tensor::dims() const { return impl_->dims(); }

@@ -49,7 +49,7 @@ TEST(DEV_API, fill_any_like) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
-  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.size(), 6);
   ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 

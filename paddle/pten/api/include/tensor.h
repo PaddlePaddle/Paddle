@@ -130,16 +130,7 @@ class PD_DLL_DECL Tensor final {
   /* Part 2: Dimension, DataType and DataLayout methods */
 
   /**
-   * @brief Return the number of elements of Tensor.
-   *
-   * @return int64_t
-   */
-  int64_t numel() const;
-
-  /**
    * @brief Get the size of current tensor.
-   * The compatible method of `Tensor::numel()`.
-   * This is a deprecated method and may be removed in the future!
    *
    * @return int64_t
    */
