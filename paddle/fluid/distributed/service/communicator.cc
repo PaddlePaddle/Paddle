@@ -635,12 +635,12 @@ void AsyncCommunicator::Start() {
 
 void AsyncCommunicator::Stop() {
   VLOG(0) << "Communicator stop begin";
-  _worker_ptr->finalize_worker();
-  VLOG(0) << "client finalize_worker done";
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
+    _worker_ptr->finalize_worker();
+    VLOG(0) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(0) << "stop recv thread";
       recv_thread_->join();
