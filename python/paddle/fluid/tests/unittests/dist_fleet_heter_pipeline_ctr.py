@@ -194,7 +194,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         batch_size = 128
 
         pass_start = time.time()
-        fleet.run_heter_worker()
+        fleet.run_heter_worker(dataset=None)
         pass_time = time.time() - pass_start
         print("do_dataset_heter_training done. using time {}".format(pass_time))
 
