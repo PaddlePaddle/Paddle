@@ -53,7 +53,7 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
 
 void ReshapeFromVectorVal(const XPUContext& dev_ctx,
                           const DenseTensor& x,
-                          const std::vector<int>& shape,
+                          const std::vector<int64_t>& shape,
                           DenseTensor* out) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
   if (&x == out) {
@@ -69,7 +69,8 @@ void ReshapeFromDT(const XPUContext& dev_ctx,
                    const DenseTensor& shape,
                    DenseTensor* out) {
   auto* shape_data = shape.data<int>();
-  auto vector_shape = std::vector<int>(shape_data, shape_data + shape.numel());
+  auto vector_shape =
+      std::vector<int64_t>(shape_data, shape_data + shape.numel());
   ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
 }
 
@@ -77,7 +78,7 @@ void ReshapeFromVectorDT(const XPUContext& dev_ctx,
                          const DenseTensor& x,
                          const std::vector<DenseTensor>& shape,
                          DenseTensor* out) {
-  std::vector<int> vector_shape;
+  std::vector<int64_t> vector_shape;
   for (auto& tensor : shape) {
     PADDLE_ENFORCE_EQ(
         tensor.dims(),
