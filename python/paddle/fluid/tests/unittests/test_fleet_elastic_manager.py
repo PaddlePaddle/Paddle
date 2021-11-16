@@ -325,6 +325,28 @@ class TestElasticManager(unittest.TestCase):
         elastic = ElasticManager(args, self.etcd_client)
         elastic.exit()
 
+    def test_pre_hook(self):
+        class Argument:
+            elastic_server = "127.0.0.1:2379"
+            job_id = "test_job_id_123"
+            np = "2"
+            gpus = "0"
+            nproc_per_node = 1
+            host = None
+            curr_host = None
+            ips = None
+            scale = None
+            force = None
+            backend = 'gloo'
+            elastic_pre_hook = None
+
+        args = Argument()
+        elastic = ElasticManager(args, self.etcd_client)
+        elastic.pre_hook()
+
+        args.elastic_pre_hook = "hostname"
+        elastic.pre_hook()
+
 
 if __name__ == "__main__":
     unittest.main()
