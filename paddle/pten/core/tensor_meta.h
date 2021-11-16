@@ -57,6 +57,7 @@ struct DenseTensorMeta {
   const DataType type{DataType::UNDEFINED};
   const DataLayout layout{DataLayout::NCHW};
   LoD lod;
+  size_t offset{0};
 };
 
 inline DenseTensorMeta::DenseTensorMeta(DataType type, const DDim& dims)
@@ -86,7 +87,7 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   bool ret = true;
   return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
          (lhs.type == rhs.type) && (lhs.layout == rhs.layout) &&
-         (lhs.lod == rhs.lod);
+         (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
 
 }  // namespace pten

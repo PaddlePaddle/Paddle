@@ -51,8 +51,8 @@ TEST(API, full_like) {
   auto out = paddle::experimental::full_like(x, val, pten::DataType::FLOAT32);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
@@ -84,8 +84,8 @@ TEST(API, zeros_like) {
   auto out = paddle::experimental::zeros_like(x, pten::DataType::INT32);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::INT32);
@@ -117,8 +117,8 @@ TEST(API, ones_like) {
   auto out = paddle::experimental::ones_like(x, pten::DataType::INT32);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::INT32);
@@ -143,7 +143,7 @@ TEST(API, full) {
   auto out = paddle::experimental::full({3, 2}, val, pten::DataType::FLOAT32);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);

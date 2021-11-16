@@ -459,7 +459,9 @@ class ReshapeKernel {
       }
 #endif
     } else {
-      auto &shape_vec = ctx.Attr<std::vector<int>>("shape");
+      auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
+      const std::vector<int64_t> shape_vec(shape_attr.begin(),
+                                           shape_attr.end());
       if (platform::is_cpu_place(ctx.GetPlace())) {
         auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
         pten::ReshapeFromVectorVal(dev_ctx, *pt_x.get(), shape_vec, pt_out);

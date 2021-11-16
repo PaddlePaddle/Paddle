@@ -83,7 +83,7 @@ DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
 }
 
 static paddle::framework::DDim ValidateShape(
-    const std::vector<int> shape, const paddle::framework::DDim& in_dims) {
+    const std::vector<int64_t> shape, const paddle::framework::DDim& in_dims) {
   const int64_t in_size = paddle::framework::product(in_dims);
   auto in_dims_vec = paddle::framework::vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
@@ -203,7 +203,7 @@ static paddle::framework::DDim ValidateShape(
 }
 
 DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
-                                       const std::vector<int>& shape) {
+                                       const std::vector<int64_t>& shape) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
                     paddle::platform::errors::InvalidArgument(
