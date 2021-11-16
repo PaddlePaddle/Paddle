@@ -96,6 +96,11 @@ class Interceptor {
   // local mailbox, written by FetchRemoteMailbox()
   // read by PoolTheMailbox()
   std::queue<InterceptorMessage> local_mailbox_;
+
+  int64_t number_of_micro_steps_;
+  int64_t number_of_slot_;
+  int64_t slot_has_been_used_{0};
+  int64_t current_step_{0};
 };
 
 }  // namespace distributed

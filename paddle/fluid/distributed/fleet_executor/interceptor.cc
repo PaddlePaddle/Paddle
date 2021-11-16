@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
 namespace paddle {
@@ -20,6 +21,10 @@ namespace distributed {
 
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
     : interceptor_id_(interceptor_id), node_(node) {
+  // TODO(Yuang Liu) init number_of_micro_steps_ and number_of_slot_ from node_
+  // current init is faking 1F1B schedule
+  number_of_micro_steps_ = 8;
+  number_of_slot_ = 4;
   interceptor_thread_ = std::thread([this]() {
     VLOG(3) << "Start pooling local mailbox's thread.";
     PoolTheMailbox();
@@ -33,6 +38,42 @@ void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 void Interceptor::Handle(const InterceptorMessage& msg) {
   if (handle_) {
     handle_(msg);
+  } else {
+    // default handler, for fake run only
+    VLOG(3) << "Interceptor is using default msg handler, the default one is "
+               "used for test only.";
+    switch (msg.message_type()) {
+      case DATA_IS_READY:
+        if (current_step_ == number_of_micro_steps_) {
+          PADDLE_THROW(platform::errors::PreconditionNotMet(
+              "Current interceptor has already finish all micro steps, but "
+              "still got a DATA_IS_READY msg."));
+        }
+        if (slot_has_been_used_ == number_of_slot_) {
+          Carrier& carrier_instance = Carrier::Instance();
+          carrier_instance.EnqueueInterceptorMessage(msg);
+        } else {
+          MessageBus& message_bus_instance = MessageBus::Instance();
+          InterceptorMessage new_msg;
+          new_msg.set_src_id(interceptor_id_);
+          new_msg.set_message_type(DATA_IS_READY);
+          new_msg.set_scope_id(current_step_);
+          for (int64_t dst_id : node_->downstream()) {
+            msg.set_dst_id(dst_id);
+            message_bus_instance.Send(new_msg);
+          }
+          ++current_step_;
+          ++slot_has_been_used_;
+        }
+        break;
+      case DATE_IS_USELESS:
+        --slot_has_been_used_;
+        break;
+      default:
+        VLOG(3) << "Default msg handler will only handle DATA_IS_READY and "
+                   "DATA_IS_USELESS msg";
+        break;
+    }
   }
 }
 
