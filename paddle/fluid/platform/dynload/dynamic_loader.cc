@@ -21,6 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
               "/usr/local/cudnn/lib. If empty [default], dlopen "
@@ -356,6 +360,16 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+#ifdef PADDLE_WITH_HIP
+void* GetROCFFTDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
+#endif
+}
+#endif
+
 void* GetNvjpegDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.dylib");
@@ -404,6 +418,10 @@ void* GetCUDADsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
+#elif defined(_WIN32)
+  char system32_dir[MAX_PATH];
+  GetSystemDirectory(system32_dir, MAX_PATH);
+  return GetDsoHandleFromSearchPath(system32_dir, "nvcuda.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif

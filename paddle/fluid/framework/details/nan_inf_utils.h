@@ -27,7 +27,7 @@ namespace framework {
 namespace details {
 // assert false when meets NAN or inf
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const std::string& var_name,
                          const platform::Place& place);
 
@@ -37,7 +37,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                          const platform::Place& place);
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::Scope& scope,
+                        const framework::ScopeBase& scope,
                         const platform::Place& place);
 
 template <typename VarType>
@@ -55,7 +55,7 @@ void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
 
 #ifdef PADDLE_WITH_ASCEND_CL
 void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
-                                 const framework::Scope& scope,
+                                 const framework::ScopeBase& scope,
                                  const platform::Place& place);
 #endif
 

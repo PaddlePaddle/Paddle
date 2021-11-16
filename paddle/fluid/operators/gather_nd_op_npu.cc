@@ -18,7 +18,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+using Tensor = framework::Tensor;
+using NPUDeviceContext = platform::NPUDeviceContext;
+
+template <typename T>
 class GatherNdNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -49,14 +52,12 @@ class GatherNdNPUKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT64)));
 
     const auto &runner = NpuOpRunner("GatherNd", {*x, *index}, {*out}, {});
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     runner.Run(stream);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class GatherNdGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -91,10 +92,7 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
       dout = &tmp_tensor2;
     }
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     platform::NPUMemsetAsync(static_cast<void *>(p), 0, dx->numel() * sizeof(T),
                              stream);
 
@@ -108,13 +106,13 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(
-    gather_nd, ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext,
-                                      paddle::platform::float16>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, float>);
+REGISTER_OP_NPU_KERNEL(gather_nd,
+                       ops::GatherNdNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::GatherNdNPUKernel<int64_t>,
+#endif
+                       ops::GatherNdNPUKernel<float>);
 
-REGISTER_OP_NPU_KERNEL(
-    gather_nd_grad,
-    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext,
-                               paddle::platform::float16>,
-    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext, float>);
+REGISTER_OP_NPU_KERNEL(gather_nd_grad,
+                       ops::GatherNdGradNPUKernel<paddle::platform::float16>,
+                       ops::GatherNdGradNPUKernel<float>);

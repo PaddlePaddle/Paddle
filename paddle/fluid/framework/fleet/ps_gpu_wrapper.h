@@ -84,13 +84,14 @@ class PSGPUWrapper {
                    const int batch_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
-  void BuildTask(std::shared_ptr<HeterContext> gpu_task);
+  void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
+  void BuildPull(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
   void EndPass();
   void start_build_thread();
-  void build_cpu_thread();
-  void build_gpu_thread();
+  void pre_build_thread();
+  void build_task();
 
   void Finalize() {
     VLOG(3) << "PSGPUWrapper Begin Finalize.";
@@ -100,12 +101,11 @@ class PSGPUWrapper {
     data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
     gpu_free_channel_->Close();
-    train_ready_channel_->Close();
     running_ = false;
-    VLOG(3) << "begin stop build_cpu_threads_";
-    build_cpu_threads_.join();
-    VLOG(3) << "begin stop build_gpu_threads_";
-    build_gpu_threads_.join();
+    VLOG(3) << "begin stop pre_build_threads_";
+    pre_build_threads_.join();
+    VLOG(3) << "begin stop build_threads_";
+    build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
@@ -168,8 +168,6 @@ class PSGPUWrapper {
       buildcpu_ready_channel_->SetCapacity(3);
       gpu_free_channel_->Open();
       gpu_free_channel_->SetCapacity(1);
-      train_ready_channel_->Open();
-      train_ready_channel_->SetCapacity(1);
 
       current_task_ = nullptr;
       gpu_free_channel_->Put(current_task_);
@@ -240,6 +238,12 @@ class PSGPUWrapper {
                          mf_max_bound);
     }
   }
+  void SetDate(int year, int month, int day) {
+    year_ = year;
+    month_ = month;
+    day_ = day;
+  }
+
   void SetDataset(Dataset* dataset) { dataset_ = dataset; }
 
   // PSGPUWrapper singleton
@@ -283,6 +287,9 @@ class PSGPUWrapper {
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;
+  int year_;
+  int month_;
+  int day_;
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
@@ -296,13 +303,9 @@ class PSGPUWrapper {
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
       gpu_free_channel_ =
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
-  std::shared_ptr<
-      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
-      train_ready_channel_ =
-          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<HeterContext> current_task_ = nullptr;
-  std::thread build_cpu_threads_;
-  std::thread build_gpu_threads_;
+  std::thread pre_build_threads_;
+  std::thread build_threads_;
   bool running_ = false;
 
  protected:

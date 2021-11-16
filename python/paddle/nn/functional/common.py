@@ -235,8 +235,8 @@ def interpolate(x,
     Examples:
         .. code-block:: python
 
-	    import paddle
-	    import numpy as np
+	        import paddle
+	        import numpy as np
             import paddle.nn.functional as F
             
             # given out size
@@ -244,7 +244,7 @@ def interpolate(x,
             x = paddle.to_tensor(input_data)
             output_1 = F.interpolate(x=x, size=[12,12])
     	    print(output_1.shape)
-	    # [2L, 3L, 12L, 12L]
+	        # [2L, 3L, 12L, 12L]
             
             # given scale
             output_2 = F.interpolate(x=x, scale_factor=[2,1])
@@ -296,7 +296,8 @@ def interpolate(x,
         )
 
     if resample == 'AREA':
-        if isinstance(size, list) or isinstance(size, tuple):
+        if isinstance(size, list) or isinstance(size, tuple) or isinstance(
+                size, Variable):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if len(x.shape) == 3:

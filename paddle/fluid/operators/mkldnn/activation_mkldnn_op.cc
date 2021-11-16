@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/mkldnn/softplus_mkldnn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -170,6 +171,13 @@ struct GeluMKLDNNGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    custom_softplus_eltwise_forward<T>(ctx);
+  }
+};
+
+template <typename T>
 using ReluMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_relu>;
 
@@ -202,6 +210,10 @@ using AbsMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_abs>;
 
 template <typename T>
+using EluMKLDNNFunctor =
+    MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_elu>;
+
+template <typename T>
 using ReluMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_relu>;
 
@@ -232,6 +244,10 @@ using SqrtMKLDNNGradFunctor =
 template <typename T>
 using AbsMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_abs>;
+
+template <typename T>
+using EluMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_elu>;
 }  // namespace operators
 }  // namespace paddle
 
@@ -256,14 +272,15 @@ namespace ops = paddle::operators;
       ops::MKLDNNActivationGradKernel<                                        \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                           \
-  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);             \
-  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
-  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);             \
-  __macro(hardswish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
-  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);                \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);                \
-  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);
+#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
+  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);              \
+  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);           \
+  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
+  __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
+  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);                 \
+  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);                 \
+  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
+  __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(relu, ReluMKLDNNFunctor,
@@ -272,3 +289,8 @@ REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
                                        GeluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
                                        SigmoidMKLDNNGradFunctor);
+
+namespace ops = paddle::operators;
+REGISTER_OP_KERNEL(
+    softplus, MKLDNN, paddle::platform::CPUPlace,
+    ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>);

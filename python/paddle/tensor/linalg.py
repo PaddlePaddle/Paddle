@@ -14,8 +14,8 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
+from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable
 
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
@@ -1293,6 +1293,59 @@ def histogram(input, bins=100, min=0, max=0, name=None):
     return out
 
 
+def bincount(x, weights=None, minlength=0, name=None):
+    """
+    Computes frequency of each value in the input tensor. 
+
+    Args:
+        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
+        weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
+        minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor of frequency.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 1, 4, 5])
+            result1 = paddle.bincount(x)
+            print(result1) # [0, 2, 1, 0, 1, 1]
+
+            w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
+            result2 = paddle.bincount(x, weights=w)
+            print(result2) # [0., 2.19999981, 0.40000001, 0., 0.50000000, 0.50000000]
+    """
+    if x.dtype not in [paddle.int32, paddle.int64]:
+        raise TypeError("Elements in Input(x) should all be integers")
+
+    if in_dygraph_mode():
+        return _C_ops.bincount(x, weights, "minlength", minlength)
+
+    helper = LayerHelper('bincount', **locals())
+
+    check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
+
+    if weights is not None:
+        check_variable_and_dtype(weights, 'Weights',
+                                 ['int32', 'int64', 'float32', 'float64'],
+                                 'bincount')
+        out = helper.create_variable_for_type_inference(dtype=weights.dtype)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='bincount',
+        inputs={'X': x,
+                'Weights': weights},
+        outputs={'Out': out},
+        attrs={'minlength': minlength})
+    return out
+
+
 def mv(x, vec, name=None):
     """
     Performs a matrix-vector product of the matrix x and the vector vec.
@@ -1594,6 +1647,70 @@ def matrix_power(x, n, name=None):
     return out
 
 
+def qr(x, mode="reduced", name=None):
+    r"""
+    Computes the QR decomposition of one matrix or batches of matrice (backward is unsupported now).
+
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
+            where ... is zero or more batch dimensions. M and N can be arbitrary
+            positive number. The data type of x should be float32 or float64. 
+        mode (str, optional): A flag to control the behavior of qr, the default is "reduced". 
+            Suppose x's shape is `[..., M, N]` and denoting `K = min(M, N)`:
+            If mode = "reduced", qr op will return reduced Q and R matrices, 
+            which means Q's shape is `[..., M, K]` and R's shape is `[..., K, N]`.
+            If mode = "complete", qr op will return complete Q and R matrices, 
+            which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
+            If mode = "r", qr op will only return reduced R matrix, which means
+            R's shape is `[..., K, N]`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+            
+    Returns:
+        If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R. 
+        If mode = "r", qr will return a tensor which represents R.
+        
+    Examples:            
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
+            q, r = paddle.linalg.qr(x)
+            print (q)
+            print (r)
+
+            # Q = [[-0.16903085,  0.89708523],
+            #      [-0.50709255,  0.27602622],
+            #      [-0.84515425, -0.34503278]])
+
+            # R = [[-5.91607978, -7.43735744],
+            #      [ 0.        ,  0.82807867]])
+            
+            # one can verify : X = Q * R ;     
+    """
+    if in_dygraph_mode():
+        q, r = _C_ops.qr(x, 'mode', mode)
+        if mode == "r":
+            return r
+        else:
+            return q, r
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'qr')
+    check_type(mode, 'mode', str, 'qr')
+    helper = LayerHelper('qr', **locals())
+    q = helper.create_variable_for_type_inference(dtype=x.dtype)
+    r = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = dict()
+    attrs['mode'] = mode
+    helper.append_op(
+        type='qr', inputs={'X': [x]}, outputs={'Q': q,
+                                               'R': r}, attrs=attrs)
+    if mode == "r":
+        return r
+    else:
+        return q, r
+
+
 def eig(x, name=None):
     """
     This API performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
@@ -1674,7 +1791,7 @@ def eigvals(x, name=None):
             Its data type should be float32, float64, complex64, or complex128.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-
+            
     Returns:
         Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`.
             The eigenvalues are complex-valued even when `x` is real.
@@ -2196,3 +2313,143 @@ def solve(x, y, name=None):
         type="solve", inputs={"X": x,
                               "Y": y}, outputs={"Out": out})
     return out
+
+
+def triangular_solve(x,
+                     y,
+                     upper=True,
+                     transpose=False,
+                     unitriangular=False,
+                     name=None):
+    r"""
+    Computes the solution of a system of equations with a triangular coefficient matrix `x` and
+    multiple right-hand sides `y` .
+
+    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
+    is also batches.
+
+    Args:
+        x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is 
+            zero or more batch dimensions. Its data type should be float32 or float64.
+        upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular 
+            system of equations. Default: True.
+        transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
+        unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed 
+            to be 1 and not referenced from `x` . Default: False.
+        name(str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The solution of the system of equations. Its data type should be the same as that of `x`.
+
+    Examples:
+    .. code-block:: python
+
+        # a square system of linear equations:
+        # x1 +   x2  +   x3 = 0
+        #      2*x2  +   x3 = -9
+        #               -x3 = 5
+
+        import paddle
+        import numpy as np
+
+        x = paddle.to_tensor([[1, 1, 1], 
+                              [0, 2, 1],
+                              [0, 0,-1]], dtype="float64")
+        y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+        out = paddle.linalg.triangular_solve(x, y, upper=True)
+
+        print(out)
+        # [7, -2, -5]
+    """
+    if in_dygraph_mode():
+        return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
+                                       transpose, 'unitriangular',
+                                       unitriangular)
+
+    inputs = {"X": [x], "Y": [y]}
+    helper = LayerHelper("triangular_solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'triangular_solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'triangular_solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='triangular_solve',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={
+            'upper': upper,
+            'transpose': transpose,
+            'unitriangular': unitriangular
+        })
+    return out
+
+
+def eigvalsh(x, UPLO='L', name=None):
+    """
+    Computes the eigenvalues of a 
+    complex Hermitian (conjugate symmetric) or a real symmetric matrix.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+            should be one of float32, float64, complex64, complex128.
+        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor eigenvalues in ascending order.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x_data = np.array([[1, -2j], [2j, 5]])
+            x = paddle.to_tensor(x_data)
+            out_value = paddle.eigvalsh(x, UPLO='L')
+            print(out_value)
+            #[0.17157288, 5.82842712]
+    """
+    if in_dygraph_mode():
+        is_test = x.stop_gradient
+        values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
+        return values
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape))
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                "The input matrix must be batches of square matrices. But received x's dimention: {}".
+                format(x_shape))
+        if UPLO is not 'L' and UPLO is not 'U':
+            raise ValueError(
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+
+    __check_input(x, UPLO)
+
+    helper = LayerHelper('eigvalsh', **locals())
+    check_variable_and_dtype(x, 'dtype',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'eigvalsh')
+
+    out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    is_test = x.stop_gradient
+    helper.append_op(
+        type='eigvalsh',
+        inputs={'X': x},
+        outputs={'Eigenvalues': out_value,
+                 'Eigenvectors': out_vector},
+        attrs={'UPLO': UPLO,
+               'is_test': is_test})
+    return out_value

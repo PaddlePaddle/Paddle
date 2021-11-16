@@ -35,6 +35,8 @@ from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from paddle import _C_ops
+from paddle.fluid import core
+from paddle.fluid.dygraph import to_variable
 
 __all__ = []
 
@@ -561,8 +563,25 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker._is_server(
-        ) or self._role_maker._is_heter_worker()
+        return self._role_maker._is_server()
+
+    def is_heter_worker(self):
+        """
+        Check whether the node is an instance of heter worker.
+
+        Returns:
+            bool: True if this is a node of heter worker,
+                  False if not.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.is_heter_worker()
+        """
+        return self._role_maker._is_heter_worker()
 
     def barrier_worker(self):
         """
@@ -597,6 +616,30 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def init_heter_worker(self):
+        """
+        init_heter_worker executor to initialize startup program,
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.init_heter_worker()
+
+        """
+        self._runtime_handle._init_heter_worker()
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -646,6 +689,31 @@ class Fleet(object):
 
         """
         self._runtime_handle.load_model(path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def run_heter_worker(self, dataset):
+        """
+        run_heter_worker will run heter trainer main program with executor.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+                dataset = "" 
+                if fleet.is_heter_worker():
+                    fleet.run_heter_worker(dataset)
+
+        """
+        self._runtime_handle._run_heter_worker(dataset)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1524,13 +1592,15 @@ class Fleet(object):
         else:
             apply_ir_passes(loss.block.program, startup_program, self)
 
-        program = paddle.static.default_main_program()
-        opt_info = {}
-        opt_info["mpi_size"] = self.worker_num()
-        opt_info["mpi_rank"] = self.worker_index()
-        for k, v in self._user_defined_strategy.trainer_desc_configs.items():
-            opt_info[k] = v
-        program._fleet_opt = opt_info
+        if not self._role_maker._is_heter_parameter_server_mode:
+            program = paddle.static.default_main_program()
+            opt_info = {}
+            opt_info["mpi_size"] = self.worker_num()
+            opt_info["mpi_rank"] = self.worker_index()
+            for k, v in self._user_defined_strategy.trainer_desc_configs.items(
+            ):
+                opt_info[k] = v
+            program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
@@ -1548,26 +1618,52 @@ class Fleet(object):
             if getattr(optimizer, '_param_groups', None) and isinstance(
                     optimizer._param_groups[0], dict):
                 param_grads = []
+                param_grads_fp16 = []
+                param_grads_fp32 = []
                 for group in optimizer._param_groups:
                     for param in group['params']:
                         if param._grad_ivar() is not None:
                             param_grads.append(param._grad_ivar())
+                            if param._grad_ivar(
+                            ).dtype == core.VarDesc.VarType.FP16:
+                                param_grads_fp16.append(param._grad_ivar())
+                            else:
+                                param_grads_fp32.append(param._grad_ivar())
             else:
                 param_grads = [
                     param._grad_ivar() for param in optimizer._parameter_list
                     if param._grad_ivar() is not None
                 ]
-            _C_ops.check_finite_and_unscale(param_grads, self._scale,
-                                            param_grads, self._found_inf)
+                param_grads_fp16 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP16)
+                ]
+                param_grads_fp32 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP32)
+                ]
+            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
+            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+            if len(param_grads_fp16):
+                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                                param_grads_fp16,
+                                                temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                                param_grads_fp32,
+                                                temp_found_inf_fp32)
 
-            self._found_inf = paddle.cast(self._found_inf, dtype="int32")
+            self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
+            is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
             # TODO(shenliang03) Since dp allreduce in the optimizer is 
             # after the gradscaler, check_finite needs to synchronize global 
             # information. In the future, we should use check_group to speed.
             paddle.distributed.all_reduce(
-                self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
-            self._found_inf = paddle.cast(self._found_inf, dtype="bool")
+                is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
+            self._found_inf = is_found_inf.numpy()[0]
 
         # Only tensor_parallel and pipeline_parallel need to modify scaler
         if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
