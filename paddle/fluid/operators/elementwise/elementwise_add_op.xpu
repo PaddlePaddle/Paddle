@@ -12,23 +12,56 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_XPU2
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/data_type.h"
+//#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/fluid/platform/function_traits.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/fluid/framework/tensor.h"
+//#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+//#include "xpu/kernel/math.h"
+#include <xpu/runtime.h>
 
 namespace paddle {
 namespace operators {
 
-template<int VecSize, typename InT, typename OutT, typename Functor >
-__global__ void elementwise(InT *in0,
-                            InT *in1, OutT *out,
-                            int size, Functor func) {
+__global__ void elementwise() {
   //TODO
 }
 
+void ComputeTest(){
+
+}
+
+template <typename T>
+class ElementwiseAddXPU2Kernel : public framework::OpKernel<T> {
+
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout<<"lxd_debug: XPU2 forward element_add !"<<std::endl;
+    ComputeTest();
+  }
+};
+
+template <typename T>
+class ElementwiseAddGradXPU2Kernel : public ElemwiseGradKernel<T> {
+
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout<<"lxd_debug: XPU2 backward element_add !"<<std::endl;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
-#endif
+
+namespace ops = paddle::operators;
+
+REGISTER_OP_XPU2_KERNEL(elementwise_add, ops::ElementwiseAddXPU2Kernel<float>);
+                       
+REGISTER_OP_XPU2_KERNEL(
+    elementwise_add_grad, ops::ElementwiseAddGradXPU2Kernel<float>);
