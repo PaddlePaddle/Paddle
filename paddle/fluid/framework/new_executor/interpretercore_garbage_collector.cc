@@ -60,6 +60,10 @@ void InterpreterCoreGarbageCollector::Add(
 void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
                                           paddle::platform::DeviceEvent& event,
                                           const platform::DeviceContext* ctx) {
+  if (!var) {
+    return;
+  }
+
   if (var->IsType<LoDTensor>()) {
     Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
   } else if (var->IsType<
