@@ -180,9 +180,11 @@ class TestEinsumMatrixEleMul(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "ij,ij->ij", "data": ["A", "A"]}
 
+
 class TestEinsumDegenerateMatrixVecMul(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "ij,j", "data": ["a", "b"]}
+
 
 class TestEinsumMatrixVecMul(TestEinsum):
     def setUp(self):
