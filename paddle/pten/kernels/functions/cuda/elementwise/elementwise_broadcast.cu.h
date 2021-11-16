@@ -196,7 +196,7 @@ template <typename InT,
           int VecSize,
           int Rank,
           bool IsBoundary = false>
-__device__ void BroadcastKernelImpl(
+__device__ void ElementwiseBroadcastKernelImpl(
     const paddle::framework::Array<const InT *__restrict__, Arity> &ins,
     OutT *out,
     const paddle::framework::Array<bool, Arity> &use_broadcast,
