@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/data_set.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
-#include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
