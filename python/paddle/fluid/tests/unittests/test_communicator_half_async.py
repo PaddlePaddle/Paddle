@@ -75,19 +75,16 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 
-        print('begin train')
         for batch_id, data in enumerate(train_reader()):
             exe.run(paddle.static.default_main_program(),
                     feed=feeder.feed(data),
                     fetch_list=[])
 
-        print('end train')
         fleet.stop_worker()
 
     def run_ut(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        strategy.adam_d2sum = False
 
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
 
@@ -142,7 +139,7 @@ half_run_server.run_ut()
         os.environ["TRAINING_ROLE"] = "PSERVER"
         _python = sys.executable
 
-        ps_cmd = "{} {} > server.log".format(_python, server_file)
+        ps_cmd = "{} {}".format(_python, server_file)
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,

@@ -84,22 +84,18 @@ class FleetDistRunnerBase(object):
         if args.mode == "sync":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.a_sync = False
-            self.strategy.adam_d2sum = False
         elif args.mode == "async":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.a_sync = True
-            self.strategy.adam_d2sum = False
         elif args.mode == "geo":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.a_sync = True
             self.strategy.a_sync_configs = {
                 "k_steps": args.geo_sgd_need_push_nums
             }
-            self.strategy.adam_d2sum = False
         elif args.mode == "auto":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.auto = True
-            self.strategy.adam_d2sum = False
 
         self.dump_param = os.getenv("dump_param", "").split(",")
         self.dump_fields = os.getenv("dump_fields", "").split(",")
@@ -322,12 +318,12 @@ class TestFleetBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} -u {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
             self._reader, gloo_path, self._need_test)
 
-        ps_cmd = "{0} -u {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
             self._reader, gloo_path, self._need_test)
@@ -337,10 +333,6 @@ class TestFleetBase(unittest.TestCase):
             ps_cmd += " --model_dir {}".format(self._model_dir)
 
         # Run dist train to compare with local results
-        print('ps_cmd')
-        print(ps_cmd)
-        print('tr_cmd')
-        print(tr_cmd)
         ps0, ps1 = self._start_pserver(ps_cmd, env)
         tr0, tr1 = self._start_trainer(tr_cmd, env)
 

@@ -368,7 +368,20 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       VLOG(1) << "push dense param to table " << table_id
               << " from 0' trainer done";
     }
+    BarrierWithTable(1);
+  } else {
+    BarrierWithTable(1);
+    for (auto &iter : recv_varname_to_ctx) {
+      auto &table_id = iter.first;
+      auto &varnames = iter.second;
+      RpcRecvDense(varnames, table_id, recv_scope_);
+      VLOG(1) << "pull dense param to table " << table_id
+              << " from 0' trainer done";
+    }
   }
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(100 + trainer_id_ * 10));
+  BarrierWithTable(1);
   return;
 }
 
@@ -618,7 +631,6 @@ AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
   if (main_thread_) main_thread_->join();
   if (recv_thread_) recv_thread_->join();
-  VLOG(3) << "zcb debug async comm deconstructor";
 }
 
 void AsyncCommunicator::Start() {
@@ -650,17 +662,17 @@ void AsyncCommunicator::Stop() {
     _worker_ptr->finalize_worker();
     VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
-      VLOG(0) << "stop recv thread";
+      VLOG(1) << "stop recv thread";
       recv_thread_->join();
       recv_thread_.reset(nullptr);
     }
     if (main_thread_) {
-      VLOG(0) << "stop main thread";
+      VLOG(1) << "stop main thread";
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
   }
-  VLOG(0) << "Communicator stop done";
+  VLOG(1) << "Communicator stop done";
 }
 
 bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {

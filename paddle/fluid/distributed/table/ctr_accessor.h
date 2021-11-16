@@ -61,6 +61,7 @@ class CtrCommonAccessor : public ValueAccessor {
     float& embed_g2sum(float* val) { return val[embed_g2sum_index()]; }
     float& embedx_w(float* val) { return val[embedx_w_index()]; }
     float& embedx_g2sum(float* val) { return val[embedx_g2sum_index()]; }
+
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;

@@ -173,6 +173,7 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
   size_t file_start_idx = _shard_idx * avg_local_shard_num_;
 
   size_t feature_value_size = _value_accesor->size() / sizeof(float);
+
   // int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
   // omp_set_num_threads(thread_num);
   // #pragma omp parallel for schedule(dynamic)
@@ -337,6 +338,7 @@ int32_t MemorySparseTable::save_local_fs(const std::string& dirname,
               value.second->data(), value.second->size());
           std::string out_line = paddle::string::format_string(
               "%lu %s\n", value.first, format_value.c_str());
+          // VLOG(2) << out_line.c_str();
           os.write(out_line.c_str(), sizeof(char) * out_line.size());
           ++feasign_cnt;
         }

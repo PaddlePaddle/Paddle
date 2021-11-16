@@ -36,32 +36,23 @@ class TestCommunicator(unittest.TestCase):
         return avg_cost
 
     def test_communicator_sync(self):
-        #        os.environ["TRAINING_ROLE"] = "TRAINER"
-        #        os.environ["PADDLE_PSERVER_NUMS"] = "2"
-        #        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        #        os.environ["POD_IP"] = "127.0.0.1"
-        #        os.environ["PADDLE_PORT"] = "36001"
-        #        os.environ["PADDLE_TRAINER_ID"] = "0"
-        #        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        #        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-        #            "127.0.0.1:36001,127.0.0.2:36001"
-        #        fleet.init(role_maker.PaddleCloudRoleMaker())
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["PADDLE_PSERVER_NUMS"] = "2"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+            "127.0.0.1:36001,127.0.0.2:36001"
 
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.WORKER,
-            worker_num=2,
-            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
-
-        fleet.init(role)
-
+        fleet.init(role_maker.PaddleCloudRoleMaker())
         avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(0.01)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
-        strategy.adam_d2sum = False
         strategy.a_sync_configs = {"launch_barrier": False}
 
         optimizer = fleet.distributed_optimizer(optimizer, strategy)

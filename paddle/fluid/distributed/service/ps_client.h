@@ -271,6 +271,7 @@ class AsyncRequestTask {
   std::shared_ptr<CostTimer> _timer;
   std::shared_ptr<std::promise<int32_t>> _promise;
 };
+
 REGISTER_PSCORE_REGISTERER(PSClient);
 
 class PSClientFactory {

@@ -269,6 +269,7 @@ bool CtrCommonAccessor::create_value(int stage, const float* value) {
   if (stage == 0) {
     return true;
   } else if (stage == 1) {
+    // operation
     auto show = CtrCommonPushValue::show(const_cast<float*>(value));
     auto click = CtrCommonPushValue::click(const_cast<float*>(value));
     auto score = show_click_score(show, click);
@@ -323,5 +324,6 @@ int CtrCommonAccessor::parse_from_string(const std::string& str, float* value) {
   CHECK(ret >= 6) << "expect more than 6 real:" << ret;
   return ret;
 }
+
 }  // namespace distributed
 }  // namespace paddle

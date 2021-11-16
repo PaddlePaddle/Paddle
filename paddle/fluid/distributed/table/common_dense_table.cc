@@ -77,10 +77,6 @@ int32_t CommonDenseTable::initialize_value() {
     for (int y = 0; y < dim; ++y) {
       values_[x][y] = initializers_[varname]->GetValue();
     }
-
-    if (varname == "AdaEpsilon") {
-      VLOG(1) << "debug dense optimizer AdaEpsilon: " << values_[x][0];
-    }
   }
 
   fixed_len_params_dim_ = 0;
@@ -151,7 +147,6 @@ int32_t CommonDenseTable::pour() {
   pull_reservoir_.avg();
   _push_dense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
-  VLOG(2) << "debug CommonDenseTable::pour() done";
   return 0;
 }
 
