@@ -37,7 +37,7 @@ git clone github.com/paddlepaddle/paddle/paddle/fluid/inference/javaapi
 ./build_gpu.sh {c预测库目录} {jni头文件目录} {jni系统头文件目录}
 
 以笔者的目录结构为例
-./build_gpu.sh /root/paddle_c/paddle_inference_c /usr/lib/jvm/java-8-openjdk-amd64/include /usr/lib/jvm/java-8-openjdk-amd64/include/linux
+./build.sh /root/paddle_c/paddle_inference_c_2.2/paddle_inference_c /usr/lib/jvm/java-8-openjdk-amd64/include /usr/lib/jvm/java-8-openjdk-amd64/include/linux
 
 执行完成后，会在当前目录下生成JavaInference.jar和libpaddle_inference.so
 ```
