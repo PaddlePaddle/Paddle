@@ -96,7 +96,7 @@ PD_DLL_DECL Tensor add(const Tensor& x, const Tensor& y) {
   return out;
 }
 
-Tensor subtract(const Tensor& x, const Tensor& y) {
+PD_DLL_DECL Tensor subtract(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
