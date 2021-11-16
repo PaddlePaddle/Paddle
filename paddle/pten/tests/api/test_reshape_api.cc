@@ -54,7 +54,7 @@ TEST(API, reshape) {
   std::vector<int64_t> expect_shape = {12, 3};
   ASSERT_EQ(out.shape()[0], expect_shape[0]);
   ASSERT_EQ(out.shape()[1], expect_shape[1]);
-  ASSERT_EQ(out.numel(), 36);
+  ASSERT_EQ(out.size(), 36);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
