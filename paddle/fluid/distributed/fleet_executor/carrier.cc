@@ -22,8 +22,11 @@ namespace distributed {
 
 void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
+                                         "Carrier is already init."));
   interceptor_id_to_node_ = interceptor_id_to_node;
   CreateInterceptors();
+  is_init_ = true;
 }
 
 bool Carrier::EnqueueInterceptorMessage(
@@ -62,6 +65,10 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
                         interceptor_id));
   return iter->second.get();
 }
+
+void Carrier::Start() {}
+
+bool Carrier::IsInit() const { return is_init_; }
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                                      std::unique_ptr<Interceptor> interceptor) {
