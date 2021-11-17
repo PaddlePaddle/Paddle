@@ -81,7 +81,7 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
       dev_ctx.GetPlace());
   pten::DenseTensor tmp(
       alloc,
-      DenseTensorMeta(x.data_type(),
+      DenseTensorMeta(x.dtype(),
                       paddle::framework::make_ddim(
                           {static_cast<int64_t>(temp_storage_bytes)}),
                       x.layout()));
