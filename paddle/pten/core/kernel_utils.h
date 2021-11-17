@@ -33,7 +33,7 @@
 using NPUContext = paddle::platform::NPUDeviceContext;
 #endif
 #ifdef PADDLE_WITH_XPU
-using XPUContext = paddle::platform::XPUDeviceContext;
+#include "paddle/pten/core/backends/xpu/context.h"
 #endif
 
 namespace pten {

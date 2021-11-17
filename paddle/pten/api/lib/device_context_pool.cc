@@ -20,7 +20,6 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/allocator.h"
-#include "paddle/pten/core/backends/gpu/cuda_context.h"
 #include "paddle/pten/core/context.h"
 #include "paddle/pten/core/device_context.h"
 
@@ -29,6 +28,7 @@ namespace experimental {
 
 using CPUPlace = paddle::platform::CPUPlace;
 using CUDAPlace = paddle::platform::CUDAPlace;
+using XPUPlace = paddle::platform::XPUPlace;
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
@@ -77,6 +77,7 @@ inline void EmplaceDeviceContext<pten::CPUContext, CPUPlace>(
       }));
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <>
 inline void EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
     std::map<Place, std::shared_future<std::unique_ptr<pten::DeviceContext>>>*
@@ -134,6 +135,34 @@ inline void EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
         return ctx;
       }));
 }
+#endif
+
+#ifdef PADDLE_WITH_XPU
+template <>
+inline void EmplaceDeviceContext<pten::XPUContext, XPUPlace>(
+    std::map<Place, std::shared_future<std::unique_ptr<pten::DeviceContext>>>*
+        map_ptr,
+    std::map<Place, std::unique_ptr<pten::Allocator>>* alloc_ptr,
+    Place p) {
+  using PtrType = std::unique_ptr<pten::DeviceContext>;
+  map_ptr->emplace(
+      p, std::async(std::launch::deferred, [=] {
+        // lazy evaluation. i.e., only create device context at
+        // first `Get`
+        auto ctx = PtrType(new pten::XPUContext(BOOST_GET_CONST(XPUPlace, p)));
+        ctx->SetAllocator(alloc_ptr->at(BOOST_GET_CONST(XPUPlace, p)).get());
+        auto* ptr = dynamic_cast<pten::XPUContext*>(ctx.get());
+        auto& pool = paddle::platform::DeviceContextPool::Instance();
+        auto device_ctx = pool.GetByPlace(BOOST_GET_CONST(XPUPlace, p));
+        ptr->SetContext(device_ctx->x_context());
+        ptr->SetXpuVersion(device_ctx->xpu_version());
+#ifdef PADDLE_WITH_XPU_BKCL
+        ptr->set_bkcl_context(device_ctx->bkcl_context());
+#endif
+        return ctx;
+      }));
+}
+#endif
 
 DeviceContextPool::DeviceContextPool(const std::vector<Place>& places) {
   PADDLE_ENFORCE_GT(places.size(),
@@ -181,16 +210,17 @@ DeviceContextPool::DeviceContextPool(const std::vector<Place>& places) {
       //           "option."));
       // #endif
     } else if (paddle::platform::is_xpu_place(p)) {
-      // #ifdef PADDLE_WITH_XPU
-      //       EmplaceDeviceContext<XPUDeviceContext,
-      //       XPUPlace>(&device_contexts_, p);
-      // #else
-      //       PADDLE_THROW(
-      //           paddle::platform::errors::Unimplemented("XPUPlace is not
-      //           supported. Please "
-      //                                           "re-compile with WITH_XPU
-      //                                           option."));
-      // #endif
+#ifdef PADDLE_WITH_XPU
+      XPUPlace place = BOOST_GET_CONST(XPUPlace, p);
+      allocators_.emplace(place,
+                          new paddle::experimental::DefaultAllocator(place));
+      EmplaceDeviceContext<pten::XPUContext, XPUPlace>(
+          &device_contexts_, &allocators_, p);
+#else
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "XPUPlace is not"
+          "supported. Please re-compile with WITH_XPU option."));
+#endif
     } else if (paddle::platform::is_npu_place(p)) {
       // #ifdef PADDLE_WITH_ASCEND_CL
       //       EmplaceDeviceContext<NPUDeviceContext,

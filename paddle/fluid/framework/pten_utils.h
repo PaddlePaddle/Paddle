@@ -111,5 +111,12 @@ struct ConvertContextType<platform::CUDADeviceContext> {
 };
 #endif
 
+#ifdef PADDLE_WITH_XPU
+template <>
+struct ConvertContextType<platform::XPUDeviceContext> {
+  using TYPE = pten::XPUContext;
+};
+#endif
+
 }  // namespace framework
 }  // namespace paddle

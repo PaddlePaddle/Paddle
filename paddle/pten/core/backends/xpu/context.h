@@ -14,7 +14,13 @@
 
 #pragma once
 
+#include "xpu/runtime.h"
+#include "xpu/runtime_ex.h"
+#include "xpu/xdnn.h"
+
 #include "paddle/fluid/platform/place.h"
+// TODO(wilber) need to remove!
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 
 #include "paddle/pten/core/device_context.h"
 
@@ -28,17 +34,25 @@ using Place = paddle::platform::Place;
 using XPUPlace = paddle::platform::XPUPlace;
 namespace xpu = baidu::xpu::api;
 
+// TODO(wilber): xpu version?
+// enum XPUVersion { XPU1, XPU2 };
+using XPUVersion = paddle::platform::XPUVersion;
+
 class XPUContext : public DeviceContext {
  public:
   explicit XPUContext(XPUPlace place) : place_(place) {}
+  virtual ~XPUContext() {}
 
   Place GetPlace() const noexcept override { return place_; }
 
-  xpu::Context* x_context() const;
+  xpu::Context* x_context() const { return context_; }
   void SetContext(xpu::Context* context);
 
+  XPUVersion xpu_version() const { return xpu_version_; }
+  void SetXpuVersion(XPUVersion ver) { xpu_version_ = ver; }
+
   /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const override;
+  void Wait() const;
 
 #ifdef PADDLE_WITH_XPU_BKCL
   /*! \brief  Return bkcl context. */
@@ -49,30 +63,17 @@ class XPUContext : public DeviceContext {
 #endif
 
  private:
+  // TODO(wilber): place or device_id?
   XPUPlace place_;
+  int device_id_;
 
+  // TODO(wilber): need XPUVersion or not?
   XPUVersion xpu_version_;
   xpu::Context* context_;
+
 #ifdef PADDLE_WITH_XPU_BKCL
   BKCLContext_t bkcl_context_;
 #endif
-};
-
-#ifdef PADDLE_WITH_XPU
-namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public DeviceContext {
- public:
-  XPUDeviceContext();
-  explicit XPUDeviceContext(XPUPlace place);
-  virtual ~XPUDeviceContext();
-  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  XPUVersion xpu_version() const { return xpu_version_; }
-  Place GetPlace() const override;
-
-  // Need to be the same with other DeviceContext,
-  // Eventhough eigen_device_ is not used in XPU
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-  DISABLE_COPY_AND_ASSIGN(XPUDeviceContext);
 };
 
 }  // namespace pten

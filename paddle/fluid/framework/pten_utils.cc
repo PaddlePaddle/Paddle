@@ -216,6 +216,12 @@ pten::DeviceContext* ConvertContext(const platform::DeviceContext& context) {
     return reinterpret_cast<pten::CUDAContext*>(pt_dev_ctx);
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(context.GetPlace())) {  // NOLINT
+    auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
+    return reinterpret_cast<pten::XPUContext*>(pt_dev_ctx);
+  }
+#endif
   else {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument("Unsupported type"));
     return nullptr;

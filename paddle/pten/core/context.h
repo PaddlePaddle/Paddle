@@ -21,3 +21,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/pten/core/backends/gpu/context.h"
 #endif
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/pten/core/backends/xpu/context.h"
+#endif

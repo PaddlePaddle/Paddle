@@ -38,10 +38,12 @@ struct DefaultDeviceContextType<paddle::platform::CPUPlace> {
   using TYPE = pten::CPUContext;
 };
 
+#ifdef PADDLE_WITH_CUDA
 template <>
 struct DefaultDeviceContextType<paddle::platform::CUDAPlace> {
   using TYPE = pten::CUDAContext;
 };
+#endif
 
 /*! \brief device context pool singleton */
 class DeviceContextPool {

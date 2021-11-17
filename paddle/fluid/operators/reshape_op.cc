@@ -435,7 +435,10 @@ class ReshapeKernel {
 #ifdef PADDLE_WITH_XPU
       if (platform::is_xpu_place(ctx.GetPlace())) {
         auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-        pten::ReshapeFromVectorDT(dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
+        auto *pten_dev_ctx = reinterpret_cast<pten::XPUContext *>(
+            framework::ConvertContext(dev_ctx));
+        pten::ReshapeFromVectorDT(*pten_dev_ctx, *pt_x.get(), pt_vec_shape,
+                                  pt_out);
       }
 #endif
     } else if (shape_tensor) {
@@ -468,7 +471,10 @@ class ReshapeKernel {
 #ifdef PADDLE_WITH_XPU
       if (platform::is_xpu_place(ctx.GetPlace())) {
         auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-        pten::ReshapeFromDT(dev_ctx, *pt_x.get(), *pt_shape.get(), pt_out);
+        auto *pten_dev_ctx = reinterpret_cast<pten::XPUContext *>(
+            framework::ConvertContext(dev_ctx));
+        pten::ReshapeFromDT(*pten_dev_ctx, *pt_x.get(), *pt_shape.get(),
+                            pt_out);
       }
 #endif
     } else {
@@ -494,7 +500,10 @@ class ReshapeKernel {
 #ifdef PADDLE_WITH_XPU
       if (platform::is_xpu_place(ctx.GetPlace())) {
         auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-        pten::ReshapeFromVectorVal(dev_ctx, *pt_x.get(), shape_vec, pt_out);
+        auto *pten_dev_ctx = reinterpret_cast<pten::XPUContext *>(
+            framework::ConvertContext(dev_ctx));
+        pten::ReshapeFromVectorVal(*pten_dev_ctx, *pt_x.get(), shape_vec,
+                                   pt_out);
       }
 #endif
     }

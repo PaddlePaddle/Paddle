@@ -14,4 +14,19 @@
 
 #include "paddle/pten/core/backends/xpu/context.h"
 
-namespace pten {}
+namespace pten {
+
+void XPUContext::Wait() const {
+  int ret = xpu_set_device(place_.device);
+  PADDLE_ENFORCE_EQ(ret,
+                    XPU_SUCCESS,
+                    paddle::platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  xpu_wait(context_->xpu_stream);
+}
+
+void XPUContext::SetContext(xpu::Context* context) { context_ = context; }
+
+}  // namespace pten
