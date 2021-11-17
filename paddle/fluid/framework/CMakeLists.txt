@@ -29,6 +29,8 @@ add_subdirectory(new_executor)
 if (WITH_CINN)
   add_subdirectory(paddle2cinn)
 endif()
+#tdm lib
+proto_library(index_dataset_proto SRCS index_dataset.proto)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
