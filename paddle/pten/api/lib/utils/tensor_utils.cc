@@ -110,19 +110,8 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     } else {
       return MakePtenDenseTensor(tensor);
     }
-  } else if (variable.IsType<framework::SelectedRows>()) {
-    // TODO(chenweihang): now we don't deal with row and height
-    // by xiaowei's advice
-    const auto& tensor = variable.Get<framework::SelectedRows>();
-    if (!platform::is_same_place(tensor.value().place(), expected_place)) {
-      framework::Tensor tmp_tensor;
-      TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
-      // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-      return MakePtenDenseTensor(tmp_tensor);
-    } else {
-      return MakePtenDenseTensor(tensor.value());
-    }
   } else {
+    // TODO(chentianyu03): support SelectedRows later
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared input `%s` type now when call pt kernel.",
         framework::ToTypeName(variable.Type())));
@@ -137,12 +126,8 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
     return MakePtenDenseTensor(*tensor, arg_def);
-  } else if (variable->template IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->template GetMutable<framework::SelectedRows>();
-    // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
-    // here the row and height will lost in output!
-    return MakePtenDenseTensor(tensor->value(), arg_def);
   } else {
+    // TODO(chentianyu03): support SelectedRows later
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared output `%s` type now when call pt kernel.",
         framework::ToTypeName(variable->Type())));
@@ -220,7 +205,8 @@ void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
       shared_storage,
       platform::errors::NotFound(
           "Target DenseTensor's shared storage is nullptr."));
-  if (src.IsInitialized()) {
+  if (src.IsInitialized() &&
+      src.place() == pten::TransToFluidPlace(arg_def.backend)) {
     shared_storage->ResetAllocation(src.Holder(), src.offset());
   } else {
     shared_storage->ResetAllocationPlace(
@@ -242,19 +228,8 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
     } else {
       ReMakePtenDenseTensor(tensor, arg_def, dst);
     }
-  } else if (variable.IsType<framework::SelectedRows>()) {
-    // TODO(chenweihang): now we don't deal with row and height
-    // by xiaowei's advice
-    const auto& tensor = variable.Get<framework::SelectedRows>();
-    if (!platform::is_same_place(tensor.value().place(), expected_place)) {
-      framework::Tensor tmp_tensor;
-      TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
-      // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-      ReMakePtenDenseTensor(tmp_tensor, arg_def, dst);
-    } else {
-      ReMakePtenDenseTensor(tensor.value(), arg_def, dst);
-    }
   } else {
+    // TODO(chentianyu03): support SelectedRows later
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared input `%s` type now when call pt kernel.",
         framework::ToTypeName(variable.Type())));
@@ -269,12 +244,8 @@ void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
     ReMakePtenDenseTensor(*tensor, arg_def, dst);
-  } else if (variable->template IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->template GetMutable<framework::SelectedRows>();
-    // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
-    // here the row and height will lost in output!
-    ReMakePtenDenseTensor(tensor->value(), arg_def, dst);
   } else {
+    // TODO(chentianyu03): support SelectedRows later
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared output `%s` type now when call pt kernel.",
         framework::ToTypeName(variable->Type())));
@@ -311,19 +282,8 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
       // so, here we set the variable's type with the pten tensor dtype.
       tensor->setType(dtype);
     }
-
-  } else if (variable->IsType<framework::SelectedRows>()) {
-    auto* tensor = variable->GetMutable<framework::SelectedRows>();
-    auto dtype = pten::TransToProtoVarType(src->dtype());
-
-    if (tensor->value().IsInitialized()) {
-    } else {
-      auto storage = dynamic_cast<SharedStorage*>(
-          pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
-      tensor->mutable_value()->ResetHolderWithType(
-          std::move(storage->GetAllocation()), dtype);
-    }
   } else {
+    // TODO(chentianyu03): support SelectedRows later
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared input `%s` type now when call pt kernel.",
         framework::ToTypeName(variable->Type())));
