@@ -255,7 +255,8 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=ON
-set ON_INFER=ON
+set ON_INFER=OFF
+set WITH_TENSORRT=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
