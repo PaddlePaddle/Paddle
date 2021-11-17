@@ -143,17 +143,18 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   return op;
 }
 
-std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
-                                            std::string* new_var_name,
-                                            proto::VarType::Type in_dtype,
-                                            proto::VarType::Type out_dtype,
-                                            VariableScope* var_scope,
-                                            framework::Scope* local_scope) {
+std::shared_ptr<OperatorBase> TransferDtype(
+    const std::string& var_name, std::string* new_var_name,
+    proto::VarType::Type in_dtype, proto::VarType::Type out_dtype,
+    VariableScope* var_scope, framework::Scope* local_scope, bool is_inplace) {
   // 1. Generate new_var_name and Initialize it
-  *new_var_name =
-      var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
+  if (is_inplace) {
+    *new_var_name = var_name;
+  } else {
+    *new_var_name =
+        var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
+  }
   auto* ptr = local_scope->Var(new_var_name);
-
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
   VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
@@ -297,6 +298,83 @@ std::string get_memcpy_type(const platform::Place& src_place,
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Not support Memcpy typ : %s -> %s", src_place, dst_place));
+  }
+}
+
+void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
+                                 const platform::Place& place,
+                                 const VariableNameMap& out_names,
+                                 VariableValueMap* out_vars,
+                                 VariableScope* var_scope,
+                                 std::vector<OpFuncNode>* op_func_nodes,
+                                 framework::Scope* local_scope) {
+  DataTranferHelper data_transfer_helper(place, var_scope);
+  for (auto& var_name_item : out_names) {
+    std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
+    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+      // 1. find grad_var & check whether is complex tensor
+      auto var_name = var_name_item.second[i];
+      auto orig_var_name = framework::GradOriginalVarName(var_name);
+      // only focus on gradient var
+      if (var_name == orig_var_name) {
+        continue;
+      }
+      auto* grad_var = vars[i];
+      // skip nullptr var
+      if (grad_var == nullptr) {
+        continue;
+      }
+      // don't process LoDTensorArray temporarily,
+      // add support if necessary for complex number calculations in the future
+      if (!framework::VarIsTensor(*grad_var)) {
+        continue;
+      }
+      auto* grad_tensor =
+          framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
+      // skip nullptr tensor
+      if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
+        continue;
+      }
+      // only focus on complex dtype now
+      auto src_type = grad_tensor->type();
+      if (!framework::IsComplexType(src_type)) {
+        continue;
+      }
+
+      // 2. find forward var & check whether need to cast
+      auto* var = var_scope->FindVar(orig_var_name);
+      // if forward var not exists, do nothing
+      if (var == nullptr) {
+        continue;
+      }
+      if (!framework::VarIsTensor(*var)) {
+        continue;
+      }
+      const auto* tensor =
+          framework::GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      PADDLE_ENFORCE_NOT_NULL(
+          tensor,
+          platform::errors::Unavailable(
+              "Forward tensor is nullptr when handle complex data to real."));
+      // only need record type, the allocation may have been released
+      auto dst_type = tensor->saved_type();
+      // only focus on real dtype and need casting
+      if (framework::IsComplexType(dst_type)) {
+        continue;
+      }
+
+      // 3. cast complex grad to real grad inplacely
+      VLOG(6) << "Transform " << framework::DataTypeToString(src_type)
+              << " var `" << var_name << "` to "
+              << framework::DataTypeToString(dst_type)
+              << " real var in static graph.";
+
+      std::string new_var_name;
+      auto op = TransferDtype(var_name, &new_var_name, src_type, dst_type,
+                              var_scope, local_scope, /*is_inplace*/ true);
+      data_transfer_helper.RunAndConstructOpFuncNode(op, var_name, new_var_name,
+                                                     op_func_nodes);
+    }
   }
 }
 

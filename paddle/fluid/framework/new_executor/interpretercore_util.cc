@@ -328,20 +328,14 @@ void build_op_func_list(const platform::Place& place,
               ->GetExpectedKernelType(
                   ExecutionContext(*op, scope, *dev_ctx, runtime_context));
 
-      // consider device_guard()
-      apply_device_guard(
-          op, place,
-          &expected_kernel_key);  // change device by the device_guard()
+      // change device by the device_guard()
+      apply_device_guard(op, place, &expected_kernel_key);
       VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
 
       // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
-      std::vector<OpFuncNode> new_op_func_nodes;
       ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, &new_op_func_nodes, use_local_scope);
-      for (auto& item : new_op_func_nodes) {
-        vec_func_list->emplace_back(std::move(item));
-      }
+                         &op_func_node, vec_func_list, use_local_scope);
       // step 4. Run op kernel
       VLOG(3) << op->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
@@ -370,6 +364,12 @@ void build_op_func_list(const platform::Place& place,
 
       op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
       op_func_node.kernel_func_(exec_ctx);
+
+      // post-process grad_op.outputs if need cast complex grad into real grad.
+      // NOTE(Aurelius84): insert a transfer_dtype_op inplacely cast it.
+      interpreter::HandleComplexGradToRealGrad(
+          op_func_node, place, outputs_names, &runtime_context.outputs,
+          var_scope, vec_func_list, local_scope);
     }
 
     vec_func_list->emplace_back(op_func_node);

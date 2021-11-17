@@ -37,14 +37,14 @@ class DataTranferHelper {
              const std::string& var_name, std::string* new_var_name,
              std::vector<OpFuncNode>* new_op_func_nodes, bool use_local_scope);
 
- private:
-  platform::Place place_;
-  VariableScope* var_scope_;
-
   void RunAndConstructOpFuncNode(const std::shared_ptr<OperatorBase>& op,
                                  const std::string& var_name,
                                  const std::string& new_var_name,
                                  std::vector<OpFuncNode>* op_func_nodes);
+
+ private:
+  platform::Place place_;
+  VariableScope* var_scope_;
 };
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
@@ -93,7 +93,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
                                             proto::VarType::Type in_dtype,
                                             proto::VarType::Type out_dtype,
                                             VariableScope* var_scope,
-                                            framework::Scope* local_scope);
+                                            framework::Scope* local_scope,
+                                            bool is_inplace = false);
 
 std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
