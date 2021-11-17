@@ -2260,7 +2260,7 @@ def main():
         print("{};{};{};{}".format(high_parallel_job, fourth_high_parallel_job,
                                    fifth_high_parallel_job, non_parallel_job))
     else:
-        print("{};{};{};{};{};{};{}".format(
+        print("{};{};{};{};{};{};{};{}".format(
             high_parallel_job, secondary_high_parallel_job,
             third_high_parallel_job, fourth_high_parallel_job,
             fifth_high_parallel_job, sixth_high_parallel_job,
