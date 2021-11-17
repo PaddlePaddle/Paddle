@@ -1219,6 +1219,7 @@ def _parallel_linear(x,
             inputs={'X': linear_out},
             outputs={'Out': out},
             attrs={
+                'rank': inner_rank,
                 'ring_id': ring_id,
                 'nranks': nranks,
                 'use_calc_stream': True,
