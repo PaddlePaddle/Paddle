@@ -956,7 +956,6 @@ CPU_PARALLEL_JOB = [
     'test_conv_concat_relu_mkldnn_fuse_pass',
     'test_conv_bias_mkldnn_fuse_pass',
     'test_conv_batch_norm_mkldnn_fuse_pass',
-    'test_conv_activation_mkldnn_fuse_pass',
     'test_conv3d_transpose_layer',
     'test_conv3d_mkldnn_op',
     'test_conv3d_layer',
@@ -1293,6 +1292,7 @@ TETRAD_PARALLEL_JOB = [
     'test_conv_elementwise_add_mkldnn_fuse_pass',
     'test_cpu_quantize_pass',
     'jit_kernel_test',
+    'test_conv_activation_mkldnn_fuse_pass',
 ]
 
 # It run 2 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED,
