@@ -22,40 +22,51 @@ class MTMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Params",
              "(Tensors) The input parameter tensors of multi_tensor_momentum "
-             "operator.");
+             "operator.")
+        .AsDuplicable();
     AddInput(
         "Grads",
-        "(Tensors) The input grad tensors of multi_tensor_momentum operator.");
+        "(Tensors) The input grad tensors of multi_tensor_momentum operator.")
+        .AsDuplicable();
     AddInput("Velocitys",
              "(Tensors, default Tensor<float>) "
              "Input velocity (corresponding to the parameters) "
-             "that has to be updated");
+             "that has to be updated")
+        .AsDuplicable();
     AddInput("LearningRates",
              "(Tensors, default Tensor<float>) "
-             "Input learning rate");
-    AddInput("MasterParams", "FP32 master weights for AMP.").AsDispensable();
+             "Input learning rate")
+        .AsDuplicable();
+    AddInput("MasterParams", "FP32 master weights for AMP.")
+        .AsDispensable()
+        .AsDuplicable();
     AddOutput("ParamOuts",
               "(Tensors) This output is updated parameters. "
-              "It shared memory with Input(Params).");
+              "It shared memory with Input(Params).")
+        .AsDuplicable();
     AddOutput("VelocityOuts",
               "(Tensors) This output is updated velocitys. "
-              "It shared memory with Input(Velocitys).");
+              "It shared memory with Input(Velocitys).")
+        .AsDuplicable();
     AddOutput("MasterParamOuts",
               "The updated FP32 master weights for AMP. "
               "It shared memory with Input(MasterParams).")
-        .AsDispensable();
+        .AsDispensable()
+        .AsDuplicable();
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<bool>("use_nesterov",
                   "(bool, default false) "
                   "Use Nesterov Momentum")
         .SetDefault(false);
-    AddAttr<std::string>("regularization_method",
-                         "(string) regularization_method, right now only "
-                         "support l2decay or none")
-        .SetDefault("");
-    AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
-        .SetDefault(0.0f);
+    AddAttr<std::vector<std::string>>(
+        "regularization_methods",
+        "(string) regularization_method, right now only "
+        "support l2decay or none")
+        .SetDefault({});
+    AddAttr<std::vector<float>>("regularization_coeffs",
+                                "(float) regularization_coeff")
+        .SetDefault({0.0f});
     AddAttr<bool>("multi_precision",
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")
@@ -112,7 +123,7 @@ class MTMomentumOp : public framework::OperatorWithKernel {
             "The input var's type should be LoDTensor, but the received is %s",
             ctx->GetInputsVarType("Params").front()));
 
-    auto lr_dims = ctx->GetInputsDim("LearningRate");
+    auto lr_dims = ctx->GetInputsDim("LearningRates");
     for (size_t idx = 0; idx < lr_dims.size(); idx++) {
       PADDLE_ENFORCE_NE(framework::product(lr_dims[idx]), 0,
                         platform::errors::InvalidArgument(
@@ -192,11 +203,9 @@ class MTMomentumOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    mt_momentum, ops::MTMomentumOp, ops::MTMomentumOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_WITHOUT_GRADIENT(multi_tensor_momentum, ops::MTMomentumOp,
+                             ops::MTMomentumOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    mt_momentum,
+    multi_tensor_momentum,
     ops::MTMomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MTMomentumOpKernel<paddle::platform::CPUDeviceContext, double>);

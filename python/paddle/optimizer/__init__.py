@@ -23,6 +23,7 @@ from .sgd import SGD  # noqa: F401
 from .momentum import Momentum  # noqa: F401
 from .lamb import Lamb  # noqa: F401
 from . import lr  # noqa: F401
+from .multi_tensor_momentum import MultiTensorMomentum  # noqa: F401
 
 __all__ = [     #noqa
            'Optimizer',
@@ -35,4 +36,5 @@ __all__ = [     #noqa
            'SGD',
            'Momentum',
            'Lamb'
+           'MultiTensorMomentum'
 ]

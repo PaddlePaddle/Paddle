@@ -18,7 +18,7 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    mt_momentum,
+    multi_tensor_momentum,
     ops::MTMomentumOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MTMomentumOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MTMomentumOpKernel<paddle::platform::CUDADeviceContext,
