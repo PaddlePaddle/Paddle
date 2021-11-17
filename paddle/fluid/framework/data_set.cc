@@ -601,8 +601,8 @@ void MultiSlotDataset::TDMSample(const std::string tree_name,
       std::vector<Record> tmp_vec;
       tmp_vec.emplace_back(tmp_results[j]);
       sample_results.emplace_back(tmp_vec);
-      VLOG(0) << "finish to put sample in vector!";
     }
+    VLOG(0) << "finish to put sample in vector!";
   }
 
   auto output_channel_num = multi_output_channel_.size();
