@@ -1695,6 +1695,22 @@ class Executor(object):
                 dataset.set_thread(1)
                 dataset.set_filelist(['None'])
                 dataset.set_use_var(data_vars)
+
+                ## set executor for heter trainer
+                heter_device_type = os.getenv("HETER_DEVICE_TYPE",
+                                              "cpu").lower()
+                assert heter_device_type in (
+                    "cpu", "gpu"), "HETER_DEVICE_TYPE should be cpu,gpu or xpu"
+                heter_place = "cpu"
+                ## now only support gpu
+                if heter_device_type == "gpu":
+                    heter_device_id = os.getenv("FLAGS_selected_gpus", "0")
+                    heter_place = ":".join((heter_device_type, heter_device_id))
+                heter_place = framework._get_paddle_place(heter_place)
+                p = core.Place()
+                p.set_place(heter_place)
+                self._default_executor = core.Executor(p)
+
             else:
                 if dataset is None:
                     raise RuntimeError(
