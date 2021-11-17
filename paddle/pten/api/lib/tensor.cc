@@ -260,11 +260,11 @@ gpuStream_t Tensor::stream() const {
 
 template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  LOG(WARNING) << "The Tensor `copy_to` method is deprecated since version "
+  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
                   "2.3, and will be removed in version 2.4, please use `to` "
                   "method instead. "
-                  "reasion: copying a Tensor to another device does not need "
-                  "to specify the data type.";
+                  "reason: copying a Tensor to another device does not need "
+                  "to specify the data type template argument.";
   return to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
 }
 

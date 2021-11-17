@@ -318,9 +318,10 @@ class PD_DLL_DECL Tensor final {
   /**
    * @brief Copy the current Tensor data to the specified device
    * and return the new Tensor. It's usually used to set the input tensor data.
-   * Note: The Tensor `copy_to` method is deprecated since version 2.3, and
-   * will be removed in version 2.4, please use `to` method instead. reasion:
-   * copying a Tensor to another device does not need to specify the data type.
+   * Note: The Tensor's `copy_to` method is deprecated since version 2.3, and
+   * will be removed in version 2.4, please use `to` method instead. reason:
+   * copying a Tensor to another device does not need to specify the
+   * data type template argument
    *
    * @tparam T
    * @param target_place, the target place of which the tensor will copy to.
@@ -335,7 +336,8 @@ class PD_DLL_DECL Tensor final {
    * @param place, the target place of which the tensor will copy to.
    * @return Tensor
    */
-  // TODO(chnweihang): replace Backend by new Place
+  // TODO(chenweihang): replace Backend by new Place, may be append dtype and
+  // layout arguments in the future
   Tensor to(Backend backend, bool blocking) const;
 
   /**
