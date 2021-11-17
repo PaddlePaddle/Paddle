@@ -34,6 +34,7 @@ class TensorConfig:
 
     def __init__(self,
                  lod: Optional[List[List[int]]]=None,
+                 shape: Optional[List[List[int]]]=None,
                  data_gen: Optional[Callable[..., np.array]]=None):
         '''
         shape: The shape of the tensor.
@@ -42,9 +43,15 @@ class TensorConfig:
         '''
         self.lod = lod
         self.data_gen = data_gen
-        self.data = data_gen()
-        self.dtype = data_gen().dtype
-        self.shape = data_gen().shape
+        if data_gen is not None:
+            self.data = data_gen()
+            self.shape = self.data.shape
+            self.dtype = self.data.dtype
+        else:
+            assert shape is not None, "While data_gen is not defined, shape must not be None"
+            self.data = np.random.normal(0.0, 1.0, shape).astype(np.float32)
+            self.shape = shape
+            self.dtype = np.float32
 
     def __repr__(self):
         return str({'shape': self.shape, 'lod': self.lod, 'dtype': self.dtype})
@@ -57,11 +64,14 @@ class OpConfig:
                  type: str,
                  inputs: Dict[str, List[str]],
                  outputs: Dict[str, List[str]],
-                 attrs: Dict[str, Any]):
+                 attrs: Optional[Dict[str, Any]] = None,
+                 **kwargs):
         self.type = type
         self.inputs = inputs
         self.outputs = outputs
-        self.attrs = attrs
+        if attrs is None:
+            self.attrs = {}
+        self.attrs.update(kwargs)
 
     def __repr__(self):
         log_str = self.type
