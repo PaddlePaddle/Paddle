@@ -40,5 +40,18 @@ extern AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size);
 
 extern uint64_t Release(const platform::Place& place);
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+extern std::shared_ptr<Allocation> AllocShared(const platform::CUDAPlace& place,
+                                               const cudaStream_t& stream,
+                                               size_t size);
+
+extern AllocationPtr Alloc(const platform::CUDAPlace& place,
+                           const cudaStream_t& stream, size_t size);
+
+extern uint64_t Release(const platform::CUDAPlace& place,
+                        const cudaStream_t& stream);
+
+void RecordStream(Allocation* allocation, const cudaStream_t& stream);
+#endif
 }  // namespace memory
 }  // namespace paddle

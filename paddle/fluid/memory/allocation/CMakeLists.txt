@@ -88,7 +88,7 @@ endif()
 cc_library(aligned_allocator SRCS aligned_allocator.cc DEPS allocator)
 cc_test(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS aligned_allocator)
 cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags ${AllocatorFacadeDeps})
-cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy)
+cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy stream_safe_cuda_allocator)
 
 if (WITH_GPU)
   target_link_libraries(allocator_facade cuda_graph)
@@ -113,6 +113,7 @@ cc_library(auto_growth_best_fit_allocator SRCS auto_growth_best_fit_allocator.cc
 cc_test(auto_growth_best_fit_allocator_facade_test SRCS auto_growth_best_fit_allocator_facade_test.cc DEPS cpu_allocator auto_growth_best_fit_allocator)
 cc_test(auto_growth_best_fit_allocator_test SRCS auto_growth_best_fit_allocator_test.cc DEPS auto_growth_best_fit_allocator)
 
+cc_library(stream_safe_cuda_allocator SRCS stream_safe_cuda_allocator.cc DEPS allocator)
 cc_library(virtual_memory_auto_growth_best_fit_allocator SRCS virtual_memory_auto_growth_best_fit_allocator.cc DEPS allocator aligned_allocator)
 
 if(NOT WIN32)
