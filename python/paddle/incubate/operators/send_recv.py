@@ -25,8 +25,8 @@ def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
 
     This operator is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
-    to gather the corresponding positions, and then use `dst_index` to scatter the corresponding output tensor in different
-    pooling types, like sum, mean, max, or min.
+    to gather the corresponding data, and then use `dst_index` to update the corresponding position of output tensor 
+    in different pooling types, like sum, mean, max, or min.
 
     .. code-block:: text
 
