@@ -636,7 +636,7 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   if (thread_num == -1) {
     thread_num = thread_num_;
   }
-  VLOG(1) << "start global shuffle threads, num = " << thread_num;
+  VLOG(3) << "start global shuffle threads, num = " << thread_num;
   for (int i = 0; i < thread_num; ++i) {
     global_shuffle_threads.push_back(std::thread(global_shuffle_func));
   }
@@ -647,7 +647,7 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   global_shuffle_threads.shrink_to_fit();
   input_channel_->Clear();
   timeline.Pause();
-  VLOG(1) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
+  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
 }
 
@@ -928,10 +928,6 @@ int64_t DatasetImpl<T>::GetShuffleDataSize() {
   int64_t sum = 0;
   for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
     sum += multi_output_channel_[i]->Size() + multi_consume_channel_[i]->Size();
-    VLOG(1) << "GetShuffleDataSize output_channel " << i
-            << "multi_output_channel_.size " << multi_output_channel_[i]->Size()
-            << "multi_consume_channel_.size "
-            << multi_consume_channel_[i]->Size();
   }
   return sum;
 }
@@ -939,7 +935,7 @@ int64_t DatasetImpl<T>::GetShuffleDataSize() {
 int MultiSlotDataset::ReceiveFromClient(int msg_type, int client_id,
                                         const std::string& msg) {
 #ifdef _LINUX
-  VLOG(1) << "ReceiveFromClient msg_type=" << msg_type
+  VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
           << ", client_id=" << client_id << ", msg length=" << msg.length();
   if (msg.length() == 0) {
     return 0;
@@ -966,7 +962,7 @@ int MultiSlotDataset::ReceiveFromClient(int msg_type, int client_id,
     index = global_index_++;
   }
   index = index % channel_num_;
-  VLOG(1) << "ramdom index=" << index;
+  VLOG(3) << "ramdom index=" << index;
   multi_output_channel_[index]->Write(std::move(data));
 
   data.clear();
