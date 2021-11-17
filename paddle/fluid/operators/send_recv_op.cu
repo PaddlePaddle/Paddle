@@ -137,14 +137,14 @@ __global__ void ManipulateMinMaxGradCUDAKernel(
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx) {
+void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
+                                      const Tensor& src_index) {
   auto* X = ctx.Input<Tensor>("X");
-  auto* src_index = ctx.Input<Tensor>("Src_index");
   auto* dst_index = ctx.Input<Tensor>("Dst_index");
   auto* Y = ctx.Output<Tensor>("Out");
   std::string pool_type = ctx.Attr<std::string>("pool_type");
 
-  const int& index_size = src_index->dims()[0];
+  const int& index_size = src_index.dims()[0];
 
   T* p_output = Y->mutable_data<T>(ctx.GetPlace());
   const auto& src_dims = X->dims();
@@ -176,7 +176,7 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx) {
     slice_size *= src_dims[i];
   }
   const T* p_src = X->data<T>();
-  const IndexT* s_index = src_index->data<IndexT>();
+  const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index->data<IndexT>();
 
   int block = 512;
@@ -253,14 +253,13 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx) {
 
 template <typename DeviceContext, typename T, typename IndexT>
 void SendRecvGradOpCUDAKernelLaunchHelper(
-    const framework::ExecutionContext& ctx) {
+    const framework::ExecutionContext& ctx, const Tensor& src_index) {
   auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto* src_index = ctx.Input<Tensor>("Dst_index");
   auto* dst_index = ctx.Input<Tensor>("Src_index");
   auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
   std::string pool_type = ctx.Attr<std::string>("pool_type");
 
-  const int& index_size = src_index->dims()[0];
+  const int& index_size = src_index.dims()[0];
   if (index_size == 0) return;
 
   T* p_output = Y->mutable_data<T>(ctx.GetPlace());
@@ -282,7 +281,7 @@ void SendRecvGradOpCUDAKernelLaunchHelper(
     slice_size *= src_dims[i];
   }
   const T* p_src = X->data<T>();
-  const IndexT* s_index = src_index->data<IndexT>();
+  const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index->data<IndexT>();
 
   int block = 512;
@@ -327,9 +326,10 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
     auto index_type = src_index->type();
 
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx);
+      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(ctx);
+      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(ctx,
+                                                                  *src_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Src_index or Dst_index type, Expected int, int64, but "
@@ -346,9 +346,11 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
     auto* src_index = ctx.Input<Tensor>("Dst_index");
     auto index_type = src_index->type();
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx);
+      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx,
+                                                                  *src_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(ctx);
+      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
+          ctx, *src_index);
     }
   }
 };

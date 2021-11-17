@@ -166,13 +166,13 @@ void send_recv_cpu_for_loop_grad(const int& input_size, const int& index_size,
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-void SendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx) {
+void SendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx,
+                                  const Tensor& src_index) {
   auto* X = ctx.Input<Tensor>("X");
-  auto* src_index = ctx.Input<Tensor>("Src_index");
   auto* dst_index = ctx.Input<Tensor>("Dst_index");
   auto* Y = ctx.Output<Tensor>("Out");
 
-  const int& index_size = src_index->dims()[0];
+  const int& index_size = src_index.dims()[0];
 
   T* p_output = Y->mutable_data<T>(ctx.GetPlace());
   const auto& src_dims = X->dims();
@@ -183,7 +183,7 @@ void SendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx) {
 
   if (index_size == 0) return;
 
-  const IndexT* s_index = src_index->data<IndexT>();
+  const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index->data<IndexT>();
   const std::string& pool_type = ctx.Attr<std::string>("pool_type");
   if (pool_type == "SUM") {
@@ -206,13 +206,13 @@ void SendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx) {
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-void SendRecvGradOpKernelLaunchHelper(const framework::ExecutionContext& ctx) {
+void SendRecvGradOpKernelLaunchHelper(const framework::ExecutionContext& ctx,
+                                      const Tensor& src_index) {
   auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto* src_index = ctx.Input<Tensor>("Dst_index");
   auto* dst_index = ctx.Input<Tensor>("Src_index");
   auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  const int& index_size = src_index->dims()[0];
+  const int& index_size = src_index.dims()[0];
 
   T* p_output = Y->mutable_data<T>(ctx.GetPlace());
   const auto& src_dims = X->dims();
@@ -223,7 +223,7 @@ void SendRecvGradOpKernelLaunchHelper(const framework::ExecutionContext& ctx) {
 
   if (index_size == 0) return;
 
-  const IndexT* s_index = src_index->data<IndexT>();
+  const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index->data<IndexT>();
 
   const std::string& pool_type = ctx.Attr<std::string>("pool_type");
@@ -254,9 +254,9 @@ class SendRecvOpKernel : public framework::OpKernel<T> {
     auto index_type = src_index->type();
 
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvOpKernelLaunchHelper<DeviceContext, T, int>(ctx);
+      SendRecvOpKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx);
+      SendRecvOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx, *src_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Src_index or Dst_index type, Expected int, int64, but "
@@ -274,9 +274,10 @@ class SendRecvGradOpKernel : public framework::OpKernel<T> {
     auto index_type = src_index->type();
 
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int>(ctx);
+      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx);
+      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx,
+                                                                  *src_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Src_index or Dst_index type, Expected int, int64, but "
