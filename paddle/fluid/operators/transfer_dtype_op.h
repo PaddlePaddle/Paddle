@@ -36,7 +36,6 @@ class Variable;
 
 namespace paddle {
 namespace operators {
-using DataLayout = framework::DataLayout;
 
 class TransferDtypeFunctor {
  public:
