@@ -292,7 +292,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
   if (variable->IsType<framework::LoDTensor>()) {
     auto* tensor = variable->GetMutable<framework::LoDTensor>();
 
-    auto dtype = pten::TransToProtoVarType(src->data_type());
+    auto dtype = pten::TransToProtoVarType(src->dtype());
     tensor->Resize(src->dims());
     SetLoD(tensor->mutable_lod(), src->lod());
 
@@ -314,7 +314,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
 
   } else if (variable->IsType<framework::SelectedRows>()) {
     auto* tensor = variable->GetMutable<framework::SelectedRows>();
-    auto dtype = pten::TransToProtoVarType(src->data_type());
+    auto dtype = pten::TransToProtoVarType(src->dtype());
 
     if (tensor->value().IsInitialized()) {
     } else {
