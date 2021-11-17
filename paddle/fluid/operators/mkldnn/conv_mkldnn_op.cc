@@ -302,7 +302,6 @@ class ConvMKLDNNHandlerT
      * ('any') which lets a primitive (convolution in this case) choose
      * the memory format preferred for best performance
      */
-    auto chosen_memory_format = MKLDNNMemoryFormat::any;
     auto data_type = mkldnn::memory::data_type::f32;
     if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
         std::is_same<T_out, platform::bfloat16>::value)
@@ -312,17 +311,18 @@ class ConvMKLDNNHandlerT
     if (platform::is_int8<T>()) {
       src_md = platform::MKLDNNMemDesc(
           src_tz, framework::ToMKLDNNDataType(input->type()),
-          chosen_memory_format);
+          MKLDNNMemoryFormat::any);
       weights_md = platform::MKLDNNMemDesc(
-          weights_tz, mkldnn::memory::data_type::s8, chosen_memory_format);
+          weights_tz, mkldnn::memory::data_type::s8, MKLDNNMemoryFormat::any);
     } else {
-      src_md = platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+      src_md =
+          platform::MKLDNNMemDesc(src_tz, data_type, MKLDNNMemoryFormat::any);
       weights_md = platform::MKLDNNMemDesc(weights_tz, data_type,
                                            MKLDNNMemoryFormat::any);
     }
 
     const auto dst_md = platform::MKLDNNMemDesc(
-        dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
+        dst_tz, platform::MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
     const auto fwd_prop_kind = is_test_ ? mkldnn::prop_kind::forward_inference
                                         : mkldnn::prop_kind::forward_training;
 
@@ -427,21 +427,18 @@ class ConvMKLDNNHandlerT
      * ('any') which lets a primitive (conv backward in this case) choose
      * the memory format preferred for best performance
      */
-    const auto chosen_memory_format = MKLDNNMemoryFormat::any;
-    const auto weights_format = MKLDNNMemoryFormat::any;
-
     auto src_md = platform::MKLDNNMemDesc(
-        src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
+        src_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
     const auto dst_md = platform::MKLDNNMemDesc(
-        dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
+        dst_tz, platform::MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
     auto diff_src_md = platform::MKLDNNMemDesc(
-        src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
+        src_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
     auto weights_md = platform::MKLDNNMemDesc(
-        weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
+        weights_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
     auto diff_weights_md = platform::MKLDNNMemDesc(
-        weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
+        weights_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
     auto diff_dst_md = platform::MKLDNNMemDesc(
-        dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
+        dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
     auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
     std::transform(dilations.begin(), dilations.end(), dilations.begin(),
