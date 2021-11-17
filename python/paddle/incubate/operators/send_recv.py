@@ -21,12 +21,32 @@ from paddle.fluid import core
 def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
     r"""
 
-    Send Recv Operator.
+    Graph Learning Send_Recv combine operator.
 
-    This operator is mainly used in Graph domain, and the main purpose is to reduce intermediate memory 
+    This operator is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
     to gather the corresponding positions, and then use `dst_index` to scatter the corresponding output tensor in different
     pooling types, like sum, mean, max, or min.
+
+    .. code-block:: text
+
+           Given:
+
+           X = [[0, 2, 3],
+                [1, 4, 5],
+                [2, 6, 7]]
+
+           src_index = [0, 1, 2, 0]
+
+           dst_index = [1, 2, 1, 0]
+
+           pool_type = "sum"
+
+           Then:
+
+           Out = [[0, 2, 3],
+                  [2, 8, 10],
+                  [1, 4, 5]]
 
     Args:
         x (Tensor): The input tensor, and the available data type is float32, float64, int32, int64.
@@ -39,14 +59,14 @@ def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape as input tensor `x`.
+        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
             import numpy as np
+            import paddle
             x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]), dtype="float32")
             indexes = paddle.to_tensor(np.array([[0, 1], [1, 2], [2, 1], [0, 0]]), dtype="int32")
             src_index = indexes[:, 0]

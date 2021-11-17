@@ -66,13 +66,23 @@ __global__ void SendRecvCUDAKernel(const T* params, const IndexT* src_indices,
   }
 }
 
-// For min and max
+// For max
 template <typename T>
-__global__ void InputResetCUDAKernel(T* output, size_t input_size,
-                                     size_t slice_size) {
+__global__ void InputResetMaxCUDAKernel(T* output, size_t input_size,
+                                        size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
-    if (*(output + i) == std::numeric_limits<T>::min() ||
-        *(output + i) == std::numeric_limits<T>::max()) {
+    if (*(output + i) == std::numeric_limits<T>::min()) {
+      *(output + i) = 0;
+    }
+  }
+}
+
+// For min
+template <typename T>
+__global__ void InputResetMinCUDAKernel(T* output, size_t input_size,
+                                        size_t slice_size) {
+  CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
+    if (*(output + i) == std::numeric_limits<T>::max()) {
       *(output + i) = 0;
     }
   }
@@ -138,9 +148,9 @@ __global__ void ManipulateMinMaxGradCUDAKernel(
 
 template <typename DeviceContext, typename T, typename IndexT>
 void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
-                                      const Tensor& src_index) {
+                                      const Tensor& src_index,
+                                      const Tensor& dst_index) {
   auto* X = ctx.Input<Tensor>("X");
-  auto* dst_index = ctx.Input<Tensor>("Dst_index");
   auto* Y = ctx.Output<Tensor>("Out");
   std::string pool_type = ctx.Attr<std::string>("pool_type");
 
@@ -177,11 +187,18 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
   }
   const T* p_src = X->data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
-  const IndexT* d_index = dst_index->data<IndexT>();
+  const IndexT* d_index = dst_index.data<IndexT>();
 
-  int block = 512;
+#ifdef PADDLE_WITH_HIP
+  int block = 256;
+#else
+  int block = 1024;
+#endif
   int64_t n = slice_size * index_size;
-  int64_t grid = (n + block - 1) / block;
+  const auto& dev_ctx = ctx.cuda_device_context();
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int64_t grid_tmp = (n + block - 1) / block;
+  int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
   if (pool_type == "SUM") {
     SendRecvSumCUDAFunctor<T, IndexT> functor;
@@ -198,8 +215,10 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
                             .stream()>>>(p_src, s_index, d_index, p_output,
                                          index_size, slice_size, functor);
 
-    int64_t grid_max = (input_size * slice_size + block - 1) / block;
-    InputResetCUDAKernel<
+    int64_t grid_max_tmp = (input_size * slice_size + block - 1) / block;
+    int64_t grid_max =
+        grid_max_tmp < max_grid_dimx ? grid_max_tmp : max_grid_dimx;
+    InputResetMaxCUDAKernel<
         T><<<grid_max, block, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(
                  ctx.device_context())
@@ -212,8 +231,10 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
                             .stream()>>>(p_src, s_index, d_index, p_output,
                                          index_size, slice_size, functor);
 
-    int64_t grid_min = (input_size * slice_size + block - 1) / block;
-    InputResetCUDAKernel<
+    int64_t grid_min_tmp = (input_size * slice_size + block - 1) / block;
+    int64_t grid_min =
+        grid_min_tmp < max_grid_dimx ? grid_min_tmp : max_grid_dimx;
+    InputResetMinCUDAKernel<
         T><<<grid_min, block, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(
                  ctx.device_context())
@@ -242,7 +263,9 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
                          ctx.device_context())
                          .stream()>>>(p_dst_count, d_index, index_size);
 
-    int64_t grid_mean = (input_size * slice_size + block - 1) / block;
+    int64_t grid_mean_tmp = (input_size * slice_size + block - 1) / block;
+    int64_t grid_mean =
+        grid_mean_tmp < max_grid_dimx ? grid_mean_tmp : max_grid_dimx;
     ManipulateMeanCUDAKernel<
         T><<<grid_mean, block, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(
@@ -253,14 +276,13 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
 
 template <typename DeviceContext, typename T, typename IndexT>
 void SendRecvGradOpCUDAKernelLaunchHelper(
-    const framework::ExecutionContext& ctx, const Tensor& src_index) {
+    const framework::ExecutionContext& ctx, const Tensor& src_index,
+    const Tensor& dst_index) {
   auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto* dst_index = ctx.Input<Tensor>("Src_index");
   auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
   std::string pool_type = ctx.Attr<std::string>("pool_type");
 
   const int& index_size = src_index.dims()[0];
-  if (index_size == 0) return;
 
   T* p_output = Y->mutable_data<T>(ctx.GetPlace());
   const auto& src_dims = X->dims();
@@ -276,19 +298,27 @@ void SendRecvGradOpCUDAKernelLaunchHelper(
   cudaMemset(p_output, 0, memset_bytes);
 #endif
 
+  if (index_size == 0) return;
+
   int64_t slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) {
     slice_size *= src_dims[i];
   }
   const T* p_src = X->data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
-  const IndexT* d_index = dst_index->data<IndexT>();
+  const IndexT* d_index = dst_index.data<IndexT>();
 
-  int block = 512;
+#ifdef PADDLE_WITH_HIP
+  int block = 256;
+#else
+  int block = 1024;
+#endif
   int64_t n = slice_size * index_size;
-  int64_t grid = (n + block - 1) / block;
+  const auto& dev_ctx = ctx.cuda_device_context();
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int64_t grid_tmp = (n + block - 1) / block;
+  int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
-
   if (pool_type == "SUM") {
     SendRecvSumCUDAFunctor<T, IndexT> functor;
     SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
@@ -323,18 +353,21 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Src_index");
-    auto index_type = src_index->type();
+    auto* dst_index = ctx.Input<Tensor>("Dst_index");
+    auto src_index_type = src_index->type();
+    auto dst_index_type = dst_index->type();
 
-    if (index_type == framework::proto::VarType::INT32) {
-      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(ctx,
-                                                                  *src_index);
+    if (src_index_type == framework::proto::VarType::INT32) {
+      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index,
+                                                              *dst_index);
+    } else if (src_index_type == framework::proto::VarType::INT64) {
+      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
+          ctx, *src_index, *dst_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported Src_index or Dst_index type, Expected int, int64, but "
+          "Unsupported Src_index or Dst_index dtype, expected int, int64, but "
           "got %s.",
-          index_type));
+          src_index_type));
     }
   }
 };
@@ -344,13 +377,20 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Dst_index");
+    auto* dst_index = ctx.Input<Tensor>("Src_index");
     auto index_type = src_index->type();
+
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx,
-                                                                  *src_index);
+      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(
+          ctx, *src_index, *dst_index);
     } else if (index_type == framework::proto::VarType::INT64) {
       SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
-          ctx, *src_index);
+          ctx, *src_index, *dst_index);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported Src_index or Dst_index dtype, expected int, int64, but "
+          "got %s.",
+          src_index_type));
     }
   }
 };

@@ -59,7 +59,11 @@ class SendRecvOP : public framework::OperatorWithKernel {
                                             dst_index_dims.size()));
     }
 
-    // TODO(daisiming): If the shape of src_index and dst_index should be same?
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0], dst_index_dims[0],
+        platform::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
+
     auto dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dims);
 
@@ -117,14 +121,14 @@ class SendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     // TODO(daisiming): Add a simple example here.
     AddComment(R"DOC(
-SendRecv Operator.
+Graph Learning Send_Recv combine operator.
 
 $Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
 
-This operator is mainly used in Graph domain, and the main purpose is to reduce 
+This operator is mainly used in Graph Learning domain, and the main purpose is to reduce 
 intermediate memory consumption in the process of message passing. 
 Take `x` as the input tensor, we first use `src_index` to gather corresponding 
-positions, and then scatter the corresponding output tensor in different pooling 
+positions, and then use `dst_index` to scatter the corresponding output tensor in different pooling 
 types, like sum, mean, max, or min.
 
 )DOC");
