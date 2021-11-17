@@ -52,14 +52,15 @@ struct DenseTensorMeta {
 
   /// During the entire life cycle of a DenseTensor, the following attributes
   /// marked with `const` are expected to remain unchanged.
-  const bool is_scalar{false};
+  bool is_scalar{false};
   DDim dims;
-  const DataType dtype{DataType::UNDEFINED};
-  const DataLayout layout{DataLayout::NCHW};
+  DataType dtype{DataType::UNDEFINED};
+  DataLayout layout{DataLayout::NCHW};
   LoD lod;
   size_t offset{0};
 };
 
+<<<<<<< HEAD
 inline DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {}
 
@@ -90,4 +91,6 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
 
+=======
+>>>>>>> d08753df36986f5a5a7384f092c578c296e5150b
 }  // namespace pten

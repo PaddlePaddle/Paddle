@@ -61,6 +61,8 @@ USE_OP(elementwise_max);
 USE_OP(elementwise_div);
 USE_OP(sgd);
 USE_OP(squared_l2_norm);
+USE_OP(memcpy_h2d);
+USE_OP(memcpy_d2h);
 
 paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
