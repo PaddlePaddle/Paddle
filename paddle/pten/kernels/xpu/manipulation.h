@@ -40,7 +40,7 @@ void ReshapeFromDT(const XPUContext& dev_ctx,
 
 void ReshapeFromVectorVal(const XPUContext& dev_ctx,
                           const DenseTensor& x,
-                          const std::vector<int>& shape,
+                          const std::vector<int64_t>& shape,
                           DenseTensor* out);
 
 void ReshapeFromVectorDT(const XPUContext& dev_ctx,
