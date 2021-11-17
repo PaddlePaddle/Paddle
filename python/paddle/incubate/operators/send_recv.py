@@ -50,8 +50,8 @@ def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
 
     Args:
         x (Tensor): The input tensor, and the available data type is float32, float64, int32, int64.
-        src_index (Tensor): An 1-d tensor, and the available data type is int32, int64.
-        dst_index (Tensor): An 1-d tensor, and should have the same shape as `src_index`. 
+        src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
+        dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
         pool_type (str): The pooling type of send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
@@ -67,6 +67,7 @@ def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
 
             import numpy as np
             import paddle
+
             x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]), dtype="float32")
             indexes = paddle.to_tensor(np.array([[0, 1], [1, 2], [2, 1], [0, 0]]), dtype="int32")
             src_index = indexes[:, 0]

@@ -119,7 +119,6 @@ class SendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
                          "tensors of Dst_index.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
-    // TODO(daisiming): Add a simple example here.
     AddComment(R"DOC(
 Graph Learning Send_Recv combine operator.
 
