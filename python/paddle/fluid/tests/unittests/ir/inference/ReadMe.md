@@ -66,7 +66,9 @@ Ran 1 test in 5.225s
 OK
 ```
 其中，
-`Generated Programs`表示随机生成的Program总数
-`Invalid Programs`表示其中非法Program的个数，这些将被过滤，不跑测试
-`Ran Programs`表示进行了测试的Program个数
-`Skipped Tessts`表示被跳过的测试次数（这些测试不管是否测试通过，都不会报错），测试次数=Program个数 * PredictorConfig个数
+- `Generated Programs`表示随机生成的Program总数
+- `Invalid Programs`表示其中非法Program的个数，这些将被过滤，不跑测试
+- `Ran Programs`表示进行了测试的Program个数
+- `Skipped Tests`表示被跳过的测试次数（这些测试不管是否测试通过，都不会报错），测试次数=Program个数 * PredictorConfig个数
+
+如若Invalid Programs个数太多，或者`Skipped Tests`太多，都表示实际测试成功的case太少，开发者可以调整产生参数的随机策略，或者加大`self.run_and_statis`中函数的`max_examples`个数
