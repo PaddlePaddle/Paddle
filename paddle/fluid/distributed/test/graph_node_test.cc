@@ -566,7 +566,7 @@ void RunBrpcPushSparse() {
   res = client1.batch_sample_neighbors(std::string("user2item"), node_ids, 4,
                                        true, false);
 
-  ASSERT_EQ(res.first[0].size(), 2);
+  ASSERT_EQ(res.first[1].size(), 1);
   std::vector<uint64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
   ASSERT_EQ(nodes_ids.size(), 2);
   ASSERT_EQ(true, (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
