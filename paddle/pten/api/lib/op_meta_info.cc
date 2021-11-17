@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/extension/include/ext_op_meta_info.h"
+#include "paddle/pten/api/ext/op_meta_info.h"
 
 #include <string>
 #include <unordered_map>
@@ -72,7 +72,8 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
   auto& info_vector = OpMetaInfoMap::Instance()[name_];
   // index check
   PADDLE_ENFORCE_EQ(
-      info_vector.size(), index_,
+      info_vector.size(),
+      index_,
       platform::errors::PreconditionNotMet(
           "The operator %s's meta info register failed. "
           "Please make sure you call marcos as order `PD_BUILD_OP`, "
@@ -122,7 +123,8 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc func) {
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
   PADDLE_ENFORCE_EQ(
-      index_, 0UL,
+      index_,
+      0UL,
       platform::errors::Unimplemented(
           "Currently, the InferShapeFn setting of Grad Op is not supported, "
           "And backward Tensor `X@GRAD` will use the shape of forward Tensor "
@@ -133,7 +135,8 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   PADDLE_ENFORCE_EQ(
-      index_, 0UL,
+      index_,
+      0UL,
       platform::errors::Unimplemented(
           "Currently, the InferDtypeFn setting of Grad Op is not supported, "
           "And backward Tensor `X@GRAD` will use the dtype of forward Tensor "

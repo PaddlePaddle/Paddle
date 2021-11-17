@@ -106,20 +106,7 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 2), 1e-5
 
-    def add_skip_trt_case(self):
-        def teller(program_config, predictor_config):
-            if len(self.dynamic_shape.
-                   min_input_shape) == 0 and self.input_dim == 2:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: the output of trt and GPU has diff when inputs' dims is 2 in static shape mode."
-        )
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

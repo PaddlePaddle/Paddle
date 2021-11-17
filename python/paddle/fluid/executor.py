@@ -598,13 +598,13 @@ class _ExecutorCache(object):
         assert isinstance(
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
-        if program not in self._cached_executors:
+        if str(program) not in self._cached_executors:
             new_program = program.clone()
             _prune_feed_ops(new_program)
             new_exe = _StandaloneExecutor(self._place, new_program, scope)
-            self._cached_executors[program] = new_exe
+            self._cached_executors[str(program)] = new_exe
 
-        return self._cached_executors[program]
+        return self._cached_executors[str(program)]
 
 
 class Executor(object):
@@ -1672,6 +1672,33 @@ class Executor(object):
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
             dataset.set_use_var(data_vars)
+        elif program._heter_pipeline_opt is not None:
+            stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            if stage_id != 0:
+                import paddle
+                if dataset is not None:
+                    raise RuntimeError(
+                        "dataset should be None for heter pipeline mode")
+                # The following fake dataset is created to call 
+                # the _prepare_trainer api, and it is meaningless.
+                data_vars = []
+                for var in program.global_block().vars.values():
+                    if var.is_data:
+                        data_vars.append(var)
+                if core.is_compiled_with_npu():
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'InMemoryDataset')
+                else:
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'FileInstantDataset')
+                dataset.set_batch_size(1)
+                dataset.set_thread(1)
+                dataset.set_filelist(['None'])
+                dataset.set_use_var(data_vars)
+            else:
+                if dataset is None:
+                    raise RuntimeError(
+                        "dataset is need and should be initialized")
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")
@@ -1890,6 +1917,7 @@ class Executor(object):
         cur_rank = os.getenv("PADDLE_TRAINER_ID")
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+        nrank = 1
         if cur_rank and trainer_endpoints_str:
             fleet_exe_desc.cur_rank = int(cur_rank)
             trainer_endpoints = trainer_endpoints_str.split(',')
@@ -1898,8 +1926,16 @@ class Executor(object):
                 rank_info.rank = rank
                 rank_info.ip_port = endpoint
                 fleet_exe_desc.cluster_info.append(rank_info)
+            nrank = len(trainer_endpoints)
         else:
             logging.warning("Fleet Executor will run on single device only.")
+        fleet_opt = program._pipeline_opt["fleet_opt"]
+        if "dist_strategy" in fleet_opt:
+            fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
+            fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
+            fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
+        num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
+        assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         fleet_exe.init(program._pipeline_opt["section_program"].desc)
         fleet_exe.run()
