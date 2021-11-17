@@ -951,10 +951,8 @@ CPU_PARALLEL_JOB = [
     'test_create_op_doc_string',
     'test_create_global_var',
     'test_cpu_quantize_placement_pass',
-    'test_cpu_quantize_pass',
     'test_cpu_bfloat16_placement_pass',
     'test_cpu_bfloat16_pass',
-    'test_conv_elementwise_add_mkldnn_fuse_pass',
     'test_conv_concat_relu_mkldnn_fuse_pass',
     'test_conv_bias_mkldnn_fuse_pass',
     'test_conv_batch_norm_mkldnn_fuse_pass',
@@ -996,7 +994,6 @@ CPU_PARALLEL_JOB = [
     'stringprintf_test',
     'stringpiece_test',
     'split_test',
-    'selected_rows_test',
     'selected_rows_functor_test',
     'scope_test',
     'scatter_test',
@@ -1032,7 +1029,6 @@ CPU_PARALLEL_JOB = [
     'lod_tensor_test',
     'test_check_abi',
     'lodtensor_printer_test',
-    'jit_kernel_test',
     'test_dispatch_jit',
     'inlined_vector_test',
     'infer_io_utils_tester',
@@ -1280,7 +1276,6 @@ TETRAD_PARALLEL_JOB = [
     'test_analyzer_bert',
     'test_analyzer_googlenet',
     'test_fleet_base',
-    'test_imperative_layers',
     'test_dgc_momentum_op',
     'test_memcpy_op',
     'test_dgc_op',
@@ -1292,9 +1287,12 @@ TETRAD_PARALLEL_JOB = [
     'test_collective_split_embedding',
     'float16_gpu_test',
     'test_leaky_relu_grad_grad_functor',
-    'test_complex_simplenet',
     'selected_rows_functor_gpu_test',
     'test_imperative_framework',
+    'selected_rows_test',
+    'test_conv_elementwise_add_mkldnn_fuse_pass',
+    'test_cpu_quantize_pass',
+    'jit_kernel_test',
 ]
 
 # It run 2 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED,
@@ -1668,6 +1666,8 @@ TWO_PARALLEL_JOB = [
     'test_analyzer_ernie',
     'lite_resnet50_test',
     'lite_mul_model_test',
+    'test_complex_simplenet',
+    'test_imperative_layers',
 ]
 
 
