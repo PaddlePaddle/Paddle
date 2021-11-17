@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
@@ -236,11 +237,18 @@ template PD_DLL_DECL paddle::platform::complex<double>
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>();
 
+// TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The slice operation is not supported now, "
-      "and it will be implemented by calling the slice kernel later."));
-  return Tensor();
+  if (detail::IsDenseTensor(impl_)) {
+    return Tensor(std::make_shared<pten::DenseTensor>(
+        std::move(pten::CompatibleDenseTensorUtils::Slice(
+            std::dynamic_pointer_cast<pten::DenseTensor>(impl_).get(),
+            begin_idx,
+            end_idx))));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only supported slice operation on DenseTensor now."));
+  }
 }
 
 std::shared_ptr<pten::TensorBase> Tensor::impl() const { return impl_; }
