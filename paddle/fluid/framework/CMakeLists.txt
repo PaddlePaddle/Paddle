@@ -29,8 +29,6 @@ add_subdirectory(new_executor)
 if (WITH_CINN)
   add_subdirectory(paddle2cinn)
 endif()
-#tdm lib
-proto_library(index_dataset_proto SRCS index_dataset.proto)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -230,7 +228,6 @@ elseif(WITH_ROCM)
 endif()
 
 if(WITH_PYTHON)
-  py_proto_compile(index_dataset_py_proto SRCS index_dataset.proto)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
