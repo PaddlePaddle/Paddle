@@ -354,20 +354,19 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Src_index");
     auto* dst_index = ctx.Input<Tensor>("Dst_index");
-    auto src_index_type = src_index->type();
-    auto dst_index_type = dst_index->type();
+    auto index_type = src_index->type();
 
-    if (src_index_type == framework::proto::VarType::INT32) {
+    if (index_type == framework::proto::VarType::INT32) {
       SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index,
                                                               *dst_index);
-    } else if (src_index_type == framework::proto::VarType::INT64) {
+    } else if (index_type == framework::proto::VarType::INT64) {
       SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
           ctx, *src_index, *dst_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Src_index or Dst_index dtype, expected int, int64, but "
           "got %s.",
-          src_index_type));
+          index_type));
     }
   }
 };
@@ -390,7 +389,7 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Src_index or Dst_index dtype, expected int, int64, but "
           "got %s.",
-          src_index_type));
+          index_type));
     }
   }
 };
