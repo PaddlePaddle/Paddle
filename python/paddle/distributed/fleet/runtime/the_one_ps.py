@@ -528,7 +528,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         send_ctx = self.compiled_strategy.get_the_one_send_context(
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
-            use_origin_program=True,
+            use_origin_program=self.role_maker._is_heter_parameter_server_mode,
             ep_list=endpoints)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
