@@ -64,7 +64,7 @@ void FleetExecutor::InitMessageBus() {
   }
   if (addr == "") {
     PADDLE_ENFORCE_EQ(
-        rank_to_addr.size(), 0,
+        rank_to_addr.size(), 1,
         platform::errors::NotFound("Empty address is not valid for "
                                    "paddle.distributed.launch method."));
     PADDLE_ENFORCE_EQ(
