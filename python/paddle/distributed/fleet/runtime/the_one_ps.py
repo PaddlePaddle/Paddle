@@ -913,11 +913,11 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _stop_worker(self):
         self._communicator.stop()
-        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-        ):
+        if self.role_maker._is_heter_parameter_server_mode:
+            assert self._heter_client != None, "heter client should not be None in heterps mode"
             self._heter_client.stop()
-        executor = self._get_executor()
-        executor.close()
+        #executor = self._get_executor()
+        #executor.close()
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
