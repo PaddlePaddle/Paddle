@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import math
 import unittest
 
 import paddle
@@ -44,9 +45,13 @@ class TestConstantInitializer(unittest.TestCase):
     def test_calculate_gain(self):
         self.assertEqual(paddle.nn.initializer.calculate_gain('sigmoid'), 1)
         self.assertEqual(paddle.nn.initializer.calculate_gain('linear'), 1)
+        self.assertEqual(paddle.nn.initializer.calculate_gain('conv2d'), 1)
         self.assertEqual(paddle.nn.initializer.calculate_gain('tanh'), 5.0 / 3)
         self.assertEqual(
+            paddle.nn.initializer.calculate_gain('relu'), math.sqrt(2.0))
+        self.assertEqual(
             paddle.nn.initializer.calculate_gain('leaky_relu', 1), 1)
+        self.assertEqual(paddle.nn.initializer.calculate_gain('selu'), 3.0 / 4)
 
     def test_constant_initializer_default_value(self, dtype="float32"):
         """Test the constant initializer with default value

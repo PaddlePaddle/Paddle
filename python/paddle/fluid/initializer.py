@@ -1068,7 +1068,8 @@ def calculate_gain(nonlinearity, param=None):
         'conv_transpose3d': 1,
         'tanh': 5.0 / 3,
         'relu': math.sqrt(2.0),
-        'leaky_relu': math.sqrt(2.0 / (1 + param**2))
+        'leaky_relu': math.sqrt(2.0 / (1 + param**2)),
+        'selu': 3.0 / 4
     }
     if nonlinearity in recommended_gain.keys():
         return recommended_gain[nonlinearity]

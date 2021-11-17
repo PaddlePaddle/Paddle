@@ -59,7 +59,7 @@ class Orthogonal(Initializer):
     """
 
     def __init__(self, gain=1.0, name=None):
-        assert gain is not None, 'low should not be None'
+        assert gain is not None, 'gain should not be None'
         super(Orthogonal, self).__init__()
         self._gain = gain
 
@@ -79,14 +79,14 @@ class Orthogonal(Initializer):
         assert isinstance(block, framework.Block)
         # 'qr' op only support float32/float64 now
         check_variable_and_dtype(var, "Out", ["float32", "float64"],
-                                 "orthogonal")
+                                 "Orthogonal")
 
         self._seed = block.program.random_seed
 
         shape = var.shape
         assert len(
             shape
-        ) >= 2, "Only Tensor with 2 or more dimensions can initialized by Orthogonal"
+        ) >= 2, "Only Tensor with 2 or more dimensions can be initialized by Orthogonal"
 
         row = shape[0]
         col = 1
