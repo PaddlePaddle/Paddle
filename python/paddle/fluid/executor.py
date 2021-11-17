@@ -1912,7 +1912,6 @@ class Executor(object):
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         fleet_exe.init(program._pipeline_opt["section_program"].desc)
         fleet_exe.run()
-        # TODO(fleet_executor dev): replace this fake return for gpt test in the future
         return None
 
     def _run_pipeline(self,
