@@ -71,20 +71,17 @@ if __name__ == "__main__":
                                                   "CMakeLists.txt")
     forwards_level_cmakelist_path = os.path.join(forwards_dir, "CMakeLists.txt")
 
-    if not os.path.exists(nodes_level_cmakelist_path):
-        with open(nodes_level_cmakelist_path, "w") as f:
-            f.write(
-                "cc_library(dygraph_node SRCS %s DEPS ${eager_deps} ${fluid_deps})\n"
-                % " ".join([op_name + '_node.cc' for op_name in op_list]))
-            f.write("add_dependencies(dygraph_node eager_codegen)")
+    with open(nodes_level_cmakelist_path, "w") as f:
+        f.write(
+            "cc_library(dygraph_node SRCS %s DEPS ${eager_deps} ${fluid_deps})\n"
+            % " ".join([op_name + '_node.cc' for op_name in op_list]))
+        f.write("add_dependencies(dygraph_node eager_codegen)")
 
-    if not os.path.exists(forwards_level_cmakelist_path):
-        with open(forwards_level_cmakelist_path, "w") as f:
-            f.write(
-                "cc_library(dygraph_function SRCS %s DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB})\n"
-                % " ".join([op_name + '_dygraph.cc' for op_name in op_list]))
-            f.write("add_dependencies(dygraph_function eager_codegen)")
+    with open(forwards_level_cmakelist_path, "w") as f:
+        f.write(
+            "cc_library(dygraph_function SRCS %s DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB})\n"
+            % " ".join([op_name + '_dygraph.cc' for op_name in op_list]))
+        f.write("add_dependencies(dygraph_function eager_codegen)")
 
-    if not os.path.exists(generated_level_cmakelist_path):
-        with open(generated_level_cmakelist_path, "w") as f:
-            f.write("add_subdirectory(forwards)\nadd_subdirectory(nodes)")
+    with open(generated_level_cmakelist_path, "w") as f:
+        f.write("add_subdirectory(forwards)\nadd_subdirectory(nodes)")
