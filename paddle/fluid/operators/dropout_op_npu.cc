@@ -37,6 +37,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
+    auto is_reset = ctx.Attr<bool>("reset");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -103,7 +104,8 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
           .AddInput(keep_prob_tensor)
           .AddOutput(npu_mask)
           .AddAttr("seed", seed)
-          .AddAttr("seed2", seed2);
+          .AddAttr("seed2", seed2)
+          .AddAttr("reset", is_reset);
       runner_gen_mask.Run(stream);
 
       NpuOpRunner runner_dropout;

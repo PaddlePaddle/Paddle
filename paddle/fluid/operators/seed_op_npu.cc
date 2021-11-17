@@ -23,16 +23,8 @@ class NPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out = ctx.Output<Tensor>("Out");
-    int user_seed = ctx.Attr<int>("seed");
-    std::random_device rnd;
-    int seed;
 
-    if (user_seed != 0) {
-      seed = user_seed;
-    } else {
-      seed = rnd();
-    }
-
+    auto seed = get_seed(ctx);
     out->mutable_data<T>(ctx.GetPlace());
     FillNpuTensorWithConstant<int>(out, seed);
   }

@@ -82,6 +82,12 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
+    AddAttr<bool>("reset",
+                  "(bool, default false) Set to true for npu dropout "
+                  "only for npu. for npu dropout, same seed, same result.")
+        .SetDefault(false)
+        .AsExtra();
+
     AddAttr<bool>("fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
