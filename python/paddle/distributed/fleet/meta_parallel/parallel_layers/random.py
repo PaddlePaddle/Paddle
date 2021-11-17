@@ -119,6 +119,7 @@ def dropout(x,
             axis=None,
             rng_name=None,
             training=True,
+            reset=False,
             mode="upscale_in_train",
             name=None):
     """
@@ -227,6 +228,7 @@ def dropout(x,
         attrs={
             'dropout_prob': p,
             'is_test': not training,
+            'reset': reset,
             'dropout_implementation': mode,
         })
     return out
