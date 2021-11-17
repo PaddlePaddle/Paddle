@@ -48,8 +48,8 @@ void Copy(const CUDAContext& dev_ctx,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   CHECK(dst->layout() == src.layout());
 
-  auto size = src.numel() * paddle::framework::SizeOfType(
-                                TransToProtoVarType(src.data_type()));
+  auto size = src.numel() *
+              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
 
   if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
       paddle::platform::is_cuda_pinned_place(dst_place)) {

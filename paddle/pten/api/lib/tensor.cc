@@ -109,9 +109,9 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
       "and it will be implemented by calling the reshape kernel later."));
 }
 
-DataType Tensor::dtype() const { return impl_->data_type(); }
+DataType Tensor::dtype() const { return impl_->dtype(); }
 
-DataType Tensor::type() const { return impl_->data_type(); }
+DataType Tensor::type() const { return impl_->dtype(); }
 
 DataLayout Tensor::layout() const { return impl_->layout(); }
 
