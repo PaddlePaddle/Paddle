@@ -151,6 +151,52 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                  BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size,
                  stream);
   }
+  else if (platform::is_npu_pinned_place(src_place) &&  // NOLINT
+           platform::is_npu_place(dst_place)) {         /* npu_pinned->npu */
+    auto src_npu_pinned_place =
+        BOOST_GET_CONST(platform::NPUPinnedPlace, src_place);
+    auto dst_npu_place = BOOST_GET_CONST(platform::NPUPlace, dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(ctx_place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Device context place mismatch. When copying Tensor "
+                          "data from NPU Pinned memory to NPU memory, current "
+                          "device context place should be NPU."));
+    auto ctx_npu_place = BOOST_GET_CONST(platform::NPUPlace, ctx_place);
+    PADDLE_ENFORCE_EQ(dst_npu_place, ctx_npu_place,
+                      platform::errors::PreconditionNotMet(
+                          "The target NPU device and current device context do "
+                          "not match. The target NPU device number is %d, but "
+                          "device context NPU number is %d.",
+                          dst_npu_place.device, ctx_npu_place.device));
+    auto stream =
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_npu_place, dst_ptr, src_npu_pinned_place, src_ptr, size,
+                 stream);
+  }
+  else if (platform::is_npu_place(src_place) &&        // NOLINT
+           platform::is_npu_pinned_place(dst_place)) { /* npu->npu_pinned */
+    auto src_npu_place = BOOST_GET_CONST(platform::NPUPlace, src_place);
+    auto dst_npu_pinned_place =
+        BOOST_GET_CONST(platform::NPUPinnedPlace, dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(ctx_place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Device context place mismatch. When copying Tensor "
+                          "data from NPU memory to NPU Pinned memory, current "
+                          "device context place should be NPU."));
+    auto ctx_npu_place = BOOST_GET_CONST(platform::NPUPlace, ctx_place);
+    PADDLE_ENFORCE_EQ(src_place, ctx_npu_place,
+                      platform::errors::PreconditionNotMet(
+                          "The source NPU device and current device context do "
+                          "not match. The source NPU device number is %d, but "
+                          "device context NPU number is %d.",
+                          src_npu_place.device, ctx_npu_place.device));
+    auto stream =
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
+    memory::Copy(dst_npu_pinned_place, dst_ptr, src_npu_place, src_ptr, size,
+                 stream);
+  }
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));

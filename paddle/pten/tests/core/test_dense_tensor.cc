@@ -82,7 +82,7 @@ TEST(dense_tensor, ctor) {
     bool r{true};
     r = r && (t.numel() == product(m.dims));
     r = r && (t.dims() == m.dims);
-    r = r && (t.data_type() == m.type);
+    r = r && (t.dtype() == m.type);
     r = r && (t.layout() == m.layout);
     r = r && (t.place() == paddle::platform::CPUPlace());
     r = r && t.initialized();
