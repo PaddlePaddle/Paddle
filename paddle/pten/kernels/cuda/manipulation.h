@@ -40,7 +40,7 @@ void ReshapeFromDT(const CUDAContext& dev_ctx,
 
 void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           const DenseTensor& x,
-                          const std::vector<int>& shape,
+                          const std::vector<int64_t>& shape,
                           DenseTensor* out);
 
 void ReshapeFromVectorDT(const CUDAContext& dev_ctx,
@@ -56,7 +56,7 @@ void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
 
 void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,
                                     const DenseTensor& x,
-                                    const std::vector<int>& shape,
+                                    const std::vector<int64_t>& shape,
                                     DenseTensor* xshape,
                                     DenseTensor* out);
 

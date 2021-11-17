@@ -631,10 +631,17 @@ class HeterSectionWorker : public DeviceWorker {
   std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
     return microbatch_scopes_;
   }
+  void SetMicrobatchScopes(
+      std::shared_ptr<std::vector<Scope*>> microbatch_scopes) {
+    microbatch_scopes_ = microbatch_scopes;
+  }
   using SHARED_THREAD_QUEUE = std::shared_ptr<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>;
 
   SHARED_THREAD_QUEUE GetThreadQueue() { return thread_queue_; }
+  void SetThreadQueue(SHARED_THREAD_QUEUE thread_queue) {
+    thread_queue_ = thread_queue;
+  }
   void CopyParameters(int microbatch_id, const ProgramDesc& program,
                       const platform::Place& place);
   void SetMinibatchScope(Scope* scope) { minibatch_scope_ = scope; }

@@ -82,7 +82,7 @@ TEST(dense_tensor, ctor) {
     bool r{true};
     r = r && (t.numel() == product(m.dims));
     r = r && (t.dims() == m.dims);
-    r = r && (t.data_type() == m.type);
+    r = r && (t.dtype() == m.type);
     r = r && (t.layout() == m.layout);
     r = r && (t.place() == paddle::platform::CPUPlace());
     r = r && t.initialized();
@@ -112,32 +112,14 @@ TEST(dense_tensor, resize) {
   auto alloc = std::make_shared<FancyAllocator>();
   DenseTensor tensor_0(alloc, meta);
 
-  CHECK_EQ(tensor_0.memory_size(), 2u);
-  tensor_0.check_memory_size();
+  CHECK_EQ(tensor_0.capacity(), 2u);
   tensor_0.Resize({1, 2, 3});
-  CHECK_EQ(tensor_0.memory_size(), 0u);
-  tensor_0.set_dims({2, 3});
-  CHECK_EQ(tensor_0.memory_size(), 0u);
+  CHECK_EQ(tensor_0.capacity(), 6u);
   tensor_0.mutable_data<int8_t>();
-  CHECK_EQ(tensor_0.memory_size(), 6u);
+  CHECK_EQ(tensor_0.capacity(), 6u);
 
   auto storage = tensor_0.release();
   CHECK_EQ(storage->size(), 6u);
-}
-
-TEST(dense_tensor, shallow_clone) {
-  const DDim dims({1, 2});
-  const DataType dtype{DataType::INT8};
-  const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
-  DenseTensorMeta meta(dtype, dims, layout, lod);
-
-  auto alloc = std::make_shared<FancyAllocator>();
-  DenseTensor tensor_0(alloc, meta);
-
-  auto tensor_1 = tensor_0.shallow_clone();
-  CHECK(tensor_0.meta() == tensor_1.meta());
-  CHECK(tensor_0.release() == tensor_1.release());
 }
 
 }  // namespace tests
