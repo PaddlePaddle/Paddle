@@ -49,6 +49,8 @@ def fuse_resnet_unit():
     def pattern_conv_bn(x, filter, scale, bias, mean, var):
         filter.Attr("shape")[0].Mod(32).EQ(0)
         filter.Attr("shape")[1].Mod(8).EQ(0)
+        filter.Attr("shape")[2].EQ(1)
+        filter.Attr("shape")[3].EQ(1)
         conv2d = ir.PassDesc.OP.conv2d(Input=x, Filter=filter)
         conv2d.SetAttr("data_format", 'NHWC')
         bn = ir.PassDesc.OP.batch_norm(

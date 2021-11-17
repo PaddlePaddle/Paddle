@@ -68,7 +68,9 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
 
     auto input_x_shape = framework::vectorize<int>(input_x->dims());
     auto filter_x_shape = framework::vectorize<int>(filter_x->dims());
-    if (filter_x_shape[1] != filter_x_shape[2]) {
+    // std::swap used to convert shape of filter from conv2d when kernel size is
+    // 1.
+    if (filter_x_shape[1] != filter_x_shape[2] && 1 == filter_x_shape[2]) {
       std::swap(filter_x_shape[1], filter_x_shape[3]);
     }
     auto param_dims = scale_x->dims();
