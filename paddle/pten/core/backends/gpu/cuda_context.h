@@ -15,8 +15,11 @@
 #pragma once
 
 // TODO(wilber): Remove after adding WITH_EIGEN macro
+#include <memory>
 #define PADDLE_WITH_EIGEN 1
+#define PADDLE_WITH_CUSOLVER 1
 
+#include <ThreadPool.h>
 #include <vector>
 
 #include "cuda_runtime.h"  // NOLINT
@@ -44,6 +47,53 @@ namespace pten {
 
 using CUDAPlace = paddle::platform::CUDAPlace;
 
+class CudnnWorkspaceHandle {
+ public:
+  explicit CudnnWorkspaceHandle(pten::Allocator* allocator, std::mutex* mtx);
+
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes);
+
+  /*! \brief Thread which call RunFuncSync() would release gpu memory after
+   *  running the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  template <typename Callback>
+  inline void RunFuncSync(Callback&& cudnn_func,
+                          size_t required_workspace_bytes);
+
+  void ReallocWorkspace(size_t required_workspace_bytes);
+
+  inline void ResetWorkspace();
+
+  inline size_t WorkspaceSize();
+
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+ private:
+  pten::Allocator* allocator_;
+  pten::Allocation allocation_;
+  size_t num_bytes_{0};
+  std::mutex* mtx_;
+};
+
+class StreamCallbackManager {
+ public:
+  explicit StreamCallbackManager(const cudaStream_t stream);
+
+  ~StreamCallbackManager() = default;
+
+  void AddCallback(std::function<void()> callback) const;
+
+  void Wait() const;
+
+ private:
+  const cudaStream_t stream_;
+  mutable ::ThreadPool thread_pool_;
+  mutable std::mutex mtx_;
+  mutable std::future<void> last_future_;
+};
 class CUDAContext : public DeviceContext {
  public:
   explicit CUDAContext(CUDAPlace place) : place_(place) {}
@@ -159,8 +209,7 @@ class CUDAContext : public DeviceContext {
   void RecordEvent(cudaEvent_t ev,
                    cudaStream_t stream,
                    Callback callback) const {
-    // return context()->Stream()->RecordEvent(ev, callback);
-    // TODO(wilber)
+    callback();
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream));
   }
 
@@ -169,15 +218,9 @@ class CUDAContext : public DeviceContext {
   }
 
   template <typename Callback>
-  void AddStreamCallback(Callback&& callback) const {
-    // return context()->Stream()->AddCallback(callback);
-    // TODO(wilber)
-  }
+  void AddStreamCallback(Callback&& callback);
 
-  void WaitStreamCallback() const {
-    // return context()->Stream()->WaitCallback();
-    // TODO(wilber)
-  }
+  void WaitStreamCallback();
 
   void Wait(cudaStream_t stream) const noexcept {
     cudaError_t e_sync = cudaSuccess;
@@ -202,14 +245,14 @@ class CUDAContext : public DeviceContext {
   void SetCudnnHandle(cudnnHandle_t handle) { cudnn_handle_ = handle; }
   cudnnHandle_t cudnn_handle() const;
 
-/*! \brief  Return a cudnn workspace handle to call multiple cudnn
- *  functions without interrupting by other threads.
- *  Once the first cudnn function is called by the handle, a lock
- *  would be acquired to prevent other threads from accessing the
- *  workspace. Once the handle is destructed, the lock would be released.
- *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
- *  sequential cudnn function calls. */
-// CudnnWorkspaceHandle cudnn_workspace_handle() const;
+  /*! \brief  Return a cudnn workspace handle to call multiple cudnn
+   *  functions without interrupting by other threads.
+   *  Once the first cudnn function is called by the handle, a lock
+   *  would be acquired to prevent other threads from accessing the
+   *  workspace. Once the handle is destructed, the lock would be released.
+   *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
+   *  sequential cudnn function calls. */
+  CudnnWorkspaceHandle* cudnn_workspace_handle();
 #endif
 
 #ifdef PADDLE_WITH_CUSOLVER
@@ -266,6 +309,9 @@ class CUDAContext : public DeviceContext {
 
   mutable std::mutex cublas_tf32_tensor_core_handle_mtx_;
   cublasHandle_t cublas_tf32_tensor_core_handle_{nullptr};
+
+  std::unique_ptr<StreamCallbackManager> callback_manager_{nullptr};
+  std::unique_ptr<CudnnWorkspaceHandle> cudnn_workspace_handle_{nullptr};
 
 #if PADDLE_WITH_CUDNN
   mutable std::mutex cudnn_handle_mtx_;
