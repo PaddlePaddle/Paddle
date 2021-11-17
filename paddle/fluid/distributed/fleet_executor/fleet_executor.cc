@@ -15,6 +15,8 @@
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
@@ -31,7 +33,7 @@ FleetExecutor::~FleetExecutor() {
 }
 
 void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
-  // Compile and Initialize
+  runtime_graph_ = std::make_unique<RuntimeGraph>(program_desc, exe_desc_);
   InitMessageBus();
 }
 

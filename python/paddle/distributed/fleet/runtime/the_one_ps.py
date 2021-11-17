@@ -679,6 +679,7 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
+        import paddle.distributed.fleet as fleet
         if not is_test:
             self._communicator.init_params(init_params)
             fleet.util.barrier()
@@ -1057,9 +1058,10 @@ class TheOnePSRuntime(RuntimeBase):
                           print_period=100,
                           fetch_handler=None):
         executor = self._get_executor()
+        # dataset is not needed for heter worker
         executor.train_from_dataset(
             program=fluid.default_main_program(),
-            dataset=dataset,
+            dataset=None,
             debug=debug,
             fetch_list=fetch_list,
             fetch_info=fetch_info,
