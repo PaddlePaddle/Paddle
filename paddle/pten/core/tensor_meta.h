@@ -60,37 +60,4 @@ struct DenseTensorMeta {
   size_t offset{0};
 };
 
-<<<<<<< HEAD
-inline DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
-    : dims(dims), dtype(dtype) {}
-
-inline DenseTensorMeta::DenseTensorMeta(DataType dtype,
-                                        const DDim& dims,
-                                        DataLayout layout)
-    : dims(dims), dtype(dtype), layout(layout) {}
-
-inline DenseTensorMeta::DenseTensorMeta(
-    DataType dtype,
-    const DDim& dims,
-    DataLayout layout,
-    const std::vector<std::vector<size_t>>& lod)
-    : dims(dims), dtype(dtype), layout(layout), lod(lod) {}
-
-inline bool DenseTensorMeta::valid() const noexcept {
-  bool valid{true};
-  valid = valid && (dtype != DataType::UNDEFINED);
-  valid = valid && (layout != DataLayout::UNDEFINED);
-  valid = valid && (is_scalar || product(dims) >= 0);
-  return valid;
-}
-
-inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
-  bool ret = true;
-  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
-         (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
-         (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
-}
-
-=======
->>>>>>> d08753df36986f5a5a7384f092c578c296e5150b
 }  // namespace pten
