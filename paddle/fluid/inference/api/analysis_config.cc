@@ -526,12 +526,17 @@ void AnalysisConfig::Update() {
 
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
+  if (enable_memory_optim_ && use_mkldnn_) {
+    LOG(WARNING)
+        << "When you set config.EnableMKLDNN(), setting "
+           "config.EnableMemoryOptim() "
+           "will not work. But you can limit MKLDNN memory consumption "
+           "by config.SetCacheCapacity(10) to limit dynamic input shape cache "
+           "size to 10"
+           "or config.SetCacheCapacity(0) to have best performance without "
+           "memory limitation";
+  }
   if (enable_memory_optim_ && !use_mkldnn_) {
-    LOG(WARNING) << "You tried to set EnableMemoryOptim()"
-                    " ON when EnableMKLDNN() ON, "
-                    "in which case memory_optimize_pass will not work."
-                    " You can limit memory usage under MKLDNN ON "
-                    "by setting config.SetCacheCapacity(xx)";
 #else
   if (enable_memory_optim_) {
 #endif
