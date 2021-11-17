@@ -199,7 +199,9 @@ class TestModel(unittest.TestCase):
         cls.inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         cls.labels = [InputSpec([None, 1], 'int64', 'label')]
 
-        cls.save_dir = tempfile.mkdtemp()
+        cls.save_dir = os.path.join(tempfile.mkdtemp(), '.cache_test_model')
+        if not os.path.exists(cls.save_dir):
+            os.makedirs(cls.save_dir)
         cls.weight_path = os.path.join(cls.save_dir, 'lenet')
         fluid.dygraph.save_dygraph(dy_lenet.state_dict(), cls.weight_path)
 
@@ -505,7 +507,9 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_save_load(self):
-        path = tempfile.mkdtemp()
+        path = os.path.join(tempfile.mkdtemp(), '.cache_test_save_load')
+        if not os.path.exists(path):
+            os.makedirs(path)
         for dynamic in [True, False]:
             device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
@@ -517,15 +521,17 @@ class TestModelFunction(unittest.TestCase):
             model = Model(net, inputs, labels)
             model.prepare(
                 optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
-            model.save(path + '/test')
-            model.load(path + '/test')
+            model.save(path)
+            model.load(path)
             shutil.rmtree(path)
             fluid.disable_dygraph() if dynamic else None
 
     def test_dynamic_load(self):
         mnist_data = MnistDataset(mode='train')
         for new_optimizer in [True, False]:
-            path = tempfile.mkdtemp()
+            path = os.path.join(tempfile.mkdtemp(), '.cache_dynamic_load')
+            if not os.path.exists(path):
+                os.makedirs(path)
             paddle.disable_static()
             net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
@@ -540,13 +546,16 @@ class TestModelFunction(unittest.TestCase):
             model.prepare(
                 optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
             model.fit(mnist_data, batch_size=64, verbose=0)
-            model.save(path + '/test')
-            model.load(path + '/test')
+            model.save(path)
+            model.load(path)
             shutil.rmtree(path)
             paddle.enable_static()
 
     def test_dynamic_save_static_load(self):
-        path = tempfile.mkdtemp()
+        path = os.path.join(tempfile.mkdtemp(),
+                            '.cache_dynamic_save_static_load')
+        if not os.path.exists(path):
+            os.makedirs(path)
         # dynamic saving
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
@@ -554,7 +563,7 @@ class TestModelFunction(unittest.TestCase):
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
-        model.save(path + '/test')
+        model.save(path)
         fluid.disable_dygraph()
 
         inputs = [InputSpec([None, 20], 'float32', 'x')]
@@ -563,12 +572,14 @@ class TestModelFunction(unittest.TestCase):
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
-        model.load(path + '/test')
+        model.load(path)
         shutil.rmtree(path)
 
     def test_static_save_dynamic_load(self):
-        path = tempfile.mkdtemp()
-
+        path = os.path.join(tempfile.mkdtemp(),
+                            '.cache_test_static_save_dynamic_load')
+        if not os.path.exists(path):
+            os.makedirs(path)
         net = MyModel()
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
@@ -576,7 +587,7 @@ class TestModelFunction(unittest.TestCase):
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
-        model.save(path + '/test')
+        model.save(path)
 
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)  #if dynamic else None
@@ -588,7 +599,7 @@ class TestModelFunction(unittest.TestCase):
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
-        model.load(path + '/test')
+        model.load(path)
         shutil.rmtree(path)
         fluid.disable_dygraph()
 
@@ -730,7 +741,8 @@ class TestModelFunction(unittest.TestCase):
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
-            save_dir = tempfile.mkdtemp()
+            save_dir = os.path.join(tempfile.mkdtemp(),
+                                    '.cache_test_export_deploy_model')
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
             tensor_img = np.array(
@@ -763,7 +775,8 @@ class TestModelFunction(unittest.TestCase):
         paddle.disable_static()
         # without inputs
         for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
-            save_dir = tempfile.mkdtemp()
+            save_dir = os.path.join(tempfile.mkdtemp(),
+                                    '.cache_test_dygraph_export_deploy')
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
             net = LeNet()
@@ -788,7 +801,8 @@ class TestModelFunction(unittest.TestCase):
             model.save(save_dir, training=False)
             shutil.rmtree(save_dir)
         # with inputs, and the type of inputs is InputSpec
-        save_dir = tempfile.mkdtemp()
+        save_dir = os.path.join(tempfile.mkdtemp(),
+                                '.cache_test_dygraph_export_deploy_2')
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         net = LeNet()
@@ -988,13 +1002,14 @@ class TestRaiseError(unittest.TestCase):
     def test_save_infer_model_without_inputs_and_run_in_dygraph(self):
         paddle.disable_static()
         net = MyModel()
-        save_dir = tempfile.mkdtemp()
+        save_dir = os.path.join(tempfile.mkdtemp(), '.cache_test_save_infer')
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         with self.assertRaises(RuntimeError):
             model = Model(net)
             model.save(save_dir, training=False)
         paddle.enable_static()
+        shutil.rmtree(save_dir)
 
     def test_save_infer_model_without_file_prefix(self):
         paddle.enable_static()
