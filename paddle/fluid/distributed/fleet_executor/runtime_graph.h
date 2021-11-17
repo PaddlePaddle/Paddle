@@ -13,21 +13,50 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
+#include <unordered_map>
+#include <vector>
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {
 class ProgramDesc;
+class OperatorBase;
 }
 
 namespace distributed {
+class TaskNode;
 
 class RuntimeGraph final {
  public:
+  using ProgramDesc = paddle::framework::ProgramDesc;
+  using OperatorBase = paddle::framework::OperatorBase;
   RuntimeGraph() = default;
-  explicit RuntimeGraph(const paddle::framework::ProgramDesc &program) {}
+  explicit RuntimeGraph(const ProgramDesc& program,
+                        const FleetExecutorDesc& exe_desc);
   ~RuntimeGraph() = default;
+  const std::unordered_map<int64_t, TaskNode*>& intercepter_id_to_node() const {
+    return intercepter_id_to_node_;
+  }
+  const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank() const {
+    return intercepter_id_to_rank_;
+  }
 
+ private:
   DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
+  void SplitProgramBasedFunctionality(const ProgramDesc& program);
+  void FakeDependence();
+  void AssignTaskToIntercepter();
+  void FakeRuntimeInfo();
+  // LRSched, Forward, Backward, Optimize
+  static std::vector<paddle::framework::OpRole> functionality_order;
+  std::vector<std::unique_ptr<TaskNode>> task_nodes_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::unordered_map<int64_t, TaskNode*> intercepter_id_to_node_;
+  std::unordered_map<int64_t, int64_t> intercepter_id_to_rank_;
+  FleetExecutorDesc exe_desc_;
 };
 
 }  // namespace distributed

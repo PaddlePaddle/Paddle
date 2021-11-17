@@ -39,8 +39,8 @@ void Copy(const XPUDeviceContext& dev_ctx,
           << dst_place;
   dst->Resize(src.dims());
   CHECK(dst->layout() == src.layout());
-  auto size = src.numel() * paddle::framework::SizeOfType(
-                                TransToProtoVarType(src.data_type()));
+  auto size = src.numel() *
+              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
 
   if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
       paddle::platform::is_cpu_place(dst_place)) {
