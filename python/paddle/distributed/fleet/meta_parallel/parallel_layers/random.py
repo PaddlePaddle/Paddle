@@ -119,7 +119,6 @@ def dropout(x,
             axis=None,
             rng_name=None,
             training=True,
-            reset=False,
             mode="upscale_in_train",
             name=None):
     """
@@ -228,7 +227,7 @@ def dropout(x,
         attrs={
             'dropout_prob': p,
             'is_test': not training,
-            'reset': reset,
+            'reset': True if paddle.is_compiled_with_npu() else False,
             'dropout_implementation': mode,
         })
     return out
