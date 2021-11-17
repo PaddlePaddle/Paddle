@@ -95,7 +95,7 @@ from .eager.eager_tensor_patch_methods import monkey_patch_eagertensor
 from . import generator
 from .core import _cuda_synchronize
 from .generator import Generator
-from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer
+from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, HeterPipelineTrainer, MultiTrainer, HeterXpuTrainer
 from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 

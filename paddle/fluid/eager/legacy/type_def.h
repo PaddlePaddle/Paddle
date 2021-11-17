@@ -13,11 +13,27 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/eager/eager_tensor.h"
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/include/core.h"
 namespace egr {
-using NameTensorMap =
-    std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>;
+
+class EagerTensor;
+namespace details {
+template <typename T>
+struct NameVarMapTrait {};
+
+template <>
+struct NameVarMapTrait<EagerTensor> {
+  using Type =
+      std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>;
+};
+}  // namespace details
+template <typename T>
+using NameMap = typename details::NameVarMapTrait<T>::Type;
+
+using NameTensorMap = NameMap<EagerTensor>;
 }  // namespace egr

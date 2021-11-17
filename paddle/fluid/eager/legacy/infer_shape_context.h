@@ -17,13 +17,13 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type.h"
-
 namespace egr {
 
 class EagerInferShapeContext : public paddle::framework::InferShapeContext {

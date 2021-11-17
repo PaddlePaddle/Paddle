@@ -1,8 +1,3 @@
-# Adapt to custom op mechanism: Include the header files related to the data type
-# to avoid exposing the path of the underlying file
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
-
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context

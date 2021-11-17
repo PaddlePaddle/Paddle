@@ -16,11 +16,11 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/variable.h"
-
 namespace egr {
 
 class EagerExecutionContext : public paddle::framework::ExecutionContext {

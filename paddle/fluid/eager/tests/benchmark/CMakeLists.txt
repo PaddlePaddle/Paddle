@@ -1,4 +1,4 @@
-cc_library(benchmark_utils SRCS benchmark_utils.cc DEPS ${eager_deps} ${fluid_deps} ${generated_deps} scale_op matmul_v2_op)
+cc_library(benchmark_utils SRCS benchmark_utils.cc DEPS ${eager_deps} ${fluid_deps} ${generated_deps} scale_op matmul_v2_op )
 
 cc_test(test_egr_benchmark_eager_cpu SRCS benchmark_eager_cpu.cc DEPS benchmark_utils ${eager_deps} ${fluid_deps})
 cc_test(test_egr_benchmark_fluid_cpu SRCS benchmark_fluid_cpu.cc DEPS benchmark_utils ${eager_deps} ${fluid_deps})

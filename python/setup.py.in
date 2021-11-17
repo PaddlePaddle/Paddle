@@ -293,6 +293,7 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
+          'paddle.distributed.passes',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -465,6 +466,10 @@ if '${WITH_LITE}' == 'ON':
             shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
             package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
 
+if '${WITH_CINN}' == 'ON':
+    shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
+    package_data['paddle.libs']+=['libcinnapi.so']
+
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
@@ -554,9 +559,13 @@ def find_files(pattern, root, recursive=False):
 
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api')) +  # pten unify api header
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/ext')) +  # custom op api
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/include')) +  # pten api
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/common')) +  # pten common headers
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
-    # to `extension/incude`,
+    # to `paddle/pten/api/ext`,
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/bfloat16.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
@@ -573,7 +582,6 @@ class InstallCommand(InstallCommandBase):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
         self.install_headers = os.path.join(self.install_platlib, 'paddle', 'include')
-        
         return ret
 
 class InstallHeaders(Command):
@@ -605,8 +613,8 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'fluid' in install_dir or 'utils' in install_dir:
-                install_dir = "paddle/extension/include/"
+            if 'fluid' in install_dir:
+                install_dir = "paddle/pten/common/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

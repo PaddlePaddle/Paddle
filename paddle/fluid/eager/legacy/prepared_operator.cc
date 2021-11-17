@@ -178,8 +178,8 @@ static void PreparedOpRunImpl(
                              default_attrs));
 
   if (FLAGS_check_nan_inf) {
-    paddle::framework::details::CheckOpHasNanOrInfInEager(op.Type(), outs,
-                                                          dev_ctx->GetPlace());
+    paddle::framework::details::CheckOpHasNanOrInfInEager<EagerTensor>(
+        op.Type(), outs, dev_ctx->GetPlace());
   }
 
   /**

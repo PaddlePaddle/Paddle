@@ -213,7 +213,7 @@ class EagerTensor final {
         if (type == paddle::framework::proto::VarType::LOD_TENSOR) {
           auto* framework_tensor =
               var_.GetMutable<paddle::framework::LoDTensor>();
-          framework_tensor->Resize(tensor_->shape());
+          framework_tensor->Resize(tensor_->dims());
           framework_tensor->set_layout(
               pten::TransToFluidDataLayout(tensor_->layout()));
           // Contruct framework::Tensor from egr::EagerTensor

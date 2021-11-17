@@ -54,8 +54,9 @@ void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
   }
 }
 
+template <typename TensorType>
 static void CheckOpHasNanOrInfInEager(const std::string& op_type,
-                                      const egr::NameTensorMap& op_outs,
+                                      const egr::NameMap<TensorType>& op_outs,
                                       platform::Place place) {
   for (const auto& pair : op_outs) {
     for (const auto& tensor : pair.second) {
