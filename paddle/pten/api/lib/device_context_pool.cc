@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/pten/api/lib/device_context_pool.h"
-#include <cudnn_cnn_infer.h>
 
 #include <memory>
 #include <set>
@@ -119,11 +118,11 @@ inline void EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
 #endif
 
 #ifdef PADDLE_WITH_NCCL
-        ptr->
+        ptr->SetNcclComm(device_ctx->nccl_comm());
 #endif
 
 #ifdef PADDLE_WITH_EIGEN
-            ptr->SetEigenDevice(device_ctx->eigen_device());
+        ptr->SetEigenDevice(device_ctx->eigen_device());
 #endif
 // device_ctx->cusolver_dn_handle()
 // device_ctx->cudnn_workspace_handle()
