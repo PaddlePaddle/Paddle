@@ -227,7 +227,8 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
 }
 
 std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
-  std::unordered_set<std::string> fetch_names(fetch_var_names_.size());
+  std::unordered_set<std::string> fetch_names;
+  fetch_names.reserve(fetch_var_names_.size());
   std::for_each(
       fetch_var_names_.begin(), fetch_var_names_.end(),
       [this, &fetch_names](const std::string& name) {
