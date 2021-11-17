@@ -77,19 +77,19 @@ void send_recv_cpu_for_loop(const int& input_size, const int& index_size,
                             const IndexT* s_index, const IndexT* d_index,
                             const Tensor& src, Tensor* dst,
                             const std::string& pool_type,
-                            int* dst_count = NULL) {
+                            int* dst_count = nullptr) {
   Functor functor;
   if (pool_type == "SUM") {
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = s_index[i];
-      IndexT dst_idx = d_index[i];
+      const IndexT& src_idx = s_index[i];
+      const IndexT& dst_idx = d_index[i];
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                       dst_idx, false, functor);
     }
   } else if (pool_type == "MEAN") {
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = s_index[i];
-      IndexT dst_idx = d_index[i];
+      const IndexT& src_idx = s_index[i];
+      const IndexT& dst_idx = d_index[i];
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                       dst_idx, false, functor);
     }
@@ -106,8 +106,8 @@ void send_recv_cpu_for_loop(const int& input_size, const int& index_size,
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     std::set<IndexT> existed_dst;
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = s_index[i];
-      IndexT dst_idx = d_index[i];
+      const IndexT& src_idx = s_index[i];
+      const IndexT& dst_idx = d_index[i];
       bool in_set = existed_dst.find(dst_idx) != existed_dst.end();
       if (!in_set) {
         elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
@@ -132,15 +132,15 @@ void send_recv_cpu_for_loop_grad(const int& input_size, const int& index_size,
   if (pool_type == "SUM") {
     Functor functor;
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = s_index[i];
-      IndexT dst_idx = d_index[i];
+      const IndexT& src_idx = s_index[i];
+      const IndexT& dst_idx = d_index[i];
       elementwise_inner_operation<T, IndexT, Functor>(src, dst, src_idx,
                                                       dst_idx, false, functor);
     }
   } else if (pool_type == "MEAN") {
     for (int i = 0; i < index_size; ++i) {
-      IndexT src_idx = s_index[i];
-      IndexT dst_idx = d_index[i];
+      const IndexT& src_idx = s_index[i];
+      const IndexT& dst_idx = d_index[i];
       auto src_slice = src.Slice(src_idx, src_idx + 1);
       auto dst_slice = dst->Slice(dst_idx, dst_idx + 1);
       auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
@@ -149,8 +149,8 @@ void send_recv_cpu_for_loop_grad(const int& input_size, const int& index_size,
     }
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     for (int i = 0; i < index_size; ++i) {
-      auto forward_src_idx = d_index[i];
-      auto forward_dst_idx = s_index[i];
+      const IndexT& forward_src_idx = d_index[i];
+      const IndexT& forward_dst_idx = s_index[i];
       auto input_slice = input->Slice(forward_src_idx, forward_src_idx + 1);
       auto output_slice = output->Slice(forward_dst_idx, forward_dst_idx + 1);
       auto eigen_input = framework::EigenVector<T>::Flatten(input_slice);
