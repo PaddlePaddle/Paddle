@@ -935,9 +935,8 @@ def kl_div(input, label, reduction='mean', name=None):
     elif reduction == 'sum':
         loss = paddle.sum(loss)
     elif reduction == 'batchmean':
-        if len(paddle.shape(input)) > 0:
-            batch_size = paddle.shape(input)[0]
-            loss = paddle.sum(out) / batch_size
+        batch_size = paddle.shape(input)[0]
+        loss = paddle.sum(loss) / batch_size
     return loss
 
 
