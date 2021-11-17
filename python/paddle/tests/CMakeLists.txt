@@ -56,4 +56,3 @@ set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
 if(WITH_COVERAGE)
     set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300) 
 endif()
-
