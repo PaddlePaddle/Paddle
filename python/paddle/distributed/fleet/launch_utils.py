@@ -1131,7 +1131,7 @@ class ParameterServerLauncher(object):
 
         # get http_port
         if args.http_port:
-            http_port = args.http_port
+            http_port = [args.http_port]
         else:
             http_port = get_ports(
                 1, self.server_num + self.worker_num + self.heter_worker_num)
