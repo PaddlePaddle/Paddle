@@ -81,31 +81,27 @@ class EagerTensor final {
    * @param None
    * @return {int64_t}
    */
-  int64_t numel() const { return tensor_->impl()->numel(); }
+  int64_t numel() const { return tensor_->numel(); }
   /**
    * @description: Return the shape (dimensions) of current Tensor.
    * @param None
    * @return {DDim}
    */
-  paddle::framework::DDim shape() const { return tensor_->impl()->dims(); }
+  paddle::framework::DDim shape() const { return tensor_->dims(); }
 
   /**
    * @description: Return the data type of current Tensor.
    * @param None
    * @return {DataType}
    */
-  paddle::experimental::DataType type() const {
-    return tensor_->impl()->data_type();
-  }
+  paddle::experimental::DataType type() const { return tensor_->type(); }
 
   /**
    * @description: Return the layout of current Tensor.
    * @param None
    * @return {DataLayout}
    */
-  paddle::experimental::DataLayout layout() const {
-    return tensor_->impl()->layout();
-  }
+  paddle::experimental::DataLayout layout() const { return tensor_->layout(); }
 
   /* Part 3: Device and Backend methods */
   /**
@@ -113,7 +109,7 @@ class EagerTensor final {
    * @param None
    * @return {Place}
    */
-  paddle::platform::Place place() const { return tensor_->impl()->place(); }
+  paddle::platform::Place place() const { return tensor_->inner_place(); }
 
   /**
    * Backend judgment APIs, shield the concept of Backend.
@@ -148,16 +144,14 @@ class EagerTensor final {
    * @param None
    * @return {bool}
    */
-  bool defined() const { return tensor_->impl() != nullptr; }
+  bool defined() const { return tensor_->defined(); }
 
   /**
    * @description: Determine whether Tensor is initialized
    * @param None
    * @return {bool}
    */
-  bool initialized() const {
-    return defined() && tensor_->impl()->initialized();
-  }
+  bool initialized() const { return tensor_->initialized(); }
 
   /**
    * @description: Reset the Tensor implementation

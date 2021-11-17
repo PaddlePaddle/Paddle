@@ -55,7 +55,7 @@ class Controller {
     expected_place_ = std::make_shared<paddle::platform::Place>(place);
   }
   void SetAMPLevel(int level) { amp_level_ = level; }
-  const int GetAMPLevel() const { return amp_level_; }
+  int GetAMPLevel() const { return amp_level_; }
   bool HasGrad() const { return has_grad_; }
   std::string GenerateUniqueName(std::string key = "eager_tmp") {
     return generator_->Generate(key);
