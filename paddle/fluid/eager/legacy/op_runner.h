@@ -23,5 +23,7 @@ namespace egr {
 void RunOp(const std::string& type, const NameTensorMap& ins,
            const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
            const paddle::platform::Place& place,
+           paddle::framework::AttributeMap* default_attrs,
+           bool override_default_attr_map,
            const std::map<std::string, std::string>& inplace_map = {});
 }

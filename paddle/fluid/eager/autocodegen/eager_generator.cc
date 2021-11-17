@@ -36,8 +36,8 @@ static std::unordered_set<std::string> operators_to_skip = {
 };
 
 static std::unordered_set<std::string> operators_to_codegen = {
-    "sigmoid", "matmul_v2",
-};
+    "sigmoid",      "matmul_v2",   "reduce_sum", "elementwise_add",
+    "share_buffer", "var_conv_2d", "split"};
 
 static std::unordered_set<std::string> skipped_operators = {};
 
@@ -615,6 +615,12 @@ static std::string GenerateGradNodeCreationContent(
   prepare_autograd_meta_str += get_autograd_meta_str;
   prepare_autograd_meta_str += "\n";
 
+  // [GradOpNode] GetTraceBackward
+  std::string trace_backward_str =
+      "  bool trace_backward = egr::Controller::Instance().HasGrad();\n";
+  prepare_autograd_meta_str += trace_backward_str;
+  prepare_autograd_meta_str += "\n";
+
   // [GradOpNode] Generation
   std::string grad_node_creation_str = "";
 
@@ -629,14 +635,9 @@ static std::string GenerateGradNodeCreationContent(
 
   // [GradOpNode] Set Attrs
   grad_node_creation_str += "    // Set Attributes\n";
-  for (const auto& default_attr_map : grad_node_default_attr_maps) {
-    for (const auto& kv : default_attr_map) {
-      const std::string& attr_name = kv.first;
-      const char* SET_ATTR_TEMPLATE = "    grad_node->SetAttr%s(%s);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_ATTR_TEMPLATE, attr_name, attr_name);
-    }
-  }
+  grad_node_creation_str += "    grad_node->SetAttrMap(std::move(attrs));\n";
+  grad_node_creation_str +=
+      "    grad_node->SetDefaultAttrMap(std::move(default_attrs));\n";
   grad_node_creation_str += "\n";
 
   // [GradOpNode] Set TensorWrappers
@@ -710,6 +711,18 @@ static std::string GenerateGradNodeCreationContent(
   return grad_node_creation_body_str;
 }
 
+static std::string AppendUseOp(const std::string& op_type) {
+  // [Generation] Append USE_OP
+  const char* USE_OP_TEMPLATE = "USE_OP(%s);\n";
+  std::string return_str = paddle::string::Sprintf(USE_OP_TEMPLATE, op_type);
+
+  // Special Ops
+  if (op_type == "reduce_sum")
+    return_str += paddle::string::Sprintf(USE_OP_TEMPLATE, "reduce_sum_grad");
+
+  return return_str;
+}
+
 /* -------------------------------- */
 /* --------- CodeGen: Forward ----- */
 /* -------------------------------- */
@@ -733,7 +746,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   /*
     // Forward Function Example:
   std::tuple<vector<Tensor>, Tensor, vector<Tensor>>
-  kernel_function(vector<Tensor>& X, Tensor& Y, float attr0, int attr1, size_t
+  kernel_function(vector<Tensor>& X, Tensor& Y, const paddle::AttributeMap&
+  attr_map, size_t
   Out0Num, size_t Out1Num) {
 
         // Forward Function Body
@@ -749,8 +763,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   ,ConstructDuplicableOutput(Out1Num)} };
 
         // According to op_proto->attrs()
-        framework::AttributeMap attrs = { {"attr0", attr0},  ... };
-        egr::RunOp("op_type", ins, outs, attrs,
+        egr::RunOp("op_type", ins, outs, attr_map,
   Controller.Instance().GetExpectedPlace(), {});
 
         // According to fwd_outputs_names
@@ -814,32 +827,6 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   generated_function_body += ins_map_str;
   generated_function_body += "\n";
 
-  // [Generation] Get Attrs
-  std::string attr_contents_str = "";
-  for (const proto::OpProto::Attr& attr : op_proto.attrs()) {
-    const std::string& attr_name = attr.name();
-
-    proto::AttrType attr_type = attr.type();
-    const std::string attr_type_str = AttrTypeToString(attr_type);
-
-    const char* FWD_KERNEL_ARG_TEMPLATE = ", const %s %s";
-    std::string arg_str = paddle::string::Sprintf(FWD_KERNEL_ARG_TEMPLATE,
-                                                  attr_type_str, attr_name);
-    dygraph_function_args_str += arg_str;
-
-    const char* FWD_ATTR_CONTENT_TEMPLATE = "{ \"%s\", %s }, ";
-    std::string attr_content_str = paddle::string::Sprintf(
-        FWD_ATTR_CONTENT_TEMPLATE, attr_name, attr_name);
-    attr_contents_str += attr_content_str;
-  }
-
-  const char* FWD_ATTR_MAP_TEMPLATE =
-      "  paddle::framework::AttributeMap attrs = { %s };\n";
-  std::string attr_map_str =
-      paddle::string::Sprintf(FWD_ATTR_MAP_TEMPLATE, attr_contents_str);
-  generated_function_body += attr_map_str;
-  generated_function_body += "\n";
-
   // [Generation] Get Outs Map
   std::string outs_contents_str = "";
   for (const proto::OpProto::Var& output : op_proto.outputs()) {
@@ -877,10 +864,18 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   generated_function_body += outs_map_str;
   generated_function_body += "\n";
 
+  // [Generation] Get Attrs
+  dygraph_function_args_str +=
+      ", const paddle::framework::AttributeMap& attr_map";
+  generated_function_body += "\n";
+
   // [Generation] Get TraceOp
   const char* FWD_TRACE_OP_TEMPLATE =
-      "  egr::RunOp(\"%s\", ins, outs, attrs, "
-      "egr::Controller::Instance().GetExpectedPlace(), {});\n";
+      "  paddle::framework::AttributeMap attrs = attr_map;\n"
+      "  paddle::framework::AttributeMap default_attrs;\n"
+      "  egr::RunOp(\"%s\", ins, outs, attrs, \n"
+      "     egr::Controller::Instance().GetExpectedPlace(),\n"
+      "     &default_attrs, true, {});\n";
   std::string trace_op_str =
       paddle::string::Sprintf(FWD_TRACE_OP_TEMPLATE, op_proto.type());
   generated_function_body += trace_op_str;
@@ -945,7 +940,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     return_str = paddle::string::Sprintf(FWD_TUPLE_RETURN_TEMPLATE,
                                          return_type_str, return_content_str);
 
-    const char* FWD_FUNCTION_PROTO_RETURN_TEMPLATE = "std::tuple<%s>;";
+    const char* FWD_FUNCTION_PROTO_RETURN_TEMPLATE = "std::tuple<%s>";
     function_proto_return_type_str = paddle::string::Sprintf(
         FWD_FUNCTION_PROTO_RETURN_TEMPLATE, return_type_str);
   } else {
@@ -962,16 +957,13 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   // [Generation] Get Full Function
   std::string function_name = op_type + "_dygraph_function";
 
-  // Add trace_backward
-  dygraph_function_args_str += ", bool trace_backward";
   const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}\n\n";
   std::string fwd_function_str = paddle::string::Sprintf(
       FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
       dygraph_function_args_str, generated_function_body);
 
   // [Generation] Append USE_OP
-  const char* USE_OP_TEMPLATE = "USE_OP(%s);\n";
-  fwd_function_str += paddle::string::Sprintf(USE_OP_TEMPLATE, op_type);
+  fwd_function_str += AppendUseOp(op_type);
 
   // [Generation] Generate forward functions header
   const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
@@ -1031,15 +1023,9 @@ static std::string GenerateGradNodeCCContents(
 
     // Visit each OpBase
     for(auto iter = "grad_node->begin()"; iter < "grad_node->end()"; iter++) {
-        framework::AttributeMap attrs;
-        for("auto& kv : iter->Attrs()") {
-            attrs[kv.first] = this->"kv.first";
-        }
-        for(auto& kv : "iter->DefaultAttrsMap()") {
-            attrs[kv.first] = this->"kv.first";
-        }
-        egr::RunOp("iter->Type()", ins, outs, attrs,
-  egr::Controller::Instance().ExpectedPlace(), false, {});
+        // Simply pass entire attribute map to kernels
+        egr::RunOp("iter->Type()", ins, outs, this->attr_map_,
+            egr::Controller::Instance().ExpectedPlace(), false, {});
     }
 
     vector<vector<egr::EagerTensor>> outputs(outs.size());
@@ -1100,19 +1086,35 @@ static std::string GenerateGradNodeCCContents(
   generated_grad_function_body += ins_map_str;
 
   // [Generation] Get Outs Map
+  std::unordered_set<std::string> duplicable_input_name_set;
+  for (const auto& out : op_proto.outputs()) {
+    if (out.duplicable()) duplicable_input_name_set.insert(out.name());
+  }
+
   std::string outs_contents_str = "";
   for (auto iter : grad_outs) {
     const std::string& grad_output_name = iter.first;
 
     if (grad_outs_slotname_map.count(grad_output_name)) {
       // Fwd Tensor
-      size_t fwd_input_position = fwd_inputs_name_pos_map.at(
-          grad_outs_slotname_map.at(grad_output_name));
-      const char* GRAD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::ConstructDuplicableOutput( "
-          "this->OutputMeta()[%d].Size() ) },";
-      outs_contents_str += paddle::string::Sprintf(
-          GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
+      const std::string& fwd_input_name =
+          grad_outs_slotname_map.at(grad_output_name);
+      size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_input_name);
+
+      if (duplicable_input_name_set.count(fwd_input_name)) {
+        const char* GRAD_OUTS_CONTENT_TEMPLATE =
+            "{ \"%s\", egr::ConstructDuplicableOutput( "
+            "this->OutputMeta()[%d].Size() ) },";
+        outs_contents_str += paddle::string::Sprintf(
+            GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
+      } else {
+        const char* GRAD_OUTS_CONTENT_TEMPLATE =
+            "{ \"%s\", "
+            "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance()."
+            "GenerateUniqueName())}},";
+        outs_contents_str += paddle::string::Sprintf(GRAD_OUTS_CONTENT_TEMPLATE,
+                                                     grad_output_name);
+      }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "Unable to find forward slot name that matches %s",
@@ -1134,32 +1136,16 @@ static std::string GenerateGradNodeCCContents(
   // [Generation] Get Attrs Map
   std::string trace_opbase_str = "";
   for (size_t i = 0; i < grad_node_default_attr_maps.size(); i++) {
-    const auto& default_attr_map = grad_node_default_attr_maps[i];
     const std::string& op_base_type = grad_op_types[i];
-    std::string attr_contents_str = "";
-    for (const auto& kv : default_attr_map) {
-      const std::string& attr_name = kv.first;
-      const std::string& struct_attr_name = kv.first + "_";
-      const char* ATTR_CONTENT_TEMPLATE = "{ \"%s\", this->%s},";
-      attr_contents_str += paddle::string::Sprintf(ATTR_CONTENT_TEMPLATE,
-                                                   attr_name, struct_attr_name);
-    }
-    if (attr_contents_str.size() > 0) attr_contents_str.pop_back();
-
-    const char* ATTRS_MAP_TEMPLATE =
-        "  paddle::framework::AttributeMap attrs = { %s };\n";
-    std::string attrs_map_str =
-        paddle::string::Sprintf(ATTRS_MAP_TEMPLATE, attr_contents_str);
 
     const char* TRACE_OP_TEMPLATE =
-        "  egr::RunOp(\"%s\", ins, outs, attrs, "
-        "egr::Controller::Instance().GetExpectedPlace(), {});\n";
-    std::string trace_op_str =
-        paddle::string::Sprintf(TRACE_OP_TEMPLATE, op_base_type);
-
-    trace_opbase_str += attrs_map_str;
-    trace_opbase_str += "\n";
-    trace_opbase_str += trace_op_str;
+        "  // Pass the entire attribute map to TraceOp\n"
+        "  // The underlying kernel will pickup whatever attribute they need "
+        "at runtime\n"
+        "  egr::RunOp(\"%s\", ins, outs, this->attr_map_,\n"
+        "      egr::Controller::Instance().GetExpectedPlace(),\n"
+        "      &this->default_attr_map_, false, {});\n";
+    trace_opbase_str = paddle::string::Sprintf(TRACE_OP_TEMPLATE, op_base_type);
   }
 
   generated_grad_function_body += trace_opbase_str;
@@ -1221,48 +1207,29 @@ static std::string GenerateGradNodeHeaderContents(
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
-      "  // SetAttr0, SetAttr1, ...\n"
+      "  // SetAttrMap\n"
       "%s\n"
       "\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
-      "   // Attribute Members\n"
+      "   // Attribute Map\n"
       "%s\n"
       "};";
 
   const std::string& op_type = op_proto.type();
 
   // [Generation] Handle Attributes
-  std::string set_attrs_str = "";
-  std::string attr_members_str = "";
-  for (const auto& default_attr_map : grad_node_default_attr_maps) {
-    for (const auto& kv : default_attr_map) {
-      const std::string& attr_name = kv.first;
-      const std::string& struct_attr_name = kv.first + "_";
-      framework::Attribute attr = kv.second;
-
-      std::string attr_arg_type = GetAttrType(attr, true).first;
-      const char* SET_ATTR_TEMPLATE =
-          "   void SetAttr%s(%s) {\n     %s\n   }\n";
-      const char* SET_ATTR_BODY_TEMPLATE = "%s = %s;";
-      const char* ATTR_ARGS_TEMPLATE = "const %s %s";
-
-      std::string attr_args_str =
-          paddle::string::Sprintf(ATTR_ARGS_TEMPLATE, attr_arg_type, attr_name);
-      std::string set_attr_body_str = paddle::string::Sprintf(
-          SET_ATTR_BODY_TEMPLATE, struct_attr_name, attr_name);
-      set_attrs_str += paddle::string::Sprintf(
-          SET_ATTR_TEMPLATE, attr_name, attr_args_str, set_attr_body_str);
-
-      std::string attr_member_type = GetAttrType(attr, false).first;
-      std::string attr_value = GetAttrType(attr, false).second;
-
-      const char* ATTR_MEMBER_TEMPLATE = "   %s %s = %s;\n";
-      attr_members_str += paddle::string::Sprintf(
-          ATTR_MEMBER_TEMPLATE, attr_member_type, struct_attr_name, attr_value);
-    }
-  }
+  std::string set_attr_map_str =
+      "   void SetAttrMap(paddle::framework::AttributeMap&& attr_map) {\n     "
+      "attr_map_ = std::move(attr_map);\n   }\n";
+  set_attr_map_str +=
+      "   void SetDefaultAttrMap(paddle::framework::AttributeMap&& "
+      "default_attr_map) {\n     default_attr_map_ = "
+      "std::move(default_attr_map);\n   }\n";
+  std::string attr_members_str =
+      "   paddle::framework::AttributeMap attr_map_;\n";
+  attr_members_str += "   paddle::framework::AttributeMap default_attr_map_;";
 
   // [Generation] Handle TensorWrappers
   std::unordered_set<std::string> duplicable_inputs;
@@ -1314,10 +1281,10 @@ static std::string GenerateGradNodeHeaderContents(
         tensor_wrapper_arg_str, tensor_wrapper_body_str);
   }
 
-  std::string grad_node_str =
-      paddle::string::Sprintf(GRAD_NODE_TEMPLATE, op_type, op_type, op_type,
-                              op_type, set_tensor_wrappers_str, set_attrs_str,
-                              tensor_wrapper_members_str, attr_members_str);
+  std::string grad_node_str = paddle::string::Sprintf(
+      GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type,
+      set_tensor_wrappers_str, set_attr_map_str, tensor_wrapper_members_str,
+      attr_members_str);
 
   return grad_node_str;
 }
@@ -1360,6 +1327,7 @@ static void GenerateNodeHFile(const std::string& op_type,
   std::string node_h_filename = op_type + "_node.h";
   std::string node_h_path = nodes_dir + node_h_filename;
   std::string node_h_include_str =
+      "#pragma once\n"
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
       "#include \"paddle/fluid/eager/function_api.h\"\n"
       "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n"
@@ -1395,6 +1363,7 @@ static void GenerateNodeCCFile(const std::string& op_type,
 
 static std::string GenerateDygraphHFileIncludes() {
   std::string dygraph_forward_api_includes_str =
+      "#pragma once\n"
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
       "#include \"paddle/pten/api/all.h\"\n"
@@ -1432,6 +1401,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
              std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>
         grad_outs;
 
+    if (pair.first == "share_buffer") VLOG(1) << 1111;
     bool is_available = CollectInformationFromOpInfo(
         op_info, &grad_node_default_attr_maps, &grad_op_types,
         &fwd_inputs_name_pos_map, &fwd_outputs_name_pos_map,

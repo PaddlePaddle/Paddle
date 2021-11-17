@@ -56,6 +56,7 @@ class Controller {
   }
   void SetAMPLevel(int level) { amp_level_ = level; }
   const int GetAMPLevel() const { return amp_level_; }
+  bool HasGrad() const { return has_grad_; }
   std::string GenerateUniqueName(std::string key = "eager_tmp") {
     return generator_->Generate(key);
   }
@@ -65,6 +66,7 @@ class Controller {
   static Controller* controller_;
   std::shared_ptr<paddle::platform::Place> expected_place_ = nullptr;
   int amp_level_ = 0;
+  bool has_grad_ = true;
   std::unique_ptr<UniqueNameGenerator> generator_{new UniqueNameGenerator()};
   DISABLE_COPY_AND_ASSIGN(Controller);
 };

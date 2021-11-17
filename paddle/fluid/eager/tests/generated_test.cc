@@ -45,10 +45,7 @@ TEST(Generated, Sigmoid) {
   VLOG(6) << "Make EagerTensor";
   RetainGradForTensor(tensor);
   VLOG(6) << "Retain Grad for Tensor";
-  auto output_tensor = sigmoid_dygraph_function(
-      tensor, false /*use_mkldnn*/, false /*use_cudnn*/, 0 /*op_role*/,
-      {} /*op_role_var*/, "" /*op_namescope*/, {} /*op_callstack*/,
-      "" /*op_device*/, false /*with_quant_attr*/, true /*trace_backward*/);
+  auto output_tensor = sigmoid_dygraph_function(tensor, {});
   VLOG(6) << "Run Backward";
   PADDLE_ENFORCE(
       CompareVariableWithValue<float>(output_tensor, 0.5) == true,
@@ -85,11 +82,7 @@ TEST(Generated, Matmul_v2) {
   RetainGradForTensor(Y);
 
   auto output_tensor = matmul_v2_dygraph_function(
-      X, Y, false /*trans_x*/, false /*trans_y*/, {} /**fused_reshape_Out**/,
-      {} /**fused_transpose_Out**/, false /*use_mkldnn*/,
-      "float32" /*mkldnn_data_type*/, 0 /*op_role*/, {} /*op_role_var*/,
-      "" /*op_namescope*/, {} /*op_callstack*/, "" /*op_device*/,
-      false /*with_quant_attr*/, true /*trace_backward*/);
+      X, Y, {{"trans_x", false}, {"trans_y", false}});
 
   PADDLE_ENFORCE(
       CompareVariableWithValue<float>(output_tensor, 96) == true,

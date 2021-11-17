@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
 DECLARE_bool(check_nan_inf);
-DECLARE_bool(run_pt_kernel);
+DECLARE_bool(run_pten_kernel);
 
 namespace egr {
 
