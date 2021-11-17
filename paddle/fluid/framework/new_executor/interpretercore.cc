@@ -112,7 +112,6 @@ void InterpreterCore::BuildOperatorDependences() {
   }
 }
 
-
 void InterpreterCore::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = global_scope_->MutableVecMetaInfo();
