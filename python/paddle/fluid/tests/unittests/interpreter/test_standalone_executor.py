@@ -251,6 +251,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 class TestException(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CPUPlace()
+        self.fetch_vars = None
 
     def build_program(self):
         main_program = paddle.static.Program()
@@ -276,6 +277,7 @@ class TestException(unittest.TestCase):
         for feed in feeds:
             out = exe.run(main_program, feed=feed, fetch_list=fetch_vars)
         print(main_program)
+        self.fetch_vars = fetch_vars
         return out
 
     def run_new_executor(self, feed):
@@ -317,7 +319,7 @@ class TestException(unittest.TestCase):
         }]
         self.run_new_executor(feed)
         self.assertIsNotNone(paddle.static.global_scope().find_var(
-            'embedding.tmp_2'))
+            self.fetch_vars.name))
 
 
 if __name__ == "__main__":
