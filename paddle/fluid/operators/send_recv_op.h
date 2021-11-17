@@ -166,88 +166,122 @@ void send_recv_cpu_for_loop_grad(const int& input_size, const int& index_size,
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
+void SendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx) {
+  auto* X = ctx.Input<Tensor>("X");
+  auto* src_index = ctx.Input<Tensor>("Src_index");
+  auto* dst_index = ctx.Input<Tensor>("Dst_index");
+  auto* Y = ctx.Output<Tensor>("Out");
+
+  const int& index_size = src_index->dims()[0];
+
+  T* p_output = Y->mutable_data<T>(ctx.GetPlace());
+  const auto& src_dims = X->dims();
+  int64_t memset_size = 1;
+  for (int i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
+  const size_t& memset_bytes = memset_size * sizeof(T);
+  memset(p_output, 0, memset_bytes);
+
+  if (index_size == 0) return;
+
+  const IndexT* s_index = src_index->data<IndexT>();
+  const IndexT* d_index = dst_index->data<IndexT>();
+  const std::string& pool_type = ctx.Attr<std::string>("pool_type");
+  if (pool_type == "SUM") {
+    send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
+        src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
+  } else if (pool_type == "MIN") {
+    send_recv_cpu_for_loop<T, IndexT, SendRecvMinFunctor<T>>(
+        src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
+  } else if (pool_type == "MAX") {
+    send_recv_cpu_for_loop<T, IndexT, SendRecvMaxFunctor<T>>(
+        src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
+  } else if (pool_type == "MEAN") {
+    auto* dst_count = ctx.Output<Tensor>("Dst_count");
+    int* p_dst_count = dst_count->mutable_data<int>(ctx.GetPlace());
+    memset(p_dst_count, 0, src_dims[0] * sizeof(int));
+    send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
+        src_dims[0], index_size, s_index, d_index, *X, Y, pool_type,
+        p_dst_count);
+  }
+}
+
+template <typename DeviceContext, typename T, typename IndexT>
+void SendRecvGradOpKernelLaunchHelper(const framework::ExecutionContext& ctx) {
+  auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
+  auto* src_index = ctx.Input<Tensor>("Dst_index");
+  auto* dst_index = ctx.Input<Tensor>("Src_index");
+  auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+  const int& index_size = src_index->dims()[0];
+
+  T* p_output = Y->mutable_data<T>(ctx.GetPlace());
+  const auto& src_dims = X->dims();
+  int64_t memset_size = 1;
+  for (int i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
+  const size_t& memset_bytes = memset_size * sizeof(T);
+  memset(p_output, 0, memset_bytes);
+
+  if (index_size == 0) return;
+
+  const IndexT* s_index = src_index->data<IndexT>();
+  const IndexT* d_index = dst_index->data<IndexT>();
+
+  const std::string& pool_type = ctx.Attr<std::string>("pool_type");
+  if (pool_type == "SUM") {
+    send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
+        src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
+  } else if (pool_type == "MEAN") {
+    auto* dst_count = ctx.Input<Tensor>("Dst_count");
+    const int* s_count = dst_count->data<int>();
+    // Functor not used here.
+    send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
+        src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, s_count);
+  } else if (pool_type == "MIN" || pool_type == "MAX") {
+    const auto* input = ctx.Input<Tensor>("X");
+    const auto* output = ctx.Input<Tensor>("Out");
+    // Functor not used here.
+    send_recv_cpu_for_loop_grad<T, IndexT, SendRecvMinFunctor<T>>(
+        src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, nullptr,
+        input, output);
+  }
+}
+
+template <typename DeviceContext, typename T>
 class SendRecvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
     auto* src_index = ctx.Input<Tensor>("Src_index");
-    auto* dst_index = ctx.Input<Tensor>("Dst_index");
-    auto* Y = ctx.Output<Tensor>("Out");
+    auto index_type = src_index->type();
 
-    const int& index_size = src_index->dims()[0];
-
-    T* p_output = Y->mutable_data<T>(ctx.GetPlace());
-    const auto& src_dims = X->dims();
-    int64_t memset_size = 1;
-    for (int i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
-    const size_t& memset_bytes = memset_size * sizeof(T);
-    memset(p_output, 0, memset_bytes);
-
-    if (index_size == 0) return;
-
-    const IndexT* s_index = src_index->data<IndexT>();
-    const IndexT* d_index = dst_index->data<IndexT>();
-
-    const std::string& pool_type = ctx.Attr<std::string>("pool_type");
-    if (pool_type == "SUM") {
-      send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
-    } else if (pool_type == "MIN") {
-      send_recv_cpu_for_loop<T, IndexT, SendRecvMinFunctor<T>>(
-          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
-    } else if (pool_type == "MAX") {
-      send_recv_cpu_for_loop<T, IndexT, SendRecvMaxFunctor<T>>(
-          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
-    } else if (pool_type == "MEAN") {
-      auto* dst_count = ctx.Output<Tensor>("Dst_count");
-      int* p_dst_count = dst_count->mutable_data<int>(ctx.GetPlace());
-      memset(p_dst_count, 0, src_dims[0] * sizeof(int));
-      send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type,
-          p_dst_count);
+    if (index_type == framework::proto::VarType::INT32) {
+      SendRecvOpKernelLaunchHelper<DeviceContext, T, int>(ctx);
+    } else if (index_type == framework::proto::VarType::INT64) {
+      SendRecvOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported Src_index or Dst_index type, Expected int, int64, but "
+          "got %s.",
+          index_type));
     }
   }
 };
 
-template <typename DeviceContext, typename T, typename IndexT>
+template <typename DeviceContext, typename T>
 class SendRecvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* src_index = ctx.Input<Tensor>("Dst_index");
-    auto* dst_index = ctx.Input<Tensor>("Src_index");
-    auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto index_type = src_index->type();
 
-    const int& index_size = src_index->dims()[0];
-    if (index_size == 0) return;
-
-    T* p_output = Y->mutable_data<T>(ctx.GetPlace());
-    const auto& src_dims = X->dims();
-    int64_t memset_size = 1;
-    for (int i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
-    const size_t& memset_bytes = memset_size * sizeof(T);
-    memset(p_output, 0, memset_bytes);
-
-    const IndexT* s_index = src_index->data<IndexT>();
-    const IndexT* d_index = dst_index->data<IndexT>();
-
-    const std::string& pool_type = ctx.Attr<std::string>("pool_type");
-    if (pool_type == "SUM") {
-      send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
-    } else if (pool_type == "MEAN") {
-      auto* dst_count = ctx.Input<Tensor>("Dst_count");
-      const int* s_count = dst_count->data<int>();
-      // Functor not used here.
-      send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
-          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, s_count);
-    } else if (pool_type == "MIN" || pool_type == "MAX") {
-      const auto* input = ctx.Input<Tensor>("X");
-      const auto* output = ctx.Input<Tensor>("Out");
-      // Functor not used here.
-      send_recv_cpu_for_loop_grad<T, IndexT, SendRecvMinFunctor<T>>(
-          src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, nullptr,
-          input, output);
+    if (index_type == framework::proto::VarType::INT32) {
+      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int>(ctx);
+    } else if (index_type == framework::proto::VarType::INT64) {
+      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported Src_index or Dst_index type, Expected int, int64, but "
+          "got %s.",
+          index_type));
     }
   }
 };

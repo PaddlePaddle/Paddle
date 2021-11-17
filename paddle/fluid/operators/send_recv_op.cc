@@ -121,7 +121,11 @@ SendRecv Operator.
 
 $Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
 
-This operator is mainly used in Graph domain, and the main purpose is to reduce intermediate memory consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index` to gather the corresponding positions, and then scatter the corresponding output tensor in different pooling types, like sum, mean, max, or min.
+This operator is mainly used in Graph domain, and the main purpose is to reduce 
+intermediate memory consumption in the process of message passing. 
+Take `x` as the input tensor, we first use `src_index` to gather corresponding 
+positions, and then scatter the corresponding output tensor in different pooling 
+types, like sum, mean, max, or min.
 
 )DOC");
   }
@@ -164,21 +168,12 @@ REGISTER_OPERATOR(send_recv, ops::SendRecvOP, ops::SendRecvOpMaker,
                   ops::SendRecvGradOpMaker<paddle::framework::OpDesc>,
                   ops::SendRecvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(send_recv_grad, ops::SendRecvGradOp);
-REGISTER_OP_CPU_KERNEL(send_recv, ops::SendRecvOpKernel<CPU, float, int>,
-                       ops::SendRecvOpKernel<CPU, float, int64_t>,
-                       ops::SendRecvOpKernel<CPU, double, int>,
-                       ops::SendRecvOpKernel<CPU, double, int64_t>,
-                       ops::SendRecvOpKernel<CPU, int, int>,
-                       ops::SendRecvOpKernel<CPU, int, int64_t>,
-                       ops::SendRecvOpKernel<CPU, int64_t, int>,
-                       ops::SendRecvOpKernel<CPU, int64_t, int64_t>);
+REGISTER_OP_CPU_KERNEL(send_recv, ops::SendRecvOpKernel<CPU, float>,
+                       ops::SendRecvOpKernel<CPU, double>,
+                       ops::SendRecvOpKernel<CPU, int>,
+                       ops::SendRecvOpKernel<CPU, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(send_recv_grad,
-                       ops::SendRecvGradOpKernel<CPU, float, int>,
-                       ops::SendRecvGradOpKernel<CPU, float, int64_t>,
-                       ops::SendRecvGradOpKernel<CPU, double, int>,
-                       ops::SendRecvGradOpKernel<CPU, double, int64_t>,
-                       ops::SendRecvGradOpKernel<CPU, int, int>,
-                       ops::SendRecvGradOpKernel<CPU, int, int64_t>,
-                       ops::SendRecvGradOpKernel<CPU, int64_t, int>,
-                       ops::SendRecvGradOpKernel<CPU, int64_t, int64_t>);
+REGISTER_OP_CPU_KERNEL(send_recv_grad, ops::SendRecvGradOpKernel<CPU, float>,
+                       ops::SendRecvGradOpKernel<CPU, double>,
+                       ops::SendRecvGradOpKernel<CPU, int>,
+                       ops::SendRecvGradOpKernel<CPU, int64_t>);
