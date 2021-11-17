@@ -105,7 +105,7 @@ TEST(Tensor, copy_to) {
   auto tmp = x.copy_to<int64_t>(paddle::PlaceType::kGPU);
   auto out = tmp.copy_to<int64_t>(paddle::PlaceType::kCPU);
 #else
-  auto out = x.to(paddle::PlaceType::kCPU);
+  auto out = x.copy_to<int64_t>(paddle::PlaceType::kCPU);
 #endif
 
   // 3. check result
