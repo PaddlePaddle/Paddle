@@ -84,8 +84,9 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<bool>("reset",
                   "(bool, default false) Set to true for npu dropout "
-                  "for npu dropout, same seed, same result.")
-        .SetDefault(false);
+                  "only for npu. for npu dropout, same seed, same result.")
+        .SetDefault(false)
+        .AsExtra();
 
     AddAttr<bool>("fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
