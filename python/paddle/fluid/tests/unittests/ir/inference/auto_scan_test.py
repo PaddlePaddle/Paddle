@@ -323,6 +323,7 @@ class PassAutoScanTest(AutoScanTest):
         max_duration=180,
     ):
         if os.getenv("PADDLE_TEST_PHASE") == "CE":
+            max_examples *= 10
             min_success_num *= 10
             max_duration *= 10
         start_time = time.time()
