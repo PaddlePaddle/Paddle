@@ -19,25 +19,12 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-#ifndef CUDA_RT_CALL
-#define CUDA_RT_CALL(call)                                                    \
-  {                                                                           \
-    auto status = static_cast<cudaError_t>(call);                             \
-    if (status != cudaSuccess)                                                \
-      fprintf(stderr,                                                         \
-              "ERROR: CUDA RT call \"%s\" in line %d of file %s failed "      \
-              "with "                                                         \
-              "%s (%d).\n",                                                   \
-              #call, __LINE__, __FILE__, cudaGetErrorString(status), status); \
-  }
-#endif  // CUDA_RT_CALL
-// *************** FOR ERROR CHECKING *******************
 
 class MatmulPlugin : public nvinfer1::IPluginV2IOExt {
  public:

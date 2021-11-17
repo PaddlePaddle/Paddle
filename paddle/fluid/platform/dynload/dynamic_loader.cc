@@ -310,6 +310,10 @@ void* GetCublasLtDsoHandle() {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10100
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
 #else
+  std::string warning_msg(
+      "Your CUDA_VERSION less 10.1, not support CublasLt. "
+      "If you want to use CublasLt, please upgrade CUDA and rebuild "
+      "PaddlePaddle.");
   return nullptr;
 #endif
 }
