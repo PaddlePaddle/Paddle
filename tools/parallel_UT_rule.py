@@ -1681,6 +1681,12 @@ def main():
     non_parallel_job = '^job$'
 
     test_cases = sys.argv[1]
+    if test_cases == "":
+        current_path=os.path.split(os.path.abspath(__file__))[0]
+        file_path=os.path.join(current_path,'ut_list.txt')
+        f=open(file_path,"r")
+        test_cases = f.read()
+        f.close()
     test_cases = test_cases.split("\n")
 
     if platform.system() == 'Windows':

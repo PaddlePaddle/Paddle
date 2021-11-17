@@ -177,8 +177,17 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
         UT_list=$UT_list_prec
     fi
     set -e
+    
+    output1=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "lite_mul_model_test")
+    echo $output1
 
-    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+    UT_list_2=$(echo "${UT_list}" | grep -v 'trt_')
+    echo "################\\n"${UT_list_2}
+    output2=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list_2}")
+    echo $output2
+
+    echo "${UT_list}" > ${PADDLE_ROOT}/tools/ut_list.txt
+    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "")
     cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
     tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
     two_parallel_job=$(echo $output | cut -d ";" -f 3)
@@ -319,6 +328,10 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
             echo "Added UT should pass three additional executions"
             echo "========================================"
             exit 8;
+        fi
+        if nvcc --version | grep 11.2; then
+            echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+            exit 0;
         fi
     fi
     run_unittest_gpu $cpu_parallel_job 10
