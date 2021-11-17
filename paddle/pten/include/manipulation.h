@@ -40,7 +40,7 @@ DenseTensor Flatten(const ContextT& dev_ctx,
 template <typename T, typename ContextT>
 DenseTensor Reshape(const ContextT& dev_ctx,
                     const DenseTensor& x,
-                    const std::vector<int>& shape) {
+                    const std::vector<int64_t>& shape) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(

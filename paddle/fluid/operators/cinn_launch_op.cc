@@ -15,6 +15,8 @@
 #include "paddle/fluid/operators/cinn_launch_op.h"
 #include "paddle/fluid/string/string_helper.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace paddle {
 namespace operators {
 
@@ -65,6 +67,12 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
                          const CinnLaunchContext& context) {
   compiled_obj.runtime_program->Execute(&context.FinalizeArguments());
+}
+
+void SetCinnRuntimeFlags() {
+  VLOG(4) << "Set FLAGS_cinn_cudnn_deterministic to "
+          << FLAGS_cudnn_deterministic;
+  ::cinn::runtime::SetCinnCudnnDeterministic(FLAGS_cudnn_deterministic);
 }
 
 CinnLaunchContext::CinnLaunchContext(const CinnCompiledObject& compiled_obj)
