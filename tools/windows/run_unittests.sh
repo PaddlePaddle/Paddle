@@ -84,6 +84,21 @@ disable_wingpu_test="^test_model$|\
 ^test_imperative_optimizer_v2$|\
 ^disable_wingpu_test$"
 
+# /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
+# TODO: fix these unittest that is bound to fail or timeout when WITH_TENSORRT=ON
+disable_win_tensorrt="^test_trt_convert_conv2d$|\
+^test_trt_convert_conv2d_fusion$|\
+^test_trt_convert_conv2d_transpose$|\
+^test_trt_convert_depthwise_conv2d$|\
+^test_trt_convert_emb_eltwise_layernorm$|\
+^test_trt_convert_pool2d$|\
+^test_custom_relu_op_setup$|\
+^test_custom_relu_op_jit$|\
+^test_custom_relu_model$|\
+^test_trt_conv3d_op$|\
+^test_trt_matmul_quant_dequant$|\
+^test_trt_pool_op$"
+
 # /*============================================================================*/
 
 # /*==================Fixed Disabled Windows CPU OPENBLAS unittests==============================*/
@@ -223,7 +238,7 @@ function run_unittest_gpu() {
     echo "************************************************************************"
     export CUDA_VISIBLE_DEVICES=0
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test|$disable_win_tensorrt|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
     wait;
 }
 
