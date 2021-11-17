@@ -21,6 +21,7 @@ namespace pten {
 
 void Copy(const XPUDeviceContext& dev_ctx,
           const DenseTensor& src,
+          bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   auto* dst_ptr = dst->mutable_data();

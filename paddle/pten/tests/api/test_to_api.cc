@@ -73,7 +73,7 @@ TEST(API, to) {
   auto tmp = paddle::experimental::to(x, pten::Backend::CUDA, false);
   auto out = paddle::experimental::to(tmp, pten::Backend::CPU, true);
 #else
-  auto out = paddle::experimental::to(tmp, pten::Backend::CPU);
+  auto out = paddle::experimental::to(x, pten::Backend::CPU, false);
 #endif
 
   // 3. check result
@@ -89,7 +89,7 @@ TEST(Tensor, to) {
   auto tmp = x.to(pten::Backend::CUDA, false);
   auto out = tmp.to(pten::Backend::CPU, true);
 #else
-  auto out = x.to(pten::Backend::CPU);
+  auto out = x.to(pten::Backend::CPU, false);
 #endif
 
   // 3. check result
