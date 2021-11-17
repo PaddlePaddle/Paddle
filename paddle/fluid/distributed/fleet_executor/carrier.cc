@@ -69,6 +69,7 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
 void Carrier::Start() {
   // TODO(fleet_executor dev): this start is a faked one, need replace
   for (const auto& pair : interceptor_idx_to_interceptor_) {
+    VLOG(3) << "Fake run is sending stop to interceptor " << pair.first << ".";
     InterceptorMessage tmp_msg;
     tmp_msg.set_src_id(pair.first);
     tmp_msg.set_dst_id(pair.first);
