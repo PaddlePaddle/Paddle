@@ -34,12 +34,13 @@
 #include "paddle/fluid/platform/xpu/xpu_header.h"
 #endif
 
-DEFINE_bool(init_allocated_mem, false,
-            "It is a mistake that the values of the memory allocated by "
-            "BuddyAllocator are always zeroed in some op's implementation. "
-            "To find this error in time, we use init_allocated_mem to indicate "
-            "that initializing the allocated memory with a small value "
-            "during unit testing.");
+PADDLE_DEFINE_EXPORTED_bool(
+    init_allocated_mem, false,
+    "It is a mistake that the values of the memory allocated by "
+    "BuddyAllocator are always zeroed in some op's implementation. "
+    "To find this error in time, we use init_allocated_mem to indicate "
+    "that initializing the allocated memory with a small value "
+    "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);

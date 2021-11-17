@@ -78,6 +78,7 @@ else()
     math_library(beam_search DEPS math_function)
 endif()
 math_library(fc DEPS blas)
+math_library(lapack_function DEPS dynload_lapack)
 
 math_library(matrix_bit_code)
 
@@ -88,6 +89,7 @@ math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
 math_library(matrix_inverse)
 math_library(segment_pooling)
+math_library(matrix_solve)
 
 cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)
 cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selected_rows_functor)

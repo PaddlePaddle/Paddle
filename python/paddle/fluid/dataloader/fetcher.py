@@ -26,7 +26,16 @@ class _DatasetFetcher(object):
         self.collate_fn = collate_fn
         self.drop_last = drop_last
 
-    def fetch(self, batch_indices):
+    # NOTE: fetch function here perform the whole pipeline of dataset
+    #       reading and data trasforms of a batch in each calling, this
+    #       may take a long time inside, if DataLoader is exit outside,
+    #       fetch need to perceive exit situation, so we pass done_event
+    #       here for fetch to check exit status
+    # NOTE: if DataLoadet exit by `break`, performing GPU tensor operations,
+    #       e.g. to_tensor may cause SIGSEGV in thread, so we pass the
+    #       done_event argument to check DataLoader exit status between
+    #       ecah sample processing in the batch
+    def fetch(self, batch_indices, done_event=None):
         raise NotImplementedError("'fetch' not implement for class {}".format(
             self.__class__.__name__))
 
@@ -69,15 +78,18 @@ class _IterableDatasetFetcher(_DatasetFetcher):
             dataset, auto_collate_batch, collate_fn, drop_last)
         self.dataset_iter = iter(dataset)
 
-    def fetch(self, batch_indices):
+    def fetch(self, batch_indices, done_event=None):
 
         if self.auto_collate_batch:
             data = []
             for _ in batch_indices:
-                try:
-                    data.append(next(self.dataset_iter))
-                except StopIteration:
-                    break
+                if done_event is None or not done_event.is_set():
+                    try:
+                        data.append(next(self.dataset_iter))
+                    except StopIteration:
+                        break
+                else:
+                    return None
 
             if len(data) == 0 or (self.drop_last and
                                   len(data) < len(batch_indices)):
@@ -101,9 +113,14 @@ class _MapDatasetFetcher(_DatasetFetcher):
         super(_MapDatasetFetcher, self).__init__(dataset, auto_collate_batch,
                                                  collate_fn, drop_last)
 
-    def fetch(self, batch_indices):
+    def fetch(self, batch_indices, done_event=None):
         if self.auto_collate_batch:
-            data = [self.dataset[idx] for idx in batch_indices]
+            data = []
+            for idx in batch_indices:
+                if done_event is None or not done_event.is_set():
+                    data.append(self.dataset[idx])
+                else:
+                    return None
 
             global _WARNING_TO_LOG
             if not isinstance(data[0], (Sequence, Mapping)) \

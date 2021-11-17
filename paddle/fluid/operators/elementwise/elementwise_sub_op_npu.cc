@@ -166,9 +166,17 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(elementwise_sub, ops::ElementwiseSubNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(elementwise_sub, ops::ElementwiseSubNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ElementwiseSubNPUKernel<int64_t>,
+#endif
+                       ops::ElementwiseSubNPUKernel<float>,
                        ops::ElementwiseSubNPUKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(elementwise_sub_grad,
+                       ops::ElementwiseSubGradNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ElementwiseSubGradNPUKernel<int64_t>,
+#endif
                        ops::ElementwiseSubGradNPUKernel<float>,
                        ops::ElementwiseSubGradNPUKernel<plat::float16>);

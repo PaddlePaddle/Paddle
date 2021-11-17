@@ -77,36 +77,21 @@ class PipelineParallel(MetaParallelBase):
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
-        assert isinstance(optimizer, HybridParallelOptimizer), (
-            'optimizer should be HybridParallelOptimizer subclass.')
+    def forward_backward_pipeline(self, data, scaler=None):
+        # use the 1f1b scheduling strategy.
+        # this strategy is inspired by:
+        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
-        assert fluid.framework._dygraph_tracer()._has_grad, (
-            'Please enable the generation of gradients.')
-
-        if self.is_first_stage or self.is_last_stage:
-            assert data is not None, (
-                "For the first and the last stage, the data must be set.")
-        else:
-            data = None
-
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
         self.scaler = scaler
-        self.data = data
-        self._compute_loss = True
 
-        self._layers.train()
+        # store data for train
+        self.data = data
 
         # store total loss of entire batch
         self.total_loss = None
 
         # store data id for micro_batch
         self.micro_batch_id = 0
-
-        # Next, use the 1f1b scheduling strategy.
-        # this strategy is inspired by:
-        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
         startup_steps = (self.num_stages - self.stage_id - 1)
         startup_steps = min(startup_steps, self.accumulate_steps)
@@ -160,12 +145,36 @@ class PipelineParallel(MetaParallelBase):
             p2p.send_backward(input_tensor_grad)
 
         self._layers.allreduce_shared_weight_gradients()
+        with paddle.amp.auto_cast(enable=False):
+            train_loss = self._broadcast_final_loss()
+        return train_loss
 
-        self.train_loss = self._broadcast_final_loss()
+    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+        assert isinstance(optimizer, HybridParallelOptimizer), (
+            'optimizer should be HybridParallelOptimizer subclass.')
+
+        assert fluid.framework._dygraph_tracer()._has_grad, (
+            'Please enable the generation of gradients.')
+
+        if self.is_first_stage or self.is_last_stage:
+            assert data is not None, (
+                "For the first and the last stage, the data must be set.")
+        else:
+            data = None
+
+        self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
+
+        self._layers.train()
+
+        # 1f1b for pipeline
+        train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
-        self._optimizer_step()
-        return self.train_loss
+        with paddle.amp.auto_cast(enable=False):
+            self._optimizer_step()
+
+        return train_loss
 
     def eval_batch(self, data, compute_loss=False):
         self._layers.eval()
@@ -233,12 +242,13 @@ class PipelineParallel(MetaParallelBase):
                     output_tensor, paddle.Tensor
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
-                if self.accumulate_steps > 1:
-                    output_tensor = output_tensor / self.accumulate_steps
+                with paddle.amp.auto_cast(enable=False):
+                    if self.accumulate_steps > 1:
+                        output_tensor = output_tensor / self.accumulate_steps
 
-                if self.total_loss is None:
-                    self.total_loss = paddle.zeros_like(output_tensor)
-                self.total_loss += output_tensor.detach()
+                    if self.total_loss is None:
+                        self.total_loss = paddle.zeros_like(output_tensor)
+                    self.total_loss += output_tensor.detach()
 
         self.micro_batch_id += 1
         return output_tensor
@@ -312,13 +322,29 @@ class PipelineParallel(MetaParallelBase):
         if self.is_last_stage:
             assert self.total_loss is not None, "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.detach()
+            is_fp32 = paddle.to_tensor(
+                1) if loss.dtype == paddle.float32 else paddle.to_tensor(0)
+            paddle.distributed.broadcast(
+                is_fp32,
+                src=self.global_rank,
+                use_calc_stream=True,
+                group=self.pp_group)
             paddle.distributed.broadcast(
                 loss,
                 src=self.global_rank,
                 use_calc_stream=True,
                 group=self.pp_group)
         else:
-            loss = paddle.zeros(shape=[1], dtype="float32")
+            is_fp32 = paddle.to_tensor(1)
+            paddle.distributed.broadcast(
+                is_fp32,
+                src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+                use_calc_stream=True,
+                group=self.pp_group)
+            loss = paddle.zeros(
+                shape=[1],
+                dtype="float32") if is_fp32.numpy()[0] else paddle.zeros(
+                    shape=[1], dtype="float16")
             paddle.distributed.broadcast(
                 loss,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
@@ -329,6 +355,7 @@ class PipelineParallel(MetaParallelBase):
     def _optimizer_step(self):
         if self.scaler:
             self.scaler.step(self.optimizer)
+            self.scaler.update()
         else:
             self.optimizer.step()
 

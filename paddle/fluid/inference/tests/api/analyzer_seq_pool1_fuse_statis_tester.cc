@@ -36,10 +36,10 @@ TEST(Analyzer_seq_pool1_fuse_statis, fuse_statis) {
   ASSERT_TRUE(fuse_statis.count("repeated_fc_relu_fuse"));
   ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
   EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
-  EXPECT_EQ(fuse_statis.at("squared_mat_sub_fuse"), 2);
+  EXPECT_EQ(fuse_statis.at("squared_mat_sub_fuse"), 0);
   EXPECT_EQ(fuse_statis.at("repeated_fc_relu_fuse"), 2);
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 171);
+  EXPECT_EQ(num_ops, 185);
 }
 
 }  // namespace seq_pool1_tester

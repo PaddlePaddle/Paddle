@@ -167,6 +167,17 @@ def convert_call(func):
     if is_builtin(func) or is_unsupported(func):
         return func
 
+    if inspect.isgeneratorfunction(func):
+        # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function. 
+        # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
+        # occasion.
+        number_of_stars = 30
+        translator_logger.warn(
+            "\n\n" + "*" * number_of_stars +
+            "\nYour function:`{}` doesn't support to transform to static function because it is a generator function, it will be run as-is."
+            .format(func.__name__) + "\n" + "*" * number_of_stars + "\n\n")
+        return func
+
     if inspect.isfunction(func):
         # TODO(liym27): If func is a lambda function, special conversion is needed.
         if func.__name__ == '<lambda>':

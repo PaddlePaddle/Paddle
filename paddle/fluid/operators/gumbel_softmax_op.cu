@@ -130,7 +130,6 @@ struct GumbleNoiseGenerator<platform::CUDADeviceContext, T> {
     T* random_data =
         random_tensor.mutable_data<T>({size}, platform::CUDAPlace());
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-    const unsigned int seed = std::random_device()();
 
     // generate gumbel noise
     int device_id =
@@ -144,6 +143,7 @@ struct GumbleNoiseGenerator<platform::CUDADeviceContext, T> {
           thrust::device_ptr<T>(random_data),
           UniformCUDAGenerator<T>(0.00001, 1, seed_offset.first, gen_offset));
     } else {
+      const unsigned int seed = std::random_device()();
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(random_data),
                         UniformCUDAGenerator<T>(0.00001, 1, seed));

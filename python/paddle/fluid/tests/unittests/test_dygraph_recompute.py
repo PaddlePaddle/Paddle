@@ -92,7 +92,10 @@ class Naive_fc_net(paddle.nn.Layer):
         return inputs
 
 
-def run_model(recompute_block=[], recompute_kwargs={}, enable_autocast=False):
+def run_model(recompute_block=[],
+              recompute_kwargs={},
+              enable_autocast=False,
+              pure_fp16=False):
     gen = paddle.seed(10)
     gen.manual_seed(10)
     np.random.seed(10)
@@ -118,7 +121,8 @@ def run_model(recompute_block=[], recompute_kwargs={}, enable_autocast=False):
         x_data = np.random.randn(batch_size, input_size).astype(np.float32)
         x = paddle.to_tensor(x_data)
         # x.stop_gradient = False
-        with paddle.amp.auto_cast(True):
+        level = 'O2' if pure_fp16 else 'O1'
+        with paddle.amp.auto_cast(True, level=level):
             y_pred = model(x)
             loss = y_pred.mean()
         if enable_autocast:
@@ -194,6 +198,36 @@ class TestPyLayer(unittest.TestCase):
         # recompute second & fourth block
         loss, param, grad = run_model(
             recompute_block=[1, 3], enable_autocast=True)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+    def test_fc_net_with_fp16(self):
+        def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
+            self.assertEqual(loss_ref, loss)
+            self.assertEqual(param_ref, param)
+            self.assertEqual(grad_ref, grad)
+
+        # without recompute
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[], enable_autocast=True, pure_fp16=True)
+
+        # recompute second block
+        loss, param, grad = run_model(
+            recompute_block=[1], enable_autocast=True, pure_fp16=True)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute fourth block
+        loss, param, grad = run_model(
+            recompute_block=[3], enable_autocast=True, pure_fp16=True)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute second to fourth block
+        loss, param, grad = run_model(
+            recompute_block=[1, 2, 3], enable_autocast=True, pure_fp16=True)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute second & fourth block
+        loss, param, grad = run_model(
+            recompute_block=[1, 3], enable_autocast=True, pure_fp16=True)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
     def test_recompute_kwargs(self):

@@ -39,7 +39,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
+
+DECLARE_int32(record_pool_max_size);
+DECLARE_int32(slotpool_thread_num);
+DECLARE_bool(enable_slotpool_wait_release);
+DECLARE_bool(enable_slotrecord_reset_shrink);
 
 namespace paddle {
 namespace framework {
@@ -69,6 +75,50 @@ namespace framework {
 //   while (reader->Next()) {
 //      // trainer do something
 //   }
+
+template <typename T>
+struct SlotValues {
+  std::vector<T> slot_values;
+  std::vector<uint32_t> slot_offsets;
+
+  void add_values(const T* values, uint32_t num) {
+    if (slot_offsets.empty()) {
+      slot_offsets.push_back(0);
+    }
+    if (num > 0) {
+      slot_values.insert(slot_values.end(), values, values + num);
+    }
+    slot_offsets.push_back(static_cast<uint32_t>(slot_values.size()));
+  }
+  T* get_values(int idx, size_t* size) {
+    uint32_t& offset = slot_offsets[idx];
+    (*size) = slot_offsets[idx + 1] - offset;
+    return &slot_values[offset];
+  }
+  void add_slot_feasigns(const std::vector<std::vector<T>>& slot_feasigns,
+                         uint32_t fea_num) {
+    slot_values.reserve(fea_num);
+    int slot_num = static_cast<int>(slot_feasigns.size());
+    slot_offsets.resize(slot_num + 1);
+    for (int i = 0; i < slot_num; ++i) {
+      auto& slot_val = slot_feasigns[i];
+      slot_offsets[i] = static_cast<uint32_t>(slot_values.size());
+      uint32_t num = static_cast<uint32_t>(slot_val.size());
+      if (num > 0) {
+        slot_values.insert(slot_values.end(), slot_val.begin(), slot_val.end());
+      }
+    }
+    slot_offsets[slot_num] = slot_values.size();
+  }
+  void clear(bool shrink) {
+    slot_offsets.clear();
+    slot_values.clear();
+    if (shrink) {
+      slot_values.shrink_to_fit();
+      slot_offsets.shrink_to_fit();
+    }
+  }
+};
 union FeatureFeasign {
   uint64_t uint64_feasign_;
   float float_feasign_;
@@ -97,6 +147,38 @@ struct FeatureItem {
   uint16_t slot_;
 };
 
+struct AllSlotInfo {
+  std::string slot;
+  std::string type;
+  int used_idx;
+  int slot_value_idx;
+};
+struct UsedSlotInfo {
+  int idx;
+  int slot_value_idx;
+  std::string slot;
+  std::string type;
+  bool dense;
+  std::vector<int> local_shape;
+  int total_dims_without_inductive;
+  int inductive_shape_index;
+};
+struct SlotRecordObject {
+  uint64_t search_id;
+  uint32_t rank;
+  uint32_t cmatch;
+  std::string ins_id_;
+  SlotValues<uint64_t> slot_uint64_feasigns_;
+  SlotValues<float> slot_float_feasigns_;
+
+  ~SlotRecordObject() { clear(true); }
+  void reset(void) { clear(FLAGS_enable_slotrecord_reset_shrink); }
+  void clear(bool shrink) {
+    slot_uint64_feasigns_.clear(shrink);
+    slot_float_feasigns_.clear(shrink);
+  }
+};
+using SlotRecord = SlotRecordObject*;
 // sizeof Record is much less than std::vector<MultiSlotType>
 struct Record {
   std::vector<FeatureItem> uint64_feasigns_;
@@ -108,6 +190,179 @@ struct Record {
   uint32_t cmatch;
 };
 
+inline SlotRecord make_slotrecord() {
+  static const size_t slot_record_byte_size = sizeof(SlotRecordObject);
+  void* p = malloc(slot_record_byte_size);
+  new (p) SlotRecordObject;
+  return reinterpret_cast<SlotRecordObject*>(p);
+}
+
+inline void free_slotrecord(SlotRecordObject* p) {
+  p->~SlotRecordObject();
+  free(p);
+}
+
+template <class T>
+class SlotObjAllocator {
+ public:
+  explicit SlotObjAllocator(std::function<void(T*)> deleter)
+      : free_nodes_(NULL), capacity_(0), deleter_(deleter) {}
+  ~SlotObjAllocator() { clear(); }
+
+  void clear() {
+    T* tmp = NULL;
+    while (free_nodes_ != NULL) {
+      tmp = reinterpret_cast<T*>(reinterpret_cast<void*>(free_nodes_));
+      free_nodes_ = free_nodes_->next;
+      deleter_(tmp);
+      --capacity_;
+    }
+    CHECK_EQ(capacity_, static_cast<size_t>(0));
+  }
+  T* acquire(void) {
+    T* x = NULL;
+    x = reinterpret_cast<T*>(reinterpret_cast<void*>(free_nodes_));
+    free_nodes_ = free_nodes_->next;
+    --capacity_;
+    return x;
+  }
+  void release(T* x) {
+    Node* node = reinterpret_cast<Node*>(reinterpret_cast<void*>(x));
+    node->next = free_nodes_;
+    free_nodes_ = node;
+    ++capacity_;
+  }
+  size_t capacity(void) { return capacity_; }
+
+ private:
+  struct alignas(T) Node {
+    union {
+      Node* next;
+      char data[sizeof(T)];
+    };
+  };
+  Node* free_nodes_;  // a list
+  size_t capacity_;
+  std::function<void(T*)> deleter_ = nullptr;
+};
+static const int OBJPOOL_BLOCK_SIZE = 10000;
+class SlotObjPool {
+ public:
+  SlotObjPool()
+      : max_capacity_(FLAGS_record_pool_max_size), alloc_(free_slotrecord) {
+    ins_chan_ = MakeChannel<SlotRecord>();
+    ins_chan_->SetBlockSize(OBJPOOL_BLOCK_SIZE);
+    for (int i = 0; i < FLAGS_slotpool_thread_num; ++i) {
+      threads_.push_back(std::thread([this]() { run(); }));
+    }
+    disable_pool_ = false;
+    count_ = 0;
+  }
+  ~SlotObjPool() {
+    ins_chan_->Close();
+    for (auto& t : threads_) {
+      t.join();
+    }
+  }
+  void disable_pool(bool disable) { disable_pool_ = disable; }
+  void set_max_capacity(size_t max_capacity) { max_capacity_ = max_capacity; }
+  void get(std::vector<SlotRecord>* output, int n) {
+    output->resize(n);
+    return get(&(*output)[0], n);
+  }
+  void get(SlotRecord* output, int n) {
+    int size = 0;
+    mutex_.lock();
+    int left = static_cast<int>(alloc_.capacity());
+    if (left > 0) {
+      size = (left >= n) ? n : left;
+      for (int i = 0; i < size; ++i) {
+        output[i] = alloc_.acquire();
+      }
+    }
+    mutex_.unlock();
+    count_ += n;
+    if (size == n) {
+      return;
+    }
+    for (int i = size; i < n; ++i) {
+      output[i] = make_slotrecord();
+    }
+  }
+  void put(std::vector<SlotRecord>* input) {
+    size_t size = input->size();
+    if (size == 0) {
+      return;
+    }
+    put(&(*input)[0], size);
+    input->clear();
+  }
+  void put(SlotRecord* input, size_t size) {
+    CHECK(ins_chan_->WriteMove(size, input) == size);
+  }
+  void run(void) {
+    std::vector<SlotRecord> input;
+    while (ins_chan_->ReadOnce(input, OBJPOOL_BLOCK_SIZE)) {
+      if (input.empty()) {
+        continue;
+      }
+      // over max capacity
+      size_t n = input.size();
+      count_ -= n;
+      if (disable_pool_ || n + capacity() > max_capacity_) {
+        for (auto& t : input) {
+          free_slotrecord(t);
+        }
+      } else {
+        for (auto& t : input) {
+          t->reset();
+        }
+        mutex_.lock();
+        for (auto& t : input) {
+          alloc_.release(t);
+        }
+        mutex_.unlock();
+      }
+      input.clear();
+    }
+  }
+  void clear(void) {
+    platform::Timer timeline;
+    timeline.Start();
+    mutex_.lock();
+    alloc_.clear();
+    mutex_.unlock();
+    // wait release channel data
+    if (FLAGS_enable_slotpool_wait_release) {
+      while (!ins_chan_->Empty()) {
+        sleep(1);
+      }
+    }
+    timeline.Pause();
+    VLOG(3) << "clear slot pool data size=" << count_.load()
+            << ", span=" << timeline.ElapsedSec();
+  }
+  size_t capacity(void) {
+    mutex_.lock();
+    size_t total = alloc_.capacity();
+    mutex_.unlock();
+    return total;
+  }
+
+ private:
+  size_t max_capacity_;
+  Channel<SlotRecord> ins_chan_;
+  std::vector<std::thread> threads_;
+  std::mutex mutex_;
+  SlotObjAllocator<SlotRecordObject> alloc_;
+  bool disable_pool_;
+  std::atomic<long> count_;  // NOLINT
+};
+
+inline SlotObjPool& SlotRecordPool() {
+  static SlotObjPool pool;
+  return pool;
+}
 struct PvInstanceObject {
   std::vector<Record*> ads;
   void merge_instance(Record* ins) { ads.push_back(ins); }
@@ -129,7 +384,21 @@ class CustomParser {
   CustomParser() {}
   virtual ~CustomParser() {}
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
+  virtual bool Init(const std::vector<AllSlotInfo>& slots);
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
+  virtual bool ParseOneInstance(
+      const std::string& line,
+      std::function<void(std::vector<SlotRecord>&, int)>
+          GetInsFunc) {  // NOLINT
+    return true;
+  }
+  virtual bool ParseFileInstance(
+      std::function<int(char* buf, int len)> ReadBuffFunc,
+      std::function<void(std::vector<SlotRecord>&, int, int)>
+          PullRecordsFunc,  // NOLINT
+      int& lines) {         // NOLINT
+    return false;
+  }
 };
 
 typedef paddle::framework::CustomParser* (*CreateParserObjectFunc)();
@@ -179,6 +448,34 @@ class DLManager {
     handle.module = dlopen(name.c_str(), RTLD_NOW);
     if (handle.module == nullptr) {
       VLOG(0) << "Create so of " << name << " fail";
+      return nullptr;
+    }
+
+    CreateParserObjectFunc create_parser_func =
+        (CreateParserObjectFunc)dlsym(handle.module, "CreateParserObject");
+    handle.parser = create_parser_func();
+    handle.parser->Init(conf);
+    handle_map_.insert({name, handle});
+
+    return handle.parser;
+#endif
+    VLOG(0) << "Not implement in windows";
+    return nullptr;
+  }
+
+  paddle::framework::CustomParser* Load(const std::string& name,
+                                        const std::vector<AllSlotInfo>& conf) {
+#ifdef _LINUX
+    std::lock_guard<std::mutex> lock(mutex_);
+    DLHandle handle;
+    std::map<std::string, DLHandle>::iterator it = handle_map_.find(name);
+    if (it != handle_map_.end()) {
+      return it->second.parser;
+    }
+    handle.module = dlopen(name.c_str(), RTLD_NOW);
+    if (handle.module == nullptr) {
+      VLOG(0) << "Create so of " << name << " fail";
+      exit(-1);
       return nullptr;
     }
 
@@ -415,6 +712,11 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetCurrentPhase(int current_phase);
   virtual void LoadIntoMemory();
   virtual void LoadIntoMemoryFromSo();
+  virtual void SetRecord(T* records) { records_ = records; }
+  int GetDefaultBatchSize() { return default_batch_size_; }
+  void AddBatchOffset(const std::pair<int, int>& offset) {
+    batch_offsets_.push_back(offset);
+  }
 
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
@@ -423,6 +725,11 @@ class InMemoryDataFeed : public DataFeed {
                                       CustomParser* parser) {}
   virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
   virtual void PutToFeedVec(const T* ins_vec, int num) = 0;
+
+  std::vector<std::vector<float>> batch_float_feasigns_;
+  std::vector<std::vector<uint64_t>> batch_uint64_feasigns_;
+  std::vector<std::vector<size_t>> offset_;
+  std::vector<bool> visit_;
 
   int thread_id_;
   int thread_num_;
@@ -783,11 +1090,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
-  void SetRecord(Record* records) { records_ = records; }
-  int GetDefaultBatchSize() { return default_batch_size_; }
-  void AddBatchOffset(const std::pair<int, int>& offset) {
-    batch_offsets_.push_back(offset);
-  }
+  // void SetRecord(Record* records) { records_ = records; }
 
  protected:
   virtual bool ParseOneInstance(Record* instance);
@@ -798,10 +1101,42 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
                                 uint32_t* cmatch, uint32_t* rank);
   virtual void PutToFeedVec(const Record* ins_vec, int num);
-  std::vector<std::vector<float>> batch_float_feasigns_;
-  std::vector<std::vector<uint64_t>> batch_uint64_feasigns_;
-  std::vector<std::vector<size_t>> offset_;
-  std::vector<bool> visit_;
+};
+
+class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
+ public:
+  SlotRecordInMemoryDataFeed() {}
+  virtual ~SlotRecordInMemoryDataFeed() {}
+  virtual void Init(const DataFeedDesc& data_feed_desc);
+  virtual void LoadIntoMemory();
+  void ExpandSlotRecord(SlotRecord* ins);
+
+ protected:
+  virtual bool Start();
+  virtual int Next();
+  virtual bool ParseOneInstance(SlotRecord* instance) { return false; }
+  virtual bool ParseOneInstanceFromPipe(SlotRecord* instance) { return false; }
+  // virtual void ParseOneInstanceFromSo(const char* str, T* instance,
+  //                                    CustomParser* parser) {}
+  virtual void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) {}
+
+  virtual void LoadIntoMemoryByCommand(void);
+  virtual void LoadIntoMemoryByLib(void);
+  virtual void LoadIntoMemoryByLine(void);
+  virtual void LoadIntoMemoryByFile(void);
+  virtual void SetInputChannel(void* channel) {
+    input_channel_ = static_cast<ChannelObject<SlotRecord>*>(channel);
+  }
+  bool ParseOneInstance(const std::string& line, SlotRecord* rec);
+  virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
+  float sample_rate_ = 1.0f;
+  int use_slot_size_ = 0;
+  int float_use_slot_size_ = 0;
+  int uint64_use_slot_size_ = 0;
+  std::vector<AllSlotInfo> all_slots_info_;
+  std::vector<UsedSlotInfo> used_slots_info_;
+  size_t float_total_dims_size_ = 0;
+  std::vector<int> float_total_dims_without_inductives_;
 };
 
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {

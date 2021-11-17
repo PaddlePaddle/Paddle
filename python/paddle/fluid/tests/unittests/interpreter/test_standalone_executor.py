@@ -79,18 +79,11 @@ class LinearTestCase(unittest.TestCase):
         IS_WINDOWS = sys.platform.startswith('win')
 
         if core.is_compiled_with_cuda():
-            # input `a` is on CPU, 16 bytes
-            self.assertEqual(cost_info.host_memory_bytes(), 16)
             # # w,bias,b, out, memory block is at least 256 bytes on Linux
             gt = 16 * 4 if IS_WINDOWS else 256 * 4
             self.assertGreater(cost_info.device_memory_bytes(), gt)
-            self.assertGreaterEqual(cost_info.device_total_memory_bytes(),
-                                    cost_info.device_memory_bytes())
         else:
-            # x(16 bytes), w(16 bytes), bias(8 bytes), b(16 bytes), out(16 bytes)
-            self.assertGreaterEqual(cost_info.host_memory_bytes(), 72)
             self.assertEqual(cost_info.device_memory_bytes(), 0)
-            self.assertGreaterEqual(cost_info.device_total_memory_bytes(), 0)
 
 
 def build_program():
@@ -250,12 +243,81 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         feed = [{'a': np.ones([2, 2], dtype="float32")}]
 
         with self.assertRaises(TypeError):
-            res = self.run_new_executor(feed)
-
-        with self.assertRaises(TypeError):
             os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
             self._run(feed[0], add_wrong_fetch=True)
             del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+
+
+class TestException(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+
+    def build_program(self):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            w = paddle.rand([10, 3])
+            ids = paddle.static.data(name="id", shape=[5], dtype='int64')
+            data = paddle.static.data(name="data", shape=[3], dtype='float32')
+            emb = paddle.nn.functional.embedding(
+                x=ids, weight=w, sparse=False, name="embedding")
+            emb = emb + data
+
+        return main_program, startup_program, emb
+
+    def _run(self, feeds):
+        paddle.seed(2020)
+
+        main_program, startup_program, fetch_vars = self.build_program()
+
+        exe = paddle.static.Executor(self.place)
+        exe.run(startup_program)
+
+        for feed in feeds:
+            out = exe.run(main_program, feed=feed, fetch_list=fetch_vars)
+        print(main_program)
+        return out
+
+    def run_new_executor(self, feed):
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+        out = self._run(feed)
+        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+        return out
+
+    def test_exception(self):
+        feed = [{
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([1, 2, 3]).astype(np.float32),
+        }, {
+            'id': np.array([1, 2, 3, 4, 11]).astype(np.int64),
+            'data': np.array([1, 2, 3]).astype(np.float32),
+        }]
+        self.assertRaises(ValueError, self.run_new_executor, feed)
+
+    def test_nan(self):
+        flags = {'FLAGS_check_nan_inf': True, 'FLAGS_benchmark': True}
+        paddle.fluid.set_flags(flags)
+        feed = [{
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([1, 2, 3]).astype(np.float32),
+        }, {
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([1, 2, 3]).astype(np.float32),
+        }]
+        feed[1]['data'][0] = np.nan
+        self.assertRaises(RuntimeError, self.run_new_executor, feed)
+
+    def test_scope(self):
+        feed = [{
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([1, 2, 3]).astype(np.float32),
+        }, {
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([2, 2, 2]).astype(np.float32),
+        }]
+        self.run_new_executor(feed)
+        self.assertIsNotNone(paddle.static.global_scope().find_var(
+            'embedding.tmp_2'))
 
 
 if __name__ == "__main__":

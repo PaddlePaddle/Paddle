@@ -86,8 +86,7 @@ struct GumbleNoiseGenerator<platform::CPUDeviceContext, T> {
     // generate uniform random number
     const int size = size_to_axis * size_from_axis;
     std::uniform_real_distribution<T> dist(0.00001, 1);
-    const int seed = std::random_device()();
-    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    auto engine = paddle::framework::GetCPURandomEngine(0);
     Tensor random_tensor;
     auto* random_data =
         random_tensor.mutable_data<T>({size}, platform::CPUPlace());

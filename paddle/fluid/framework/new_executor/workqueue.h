@@ -21,10 +21,31 @@
 namespace paddle {
 namespace framework {
 
+constexpr const char* kQueueEmptyEvent = "QueueEmpty";
+
+class EventsWaiter;
+
 struct WorkQueueOptions {
-  size_t num_threads{0};
-  bool allow_spinning{true};
-  bool track_task{false};
+  WorkQueueOptions(size_t num_threads, bool allow_spinning, bool track_task)
+      : num_threads(num_threads),
+        allow_spinning(allow_spinning),
+        track_task(track_task) {}
+
+  WorkQueueOptions(size_t num_threads, bool allow_spinning, bool track_task,
+                   EventsWaiter* waiter)
+      : num_threads(num_threads),
+        allow_spinning(allow_spinning),
+        track_task(track_task),
+        queue_empty_waiter(waiter) {}
+
+  size_t num_threads;
+  bool allow_spinning;
+  // If you need to blocking the calling  thread to wait "queue empty", set
+  // track_task = true and set queue_empty_waiter. EventsWaiter::WaitEvent will
+  // block the calling thread until any of events (including "queue empty")
+  // occured.
+  bool track_task;
+  EventsWaiter* queue_empty_waiter{nullptr};  // not owned
 };
 
 class WorkQueue {
@@ -39,11 +60,12 @@ class WorkQueue {
 
   virtual void AddTask(std::function<void()> fn) = 0;
 
-  // set WorkQueueOptions.track_task = true before call this
-  // interface, otherwise will abort()
-  virtual void WaitQueueEmpty() = 0;
+  // See WorkQueueOptions.track_task for details
+  // virtual void WaitQueueEmpty() = 0;
 
   virtual size_t NumThreads() const = 0;
+
+  virtual void Cancel() = 0;
 
  protected:
   WorkQueueOptions options_;
@@ -62,13 +84,14 @@ class WorkQueueGroup {
 
   virtual void AddTask(size_t queue_idx, std::function<void()> fn) = 0;
 
-  // set WorkQueueOptions.track_task = true for at least one of queues
-  // before call this interface, otherwise will abort()
-  virtual void WaitQueueGroupEmpty() = 0;
+  // See WorkQueueOptions.track_task for details
+  // virtual void WaitQueueGroupEmpty() = 0;
 
   virtual size_t QueueNumThreads(size_t queue_idx) const = 0;
 
   virtual size_t QueueGroupNumThreads() const = 0;
+
+  virtual void Cancel() = 0;
 
  protected:
   std::vector<WorkQueueOptions> queues_options_;

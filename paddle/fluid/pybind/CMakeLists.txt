@@ -1,12 +1,8 @@
-# Adapt to custom op mechanism: Include the header files related to the data type
-# to avoid exposing the path of the underlying file
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
-
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
-  feed_fetch_method pass pass_builder parallel_executor profiler layer tracer engine scope_pool
+  feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
-  gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator)
+  gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
+  cost_model cuda_graph_with_memory_pool fleet_executor)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -15,6 +11,10 @@ endif()
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
+endif()
+
+if (WITH_GPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_profiler)
 endif()
 
 if (WITH_NCCL OR WITH_RCCL)
@@ -55,6 +55,8 @@ set(PYBIND_SRCS
   data_set_py.cc
   imperative.cc
   ir.cc
+  bind_cost_model.cc
+  bind_fleet_executor.cc
   inference_api.cc
   compatible.cc
   io.cc

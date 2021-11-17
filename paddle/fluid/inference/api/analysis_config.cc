@@ -12,13 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
 #include <string>
+#include <tuple>
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+
+#ifdef PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/helper.h"
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -207,6 +213,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // NPU related.
   CP_MEMBER(use_npu_);
   CP_MEMBER(npu_device_id_);
+  CP_MEMBER(nnadapter_config_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -554,7 +561,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_npu_) {
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(LITE_SUBGRAPH_WITH_NPU)
     PADDLE_ENFORCE_EQ(use_gpu_, false,
                       platform::errors::Unavailable(
                           "Currently, NPU and GPU cannot be enabled in the "
@@ -757,17 +764,6 @@ std::string AnalysisConfig::Summary() {
       {"mkldnn_cache_capacity", std::to_string(mkldnn_cache_capacity_)});
   os.InsetDivider();
 
-  auto Precision2String =
-      [](paddle::AnalysisConfig::Precision prec) -> std::string {
-    if (prec == Precision::kFloat32)
-      return "fp32";
-    else if (prec == Precision::kHalf)
-      return "fp16";
-    else if (prec == Precision::kInt8)
-      return "int8";
-    else
-      return "None";
-  };
   // gpu info
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
@@ -779,6 +775,33 @@ std::string AnalysisConfig::Summary() {
 
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
     if (use_tensorrt_) {
+#ifdef PADDLE_WITH_TENSORRT
+      auto Precision2String =
+          [](paddle::AnalysisConfig::Precision prec) -> std::string {
+        if (prec == Precision::kFloat32)
+          return "fp32";
+        else if (prec == Precision::kHalf)
+          return "fp16";
+        else if (prec == Precision::kInt8)
+          return "int8";
+        else
+          return "None";
+      };
+      auto version2string =
+          [](const std::tuple<int, int, int> &ver) -> std::string {
+        std::ostringstream os;
+        int major = std::get<0>(ver);
+        int minor = std::get<1>(ver);
+        int patch = std::get<2>(ver);
+        os << major << "." << minor << "." << patch;
+        return os.str();
+      };
+      os.InsertRow(
+          {"trt_compile_version",
+           version2string(inference::tensorrt::GetTrtCompileVersion())});
+      os.InsertRow(
+          {"trt_runtime_version",
+           version2string(inference::tensorrt::GetTrtRuntimeVersion())});
       os.InsertRow({"tensorrt_precision_mode",
                     Precision2String(tensorrt_precision_mode_)});
       os.InsertRow({"tensorrt_workspace_size",
@@ -804,6 +827,7 @@ std::string AnalysisConfig::Summary() {
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
       }
+#endif
     }
   }
   os.InsetDivider();
@@ -831,6 +855,61 @@ std::string AnalysisConfig::Summary() {
                 collect_shape_range_info_ ? shape_range_info_path_ : "false"});
 
   return os.PrintTable();
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetDeviceNames(
+    const std::vector<std::string> &names) {
+  nnadapter_device_names = names;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetContextProperties(
+    const std::string &properties) {
+  nnadapter_context_properties = properties;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheDir(
+    const std::string &dir) {
+  nnadapter_model_cache_dir = dir;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
+    const std::string &model_cache_token,
+    const std::vector<char> &model_cache_buffer) {
+  PADDLE_ENFORCE_EQ(model_cache_token.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_token should not be empty."));
+  PADDLE_ENFORCE_EQ(model_cache_buffer.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_buffer should not be empty."));
+  PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
+                    false, platform::errors::InvalidArgument(
+                               "model_cache_token has already been set."));
+
+  nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath(
+    const std::string &path) {
+  nnadapter_subgraph_partition_config_path = path;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer(
+    const std::string &buffer) {
+  nnadapter_subgraph_partition_config_buffer = buffer;
+  return *this;
+}
+LiteNNAdapterConfig &LiteNNAdapterConfig::Enable() {
+  use_nnadapter = true;
+  return *this;
+}
+LiteNNAdapterConfig &LiteNNAdapterConfig::Disable() {
+  use_nnadapter = false;
+  return *this;
 }
 
 void AnalysisConfig::CollectShapeRangeInfo(

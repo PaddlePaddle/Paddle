@@ -23,47 +23,78 @@ from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
 
 
-class TRTGatherTest(InferencePassTest):
+class TRTGatherTest1(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name='data', shape=[-1, 512], dtype='float32')
-            index = fluid.data(name='index', shape=[-1], dtype='int32')
-            scale_out = self.append_gather(data, index)
-            out = fluid.layers.batch_norm(scale_out, is_test=True)
-
-        index = np.arange(self.num_gather, dtype='int32')
-        np.random.shuffle(index)
+            data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
+            index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
+            scale_out = fluid.layers.gather(data, index=index)
+            out = fluid.layers.softmax(input=scale_out)
 
         self.feeds = {
-            "data": np.random.random([self.bs, 512]).astype("float32"),
-            "index": index,
+            "data": np.random.random([self.bs, 128]).astype("float32"),
+            "index": self.index
         }
 
         self.enable_trt = True
-        self.trt_parameters = TRTGatherTest.TensorRTParam(
+        self.trt_parameters = TRTGatherTest1.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = TRTGatherTest1.DynamicShapeParam({
+            'data': [1, 1],
+            'index': [1, 1]
+        }, {'data': [32, 128],
+            'index': [3, 1]}, {'data': [32, 128],
+                               'index': [3, 1]}, False)
         self.fetch_list = [out]
 
     def set_params(self):
-        self.num_gather = 16
-        self.bs = 32
-
-    def append_gather(self, data, index):
-        return fluid.layers.gather(data, index=index)
+        self.index = np.array([[1], [2], [3]], dtype='int32')
+        self.bs = 4
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            self.check_output_with_option(use_gpu, flatten=False)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
-class TRTGatherTest1(TRTGatherTest):
+class TRTGatherTest2(InferencePassTest):
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name='data', shape=[16, 64], dtype='float32')
+            index = fluid.data(name='index', shape=[2], dtype='int32')
+            scale_out = fluid.layers.gather(data, index=index)
+            out = fluid.layers.softmax(input=scale_out)
+
+        self.feeds = {
+            "data": np.random.random([self.bs, 64]).astype("float32"),
+            "index": self.index
+        }
+
+        self.enable_trt = True
+        self.trt_parameters = TRTGatherTest2.TensorRTParam(
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = TRTGatherTest2.DynamicShapeParam({
+            'data': [2, 4],
+            'index': [1]
+        }, {'data': [256, 256],
+            'index': [4]}, {'data': [64, 32],
+                            'index': [2]}, False)
+        self.fetch_list = [out]
+
     def set_params(self):
-        self.num_gather = 32
-        self.bs = 32
+        self.index = np.array([1, 4], dtype='int32')
+        self.bs = 16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=False)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 if __name__ == "__main__":

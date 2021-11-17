@@ -318,7 +318,10 @@ XPUOpMap& get_kl1_ops() {
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::UINT8, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"momuntem", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})}
+      {"momuntem", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"iou_similarity",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})}
       // AddMore
   };
 

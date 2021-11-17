@@ -144,7 +144,8 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
+
     const int W =
         (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                           : x_dims[x_dims.size() - 2]);
@@ -314,7 +315,7 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
     const int W =
         (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                           : x_dims[x_dims.size() - 2]);

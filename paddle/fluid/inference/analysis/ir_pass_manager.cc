@@ -56,10 +56,18 @@ void IRPassManager::CreatePasses(Argument *argument,
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
 
     if (pass_name == "graph_viz_pass") {
-      std::string dot_file_path = std::to_string(pass_num) + "_ir_" +
-                                  (pre_pass.empty() ? "origin" : pre_pass) +
-                                  ".dot";
+      std::string optim_cache_dir = argument->optim_cache_dir();
+      std::string dot_file_path;
+      if (optim_cache_dir.empty()) {
+        dot_file_path = std::to_string(pass_num) + "_ir_" +
+                        (pre_pass.empty() ? "origin" : pre_pass) + ".dot";
+      } else {
+        dot_file_path = optim_cache_dir + "/" + std::to_string(pass_num) +
+                        "_ir_" + (pre_pass.empty() ? "origin" : pre_pass) +
+                        ".dot";
+      }
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
+      pass->Set("optim_cache_dir", new std::string(std::move(optim_cache_dir)));
       pass_num++;
     } else if (pass_name == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
@@ -202,6 +210,28 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::string(argument->xpu_autotune_file()));
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
+      pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+      // NNAdapter Related
+      pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
+      pass->Set("nnadapter_model_cache_dir",
+                new std::string(argument->nnadapter_model_cache_dir()));
+      pass->Set(
+          "nnadapter_device_names",
+          new std::vector<std::string>(argument->nnadapter_device_names()));
+      pass->Set("nnadapter_context_properties",
+                new std::string(argument->nnadapter_context_properties()));
+      pass->Set("nnadapter_subgraph_partition_config_buffer",
+                new std::string(
+                    argument->nnadapter_subgraph_partition_config_buffer()));
+      pass->Set("nnadapter_subgraph_partition_config_path",
+                new std::string(
+                    argument->nnadapter_subgraph_partition_config_path()));
+      pass->Set("nnadapter_model_cache_buffer",
+                new std::vector<std::vector<char>>(
+                    argument->nnadapter_model_cache_buffer()));
+      pass->Set("nnadapter_model_cache_token",
+                new std::vector<std::string>(
+                    argument->nnadapter_model_cache_token()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
@@ -215,6 +245,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
     }
+
+    pass->Set("disable_logs", new bool(disable_logs_));
 
     pre_pass = pass_name;
 

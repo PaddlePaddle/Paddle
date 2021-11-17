@@ -21,6 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
               "/usr/local/cudnn/lib. If empty [default], dlopen "
@@ -50,6 +54,14 @@ DEFINE_string(
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
+
+DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
+
+DEFINE_string(mkl_dir, "",
+              "Specify path for loading libmkl_rt.so. "
+              "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
+              "If default, "
+              "dlopen will search mkl from LD_LIBRARY_PATH");
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
@@ -109,6 +121,9 @@ static constexpr char* win_cusolver_lib =
 static constexpr char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
+static constexpr char* win_cufft_lib =
+    "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_10.dll";
 #else
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
@@ -122,6 +137,9 @@ static constexpr char* win_cusolver_lib =
 static constexpr char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll";
+static constexpr char* win_cufft_lib =
+    "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll";
 #endif  // CUDA_VERSION
 #endif
 
@@ -342,6 +360,16 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+#ifdef PADDLE_WITH_HIP
+void* GetROCFFTDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
+#endif
+}
+#endif
+
 void* GetNvjpegDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.dylib");
@@ -390,6 +418,10 @@ void* GetCUDADsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
+#elif defined(_WIN32)
+  char system32_dir[MAX_PATH];
+  GetSystemDirectory(system32_dir, MAX_PATH);
+  return GetDsoHandleFromSearchPath(system32_dir, "nvcuda.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
@@ -472,6 +504,16 @@ void* GetMKLMLDsoHandle() {
 #endif
 }
 
+void* GetLAPACKDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.3.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dll");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so.3");
+#endif
+}
+
 void* GetOpDsoHandle(const std::string& dso_name) {
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
 }
@@ -486,6 +528,27 @@ void* GetNvtxDsoHandle() {
       platform::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
+#endif
+}
+
+void* GetCUFFTDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.dylib");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cufft_lib, true,
+                                    {cuda_lib_path});
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
+#endif
+}
+
+void* GetMKLRTDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "mkl_rt.dll");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.so");
 #endif
 }
 

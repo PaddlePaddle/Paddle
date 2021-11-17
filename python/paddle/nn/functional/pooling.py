@@ -674,17 +674,8 @@ def max_unpool2d(x,
                  name=None):
     """
     This API implements max unpooling 2d opereation.
+    See more details in :ref:`api_nn_pooling_MaxUnPool2D` .
 
-    `max_unpool2d` is not fully invertible, since the non-maximal values are lost.
-
-    `max_unpool2d` takes in as input the output of `max_unpool2d`
-    including the indices of the maximal values and computes a partial inverse
-    in which all non-maximal values are set to zero.
-    
-    `max_unpool2d` can map several input sizes to the same output
-    sizes. Hence, the inversion process can get ambiguous.
-    To accommodate this, you can provide the needed output size
-    as an additional argument `output_size` in the forward call.
 
     Args:
         x (Tensor): The input tensor of unpooling operator which is a 4-D tensor with
@@ -735,9 +726,8 @@ def max_unpool2d(x,
           
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 1, 6, 6]).astype(np.float32))
+            data = paddle.rand(shape=[1,1,6,6])
             pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
             unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0)

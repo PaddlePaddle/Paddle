@@ -555,10 +555,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if (NOT EXISTS ${TEST_SPLIT_CONVERTER_MODEL}/split_converter.tgz)
         inference_download_and_uncompress_without_verify(${TEST_SPLIT_CONVERTER_MODEL} ${INFERENCE_URL}/tensorrt_test "split_converter.tgz")
     endif()
-    set(TEST_INSTANCE_NORM_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_instance_norm_test")
-    if (NOT EXISTS ${TEST_INSTANCE_NORM_MODEL}/instance_norm.tgz)
-        inference_download_and_uncompress_without_verify(${TEST_INSTANCE_NORM_MODEL} ${INFERENCE_URL}/tensorrt_test "instance_norm.tgz")
-    endif()
     inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -577,9 +573,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_split_converter_test SRCS trt_split_converter_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
-    inference_analysis_test(trt_instance_norm_test SRCS trt_instance_norm_converter_test.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
-            ARGS --infer_model=${TEST_INSTANCE_NORM_MODEL}/)
     inference_analysis_test(test_analyzer_capi_exp_gpu SRCS analyzer_capi_exp_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)

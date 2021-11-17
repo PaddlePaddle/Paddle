@@ -336,6 +336,43 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
   return GetMKLDNNFormat(mem_desc);
 }
 
+inline mkldnn::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
+  switch (tensor_rank) {
+    case 1:
+      return mkldnn::memory::format_tag::a;
+      break;
+    case 2:
+      return mkldnn::memory::format_tag::ab;
+      break;
+    case 3:
+      return mkldnn::memory::format_tag::abc;
+      break;
+    case 4:
+      return mkldnn::memory::format_tag::abcd;
+      break;
+    case 5:
+      return mkldnn::memory::format_tag::abcde;
+      break;
+    case 6:
+      return mkldnn::memory::format_tag::abcdef;
+      break;
+    case 7:
+      return mkldnn::memory::format_tag::abcdefg;
+      break;
+    case 8:
+      return mkldnn::memory::format_tag::abcdefgh;
+      break;
+    case 9:
+      return mkldnn::memory::format_tag::abcdefghi;
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Paddle support tensors with rank in range <1, 9>, but received "
+          "tensor with rank: %d",
+          tensor_rank));
+  }
+}
+
 inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
                                               MKLDNNMemoryFormat data_format) {
   if (dims_size == 1) {
@@ -534,7 +571,13 @@ inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
 inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
   return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
 }
+
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
+
+template <typename T>
+bool constexpr is_int8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
 
 }  // namespace platform
 }  // namespace paddle

@@ -22,7 +22,6 @@ import numpy as np
 
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers.nn import topk
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
 import paddle
 from paddle import _C_ops
@@ -798,7 +797,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
         if total is None:
             total = _varbase_creator(dtype="int32")
 
-        topk_out, topk_indices = topk(input, k=k)
+        topk_out, topk_indices = paddle.topk(input, k=k)
         _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
                                      total)
         return _acc
@@ -806,7 +805,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'accuracy')
-    topk_out, topk_indices = topk(input, k=k)
+    topk_out, topk_indices = paddle.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
         correct = helper.create_variable_for_type_inference(dtype="int32")

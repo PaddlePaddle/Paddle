@@ -174,6 +174,14 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
   void copy_from_cpu(const T* data) {
     return CopyFromCpu(data);
   }
+
+  /// \brief Experimental interface.
+  /// It's usually used to set the input tensor data with Strings data type.
+  /// \param data The pointer of the data, from which the tensor will copy.
+  void copy_strings_from_cpu(const paddle_infer::Strings* data) {
+    return CopyStringsFromCpu(data);
+  }
+
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
   /// \param[out] data The tensor will copy the data to the address.

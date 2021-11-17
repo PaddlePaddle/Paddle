@@ -83,6 +83,7 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     transpose,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
@@ -92,6 +93,7 @@ REGISTER_OP_CUDA_KERNEL(
                             paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
@@ -103,6 +105,7 @@ REGISTER_OP_CUDA_KERNEL(
 
 REGISTER_OP_CUDA_KERNEL(
     transpose2,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, int32_t>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, float>,
@@ -114,6 +117,7 @@ REGISTER_OP_CUDA_KERNEL(
                             paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, int32_t>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,

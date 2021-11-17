@@ -1134,16 +1134,10 @@ class MaxUnPool2D(Layer):
     """
     This API implements max unpooling 2d opereation.
 
-    `max_unpool2d` is not fully invertible, since the non-maximal values are lost.
-
-    `max_unpool2d` takes in as input the output of `max_unpool2d`
-    including the indices of the maximal values and computes a partial inverse
-    in which all non-maximal values are set to zero.
+    'max_unpool2d' accepts the output of 'max_unpool2d' as input
+    Including the indices of the maximum value and calculating the partial inverse
+    All non-maximum values ​​are set to zero.
     
-    `max_unpool2d` can map several input sizes to the same output
-    sizes. Hence, the inversion process can get ambiguous.
-    To accommodate this, you can provide the needed output size
-    as an additional argument `output_size` in the forward call.
 
     Parameters:
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
@@ -1183,7 +1177,7 @@ class MaxUnPool2D(Layer):
         import paddle.nn.functional as F
         import numpy as np
 
-        data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 1, 7, 7]).astype(np.float32))
+        data = paddle.rand(shape=[1,1,7,7])
         pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
         # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
         Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)

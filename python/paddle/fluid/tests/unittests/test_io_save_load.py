@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 
@@ -67,6 +68,23 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
                 target_vars=[z],
                 executor=exe,
                 main_program=main_prog)
+
+
+class TestWhenTrainWithNoGrad(unittest.TestCase):
+    def test_when_train_with_no_grad(self):
+        paddle.disable_static()
+        net = paddle.nn.Linear(1024, 1)
+        net = paddle.jit.to_static(net)
+        x = paddle.rand([1024], 'float32')
+        net(x)
+        save_path = './train_with_no_grad'
+        paddle.jit.save(net, save_path)
+        net = paddle.jit.load(save_path)
+        net.train()
+
+        with paddle.no_grad():
+            x = paddle.rand([1024], 'float32')
+            net(x)
 
 
 if __name__ == '__main__':

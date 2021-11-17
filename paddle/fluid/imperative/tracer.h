@@ -23,6 +23,7 @@
 #include <vector>
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -30,6 +31,8 @@
 
 namespace paddle {
 namespace imperative {
+
+enum class AmpLevel;
 
 using GarbageCollectorMap =
     std::map<platform::Place,
@@ -105,9 +108,12 @@ class Tracer {
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
-  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+  void SetAmpLevel(AmpLevel level) {
+    VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
+    amp_level_ = level;
+  }
 
-  bool IsAutoCastEnabled() const { return enable_autocast_; }
+  AmpLevel GetAmpLevel() const { return amp_level_; }
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
@@ -118,9 +124,9 @@ class Tracer {
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool enable_autocast_{false};
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
+  AmpLevel amp_level_{AmpLevel::O0};
 };
 
 // To access static variable current_tracer

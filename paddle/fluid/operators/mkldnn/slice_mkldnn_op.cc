@@ -98,18 +98,16 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     out->Resize(framework::make_ddim(slice_dims));
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
-    auto key = platform::CreateKey(dev_ctx, x_vec_dims, axes, starts, ends,
-                                   x->format(), x_type);
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x->type(), x_type, dev_ctx, onednn_engine, key);
+    platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
+                                                   x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
     auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
                                                         reorder_src_memory_p);
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, slice_dims, 0, get_plain_format_tag(x), ctx.GetPlace());
+        out, slice_dims, get_plain_format_tag(x), ctx.GetPlace());
 
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
@@ -201,16 +199,13 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     mkldnn::memory::format_tag reorder_format_tag =
         platform::GetMKLDNNFormat(md.reshape(slice_dims));
 
-    auto key = platform::CreateKey(dev_ctx, dout_vec_dims, axes, starts, ends,
-                                   reorder_format_tag, dout_type);
-
-    platform::ReorderMKLDNNHandler reorder_handler(
-        slice_dims, dout->type(), dout_type, dev_ctx, onednn_engine, key);
+    platform::ReorderMKLDNNHandler reorder_handler(slice_dims, dout->type(),
+                                                   dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         reorder_format_tag, platform::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, dx_vec_dims, 0, reorder_format_tag, ctx.GetPlace());
+        dx, dx_vec_dims, reorder_format_tag, ctx.GetPlace());
     memset(dx->data<T>(), 0, reorder_dst_memory_p->get_desc().get_size());
 
     auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,

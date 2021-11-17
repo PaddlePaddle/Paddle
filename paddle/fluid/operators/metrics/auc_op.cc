@@ -27,6 +27,13 @@ class AucOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "Auc");
     auto predict_dims = ctx->GetInputDim("Predict");
     auto label_dims = ctx->GetInputDim("Label");
+    PADDLE_ENFORCE_GE(
+        predict_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The Input(Predict) has not been initialized properly. The "
+            "shape of Input(Predict) = [%s], the shape size must be "
+            "greater_equal 2.",
+            predict_dims));
     auto predict_width = predict_dims[1];
     PADDLE_ENFORCE_NE(
         framework::product(predict_dims), 0,

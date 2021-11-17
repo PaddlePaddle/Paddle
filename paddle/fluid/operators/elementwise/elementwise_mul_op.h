@@ -283,5 +283,96 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ElementwiseMulTripleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
+    // get input
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* dout = ctx.Input<framework::Tensor>("DOut");
+    auto* ddx = ctx.Input<framework::Tensor>("DDX");
+    auto* ddy = ctx.Input<framework::Tensor>("DDY");
+
+    auto* d_dx = ctx.Input<framework::Tensor>("D_DX");
+    auto* d_dy = ctx.Input<framework::Tensor>("D_DY");
+    auto* d_ddout = ctx.Input<framework::Tensor>("D_DDOut");
+
+    // get output
+    auto* out_d_x = ctx.Output<framework::Tensor>("D_X");
+    auto* out_d_y = ctx.Output<framework::Tensor>("D_Y");
+    auto* out_d_dout = ctx.Output<framework::Tensor>("D_DOut");
+
+    auto* out_d_ddx = ctx.Output<framework::Tensor>("D_DDX");
+    auto* out_d_ddy = ctx.Output<framework::Tensor>("D_DDY");
+
+    if (out_d_x) out_d_x->mutable_data<T>(x->dims(), ctx.GetPlace());
+    if (out_d_y) out_d_y->mutable_data<T>(y->dims(), ctx.GetPlace());
+    if (out_d_dout) out_d_dout->mutable_data<T>(dout->dims(), ctx.GetPlace());
+    if (out_d_ddx) out_d_ddx->mutable_data<T>(x->dims(), ctx.GetPlace());
+    if (out_d_ddy) out_d_ddy->mutable_data<T>(y->dims(), ctx.GetPlace());
+
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+
+    Tensor ddx_safe, ddy_safe;
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, x, ddx, &ddx_safe);
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
+
+    if (d_ddout) {
+      if (out_d_x) {
+        // out_d_x = ddy * d_ddout
+        default_elementwise_mul<DeviceContext, T>(ctx, &ddy_safe, d_ddout,
+                                                  out_d_x);
+      }
+      if (out_d_y) {
+        // out_d_y = ddx * d_ddout
+        default_elementwise_mul<DeviceContext, T>(ctx, &ddx_safe, d_ddout,
+                                                  out_d_y);
+      }
+    }
+
+    if (out_d_dout) {
+      // get out_d_dout
+      // out_d_dout = ddy * d_dx + d_dy * ddx
+      Tensor out_d_dout_tmp;
+      out_d_dout_tmp.mutable_data<T>(dout->dims(), ctx.GetPlace());
+      default_elementwise_mul<DeviceContext, T>(ctx, d_dy, &ddx_safe,
+                                                out_d_dout);
+      default_elementwise_mul<DeviceContext, T>(ctx, &ddy_safe, d_dx,
+                                                &out_d_dout_tmp);
+      auto out_d_dout_t = framework::EigenVector<T>::Flatten(*out_d_dout);
+      auto out_d_dout_tmp_t =
+          framework::EigenVector<T>::Flatten(out_d_dout_tmp);
+      out_d_dout_t.device(place) = out_d_dout_t + out_d_dout_tmp_t;
+    }
+
+    if (out_d_ddx) {
+      // get out_d_ddx
+      // out_d_ddx = dout * d_dy + y * d_ddout
+      Tensor out_d_ddx_tmp;
+      out_d_ddx_tmp.mutable_data<T>(ddx->dims(), ctx.GetPlace());
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, d_dy, out_d_ddx);
+      default_elementwise_mul<DeviceContext, T>(ctx, y, d_ddout,
+                                                &out_d_ddx_tmp);
+      auto out_d_ddx_t = framework::EigenVector<T>::Flatten(*out_d_ddx);
+      auto out_d_ddx_tmp_t = framework::EigenVector<T>::Flatten(out_d_ddx_tmp);
+      out_d_ddx_t.device(place) = out_d_ddx_t + out_d_ddx_tmp_t;
+    }
+
+    if (out_d_ddy) {
+      // get out_d_ddy
+      // out_d_ddy = dout * d_dx + x * d_ddout
+      Tensor out_d_ddy_tmp;
+      out_d_ddy_tmp.mutable_data<T>(ddy->dims(), ctx.GetPlace());
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, d_dx, out_d_ddy);
+      default_elementwise_mul<DeviceContext, T>(ctx, x, d_ddout,
+                                                &out_d_ddy_tmp);
+      auto out_d_ddy_t = framework::EigenVector<T>::Flatten(*out_d_ddy);
+      auto out_d_ddy_tmp_t = framework::EigenVector<T>::Flatten(out_d_ddy_tmp);
+      out_d_ddy_t.device(place) = out_d_ddy_t + out_d_ddy_tmp_t;
+    }
+  }
+};
 }  // namespace operators
 }  // namespace paddle

@@ -28,6 +28,7 @@ from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
 from .framework import in_dygraph_mode
 from .layer_helper import LayerHelper
+from .framework import default_main_program
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
@@ -435,6 +436,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         sum_square_list = []
+        sum_square_list_fp16 = []
+        sum_square_list_fp32 = []
         for p, g in params_grads:
             if g is None:
                 continue
@@ -446,13 +449,36 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
-            sum_square_list.append(sum_square)
+            if sum_square.dtype == core.VarDesc.VarType.FP16:
+                sum_square_list_fp16.append(sum_square)
+            elif sum_square.dtype == core.VarDesc.VarType.FP32:
+                sum_square_list_fp32.append(sum_square)
+            else:
+                sum_square_list.append(sum_square)
 
         # all parameters have been filterd out
-        if len(sum_square_list) == 0:
+        if len(sum_square_list) + len(sum_square_list_fp16) + len(
+                sum_square_list_fp32) == 0:
             return params_grads
 
-        global_norm_var = layers.concat(sum_square_list)
+        sum_dtype = 'float64' if len(sum_square_list) > 0 else "float32"
+        global_norm_var = []
+        if len(sum_square_list_fp16) > 0:
+            global_norm_var_fp16 = layers.concat(sum_square_list_fp16)
+            global_norm_var_fp16 = layers.reduce_sum(global_norm_var_fp16)
+            global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
+        if len(sum_square_list_fp32) > 0:
+            global_norm_var_fp32 = layers.concat(sum_square_list_fp32)
+            global_norm_var_fp32 = layers.reduce_sum(global_norm_var_fp32)
+            if sum_dtype == 'float32':
+                global_norm_var.append(global_norm_var_fp32)
+            else:
+                global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
+        if len(sum_square_list) > 0:
+            global_norm_var_fp64 = layers.concat(sum_square_list)
+            global_norm_var_fp64 = layers.reduce_sum(global_norm_var_fp64)
+            global_norm_var.append(global_norm_var_fp64)
+        global_norm_var = layers.concat(global_norm_var)
         global_norm_var = layers.reduce_sum(global_norm_var)
         global_norm_var = layers.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
@@ -468,7 +494,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 params_and_grads.append((p, g))
                 continue
             # TODO(wangxi): use inplace elementwise_mul
-            new_grad = layers.elementwise_mul(x=g, y=clip_var)
+            clip_input = (clip_var.astype('float16')
+                          if g.dtype == core.VarDesc.VarType.FP16 else clip_var)
+            new_grad = layers.elementwise_mul(x=g, y=clip_input)
             params_and_grads.append((p, new_grad))
 
         return params_and_grads
@@ -547,7 +575,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     scale_input = (scale_var.astype('float16')
                                    if g.dtype == core.VarDesc.VarType.FP16 else
                                    scale_var)
-                    p.block.append_op(
+                    # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
+                    # will be in different blocks with the gradient clip related ops.
+                    # We need to handle the correct block, otherwise will encounter
+                    # a 'NotFoundError' during compile time.
+                    block = default_main_program().current_block()
+                    block.append_op(
                         type='elementwise_mul',
                         inputs={'X': g,
                                 'Y': scale_input},

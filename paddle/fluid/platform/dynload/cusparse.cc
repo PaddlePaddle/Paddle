@@ -26,6 +26,10 @@ void *cusparse_dso_handle;
 #ifdef CUSPARSE_ROUTINE_EACH
 CUSPARSE_ROUTINE_EACH(DEFINE_WRAP);
 #endif
+
+#ifdef CUBLAS_BLAS_ROUTINE_EACH_R2
+CUSPARSE_ROUTINE_EACH_R2(DEFINE_WRAP);
+#endif
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
