@@ -49,7 +49,7 @@ class CompatibleDenseTensorUtils {
   static DenseTensor Slice(DenseTensor* tensor,
                            int64_t begin_idx,
                            int64_t end_idx) {
-    size_t bytes = tensor->numel() * SizeOf(tensor->data_type());
+    size_t bytes = tensor->numel() * SizeOf(tensor->dtype());
     PADDLE_ENFORCE_GE(tensor->capacity(),
                       bytes,
                       paddle::platform::errors::InvalidArgument(
