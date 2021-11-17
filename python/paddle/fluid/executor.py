@@ -493,29 +493,20 @@ class _StandaloneExecutor(object):
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed, fetch_list, return_numpy=True):
+    def run(self, feed_names, fetch_list, return_numpy=True):
         """
         Args:
-            feed(list|dict): This parameter represents the input Tensors of the model.
-                If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list of Tensors. If the
-                parameter type is dict, the data in the feed will be split and sent to
-                multiple devices (CPU/GPU), that is to say, the input data will be evenly
-                sent to different devices, so you should make sure the number of samples of
-                the current mini-batch must be greater than the number of places;
-                if the parameter type is list, those data are copied directly to each device,
-                so the length of this list should be equal to the number of places.
-                The default is None.
+            feed_names(list): This parameter represents the input names of the model.
             fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model runs. The default is None. 
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        feed = self._update_feed(feed)
+        # feed = self._update_feed(feed)
         fetch_list = self._check_fetch(fetch_list)
 
-        tensors = self._new_exe.run(feed, fetch_list)._move_to_list()
+        tensors = self._new_exe.run(feed_names, fetch_list)._move_to_list()
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
@@ -598,9 +589,9 @@ class _ExecutorCache(object):
         assert isinstance(
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
+
         if str(program) not in self._cached_executors:
             new_program = program.clone()
-            _prune_feed_ops(new_program)
             new_exe = _StandaloneExecutor(self._place, new_program, scope)
             self._cached_executors[str(program)] = new_exe
 
@@ -1333,12 +1324,15 @@ class Executor(object):
                 program, compiler.CompiledProgram) else program
             assert isinstance(inner_program_, framework.Program)
             if not inner_program_._is_start_up_program_:
+                if feed is None:
+                    feed = {}
                 program = self._add_feed_fetch_ops(
                     program=inner_program_,
                     feed=feed,
                     fetch_list=fetch_list,
                     feed_var_name=feed_var_name,
-                    fetch_var_name=fetch_var_name)
+                    fetch_var_name=fetch_var_name,
+                    skip_fetch=True)
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
                     assert isinstance(program.lr_sheduler,
@@ -1352,15 +1346,9 @@ class Executor(object):
                                                       lr_sheduler._var_name)
                     tensor.set(data, self.place)
 
-                arr = scope.find_var(fetch_var_name).get_fetch_list()
-                tensors = arr._move_to_list()
-                if return_numpy:
-                    return as_numpy(tensors)
-                else:
-                    return tensors
-
-                return self._executor_cache.run(inner_program_, scope, feed,
-                                                fetch_list, return_numpy)
+                return self._executor_cache.run(program, scope,
+                                                list(feed.keys()), fetch_list,
+                                                return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list

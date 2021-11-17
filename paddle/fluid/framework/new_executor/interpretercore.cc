@@ -77,6 +77,24 @@ paddle::framework::FetchList InterpreterCore::Run(
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
+paddle::framework::FetchList InterpreterCore::Run() {
+  if (!is_build_) {
+    paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    paddle::framework::interpreter::build_op_func_list(
+        place_, block_, &op_func_nodes, global_scope_);
+    is_build_ = true;
+    // convert vec func_list to graph
+    Convert(&op_func_nodes);
+  } else {
+    ExecuteInstructionList(vec_instruction_);
+  }
+
+  // return Fetch Tensors
+  auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
+  return *(fetch_var->GetMutable<framework::FetchList>());
+}
+
 void InterpreterCore::BuildOperatorDependences() {
   // analysis the dependences between ops, set the dependecy_count_ and Call
   // Schedule
@@ -93,6 +111,7 @@ void InterpreterCore::BuildOperatorDependences() {
     }
   }
 }
+
 
 void InterpreterCore::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
@@ -505,6 +524,7 @@ void InterpreterCore::Prepare(
                         feed_names.size(), feed_tensors.size()));
 
   auto FeedInput = [&] {
+    VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
       auto* feed_var = global_scope_->FindVar(feed_names[i]);
       PADDLE_ENFORCE_NOT_NULL(feed_var, platform::errors::NotFound(
@@ -529,7 +549,9 @@ void InterpreterCore::Prepare(
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::build_op_func_list, so we should
   // call FeedInput again.
-  if (prepare_feed) FeedInput();
+  if (prepare_feed) {
+    FeedInput();
+  }
 }
 
 interpreter::CostInfo InterpreterCore::DryRun(
