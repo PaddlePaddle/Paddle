@@ -34,15 +34,15 @@ TEST(Tensor, slice) {
 
   // check slice result
   ASSERT_EQ(slice_x.dims().size(), 2);
-  ASSERT_EQ(slice_x.dims()[0], 2);
+  ASSERT_EQ(slice_x.dims()[0], 1);
   ASSERT_EQ(slice_x.dims()[1], 3);
-  ASSERT_EQ(slice_x.numel(), 6);
+  ASSERT_EQ(slice_x.numel(), 3);
   ASSERT_EQ(slice_x.is_cpu(), true);
   ASSERT_EQ(slice_x.type(), pten::DataType::INT64);
   ASSERT_EQ(slice_x.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(slice_x.initialized(), true);
   for (int64_t i = 0; i < slice_x.numel(); ++i) {
-    ASSERT_EQ(slice_x.data<int64_t>()[i], 1);
+    ASSERT_EQ(slice_x.mutable_data<int64_t>()[i], 1);
   }
 }
 
