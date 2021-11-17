@@ -1335,6 +1335,7 @@ class Executor(object):
                     skip_fetch=True)
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
+                    from paddle.optimizer.lr import LRScheduler
                     assert isinstance(program.lr_sheduler,
                                       LRScheduler), "must be LRScheduler"
                     lr_sheduler = program.lr_sheduler
