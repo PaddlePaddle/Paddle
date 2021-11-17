@@ -614,7 +614,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         send_ctx = self.compiled_strategy.get_the_one_send_context(
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
-            use_origin_program=True,
+            use_origin_program=self.role_maker._is_heter_parameter_server_mode,
             ep_list=endpoints)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
@@ -651,6 +651,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
                                          string_hosts, fluid.global_scope())
 
+        import paddle.distributed.fleet as fleet
         fleet.util.barrier()
         print('ZCB begin create c2c connection')
         info = self._communicator.get_client_info()
@@ -679,7 +680,6 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
-        import paddle.distributed.fleet as fleet
         if not is_test:
             self._communicator.init_params(init_params)
             fleet.util.barrier()
