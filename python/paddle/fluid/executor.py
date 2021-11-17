@@ -1913,7 +1913,7 @@ class Executor(object):
         fleet_exe.init(program._pipeline_opt["section_program"].desc)
         fleet_exe.run()
         # TODO(fleet_executor dev): replace this fake return for gpt test in the future
-        return [[0], [0], 0] if len(fetch_list) == 3 else [[0], [0]]
+        return None
 
     def _run_pipeline(self,
                       program=None,
