@@ -227,6 +227,7 @@ def dropout(x,
         attrs={
             'dropout_prob': p,
             'is_test': not training,
+            'reset': True if paddle.is_compiled_with_npu() else False,
             'dropout_implementation': mode,
         })
     return out

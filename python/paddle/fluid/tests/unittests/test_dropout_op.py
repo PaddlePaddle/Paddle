@@ -22,7 +22,7 @@ import paddle
 import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-
+import paddle.static as static
 
 class TestDropoutOp(OpTest):
     def setUp(self):
@@ -879,6 +879,9 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
+        if paddle.is_compiled_with_npu():
+            self.places.append(paddle.NPUPlace(0))
+
     def check_static_result(self, place):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import dropout
         with static.program_guard(static.Program(), static.Program()):
@@ -888,11 +891,13 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
                 p=0.3,
                 training=True,
                 mode='upscale_in_train',
+                reset=True if paddle.is_compiled_with_npu() else False,
                 rng_name='seed0')
             res2 = dropout(
                 input,
                 p=0.3,
                 training=True,
+                reset=True if paddle.is_compiled_with_npu() else False,
                 mode='upscale_in_train',
                 rng_name='seed1')
             res3 = dropout(input, p=0.3)
