@@ -49,11 +49,11 @@ class TransferLayoutFunctor {
     auto &in_tensor = *framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_);
     framework::LoDTensor out_tensor;
 
-    auto in_layout = in_tensor.layout();
     auto out_layout = static_cast<DataLayout>(dst_layout_);
     out_tensor.set_layout(out_layout);
 
 #ifdef PADDLE_WITH_MKLDNN
+    auto in_layout = in_tensor.layout();
     if (in_layout == DataLayout::kMKLDNN || out_layout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_EQ(
           !(in_layout == DataLayout::kMKLDNN &&
