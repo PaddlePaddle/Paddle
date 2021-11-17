@@ -104,9 +104,21 @@ std::vector<int64_t> Tensor::shape() const {
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The reshape operation is not supported now, "
-      "and it will be implemented by calling the reshape kernel later."));
+  LOG(WARNING) << "The function of resetting the shape of the uninitialized "
+                  "Tensor of the `reshape` method is deprecated since version "
+                  "2.3, and will be removed in version 2.4, please use "
+                  "`paddle::experimental::full` method to create a new Tensor "
+                  "instead. "
+                  "reasion: `reshape` means changing the tensor shape without "
+                  "touching underlying data, this requires the total size of "
+                  "the tensor to remains constant.";
+  if (detail::IsDenseTensor(impl_)) {
+    std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->Resize(
+        framework::make_ddim(shape));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only supported reshape operation on DenseTensor now."));
+  }
 }
 
 DataType Tensor::dtype() const { return impl_->data_type(); }
@@ -306,12 +318,10 @@ Tensor Tensor::cast(const DataType &target_type) const {
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
-bool Tensor::initialized() const {
-  return impl_ != nullptr && impl_->initialized();
-}
+bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
-  return impl_ != nullptr && impl_->initialized();
+  return defined() && impl_->initialized();
 }
 
 void Tensor::reset() { impl_.reset(); }
