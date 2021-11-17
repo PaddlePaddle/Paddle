@@ -39,9 +39,9 @@ struct DenseTensorMeta {
   using DataLayout = paddle::experimental::DataLayout;
 
   DenseTensorMeta() = default;
-  DenseTensorMeta(DataType type, const DDim& dims);
-  DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout);
-  DenseTensorMeta(DataType type,
+  DenseTensorMeta(DataType dtype, const DDim& dims);
+  DenseTensorMeta(DataType dtype, const DDim& dims, DataLayout layout);
+  DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
                   const std::vector<std::vector<size_t>>& lod);
@@ -54,30 +54,30 @@ struct DenseTensorMeta {
   /// marked with `const` are expected to remain unchanged.
   const bool is_scalar{false};
   DDim dims;
-  const DataType type{DataType::UNDEFINED};
+  const DataType dtype{DataType::UNDEFINED};
   const DataLayout layout{DataLayout::NCHW};
   LoD lod;
   size_t offset{0};
 };
 
-inline DenseTensorMeta::DenseTensorMeta(DataType type, const DDim& dims)
-    : dims(dims), type(type) {}
+inline DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
+    : dims(dims), dtype(dtype) {}
 
-inline DenseTensorMeta::DenseTensorMeta(DataType type,
+inline DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                         const DDim& dims,
                                         DataLayout layout)
-    : dims(dims), type(type), layout(layout) {}
+    : dims(dims), dtype(dtype), layout(layout) {}
 
 inline DenseTensorMeta::DenseTensorMeta(
-    DataType type,
+    DataType dtype,
     const DDim& dims,
     DataLayout layout,
     const std::vector<std::vector<size_t>>& lod)
-    : dims(dims), type(type), layout(layout), lod(lod) {}
+    : dims(dims), dtype(dtype), layout(layout), lod(lod) {}
 
 inline bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
-  valid = valid && (type != DataType::UNDEFINED);
+  valid = valid && (dtype != DataType::UNDEFINED);
   valid = valid && (layout != DataLayout::UNDEFINED);
   valid = valid && (is_scalar || product(dims) >= 0);
   return valid;
@@ -86,7 +86,7 @@ inline bool DenseTensorMeta::valid() const noexcept {
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   bool ret = true;
   return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
-         (lhs.type == rhs.type) && (lhs.layout == rhs.layout) &&
+         (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
 
