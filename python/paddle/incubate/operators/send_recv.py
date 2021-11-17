@@ -18,14 +18,14 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 
 
-def send_recv(x, src_index, dst_index, pool_type, name=None):
+def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
     r"""
 
     Send Recv Operator.
 
     This operator is mainly used in Graph domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
-    to gather the corresponding positions, and then scatter the corresponding output tensor in different
+    to gather the corresponding positions, and then use `dst_index` to scatter the corresponding output tensor in different
     pooling types, like sum, mean, max, or min.
 
     Args:
@@ -34,6 +34,7 @@ def send_recv(x, src_index, dst_index, pool_type, name=None):
         dst_index (Tensor): An 1-d tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
         pool_type (str): The pooling type of send_recv, including `sum`, `mean`, `max`, `min`.
+                         Default value is `sum`.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -51,7 +52,7 @@ def send_recv(x, src_index, dst_index, pool_type, name=None):
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
             out = paddle.incubate.send_recv(x, src_index, dst_index, pool_type="sum")
-            # Outputs: [[0., 2., 3.], [2., 8., 10.], [2., 6., 7.]]
+            # Outputs: [[0., 2., 3.], [2., 8., 10.], [1., 4., 5.]]
 
     """
 
