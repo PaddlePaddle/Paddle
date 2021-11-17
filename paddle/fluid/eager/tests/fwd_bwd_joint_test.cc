@@ -35,11 +35,11 @@ using namespace egr;  // NOLINT
 egr::EagerTensor hook_function(const egr::EagerTensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
 
-  auto ret_meta = pten::DenseTensorMeta(t_dense->data_type(), t_dense->dims(),
+  auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
                                         t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size = paddle::framework::product(t_dense->dims()) *
-                      SizeOf(t_dense->data_type());
+  size_t bytes_size =
+      paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size), 0),

@@ -175,11 +175,10 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
           "%zu and the number of elements of destination tensor is %zu.",
           numel, dst_tensor->numel()));
 
-  auto data_type = pten::TransToProtoVarType(src_tensor->data_type());
+  auto data_type = pten::TransToProtoVarType(src_tensor->dtype());
   auto place = src_tensor->place();
 
-  PADDLE_ENFORCE_EQ(pten::TransToProtoVarType(dst_tensor->data_type()),
-                    data_type,
+  PADDLE_ENFORCE_EQ(pten::TransToProtoVarType(dst_tensor->dtype()), data_type,
                     paddle::platform::errors::PreconditionNotMet(
                         "The data type of source tensor and destination tensor "
                         "should be equal, Otherwise, the calculation results "

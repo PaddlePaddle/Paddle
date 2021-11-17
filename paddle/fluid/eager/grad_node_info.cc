@@ -266,7 +266,7 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
     if (t.defined()) {
       // Fill 1.0
       auto t_impl = t.impl();
-      FillConstAPI(1.0, t_impl->dims(), t_impl->place(), t_impl->data_type(),
+      FillConstAPI(1.0, t_impl->dims(), t_impl->place(), t_impl->dtype(),
                    t_impl->layout(), &buffer_tensor);
     } else {
       // TODO(jiabin): Only Support LodTensorForNow
