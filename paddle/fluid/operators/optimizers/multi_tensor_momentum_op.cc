@@ -101,18 +101,18 @@ class MTMomentumOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Params"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Params"), true,
                       platform::errors::NotFound(
                           "Input(params) of MTMomentum should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Grads"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Grads"), true,
                       platform::errors::NotFound(
                           "Input(grads) of MTMomentum should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Velocitys"), true,
+        ctx->HasInputs("Velocitys"), true,
         platform::errors::NotFound(
             "Input(velocitys) of MTMomentum should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("LearningRates"), true,
+        ctx->HasInputs("LearningRates"), true,
         platform::errors::NotFound(
             "Input(LearningRates) of MTMomentum should not be null."));
 
@@ -139,11 +139,11 @@ class MTMomentumOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("ParamOuts"), true,
+        ctx->HasOutputs("ParamOuts"), true,
         platform::errors::NotFound(
             "Output(ParamOuts) of MTMomentum should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("VelocityOuts"), true,
+        ctx->HasOutputs("VelocityOuts"), true,
         platform::errors::NotFound(
             "Output(VelocityOuts) of MTMomentum should not be null."));
 
@@ -186,7 +186,7 @@ class MTMomentumOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputsDim("ParamOuts", param_dims);
     ctx->SetOutputsDim("VelocityOuts", param_dims);
-    if (ctx->HasOutput("MasterParamOuts")) {
+    if (ctx->HasOutputs("MasterParamOuts")) {
       ctx->SetOutputsDim("MasterParamOuts", param_dims);
     }
   }
