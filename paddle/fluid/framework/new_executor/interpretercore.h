@@ -78,6 +78,8 @@ class InterpreterCore {
 
   void BuildSkipShareLoDInfo();
 
+  void BuildOperatorDependences();
+
   bool is_build_;
 
   const platform::Place& place_;
