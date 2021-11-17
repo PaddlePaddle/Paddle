@@ -93,7 +93,7 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
 template <typename T>
 inline void SetZero(const platform::CUDADeviceContext &ctx, T *ptr,
                     const size_t size) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
 }
 

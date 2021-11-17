@@ -110,11 +110,18 @@ void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
 //! Blocks until stream has completed all operations.
 void GpuStreamSync(gpuStream_t stream);
 
+void GpuDestroyStream(gpuStream_t stream);
+
+// ! Blocks until device has completed all operations.
+void GpuDeviceync();
+
 //! CudaMalloc with recorded info
 gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id);
 
 //! CudaFree with recorded info
 void RecordedGpuFree(void *p, size_t size, int dev_id);
+
+gpuError_t GpuGetLastError();
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020

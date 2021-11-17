@@ -182,10 +182,10 @@ inline miopenTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
   }
   ~ScopedTensorDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
   }
 
   inline miopenTensorDescriptor_t descriptor(const miopenTensorFormat_t format,
@@ -210,12 +210,12 @@ class ScopedTensorDescriptor {
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
     if (dims.size() == 4) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
           desc_, type, dims_with_group.size(),
           const_cast<int*>(dims_with_group.data()),
           const_cast<int*>(strides.data())));
     } else if (dims.size() == 5) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
           desc_, type, dims_with_group.size(),
           const_cast<int*>(dims_with_group.data()),
           const_cast<int*>(strides.data())));
@@ -234,7 +234,7 @@ class ScopedTensorDescriptor {
   inline miopenTensorDescriptor_t descriptor(const miopenDataType_t miopen_type,
                                              const std::vector<int>& dim,
                                              const std::vector<int>& stride) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         desc_, miopen_type, dim.size(), const_cast<int*>(dim.data()),
         const_cast<int*>(stride.data())));
     return desc_;
@@ -256,10 +256,10 @@ class ScopedTensorDescriptor {
 class ScopedDropoutDescriptor {
  public:
   ScopedDropoutDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreateDropoutDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateDropoutDescriptor(&desc_));
   }
   ~ScopedDropoutDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyDropoutDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyDropoutDescriptor(desc_));
   }
 
   inline miopenDropoutDescriptor_t descriptor(const miopenHandle_t& handle,
@@ -269,20 +269,20 @@ class ScopedDropoutDescriptor {
                                               framework::Tensor* dropout_state_,
                                               int seed, size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetDropoutDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetDropoutDescriptor(
           desc_, handle, 0 /* dropout */, nullptr, 0 /* state_size */,
           0 /* seed */, false, false, MIOPEN_RNG_PSEUDO_XORWOW));
       return desc_;
     }
     auto* dropout_state_data = dropout_state_->data<uint8_t>();
     if (!initialized) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetDropoutDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, seed,
           false, false, MIOPEN_RNG_PSEUDO_XORWOW));
     } else {
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenRestoreDropoutDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenRestoreDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, 0,
           false, false, MIOPEN_RNG_PSEUDO_XORWOW));
     }
@@ -298,10 +298,10 @@ class ScopedDropoutDescriptor {
 class ScopedRNNDescriptor {
  public:
   ScopedRNNDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreateRNNDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateRNNDescriptor(&desc_));
   }
   ~ScopedRNNDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyRNNDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyRNNDescriptor(desc_));
   }
 
   inline miopenRNNDescriptor_t desc() { return desc_; }
@@ -314,10 +314,10 @@ class ScopedRNNDescriptor {
 class ScopedFilterDescriptor {
  public:
   ScopedFilterDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
   }
   ~ScopedFilterDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
   }
 
   inline miopenTensorDescriptor_t descriptor(const miopenTensorFormat_t format,
@@ -338,7 +338,7 @@ class ScopedFilterDescriptor {
     for (int k = kernel_with_group.size() - 2; k >= 0; k--) {
       stride_dim[k] = stride_dim[k + 1] * kernel_with_group[k + 1];
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         desc_, type, kernel_with_group.size(),
         const_cast<int*>(kernel_with_group.data()),
         const_cast<int*>(stride_dim.data())));
@@ -363,11 +363,11 @@ class ScopedFilterDescriptor {
 class ScopedConvolutionDescriptor {
  public:
   ScopedConvolutionDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::miopenCreateConvolutionDescriptor(&desc_));
   }
   ~ScopedConvolutionDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::miopenDestroyConvolutionDescriptor(desc_));
   }
 
@@ -385,7 +385,7 @@ class ScopedConvolutionDescriptor {
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
             pads.size(), dilations.size()));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
         desc_, pads.size(), const_cast<int*>(pads.data()),
         const_cast<int*>(strides.data()), const_cast<int*>(dilations.data()),
         miopenConvolution));
@@ -407,10 +407,10 @@ class ScopedConvolutionDescriptor {
 class ScopedPoolingDescriptor {
  public:
   ScopedPoolingDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreatePoolingDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreatePoolingDescriptor(&desc_));
   }
   ~ScopedPoolingDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyPoolingDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyPoolingDescriptor(desc_));
   }
 
   inline miopenPoolingDescriptor_t descriptor(const PoolingMode& mode,
@@ -428,7 +428,7 @@ class ScopedPoolingDescriptor {
             "The size of kernel and strides should be equal. But "
             "received size of kernel is %d, size of strides is %d.",
             kernel.size(), strides.size()));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetNdPoolingDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetNdPoolingDescriptor(
         desc_, GetPoolingMode(mode), kernel.size(),
         const_cast<int*>(kernel.data()), const_cast<int*>(pads.data()),
         const_cast<int*>(strides.data())));
@@ -443,11 +443,11 @@ class ScopedPoolingDescriptor {
 class ScopedActivationDescriptor {
  public:
   ScopedActivationDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::miopenCreateActivationDescriptor(&desc_));
   }
   ~ScopedActivationDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::miopenDestroyActivationDescriptor(desc_));
   }
 
@@ -483,7 +483,7 @@ class ScopedActivationDescriptor {
             "Unrecognized MIOPEN activation mode: %d.",
             static_cast<int>(activation_mode)));
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetActivationDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetActivationDescriptor(
         desc_, mode, relu_ceiling, 0.0, 0.0));
     return desc_;
   }
@@ -508,15 +508,15 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreateCTCLossDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateCTCLossDescriptor(&desc_));
   }
   ~ScopedCTCLossDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyCTCLossDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyCTCLossDescriptor(desc_));
   }
 
   template <typename T>
   inline miopenCTCLossDescriptor_t descriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetCTCLossDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetCTCLossDescriptor(
         desc_, CudnnDataType<T>::type, 0, false));
     return desc_;
   }

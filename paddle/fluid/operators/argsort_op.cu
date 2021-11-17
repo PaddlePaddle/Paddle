@@ -169,7 +169,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
         num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
         cu_stream);
   }
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
+  PADDLE_ENFORCE_GPU_SUCCESS(err);
 
   Tensor temp_storage;
   temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
@@ -188,7 +188,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
         cu_stream);
   }
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
+  PADDLE_ENFORCE_GPU_SUCCESS(err);
 }
 
 template <typename T, typename IndType>

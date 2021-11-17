@@ -230,7 +230,7 @@ class PSGPUWrapper {
                              ? 1.0
                              : config["mf_max_bound"];
     for (size_t i = 0; i < heter_devices_.size(); i++) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(heter_devices_[i]));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
       this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
                          learning_rate, initial_g2sum, initial_range);
       this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,

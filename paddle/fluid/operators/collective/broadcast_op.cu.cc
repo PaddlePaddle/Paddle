@@ -54,7 +54,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
     auto comm = dev_ctx.nccl_comm();
     auto stream = dev_ctx.stream();
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         send_recv_buffer, static_cast<size_t>(in->numel()),
         platform::ToNCCLDataType(in->type()), root_dev_id, comm, stream));
 
@@ -62,11 +62,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
             << " From " << root_dev_id << " to " << dev_id;
 
     if (ctx.Attr<bool>("sync_mode")) {
-#ifdef PADDLE_WITH_RCCL
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

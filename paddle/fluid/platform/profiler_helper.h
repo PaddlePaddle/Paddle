@@ -122,14 +122,14 @@ void SynchronizeAllDevice() {
   int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
 #endif
 #ifdef PADDLE_WITH_HIP
   int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
 #endif
 }

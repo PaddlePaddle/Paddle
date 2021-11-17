@@ -319,7 +319,7 @@ class CudnnNormConvolutionGrad {
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
     ctx.cudnn_workspace_handle().RunFunc(
         [&](void *cudnn_workspace_ptr) {
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::cudnnConvolutionBackwardData(
                   cudnn_handle, &alpha, args_.filter_desc.desc(), filter_ptr,
                   args_.out_desc.desc(), output_grad_ptr,
@@ -369,7 +369,7 @@ class CudnnNormConvolutionGrad {
   size_t GetWorkspaceSizeBwdData(const platform::CUDADeviceContext &ctx) {
     size_t workspace_size = 0U;
     auto handle = ctx.cudnn_handle();
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle, args_.filter_desc.desc(), args_.out_desc.desc(),
             args_.conv_desc.desc(), args_.in_desc.desc(), dgrad_algo_,

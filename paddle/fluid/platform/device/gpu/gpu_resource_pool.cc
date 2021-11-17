@@ -27,10 +27,10 @@ CudaStreamResourcePool::CudaStreamResourcePool() {
       platform::SetDeviceId(dev_idx);
       gpuStream_t stream;
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipStreamCreateWithFlags(&stream, hipStreamNonBlocking));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
 #endif
       return stream;
@@ -39,9 +39,9 @@ CudaStreamResourcePool::CudaStreamResourcePool() {
     auto deleter = [dev_idx](gpuStream_t stream) {
       platform::SetDeviceId(dev_idx);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
 #endif
     };
 
@@ -76,10 +76,10 @@ CudaEventResourcePool::CudaEventResourcePool() {
       platform::SetDeviceId(dev_idx);
       gpuEvent_t event;
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(&event, hipEventDisableTiming));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
 #endif
       return event;
@@ -88,9 +88,9 @@ CudaEventResourcePool::CudaEventResourcePool() {
     auto deleter = [dev_idx](gpuEvent_t event) {
       platform::SetDeviceId(dev_idx);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 #endif
     };
 

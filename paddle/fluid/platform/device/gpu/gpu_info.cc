@@ -131,29 +131,16 @@ size_t GpuMaxChunkSize() {
 }
 
 static void RaiseNonOutOfMemoryError(gpuError_t *status) {
-#ifdef PADDLE_WITH_HIP
-  if (*status == hipErrorOutOfMemory) {
-    *status = hipSuccess;
+  if (*status == gpuErrorOutOfMemory) {
+    *status = gpuSuccess;
   }
-#else
-  if (*status == cudaErrorMemoryAllocation) {
-    *status = cudaSuccess;
-  }
-#endif
-  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
+  PADDLE_ENFORCE_GPU_SUCCESS(*status);
 
-#ifdef PADDLE_WITH_HIP
-  *status = hipGetLastError();
-  if (*status == hipErrorOutOfMemory) {
-    *status = hipSuccess;
+  *status = platform::GpuGetLastError();
+  if (*status == gpuErrorOutOfMemory) {
+    *status = gpuSuccess;
   }
-#else
-  *status = cudaGetLastError();
-  if (*status == cudaErrorMemoryAllocation) {
-    *status = cudaSuccess;
-  }
-#endif
-  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
+  PADDLE_ENFORCE_GPU_SUCCESS(*status);
 }
 
 class RecordedGpuMallocHelper {
@@ -197,11 +184,7 @@ class RecordedGpuMallocHelper {
   gpuError_t Malloc(void **ptr, size_t size) {
     LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
-#ifdef PADDLE_WITH_HIP
-      return hipErrorOutOfMemory;
-#else
-      return cudaErrorMemoryAllocation;
-#endif
+      return gpuErrorOutOfMemory;
     }
 
     CUDADeviceGuard guard(dev_id_);
@@ -217,14 +200,10 @@ class RecordedGpuMallocHelper {
       return gpuSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
-// Non out of memory error would be raised inside
-// RaiseNonOutOfMemoryError. Therefore, we can
-// return cudaErrorMemoryAllocation directly here.
-#ifdef PADDLE_WITH_HIP
-      return hipErrorOutOfMemory;
-#else
-      return cudaErrorMemoryAllocation;
-#endif
+      // Non out of memory error would be raised inside
+      // RaiseNonOutOfMemoryError. Therefore, we can
+      // return cudaErrorMemoryAllocation directly here.
+      return gpuErrorOutOfMemory;
     }
   }
 
@@ -246,15 +225,13 @@ class RecordedGpuMallocHelper {
     auto err = cudaFree(ptr);
     if (err != cudaErrorCudartUnloading) {
 #endif
-      PADDLE_ENFORCE_CUDA_SUCCESS(err);
+      PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
-#ifdef PADDLE_WITH_HIP
-      hipGetLastError();  // clear the error flag when hipErrorDeinitialized
-#else
-      cudaGetLastError();  // clear the error flag when cudaErrorCudartUnloading
-#endif
+      platform::GpuGetLastError();  // clear the error flag when
+                                    // cudaErrorCudartUnloading /
+                                    // hipErrorDeinitialized
     }
   }
 

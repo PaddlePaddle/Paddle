@@ -37,6 +37,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
@@ -506,9 +507,9 @@ struct ReduceConfig {
     left_num = last_dim_num;
     grid_dim->z = grid_z;
     int device_id = platform::GetCurrentDeviceId();
-    int max_mp = platform::GetCUDAMultiProcessors(device_id);
+    int max_mp = platform::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+        platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     // init
     int num_block = (max_threads / left_num);

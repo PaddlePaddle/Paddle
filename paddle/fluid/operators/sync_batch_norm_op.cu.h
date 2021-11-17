@@ -191,7 +191,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     if (comm) {
       int dtype = platform::ToNCCLDataType(mean_out->type());
       // In-place operation
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
           comm, stream));
     }
@@ -465,7 +465,7 @@ void SyncBatchNormGradFunctor(
   if (comm) {
     int dtype = platform::ToNCCLDataType(scale->type());
     // In-place operation
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
         comm, stream));
   }

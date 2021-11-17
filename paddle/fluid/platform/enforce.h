@@ -944,7 +944,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
-#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                        \
+#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                         \
   do {                                                           \
     auto __cond__ = (COND);                                      \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);             \
@@ -1150,7 +1150,7 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 
 }  // namespace details
 
-#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                      \
+#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                       \
   do {                                                         \
     auto __cond__ = (COND);                                    \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);           \

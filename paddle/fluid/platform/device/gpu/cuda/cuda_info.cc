@@ -64,7 +64,7 @@ static int GetGPUDeviceCountImpl() {
     }
   }
   int count;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceCount(&count));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDeviceCount(&count));
   return count;
 }
 
@@ -86,8 +86,8 @@ int GetGPUComputeCapability(int id) {
   auto minor_error_code =
       cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, id);
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(major_error_code);
-  PADDLE_ENFORCE_CUDA_SUCCESS(minor_error_code);
+  PADDLE_ENFORCE_GPU_SUCCESS(major_error_code);
+  PADDLE_ENFORCE_GPU_SUCCESS(minor_error_code);
   return major * 10 + minor;
 }
 
@@ -98,7 +98,7 @@ int GetGPURuntimeVersion(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetGPUDeviceCount()));
   int runtime_version = 0;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaRuntimeGetVersion(&runtime_version));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaRuntimeGetVersion(&runtime_version));
   return runtime_version;
 }
 
@@ -109,7 +109,7 @@ int GetGPUDriverVersion(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetGPUDeviceCount()));
   int driver_version = 0;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaDriverGetVersion(&driver_version));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDriverGetVersion(&driver_version));
   return driver_version;
 }
 
@@ -126,7 +126,7 @@ int GetGPUMultiProcessors(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetGPUDeviceCount()));
   int count;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaDeviceGetAttribute(&count, cudaDevAttrMultiProcessorCount, id));
   return count;
 }
@@ -138,7 +138,7 @@ int GetGPUMaxThreadsPerMultiProcessor(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetGPUDeviceCount()));
   int count;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceGetAttribute(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
       &count, cudaDevAttrMaxThreadsPerMultiProcessor, id));
 
   return count;
@@ -151,14 +151,14 @@ int GetGPUMaxThreadsPerBlock(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetGPUDeviceCount()));
   int count;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaDeviceGetAttribute(&count, cudaDevAttrMaxThreadsPerBlock, id));
   return count;
 }
 
 int GetCurrentDeviceId() {
   int device_id;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDevice(&device_id));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device_id));
   return device_id;
 }
 
@@ -171,35 +171,18 @@ dim3 GetGpuMaxGridDimSize(int id) {
   dim3 ret;
   int size;
   auto error_code_x = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimX, id);
-  PADDLE_ENFORCE_CUDA_SUCCESS(error_code_x);
+  PADDLE_ENFORCE_GPU_SUCCESS(error_code_x);
   ret.x = size;
 
   auto error_code_y = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimY, id);
-  PADDLE_ENFORCE_CUDA_SUCCESS(error_code_y);
+  PADDLE_ENFORCE_GPU_SUCCESS(error_code_y);
   ret.y = size;
 
   auto error_code_z = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimZ, id);
-  PADDLE_ENFORCE_CUDA_SUCCESS(error_code_z);
+  PADDLE_ENFORCE_GPU_SUCCESS(error_code_z);
   ret.z = size;
   return ret;
 }
-
-// std::vector<int> GetSelectedDevices() {
-//   // use user specified GPUs in single-node multi-process mode.
-//   std::vector<int> devices;
-//   if (!FLAGS_selected_gpus.empty()) {
-//     auto devices_str = paddle::string::Split(FLAGS_selected_gpus, ',');
-//     for (auto id : devices_str) {
-//       devices.push_back(atoi(id.c_str()));
-//     }
-//   } else {
-//     int count = GetGPUDeviceCount();
-//     for (int i = 0; i < count; ++i) {
-//       devices.push_back(i);
-//     }
-//   }
-//   return devices;
-// }
 
 const gpuDeviceProp &GetDeviceProperties(int id) {
   std::call_once(g_device_props_size_init_flag, [&] {
@@ -227,7 +210,7 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
   }
 
   std::call_once(*(g_device_props_init_flags[id]), [&] {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaGetDeviceProperties(&g_device_props[id], id));
   });
 
@@ -244,59 +227,42 @@ void SetDeviceId(int id) {
   PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
 }
 
-// void GpuMemoryUsage(size_t *available, size_t *total) {
-//   size_t actual_available, actual_total;
-//   RecordedGpuMemGetInfo(available, total, &actual_available, &actual_total,
-//                          platform::GetCurrentDeviceId());
-// }
-
-// size_t GpuAvailableMemToAlloc() {
-//   size_t total = 0;
-//   size_t available = 0;
-//   GpuMemoryUsage(&available, &total);
-//   size_t reserving =
-//       static_cast<size_t>(fraction_reserve_gpu_memory * available);
-//   // If available size is less than minimum chunk size, no usable memory
-//   exists
-//   size_t available_to_alloc = available - reserving;
-//   size_t min_chunk_size = GpuMinChunkSize();
-//   if (available_to_alloc < min_chunk_size) {
-//     available_to_alloc = 0;
-//   }
-//   VLOG(10) << "GPU usage " << (available >> 20) << "M/" << (total >> 20)
-//            << "M, " << (available_to_alloc >> 20) << "M available to
-//            allocate";
-//   return available_to_alloc;
-// }
-
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     gpuMemcpyKind kind, gpuStream_t stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(dst, src, count, kind, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(dst, src, count, kind, stream));
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    gpuMemcpyKind kind) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(dst, src, count, kind));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(dst, src, count, kind));
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
                         int src_device, size_t count, gpuStream_t stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream));
 }
 
 void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
                        int src_device, size_t count) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemcpyPeer(dst, dst_device, src, src_device, count));
 }
 
 void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemsetAsync(dst, value, count, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(dst, value, count, stream));
 }
 
 void GpuStreamSync(gpuStream_t stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 }
+
+void GpuDestroyStream(gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
+}
+
+void GpuDeviceSync() { PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize()); }
+
+gpuError_t GpuGetLastError() { return cudaGetLastError(); }
 }  // namespace platform
 }  // namespace paddle

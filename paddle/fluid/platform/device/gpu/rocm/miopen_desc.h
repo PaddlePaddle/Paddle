@@ -88,7 +88,7 @@ class ActivationDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             dynload::miopenDestroyActivationDescriptor(t));
         t = nullptr;
       }
@@ -96,13 +96,13 @@ class ActivationDescriptor {
   };
   ActivationDescriptor() {
     T* raw_ptr;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::miopenCreateActivationDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   template <typename T>
   void set(miopenActivationMode_t mode, const T& coef) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetActivationDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetActivationDescriptor(
         desc_.get(), mode, static_cast<double>(coef), 0.0, 0.0));
   }
 
@@ -119,15 +119,14 @@ class TensorDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(t));
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyTensorDescriptor(t));
         t = nullptr;
       }
     }
   };
   TensorDescriptor() {
     T* raw_ptr;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::miopenCreateTensorDescriptor(&raw_ptr));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateTensorDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   T* desc() { return desc_.get(); }
@@ -144,7 +143,7 @@ class TensorDescriptor {
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
@@ -166,7 +165,7 @@ class TensorDescriptor {
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
@@ -183,15 +182,14 @@ class FilterDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(t));
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyTensorDescriptor(t));
         t = nullptr;
       }
     }
   };
   FilterDescriptor() {
     T* raw_ptr;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::miopenCreateTensorDescriptor(&raw_ptr));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateTensorDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   T* desc() { return desc_.get(); }
@@ -212,7 +210,7 @@ class FilterDescriptor {
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
@@ -229,7 +227,7 @@ class ConvolutionDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             dynload::miopenDestroyConvolutionDescriptor(t));
         t = nullptr;
       }
@@ -237,7 +235,7 @@ class ConvolutionDescriptor {
   };
   ConvolutionDescriptor() {
     T* raw_ptr;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::miopenCreateConvolutionDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
@@ -247,12 +245,12 @@ class ConvolutionDescriptor {
   void set(miopenDataType_t dtype, const std::vector<int>& pads,
            const std::vector<int>& strides, const std::vector<int>& dilations,
            bool allow_tf32, const int groups = 1) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
         (miopenConvolutionDescriptor_t)desc_.get(),
         static_cast<int>(pads.size()), const_cast<int*>(pads.data()),
         const_cast<int*>(strides.data()), const_cast<int*>(dilations.data()),
         miopenConvolution));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenSetConvolutionGroupCount(
             (miopenConvolutionDescriptor_t)desc_.get(), groups));
   }

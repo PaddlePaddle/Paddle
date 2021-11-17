@@ -399,10 +399,10 @@ class AllocatorFacadePrivate {
     CUdevice device;
     int val;
     try {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGetAttribute(
               &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
               device));

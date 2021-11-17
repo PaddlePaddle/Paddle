@@ -35,12 +35,10 @@ typedef enum {
 namespace paddle {
 
 #ifdef PADDLE_WITH_HIP
-#define gpuSuccess hipSuccess
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
 #else  // CDUA
 
-#define gpuSuccess cudaSuccess
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = CUDA_TYPE;
 #endif
@@ -81,6 +79,21 @@ using CUDAGraphID = unsigned long long;  // NOLINT
 
 #undef DECLARE_TYPE_FOR_GPU
 
+#ifdef PADDLE_WITH_HIP
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
+  constexpr auto GPU_CV = ROCM_CV;
+#else  // CDUA
+
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
+  constexpr auto GPU_CV = CUDA_CV;
+#endif
+
+DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory, cudaErrorMemoryAllocation,
+                         hipErrorOutOfMemory);
+DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
+DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
+
+#undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace paddle
 
 #endif

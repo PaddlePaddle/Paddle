@@ -499,12 +499,12 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data,
           MIOPEN_SOFTMAX_LOG, mode));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data,
           MIOPEN_SOFTMAX_ACCURATE, mode));
@@ -513,12 +513,12 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
           handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
           desc_, x.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           out_data));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data));
@@ -587,12 +587,12 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(),
           desc_, dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           dx_data, MIOPEN_SOFTMAX_LOG, mode));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(),
           desc_, dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           dx_data, MIOPEN_SOFTMAX_ACCURATE, mode));
@@ -601,12 +601,12 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
           handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
           desc_, out.data<T>(), desc_, dout.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, dx_data));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(), desc_,
           dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));

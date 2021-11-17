@@ -80,7 +80,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
     int recv_numel = numel / num;
     int offset = recv_numel * id;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::ncclRecv(out->data<T>() + offset, recv_numel, dtype,
                                     peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv " << recv_numel

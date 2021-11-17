@@ -69,7 +69,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         auto out_dims = out->dims();
         out->mutable_data<T>(out_dims, place, 0);
         auto numel = out->numel();
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
             out->data<T>(), numel, dtype, peer, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " recv "
                 << framework::product(out_dims) << " from " << peer;
@@ -83,7 +83,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     auto numel = out->numel();
 
     out->mutable_data<T>(out_dims, place);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv "
             << framework::product(out->dims()) << " from " << peer;

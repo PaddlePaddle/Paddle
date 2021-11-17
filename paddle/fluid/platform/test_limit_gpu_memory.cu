@@ -40,22 +40,14 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
     RecordedGpuMemGetInfo(&avail, &total, &actual_avail, &actual_total,
                           DEVICE_ID);
     ASSERT_EQ(total, limit);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
   }
 
   {
     CUDADeviceGuard guard(DEVICE_ID);
     GpuMemoryUsage(&avail, &total);
     ASSERT_EQ(total, limit);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
   }
 
   gpuError_t err = gpuSuccess;
@@ -65,11 +57,7 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   {
     err = platform::RecordedGpuMalloc(&p1, size1, DEVICE_ID);
     ASSERT_EQ(err, gpuSuccess);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
     ASSERT_NE(p1, nullptr);
 
     ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), size1);
@@ -79,13 +67,8 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   size_t size2 = limit / 2;
   {
     err = platform::RecordedGpuMalloc(&p2, size2, DEVICE_ID);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(err, hipErrorOutOfMemory);
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(err, cudaErrorMemoryAllocation);
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    ASSERT_EQ(err, gpuErrorOutOfMemory);
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
     ASSERT_EQ(p2, nullptr);
 
     ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), size1);
@@ -99,11 +82,7 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   {
     err = platform::RecordedGpuMalloc(&p2, size2, DEVICE_ID);
     ASSERT_EQ(err, gpuSuccess);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), hipSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
     ASSERT_NE(p2, nullptr);
     ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), size2);
   }

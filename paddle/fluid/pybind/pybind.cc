@@ -498,7 +498,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetVersion(&ver));
   return ver;
 #else
   PADDLE_THROW(platform::errors::External(

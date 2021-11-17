@@ -316,7 +316,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
                                            "kRedMax, kRedMin, kRedProd."));
     }
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, root, comm->comm(),
         stream));
 #else

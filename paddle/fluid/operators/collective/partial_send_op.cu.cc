@@ -74,7 +74,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
     int send_numel = numel / num;
     int offset = send_numel * id;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
         x->data<T>() + offset, send_numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " send " << send_numel
             << " from offset[" << offset << "] to " << peer;

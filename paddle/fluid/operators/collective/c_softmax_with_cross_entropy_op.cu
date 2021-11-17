@@ -119,7 +119,7 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 1> along_axis(1);
     eigen_logits_max.device(*dev_ctx.eigen_device()) =
         eigen_logits.maximum(along_axis);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         logits_max_buff, logits_max_buff, logits_max.numel(),
         platform::ToNCCLDataType(logits_max.type()), ncclMax, comm->comm(),
         stream));
@@ -160,7 +160,7 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     void* predict_logits_buff = predicted_logits.mutable_data<T>(place);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         predict_logits_buff, predict_logits_buff, predicted_logits.numel(),
         platform::ToNCCLDataType(predicted_logits.type()), ncclSum,
         comm->comm(), stream));
@@ -178,7 +178,7 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     eigen_sum_exp_logits.device(*dev_ctx.eigen_device()) =
         eigen_softmax.sum(along_axis);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sum_exp_logits_buff, sum_exp_logits_buff, sum_exp_logits.numel(),
         platform::ToNCCLDataType(sum_exp_logits.type()), ncclSum, comm->comm(),
         stream));
