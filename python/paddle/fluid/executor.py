@@ -1901,6 +1901,7 @@ class Executor(object):
                 fleet_exe_desc.cluster_info.append(rank_info)
             nrank = len(trainer_endpoints)
         else:
+            fleet_exe_desc.cur_rank = 0
             rank_info = fleet_executor_desc_pb2.RankInfo()
             rank_info.rank = 0
             rank_info.ip_port = ''
