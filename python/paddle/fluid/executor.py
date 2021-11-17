@@ -503,7 +503,6 @@ class _StandaloneExecutor(object):
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        # feed = self._update_feed(feed)
         fetch_list = self._check_fetch(fetch_list)
 
         tensors = self._new_exe.run(feed_names, fetch_list)._move_to_list()
@@ -1326,6 +1325,14 @@ class Executor(object):
             if not inner_program_._is_start_up_program_:
                 if feed is None:
                     feed = {}
+                elif isinstance(feed, (list, tuple)):
+                    assert len(feed) == 1, "Not compiled with data parallel"
+                    feed = feed[0]
+                if not isinstance(feed, dict):
+                    raise TypeError(
+                        "feed requires dict as its Parameter. But you passed in %s"
+                        % (type(feed)))
+                feed = self._update_feed(program, feed)
                 program = self._add_feed_fetch_ops(
                     program=inner_program_,
                     feed=feed,
