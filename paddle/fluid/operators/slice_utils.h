@@ -51,7 +51,7 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
       if (step > 0) {
         start = std::min(start, dim_value);
         end = std::max(end, static_cast<T>(0));
-        PADDLE_ENFORCE_GT(
+        PADDLE_ENFORCE_GE(
             end, start,
             platform::errors::InvalidArgument(
                 "When step > 0, end should be greater than start, but "
@@ -63,7 +63,7 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
         // "end is -1" means contain the 0-th element of this axis.
         start = std::min(start, dim_value - 1);
         end = std::max(end, static_cast<T>(-1));
-        PADDLE_ENFORCE_GT(
+        PADDLE_ENFORCE_GE(
             start, end,
             platform::errors::InvalidArgument(
                 "When step < 0, start should be greater than end, but "
@@ -111,6 +111,7 @@ inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
                                         const std::vector<T>& decrease_axes,
                                         std::vector<T>* infer_flags = nullptr) {
   framework::DDim decreased_dims(slice_dims);
+  std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
   if (decrease_axes.size() > 0) {
     for (size_t i = 0; i < decrease_axes.size(); ++i) {
       T axis = decrease_axes[i];
@@ -119,12 +120,12 @@ inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
             decreased_dims[axis], 1,
             platform::errors::InvalidArgument("decrease dim should be 1"));
       }
-      decreased_dims[axis] = 0;
+      decrease_flag[axis] = 1;
     }
 
     std::vector<T> new_shape;
     for (int i = 0; i < decreased_dims.size(); ++i) {
-      if (decreased_dims[i] != 0) {
+      if (decrease_flag[i] == 0) {
         new_shape.push_back(decreased_dims[i]);
       }
     }

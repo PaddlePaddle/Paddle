@@ -165,8 +165,11 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         new_out_shape.push_back(1);
       }
 
+      VLOG(1) << "########### out_dims: " << out_dims;
+
       out_dims = framework::make_ddim(new_out_shape);
     }
+    VLOG(1) << "########### out_dims: " << out_dims;
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("Input", /*->*/ "Out");
   }
