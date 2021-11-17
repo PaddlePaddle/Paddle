@@ -31,7 +31,7 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard
+from .base import program_desc_tracing_guard, param_guard, _convert_into_variable
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
@@ -39,6 +39,7 @@ from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
 
 __all__ = ['Layer']
 
@@ -1103,6 +1104,8 @@ class Layer(core.Layer):
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
+                if in_declarative_mode() and not framework.in_dygraph_mode():
+                    return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
 
