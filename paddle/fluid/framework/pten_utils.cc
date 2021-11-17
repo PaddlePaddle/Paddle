@@ -209,10 +209,14 @@ pten::DeviceContext* ConvertContext(const platform::DeviceContext& context) {
   if (platform::is_cpu_place(context.GetPlace())) {
     auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
     return reinterpret_cast<pten::CPUContext*>(pt_dev_ctx);
-  } else if (platform::is_gpu_place(context.GetPlace())) {
+  }
+#ifdef PADDLE_WITH_CUDA
+  else if (platform::is_gpu_place(context.GetPlace())) {  // NOLINT
     auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
     return reinterpret_cast<pten::CUDAContext*>(pt_dev_ctx);
-  } else {
+  }
+#endif
+  else {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument("Unsupported type"));
     return nullptr;
   }

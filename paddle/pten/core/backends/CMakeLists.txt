@@ -5,3 +5,8 @@ if (WITH_GPU OR WITH_ROCM)
   add_subdirectory(gpu)
   set(backends_context ${backends_context} ${gpu_context} PARENT_SCOPE)
 endif()
+
+if(WITH_XPU)
+  add_subdirectory(xpu)
+  set(backends_context ${backends_context} xpu_context PARENT_SCOPE)
+endif()

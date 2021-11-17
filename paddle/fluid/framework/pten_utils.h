@@ -104,10 +104,12 @@ struct ConvertContextType<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
 
+#ifdef PADDLE_WITH_CUDA
 template <>
 struct ConvertContextType<platform::CUDADeviceContext> {
   using TYPE = pten::CUDAContext;
 };
+#endif
 
 }  // namespace framework
 }  // namespace paddle
