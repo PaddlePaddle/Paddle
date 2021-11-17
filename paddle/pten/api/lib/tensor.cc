@@ -109,7 +109,7 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "2.3, and will be removed in version 2.4, please use "
                   "`paddle::experimental::full` method to create a new Tensor "
                   "instead. "
-                  "reasion: `reshape` means changing the tensor shape without "
+                  "reason: `reshape` means changing the tensor shape without "
                   "touching underlying data, this requires the total size of "
                   "the tensor to remains constant.";
   if (detail::IsDenseTensor(impl_)) {
