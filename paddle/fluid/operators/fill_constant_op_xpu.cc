@@ -16,12 +16,20 @@ limitations under the License. */
 namespace ops = paddle::operators;
 #ifdef PADDLE_WITH_XPU
 REGISTER_OP_XPU_KERNEL(
-    fill_constant, ops::FillConstantKernel<float>,
-    ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
-    ops::FillConstantKernel<int16_t>, ops::FillConstantKernel<int>,
-    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<bool>,
-    ops::FillConstantKernel<paddle::platform::float16>,
-    ops::FillConstantKernel<paddle::platform::bfloat16>,
-    ops::FillConstantKernel<paddle::platform::complex<float>>,
-    ops::FillConstantKernel<paddle::platform::complex<double>>);
+    fill_constant,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext, double>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext, uint8_t>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext, int16_t>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext, int>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext, int64_t>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext, bool>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext,
+                            paddle::platform::float16>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext,
+                            paddle::platform::bfloat16>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext,
+                            paddle::platform::complex<float>>,
+    ops::FillConstantKernel<paddle::platform::XPUDeviceContext,
+                            paddle::platform::complex<double>>);
 #endif

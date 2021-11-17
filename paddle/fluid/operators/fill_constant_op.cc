@@ -202,14 +202,22 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    fill_constant, ops::FillConstantKernel<float>,
-    ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
-    ops::FillConstantKernel<int16_t>, ops::FillConstantKernel<int>,
-    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<bool>,
-    ops::FillConstantKernel<paddle::platform::float16>,
-    ops::FillConstantKernel<paddle::platform::bfloat16>,
-    ops::FillConstantKernel<paddle::platform::complex<float>>,
-    ops::FillConstantKernel<paddle::platform::complex<double>>);
+    fill_constant,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext, int16_t>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::float16>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::bfloat16>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex<float>>,
+    ops::FillConstantKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(

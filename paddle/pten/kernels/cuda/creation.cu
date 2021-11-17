@@ -60,10 +60,10 @@ void FillConstant(const CUDAContext& dev_ctx,
 
 template <typename T>
 void FillConstantNew(const CUDAContext& dev_ctx,
-                     const VectorTensor& shape,
+                     const ScalarArray& shape,
                      const Scalar& val,
                      DenseTensor* out) {
-  out->Resize(GetDimFromVectorTensor(shape));
+  out->Resize(shape.GetDim());
   out->mutable_data<T>();
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
@@ -111,6 +111,4 @@ PT_REGISTER_KERNEL("fill_constant.new",
                    bool,
                    paddle::platform::float16,
                    paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
-  kernel->InputAt(0).SetBackend(pten::Backend::CPU);
-}
+                   paddle::platform::complex<double>) {}

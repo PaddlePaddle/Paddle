@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/vector_tensor.h"
 
@@ -36,7 +37,7 @@ void FillConstant(const CPUContext& dev_ctx,
 
 template <typename T>
 void FillConstantNew(const CPUContext& dev_ctx,
-                     const VectorTensor& shape,
+                     const ScalarArray& shape,
                      const Scalar& val,
                      DenseTensor* out);
 

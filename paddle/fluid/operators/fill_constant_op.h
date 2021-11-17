@@ -32,7 +32,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class FillConstantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
@@ -126,21 +126,21 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor->mutable_data(platform::CPUPlace(), data_type);
       auto pt_out = paddle::experimental::MakePtenDenseTensor(*tensor);
 
-      // const auto& dev_ctx1 =
-      // ctx.device_context<platform::CPUDeviceContext>();
-      pten::FillConstant<T>(
-          reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx), value,
-          pt_out.get());
-
+      pten::FillConstant<T>(ctx.device_context<DeviceContext>(), value,
+                            pt_out.get());
       // math::SetConstant<platform::CPUDeviceContext, T> functor;
       // functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
       //         tensor, static_cast<T>(value));
     } else if (actual_place == 1) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(ctx.GetPlace(), data_type);
-      math::SetConstant<platform::CUDADeviceContext, T> functor;
-      functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
-              tensor, static_cast<T>(value));
+      auto pt_out = paddle::experimental::MakePtenDenseTensor(*tensor);
+
+      pten::FillConstant<T>(ctx.device_context<DeviceContext>(), value,
+                            pt_out.get());
+// math::SetConstant<platform::CUDADeviceContext, T> functor;
+// functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
+//         tensor, static_cast<T>(value));
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU."));

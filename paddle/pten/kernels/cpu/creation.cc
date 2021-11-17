@@ -59,10 +59,10 @@ void FillConstant(const CPUContext& dev_ctx,
 
 template <typename T>
 void FillConstantNew(const CPUContext& dev_ctx,
-                     const VectorTensor& shape,
+                     const ScalarArray& shape,
                      const Scalar& val,
                      DenseTensor* out) {
-  out->Resize(GetDimFromVectorTensor(shape));
+  out->Resize(shape.GetDim());
   out->mutable_data<T>();
   eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
 }

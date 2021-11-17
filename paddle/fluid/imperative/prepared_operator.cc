@@ -19,7 +19,7 @@
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/pten/common/scalar.h"
-#include "paddle/pten/core/vector_tensor.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
@@ -347,26 +347,24 @@ static void BuildDygraphPtenKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index ==
-        std::type_index(typeid(pten::VectorTensor))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
       auto attr_iter = attrs.find(attr_names[i]);
       if (attr_iter != attrs.end()) {  // shape is in the attribute
         if (std::type_index(attr_iter->second.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
-          kernel_ctx->EmplaceBackAttr(std::move(pten::VectorTensor(
+          kernel_ctx->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "unsupported cast op attribute `%s` to VectorTensor when "
-              "construct "
-              "KernelContext.",
+              "construct KernelContext.",
               attr_names[i]));
         }
       } else {  // shape is in the input
         auto& ins_vector = ins.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePtenVectorTensorFromVar(ins_vector[0]->Var())));
+              experimental::MakePtenScalarArrayFromVar(ins_vector[0]->Var())));
         } else {  // ShapeTensorList
           std::vector<framework::Variable*> variables;
           variables.reserve(ins_vector.size());
@@ -374,7 +372,7 @@ static void BuildDygraphPtenKernelContext(
             variables.push_back(var_base->MutableVar());
           }
           kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePtenVectorTensorFromVarList(variables)));
+              experimental::MakePtenScalarArrayFromVarList(variables)));
         }
       }
     } else if (attr_defs[i].type_index ==

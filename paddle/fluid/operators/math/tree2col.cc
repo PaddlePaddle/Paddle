@@ -51,7 +51,7 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
   return patch;
 }
 
-void Tree2ColUtil::construct_tree(const paddle::Tensor &EdgeSet,
+void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
   auto edge_set_dims = EdgeSet.dims();

@@ -54,7 +54,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
                                              std::move(meta));
 }
 
-pten::VectorTensor MakePtenVectorTensor(
+pten::ScalarArray MakePtenScalarArrayTensor(
     const paddle::framework::LoDTensor& src) {
   if (src.type() == paddle::framework::proto::VarType::INT64) {
     return {src.data<int64_t>(), src.numel()};
@@ -62,56 +62,14 @@ pten::VectorTensor MakePtenVectorTensor(
     return {src.data<int32_t>(), src.numel()};
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Data type error. When cast a LoDTensor to VectorTensor, "
+        "Data type error. When cast a LoDTensor to ScalarArray, "
         "the data type of LoDTensor must be int32 or int64, "
         "but now data type is %s.",
         src.type()));
   }
 }
 
-pten::VectorTensor MakePtenVectorTensorFromTensorList(
-    const std::vector<const paddle::framework::Tensor*>& src_list) {
-  if (src_list.size() == 0) {
-    return pten::VectorTensor();
-  }
-
-  std::vector<int64_t> vector_data;
-  vector_data.reserve(src_list.size());
-
-  auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
-  paddle::framework::proto::VarType::Type data_type = src_list.front()->type();
-
-  if (data_type == paddle::framework::proto::VarType::INT64) {
-    for (auto* tensor : src_list) {
-      if (!platform::is_cpu_place(tensor->place())) {
-        framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vector_data.push_back(*temp.data<int64_t>());
-      } else {
-        vector_data.push_back(*tensor->data<int64_t>());
-      }
-    }
-  } else if (data_type == paddle::framework::proto::VarType::INT32) {
-    for (auto* tensor : src_list) {
-      if (!platform::is_cpu_place(tensor->place())) {
-        framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vector_data.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
-      } else {
-        vector_data.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
-      }
-    }
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Data type error. When cast a Tensor List to VectorTensor, "
-        "the data type of Tensor in the list must be int32 or int64, "
-        "but now data type is %s.",
-        data_type));
-  }
-  return {vector_data};
-}
-
-pten::VectorTensor MakePtenVectorTensorFromVar(
+pten::ScalarArray MakePtenScalarArrayFromVar(
     const framework::Variable& variable) {
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
@@ -119,28 +77,27 @@ pten::VectorTensor MakePtenVectorTensorFromVar(
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
-      return MakePtenVectorTensor(tmp_tensor);
+      return MakePtenScalarArrayTensor(tmp_tensor);
     } else {
-      return MakePtenVectorTensor(tensor);
+      return MakePtenScalarArrayTensor(tensor);
     }
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupport casting input `%s` type to VectorTensor when call pt "
+        "Unsupport casting input `%s` type to ScalarArray when call pt "
         "kernel.",
         framework::ToTypeName(variable.Type())));
   }
 }
 
-pten::VectorTensor MakePtenVectorTensorFromVarList(
-    const std::vector<framework::Variable*>& variables) {
-  if (variables.size() == 0) {
-    return pten::VectorTensor();
+pten::ScalarArray MakePtenScalarArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list) {
+  if (variable_list.size() == 0) {
+    return pten::ScalarArray();
   }
-
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
 
   paddle::framework::proto::VarType::Type data_type;
-  auto* first_var = variables.front();
+  auto* first_var = variable_list.front();
   if (first_var->IsType<framework::LoDTensor>()) {
     const auto& tensor = first_var->Get<framework::LoDTensor>();
     data_type = tensor.type();
@@ -148,14 +105,14 @@ pten::VectorTensor MakePtenVectorTensorFromVarList(
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupport casting input `%s` type to VectorTensor when call pt "
         "kernel.",
-        framework::ToTypeName(variables.front()->Type())));
+        framework::ToTypeName(first_var->Type())));
   }
 
   std::vector<int64_t> vector_data;
-  vector_data.reserve(variables.size());
+  vector_data.reserve(variable_list.size());
 
   if (data_type == paddle::framework::proto::VarType::INT64) {
-    for (auto* var : variables) {
+    for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
         vector_data.push_back(*tensor.data<int64_t>());
@@ -163,12 +120,12 @@ pten::VectorTensor MakePtenVectorTensorFromVarList(
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupport casting input `%s` type to VectorTensor when call pt "
             "kernel.",
-            framework::ToTypeName(variables.front()->Type())));
+            framework::ToTypeName(var->Type())));
       }
     }
 
   } else if (data_type == paddle::framework::proto::VarType::INT32) {
-    for (auto* var : variables) {
+    for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
         vector_data.push_back(*tensor.data<int32_t>());
@@ -176,7 +133,7 @@ pten::VectorTensor MakePtenVectorTensorFromVarList(
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupport casting input `%s` type to VectorTensor when call pt "
             "kernel.",
-            framework::ToTypeName(variables.front()->Type())));
+            framework::ToTypeName(var->Type())));
       }
     }
   } else {

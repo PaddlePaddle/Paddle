@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
-#include "paddle/pten/core/vector_tensor.h"
+#include "paddle/pten/common/scalar_array.h"
 
 namespace paddle {
 namespace framework {
@@ -1858,13 +1858,12 @@ void OperatorWithKernel::BuildPtenKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index ==
-        std::type_index(typeid(pten::VectorTensor))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // shape is in the attribute
         if (std::type_index(attr_iter->second.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
-          pt_kernel_context_->EmplaceBackAttr(std::move(pten::VectorTensor(
+          pt_kernel_context_->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
@@ -1877,10 +1876,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
         auto& ins_vector = ctx.inputs.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           pt_kernel_context_->EmplaceBackAttr(std::move(
-              experimental::MakePtenVectorTensorFromVar(*ins_vector.front())));
+              experimental::MakePtenScalarArrayFromVar(*ins_vector.front())));
         } else {  // ShapeTensorList
           pt_kernel_context_->EmplaceBackAttr(std::move(
-              experimental::MakePtenVectorTensorFromVarList(ins_vector)));
+              experimental::MakePtenScalarArrayFromVarList(ins_vector)));
         }
       }
     } else if (attr_defs[i].type_index ==
