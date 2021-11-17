@@ -74,14 +74,20 @@ class CCommInitOpAscend : public framework::OperatorBase {
                             size * sizeof(float), ACL_MEMCPY_HOST_TO_DEVICE,
                             size * sizeof(float));
     VLOG(3) << "Build buff data successful.";
-
     aclrtStream stream = nullptr;
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(rid, place);
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    aclrtStream calc_stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(comm->stream()));
+    VLOG(3) << "Sync Comm Stream";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(calc_stream));
+    VLOG(3) << "Sync Calc Stream";
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBarrier(comm->comm(), calc_stream));
+    VLOG(3) << "Sync Calc & Comm Stream";
     if (rank_id == 0) {
       stream = comm->stream();
     } else {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
+      stream = calc_stream;
     }
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         buff, size, HCCL_DATA_TYPE_FP32, 0, comm->comm(), stream));
