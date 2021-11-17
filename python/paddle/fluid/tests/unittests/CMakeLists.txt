@@ -753,6 +753,8 @@ endif()
 
 add_subdirectory(asp)
 
+add_subdirectory(mha)
+
 add_subdirectory(ir)
 
 add_subdirectory(interpreter)

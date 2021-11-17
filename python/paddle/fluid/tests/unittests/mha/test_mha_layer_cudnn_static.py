@@ -395,4 +395,3 @@ class TestFP16CUDNNMHALayerStaticWithSeqDataCache(TestFP32CUDNNMHALayerStaticWit
         self.dtype = np.float16
         self.atol = 1e-3
         self.rtol = 1e-2
-
