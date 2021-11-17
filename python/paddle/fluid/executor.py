@@ -1653,6 +1653,33 @@ class Executor(object):
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
             dataset.set_use_var(data_vars)
+        elif program._heter_pipeline_opt is not None:
+            stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            if stage_id != 0:
+                import paddle
+                if dataset is not None:
+                    raise RuntimeError(
+                        "dataset should be None for heter pipeline mode")
+                # The following fake dataset is created to call 
+                # the _prepare_trainer api, and it is meaningless.
+                data_vars = []
+                for var in program.global_block().vars.values():
+                    if var.is_data:
+                        data_vars.append(var)
+                if core.is_compiled_with_npu():
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'InMemoryDataset')
+                else:
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'FileInstantDataset')
+                dataset.set_batch_size(1)
+                dataset.set_thread(1)
+                dataset.set_filelist(['None'])
+                dataset.set_use_var(data_vars)
+            else:
+                if dataset is None:
+                    raise RuntimeError(
+                        "dataset is need and should be initialized")
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")
