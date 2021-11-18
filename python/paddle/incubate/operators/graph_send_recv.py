@@ -18,7 +18,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 
 
-def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
+def graph_send_recv(x, src_index, dst_index, pool_type="sum", name=None):
     r"""
 
     Graph Learning Send_Recv combine operator.
@@ -53,7 +53,7 @@ def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
-        pool_type (str): The pooling type of send_recv, including `sum`, `mean`, `max`, `min`.
+        pool_type (str): The pooling type of graph_send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
@@ -71,7 +71,7 @@ def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.incubate.send_recv(x, src_index, dst_index, pool_type="sum")
+            out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum")
             # Outputs: [[0., 2., 3.], [2., 8., 10.], [1., 4., 5.]]
 
     """
@@ -82,23 +82,23 @@ def send_recv(x, src_index, dst_index, pool_type="sum", name=None):
             % pool_type)
 
     if in_dygraph_mode():
-        out, tmp = core.ops.send_recv(x, src_index, dst_index, 'pool_type',
-                                      pool_type.upper())
+        out, tmp = core.ops.graph_send_recv(x, src_index, dst_index,
+                                            'pool_type', pool_type.upper())
         return out
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
-                             "send_recv")
+                             "graph_send_recv")
     check_variable_and_dtype(src_index, "Src_index", ("int32", "int64"),
-                             "send_recv")
+                             "graph_send_recv")
     check_variable_and_dtype(dst_index, "Dst_index", ("int32", "int64"),
-                             "send_recv")
+                             "graph_send_recv")
 
-    helper = LayerHelper("send_recv", **locals())
+    helper = LayerHelper("graph_send_recv", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     dst_count = helper.create_variable_for_type_inference(
         dtype="int32", stop_gradient=True)
     helper.append_op(
-        type="send_recv",
+        type="graph_send_recv",
         inputs={"X": x,
                 "Src_index": src_index,
                 "Dst_index": dst_index},

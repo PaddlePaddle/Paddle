@@ -18,7 +18,7 @@ from .checkpoint import auto_checkpoint  # noqa: F401
 from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
 from .operators import softmax_mask_fuse  # noqa: F401
-from .operators import send_recv
+from .operators import graph_send_recv
 from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
@@ -31,7 +31,7 @@ __all__ = [
     'ModelAverage',
     'softmax_mask_fuse_upper_triangle',
     'softmax_mask_fuse',
-    'send_recv',
+    'graph_send_recv',
     'segment_sum',
     'segment_mean',
     'segment_max',

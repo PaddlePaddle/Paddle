@@ -21,10 +21,10 @@ import paddle.fluid as fluid
 from op_test import OpTest
 
 
-class TestSendRecvMaxOp(OpTest):
+class TestGraphSendRecvMaxOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "send_recv"
+        self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         src_index = index[:, 0]
@@ -34,8 +34,8 @@ class TestSendRecvMaxOp(OpTest):
 
         self.attrs = {'pool_type': 'MAX'}
 
-        out, self.gradient = compute_send_recv_for_min_max(self.inputs,
-                                                           self.attrs)
+        out, self.gradient = compute_graph_send_recv_for_min_max(self.inputs,
+                                                                 self.attrs)
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -45,10 +45,10 @@ class TestSendRecvMaxOp(OpTest):
         self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
-class TestSendRecvMinOp(OpTest):
+class TestGraphSendRecvMinOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "send_recv"
+        self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         src_index = index[:, 0]
@@ -58,8 +58,8 @@ class TestSendRecvMinOp(OpTest):
 
         self.attrs = {'pool_type': 'MIN'}
 
-        out, self.gradient = compute_send_recv_for_min_max(self.inputs,
-                                                           self.attrs)
+        out, self.gradient = compute_graph_send_recv_for_min_max(self.inputs,
+                                                                 self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -70,10 +70,10 @@ class TestSendRecvMinOp(OpTest):
         self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
 
 
-class TestSendRecvSumOp(OpTest):
+class TestGraphSendRecvSumOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "send_recv"
+        self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         src_index = index[:, 0]
@@ -83,7 +83,7 @@ class TestSendRecvSumOp(OpTest):
 
         self.attrs = {'pool_type': 'SUM'}
 
-        out, _ = compute_send_recv_for_sum_mean(self.inputs, self.attrs)
+        out, _ = compute_graph_send_recv_for_sum_mean(self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -94,10 +94,10 @@ class TestSendRecvSumOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestSendRecvMeanOp(OpTest):
+class TestGraphSendRecvMeanOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "send_recv"
+        self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         src_index = index[:, 0]
@@ -107,7 +107,8 @@ class TestSendRecvMeanOp(OpTest):
 
         self.attrs = {'pool_type': 'MEAN'}
 
-        out, dst_count = compute_send_recv_for_sum_mean(self.inputs, self.attrs)
+        out, dst_count = compute_graph_send_recv_for_sum_mean(self.inputs,
+                                                              self.attrs)
 
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
@@ -118,7 +119,7 @@ class TestSendRecvMeanOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-def compute_send_recv_for_sum_mean(inputs, attributes):
+def compute_graph_send_recv_for_sum_mean(inputs, attributes):
     x = inputs['X']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
@@ -148,7 +149,7 @@ def compute_send_recv_for_sum_mean(inputs, attributes):
     return results, count
 
 
-def compute_send_recv_for_min_max(inputs, attributes):
+def compute_graph_send_recv_for_min_max(inputs, attributes):
     x = inputs['X']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
@@ -193,7 +194,7 @@ def compute_send_recv_for_min_max(inputs, attributes):
     return results, gradient / results.size
 
 
-class API_SendRecvOpTest(unittest.TestCase):
+class API_GraphSendRecvOpTest(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -201,11 +202,14 @@ class API_SendRecvOpTest(unittest.TestCase):
             src_index = paddle.static.data(name="src", shape=[4], dtype="int32")
             dst_index = paddle.static.data(name="dst", shape=[4], dtype="int32")
 
-            res_sum = paddle.incubate.send_recv(x, src_index, dst_index, "sum")
-            res_mean = paddle.incubate.send_recv(x, src_index, dst_index,
-                                                 "mean")
-            res_max = paddle.incubate.send_recv(x, src_index, dst_index, "max")
-            res_min = paddle.incubate.send_recv(x, src_index, dst_index, "min")
+            res_sum = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "sum")
+            res_mean = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                       "mean")
+            res_max = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "max")
+            res_min = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "min")
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype='float32')
@@ -240,11 +244,14 @@ class API_SendRecvOpTest(unittest.TestCase):
                 np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]), dtype="float32")
             src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
             dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
-            res_sum = paddle.incubate.send_recv(x, src_index, dst_index, "sum")
-            res_mean = paddle.incubate.send_recv(x, src_index, dst_index,
-                                                 "mean")
-            res_max = paddle.incubate.send_recv(x, src_index, dst_index, "max")
-            res_min = paddle.incubate.send_recv(x, src_index, dst_index, "min")
+            res_sum = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "sum")
+            res_mean = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                       "mean")
+            res_max = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "max")
+            res_min = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "min")
 
             np_sum = np.array(
                 [[0, 2, 3], [2, 8, 10], [1, 4, 5]], dtype="float32")
@@ -273,11 +280,14 @@ class API_SendRecvOpTest(unittest.TestCase):
                 np.array([0, 1, 2, 0, 1]), dtype="int32")
             dst_index = paddle.to_tensor(
                 np.array([1, 2, 1, 0, 1]), dtype="int32")
-            res_sum = paddle.incubate.send_recv(x, src_index, dst_index, "sum")
-            res_mean = paddle.incubate.send_recv(x, src_index, dst_index,
-                                                 "mean")
-            res_max = paddle.incubate.send_recv(x, src_index, dst_index, "max")
-            res_min = paddle.incubate.send_recv(x, src_index, dst_index, "min")
+            res_sum = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "sum")
+            res_mean = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                       "mean")
+            res_max = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "max")
+            res_min = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "min")
 
             np_sum = np.array(
                 [[0, 2, 3], [3, 12, 14], [1, 4, 5]], dtype="int32")

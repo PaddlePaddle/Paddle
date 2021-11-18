@@ -24,7 +24,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct SendRecvSumFunctor {
+struct GraphSendRecvSumFunctor {
   void operator()(const bool& first_flag, const Tensor& src_slice,
                   Tensor* dst_slice) {
     auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
@@ -34,7 +34,7 @@ struct SendRecvSumFunctor {
 };
 
 template <typename T>
-struct SendRecvMinFunctor {
+struct GraphSendRecvMinFunctor {
   void operator()(const bool& first_flag, const Tensor& src_slice,
                   Tensor* dst_slice) {
     auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
@@ -48,7 +48,7 @@ struct SendRecvMinFunctor {
 };
 
 template <typename T>
-struct SendRecvMaxFunctor {
+struct GraphSendRecvMaxFunctor {
   void operator()(const int& first_flag, const Tensor& src_slice,
                   Tensor* dst_slice) {
     auto eigen_src = framework::EigenVector<T>::Flatten(src_slice);
@@ -73,11 +73,11 @@ void elementwise_inner_operation(const Tensor& src, Tensor* dst,
 }
 
 template <typename T, typename IndexT, typename Functor>
-void send_recv_cpu_for_loop(const int& input_size, const int& index_size,
-                            const IndexT* s_index, const IndexT* d_index,
-                            const Tensor& src, Tensor* dst,
-                            const std::string& pool_type,
-                            int* dst_count = nullptr) {
+void graph_send_recv_cpu_for_loop(const int& input_size, const int& index_size,
+                                  const IndexT* s_index, const IndexT* d_index,
+                                  const Tensor& src, Tensor* dst,
+                                  const std::string& pool_type,
+                                  int* dst_count = nullptr) {
   Functor functor;
   if (pool_type == "SUM") {
     for (int i = 0; i < index_size; ++i) {
@@ -122,13 +122,11 @@ void send_recv_cpu_for_loop(const int& input_size, const int& index_size,
 }
 
 template <typename T, typename IndexT, typename Functor>
-void send_recv_cpu_for_loop_grad(const int& input_size, const int& index_size,
-                                 const IndexT* s_index, const IndexT* d_index,
-                                 const Tensor& src, Tensor* dst,
-                                 const std::string& pool_type,
-                                 const int* dst_count = nullptr,
-                                 const Tensor* input = nullptr,
-                                 const Tensor* output = nullptr) {
+void graph_send_recv_cpu_for_loop_grad(
+    const int& input_size, const int& index_size, const IndexT* s_index,
+    const IndexT* d_index, const Tensor& src, Tensor* dst,
+    const std::string& pool_type, const int* dst_count = nullptr,
+    const Tensor* input = nullptr, const Tensor* output = nullptr) {
   if (pool_type == "SUM") {
     Functor functor;
     for (int i = 0; i < index_size; ++i) {
@@ -166,8 +164,8 @@ void send_recv_cpu_for_loop_grad(const int& input_size, const int& index_size,
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-void SendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx,
-                                  const Tensor& src_index) {
+void GraphSendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx,
+                                       const Tensor& src_index) {
   auto* X = ctx.Input<Tensor>("X");
   auto* dst_index = ctx.Input<Tensor>("Dst_index");
   auto* Y = ctx.Output<Tensor>("Out");
@@ -187,27 +185,27 @@ void SendRecvOpKernelLaunchHelper(const framework::ExecutionContext& ctx,
   const IndexT* d_index = dst_index->data<IndexT>();
   const std::string& pool_type = ctx.Attr<std::string>("pool_type");
   if (pool_type == "SUM") {
-    send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
+    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvSumFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
   } else if (pool_type == "MIN") {
-    send_recv_cpu_for_loop<T, IndexT, SendRecvMinFunctor<T>>(
+    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvMinFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
   } else if (pool_type == "MAX") {
-    send_recv_cpu_for_loop<T, IndexT, SendRecvMaxFunctor<T>>(
+    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvMaxFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
   } else if (pool_type == "MEAN") {
     auto* dst_count = ctx.Output<Tensor>("Dst_count");
     int* p_dst_count = dst_count->mutable_data<int>(ctx.GetPlace());
     memset(p_dst_count, 0, src_dims[0] * sizeof(int));
-    send_recv_cpu_for_loop<T, IndexT, SendRecvSumFunctor<T>>(
+    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvSumFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, *X, Y, pool_type,
         p_dst_count);
   }
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-void SendRecvGradOpKernelLaunchHelper(const framework::ExecutionContext& ctx,
-                                      const Tensor& src_index) {
+void GraphSendRecvGradOpKernelLaunchHelper(
+    const framework::ExecutionContext& ctx, const Tensor& src_index) {
   auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto* dst_index = ctx.Input<Tensor>("Src_index");
   auto* Y = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -228,35 +226,36 @@ void SendRecvGradOpKernelLaunchHelper(const framework::ExecutionContext& ctx,
 
   const std::string& pool_type = ctx.Attr<std::string>("pool_type");
   if (pool_type == "SUM") {
-    send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
+    graph_send_recv_cpu_for_loop_grad<T, IndexT, GraphSendRecvSumFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, *X, Y, pool_type);
   } else if (pool_type == "MEAN") {
     auto* dst_count = ctx.Input<Tensor>("Dst_count");
     const int* s_count = dst_count->data<int>();
     // Functor not used here.
-    send_recv_cpu_for_loop_grad<T, IndexT, SendRecvSumFunctor<T>>(
+    graph_send_recv_cpu_for_loop_grad<T, IndexT, GraphSendRecvSumFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, s_count);
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     const auto* input = ctx.Input<Tensor>("X");
     const auto* output = ctx.Input<Tensor>("Out");
     // Functor not used here.
-    send_recv_cpu_for_loop_grad<T, IndexT, SendRecvMinFunctor<T>>(
+    graph_send_recv_cpu_for_loop_grad<T, IndexT, GraphSendRecvMinFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, *X, Y, pool_type, nullptr,
         input, output);
   }
 }
 
 template <typename DeviceContext, typename T>
-class SendRecvOpKernel : public framework::OpKernel<T> {
+class GraphSendRecvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Src_index");
     auto index_type = src_index->type();
 
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvOpKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
+      GraphSendRecvOpKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx, *src_index);
+      GraphSendRecvOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx,
+                                                                   *src_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Src_index or Dst_index type, Expected int, int64, but "
@@ -267,17 +266,18 @@ class SendRecvOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class SendRecvGradOpKernel : public framework::OpKernel<T> {
+class GraphSendRecvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Dst_index");
     auto index_type = src_index->type();
 
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
+      GraphSendRecvGradOpKernelLaunchHelper<DeviceContext, T, int>(ctx,
+                                                                   *src_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvGradOpKernelLaunchHelper<DeviceContext, T, int64_t>(ctx,
-                                                                  *src_index);
+      GraphSendRecvGradOpKernelLaunchHelper<DeviceContext, T, int64_t>(
+          ctx, *src_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Src_index or Dst_index type, Expected int, int64, but "

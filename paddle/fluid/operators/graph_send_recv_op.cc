@@ -12,22 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/send_recv_op.h"
+#include "paddle/fluid/operators/graph_send_recv_op.h"
 
 namespace paddle {
 namespace operators {
 
-class SendRecvOP : public framework::OperatorWithKernel {
+class GraphSendRecvOP : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SendRecv");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphSendRecv");
     OP_INOUT_CHECK(ctx->HasInput("Src_index"), "Input", "Src_index",
-                   "SendRecv");
+                   "GraphSendRecv");
     OP_INOUT_CHECK(ctx->HasInput("Dst_index"), "Input", "Dst_index",
-                   "SendRecv");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SendRecv");
+                   "GraphSendRecv");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GraphSendRecv");
 
     auto src_index_dims = ctx->GetInputDim("Src_index");
     if (src_index_dims.size() == 2) {
@@ -69,7 +69,7 @@ class SendRecvOP : public framework::OperatorWithKernel {
 
     if (ctx->Attrs().Get<std::string>("pool_type") == "MEAN") {
       OP_INOUT_CHECK(ctx->HasOutput("Dst_count"), "Output", "Dst_count",
-                     "SendRecv");
+                     "GraphSendRecv");
       ctx->SetOutputDim("Dst_count", {dims[0]});
     }
   }
@@ -83,7 +83,7 @@ class SendRecvOP : public framework::OperatorWithKernel {
   }
 };
 
-class SendRecvGradOp : public framework::OperatorWithKernel {
+class GraphSendRecvGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -101,15 +101,14 @@ class SendRecvGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class SendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
+class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input tensor with data type float32, "
-             "float64 or float16");
+             "The input tensor with data type float32, float64, int32, int64.");
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
-    AddOutput("Out", "Output tensor of send_recv op.");
+    AddOutput("Out", "Output tensor of graph_send_recv op.");
     AddOutput("Dst_count",
               "Count tensor of Dst_index, mainly for MEAN pool_type.")
         .AsIntermediate();
@@ -135,13 +134,13 @@ pooling types, like sum, mean, max, or min.
 };
 
 template <typename T>
-class SendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
+class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("send_recv_grad");
+    op->SetType("graph_send_recv_grad");
     op->SetInput("Src_index", this->Input("Src_index"));
     op->SetInput("Dst_index", this->Input("Dst_index"));
 
@@ -167,16 +166,18 @@ class SendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(send_recv, ops::SendRecvOP, ops::SendRecvOpMaker,
-                  ops::SendRecvGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SendRecvGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(send_recv_grad, ops::SendRecvGradOp);
-REGISTER_OP_CPU_KERNEL(send_recv, ops::SendRecvOpKernel<CPU, float>,
-                       ops::SendRecvOpKernel<CPU, double>,
-                       ops::SendRecvOpKernel<CPU, int>,
-                       ops::SendRecvOpKernel<CPU, int64_t>);
+REGISTER_OPERATOR(graph_send_recv, ops::GraphSendRecvOP,
+                  ops::GraphSendRecvOpMaker,
+                  ops::GraphSendRecvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GraphSendRecvGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(graph_send_recv_grad, ops::GraphSendRecvGradOp);
+REGISTER_OP_CPU_KERNEL(graph_send_recv, ops::GraphSendRecvOpKernel<CPU, float>,
+                       ops::GraphSendRecvOpKernel<CPU, double>,
+                       ops::GraphSendRecvOpKernel<CPU, int>,
+                       ops::GraphSendRecvOpKernel<CPU, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(send_recv_grad, ops::SendRecvGradOpKernel<CPU, float>,
-                       ops::SendRecvGradOpKernel<CPU, double>,
-                       ops::SendRecvGradOpKernel<CPU, int>,
-                       ops::SendRecvGradOpKernel<CPU, int64_t>);
+REGISTER_OP_CPU_KERNEL(graph_send_recv_grad,
+                       ops::GraphSendRecvGradOpKernel<CPU, float>,
+                       ops::GraphSendRecvGradOpKernel<CPU, double>,
+                       ops::GraphSendRecvGradOpKernel<CPU, int>,
+                       ops::GraphSendRecvGradOpKernel<CPU, int64_t>);

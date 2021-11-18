@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/send_recv_op.h"
+#include "paddle/fluid/operators/graph_send_recv_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -27,7 +27,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T, typename IndexT>
-struct SendRecvSumCUDAFunctor {
+struct GraphSendRecvSumCUDAFunctor {
   DEVICE inline void operator()(const T* params, T* output, const IndexT& in_i,
                                 const IndexT& out_i) {
     paddle::platform::CudaAtomicAdd(output + out_i, *(params + in_i));
@@ -35,7 +35,7 @@ struct SendRecvSumCUDAFunctor {
 };
 
 template <typename T, typename IndexT>
-struct SendRecvMaxCUDAFunctor {
+struct GraphSendRecvMaxCUDAFunctor {
   DEVICE inline void operator()(const T* params, T* output, const IndexT& in_i,
                                 const IndexT& out_i) {
     paddle::platform::CudaAtomicMax(output + out_i, *(params + in_i));
@@ -43,7 +43,7 @@ struct SendRecvMaxCUDAFunctor {
 };
 
 template <typename T, typename IndexT>
-struct SendRecvMinCUDAFunctor {
+struct GraphSendRecvMinCUDAFunctor {
   DEVICE inline void operator()(const T* params, T* output, const IndexT& in_i,
                                 const IndexT& out_i) {
     paddle::platform::CudaAtomicMin(output + out_i, *(params + in_i));
@@ -51,10 +51,11 @@ struct SendRecvMinCUDAFunctor {
 };
 
 template <typename T, typename IndexT, typename Functor>
-__global__ void SendRecvCUDAKernel(const T* params, const IndexT* src_indices,
-                                   const IndexT* dst_indices, T* output,
-                                   size_t index_size, size_t slice_size,
-                                   Functor functor) {
+__global__ void GraphSendRecvCUDAKernel(const T* params,
+                                        const IndexT* src_indices,
+                                        const IndexT* dst_indices, T* output,
+                                        size_t index_size, size_t slice_size,
+                                        Functor functor) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;
@@ -147,9 +148,9 @@ __global__ void ManipulateMinMaxGradCUDAKernel(
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
-                                      const Tensor& src_index,
-                                      const Tensor& dst_index) {
+void GraphSendRecvOpCUDAKernelLaunchHelper(
+    const framework::ExecutionContext& ctx, const Tensor& src_index,
+    const Tensor& dst_index) {
   auto* X = ctx.Input<Tensor>("X");
   auto* Y = ctx.Output<Tensor>("Out");
   std::string pool_type = ctx.Attr<std::string>("pool_type");
@@ -201,15 +202,17 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
   if (pool_type == "SUM") {
-    SendRecvSumCUDAFunctor<T, IndexT> functor;
-    SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
+    GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
+    GraphSendRecvCUDAKernel<T, IndexT,
+                            GraphSendRecvSumCUDAFunctor<T, IndexT>><<<
         grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream()>>>(p_src, s_index, d_index, p_output,
                                          index_size, slice_size, functor);
   } else if (pool_type == "MAX") {
-    SendRecvMaxCUDAFunctor<T, IndexT> functor;
-    SendRecvCUDAKernel<T, IndexT, SendRecvMaxCUDAFunctor<T, IndexT>><<<
+    GraphSendRecvMaxCUDAFunctor<T, IndexT> functor;
+    GraphSendRecvCUDAKernel<T, IndexT,
+                            GraphSendRecvMaxCUDAFunctor<T, IndexT>><<<
         grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream()>>>(p_src, s_index, d_index, p_output,
@@ -224,8 +227,9 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
                  ctx.device_context())
                  .stream()>>>(p_output, input_size, slice_size);
   } else if (pool_type == "MIN") {
-    SendRecvMinCUDAFunctor<T, IndexT> functor;
-    SendRecvCUDAKernel<T, IndexT, SendRecvMinCUDAFunctor<T, IndexT>><<<
+    GraphSendRecvMinCUDAFunctor<T, IndexT> functor;
+    GraphSendRecvCUDAKernel<T, IndexT,
+                            GraphSendRecvMinCUDAFunctor<T, IndexT>><<<
         grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream()>>>(p_src, s_index, d_index, p_output,
@@ -240,8 +244,9 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
                  ctx.device_context())
                  .stream()>>>(p_output, input_size, slice_size);
   } else if (pool_type == "MEAN") {
-    SendRecvSumCUDAFunctor<T, IndexT> functor;
-    SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
+    GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
+    GraphSendRecvCUDAKernel<T, IndexT,
+                            GraphSendRecvSumCUDAFunctor<T, IndexT>><<<
         grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream()>>>(p_src, s_index, d_index, p_output,
@@ -275,7 +280,7 @@ void SendRecvOpCUDAKernelLaunchHelper(const framework::ExecutionContext& ctx,
 }
 
 template <typename DeviceContext, typename T, typename IndexT>
-void SendRecvGradOpCUDAKernelLaunchHelper(
+void GraphSendRecvGradOpCUDAKernelLaunchHelper(
     const framework::ExecutionContext& ctx, const Tensor& src_index,
     const Tensor& dst_index) {
   auto* X = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -320,8 +325,9 @@ void SendRecvGradOpCUDAKernelLaunchHelper(
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
   if (pool_type == "SUM") {
-    SendRecvSumCUDAFunctor<T, IndexT> functor;
-    SendRecvCUDAKernel<T, IndexT, SendRecvSumCUDAFunctor<T, IndexT>><<<
+    GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
+    GraphSendRecvCUDAKernel<T, IndexT,
+                            GraphSendRecvSumCUDAFunctor<T, IndexT>><<<
         grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream()>>>(p_src, s_index, d_index, p_output,
@@ -349,7 +355,7 @@ void SendRecvGradOpCUDAKernelLaunchHelper(
 }
 
 template <typename DeviceContext, typename T>
-class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
+class GraphSendRecvOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Src_index");
@@ -357,10 +363,10 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
     auto index_type = src_index->type();
 
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index,
-                                                              *dst_index);
+      GraphSendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(
+          ctx, *src_index, *dst_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
+      GraphSendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
           ctx, *src_index, *dst_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -372,7 +378,7 @@ class SendRecvOpCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
+class GraphSendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Dst_index");
@@ -380,10 +386,10 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
     auto index_type = src_index->type();
 
     if (index_type == framework::proto::VarType::INT32) {
-      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(
+      GraphSendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(
           ctx, *src_index, *dst_index);
     } else if (index_type == framework::proto::VarType::INT64) {
-      SendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
+      GraphSendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int64_t>(
           ctx, *src_index, *dst_index);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -400,13 +406,14 @@ class SendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
 using CUDA = paddle::platform::CUDADeviceContext;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(send_recv, ops::SendRecvOpCUDAKernel<CUDA, float>,
-                        ops::SendRecvOpCUDAKernel<CUDA, double>,
-                        ops::SendRecvOpCUDAKernel<CUDA, int>,
-                        ops::SendRecvOpCUDAKernel<CUDA, int64_t>);
+REGISTER_OP_CUDA_KERNEL(graph_send_recv,
+                        ops::GraphSendRecvOpCUDAKernel<CUDA, float>,
+                        ops::GraphSendRecvOpCUDAKernel<CUDA, double>,
+                        ops::GraphSendRecvOpCUDAKernel<CUDA, int>,
+                        ops::GraphSendRecvOpCUDAKernel<CUDA, int64_t>);
 
-REGISTER_OP_CUDA_KERNEL(send_recv_grad,
-                        ops::SendRecvGradOpCUDAKernel<CUDA, float>,
-                        ops::SendRecvGradOpCUDAKernel<CUDA, double>,
-                        ops::SendRecvGradOpCUDAKernel<CUDA, int>,
-                        ops::SendRecvGradOpCUDAKernel<CUDA, int64_t>);
+REGISTER_OP_CUDA_KERNEL(graph_send_recv_grad,
+                        ops::GraphSendRecvGradOpCUDAKernel<CUDA, float>,
+                        ops::GraphSendRecvGradOpCUDAKernel<CUDA, double>,
+                        ops::GraphSendRecvGradOpCUDAKernel<CUDA, int>,
+                        ops::GraphSendRecvGradOpCUDAKernel<CUDA, int64_t>);
