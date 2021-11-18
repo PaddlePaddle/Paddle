@@ -12,5 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/autograd_meta.h"
-namespace egr {}  // namespace egr
+#pragma once
+
+#include "paddle/fluid/eager/eager_tensor.h"
+namespace egr {
+
+egr::EagerTensor scale(const egr::EagerTensor& x, float scale, float bias,
+                       bool bias_after_scale, bool trace_backward);
+
+}  // namespace egr

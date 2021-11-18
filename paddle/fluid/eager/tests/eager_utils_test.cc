@@ -16,12 +16,20 @@
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/framework/variable.h"
+
+#include "paddle/pten/core/kernel_registry.h"
+
+PT_DECLARE_MODULE(CreationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(CreationCUDA);
+#endif
 
 TEST(Utils, SyncToVarsSingle) {
   egr::InitEnv(paddle::platform::CPUPlace());

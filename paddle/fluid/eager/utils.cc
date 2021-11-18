@@ -13,11 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/tensor_meta.h"
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/tensor_meta.h"
 
 namespace egr {
 /* ---- Tensor -> Var ---- */
@@ -97,4 +103,143 @@ egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& out) {
       out.get(), "Eager Tensor %s is null and cannot be copied.", out->name());
   return EagerTensor((*(out.get())));
 }
+
+/**
+ * Implementation of Eager Utils.
+**/
+
+AutogradMeta* EagerUtils::autograd_meta(egr::EagerTensor* target) {
+  auto* p_autograd_meta = target->get_autograd_meta();
+  if (!p_autograd_meta) {
+    auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
+    p_autograd_meta = p_autograd_meta_ptr.get();
+    target->set_autograd_meta(p_autograd_meta_ptr);
+  }
+  return static_cast<AutogradMeta*>(p_autograd_meta);
+}
+
+AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
+  auto* p_autograd_meta = target.get_autograd_meta();
+  PADDLE_ENFORCE(p_autograd_meta,
+                 paddle::platform::errors::Fatal(
+                     "Null autograd_meta gotten from unsafe_autograd_meta()"));
+  return static_cast<AutogradMeta*>(p_autograd_meta);
+}
+
+std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
+    std::vector<egr::EagerTensor>* targets) {
+  std::vector<AutogradMeta*> metas;
+  for (const egr::EagerTensor& t : *targets) {
+    metas.push_back(unsafe_autograd_meta(t));
+  }
+  return metas;
+}
+
+std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
+    std::vector<egr::EagerTensor>* targets) {
+  std::vector<AutogradMeta*> ret;
+  ret.reserve(targets->size());
+
+  // for multi_autograd_meta we can tolerent it has nullptr.
+  for (auto& t : (*targets)) {
+    auto* p_autograd_meta = autograd_meta(&t);
+    ret.push_back(static_cast<AutogradMeta*>(p_autograd_meta));
+  }
+  return ret;
+}
+
+std::pair<size_t, size_t> EagerUtils::OutRankInfo(
+    const egr::EagerTensor& target) {
+  return unsafe_autograd_meta(target)->OutRankInfo();
+}
+
+std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
+    const egr::EagerTensor& target) {
+  return unsafe_autograd_meta(target)->GetMutableGradNode();
+}
+
+bool EagerUtils::IsLeafTensor(const egr::EagerTensor& target) {
+  std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
+  if (std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
+    return true;
+  }
+
+  return false;
+}
+
+void EagerUtils::PassStopGradient(AutogradMeta** outs, size_t outs_num,
+                                  bool generate_grad) {
+  for (size_t i = 0; i < outs_num; ++i) {
+    if (!outs[i]) {
+      // TODO(jiabin): Add Tensor name here when we supported.
+      VLOG(0) << "Tensor is NULL";
+      continue;
+    }
+    outs[i]->SetStopGradient(generate_grad);
+  }
+}
+
+bool EagerUtils::ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
+                                    AutogradMeta** outs, size_t outs_num,
+                                    bool trace_backward) {
+  if (!trace_backward) return false;
+
+  for (size_t i = 0; i < ins_num; ++i) {
+    auto ins_stop_gradient = ins[i]->StopGradient();
+    if (!ins_stop_gradient) {
+      EagerUtils::PassStopGradient(outs, outs_num, ins_stop_gradient);
+      return true;
+    }
+  }
+  return false;
+}
+
+void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
+                            const std::shared_ptr<GradNodeBase>& grad_node) {
+  for (const auto& autograd_meta : *autograd_metas) {
+    autograd_meta->SetGradNode(grad_node);
+  }
+}
+
+void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
+                            const std::shared_ptr<GradNodeBase>& grad_node) {
+  autograd_meta->SetGradNode(grad_node);
+}
+
+egr::EagerTensor EagerUtils::CreateTensorWithValue(
+    const pten::DDim& ddim, const paddle::platform::Place& place,
+    const pten::DataType& dtype, const pten::DataLayout& layout, float value,
+    bool is_leaf) {
+  paddle::experimental::Tensor tensor = paddle::experimental::full(
+      paddle::framework::vectorize(ddim), paddle::experimental::Scalar(value),
+      dtype, pten::TransToPtenBackend(place), layout);
+
+  egr::EagerTensor out = egr::EagerTensor();
+  out.set_tensor(std::make_shared<paddle::experimental::Tensor>(tensor));
+  auto meta = autograd_meta(&out);
+
+  if (is_leaf) {
+    auto accumulation_node = std::make_shared<GradNodeAccumulation>();
+    meta->SetGradNode(accumulation_node);
+    meta->SetStopGradient(false);
+  }
+
+  return out;
+}
+
+void EagerUtils::SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
+                                         size_t slot_id) {
+  // Set OutRankInfo from 0 to size of targets
+  for (size_t i = 0; i < targets->size(); i++) {
+    (*targets)[i]->SetSingleOutRankWithSlot(slot_id, i);
+  }
+}
+void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
+                                    size_t slot_id) {
+  SetMultiOutRankWithSlot(targets, slot_id);
+}
+void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
+  target->SetSingleOutRankWithSlot(slot_id, 0);
+}
+
 }  // namespace egr

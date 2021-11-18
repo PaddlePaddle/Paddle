@@ -21,9 +21,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/fluid/eager/function_api.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"

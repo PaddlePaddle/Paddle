@@ -9,10 +9,10 @@ target_link_libraries(eager_generator ${os_dependency_modules})
 # Prepare file structure
 message("Generate dygraph file structure at path: ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/generated")
 execute_process(
-    COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/autocodegen/generate_file_structures.py" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/"
+    COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generate_file_structures.py" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/"
 )
 
 add_custom_target(eager_codegen
-      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/generated"
+      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
       DEPENDS eager_generator
       VERBATIM)

@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/fluid/eager/function_api.h"
-#include "paddle/fluid/eager/gradient_accumulation.h"
+
+#include "paddle/pten/api/all.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/dense_tensor.h"
 
@@ -26,7 +28,7 @@
 #include "glog/logging.h"
 
 /**
- * Implementation of GradNodeBase, Edge and InputBuffer.
+ * Implementation of GradNodeBase and Edge
 **/
 namespace egr {
 
@@ -265,9 +267,11 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
       // Fill 1.0
-      auto t_impl = t.impl();
-      FillConstAPI(1.0, t_impl->dims(), t_impl->place(), t_impl->dtype(),
-                   t_impl->layout(), &buffer_tensor);
+      paddle::experimental::Tensor tensor =
+          paddle::experimental::ones_like(*t.Tensor().get());
+      buffer_tensor.set_tensor(
+          std::make_shared<paddle::experimental::Tensor>(tensor));
+
     } else {
       // TODO(jiabin): Only Support LodTensorForNow
       auto type = paddle::framework::ToVarType(t.Var().Type());

@@ -20,7 +20,7 @@ if __name__ == "__main__":
     eager_dir = sys.argv[1]
 
     op_list = []
-    with open(f"{eager_dir}/autocodegen/op_list.txt", "r") as f:
+    with open(f"{eager_dir}/auto_code_generator/op_list.txt", "r") as f:
         for line in f:
             line = str(line.strip())
             op_list.append(line)
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     |  |- dygraph_forward_api.h
     """
     # Directory Generation
-    generated_dir = os.path.join(eager_dir, "generated")
+    generated_dir = os.path.join(eager_dir, "api/generated/fluid_generated")
     forwards_dir = os.path.join(generated_dir, "forwards")
     nodes_dir = os.path.join(generated_dir, "nodes")
     dirs = [generated_dir, forwards_dir, nodes_dir]

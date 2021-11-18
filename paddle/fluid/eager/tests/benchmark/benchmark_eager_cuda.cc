@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/flags.h"
 
-#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 

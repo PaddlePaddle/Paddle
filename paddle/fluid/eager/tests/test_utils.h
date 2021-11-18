@@ -14,13 +14,16 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/utils.h"
+
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-#include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"

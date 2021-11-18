@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/function_api.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -23,8 +24,6 @@
 #include "paddle/fluid/platform/device_context.h"
 
 namespace egr {
-
-Controller* Controller::controller_ = new Controller();
 
 template <typename DeviceContext>
 static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
@@ -223,6 +222,18 @@ void FillConstAPI(double value, const pten::DDim& ddim,
                   const paddle::platform::Place& place,
                   const pten::DataType& dtype, const pten::DataLayout& layout,
                   egr::EagerTensor* target) {
+  /*
+  if (target->defined() && target->initialized()) {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "FillConstAPI Only handles uninitialized eager tensor"));
+  }
+  */
+
+  paddle::experimental::Tensor tensor = paddle::experimental::full(
+      paddle::framework::vectorize(ddim), paddle::experimental::Scalar(value),
+      dtype, pten::TransToPtenBackend(place), layout);
+  target->set_tensor(std::make_shared<paddle::experimental::Tensor>(tensor));
+  /*
   // Create new tensor->impl and fill it with 1.0
   // Fill 1.0
   // TODO(jiabin): Refactor this with operators::math::set_constant
@@ -258,6 +269,7 @@ void FillConstAPI(double value, const pten::DDim& ddim,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Only CPU and CUDA Backend are supported for now"));
   }
+  */
 }
 
 void FillConstAPI(double value, const paddle::framework::DDim& ddim,

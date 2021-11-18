@@ -1308,10 +1308,13 @@ static void GenerateForwardDygraphFile(const std::string& op_type,
   std::string forward_cc_filename = op_type + "_dygraph.cc";
   std::string forward_cc_path = forwards_dir + forward_cc_filename;
   const char* FORWARD_INCLUDE_TEMPLATE =
-      "#include \"paddle/fluid/eager/generated/dygraph_forward_api.h\"\n"
-      "#include \"paddle/fluid/eager/function_api.h\"\n"
-      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n"
-      "#include \"paddle/fluid/eager/generated/nodes/%s\"\n\n";
+      "#include "
+      "\"paddle/fluid/eager/api/generated/fluid_generated/"
+      "dygraph_forward_api.h\"\n"
+      "#include "
+      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/%s\"\n\n"
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
+      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE, node_h_filename);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -1329,7 +1332,6 @@ static void GenerateNodeHFile(const std::string& op_type,
   std::string node_h_include_str =
       "#pragma once\n"
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
-      "#include \"paddle/fluid/eager/function_api.h\"\n"
       "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n"
       "#include \"paddle/fluid/eager/grad_node_info.h\"\n\n";
   std::ofstream node_h_stream(node_h_path, std::ios::out);
@@ -1351,8 +1353,9 @@ static void GenerateNodeCCFile(const std::string& op_type,
       "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
-      "#include \"paddle/fluid/eager/function_api.h\"\n"
-      "#include \"paddle/fluid/eager/generated/nodes/%s\"\n\n";
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
+      "#include "
+      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/%s\"\n\n";
   std::string node_cc_include_str =
       paddle::string::Sprintf(NODE_CC_INCLUDE_TEMPLATE, node_h_filename);
   std::ofstream node_cc_stream(node_cc_path, std::ios::out);
@@ -1401,7 +1404,6 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
              std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>
         grad_outs;
 
-    if (pair.first == "share_buffer") VLOG(1) << 1111;
     bool is_available = CollectInformationFromOpInfo(
         op_info, &grad_node_default_attr_maps, &grad_op_types,
         &fwd_inputs_name_pos_map, &fwd_outputs_name_pos_map,
