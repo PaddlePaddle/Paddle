@@ -1298,24 +1298,12 @@ class Executor(object):
                     use_program_cache=use_program_cache)
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
-            stage_id = program._heter_pipeline_opt["pipeline_stage"]
-            if stage_id != 0:
-                ## change default executor
-                heter_device_type = os.getenv("HETER_DEVICE_TYPE",
-                                              "cpu").lower()
-                if not heter_device_type in ("cpu", "gpu"):
-                    raise RuntimeError(
-                        "HETER_DEVICE_TYPE should be cpu or gpu in heter pipeline mode"
-                    )
-                heter_place = "cpu"
-                ## now only support gpu
-                if heter_device_type == "gpu":
-                    heter_device_id = os.getenv("FLAGS_selected_gpus", "0")
-                    heter_place = ":".join((heter_device_type, heter_device_id))
-                heter_place = framework._get_paddle_place(heter_place)
-                p = core.Place()
-                p.set_place(heter_place)
-                self._default_executor = core.Executor(p)
+            ## change default executor 
+            heter_place = program._heter_pipeline_opt["heter_place"]
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
             # TODO(zhangminxu): support heterps pipeline training using exe.run
             if "startup_program" in program._heter_pipeline_opt:
                 program = program._heter_pipeline_opt["startup_program"]
@@ -1692,6 +1680,7 @@ class Executor(object):
             dataset.set_use_var(data_vars)
         elif program._heter_pipeline_opt is not None:
             stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            heter_place = program._heter_pipeline_opt["heter_place"]
             if stage_id != 0:
                 import paddle
                 if dataset is not None:
@@ -1713,27 +1702,15 @@ class Executor(object):
                 dataset.set_thread(1)
                 dataset.set_filelist(['None'])
                 dataset.set_use_var(data_vars)
-
-                ## set executor for heter trainer
-                heter_device_type = os.getenv("HETER_DEVICE_TYPE",
-                                              "cpu").lower()
-                if not heter_device_type in ("cpu", "gpu"):
-                    raise RuntimeError(
-                        "HETER_DEVICE_TYPE should be cpu or gpu in heter pipeline mode"
-                    )
-                heter_place = "cpu"
-                ## now only support gpu
-                if heter_device_type == "gpu":
-                    heter_device_id = os.getenv("FLAGS_selected_gpus", "0")
-                    heter_place = ":".join((heter_device_type, heter_device_id))
-                heter_place = framework._get_paddle_place(heter_place)
-                p = core.Place()
-                p.set_place(heter_place)
-                self._default_executor = core.Executor(p)
             else:
                 if dataset is None:
                     raise RuntimeError(
                         "dataset is need and should be initialized")
+            ## change default executor
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")

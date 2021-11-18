@@ -202,6 +202,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             fetch_info=["cost"],
             print_period=2,
             debug=int(os.getenv("Debug", "0")))
+        exe.close()
         pass_time = time.time() - pass_start
         print("do_dataset_heter_training done. using time {}".format(pass_time))
 
