@@ -125,8 +125,8 @@ class ROCMContext : public DeviceContext {
 
   Place GetPlace() const noexcept override { return place_; }
 
-  // hipStream_t* stream() noexcept { return stream_; }
-  // void SetStream(hipStream_t* stream) noexcept { stream_ = stream; }
+  miopenHandle_t cublas_handle() const;
+  void SetCublasHandle(miopenHandle_t handle) { cublas_handle_ = handle; }
 
  private:
   // Streams
@@ -155,7 +155,7 @@ class ROCMContext : public DeviceContext {
 
   // Handles
   mutable std::mutex cublas_handle_mtx_;
-  cublasHandle_t cublas_handle_{nullptr};
+  rocblas_handle cublas_handle_{nullptr};
 
   //     hipStream_t* stream_{nullptr};
   //     hipStream_t* host_to_device_stream_{nullptr};
