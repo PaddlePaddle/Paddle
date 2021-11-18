@@ -264,6 +264,36 @@ class API_SendRecvOpTest(unittest.TestCase):
                 "two value is\
                 {}\n{}, check diff!".format(np_res, ret_res))
 
+    def test_int32_input(self):
+        device = paddle.CPUPlace()
+        with paddle.fluid.dygraph.guard(device):
+            x = paddle.to_tensor(
+                np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]), dtype="int32")
+            src_index = paddle.to_tensor(
+                np.array([0, 1, 2, 0, 1]), dtype="int32")
+            dst_index = paddle.to_tensor(
+                np.array([1, 2, 1, 0, 1]), dtype="int32")
+            res_sum = paddle.incubate.send_recv(x, src_index, dst_index, "sum")
+            res_mean = paddle.incubate.send_recv(x, src_index, dst_index,
+                                                 "mean")
+            res_max = paddle.incubate.send_recv(x, src_index, dst_index, "max")
+            res_min = paddle.incubate.send_recv(x, src_index, dst_index, "min")
+
+            np_sum = np.array(
+                [[0, 2, 3], [3, 12, 14], [1, 4, 5]], dtype="int32")
+            np_mean = np.array([[0, 2, 3], [1, 4, 4], [1, 4, 5]], dtype="int32")
+            np_max = np.array([[0, 2, 3], [2, 6, 6], [1, 4, 5]], dtype="int32")
+            np_min = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]], dtype="int32")
+
+            ret = [res_sum, res_mean, res_max, res_min]
+
+        for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+            self.assertTrue(
+                np.allclose(
+                    np_res, ret_res, atol=1e-6),
+                "two value is\
+                {}\n{}, check diff!".format(np_res, ret_res))
+
 
 if __name__ == '__main__':
     unittest.main()
