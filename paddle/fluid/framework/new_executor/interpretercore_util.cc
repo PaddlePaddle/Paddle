@@ -64,11 +64,12 @@ bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
 
 std::unordered_map<const paddle::framework::OperatorBase*,
                    std::vector<std::string>>
-get_unused_vars(const BlockDesc& block, const std::vector<OperatorBase*>& ops) {
+get_unused_vars(const BlockDesc& block,
+                const std::vector<std::shared_ptr<OperatorBase>>& ops) {
   std::unordered_map<std::string, size_t> var_op_idx_map;
 
   for (size_t i = 0; i < ops.size(); ++i) {
-    auto* op = ops[i];
+    const auto& op = ops[i];
 
     OpInOutInfo info;
     for (auto& name_pair : op->Inputs()) {
@@ -79,7 +80,7 @@ get_unused_vars(const BlockDesc& block, const std::vector<OperatorBase*>& ops) {
 
         // var can be gc-ed
         if (!info.IsBuilt()) {
-          info.Build(op);
+          info.Build(op.get());
         }
 
         if (info.IsInArgBufferNeeded(name)) {
@@ -107,7 +108,8 @@ get_unused_vars(const BlockDesc& block, const std::vector<OperatorBase*>& ops) {
   for (auto& name_op_idx_pair : var_op_idx_map) {
     auto& name = name_op_idx_pair.first;
     size_t op_idx = name_op_idx_pair.second;
-    result[ops[op_idx]].emplace_back(name);
+
+    result[ops[op_idx].get()].emplace_back(name);
   }
   return result;
 }
@@ -150,8 +152,8 @@ void build_variable_scope(const framework::BlockDesc& block,
   }
 }
 
-std::vector<OperatorBase*> create_all_ops(const framework::BlockDesc& block) {
-  std::vector<OperatorBase*> ops;
+void create_all_ops(const framework::BlockDesc& block,
+                    std::vector<std::shared_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
     VLOG(3) << "CreateOp from : " << op->Type();
 
@@ -166,9 +168,8 @@ std::vector<OperatorBase*> create_all_ops(const framework::BlockDesc& block) {
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
-    ops.push_back(op_base);
+    ops->emplace_back(std::shared_ptr<OperatorBase>(op_base));
   }
-  return ops;
 }
 
 std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
@@ -234,7 +235,8 @@ void apply_device_guard(const OperatorBase* op_base,
 }
 
 void deal_operator_base(const platform::Place& place,
-                        const VariableScope* var_scope, OperatorBase* op_base,
+                        const VariableScope* var_scope,
+                        std::shared_ptr<OperatorBase> op_base,
                         OpFuncNode* op_func_node) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
@@ -287,7 +289,6 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
     const OpKernelType& expected_kernel_key, const platform::Place& place,
     const std::string& var_name, const std::string& outer_name,
     const OpFuncNode& op_func_node, Variable* var, VariableScope* var_scope) {
-  auto& ins_name2id = op_func_node.input_index;
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   std::string new_var_name =
@@ -305,7 +306,7 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
           : is_gpu_place(expected_kernel_key.place_) ? 1 : -1;
 
   std::map<std::string, std::vector<int>> copy_ins_name2id;
-  copy_ins_name2id["X"] = ins_name2id.at(outer_name);
+  copy_ins_name2id["X"] = {var_scope->VarId(var_name)};
   std::map<std::string, std::vector<int>> copy_out_name2id;
   copy_out_name2id["Out"] = {var_scope->VarId(new_var_name)};
 
@@ -321,8 +322,9 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
                              var_name, kernel_type_for_var.place_, new_var_name,
                              expected_kernel_key.place_);
   auto& copy_info = OpInfoMap::Instance().Get(memcpy_op_type);
-  auto copy_op =
-      copy_info.Creator()(memcpy_op_type, copy_in_map, copy_out_map, attr_map);
+  auto copy_op = std::shared_ptr<OperatorBase>(
+      copy_info.Creator()(memcpy_op_type, copy_in_map, copy_out_map, attr_map));
+
   OpFuncNode copy_op_func_node;
   copy_op_func_node.input_index = copy_ins_name2id;
   copy_op_func_node.output_index = copy_out_name2id;
@@ -330,10 +332,10 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
   RuntimeContext copy_runtime_context({}, {});
   copy_runtime_context.inputs.swap(copy_ins_value_map);
   copy_runtime_context.outputs.swap(copy_outs_value_map);
-  InterpretercoreInferShapeContext copy_infer_shape_ctx(*copy_op,
+  InterpretercoreInferShapeContext copy_infer_shape_ctx(*copy_op.get(),
                                                         copy_runtime_context);
-  static_cast<const framework::OperatorWithKernel*>(copy_op)->InferShape(
-      &copy_infer_shape_ctx);
+  static_cast<const framework::OperatorWithKernel*>(copy_op.get())
+      ->InferShape(&copy_infer_shape_ctx);
 
   auto kernels_iter = all_op_kernels.find(memcpy_op_type);
   PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
@@ -347,7 +349,7 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
   auto copy_exec_ctx =
       ExecutionContext(*copy_op, scope, *dev_ctx, copy_runtime_context);
   auto copy_expected_kernel_key =
-      dynamic_cast<const framework::OperatorWithKernel*>(copy_op)
+      dynamic_cast<const framework::OperatorWithKernel*>(copy_op.get())
           ->GetExpectedKernelType(copy_exec_ctx);
   auto kernel_iter = kernels.find(copy_expected_kernel_key);
   copy_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
@@ -362,19 +364,20 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
   return std::make_pair(new_var_name, copy_op_func_node);
 }
 
-std::vector<OpFuncNode> apply_data_transform(
-    const OpKernelType& expected_kernel_key, const platform::Place& place,
-    VariableValueMap* ins_map_temp, VariableScope* var_scope,
-    OpFuncNode* op_func_node) {
-  auto& op_base = op_func_node->operator_base_;
+void apply_data_transform(const OpKernelType& expected_kernel_key,
+                          const platform::Place& place,
+                          VariableValueMap* ins_map_temp,
+                          VariableScope* var_scope, OpFuncNode* op_func_node,
+                          std::vector<OpFuncNode>* copy_func_nodes) {
+  auto op_base = op_func_node->operator_base_.get();
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base is null, please pass a valid "
                                        "op_base in apply_data_transform."));
-  auto inputs_names = op_base->Inputs();
+
+  VariableNameMap new_ins(op_base->Inputs());
 
   std::unordered_set<int>
       no_data_transform_index;  // record the no need transform variable index.
-  std::vector<OpFuncNode> copy_func_nodes;  // return all the copy opfuncnode.
 
   for (auto& var_name_item : *ins_map_temp) {
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -382,7 +385,7 @@ std::vector<OpFuncNode> apply_data_transform(
       if (!(var->IsType<LoDTensor>() || var->IsType<SelectedRows>())) {
         continue;
       }
-      auto& var_name = inputs_names[var_name_item.first].at(i);
+      auto& var_name = new_ins[var_name_item.first].at(i);
       auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       if (!tensor_in->IsInitialized()) {
         continue;
@@ -404,8 +407,9 @@ std::vector<OpFuncNode> apply_data_transform(
                 var_name_item.first, *op_func_node, var, var_scope);
         op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
-        copy_func_nodes.push_back(copy_op_func_node);
+        copy_func_nodes->emplace_back(copy_op_func_node);
         var_name_item.second[i] = var_scope->Var(new_var_name);
+        new_ins[var_name_item.first][i] = new_var_name;
       } else if (need_dtype_transform_for_var(kernel_type_for_var,
                                               expected_kernel_key)) {
         // TODO(@xiongkun) add dtype judgement here
@@ -421,8 +425,14 @@ std::vector<OpFuncNode> apply_data_transform(
       }
     }
   }
+
+  // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
+  // with instruction
+  // hot fix, it is not good design here
+  op_func_node->operator_base_ =
+      std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
+          op_base->Type(), new_ins, op_base->Outputs(), op_base->Attrs()));
   op_func_node->no_data_transform_index = std::move(no_data_transform_index);
-  return copy_func_nodes;
 }
 
 void build_op_func_list(const platform::Place& place,
@@ -430,16 +440,16 @@ void build_op_func_list(const platform::Place& place,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope) {
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-
+  std::vector<std::shared_ptr<OperatorBase>>
+      ops;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
-  auto ops = create_all_ops(block);
+  create_all_ops(block, &ops);
   auto unused_var_map = get_unused_vars(block, ops);
 
-  size_t ops_index = 0;
-  for (auto& op : block.AllOps()) {
+  for (size_t i = 0; i < ops.size(); ++i) {
+    auto op = ops[i].get();
     VLOG(6) << "Build OpFuncNode from : " << op->Type();
 
-    auto op_base = ops[ops_index++];
     auto inputs_names = op->Inputs();
     auto outputs_names = op->Outputs();
 
@@ -466,20 +476,18 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
 
-    if (dynamic_cast<const framework::OperatorWithKernel*>(op_base) ==
-        nullptr) {
+    if (dynamic_cast<const framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-      deal_operator_base(place, var_scope, op_base, &op_func_node);
+      deal_operator_base(place, var_scope, ops[i], &op_func_node);
     } else {
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
-      InterpretercoreInferShapeContext infer_shape_ctx(*op_base,
-                                                       runtime_context);
+      InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
       // TODO(Aurelius84): In case of control flow ops, they are NOT inheritted
       // from OperatorWithKernel.
-      static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
+      static_cast<const framework::OperatorWithKernel*>(op)->InferShape(
           &infer_shape_ctx);
       auto kernels_iter = all_op_kernels.find(op->Type());
       PADDLE_ENFORCE_NE(
@@ -495,13 +503,13 @@ void build_op_func_list(const platform::Place& place,
       auto* dev_ctx = pool.Get(place);
       Scope scope;
       auto expected_kernel_key =
-          dynamic_cast<const framework::OperatorWithKernel*>(op_base)
+          dynamic_cast<const framework::OperatorWithKernel*>(op)
               ->GetExpectedKernelType(
-                  ExecutionContext(*op_base, scope, *dev_ctx, runtime_context));
+                  ExecutionContext(*op, scope, *dev_ctx, runtime_context));
 
       // consider device_guard()
       apply_device_guard(
-          op_base, place,
+          op, place,
           &expected_kernel_key);  // change device by the device_guard()
       VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
 
@@ -510,14 +518,14 @@ void build_op_func_list(const platform::Place& place,
       std::vector<OpFuncNode> copy_op_to_insert;
       // NOTE(xiongkun03): assign op_base here to reduce parameter number of
       // apply_data_transform.
-      op_func_node.operator_base_ = op_base;
-      copy_op_to_insert = apply_data_transform(
-          expected_kernel_key, place, &ins_map_temp, var_scope, &op_func_node);
+      op_func_node.operator_base_ = ops[i];
+      apply_data_transform(expected_kernel_key, place, &ins_map_temp, var_scope,
+                           &op_func_node, &copy_op_to_insert);
       for (auto& item : copy_op_to_insert) {
         vec_func_list->push_back(item);
       }
       // step 4. Run op kernel
-      VLOG(3) << op_base->Type()
+      VLOG(3) << op->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
 
       if (platform::is_gpu_place(expected_kernel_key.place_)) {
@@ -533,8 +541,7 @@ void build_op_func_list(const platform::Place& place,
       }
       op_func_node.dev_ctx_ = dev_ctx;
 
-      auto exec_ctx =
-          ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
+      auto exec_ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_context);
 
       auto kernel_iter = kernels.find(expected_kernel_key);
       PADDLE_ENFORCE_NE(
@@ -547,9 +554,9 @@ void build_op_func_list(const platform::Place& place,
       op_func_node.kernel_func_(exec_ctx);
     }
 
-    vec_func_list->push_back(op_func_node);
+    vec_func_list->emplace_back(op_func_node);
     // gc---------------------------------------------------------------------------
-    auto iter = unused_var_map.find(op_base);
+    auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
       continue;
     }
@@ -586,7 +593,7 @@ void build_op_func_list(const platform::Place& place,
 
     delete garbages;  // free mem
 
-    VLOG(3) << "run " << op_base->Type() << " done.";
+    VLOG(3) << "run " << op->Type() << " done.";
   }
 }
 
@@ -621,6 +628,97 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
   out.resize(std::distance(out.begin(), it));
 
   return out;
+}
+
+void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
+                          std::map<int, std::list<int>>& var2min_rw_op,
+                          int cur_op, int rw_var) {
+  // rw_var is inputs or outputs of cur_op
+  // this function update the var2min_rw_op set .
+  if (var2min_rw_op.find(rw_var) == var2min_rw_op.end())
+    var2min_rw_op[rw_var] = std::list<int>();
+  for (auto dep_op : op2dependences.at(cur_op)) {
+    var2min_rw_op[rw_var].remove(dep_op);
+  }
+  var2min_rw_op[rw_var].push_back(cur_op);
+}
+
+std::map<int, std::list<int>> get_downstream_map(
+    const std::map<int, std::set<int>>& op2dependences) {
+  // op2dependences is op -> it's dependences. we want to get op -> [ops] map,
+  // where ops is the next instruction of op.
+  std::map<int, std::list<int>> result;
+  for (auto& item : op2dependences) {
+    int op = item.first;
+    for (auto dep_op : item.second) {
+      if (result.find(dep_op) == result.end())
+        result[dep_op] = std::list<int>();
+      result[dep_op].push_back(op);
+    }
+  }
+  return std::move(result);
+}
+
+std::map<int, std::list<int>> build_op_downstream_map(
+    const std::vector<Instruction>& vec_instruction) {
+  auto var2min_rw_op = std::map<
+      int, std::list<int>>();  // # map from variable id to read / write op id.
+  auto var2recent_write_op =
+      std::map<int, int>();  // # map from variable to recent write op.
+  auto op2dependences =
+      std::map<int, std::set<int>>();  //# map from op to the dependence list,
+                                       // op must run after the dependence.
+  std::set<int>
+      remove_duplicate;  // remove the duplicate between inputs and outputs
+
+  // reserve
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    op2dependences[op_idx] = std::set<int>();
+  }
+
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    remove_duplicate.clear();
+    // step1: update the op2dependences structure
+    for (auto& item :
+         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        if (var2recent_write_op.count(var))
+          op2dependences[op_idx].insert(var2recent_write_op[var]);
+      }
+    }
+
+    for (auto& item :
+         vec_instruction[op_idx].Outputs()) {  // for all write vars
+      for (auto var : item.second) {
+        if (var2min_rw_op.count(var)) {
+          for (auto dep_op : var2min_rw_op[var]) {
+            op2dependences[op_idx].insert(dep_op);
+          }
+        }
+      }
+    }
+
+    // step2: update 2 var2xxxx data structure
+    for (auto& item :
+         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+        remove_duplicate.insert(var);
+      }
+    }
+
+    for (auto& item :
+         vec_instruction[op_idx].Outputs()) {  // for all write vars
+      for (auto var : item.second) {
+        var2recent_write_op[var] = op_idx;
+        if (remove_duplicate.count(var) ==
+            0) {  // var in input list and in output list, so remove it.
+          update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+        }
+      }
+    }
+  }
+  return std::move(get_downstream_map(op2dependences));
 }
 
 }  // namespace interpreter

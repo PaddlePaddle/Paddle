@@ -629,5 +629,109 @@ void VariableScopeListener::onCreateScope(Scope* Scope) {}
 void VariableScopeListener::onDeleteScope(Scope* Scope) {}
 void VariableScopeListener::onClear() {}
 
+Instruction::Instruction(size_t id, OpFuncNode&& op_func_node,
+                         const platform::DeviceContext& dev_ctx)
+    : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
+  PADDLE_ENFORCE_GE(id, 0, platform::errors::PreconditionNotMet(
+                               "Required id >= 0, but received id = %d", id));
+}
+
+size_t Instruction::Id() const { return id_; }
+
+const std::map<std::string, std::vector<int>>& Instruction::Inputs() const {
+  return op_func_node_.input_index;
+}
+
+const std::map<std::string, std::vector<int>>& Instruction::Outputs() const {
+  return op_func_node_.output_index;
+}
+
+const std::unordered_set<int>& Instruction::NoDataTransformVars() const {
+  return op_func_node_.no_data_transform_index;
+}
+
+OpKernelComputeFunc Instruction::KernelFunc() const {
+  return op_func_node_.kernel_func_;
+}
+
+OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
+
+OperatorBase* Instruction::OpBase() const {
+  auto op_base = op_func_node_.operator_base_;
+  PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
+                                       "op_base shall not be nullptr."));
+  return op_base.get();
+}
+
+NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
+
+const NextInstruction& Instruction::NextInstructions() const {
+  return next_instruction_;
+}
+
+void Instruction::AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+
+const std::vector<size_t>& Instruction::GCCheckVars() const {
+  return gc_check_var_list_;
+}
+
+void Instruction::ResetContext(const VariableValueMap& in_vars,
+                               const VariableValueMap& out_vars) {
+  runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+  infershape_ctx_.reset(
+      new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+  // NOTE: Because execution_ctx_ is constructed by `scope&`, so we fake an
+  // empty here to avoid illegal local reference.
+  static framework::Scope scope_;
+  execution_ctx_.reset(
+      new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+}
+
+std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
+  return runtime_ctx_;
+}
+
+std::shared_ptr<InterpretercoreInferShapeContext>
+Instruction::InnerInferShapeContext() const {
+  return infershape_ctx_;
+}
+
+std::shared_ptr<ExecutionContext> Instruction::InnerExecutionContext() const {
+  return execution_ctx_;
+}
+
+const platform::DeviceContext& Instruction::DeviceContext() const {
+  return dev_ctx_;
+}
+
+const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()
+    const {
+  return vec_inplace_in_to_out_;
+}
+
+void Instruction::AddInplace(Variable* in, Variable* out) {
+  vec_inplace_in_to_out_.emplace_back(in, out);
+}
+
+const std::vector<EventInter>& Instruction::InputEvents() const {
+  return intput_events_;
+}
+
+const std::vector<EventInter>& Instruction::OutputEvents() const {
+  return output_events_;
+}
+
+void Instruction::AddInputEvent(size_t var_id,
+                                std::shared_ptr<platform::DeviceEvent> event,
+                                platform::DeviceType waiter_type) {
+  intput_events_.emplace_back(var_id, event, waiter_type);
+}
+
+void Instruction::AddOutputEvent(size_t var_id,
+                                 std::shared_ptr<platform::DeviceEvent> event,
+                                 platform::DeviceType waiter_type) {
+  output_events_.emplace_back(var_id, event, waiter_type);
+}
+
 }  // namespace framework
 }  // namespace paddle

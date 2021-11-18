@@ -49,12 +49,14 @@ class InterpreterCore {
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
+  paddle::framework::FetchList Run();
+
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
-  void Convert();
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
 
@@ -78,13 +80,14 @@ class InterpreterCore {
 
   void BuildSkipShareLoDInfo();
 
+  void BuildOperatorDependences();
+
   bool is_build_;
 
   const platform::Place& place_;
   const BlockDesc& block_;       // not owned
   VariableScope* global_scope_;  // not owned
 
-  std::vector<paddle::framework::OpFuncNode> vec_func_list_;
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
   std::vector<size_t> dependecy_count_;

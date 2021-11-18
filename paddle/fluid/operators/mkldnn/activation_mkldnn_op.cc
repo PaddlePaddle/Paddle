@@ -210,6 +210,10 @@ using AbsMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_abs>;
 
 template <typename T>
+using EluMKLDNNFunctor =
+    MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_elu>;
+
+template <typename T>
 using ReluMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_relu>;
 
@@ -240,6 +244,10 @@ using SqrtMKLDNNGradFunctor =
 template <typename T>
 using AbsMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_abs>;
+
+template <typename T>
+using EluMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_elu>;
 }  // namespace operators
 }  // namespace paddle
 
@@ -264,14 +272,15 @@ namespace ops = paddle::operators;
       ops::MKLDNNActivationGradKernel<                                        \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                           \
-  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);             \
-  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
-  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);             \
-  __macro(hardswish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
-  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);                \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);                \
-  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);
+#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
+  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);              \
+  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);           \
+  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
+  __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
+  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);                 \
+  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);                 \
+  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
+  __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(relu, ReluMKLDNNFunctor,

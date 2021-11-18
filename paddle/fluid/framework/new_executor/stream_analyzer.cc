@@ -27,33 +27,60 @@ namespace framework {
  *
  * For example: matmul(gpu) -> out_var -> memcpy_d2h
  * out_var should be associated with an event.
+ *
+ * NOTE(zhiqiu): There are two special case that no event is needed:
+ *  1. the variable is marked as NoDataTransformVar
+ *  2. the variable is marked as NoNeedDataBuffer
  */
-std::vector<size_t> StreamAnalyzer::ParseEventVarIds(
+std::vector<size_t> StreamAnalyzer::GetNeedEventVarIds(
     const Instruction& cur_instr, const Instruction& next_instr) {
   std::unordered_set<size_t> unique_var_ids;
   for (auto& item : cur_instr.Outputs()) {
     unique_var_ids.insert(item.second.begin(), item.second.end());
   }
 
-  std::vector<size_t> new_event_var_ids;
+  auto is_no_need_buffer = [&next_instr](std::string name) {
+    auto* op = next_instr.OpBase();
+    auto& inferer = op->Info().NoNeedBufferVarsInferer();
+    if (inferer) {
+      auto no_need_buffer_ins =
+          inferer(op->Inputs(), op->Outputs(), op->Attrs());
+      return no_need_buffer_ins.count(name) != 0;
+    }
+    return false;
+  };
+
+  std::vector<size_t> need_event_var_ids;
   for (auto& item : next_instr.Inputs()) {
     for (auto var_id : item.second) {
-      if (unique_var_ids.count(var_id) > 0 &&
-          next_instr.NoDataTransformVars().count(var_id) == 0) {
-        new_event_var_ids.push_back(var_id);
+      if (unique_var_ids.count(var_id) > 0) {
+        if (next_instr.NoDataTransformVars().count(var_id)) {
+          VLOG(4) << "Skip inserting event at variable " << item.first
+                  << " of operator " << next_instr.OpBase()->Type()
+                  << " since it is NoDataTransform";
+          continue;
+        }
+        if (is_no_need_buffer(item.first)) {
+          VLOG(4) << "Skip inserting event at variable " << item.first
+                  << " of operator " << next_instr.OpBase()->Type()
+                  << " since it is NoNeedBufferVar";
+          continue;
+        }
+
+        need_event_var_ids.push_back(var_id);
       }
     }
   }
-  return new_event_var_ids;
+  return need_event_var_ids;
 }
 
-void StreamAnalyzer::AssociateInputWithEvents(
+void StreamAnalyzer::ConstructEventForVar(
     const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
-    platform::DeviceType waiter_type) {
+    platform::DeviceType waiter_type, const platform::Place& place) {
   for (auto var_id : new_event_var_id) {
     if (var_id2event_.count(var_id) == 0) {
       auto device_event = std::make_shared<platform::DeviceEvent>(
-          place_, platform::GenerateDeviceEventFlag());
+          place, platform::GenerateDeviceEventFlag());
       var_id2event_.emplace(var_id, std::move(device_event));
     }
     // Add events for next_instr.inputs
@@ -69,21 +96,27 @@ void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
   std::vector<size_t> event_var_ids;
   for (auto next_op_id : downstream_ops) {
     auto& next_instr = instructions->at(next_op_id);
-
     if (IsDirectRun(cur_instr, next_instr)) {
+      VLOG(4) << "DirectRun: " << cur_instr.OpBase()->Type() << "->"
+              << next_instr.OpBase()->Type();
       next_instruction.AddDirectRun(next_op_id);
     } else {
       // Always insert events between different stream
-      auto new_event_var_ids = ParseEventVarIds(cur_instr, next_instr);
-      event_var_ids.insert(event_var_ids.end(), new_event_var_ids.begin(),
-                           new_event_var_ids.end());
+      auto need_event_var_ids = GetNeedEventVarIds(cur_instr, next_instr);
+      event_var_ids.insert(event_var_ids.end(), need_event_var_ids.begin(),
+                           need_event_var_ids.end());
 
       auto waiter_type = GetWaiterType(next_instr);
-      AssociateInputWithEvents(new_event_var_ids, &next_instr, waiter_type);
+      ConstructEventForVar(need_event_var_ids, &next_instr, waiter_type,
+                           cur_instr.DeviceContext().GetPlace());
 
       if (waiter_type == platform::kCPU) {  // GPU -> CPU
+        VLOG(4) << "SyncRun: " << cur_instr.OpBase()->Type() << "->"
+                << next_instr.OpBase()->Type();
         next_instruction.AddSyncRun(next_op_id);
       } else {  // GPU -> GPU(different stream)
+        VLOG(4) << "EventRun: " << cur_instr.OpBase()->Type() << "->"
+                << next_instr.OpBase()->Type();
         next_instruction.ADDEventRun(next_op_id);
       }
     }
@@ -116,12 +149,15 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
  * NOTE(dev): The following cases are considered as directly run:
  *
  *  1. with same dev_ctx_, such as: CPU -> CPU, GPU -> GPU
- *  2. D2H -> CPU
- *  3. CPU -> H2D
+ *  2. CPU -> any (it is possible: CPU op->VAR->GPU op, when var is no need
+ * buffer or no need data transform)
+ *  3. D2H -> CPU
+ *  4. CPU -> H2D
  */
 bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
                                  const Instruction& next_instr) {
   return (&cur_instr.DeviceContext() == &next_instr.DeviceContext() ||
+          interpreter::IsCpuOp(cur_instr) ||
           interpreter::IsMemcpyD2H(cur_instr) ||
           interpreter::IsMemcpyH2D(next_instr));
 }
