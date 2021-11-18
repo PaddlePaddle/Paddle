@@ -97,8 +97,8 @@ class Interceptor {
   // read by PoolTheMailbox()
   std::queue<InterceptorMessage> local_mailbox_;
 
-  int64_t already_run_times_{0};
   int64_t used_slot_nums_{0};
+  int64_t already_run_times_{0};
 };
 
 }  // namespace distributed
