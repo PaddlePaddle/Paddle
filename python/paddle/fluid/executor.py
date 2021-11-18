@@ -1298,8 +1298,6 @@ class Executor(object):
                     use_program_cache=use_program_cache)
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
-            if "startup_program" in program._heter_pipeline_opt:
-                program = program._heter_pipeline_opt["startup_program"]
             stage_id = program._heter_pipeline_opt["pipeline_stage"]
             if stage_id != 0:
                 ## change default executor
@@ -1319,6 +1317,8 @@ class Executor(object):
                 p.set_place(heter_place)
                 self._default_executor = core.Executor(p)
             # TODO(zhangminxu): support heterps pipeline training using exe.run
+            if "startup_program" in program._heter_pipeline_opt:
+                program = program._heter_pipeline_opt["startup_program"]
 
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:

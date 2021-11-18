@@ -331,6 +331,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if self.role_maker._is_heter_parameter_server_mode:
                 _origin_startup_program._heter_pipeline_opt = {
                     "startup_program": startup_program,
+                    "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
                 }
 
                 loss.block.program._heter_pipeline_opt = {

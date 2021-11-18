@@ -150,7 +150,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
         #real_startup = fluid.default_startup_program()._heter_pipeline_opt[
         #    "startup_program"]
-        exe.run(real_startup)
+        exe.run(fluid.default_startup_program())
         fleet.init_worker()
 
         thread_num = int(os.getenv("CPU_NUM", 2))
