@@ -59,8 +59,8 @@ TEST(InterceptorTest, PingPong) {
 
   Interceptor* a = carrier.SetInterceptor(
       0, std::make_unique<PingPongInterceptor>(0, nullptr));
-
   carrier.SetInterceptor(1, std::make_unique<PingPongInterceptor>(1, nullptr));
+  carrier.SetCreatingFlag(false);
 
   InterceptorMessage msg;
   a->Send(1, msg);

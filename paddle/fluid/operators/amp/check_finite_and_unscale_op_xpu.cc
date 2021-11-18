@@ -22,6 +22,7 @@ template <typename T>
 class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
   using MPDType = typename details::MPTypeTrait<T>::Type;
   using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using float16 = typename XPUTypeTrait<paddle::platform::float16>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
