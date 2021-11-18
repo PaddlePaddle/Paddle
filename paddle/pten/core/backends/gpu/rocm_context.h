@@ -14,16 +14,74 @@
 
 #pragma once
 
+#include <ThreadPool.h>
+
 #include "paddle/fluid/platform/place.h"
 
+#include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/device_context.h"
 
-#include "<miopen/miopen.h>"
+#include "miopen/miopen.h"
+
+#ifdef PADDLE_WITH_EIGEN
+#include "unsupported/Eigen/CXX11/Tensor"
+namespace Eigen {
+struct GpuDevice;
+}  // namespace Eigen
+#endif
 
 namespace pten {
 
 using Place = paddle::platform::Place;
 using CUDAPlace = paddle::platform::CUDAPlace;
+
+class CudnnWorkspaceHandle {
+ public:
+  explicit CudnnWorkspaceHandle(pten::Allocator* allocator, std::mutex* mtx);
+
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes);
+
+  /*! \brief Thread which call RunFuncSync() would release gpu memory after
+   *  running the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  template <typename Callback>
+  inline void RunFuncSync(Callback&& cudnn_func,
+                          size_t required_workspace_bytes);
+
+  void ReallocWorkspace(size_t required_workspace_bytes);
+
+  inline void ResetWorkspace();
+
+  inline size_t WorkspaceSize();
+
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+ private:
+  pten::Allocator* allocator_;
+  pten::Allocation allocation_;
+  size_t num_bytes_{0};
+  std::mutex* mtx_;
+};
+
+class StreamCallbackManager {
+ public:
+  explicit StreamCallbackManager(const cudaStream_t stream);
+
+  ~StreamCallbackManager() = default;
+
+  void AddCallback(std::function<void()> callback) const;
+
+  void Wait() const;
+
+ private:
+  const hipStream_t stream_;
+  mutable ::ThreadPool thread_pool_;
+  mutable std::mutex mtx_;
+  mutable std::future<void> last_future_;
+};
 
 class ROCMContext : public DeviceContext {
  public:
@@ -102,7 +160,7 @@ class ROCMContext : public DeviceContext {
   hipStream_t stream() const noexcept { return stream_; }
   void SetStream(hipStream_t stream) noexcept { stream_ = stream; }
 
-  cudaStream_t host_to_device_stream() const noexcept {
+  hipStream_t host_to_device_stream() const noexcept {
     return host_to_device_stream_;
   }
   void SetHostToDeviceStream(hipStream_t stream) noexcept {
@@ -125,8 +183,27 @@ class ROCMContext : public DeviceContext {
 
   Place GetPlace() const noexcept override { return place_; }
 
-  miopenHandle_t cublas_handle() const;
-  void SetCublasHandle(miopenHandle_t handle) { cublas_handle_ = handle; }
+  rocblas_handle cublas_handle() const;
+  void SetCublasHandle(rocblas_handle handle) { cublas_handle_ = handle; }
+
+#ifdef PADDLE_WITH_CUDNN
+  void SetCudnnHandle(miopenHandle_t handle) { cudnn_handle_ = handle; }
+  miopenHandle_t cudnn_handle() const;
+
+  /*! \brief  Return a cudnn workspace handle to call multiple cudnn
+   *  functions without interrupting by other threads.
+   *  Once the first cudnn function is called by the handle, a lock
+   *  would be acquired to prevent other threads from accessing the
+   *  workspace. Once the handle is destructed, the lock would be released.
+   *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
+   *  sequential cudnn function calls. */
+  CudnnWorkspaceHandle* cudnn_workspace_handle();
+#endif
+
+#ifdef PADDLE_WITH_EIGEN
+  // TODO(wilber): rocm doesn't need eigen, how to remove it?
+  Eigen::GpuDevice* eigen_device() const { return nullptr; }
+#endif
 
  private:
   // Streams
@@ -157,18 +234,13 @@ class ROCMContext : public DeviceContext {
   mutable std::mutex cublas_handle_mtx_;
   rocblas_handle cublas_handle_{nullptr};
 
-  //     hipStream_t* stream_{nullptr};
-  //     hipStream_t* host_to_device_stream_{nullptr};
-  //     hipStream_t* device_to_host_stream_{nullptr};
-  //     // TODO(wilber): n device stream ?
-  //     // hipStream_t* device_to_device_stream_;
+  std::unique_ptr<StreamCallbackManager> callback_manager_{nullptr};
+  std::unique_ptr<CudnnWorkspaceHandle> cudnn_workspace_handle_{nullptr};
 
-  //     Allocator* allocator_{nullptr};
-
-  //     rocblas_handle* blas_handle_;
-  // #if PADDLE_WITH_CUDNN
-  //     miopenHandle_t* dnn_handle_;
-  // #endif
+#if PADDLE_WITH_CUDNN
+  mutable std::mutex cudnn_handle_mtx_;
+  miopenHandle_t* cudnn_handle_;
+#endif
 };
 
 using CUDAContext = ROCMContext;

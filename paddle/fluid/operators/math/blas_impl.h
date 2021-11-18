@@ -957,7 +957,19 @@ void Blas<platform::CPUDeviceContext>::AXPY(int n, T alpha, const T *x,
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
+  CBlas<T>::AXPY(n, alpha, x, 1, y, 1);
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  CBlas<T>::VCOPY(n, x, 1, y, 1);
+}
+
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VCOPY(int n, const T *x, T *y) const {
   CBlas<T>::VCOPY(n, x, 1, y, 1);
 }
 

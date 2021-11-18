@@ -16,4 +16,111 @@
 #include <memory>
 #include "paddle/pten/core/allocator.h"
 
-namespace pten {}  // namespace pten
+namespace pten {
+
+dim3 ROCMContext::GetCUDAMaxGridDimSize() const {
+  dim3 ret;
+  ret.x = max_grid_dim_x_;
+  ret.y = max_grid_dim_y_;
+  ret.z = max_grid_dim_z_;
+  return ret;
+}
+
+CudnnWorkspaceHandle::CudnnWorkspaceHandle(pten::Allocator* allocator,
+                                           std::mutex* mtx)
+    : allocator_(allocator), mtx_(mtx) {}
+
+template <typename Callback>
+inline void CudnnWorkspaceHandle::RunFunc(Callback&& cudnn_func,
+                                          size_t required_workspace_bytes) {
+  if (required_workspace_bytes > WorkspaceSize()) {
+    ReallocWorkspace(required_workspace_bytes);
+  }
+  VLOG(2) << "Cudnn workspace size at RunFunc: "
+          << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
+  {
+    std::lock_guard<std::mutex> guard(*mtx_);
+    cudnn_func(allocation_.operator->());
+  }
+}
+
+/*! \brief Thread which call RunFuncSync() would release gpu memory after
+  *  running the function. Currently this function is only used when cudnn
+  *  exhaustive searching and callers have to guarantee that the input function
+  *  is host blocking */
+template <typename Callback>
+inline void CudnnWorkspaceHandle::RunFuncSync(Callback&& cudnn_func,
+                                              size_t required_workspace_bytes) {
+  RunFunc(cudnn_func, required_workspace_bytes);
+  ResetWorkspace();
+}
+
+void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) {
+    return;
+  }
+  // reset allocation first before re-allocate to save memory
+  allocation_.Clear();
+  // allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
+  allocation_ = allocator_->Allocate(required_workspace_bytes);
+  num_bytes_ = required_workspace_bytes;
+}
+
+inline void CudnnWorkspaceHandle::ResetWorkspace() {
+  allocation_.Clear();
+  num_bytes_ = 0;
+}
+
+inline size_t CudnnWorkspaceHandle::WorkspaceSize() { return num_bytes_; }
+
+#if CUDA_VERSION >= 10000
+static void CUDART_CB StreamCallbackFunc(void* user_data)
+#else
+static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
+                                         cudaError_t status,
+                                         void* user_data)
+#endif
+{
+  std::unique_ptr<std::function<void()>> func(
+      reinterpret_cast<std::function<void()>*>(user_data));
+  (*func)();
+}
+
+StreamCallbackManager::StreamCallbackManager(const cudaStream_t stream)
+    : stream_(stream), thread_pool_(1) {}
+
+void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
+  auto* callback_func = new std::function<void()>(std::move(callback));
+  auto* func = new std::function<void()>([this, callback_func] {
+    std::lock_guard<std::mutex> lock(mtx_);
+    last_future_ = thread_pool_.enqueue([callback_func] {
+      std::unique_ptr<std::function<void()>> releaser(callback_func);
+      (*callback_func)();
+    });
+  });
+
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
+#endif
+}
+
+void StreamCallbackManager::Wait() const {
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (last_future_.valid()) {
+      last_future_.wait();
+    }
+  }
+}
+
+CudnnWorkspaceHandle* ROCMContext::cudnn_workspace_handle() {
+  if (cudnn_workspace_handle_ == nullptr) {
+    cudnn_workspace_handle_.reset(
+        new CudnnWorkspaceHandle(allocator_, &cudnn_handle_mtx_));
+  }
+  return cudnn_workspace_handle_.get();
+}
+
+}  // namespace pten
