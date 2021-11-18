@@ -52,41 +52,12 @@ struct DenseTensorMeta {
 
   /// During the entire life cycle of a DenseTensor, the following attributes
   /// marked with `const` are expected to remain unchanged.
-  const bool is_scalar{false};
+  bool is_scalar{false};
   DDim dims;
-  const DataType type{DataType::UNDEFINED};
-  const DataLayout layout{DataLayout::NCHW};
+  DataType type{DataType::UNDEFINED};
+  DataLayout layout{DataLayout::NCHW};
   LoD lod;
+  size_t offset{0};
 };
-
-inline DenseTensorMeta::DenseTensorMeta(DataType type, const DDim& dims)
-    : dims(dims), type(type) {}
-
-inline DenseTensorMeta::DenseTensorMeta(DataType type,
-                                        const DDim& dims,
-                                        DataLayout layout)
-    : dims(dims), type(type), layout(layout) {}
-
-inline DenseTensorMeta::DenseTensorMeta(
-    DataType type,
-    const DDim& dims,
-    DataLayout layout,
-    const std::vector<std::vector<size_t>>& lod)
-    : dims(dims), type(type), layout(layout), lod(lod) {}
-
-inline bool DenseTensorMeta::valid() const noexcept {
-  bool valid{true};
-  valid = valid && (type != DataType::UNDEFINED);
-  valid = valid && (layout != DataLayout::UNDEFINED);
-  valid = valid && (is_scalar || product(dims) >= 0);
-  return valid;
-}
-
-inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
-  bool ret = true;
-  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
-         (lhs.type == rhs.type) && (lhs.layout == rhs.layout) &&
-         (lhs.lod == rhs.lod);
-}
 
 }  // namespace pten

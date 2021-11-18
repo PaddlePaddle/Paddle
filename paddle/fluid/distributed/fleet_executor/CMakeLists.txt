@@ -4,13 +4,13 @@ if(WITH_PYTHON)
 endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
-if(WITH_DISTRIBUTE AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+if(WITH_DISTRIBUTE AND WITH_PSCORE AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
   set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog)
 else()
   set(BRPC_DEPS "")
 endif()
 
-cc_library(fleet_executor SRCS fleet_executor.cc carrier.cc
+cc_library(fleet_executor SRCS fleet_executor.cc carrier.cc task_node.cc runtime_graph.cc 
         interceptor.cc interceptor_message_service.cc message_bus.cc
         DEPS proto_desc fleet_executor_desc_proto interceptor_message_proto ${BRPC_DEPS})
 

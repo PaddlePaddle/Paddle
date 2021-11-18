@@ -105,6 +105,9 @@ void build_op_func_list(const platform::Place& place,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope);
 
+std::map<int, std::list<int>> build_op_downstream_map(
+    const std::vector<Instruction>& vec_instruction);
+
 void add_fetch(const std::vector<std::string>& fetch_names,
                framework::BlockDesc* block);
 

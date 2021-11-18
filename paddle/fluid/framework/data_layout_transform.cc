@@ -100,21 +100,21 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::reorder;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::reorder;
 
-void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
+void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
   switch (type) {
-    case mkldnn::memory::data_type::f32:
+    case dnnl::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
-    case mkldnn::memory::data_type::s8:
+    case dnnl::memory::data_type::s8:
       return platform::to_void_cast(tensor.data<int8_t>());
-    case mkldnn::memory::data_type::u8:
+    case dnnl::memory::data_type::u8:
       return platform::to_void_cast(tensor.data<unsigned char>());
-    case mkldnn::memory::data_type::s32:
+    case dnnl::memory::data_type::s32:
       return platform::to_void_cast(tensor.data<int32_t>());
-    case mkldnn::memory::data_type::bf16:
+    case dnnl::memory::data_type::bf16:
       return platform::to_void_cast(tensor.data<paddle::platform::bfloat16>());
     default:
       PADDLE_THROW(
