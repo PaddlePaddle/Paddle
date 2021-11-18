@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
 namespace distributed {
@@ -21,7 +22,8 @@ namespace distributed {
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
     : interceptor_id_(interceptor_id), node_(node) {
   interceptor_thread_ = std::thread([this]() {
-    VLOG(3) << "Start pooling local mailbox's thread.";
+    VLOG(3) << "Interceptor " << interceptor_id_
+            << " starts the thread pooling it's local mailbox.";
     PoolTheMailbox();
   });
 }
