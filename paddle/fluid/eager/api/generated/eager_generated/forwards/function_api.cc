@@ -30,7 +30,7 @@ static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
                                 const DeviceContext& dev_ctx, float scale,
                                 float bias, bool bias_after_scale,
                                 pten::DenseTensor* dense_out) {
-  switch (dense_tensor.data_type()) {
+  switch (dense_tensor.dtype()) {
     case pten::DataType::FLOAT64: {
       pten::Scale<double>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
                           bias /* bias */,
@@ -71,7 +71,7 @@ static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
 static void FillConstCPUFunctor(pten::DenseTensor* tensor_dense, double value) {
   PADDLE_ENFORCE(tensor_dense, paddle::platform::errors::Fatal(
                                    "Receive nullptr of dense tensor"));
-  switch (tensor_dense->data_type()) {
+  switch (tensor_dense->dtype()) {
     case pten::DataType::INT64: {
       int64_t* data_ptr = tensor_dense->mutable_data<int64_t>();
       for (int i = 0; i < tensor_dense->numel(); i++) {
@@ -118,11 +118,11 @@ static void FillConstCUDAFunctor(pten::DenseTensor* tensor_dense,
                                  double value) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto* dev_ctx = dynamic_cast<paddle::platform::CUDAContext*>(
       pool.Get(paddle::platform::CUDAPlace()));
   auto stream = dev_ctx->stream();
 
-  switch (tensor_dense->data_type()) {
+  switch (tensor_dense->dtype()) {
     case pten::DataType::INT64: {
       std::vector<int64_t> host_data(tensor_dense->numel(),
                                      static_cast<int64_t>(value));
@@ -176,10 +176,10 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
   auto dense_tensor = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   // Init output tensor
   auto tensor_meta = pten::DenseTensorMeta(
-      dense_tensor->data_type(), dense_tensor->dims(), dense_tensor->layout());
+      dense_tensor->dtype(), dense_tensor->dims(), dense_tensor->layout());
   auto place = dense_tensor->place();
   size_t bytes_size = paddle::framework::product(dense_tensor->dims()) *
-                      SizeOf(dense_tensor->data_type());
+                      SizeOf(dense_tensor->dtype());
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size), 0),

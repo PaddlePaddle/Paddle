@@ -15,9 +15,12 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/platform/enforce.h"
+
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/include/core.h"
+
+#include "paddle/fluid/platform/enforce.h"
+
 namespace egr {
 
 // Public

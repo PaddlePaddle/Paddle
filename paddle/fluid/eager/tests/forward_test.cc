@@ -20,13 +20,11 @@
 #include "paddle/fluid/eager/api/api.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/tests/test_utils.h"
 
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
-
-#include "paddle/fluid/eager/tests/test_utils.h"
 
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
