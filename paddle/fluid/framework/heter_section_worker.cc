@@ -218,15 +218,21 @@ void HeterSectionWorker::CreateMicrobatchScopes() {
       minibatch_scope_,
       platform::errors::InvalidArgument(
           "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
-  microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
-  (*microbatch_scopes_).resize(num_microbatches_);
-  VLOG(3) << "Create microbatch scopes...";
-  std::shared_ptr<framework::ProgramDesc> program;
-  program.reset(new ProgramDesc(
-      trainer_desc_.heter_section_param().section_config().program_desc()));
-  for (int j = 0; j < num_microbatches_; ++j) {
-    (*microbatch_scopes_)[j] = &minibatch_scope_->NewScope();
-    CopyParameters(j, *program, place_);
+  if (microbatch_scopes_.get() == nullptr) {
+    microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
+    (*microbatch_scopes_).resize(num_microbatches_);
+    VLOG(3) << "Create microbatch scopes...";
+    for (int j = 0; j < num_microbatches_; ++j) {
+      (*microbatch_scopes_)[j] = &minibatch_scope_->NewScope();
+    }
+  }
+  if (thread_id_ >= 0) {
+    std::shared_ptr<framework::ProgramDesc> program;
+    program.reset(new ProgramDesc(
+        trainer_desc_.heter_section_param().section_config().program_desc()));
+    for (int j = 0; j < num_microbatches_; ++j) {
+      CopyParameters(j, *program, place_);
+    }
   }
 }
 
@@ -258,6 +264,8 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
       VLOG(5) << "Create persistable var: " << var->Name()
               << ", which pointer is " << ptr;
     } else if (!var->Persistable()) {
+      if ((*microbatch_scopes_)[microbatch_id]->FindVar(var->Name()) != nullptr)
+        continue;
       auto* ptr = (*microbatch_scopes_)[microbatch_id]->Var(var->Name());
       VLOG(5) << "Create variable " << var->Name() << " for microbatch "
               << microbatch_id << ", which pointer is " << ptr;
@@ -359,22 +367,25 @@ void HeterSectionWorker::BatchPostProcess() {
 }
 
 void HeterSectionWorker::TrainFiles() {
-  total_ins_num_ = 0;
-  batch_num_ = 0;
-  platform::SetNumThreads(1);
-  timeline_.Start();
-  VLOG(3) << "begin section_worker TrainFiles";
-  epoch_finish_ = false;
-  if (pipeline_stage_ == 0) {
-    device_reader_->Start();
+  if (thread_id_ >= 0) {
+    total_ins_num_ = 0;
+    batch_num_ = 0;
+    platform::SetNumThreads(1);
+    timeline_.Start();
+    VLOG(3) << "begin section_worker TrainFiles";
+    epoch_finish_ = false;
+    if (pipeline_stage_ == 0) {
+      device_reader_->Start();
+    }
+    while (!epoch_finish_) {
+      Run();
+      dev_ctx_->Wait();
+    }
+    timeline_.Pause();
+    VLOG(3) << "worker " << thread_id_ << " train cost "
+            << timeline_.ElapsedSec()
+            << " seconds, ins_num: " << total_ins_num_;
   }
-  while (!epoch_finish_) {
-    Run();
-    dev_ctx_->Wait();
-  }
-  timeline_.Pause();
-  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline_.ElapsedSec()
-          << " seconds, ins_num: " << total_ins_num_;
 }
 
 void HeterSectionWorker::PrintFetchVars() {
@@ -406,22 +417,24 @@ void HeterSectionWorker::PrintFetchVars() {
 }
 
 void HeterSectionWorker::TrainFilesWithProfiler() {
-  VLOG(3) << "begin section_worker TrainFilesWithProfiler";
-  batch_num_ = 0;
-  epoch_finish_ = false;
-  total_ins_num_ = 0;
-  op_name_.clear();
-  op_total_time_.clear();
-  if (pipeline_stage_ == 0) {
-    device_reader_->Start();
-  }
-  while (!epoch_finish_) {
-    Run();
-    dev_ctx_->Wait();
-    if (epoch_finish_) {
-      // dump param for debug
-      if (need_dump_field_ || need_dump_param_) {
-        writer_.Flush();
+  if (thread_id_ >= 0) {
+    VLOG(3) << "begin section_worker TrainFilesWithProfiler";
+    batch_num_ = 0;
+    epoch_finish_ = false;
+    total_ins_num_ = 0;
+    op_name_.clear();
+    op_total_time_.clear();
+    if (pipeline_stage_ == 0) {
+      device_reader_->Start();
+    }
+    while (!epoch_finish_) {
+      Run();
+      dev_ctx_->Wait();
+      if (epoch_finish_) {
+        // dump param for debug
+        if (need_dump_field_ || need_dump_param_) {
+          writer_.Flush();
+        }
       }
     }
   }

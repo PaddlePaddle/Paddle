@@ -528,7 +528,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         send_ctx = self.compiled_strategy.get_the_one_send_context(
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
-            use_origin_program=True,
+            use_origin_program=self.role_maker._is_heter_parameter_server_mode,
             ep_list=endpoints)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
@@ -577,8 +577,12 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
+        import paddle.distributed.fleet as fleet
         if not is_test:
             self._communicator.init_params(init_params)
+            fleet.util.barrier()
+        self._communicator.pull_dense(init_params)
+        fleet.util.barrier()
 
         if not self._communicator.is_running():
             self._communicator.start()
@@ -898,9 +902,10 @@ class TheOnePSRuntime(RuntimeBase):
                           print_period=100,
                           fetch_handler=None):
         executor = self._get_executor()
+        # dataset is not needed for heter worker
         executor.train_from_dataset(
             program=fluid.default_main_program(),
-            dataset=dataset,
+            dataset=None,
             debug=debug,
             fetch_list=fetch_list,
             fetch_info=fetch_info,
@@ -908,11 +913,11 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _stop_worker(self):
         self._communicator.stop()
-        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-        ):
+        if self.role_maker._is_heter_parameter_server_mode:
+            assert self._heter_client != None, "heter client should not be None in heterps mode"
             self._heter_client.stop()
-        executor = self._get_executor()
-        executor.close()
+        #executor = self._get_executor()
+        #executor.close()
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
