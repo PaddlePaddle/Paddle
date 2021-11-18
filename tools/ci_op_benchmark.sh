@@ -280,6 +280,7 @@ function gpu_op_benchmark {
   exit 0
 }
 
+
 # The PR will pass quickly when get approval from specific person.
 # Xreki 12538138, luotao1 6836917, Avin0323 23427135
 set +x
