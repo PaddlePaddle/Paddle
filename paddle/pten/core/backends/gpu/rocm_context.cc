@@ -26,6 +26,20 @@ dim3 ROCMContext::GetCUDAMaxGridDimSize() const {
   return ret;
 }
 
+void ROCMContext::Wait(hipStream_t stream) const noexcept {
+  hipError_t e_sync = hipSuccess;
+#if !defined(_WIN32)
+  e_sync = hipStreamSynchronize(stream);
+#else
+  while (e_sync = hipStreamQuery(stream)) {
+    if (e_sync == hipErrorNotReady) continue;
+    break;
+  }
+#endif
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+}
+
 CudnnWorkspaceHandle::CudnnWorkspaceHandle(pten::Allocator* allocator,
                                            std::mutex* mtx)
     : allocator_(allocator), mtx_(mtx) {}
@@ -86,7 +100,7 @@ static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
   (*func)();
 }
 
-StreamCallbackManager::StreamCallbackManager(const cudaStream_t stream)
+StreamCallbackManager::StreamCallbackManager(const hipStream_t stream)
     : stream_(stream), thread_pool_(1) {}
 
 void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
@@ -99,10 +113,8 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
     });
   });
 
-#ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_CUDA_SUCCESS(
       hipStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
-#endif
 }
 
 void StreamCallbackManager::Wait() const {

@@ -23,6 +23,7 @@
 
 #include "miopen/miopen.h"
 
+#define PADDLE_WITH_EIGEN 1
 #ifdef PADDLE_WITH_EIGEN
 #include "unsupported/Eigen/CXX11/Tensor"
 namespace Eigen {
@@ -68,7 +69,7 @@ class CudnnWorkspaceHandle {
 
 class StreamCallbackManager {
  public:
-  explicit StreamCallbackManager(const cudaStream_t stream);
+  explicit StreamCallbackManager(const hipStream_t stream);
 
   ~StreamCallbackManager() = default;
 
@@ -180,6 +181,8 @@ class ROCMContext : public DeviceContext {
   void SetDeviceToDeviceStreams(std::vector<hipStream_t>* streams) {
     device_to_device_streams_ = streams;
   }
+
+  void Wait(hipStream_t stream) const noexcept;
 
   Place GetPlace() const noexcept override { return place_; }
 

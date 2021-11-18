@@ -26,6 +26,20 @@ dim3 CUDAContext::GetCUDAMaxGridDimSize() const {
   return ret;
 }
 
+void CUDAContext::Wait(cudaStream_t stream) const noexcept {
+  cudaError_t e_sync = cudaSuccess;
+#if !defined(_WIN32)
+  e_sync = cudaStreamSynchronize(stream);
+#else
+  while (e_sync = cudaStreamQuery(stream)) {
+    if (e_sync == cudaErrorNotReady) continue;
+    break;
+  }
+#endif
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+}
+
 CudnnWorkspaceHandle::CudnnWorkspaceHandle(pten::Allocator* allocator,
                                            std::mutex* mtx)
     : allocator_(allocator), mtx_(mtx) {}
