@@ -122,7 +122,7 @@ inline void EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
         ptr->SetNcclComm(device_ctx->nccl_comm());
 #endif
 
-#ifdef PADDLE_WITH_EIGEN
+#if defined(PADDLE_WITH_EIGEN) && !defined(PADDLE_WITH_HIP)
         ptr->SetEigenDevice(device_ctx->eigen_device());
 #endif
         // device_ctx->cusolver_dn_handle()

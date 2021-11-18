@@ -183,9 +183,7 @@ class ROCMContext : public DeviceContext {
   }
 
   template <typename Callback>
-  void RecordEvent(cudaEvent_t ev,
-                   hipStream_t stream,
-                   Callback callback) const {
+  void RecordEvent(hipEvent_t ev, hipStream_t stream, Callback callback) const {
     callback();
     PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream));
   }
