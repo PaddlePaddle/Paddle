@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
 #include <sys/socket.h>
+#endif
+
 #include <memory>
 #include <string>
 #include <thread>
