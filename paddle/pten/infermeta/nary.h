@@ -16,7 +16,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/core/tensor_meta.h"
-
+#include "paddle/pten/common/scalar_array.h"
 namespace pten {
 
 // Common InferShape Functions for 0-nary operators(no input tensor), The format
@@ -28,6 +28,10 @@ namespace pten {
 //  not only can infer shape, but alse need infer lod or other useful data.
 
 DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
+                               DataType dtype,
+                               DataLayout layout);
+
+DenseTensorMeta FullInferShape(const ScalarArray& shape,
                                DataType dtype,
                                DataLayout layout);
 

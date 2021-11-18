@@ -68,7 +68,7 @@ class ScalarArrayList {
         case DataType::INT32: {
           for (auto i = 0; i < n; i++) {
             PADDLE_ENFORCE_EQ(
-                tensor_list[i].data_type(),
+                tensor_list[i].dtype(),
                 data_type,
                 paddle::platform::errors::InvalidArgument(
                     "The data_type of tensors in the list isn't consistent."
@@ -83,7 +83,7 @@ class ScalarArrayList {
         case DataType::INT64: {
           for (auto i = 0; i < n; i++) {
             PADDLE_ENFORCE_EQ(
-                tensor_list[i].data_type(),
+                tensor_list[i].dtype(),
                 data_type,
                 paddle::platform::errors::InvalidArgument(
                     "The data_type of tensors in the list isn't consistent."
@@ -106,15 +106,19 @@ class ScalarArrayList {
   }
 
   template <typename TT>
-  ScalarArrayList(const ScalarArrayList<TT>& other) : array_(other.array_) {}
+  ScalarArrayList(const ScalarArrayList<TT>& other) : array_(other.GetData()) {}
 
-  template <typename TT>
-  ScalarArrayList(ScalarArrayList<TT>&& other) {
-    swap(array_, other.array_);
-  }
+  // template <typename TT>
+  // ScalarArrayList(ScalarArrayList<TT>&& other) {
+  //   swap(array_, other.array_);
+  // }
 
   paddle::framework::DDim GetDim() const {
     return paddle::framework::make_ddim(array_);
+  }
+
+  const std::vector<int64_t>& GetData() const {
+    return array_;
   }
 
  private:
@@ -145,4 +149,5 @@ using ScalarArray =
 namespace pten {
 
 using ScalarArray = paddle::experimental::ScalarArrayList<pten::DenseTensor>;
+
 }

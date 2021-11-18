@@ -62,6 +62,42 @@ PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
   return out;
 }
 
+PD_DLL_DECL Tensor full_new(const ScalarArray& shape,
+                        const Scalar& value,
+                        DataType dtype,
+                        Backend backend,
+                        DataLayout layout) {
+  // 1. Get kernel signature and kernel
+  pten::KernelKey kernel_key{backend, layout, dtype};
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      "fill_constant.new", kernel_key);
+
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(dev_ctx);
+
+  // 3. Auto data transform
+  kernel_context.EmplaceBackAttr(pten::ScalarArray(shape));
+  kernel_context.EmplaceBackAttr(value);
+
+  // 4. InferShape
+  auto out_meta = pten::FullInferShape(shape, dtype, layout);
+
+  // 5. Prepare outputs
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  kernel_context.EmplaceBackOutput(dense_out);
+  Tensor out;
+  out.set_impl(dense_out);
+
+  // 6. Call kernel
+  kernel(&kernel_context);
+
+  return out;
+}
+
 PD_DLL_DECL Tensor full_like(const Tensor& x,
                              const Scalar& value,
                              DataType dtype,

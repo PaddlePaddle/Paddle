@@ -20,7 +20,6 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/vector_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
 
