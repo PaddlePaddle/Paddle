@@ -41,6 +41,7 @@ from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedA
 #from paddle.distributed.auto_parallel.completion import update_op_dims_mapping_by_default_dist_impl
 from paddle.distributed.auto_parallel.completion import is_elementwise_like_op
 from paddle.distributed.auto_parallel.utils import make_data_unshard, compute_compatible_dims_mapping, compute_compatible_dim_mapping
+from .utils import is_dim_shard
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 from paddle.cost_model import CostModel
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -411,7 +412,8 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
                         for var_name in op.output_arg_names:
                             _.append(
                                 dist_op.dist_attr.get_output_dims_mapping(var_name))
-                        if _ not in elementwise_op_dist_attr_list:
+                        if _ not in elementwise_op_dist_attr_list and \
+                        check_special_op_dims_mapping(op, dist_op.dist_attr, vars):
                             dist_op.dist_attr.impl_idx = -1
                             valid_op_dist_attr_list.append(dist_op.dist_attr)
                             elementwise_op_dist_attr_list.append(_)
@@ -435,7 +437,8 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
                         for var_name in op.output_arg_names:
                             _.append(
                                 dist_op.dist_attr.get_output_dims_mapping(var_name))
-                        if _ not in default_op_dist_attr_list:
+                        if _ not in default_op_dist_attr_list and \
+                        check_special_op_dims_mapping(op, dist_op.dist_attr, vars):
                             dist_op.dist_attr.impl_idx = -2
                             valid_op_dist_attr_list.append(dist_op.dist_attr)
                             default_op_dist_attr_list.append(_)
@@ -450,6 +453,41 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
                     valid_op_dist_attr_list.append(dist_op.dist_attr)
 
     return valid_op_dist_attr_list
+
+
+def check_special_op_dims_mapping(op, op_dist_attr, vars):
+    if op.type == "layer_norm":
+        bias_dims_mapping = op_dist_attr.get_input_dims_mapping(op.input("Bias")[0])
+        scale_dims_mapping = op_dist_attr.get_input_dims_mapping(op.input("Scale")[0])
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(op.input("X")[0])
+        mean_dims_mapping = op_dist_attr.get_output_dims_mapping(op.output("Mean")[0])
+        variance_dims_mapping = op_dist_attr.get_output_dims_mapping(op.output("Variance")[0])
+        y_dims_mapping = op_dist_attr.get_output_dims_mapping(op.output("Y")[0])
+        if x_dims_mapping != y_dims_mapping:
+            return False
+        if scale_dims_mapping[0] != x_dims_mapping[-1]:
+            return False
+        if bias_dims_mapping[0]!= y_dims_mapping[-1]:
+            return False
+        if mean_dims_mapping[0] != x_dims_mapping[0]:
+            return False
+        if variance_dims_mapping[0] != x_dims_mapping[0]:
+            return False
+
+    return True
+
+
+def check_tensors_dist_attr(dist_context):
+    dims_mapping_list = []
+    for dist_tensor in dist_context._dist_tensors_for_program.values():
+        dist_attr = dist_tensor.dist_attr
+        dims_mapping = dist_attr.dims_mapping
+        dims_mapping_list.append(dims_mapping)
+    for dims_mapping_item in dims_mapping_list:
+        for i in dims_mapping_item:
+            if is_dim_shard(i):
+                return True
+    return False
 
 
 def check_ops_valid_dist_attr(program, op_valid_dist_attr_dict):
@@ -683,7 +721,7 @@ def mcmc(train_program,
          loss,
          optimizer,
          cluster=None,
-         max_search_times=100,
+         max_search_times=50,
          pipeline_process_mesh_list=None):
     times = 0
     best_dist_context = init_dist_context
@@ -701,6 +739,8 @@ def mcmc(train_program,
         new_dist_context = mcmc_search_strategy(
             train_program, op_valid_dist_attr_dict, best_dist_context,
             pipeline_process_mesh_list)[1]
+        if not check_tensors_dist_attr(new_dist_context):
+            continue
         cur_cost = estimate_searched_strategy_cost(
                     train_program,
                     start_program,
@@ -748,10 +788,10 @@ def get_distributed_program(train_program, startup_program, dist_context, loss,
     opt_ops = partitioner.apply_optimize(
         optimizer, dist_params_grads, dist_main_program, dist_startup_program)
     make_data_unshard(dist_main_program, dist_startup_program, dist_context)
+    reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
     HAS_SENT.clear()
     HAS_RECV.clear()
     HAS_ALLGATHER.clear()
-    reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
     return dist_main_program, dist_startup_program
 
 
@@ -767,6 +807,7 @@ def get_all_distributed_main_program(train_program,
     ranks = 4
     for rank_id in range(ranks):
         used_dist_context = copy.deepcopy(dist_context)
+        used_dist_context._dist_op_context = DistributedOperatorContext()
         dist_main_program, dist_startup_program = get_distributed_program(
             train_program, startup_program, used_dist_context, loss, rank_id,
             optimizer)

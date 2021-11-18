@@ -111,9 +111,27 @@ def find_best_compatible_distributed_operator_impl(name, dist_op, fwd=True):
     return best_compatible_impl, idx
 
 
-def copy_distributed_attr_for_var(dist_context, dst_var, src_var):
-    """
-    copy src var's dist_attr to dst var
-    """
-    dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
-    dist_context.set_tensor_dist_attr_for_program(dst_var, dist_attr)
+def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
+    var_shape = block.var(src_var.name).shape
+    var_topoloy = src_var_dist_attr.process_mesh.topology
+    var_dims_mapping = src_var_dist_attr.dims_mapping
+
+    complete_shape = []
+    for idx, shape in enumerate(var_shape):
+        if var_dims_mapping[idx] == -1:
+            complete_shape.append(shape)
+        else:
+            new_shape = shape * var_topoloy[var_dims_mapping[idx]] 
+            complete_shape.append(new_shape)
+
+    exact_shape = []
+    input_topology = op_input_dist_attr.process_mesh.topology
+    input_dims_mapping = op_input_dist_attr.dims_mapping
+    for idx, shape in enumerate(complete_shape):
+        if input_dims_mapping[idx] == -1:
+            exact_shape.append(shape)
+        else:
+            new_shape =  shape // input_topology[input_dims_mapping[idx]]
+            exact_shape.append(new_shape)
+
+    return exact_shape    

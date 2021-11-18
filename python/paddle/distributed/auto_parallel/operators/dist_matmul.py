@@ -16,7 +16,7 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-from .common import copy_distributed_attr_for_var
+from .common import infer_shape
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -364,7 +364,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             persistable=False,
             stop_gradient=X_var.stop_gradient)
         # copy X_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(ctx, intermediate_var_0, X_var)
+        tensor_dist_attr = op_dist_attr.get_input_dist_attr(X_var.name)
+        assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+        ctx.set_tensor_dist_attr_for_program(intermediate_var_0, tensor_dist_attr)
 
         check_variable_and_dtype(
             X_var, 'tensor',
@@ -397,13 +399,23 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         identity_op_dist_attr = OperatorDistributedAttribute()
         identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_identity_op.desc.input_arg_names():
-            tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            identity_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
-        for output_varname in c_identity_op.desc.output_arg_names():
-            output_var = main_block.var(output_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
-            identity_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+        # input
+        input_varname = c_identity_op.desc.input_arg_names()[0]
+        tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+        assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+        identity_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+        # output
+        output_varname = c_identity_op.desc.output_arg_names()[0]
+        identity_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+        # for input_varname in c_identity_op.desc.input_arg_names():
+        #     tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+        #     assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+        #     identity_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+        # for output_varname in c_identity_op.desc.output_arg_names():
+        #     output_var = main_block.var(output_varname)
+        #     tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
+        #     assert tensor_dist_attr is not None
+        #     identity_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
         ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
 
         # matmul
@@ -413,6 +425,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         for input_varname in matmul_op.desc.input_arg_names():
             if input_varname in src_op.desc.input_arg_names():
                 tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+                assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
                 matmul_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
             else:
                 input_var = main_block.var(input_varname)
@@ -420,6 +433,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 matmul_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
         for output_varname in matmul_op.desc.output_arg_names():
             tensor_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
+            assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
             matmul_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
         ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
 
@@ -550,7 +564,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             is_data=False,
             need_check_feed=Out_var.desc.need_check_feed())
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(ctx, intermediate_var_0, Out_var)
+        tensor_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
+        assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+        ctx.set_tensor_dist_attr_for_program(intermediate_var_0, tensor_dist_attr)
 
         matmul_op = main_block.append_op(
             type='matmul',
@@ -574,10 +590,11 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_op.desc.input_arg_names():
             tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+            assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
             matmul_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
         for output_varname in matmul_op.desc.output_arg_names():
-            output_var = main_block.var(output_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
+            tensor_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
+            assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
             matmul_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
         ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
 
@@ -588,11 +605,12 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
             input_var = main_block.var(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
+            assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
-            output_var = main_block.var(output_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
-            allreduce_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+            tensor_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
+            assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+            matmul_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
         ctx.set_op_dist_attr_for_program(c_allreduce_sum_op, allreduce_op_dist_attr)
 
         # init param sync
@@ -809,6 +827,18 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                                       parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
+        x_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(X_var)
+        assert x_tensor_dist_attr is not None
+        identity_var_dist_attr = op_dist_attr.get_input_dist_attr(X_var.name)
+        assert identity_var_dist_attr is not None
+        ref_shape_x = infer_shape(main_block, X_var, x_tensor_dist_attr, identity_var_dist_attr)
+
+        out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
+        assert out_tensor_dist_attr is not None
+        out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
+        assert out_var_dist_attr is not None
+        ref_shape_out = infer_shape(main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr)
+
         intermediate_var_0 = main_block.create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
                 ["c_identity", 'tmp'])),
@@ -818,12 +848,13 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             persistable=False,
             stop_gradient=X_var.stop_gradient)
         # copy X_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(ctx, intermediate_var_0, X_var)
+        # tensor_dist_attr = op_dist_attr.get_input_dist_attr(X_var.name)
+        # assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+        ctx.set_tensor_dist_attr_for_program(intermediate_var_0, identity_var_dist_attr)
 
         check_variable_and_dtype(
             X_var, 'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64'], '_c_identity')
-
         c_identity_op = main_block.append_op(
             type='c_identity',
             inputs={'X': [X_var]},
@@ -833,6 +864,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 'use_calc_stream': True,
                 'use_model_parallel': True,
             })
+        if intermediate_var_0.shape != ref_shape_x:
+            intermediate_var_0.desc.set_shape(ref_shape_x)
 
         check_variable_and_dtype(intermediate_var_0, 'x',
                                  ['float16', 'float32', 'float64'], 'linear')
@@ -845,18 +878,21 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             inputs=inputs,
             outputs={'Out': Out_var},
             attrs=attrs)
+        if Out_var.shape != ref_shape_out:
+            Out_var.desc.set_shape(ref_shape_out)
 
         # c_identity
         identity_op_dist_attr = OperatorDistributedAttribute()
         identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_identity_op.desc.input_arg_names():
-            tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            identity_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
-        for output_varname in c_identity_op.desc.output_arg_names():
-            output_var = main_block.var(output_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
-            identity_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+        # input
+        input_varname = c_identity_op.desc.input_arg_names()[0]
+        input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+        assert input_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+        identity_op_dist_attr.set_input_dist_attr(input_varname, input_dist_attr)
+        # output
+        output_varname = c_identity_op.desc.output_arg_names()[0]
+        identity_op_dist_attr.set_output_dist_attr(output_varname, input_dist_attr)
         ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
 
         # matmulv2
@@ -865,15 +901,17 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_v2_op.desc.input_arg_names():
             if input_varname in src_op.desc.input_arg_names():
-                tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-                matmulv2_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+                input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+                assert input_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+                matmulv2_op_dist_attr.set_input_dist_attr(input_varname, input_dist_attr)
             else:
                 input_var = main_block.var(input_varname)
                 tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
                 matmulv2_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
         for output_varname in matmul_v2_op.desc.output_arg_names():
-            tensor_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            matmulv2_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
+            assert output_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+            matmulv2_op_dist_attr.set_output_dist_attr(output_varname, output_dist_attr)
         ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
 
         # init param sync
@@ -1044,6 +1082,12 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                     'linear')
         attrs = {'trans_x': False, 'trans_y': False}
         inputs = {'X': X_var, 'Y': Weight_var}
+
+        out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
+        assert out_tensor_dist_attr is not None
+        out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
+        assert out_var_dist_attr is not None
+        ref_shape = infer_shape(main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr)
         intermediate_var_0 = main_block.create_var(
             shape=Out_var.shape,
             dtype=Out_var.dtype,
@@ -1053,13 +1097,15 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             is_data=False,
             need_check_feed=Out_var.desc.need_check_feed())
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(ctx, intermediate_var_0, Out_var)
+        ctx.set_tensor_dist_attr_for_program(intermediate_var_0, out_var_dist_attr)
 
         matmul_v2_op = main_block.append_op(
             type='matmul_v2',
             inputs=inputs,
             outputs={'Out': intermediate_var_0},
             attrs=attrs)
+        if intermediate_var_0.shape != ref_shape:
+            intermediate_var_0.desc.set_shape(ref_shape)
 
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
@@ -1070,18 +1116,21 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 'use_calc_stream': True,
                 'use_model_parallel': True
             })
+        if Out_var.shape != ref_shape:
+            Out_var.desc.set_shape(ref_shape)
 
         # matmulv2
         matmulv2_op_dist_attr = OperatorDistributedAttribute()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in matmul_v2_op.desc.input_arg_names():
-            tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            matmulv2_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
-        for output_varname in matmul_v2_op.desc.output_arg_names():
-            output_var = main_block.var(output_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
-            matmulv2_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+            assert input_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+            matmulv2_op_dist_attr.set_input_dist_attr(input_varname, input_dist_attr)
+        output_varname = matmul_v2_op.desc.output_arg_names()[0]
+        output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
+        assert output_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+        matmulv2_op_dist_attr.set_output_dist_attr(output_varname, output_dist_attr)
         ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
 
         # allreduce
@@ -1091,11 +1140,12 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
             input_var = main_block.var(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
+            assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
-            output_var = main_block.var(output_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(output_var)
-            allreduce_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
+            assert output_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
+            allreduce_op_dist_attr.set_output_dist_attr(output_varname, output_dist_attr)
         ctx.set_op_dist_attr_for_program(c_allreduce_sum_op, allreduce_op_dist_attr)
 
         # init param sync
