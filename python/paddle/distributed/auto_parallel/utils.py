@@ -642,7 +642,7 @@ def _load_distributed_state_dict(checkpoint_path):
     """ Load parameters' state_dict from checkpoint_path """
     all_state_dict = {}
     for idx, ckpt_file in enumerate(checkpoint_path):
-        state_dict_info = paddle.load(ckpt_file)
+        state_dict_info = paddle.load(ckpt_file, return_numpy=True)
         pre_world_size = state_dict_info["world_size"]
         assert pre_world_size == len(checkpoint_path), \
             "The number of 'checkpoint_path' must be equal to the last training world size."
@@ -783,7 +783,7 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
         _merge_parameter(partition_param_list, param_list[index],
-                         partition_index)
+                         partition_index, complete_shape)
     assert len(partition_param_list) == 1 or not partition_param_list, \
         "Fail to merge parameter"
     complete_param = _to_LodTensor(partition_param_list[0][0])
@@ -810,7 +810,8 @@ def _slice_parameter_with_dist_attr(param, dist_attr):
     return sliced_param
 
 
-def _merge_parameter(partition_param_list, param, partition_index):
+def _merge_parameter(partition_param_list, param, partition_index,
+                     complete_shape):
     """
     Merge partitial parameters to a complete one.
 
@@ -830,6 +831,14 @@ def _merge_parameter(partition_param_list, param, partition_index):
     """
     from .reshard import _compute_concat_info
 
+    if len(partition_param_list) == 1:
+        is_complete_data = True
+        for idx, item in enumerate(partition_param_list[0][1]):
+            if item[0] != 0 or item[1] != complete_shape[idx]:
+                is_complete_data = False
+        if is_complete_data:
+            return
+
     if not partition_param_list:
         partition_param_list.append((param, partition_index))
     else:
@@ -848,7 +857,8 @@ def _merge_parameter(partition_param_list, param, partition_index):
                         (param, partition_param_list[i][0]), axis=concat_axis)
 
                 partition_param_list.pop(i)
-                _merge_parameter(partition_param_list, new_param, new_partition)
+                _merge_parameter(partition_param_list, new_param, new_partition,
+                                 complete_shape)
                 break
             i += 1
 
