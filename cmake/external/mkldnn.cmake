@@ -49,16 +49,12 @@ ELSE()
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
 ENDIF(NOT WIN32)
 
-cache_third_party(${MKLDNN_PROJECT}
-    REPOSITORY    ${MKLDNN_REPOSITORY}
-    TAG           ${MKLDNN_TAG}
-    DIR           MKLDNN_SOURCE_DIR)
-
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${MKLDNN_DOWNLOAD_CMD}"
+    GIT_REPOSITORY      ${MKLDNN_REPOSITORY}
+    GIT_TAG             ${MKLDNN_TAG}
     DEPENDS             ${MKLDNN_DEPENDS}
     PREFIX              ${MKLDNN_PREFIX_DIR}
     SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
