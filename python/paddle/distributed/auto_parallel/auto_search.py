@@ -42,6 +42,7 @@ from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedA
 from paddle.distributed.auto_parallel.completion import is_elementwise_like_op
 from paddle.distributed.auto_parallel.utils import make_data_unshard, compute_compatible_dims_mapping, compute_compatible_dim_mapping
 from .utils import is_dim_shard
+from .utils import set_grad_var_shape
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 from paddle.cost_model import CostModel
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -787,6 +788,7 @@ def get_distributed_program(train_program, startup_program, dist_context, loss,
         dist_startup_program)
     opt_ops = partitioner.apply_optimize(
         optimizer, dist_params_grads, dist_main_program, dist_startup_program)
+    set_grad_var_shape(dist_main_program, dist_context)
     make_data_unshard(dist_main_program, dist_startup_program, dist_context)
     reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
     HAS_SENT.clear()

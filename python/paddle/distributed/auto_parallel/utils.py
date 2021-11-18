@@ -783,7 +783,7 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
         _merge_parameter(partition_param_list, param_list[index],
-                         partition_index)
+                         partition_index, complete_shape)
     assert len(partition_param_list) == 1 or not partition_param_list, \
         "Fail to merge parameter"
     complete_param = _to_LodTensor(partition_param_list[0][0])
@@ -810,7 +810,7 @@ def _slice_parameter_with_dist_attr(param, dist_attr):
     return sliced_param
 
 
-def _merge_parameter(partition_param_list, param, partition_index):
+def _merge_parameter(partition_param_list, param, partition_index, complete_shape):
     """
     Merge partitial parameters to a complete one.
 
@@ -830,6 +830,14 @@ def _merge_parameter(partition_param_list, param, partition_index):
     """
     from .reshard import _compute_concat_info
 
+    if len(partition_param_list) == 1:
+        is_complete_data = True
+        for idx, item in enumerate(partition_param_list[0][1]):
+            if item[0] != 0 or item[1] != complete_shape[idx]:
+                is_complete_data = False
+        if is_complete_data:
+            return
+
     if not partition_param_list:
         partition_param_list.append((param, partition_index))
     else:
@@ -848,7 +856,7 @@ def _merge_parameter(partition_param_list, param, partition_index):
                         (param, partition_param_list[i][0]), axis=concat_axis)
 
                 partition_param_list.pop(i)
-                _merge_parameter(partition_param_list, new_param, new_partition)
+                _merge_parameter(partition_param_list, new_param, new_partition, complete_shape)
                 break
             i += 1
 
@@ -977,3 +985,65 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             complete_shape))
     split_indices_list = [sorted(x) for x in split_indices_list]
     return split_indices_list
+
+
+def set_grad_var_shape(program, dist_context):
+    from .operators.common import infer_shape
+    from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+    block = program.global_block()
+    vars = block.vars
+    for op in block.ops:
+        if op.type == "sum":
+            print(f"speicial backward op {op.type}**************")
+
+            continue
+        if int(op.attr('op_role')) == int(OpRole.Backward):
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            assert op_dist_attr is not None
+
+            for var_name in op.output_arg_names:
+                assert "@GRAD" in var_name
+                forward_var_name = var_name[:var_name.find("@GRAD")]
+                if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
+                    forward_var_name = op.input_arg_names[0]
+                if op.type == "reshape2_grad":
+                    # need to find forward reshape2
+                    for forward_op in block.ops:
+                        assert int(forward_op.attr('op_role')) != int(OpRole.Backward)
+                        if forward_op.type == "reshape2" and forward_var_name in forward_op.input_arg_names:
+                            op_dist_attr = dist_context.get_op_dist_attr_for_program(forward_op)
+                            break
+                if op.type == "softmax_with_cross_entropy_grad":
+                    # need to find forward softmax_with_cross_entropy
+                    for forward_op in block.ops:
+                        assert int(forward_op.attr('op_role')) != int(OpRole.Backward)
+                        if forward_op.type == "softmax_with_cross_entropy" and forward_var_name in forward_op.input_arg_names:
+                            op_dist_attr = dist_context.get_op_dist_attr_for_program(forward_op)
+                            break
+                if op.type == "transpose2_grad":
+                    # need to find forward transpose2
+                    for forward_op in block.ops:
+                        assert int(forward_op.attr('op_role')) != int(OpRole.Backward)
+                        if forward_op.type == "transpose2" and forward_var_name in forward_op.input_arg_names:
+                            op_dist_attr = dist_context.get_op_dist_attr_for_program(forward_op)
+                            break
+                if op.type == "softmax_grad":
+                    # need to find forward softmax
+                    for forward_op in block.ops:
+                        assert int(forward_op.attr('op_role')) != int(OpRole.Backward)
+                        if forward_op.type == "softmax" and forward_var_name in forward_op.input_arg_names:
+                            op_dist_attr = dist_context.get_op_dist_attr_for_program(forward_op)
+                            break
+
+                forward_input_dist_attr = op_dist_attr.get_input_dist_attr(forward_var_name)
+                assert forward_input_dist_attr is not None, f"{forward_var_name}"
+                forward_var = vars[forward_var_name]
+                forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(forward_var)
+                assert forward_var_dist_attr is not None
+                grad_var = vars[var_name]
+                ref_shape = infer_shape(block, forward_var, forward_var_dist_attr, forward_input_dist_attr)
+
+                if list(grad_var.shape) != ref_shape:
+                    print(f"****************set grad var {var_name} shape: {list(grad_var.shape)} -> {ref_shape}")
+                    grad_var.desc.set_shape(ref_shape)
