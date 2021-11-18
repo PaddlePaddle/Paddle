@@ -73,8 +73,8 @@ void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
     if (deque_it == outstanding_events.end()) {
       outstanding_events.clear();
       Allocation* allocation = map_it->first;
-      auto next_it = ++map_it;  // "map_it" may be invalid after calling
-                                // FreeStreamSafeCUDAAllocation
+      // "map_it" may be invalid after calling FreeStreamSafeCUDAAllocation
+      auto next_it = ++map_it;
       FreeStreamSafeCUDAAllocation(allocation);
       map_it = next_it;
     } else {
@@ -151,7 +151,8 @@ StreamSafeCUDAAllocator::GetAllocationInfo(Allocation* allocation) {
   auto it = allocation_info_map_.find(allocation);
   PADDLE_ENFORCE_NE(
       it, allocation_info_map_.end(),
-      "The recorded allocation is not malloced by this allocator.");
+      platform::errors::NotFound(
+          "The recorded allocation is not malloced by this allocator"));
   return it->second;
 }
 

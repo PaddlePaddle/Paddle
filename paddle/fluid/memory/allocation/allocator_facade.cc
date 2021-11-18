@@ -170,7 +170,7 @@ class AllocatorFacadePrivate {
             << " " << place << " " << size;
 
     if (platform::is_gpu_place(place) && size > 0) {
-      return GetCUDAAllocator(boost::get<platform::CUDAPlace>(place),
+      return GetCUDAAllocator(BOOST_GET_CONST(platform::CUDAPlace, place),
                               default_cuda_stream_);
     }
 
@@ -206,8 +206,6 @@ class AllocatorFacadePrivate {
 
   cudaStream_t GetDefaultCudaStream() { return default_cuda_stream_; }
 
-  void NotifyGPURetryThreads() { cuda_retry_cv_.notify_all(); }
-
   void RecordStream(Allocation* allocation, const cudaStream_t& stream) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(allocation->place()), true,
@@ -229,9 +227,9 @@ class AllocatorFacadePrivate {
     try {
       cuda_allocator = GetCUDAAllocator(place, stream);
     } catch (platform::EnforceNotMet& err) {
-      VLOG(9) << "No allocator found for stream " << stream << "in place "
+      VLOG(9) << "No allocator found for stream " << stream << " in place "
               << place << " , build a new one";
-      std::unique_lock<std::mutex> lock(cuda_retry_mutex_);
+      std::unique_lock<std::mutex> lock(cuda_init_mutex_);
       try {
         cuda_allocator = GetCUDAAllocator(place, stream);
       } catch (platform::EnforceNotMet& err) {
@@ -244,61 +242,19 @@ class AllocatorFacadePrivate {
       throw;
     }
 
-    if (FLAGS_gpu_allocator_retry_time <= 0) {
-      return cuda_allocator->Allocate(size);
-    }
-
-    // In fact, we can unify the code of allocation success and failure
-    // But it would add lock even when allocation success at the first time
     try {
       return cuda_allocator->Allocate(size);
     } catch (BadAlloc&) {
       VLOG(9) << "Allocation failed when allocating " << size
               << " bytes for stream " << stream;
       for (auto pair : cuda_allocators_[place]) {
-        std::shared_ptr<Allocator> cuda_allocator = pair.second;
-        std::dynamic_pointer_cast<StreamSafeCUDAAllocator>(cuda_allocator)
-            ->ProcessEventsAndFree();
+        pair.second->Release(place);
       }
       try {
         return cuda_allocator->Allocate(size);
-      } catch (BadAlloc&) {
-        {
-          WaitedAllocateSizeGuard guard(&cuda_waited_allocate_size_, size);
-          VLOG(10)
-              << "Still allocation failed after calling ProcessEventAndFree, "
-              << " cuda_waited_allocate_size_ = " << cuda_waited_allocate_size_;
-          // We can just write allocation retry inside the predicate function of
-          // wait_until. But it needs to acquire the lock when executing
-          // predicate
-          // function. For better performance, we use loop here
-          auto end_time =
-              std::chrono::high_resolution_clock::now() +
-              std::chrono::milliseconds(FLAGS_gpu_allocator_retry_time);
-          auto wait_until = [&end_time, this] {
-            std::unique_lock<std::mutex> lock(cuda_retry_mutex_);
-            return cuda_retry_cv_.wait_until(lock, end_time);
-          };
-
-          size_t retry_times = 0;
-          while (wait_until() != std::cv_status::timeout) {
-            try {
-              return cuda_allocator->Allocate(size);
-            } catch (BadAlloc&) {
-              ++retry_times;
-              VLOG(10) << "Allocation failed when retrying " << retry_times
-                       << " times when allocating " << size
-                       << " bytes. Wait still.";
-            } catch (...) {
-              throw;
-            }
-          }
-        }
-        VLOG(10) << "Allocation failed because of timeout when allocating "
-                 << size << " bytes.";
-        return cuda_allocator->Allocate(
-            size);  // If timeout, try last allocation request
       } catch (...) {
+        VLOG(9) << "Still allocation failed "
+                << "after release memory from all streams";
         throw;
       }
     } catch (...) {
@@ -414,6 +370,7 @@ class AllocatorFacadePrivate {
       }
     }
     WrapStreamSafeCUDAAllocator(p, stream);
+    WrapCUDARetryAllocator(p, stream, FLAGS_gpu_allocator_retry_time);
   }
 
   void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p,
@@ -499,6 +456,16 @@ class AllocatorFacadePrivate {
   void InitThreadLocalCUDAAllocator(platform::CUDAPlace p,
                                     cudaStream_t stream) {
     cuda_allocators_[p][stream] = std::make_shared<ThreadLocalCUDAAllocator>(p);
+  }
+
+  void WrapCUDARetryAllocator(platform::CUDAPlace p, cudaStream_t stream,
+                              size_t retry_time) {
+    PADDLE_ENFORCE_GT(
+        retry_time, 0,
+        platform::errors::InvalidArgument(
+            "Retry time should be larger than 0, but got %d", retry_time));
+    std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
+    allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
   }
 
   void WrapStreamSafeCUDAAllocator(platform::CUDAPlace p, cudaStream_t stream) {
@@ -607,10 +574,7 @@ class AllocatorFacadePrivate {
   // a standalone CUDA allocator to support multi-stream GC in new executor
   CUDAAllocatorMap cuda_allocators_;
   cudaStream_t default_cuda_stream_;
-  static std::condition_variable cuda_retry_cv_;
-  std::mutex cuda_retry_mutex_;
   std::mutex cuda_init_mutex_;
-  std::atomic<size_t> cuda_waited_allocate_size_{0};
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<CUDAGraphID, std::unique_ptr<AllocatorFacadePrivate>>
       cuda_graph_allocator_map_;
@@ -625,9 +589,6 @@ class AllocatorFacadePrivate {
 AllocatorFacadePrivate::AllocatorMap
     AllocatorFacadePrivate::zero_size_allocators_;
 AllocatorFacadePrivate::AllocatorMap AllocatorFacadePrivate::system_allocators_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-std::condition_variable AllocatorFacadePrivate::cuda_retry_cv_;
-#endif
 
 // Pimpl. Make interface clean.
 AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
@@ -649,7 +610,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    return Alloc(boost::get<platform::CUDAPlace>(place),
+    return Alloc(BOOST_GET_CONST(platform::CUDAPlace, place),
                  m_->GetDefaultCudaStream(), size);
   }
 #endif
@@ -659,7 +620,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    return Release(boost::get<platform::CUDAPlace>(place),
+    return Release(BOOST_GET_CONST(platform::CUDAPlace, place),
                    m_->GetDefaultCudaStream());
   }
 #endif
@@ -692,8 +653,6 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
   return m_->GetCUDAAllocator(place, stream)->Release(place);
 }
 
-void AllocatorFacade::NotifyGPURetryThreads() { m_->NotifyGPURetryThreads(); }
-
 void AllocatorFacade::RecordStream(Allocation* allocation,
                                    const cudaStream_t& stream) {
   m_->RecordStream(allocation, stream);
@@ -708,10 +667,6 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id) {
   return m_->RemoveMemoryPoolOfCUDAGraph(id);
 }
 #endif
-
-void NotifyGPURetryThreads() {
-  allocation::AllocatorFacade::Instance().NotifyGPURetryThreads();
-}
 #endif
 }  // namespace allocation
 }  // namespace memory

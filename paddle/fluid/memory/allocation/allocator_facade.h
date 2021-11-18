@@ -65,8 +65,6 @@ class AllocatorFacade {
                       const cudaStream_t& stream, size_t size);
   uint64_t Release(const platform::CUDAPlace& place,
                    const cudaStream_t& stream);
-
-  void NotifyGPURetryThreads();
   void RecordStream(Allocation* allocation, const cudaStream_t& stream);
 #ifdef PADDLE_WITH_CUDA
   void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);

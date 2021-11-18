@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <cuda_runtime.h>
 #include <deque>
 #include <memory>
 #include <mutex>

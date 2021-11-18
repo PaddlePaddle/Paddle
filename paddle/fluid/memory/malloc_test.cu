@@ -175,26 +175,30 @@ TEST(Malloc, AllocZero) {
   EXPECT_GE(allocation_ptr->size(), 0);
 }
 
-TEST(Malloc, CUDAAllocRetry) {
-  platform::Place place = platform::CUDAPlace();
+TEST(Malloc, StreamSafeCUDAAllocRetry) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  cudaStream_t stream1, stream2;
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream1));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream2));
+
   size_t available_size = platform::GpuAvailableMemToAlloc();
   // alloc_size < available_size < 2 * alloc_size
   size_t alloc_size = available_size / 4 * 3;
 
-  auto alloc_fun = [&place, alloc_size]() {
-    return AllocShared(place, alloc_size);
-  };
-  std::shared_ptr<Allocation> allocation = alloc_fun();
-  auto start_time = std::chrono::steady_clock::now();
-  std::thread th(alloc_fun);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-  allocation.reset();
-  th.join();
-  auto end_time = std::chrono::steady_clock::now();
+  std::shared_ptr<Allocation> allocation1 =
+      AllocShared(place, stream1, alloc_size);
+  std::shared_ptr<Allocation> allocation2;
 
-  std::chrono::duration<double> time = end_time - start_time;
-  VLOG(10) << "time cost = " << time.count() << " s";
-  EXPECT_LE(time.count() * 1000, FLAGS_gpu_allocator_retry_time);
+  std::thread th([&allocation2, &place, &stream2, alloc_size]() {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    allocation2 = AllocShared(place, stream2, alloc_size);
+  });
+  allocation1.reset();  // free but not release
+  th.join();
+  EXPECT_GE(allocation2->size(), alloc_size);
+
+  Release(place, stream1);
+  Release(place, stream2);
 }
 
 __global__ void add_kernel(int *x, int n) {
@@ -213,6 +217,8 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     block_num_ = 64;
     data_num_ = 64;
     default_stream = nullptr;
+    cuda_malloc_size_before_test_ =
+        platform::RecordedCudaMallocSize(place_.GetDeviceId());
 
     streams_.reserve(stream_num_);
     streams_.emplace_back(default_stream);
@@ -288,15 +294,17 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
     uint64_t cuda_malloc_size =
         platform::RecordedCudaMallocSize(place_.GetDeviceId());
-    ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
-                                   << " bytes memory that not released yet, "
-                                      "there may be a memory leak problem.";
+    ASSERT_EQ(cuda_malloc_size, cuda_malloc_size_before_test_)
+        << "Found " << cuda_malloc_size
+        << " bytes memory that not released yet, there may be a memory leak "
+           "problem.";
   }
 
   size_t stream_num_;
   size_t grid_num_;
   size_t block_num_;
   size_t data_num_;
+  uint64_t cuda_malloc_size_before_test_;
   platform::CUDAPlace place_;
   cudaStream_t default_stream;
   std::vector<cudaStream_t> streams_;

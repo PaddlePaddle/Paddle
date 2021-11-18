@@ -39,7 +39,6 @@ struct BadAlloc : public std::exception {
 };
 
 class Allocator;
-extern void NotifyGPURetryThreads();
 
 // Allocation is the object holding the actually pointer. Use
 // `Allocation::ptr()` will returns the pointer that allocated.
@@ -156,16 +155,8 @@ class Allocator {
   class AllocationDeleter {
    public:
     inline void operator()(Allocation* allocation) const {
-      VLOG(10) << "Run AllocationDeleter";
       Allocator* allocator = allocation->TopDecoratedAllocator();
       allocator->Free(allocation);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      // TODO(Ruibiao): Dirty code, consider a better design to notify CUDA
-      // alloc retry
-      if (platform::is_gpu_place(allocation->place())) {
-        NotifyGPURetryThreads();
-      }
-#endif
     }
   };
 

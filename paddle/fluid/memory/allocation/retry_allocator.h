@@ -28,25 +28,6 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class WaitedAllocateSizeGuard {
- public:
-  WaitedAllocateSizeGuard(std::atomic<size_t>* waited_size,
-                          size_t requested_size)
-      : waited_size_(waited_size), requested_size_(requested_size) {
-    waited_size_->fetch_add(requested_size_,
-                            std::memory_order::memory_order_relaxed);
-  }
-
-  ~WaitedAllocateSizeGuard() {
-    waited_size_->fetch_sub(requested_size_,
-                            std::memory_order::memory_order_relaxed);
-  }
-
- private:
-  std::atomic<size_t>* waited_size_;
-  size_t requested_size_;
-};
-
 class RetryAllocator : public Allocator {
  public:
   RetryAllocator(std::shared_ptr<Allocator> allocator, size_t retry_ms)
