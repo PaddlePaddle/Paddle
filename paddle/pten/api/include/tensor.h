@@ -85,12 +85,15 @@ class AbstractAutogradMeta {
 
 class PD_DLL_DECL Tensor final {
  public:
-  /* Part 1: Construction and destruction methods */
-
   /**
    * @brief Construct a new Tensor object
    */
   Tensor() = default;
+
+  /**
+   * @brief Construct a new Tensor object with name
+   * */
+  explicit Tensor(const std::string& name) { name_ = name; }
 
   /**
    * @brief Construct a new Tensor object by copy
@@ -127,7 +130,19 @@ class PD_DLL_DECL Tensor final {
    */
   Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
 
-  /* Part 2: Dimension, DataType and DataLayout methods */
+  /**
+   * @brief Return the name of Tensor.
+   *
+   * @return const std::string&
+   */
+  const std::string& name() const { return name_; }
+
+  /**
+   * @brief Set name of Tensor.
+   *
+   * @param const std::string& name
+   */
+  void set_name(const std::string& name) { name_ = name; }
 
   /**
    * @brief Return the number of elements of Tensor.
