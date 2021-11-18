@@ -1929,9 +1929,6 @@ void BindImperative(py::module *m_ptr) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              auto *t_t =
                  target_t->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
              PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
                                platform::errors::InvalidArgument(
                                    "tensor has not been initialized"));

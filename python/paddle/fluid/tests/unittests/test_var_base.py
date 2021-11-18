@@ -1192,10 +1192,10 @@ class TestVarBaseOffset(unittest.TestCase):
 class TestVarBaseShareBufferWith(unittest.TestCase):
     def test_share_buffer_with(self):
         paddle.disable_static()
-        np_x = np.random.random((3, 8, 8))
         np_y = np.random.random((3, 8, 8))
-        x = paddle.to_tensor(np_x, dtype="float64")
         y = paddle.to_tensor(np_y, dtype="float64")
+        # empty_var
+        x = core.VarBase()
         x._share_buffer_with(y)
         self.assertEqual(x._is_shared_buffer_with(y), True)
 
