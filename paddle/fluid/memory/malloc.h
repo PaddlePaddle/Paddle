@@ -42,16 +42,16 @@ extern uint64_t Release(const platform::Place& place);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 extern std::shared_ptr<Allocation> AllocShared(const platform::CUDAPlace& place,
-                                               const cudaStream_t& stream,
+                                               const gpuStream_t& stream,
                                                size_t size);
 
 extern AllocationPtr Alloc(const platform::CUDAPlace& place,
-                           const cudaStream_t& stream, size_t size);
+                           const gpuStream_t& stream, size_t size);
 
 extern uint64_t Release(const platform::CUDAPlace& place,
-                        const cudaStream_t& stream);
+                        const gpuStream_t& stream);
 
-void RecordStream(Allocation* allocation, const cudaStream_t& stream);
+void RecordStream(Allocation* allocation, const gpuStream_t& stream);
 #endif
 }  // namespace memory
 }  // namespace paddle

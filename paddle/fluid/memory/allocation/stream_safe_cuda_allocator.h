@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #pragma once
-
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#else
+#include <hip/hip_runtime.h>
+#endif
+
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -29,14 +33,14 @@ namespace allocation {
 class StreamSafeCUDAAllocation : public Allocation {
  public:
   StreamSafeCUDAAllocation(AllocationPtr underlying_allocation,
-                           cudaStream_t owning_stream);
-  void RecordStream(cudaStream_t stream);
-  std::shared_ptr<std::set<cudaStream_t>> GetRecordedStreams();
+                           gpuStream_t owning_stream);
+  void RecordStream(gpuStream_t stream);
+  std::shared_ptr<std::set<gpuStream_t>> GetRecordedStreams();
 
  private:
   AllocationPtr underlying_allocation_;
-  cudaStream_t owning_stream_;
-  std::shared_ptr<std::set<cudaStream_t>> recorded_streams_;
+  gpuStream_t owning_stream_;
+  std::shared_ptr<std::set<gpuStream_t>> recorded_streams_;
   std::mutex mutex_;
 };
 
@@ -44,7 +48,7 @@ class StreamSafeCUDAAllocator : public Allocator {
  public:
   StreamSafeCUDAAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator,
-      const cudaStream_t default_stream);
+      const gpuStream_t default_stream);
   bool IsAllocThreadSafe() const override;
   void ProcessEventsAndFree();
 
@@ -55,18 +59,18 @@ class StreamSafeCUDAAllocator : public Allocator {
 
  private:
   struct AllocationInfo {
-    std::deque<cudaEvent_t> outstanding_events;
+    std::deque<gpuEvent_t> outstanding_events;
     bool can_be_freed{false};
   };
 
   void CreateEventForAllRecordedStream(
-      std::set<cudaStream_t> *recorded_streams,
-      std::deque<cudaEvent_t> *outstanding_events);
+      std::set<gpuStream_t> *recorded_streams,
+      std::deque<gpuEvent_t> *outstanding_events);
   void FreeStreamSafeCUDAAllocation(Allocation *allocation);
   std::shared_ptr<AllocationInfo> GetAllocationInfo(Allocation *);
 
   std::shared_ptr<Allocator> underlying_allocator_;
-  cudaStream_t default_stream_;
+  gpuStream_t default_stream_;
   std::unordered_map<Allocation *, std::shared_ptr<AllocationInfo>>
       allocation_info_map_;
   mutable std::recursive_mutex mutex_;

@@ -59,13 +59,12 @@ class AllocatorFacade {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::shared_ptr<Allocation> AllocShared(const platform::CUDAPlace& place,
-                                          const cudaStream_t& stream,
+                                          const gpuStream_t& stream,
                                           size_t size);
   AllocationPtr Alloc(const platform::CUDAPlace& place,
-                      const cudaStream_t& stream, size_t size);
-  uint64_t Release(const platform::CUDAPlace& place,
-                   const cudaStream_t& stream);
-  void RecordStream(Allocation* allocation, const cudaStream_t& stream);
+                      const gpuStream_t& stream, size_t size);
+  uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
+  void RecordStream(Allocation* allocation, const gpuStream_t& stream);
 #ifdef PADDLE_WITH_CUDA
   void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);
   void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id);

@@ -19,14 +19,14 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    AllocationPtr underlying_allocation, cudaStream_t owning_stream)
+    AllocationPtr underlying_allocation, gpuStream_t owning_stream)
     : Allocation(underlying_allocation->ptr(), underlying_allocation->size(),
                  underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(owning_stream),
-      recorded_streams_(std::make_shared<std::set<cudaStream_t>>()) {}
+      recorded_streams_(std::make_shared<std::set<gpuStream_t>>()) {}
 
-void StreamSafeCUDAAllocation::RecordStream(cudaStream_t stream) {
+void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
   VLOG(8) << "Record stream " << stream << " to " << ptr();
   if (stream == owning_stream_) {
     return;
@@ -35,14 +35,14 @@ void StreamSafeCUDAAllocation::RecordStream(cudaStream_t stream) {
   recorded_streams_->insert(stream);
 }
 
-std::shared_ptr<std::set<cudaStream_t>>
+std::shared_ptr<std::set<gpuStream_t>>
 StreamSafeCUDAAllocation::GetRecordedStreams() {
   return recorded_streams_;
 }
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     const std::shared_ptr<Allocator>& underlying_allocator,
-    const cudaStream_t default_stream)
+    const gpuStream_t default_stream)
     : underlying_allocator_(underlying_allocator),
       default_stream_(default_stream) {}
 
@@ -51,13 +51,14 @@ bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
   for (auto map_it = allocation_info_map_.begin();
        map_it != allocation_info_map_.end();) {
-    std::deque<cudaEvent_t>& outstanding_events =
+    std::deque<gpuEvent_t>& outstanding_events =
         map_it->second->outstanding_events;
     VLOG(10) << "Check " << outstanding_events.size()
              << " outstanding events for " << map_it->first->ptr();
     auto deque_it = outstanding_events.begin();
     while (deque_it != outstanding_events.end()) {
-      cudaError_t err = cudaEventQuery(*deque_it);
+#ifdef PADDLE_WITH_CUDA
+      gpuError_t err = cudaEventQuery(*deque_it);
       if (err == cudaErrorNotReady) {
         VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
                  << " is not complete";
@@ -67,6 +68,18 @@ void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(*deque_it));
       ++deque_it;
+#else
+      gpuError_t err = hipEventQuery(*deque_it);
+      if (err == hipErrorNotReady) {
+        VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
+                 << " is not complete";
+        outstanding_events.erase(outstanding_events.begin(), deque_it);
+        break;
+      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(err);
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(*deque_it));
+      ++deque_it;
+#endif
     }
 
     if (deque_it == outstanding_events.end()) {
@@ -107,13 +120,19 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
 }
 
 void StreamSafeCUDAAllocator::CreateEventForAllRecordedStream(
-    std::set<cudaStream_t>* recorded_streams,
-    std::deque<cudaEvent_t>* outstanding_events) {
-  for (cudaStream_t stream : *recorded_streams) {
-    cudaEvent_t event;
+    std::set<gpuStream_t>* recorded_streams,
+    std::deque<gpuEvent_t>* outstanding_events) {
+  for (gpuStream_t stream : *recorded_streams) {
+    gpuEvent_t event;
+#ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        hipEventCreateWithFlags(&event, hipEventDisableTiming));
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, stream));
+#endif
     outstanding_events->emplace_back(event);
     VLOG(9) << "Record event " << event << " in stream " << stream;
   }
@@ -128,7 +147,7 @@ void StreamSafeCUDAAllocator::FreeStreamSafeCUDAAllocation(
     return;
   }
 
-  std::deque<cudaEvent_t>& outstanding_events =
+  std::deque<gpuEvent_t>& outstanding_events =
       allocation_info->outstanding_events;
   CreateEventForAllRecordedStream(
       dynamic_cast<StreamSafeCUDAAllocation*>(allocation)

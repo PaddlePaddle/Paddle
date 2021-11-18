@@ -174,10 +174,14 @@ TEST(Malloc, AllocZero) {
 #ifdef PADDLE_WITH_CUDA
 TEST(Malloc, StreamSafeCUDAAllocRetry) {
   platform::CUDAPlace place = platform::CUDAPlace();
-  cudaStream_t stream1, stream2;
+  gpuStream_t stream1, stream2;
+#ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream1));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream2));
-
+#else
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream1));
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream2));
+#endif
   size_t available_size = platform::GpuAvailableMemToAlloc();
   // alloc_size < available_size < 2 * alloc_size
   size_t alloc_size = available_size / 4 * 3;
@@ -220,8 +224,12 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     streams_.reserve(stream_num_);
     streams_.emplace_back(default_stream);
     for (size_t i = 1; i < stream_num_; ++i) {
-      cudaStream_t stream;
+      gpuStream_t stream;
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+#else
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream));
+#endif
       streams_.emplace_back(stream);
     }
 
@@ -229,8 +237,13 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       size_t allocation_size = data_num_ * sizeof(int);
       std::shared_ptr<Allocation> allocation =
           AllocShared(place_, streams_[i], allocation_size);
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
+#else
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          hipMemset(allocation->ptr(), 0, allocation->size()));
+#endif
       allocations_.emplace_back(allocation);
     }
   }
@@ -268,11 +281,17 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     auto host_x = std::unique_ptr<int[]>(new int[data_num_]);
     size_t thread_num = grid_num_ * block_num_;
     for (int i = 0; i < stream_num_; ++i) {
-      // tricky code, the allocations are still accessible even though
-      // allocations_.clear() has been called
+// tricky code, the allocations are still accessible even though
+// allocations_.clear() has been called
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemcpy(host_x.get(), allocations_[i]->ptr(),
                      data_num_ * sizeof(int), cudaMemcpyDeviceToHost));
+#else
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          hipMemcpy(host_x.get(), allocations_[i]->ptr(),
+                    data_num_ * sizeof(int), hipMemcpyDeviceToHost));
+#endif
       for (int j = 0; j < data_num_; ++j) {
         EXPECT_TRUE(host_x[j] == (j % thread_num) * stream_num_);
       }
@@ -280,13 +299,21 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   }
 
   void TearDown() override {
+#ifdef PADDLE_WITH_CUDA
     cudaDeviceSynchronize();
-    for (cudaStream_t stream : streams_) {
+#else
+    hipDeviceSynchronize();
+#endif
+    for (gpuStream_t stream : streams_) {
       Release(place_, stream);
     }
 
     for (size_t i = 1; i < stream_num_; ++i) {
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(streams_[i]));
+#else
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(streams_[i]));
+#endif
     }
 
     uint64_t cuda_malloc_size =
@@ -303,8 +330,8 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   size_t data_num_;
   uint64_t cuda_malloc_size_before_test_;
   platform::CUDAPlace place_;
-  cudaStream_t default_stream;
-  std::vector<cudaStream_t> streams_;
+  gpuStream_t default_stream;
+  std::vector<gpuStream_t> streams_;
   std::vector<std::shared_ptr<Allocation>> allocations_;
 };
 
