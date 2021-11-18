@@ -104,7 +104,7 @@ struct ConvertContextType<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 struct ConvertContextType<platform::CUDADeviceContext> {
   using TYPE = pten::CUDAContext;

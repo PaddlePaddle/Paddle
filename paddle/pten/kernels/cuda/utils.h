@@ -22,11 +22,7 @@ limitations under the License. */
 
 #include "paddle/pten/core/backends/gpu/context.h"
 
-// See Note [ Why still include the fluid headers? ]
-// #include "paddle/fluid/platform/device_context.h"
 namespace pten {
-
-// using CUDAContext = paddle::platform::CUDADeviceContext;
 
 void Copy(const CUDAContext& dev_ctx,
           const DenseTensor& src,

@@ -77,7 +77,7 @@ inline void EmplaceDeviceContext<pten::CPUContext, CPUPlace>(
       }));
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 inline void EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
     std::map<Place, std::shared_future<std::unique_ptr<pten::DeviceContext>>>*
@@ -125,12 +125,8 @@ inline void EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
 #ifdef PADDLE_WITH_EIGEN
         ptr->SetEigenDevice(device_ctx->eigen_device());
 #endif
-// device_ctx->cusolver_dn_handle()
-// device_ctx->cudnn_workspace_handle()
-
-#ifdef PADDLE_WITH_EIGEN
-        ptr->SetEigenDevice(device_ctx->eigen_device());
-#endif
+        // device_ctx->cusolver_dn_handle()
+        // device_ctx->cudnn_workspace_handle()
 
         return ctx;
       }));

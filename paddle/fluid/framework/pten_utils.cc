@@ -210,7 +210,7 @@ pten::DeviceContext* ConvertContext(const platform::DeviceContext& context) {
     auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
     return reinterpret_cast<pten::CPUContext*>(pt_dev_ctx);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(context.GetPlace())) {  // NOLINT
     auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
     return reinterpret_cast<pten::CUDAContext*>(pt_dev_ctx);

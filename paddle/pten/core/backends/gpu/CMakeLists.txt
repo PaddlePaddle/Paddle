@@ -1,7 +1,7 @@
 if (WITH_GPU)
-  cc_library(cuda_context SRCS cuda_context.cc DEPS gpu_info pten_device_context)
+  cc_library(cuda_context SRCS cuda_context.cc DEPS pten_device_context)
+  set(gpu_context cuda_context PARENT_SCOPE)
 elseif (WITH_ROCM)
-  #cc_library(rocm_context )
+  cc_library(rocm_context SRCS rocm_context.cc DEPS pten_device_context)
+  set(gpu_context rocm_context PARENT_SCOPE)
 endif()
-
-set(gpu_context cuda_context PARENT_SCOPE)

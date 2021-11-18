@@ -26,19 +26,36 @@ dim3 CUDAContext::GetCUDAMaxGridDimSize() const {
   return ret;
 }
 
-void CUDAContext::Wait(cudaStream_t stream) const noexcept {
-  cudaError_t e_sync = cudaSuccess;
-#if !defined(_WIN32)
-  e_sync = cudaStreamSynchronize(stream);
-#else
-  while (e_sync = cudaStreamQuery(stream)) {
-    if (e_sync == cudaErrorNotReady) continue;
-    break;
+template <typename Callback>
+void CUDAContext::AddStreamCallback(Callback&& callback) {
+  if (callback_manager_ == nullptr) {
+    callback_manager_.reset(new StreamCallbackManager(stream_));
   }
-#endif
-
-  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+  callback_manager_->AddCallback(callback);
 }
+
+void CUDAContext::WaitStreamCallback() {
+  if (callback_manager_ == nullptr) {
+    callback_manager_.reset(new StreamCallbackManager(stream_));
+  }
+  callback_manager_->Wait();
+}
+
+// void CUDAContext::Wait(cudaStream_t stream) const {
+//   cudaError_t e_sync = cudaSuccess;
+// #if !defined(_WIN32)
+//   e_sync = cudaStreamSynchronize(stream);
+// #else
+//   while (e_sync = cudaStreamQuery(stream)) {
+//     if (e_sync == cudaErrorNotReady) continue;
+//     break;
+//   }
+// #endif
+
+//   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+// }
+
+cublasHandle_t CUDAContext::cublas_handle() const { return cublas_handle_; }
 
 CudnnWorkspaceHandle::CudnnWorkspaceHandle(pten::Allocator* allocator,
                                            std::mutex* mtx)
@@ -134,6 +151,7 @@ void StreamCallbackManager::Wait() const {
   }
 }
 
+#ifdef PADDLE_WITH_CUDNN
 CudnnWorkspaceHandle* CUDAContext::cudnn_workspace_handle() {
   if (cudnn_workspace_handle_ == nullptr) {
     cudnn_workspace_handle_.reset(
@@ -142,18 +160,7 @@ CudnnWorkspaceHandle* CUDAContext::cudnn_workspace_handle() {
   return cudnn_workspace_handle_.get();
 }
 
-template <typename Callback>
-void CUDAContext::AddStreamCallback(Callback&& callback) {
-  if (callback_manager_ == nullptr) {
-    callback_manager_.reset(new StreamCallbackManager(stream_));
-  }
-  callback_manager_->AddCallback(callback);
-}
+cudnnHandle_t CUDAContext::cudnn_handle() const { return cudnn_handle_; }
+#endif
 
-void CUDAContext::WaitStreamCallback() {
-  if (callback_manager_ == nullptr) {
-    callback_manager_.reset(new StreamCallbackManager(stream_));
-  }
-  callback_manager_->Wait();
-}
 }  // namespace pten

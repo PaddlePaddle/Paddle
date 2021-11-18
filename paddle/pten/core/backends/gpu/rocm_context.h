@@ -182,6 +182,23 @@ class ROCMContext : public DeviceContext {
     device_to_device_streams_ = streams;
   }
 
+  template <typename Callback>
+  void RecordEvent(cudaEvent_t ev,
+                   hipStream_t stream,
+                   Callback callback) const {
+    callback();
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream));
+  }
+
+  void RecordEvent(hipEvent_t ev, hipStream_t stream) const {
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream));
+  }
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback);
+
+  void WaitStreamCallback();
+
   void Wait(hipStream_t stream) const noexcept;
 
   Place GetPlace() const noexcept override { return place_; }
@@ -242,7 +259,7 @@ class ROCMContext : public DeviceContext {
 
 #if PADDLE_WITH_CUDNN
   mutable std::mutex cudnn_handle_mtx_;
-  miopenHandle_t* cudnn_handle_;
+  miopenHandle_t cudnn_handle_;
 #endif
 };
 

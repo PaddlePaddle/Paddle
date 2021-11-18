@@ -62,4 +62,5 @@ endmacro()
 
 if(MIOPEN_FOUND)
   find_miopen_version(${MIOPEN_INCLUDE_DIR}/miopen/version.h) 
+  add_definitions("-DPADDLE_WITH_CUDNN")
 endif()

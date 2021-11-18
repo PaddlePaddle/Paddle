@@ -30,6 +30,7 @@
 // using MKLDNNContext = paddle::platform::MKLDNNDeviceContext;
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device_context.h"
 using NPUContext = paddle::platform::NPUDeviceContext;
 #endif
 #ifdef PADDLE_WITH_XPU

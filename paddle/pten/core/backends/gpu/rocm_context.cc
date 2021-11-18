@@ -87,14 +87,9 @@ inline void CudnnWorkspaceHandle::ResetWorkspace() {
 
 inline size_t CudnnWorkspaceHandle::WorkspaceSize() { return num_bytes_; }
 
-#if CUDA_VERSION >= 10000
-static void CUDART_CB StreamCallbackFunc(void* user_data)
-#else
-static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
-                                         cudaError_t status,
-                                         void* user_data)
-#endif
-{
+static void StreamCallbackFunc(hipStream_t stream,
+                               hipError_t status,
+                               void* user_data) {
   std::unique_ptr<std::function<void()>> func(
       reinterpret_cast<std::function<void()>*>(user_data));
   (*func)();
@@ -133,6 +128,21 @@ CudnnWorkspaceHandle* ROCMContext::cudnn_workspace_handle() {
         new CudnnWorkspaceHandle(allocator_, &cudnn_handle_mtx_));
   }
   return cudnn_workspace_handle_.get();
+}
+
+template <typename Callback>
+void ROCMContext::AddStreamCallback(Callback&& callback) {
+  if (callback_manager_ == nullptr) {
+    callback_manager_.reset(new StreamCallbackManager(stream_));
+  }
+  callback_manager_->AddCallback(callback);
+}
+
+void ROCMContext::WaitStreamCallback() {
+  if (callback_manager_ == nullptr) {
+    callback_manager_.reset(new StreamCallbackManager(stream_));
+  }
+  callback_manager_->Wait();
 }
 
 }  // namespace pten
