@@ -26,6 +26,7 @@
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.cc"  //NOLINT
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace distributed {
@@ -228,6 +229,8 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
   UpdateAddress update_address;
   update_address.rank = cur_rank_;
   update_address.port = port;
+  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+  memcpy(buffer, &update_address, sizeof(UpdateAddress));
 
   int server = paddle::platform::CreateListenSocket(addr_);
   VLOG(3) << "Message bus created a socket to listen address: " << addr_ << ".";
@@ -247,8 +250,9 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
     paddle::platform::CommHead fake_head;
     int conn = paddle::platform::ConnectAddr(ep, fake_head);
     VLOG(3) << "Connecting finished.";
+
     paddle::platform::CHECK_SYS_CALL(
-        paddle::platform::SocketSend(conn, msg.c_str(), sizeof(UpdateAddress)),
+        paddle::platform::SocketSend(conn, buffer, sizeof(UpdateAddress)),
         "Send new addr.");
     paddle::platform::CloseSocket(conn);
   }
@@ -269,6 +273,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
 
 void MessageBus::ReceiveANewAddress(int server) {
   char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+
   paddle::platform::CHECK_SYS_CALL(
       paddle::platform::SocketRecv(server, &buffer, sizeof(UpdateAddress)),
       "Receive new addr.");
@@ -278,7 +283,7 @@ void MessageBus::ReceiveANewAddress(int server) {
           << ". The new port for it is: " << received.port << ".";
   auto iter = rank_to_addr_.find(received.rank);
   PADDLE_ENFORCE_NE(
-      iter, rank_to_addr_.end,
+      iter, rank_to_addr_.end(),
       platform::errors::InvalidArgument(
           "Message bus received an unknown rank: %d.", received.rank));
   std::string old_ip =
