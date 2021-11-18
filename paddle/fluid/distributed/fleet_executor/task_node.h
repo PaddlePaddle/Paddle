@@ -13,14 +13,48 @@
 // limitations under the License.
 
 #pragma once
+#include <cstdint>
+#include <memory>
+#include <unordered_set>
+#include <vector>
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+namespace framework {
+class OperatorBase;
+}
 namespace distributed {
 
 class TaskNode final {
  public:
-  TaskNode() = default;
+  using OperatorBase = paddle::framework::OperatorBase;
+  TaskNode(int64_t role, int64_t rank, int64_t task_id);
+  TaskNode(int64_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
+           int64_t task_id);
   ~TaskNode() = default;
+  int64_t rank() const { return rank_; }
+  int64_t task_id() const { return task_id_; }
+  int64_t role() const { return role_; }
+  const std::unordered_set<int64_t>& upstream() const { return upstream_; }
+  const std::unordered_set<int64_t>& downstream() const { return downstream_; }
+  void AddUpstreamTask(int64_t task_id);
+  void AddDownstreamTask(int64_t task_id);
+  static std::unique_ptr<TaskNode> CreateEmptyTaskNode(int64_t role,
+                                                       int64_t rank,
+                                                       int64_t task_id);
+  static std::unique_ptr<TaskNode> CreateTaskNode(
+      int64_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
+      int64_t task_id);
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(TaskNode);
+  TaskNode() = default;
+  std::vector<OperatorBase*> ops_;
+  std::unordered_set<int64_t> upstream_;
+  std::unordered_set<int64_t> downstream_;
+  int64_t role_;
+  int64_t rank_;
+  int64_t task_id_;
 };
 
 }  // namespace distributed

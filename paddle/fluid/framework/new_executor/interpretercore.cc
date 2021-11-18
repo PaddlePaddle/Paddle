@@ -77,20 +77,56 @@ paddle::framework::FetchList InterpreterCore::Run(
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
-void InterpreterCore::Convert() {
+paddle::framework::FetchList InterpreterCore::Run() {
+  if (!is_build_) {
+    paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    paddle::framework::interpreter::build_op_func_list(
+        place_, block_, &op_func_nodes, global_scope_);
+    is_build_ = true;
+    // convert vec func_list to graph
+    Convert(&op_func_nodes);
+  } else {
+    ExecuteInstructionList(vec_instruction_);
+  }
+
+  // return Fetch Tensors
+  auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
+  return *(fetch_var->GetMutable<framework::FetchList>());
+}
+
+void InterpreterCore::BuildOperatorDependences() {
+  // analysis the dependences between ops, set the dependecy_count_ and Call
+  // Schedule
+  auto op_nums = vec_instruction_.size();
+  dependecy_count_.resize(op_nums);
+  auto op2downstream = interpreter::build_op_downstream_map(vec_instruction_);
+  for (size_t op = 0; op < vec_instruction_.size(); ++op) {
+    auto op_list = op2downstream[op];
+    std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
+    stream_analyzer_.Schedule(downsteam_vector, &vec_instruction_, op);
+
+    for (auto inst_id : op_list) {
+      dependecy_count_[inst_id]++;
+    }
+  }
+}
+
+void InterpreterCore::Convert(
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = global_scope_->MutableVecMetaInfo();
   auto var_nums = global_scope_->VarSize();
   input_var2op_info_.resize(var_nums);
+  auto nodes = *op_func_nodes;
 
-  auto op_nums = vec_func_list_.size();
+  auto op_nums = nodes.size();
   vec_instruction_.reserve(op_nums);
-  dependecy_count_.resize(op_nums);
 
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
-    auto& op_func_node = vec_func_list_[op_idx];
+    auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
 
-    vec_instruction_.emplace_back(op_idx, op_func_node, *dev_ctx_);
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
     auto& instr = vec_instruction_.back();
 
     OpInOutInfo info;
@@ -98,10 +134,13 @@ void InterpreterCore::Convert() {
 
     for (auto& item : op_func_node.input_index) {
       for (auto id : item.second) {
+        if (id == kEmptyVarIndex) {
+          continue;
+        }
         input_var2op_info_.at(id).push_back(op_idx);
         // var can be gc-ed
         if (!info.IsBuilt()) {
-          info.Build(op_func_node.operator_base_);
+          info.Build(op_func_node.operator_base_.get());
         }
         auto* var_desc = global_scope_->VarDesc(id);
         if (var_desc) {
@@ -121,6 +160,8 @@ void InterpreterCore::Convert() {
     for (auto var_id : gc_check_input_list) {
       vec_meta_info[var_id].var_ref_count_++;
       instr.AddGCCheckVar(var_id);
+      VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
+              << instr.OpBase()->Type();
     }
   }
 
@@ -131,36 +172,15 @@ void InterpreterCore::Convert() {
         if (input_var2op_info_.at(id).size() == 0) {
           // output var not be used by any kernel
           vec_instruction_[i].AddGCCheckVar(id);
+          VLOG(4) << "clear " << global_scope_->GetNameById(id) << " after "
+                  << vec_instruction_[i].OpBase()->Type();
           vec_meta_info[id].var_ref_count_++;
         }
       }
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    std::vector<size_t> vec_temp;
-    for (auto& item : vec_instruction_[i].Outputs()) {
-      for (auto id : item.second) {
-        vec_temp = interpreter::merge_vector(vec_temp, input_var2op_info_[id]);
-      }
-    }
-
-    // In Program, op order is a very important information.
-    // Op can only add op after it as next as next ops.
-    std::vector<size_t> filter_next;
-    filter_next.reserve(vec_temp.size());
-    for (auto item : vec_temp) {
-      if (item > i) {
-        filter_next.push_back(item);
-      }
-    }
-
-    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
-
-    for (auto inst_id : filter_next) {
-      dependecy_count_[inst_id]++;
-    }
-  }
+  BuildOperatorDependences();
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
@@ -280,7 +300,7 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  VLOG(4) << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "Start run" << place << " " << op->DebugStringEx(global_scope_);
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
@@ -311,7 +331,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
   }
 
-  VLOG(3) << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "End run" << place << " " << op->DebugStringEx(global_scope_);
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
@@ -437,6 +457,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 
     try {
       RunInstruction(instr_node);
+      // GC infomation
+      CheckGC(instr_node);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -463,9 +485,6 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     interpreter::RecordEvent(instr_node, place_);
     op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
-    // GC infomation
-    CheckGC(instr_node);
-
     RunNextInstructions(instr_node, &ready_ops);
   }
 }
@@ -476,6 +495,9 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   auto& atomic_var_ref = async_work_queue_->AtomicVarRef();
 
   for (auto var_id : instr.GCCheckVars()) {
+    VLOG(4) << "GC " << global_scope_->GetNameById(var_id) << " "
+            << var_scope.VarDesc(var_id);
+
     bool is_ready =
         atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
     // ignore all persistable var while GC
@@ -483,6 +505,8 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
       continue;
     }
     if (is_ready) {
+      VLOG(6) << "Async delete variable with name : "
+              << var_scope.GetNameById(var_id);
       gc_->Add(var_scope.Var(var_id), gc_event_.at(instr_id),
                &instr.DeviceContext());
     }
@@ -499,6 +523,7 @@ void InterpreterCore::Prepare(
                         feed_names.size(), feed_tensors.size()));
 
   auto FeedInput = [&] {
+    VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
       auto* feed_var = global_scope_->FindVar(feed_names[i]);
       PADDLE_ENFORCE_NOT_NULL(feed_var, platform::errors::NotFound(
@@ -513,16 +538,19 @@ void InterpreterCore::Prepare(
   if (!is_build_) {
     paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
     FeedInput();
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &vec_func_list_, global_scope_);
+        place_, block_, &op_func_nodes, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
-    Convert();
+    Convert(&op_func_nodes);
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::build_op_func_list, so we should
   // call FeedInput again.
-  if (prepare_feed) FeedInput();
+  if (prepare_feed) {
+    FeedInput();
+  }
 }
 
 interpreter::CostInfo InterpreterCore::DryRun(

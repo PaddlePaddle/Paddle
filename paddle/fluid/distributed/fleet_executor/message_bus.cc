@@ -32,10 +32,7 @@ void MessageBus::Init(
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
 
-  listen_port_thread_ = std::thread([this]() {
-    VLOG(3) << "Start listen_port_thread_ for message bus";
-    ListenPort();
-  });
+  ListenPort();
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { MessageBus::Instance().Release(); });
@@ -51,7 +48,6 @@ void MessageBus::Release() {
   server_.Stop(1000);
   server_.Join();
 #endif
-  listen_port_thread_.join();
 }
 
 bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
@@ -59,12 +55,13 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
   int64_t src_id = interceptor_message.src_id();
   int64_t dst_id = interceptor_message.dst_id();
   if (IsSameRank(src_id, dst_id)) {
-    VLOG(3) << "Send a message from rank " << src_id << " to rank " << dst_id
-            << ", which are same ranks.";
+    VLOG(3) << "Send a message from interceptor " << src_id
+            << " to interceptor " << dst_id << ", which are in the same ranks.";
     return SendIntraRank(interceptor_message);
   } else {
-    VLOG(3) << "Send a message from rank " << src_id << " to rank " << dst_id
-            << ", which are different ranks.";
+    VLOG(3) << "Send a message from interceptor " << src_id
+            << " to interceptor " << dst_id
+            << ", which are in different ranks.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
     int retry_time = 0;  // message bus will retry sending for 10 times
@@ -89,6 +86,10 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
 }
 
 void MessageBus::ListenPort() {
+  if (addr_ == "") {
+    VLOG(3) << "No need listen to port since training on single card.";
+    return;
+  }
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
@@ -125,6 +126,10 @@ bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
       dst_rank, interceptor_id_to_rank_.end(),
       platform::errors::NotFound(
           "Cannot find rank for dst interceptor id %lld. Init error.", dst_id));
+  if (addr_ == "") {
+    // single card training, must be same rank
+    return true;
+  }
   const auto& src_ip = rank_to_addr_.find(src_rank->second);
   PADDLE_ENFORCE_NE(src_ip, rank_to_addr_.end(),
                     platform::errors::NotFound(
@@ -151,6 +156,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
                         "Cannot find rank for dst interceptor id %lld. "
                         "Init error.",
                         dst_id));
+  VLOG(3) << "Message bus sending to addr: " << dst_ip->second;
   const char* dst_ip_for_brpc = dst_ip->second.c_str();
   brpc::Channel channel;
   brpc::ChannelOptions options;
@@ -184,11 +190,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
 
 bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
-  std::shared_ptr<Carrier> carrier = FleetExecutor::GetCarrier();
-  if (carrier != nullptr) {
-    return carrier->EnqueueInterceptorMessage(interceptor_message);
-  }
-  return true;
+  return Carrier::Instance().EnqueueInterceptorMessage(interceptor_message);
 }
 
 }  // namespace distributed

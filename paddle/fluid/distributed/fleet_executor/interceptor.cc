@@ -33,6 +33,16 @@ void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 void Interceptor::Handle(const InterceptorMessage& msg) {
   if (handle_) {
     handle_(msg);
+  } else {
+    VLOG(3) << "Interceptor is using default message handler. This handler is "
+               "only used for test purpose. Check whether you init interceptor "
+               "in the proper way.";
+    if (msg.message_type() == DATA_IS_READY) {
+      VLOG(3) << "Fake handler is sending stop message to it self.";
+      InterceptorMessage msg;
+      msg.set_message_type(STOP);
+      Send(interceptor_id_, msg);
+    }
   }
 }
 
@@ -56,11 +66,10 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
   return true;
 }
 
-void Interceptor::Send(int64_t dst_id,
-                       std::unique_ptr<InterceptorMessage> msg) {
-  msg->set_src_id(interceptor_id_);
-  msg->set_dst_id(dst_id);
-  MessageBus::Instance().Send(*msg.get());
+bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  msg.set_src_id(interceptor_id_);
+  msg.set_dst_id(dst_id);
+  return MessageBus::Instance().Send(msg);
 }
 
 void Interceptor::PoolTheMailbox() {
@@ -77,10 +86,12 @@ void Interceptor::PoolTheMailbox() {
     const InterceptorMessage interceptor_message = local_mailbox_.front();
     local_mailbox_.pop();
     const MessageType message_type = interceptor_message.message_type();
-    VLOG(3) << interceptor_id_ << " has received a message: " << message_type
-            << ".";
+    VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
+            << " from interceptor " << interceptor_message.src_id()
+            << " with message: " << message_type << ".";
     if (message_type == STOP) {
       // break the pooling thread
+      VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
       break;
     }
 
