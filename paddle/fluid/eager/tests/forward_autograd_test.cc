@@ -17,7 +17,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
