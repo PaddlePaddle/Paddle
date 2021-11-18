@@ -178,7 +178,7 @@ function run_op_benchmark_test {
     LOG "[INFO] Uninstall Paddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
     LOG "[INFO] Install Paddle ..."
-    pip install build_whl/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
