@@ -178,8 +178,10 @@ DeviceContextPool::DeviceContextPool(const std::vector<Place>& places) {
   for (auto& p : set) {
     if (paddle::platform::is_cpu_place(p)) {
       CPUPlace place = BOOST_GET_CONST(CPUPlace, p);
-      allocators_.emplace(place,
-                          new paddle::experimental::DefaultAllocator(place));
+      allocators_.emplace(
+          place,
+          std::unique_ptr<pten::Allocator>(
+              new paddle::experimental::DefaultAllocator(place)));
       // #ifdef PADDLE_WITH_MKLDNN
       // EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_,
       // p);
@@ -190,8 +192,10 @@ DeviceContextPool::DeviceContextPool(const std::vector<Place>& places) {
     } else if (paddle::platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       CUDAPlace place = BOOST_GET_CONST(CUDAPlace, p);
-      allocators_.emplace(place,
-                          new paddle::experimental::DefaultAllocator(place));
+      allocators_.emplace(
+          place,
+          std::unique_ptr<pten::Allocator>(
+              new paddle::experimental::DefaultAllocator(place)));
       EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
           &device_contexts_, &allocators_, p);
 #else
@@ -212,8 +216,10 @@ DeviceContextPool::DeviceContextPool(const std::vector<Place>& places) {
     } else if (paddle::platform::is_xpu_place(p)) {
 #ifdef PADDLE_WITH_XPU
       XPUPlace place = BOOST_GET_CONST(XPUPlace, p);
-      allocators_.emplace(place,
-                          new paddle::experimental::DefaultAllocator(place));
+      allocators_.emplace(
+          place,
+          std::unique_ptr<pten::Allocator>(
+              new paddle::experimental::DefaultAllocator(place)));
       EmplaceDeviceContext<pten::XPUContext, XPUPlace>(
           &device_contexts_, &allocators_, p);
 #else
