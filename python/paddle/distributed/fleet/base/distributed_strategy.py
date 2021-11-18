@@ -469,6 +469,7 @@ class DistributedStrategy(object):
     def sparse_table_configs(self, configs):
         from google.protobuf.descriptor import FieldDescriptor
         table_param = self.strategy.downpour_table_param
+
         def set_table_config(msg, config_name, configs):
             for field in msg.DESCRIPTOR.fields:
                 name = config_name + "." + field.name
@@ -483,9 +484,9 @@ class DistributedStrategy(object):
                         getattr(msg, field.name).extend(configs[name])
                     else:
                         setattr(msg, field.name, configs[name])
-                
+
         set_table_config(table_param, "table_parameters", configs)
- 
+
     @property
     def amp(self):
         """

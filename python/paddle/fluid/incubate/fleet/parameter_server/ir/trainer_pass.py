@@ -130,10 +130,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     ops = push_sparse_ops.get(param_name, [])
                     ops.append(op)
                     push_sparse_ops[param_name] = ops
-        print("yxf::ops: {}".format(ops))
-        print("yxf:pull_sparse:ops: {}".format(pull_sparse_ops))
-        print("yxf:pull_sparse:ids: {}".format(pull_sparse_ids))
-        print("yxf:push_sparse:ids: {}".format(push_sparse_ops))
         return pull_sparse_ops, push_sparse_ops
 
     def _pull_sparse_fuse(_program, pull_sparse_ops, use_ps_gpu):
@@ -292,6 +288,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     distributed_idx = min(op_idxs)
                 else:
                     distributed_idx = max(inputs_idxs) + 1
+
                 if use_ps_gpu:
                     program.global_block()._insert_op(
                         index=distributed_idx,
@@ -405,61 +402,11 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 program.global_block().vars[op.input("Ids")[0]] for op in ops
             ]
             w = program.global_block().vars[ops[0].output("W@GRAD")[0]]
-            '''
-            ######TODO
-            #show = fluid.global_scope().find_var("show")
-            #clk = fluid.global_scope().find_var("click")
-            show = None
-            clk = None
-            if "show" not in program.global_block().vars:
-                print('debug zcb append show var')
-                show = program.global_block().create_var(
-                        name="show",
-                        dtype=core.VarDesc.VarType.INT64,
-                        persistable=False,
-                        stop_gradient=True)
-                program.global_block().append_op(
-                        type='fill_constant',
-                        inputs={},
-                        outputs={'Out': show},
-                        attrs={
-                            'shape': [1],
-                            'dtype': show.dtype,
-                            'value': 1,
-                        #OP_ROLE_KEY: OpRole.Forward
-                        })
-            else:
-                print('find var show')
-                show = program.global_block().vars["show"]
-            if "click" not in program.global_block().vars:
-                print('debug zcb append click var')
-                clk = program.global_block().create_var(
-                        name="clk",
-                        dtype=core.VarDesc.VarType.INT64,
-                        persistable=False,
-                        stop_gradient=True)
-                program.global_block().append_op(
-                        type='fill_constant',
-                        inputs={},
-                        outputs={'Out': clk},
-                        attrs={
-                            'shape': [1],
-                            'dtype': clk.dtype,
-                            'value': 0,
-                        #OP_ROLE_KEY: OpRole.Forward
-                        })
-            else:
-                print('find var click')
-                clk = program.global_block().vars["click"]
-            '''
-
             table_id = w_2_table_id[param]
 
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
-
             op_type = ops[0].type
-
             outputs = [
                 program.global_block().vars[op.input("Out@GRAD")[0]]
                 for op in ops
@@ -467,10 +414,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
 
             for idx in op_idxs[::-1]:
                 program.global_block()._remove_op(idx)
-
-            print("yxf::pushfuse::inputs: {}".format(inputs))
-            print("yxf::pushfuse::outputs: {}".format(outputs))
-            print("yxf::pushfuse::emb_size: {}".format(emb_size[param]))
 
             if use_ps_gpu:
                 program.global_block().append_op(
@@ -510,7 +453,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
 
     pull_sparse_ops, push_sparse_ops = _get_pull_sparse_ops(program)
     _pull_sparse_fuse(program, pull_sparse_ops, use_ps_gpu)
-    print("yxf::pushfuse::w_2_table_id: {}".format(w_2_table_id))
     _push_sparse_fuse(program, push_sparse_ops, use_ps_gpu)
     return program
 
@@ -563,7 +505,6 @@ def append_send_ops_pass(program, config):
     sends = config.get_the_one_trainer_send_context(
         split_dense_table=config.is_heter_ps_mode)
 
-    print("yxf::sends: {}".format(sends))
     for merged_name, send in sends.items():
         if send.is_sparse():
             continue

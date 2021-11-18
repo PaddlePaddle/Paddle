@@ -344,11 +344,6 @@ class Table:
         self.accessor_proto = None
 
     def to_string(self, indent):
-        # if self.id == 1:
-        #     proto_txt = ''
-        #     with open('./sparse_table.prototxt') as f:
-        #         proto_txt = f.read()
-        #     return proto_txt
         table_str = "{}downpour_table_param {{{}\n{}}}"
 
         attrs = ""
@@ -591,19 +586,8 @@ class TheOnePSRuntime(RuntimeBase):
             return kwargs
 
         proto_txt = str(worker) + "\n" + str(server)
-        #with open('./sparse_table.prototxt') as f:
-        #    proto_txt = f.read()
-
-        with open('proto_txt', 'w') as f:
-            f.write(proto_txt)
-
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-
-        if debug:
-            print("worker: \n{}".format(proto_txt))
 
         endpoints = self.compiled_strategy.get_ps_endpoints()
-
         string_hosts = []
         for idx, ep in enumerate(endpoints):
             host, port = ep.split(":")
@@ -619,14 +603,8 @@ class TheOnePSRuntime(RuntimeBase):
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-
         if debug:
             print("worker: \n{}".format(proto_txt))
-            print("communicator send_ctx:")
-            for key in send_ctx:
-                print("{}: {}".format(key, send_ctx[key]))
-            for key in dense_map:
-                print("{}: {}".format(key, dense_map[key]))
 
         kwargs = {}
         kwargs['need_global_step'] = "0"
@@ -653,20 +631,22 @@ class TheOnePSRuntime(RuntimeBase):
 
         import paddle.distributed.fleet as fleet
         fleet.util.barrier()
-        print('ZCB begin create c2c connection')
         info = self._communicator.get_client_info()
-        all_info = self.role_maker._all_gather(info[0])
-        # for unittest
-        if not isinstance(all_info, list):
-            warnings.warn("gloo may not initialize correctly")
-            all_info = [all_info]
-        self._communicator.set_clients(all_info)
-        #create_c2c_connection default param: 
-        #  pserver_timeout_ms=500000
-        #  pserver_connect_timeout_ms=10000
-        #  max_retry=3
-        self._communicator.create_client_to_client_connection()
-        print('ZCB create c2c connection done')
+        if isinstance(info, list) and len(info) > 0:
+            all_info = self.role_maker._all_gather(info[0])
+            # for unittest
+            if not isinstance(all_info, list):
+                warnings.warn("gloo may not initialize correctly")
+                all_info = [all_info]
+            self._communicator.set_clients(all_info)
+            # create_c2c_connection default param: 
+            #  pserver_timeout_ms=500000
+            #  pserver_connect_timeout_ms=10000
+            #  max_retry=3
+            self._communicator.create_client_to_client_connection()
+            print('create c2c connection done')
+        else:
+            print('cannot create c2c connection')
 
         dist_strategy = self.context["valid_strategy"]
 
@@ -903,8 +883,6 @@ class TheOnePSRuntime(RuntimeBase):
                                                    '  delete_after_unseen_days: 30.0\n' \
                                                    '  ssd_unseenday_threshold: 1\n' \
                                                    '}'
-
-                        print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -926,6 +904,7 @@ class TheOnePSRuntime(RuntimeBase):
                     common.sync = "true"
                 else:
                     common.sync = "false"
+
                 table.common = common
 
                 if table.table_class != 'MemorySparseTable':
@@ -981,8 +960,6 @@ class TheOnePSRuntime(RuntimeBase):
         fs_client = fsClient(self.context["user_defined_strategy"]
                              .fs_client_param)
         proto_txt = proto_txt + "\n" + fs_client.to_string()
-        #with open('./sparse_table.prototxt') as f:
-        #    proto_txt = f.read()
 
         print("sever_proto =", proto_txt)
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
@@ -1351,7 +1328,6 @@ class TheOnePSRuntime(RuntimeBase):
             self._load_distributed_persistables(path, mode)
         else:
             self._ps_inference_load_inference_model(path, mode)
-        # self._load_distributed_persistables(path, mode=mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet

@@ -178,5 +178,3 @@ class ShowClickEntry(EntryAttr):
 
     def _to_attr(self):
         return ":".join([self._name, self._show_name, self._click_name])
-
-

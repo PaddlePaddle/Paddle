@@ -169,7 +169,7 @@ class CompileTimeStrategy(object):
 
         self._build_var_distributed()
 
-        self._find_multi_distributed_lookup_table()
+        #self._find_multi_distributed_lookup_table()
 
         self.tensor_table_dict = {}
 
@@ -205,9 +205,6 @@ class CompileTimeStrategy(object):
                 sparse_table_index += 1
         grads_dict = self._find_distributed_lookup_table_grads(ret_list)
         inputs_dict = self._find_distributed_lookup_table_inputs(ret_list)
-        print("yxf::multi sparse table list: {}".format(ret_list))
-        print("yxf::multi sparse table grad list: {}".format(grads_dict))
-        print("yxf::multi sparse table inputs list: {}".format(inputs_dict))
         return ret_list
 
     def _find_distributed_lookup_table_grads(self, table_names):
@@ -691,9 +688,6 @@ class CompileTimeStrategy(object):
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False)
-            #print('debug dense_ctx')
-            #print('k: {}, v: {}'.format(grad_name, str([origin_varnames, var_numel])))
-
             send_ctx[grad_name] = dense_ctx
             idx += 1
         else:
@@ -751,8 +745,6 @@ class CompileTimeStrategy(object):
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False)
-            #print('debug: send_ctx:')
-            #print('k: {}, v: {}'.format(str(sparse_ctx.var_name()), str([grad_name, splited_varname, ep_list, shape, trainer_id, idx, param_name])))
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
@@ -1101,8 +1093,6 @@ class CompileTimeStrategy(object):
         self.var_distributed = vars_metatools.VarsDistributed()
 
         sparse_pairs, dense_pairs = self.get_param_grads()
-        print("yxf::public::sparse_pairs: {}".format(sparse_pairs))
-        print("yxf::public::dense_pairs: {}".format(dense_pairs))
         origin_for_sparse = []
         origin_for_dense = []
         param_name_grad_name = dict()
