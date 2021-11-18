@@ -51,6 +51,13 @@ void ElementwiseAdd(const CUDAContext& dev_ctx,
                     int axis,
                     DenseTensor* out);
 
+template <typename T>
+void ElementwiseSub(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
+
 }  // namespace pten
 
 #endif
