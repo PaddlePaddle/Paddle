@@ -61,8 +61,7 @@ class AutoScanTest(unittest.TestCase):
         super(AutoScanTest, self).__init__(*args, **kwargs)
         self.skip_cases = []
         abs_dir = os.path.abspath(os.path.dirname(__file__))
-        self.cache_dir = os.path.join(abs_dir,
-                                      str(self.__module__) + "_cache_dir")
+        self.cache_dir = os.path.join(abs_dir, str(self.__module__) + "_cache_dir")
         self.num_ran_programs = 0
         self.num_invalid_programs = 0
         self.num_skipped_tests = 0
@@ -92,8 +91,9 @@ class AutoScanTest(unittest.TestCase):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
-    def run_test_config(self, model, params, prog_config, pred_config,
-                        feed_data) -> Dict[str, np.ndarray]:
+    def run_test_config(
+        self, model, params, prog_config, pred_config, feed_data
+    ) -> Dict[str, np.ndarray]:
         """
         Test a single case.
         """
@@ -107,8 +107,7 @@ class AutoScanTest(unittest.TestCase):
                 input_tensor.set_lod(feed_data[name]["lod"])
         predictor.run()
         result = {}
-        for out_name, o_name in zip(prog_config.outputs,
-                                    predictor.get_output_names()):
+        for out_name, o_name in zip(prog_config.outputs, predictor.get_output_names()):
             result[out_name] = predictor.get_output_handle(o_name).copy_to_cpu()
         return result
 
@@ -123,8 +122,10 @@ class AutoScanTest(unittest.TestCase):
         for key, arr in tensor.items():
             self.assertTrue(
                 baseline[key].shape == arr.shape,
-                "The output shapes are not equal, the baseline shape is " +
-                str(baseline[key].shape) + ", but got " + str(arr.shape),
+                "The output shapes are not equal, the baseline shape is "
+                + str(baseline[key].shape)
+                + ", but got "
+                + str(arr.shape),
             )
             self.assertTrue(
                 np.allclose(baseline[key], arr, atol=atol, rtol=rtol),
@@ -135,8 +136,7 @@ class AutoScanTest(unittest.TestCase):
     def run_test(self, quant=False):
         raise NotImplementedError
 
-    def generate_op_config(self, ops_config: List[Dict[str,
-                                                       Any]]) -> List[OpConfig]:
+    def generate_op_config(self, ops_config: List[Dict[str, Any]]) -> List[OpConfig]:
         ops = []
         for i in range(len(ops_config)):
             op_config = ops_config[i]
@@ -146,7 +146,8 @@ class AutoScanTest(unittest.TestCase):
                     inputs=op_config["op_inputs"],
                     outputs=op_config["op_outputs"],
                     attrs=op_config["op_attrs"],
-                ))
+                )
+            )
         return ops
 
     @abc.abstractmethod
@@ -203,22 +204,18 @@ class MkldnnAutoScanTest(AutoScanTest):
 
             feed_data = {}
             for name, tensor_config in prog_config.inputs.items():
-                feed_data[name] = {
-                    "data": tensor_config.data,
-                    "lod": tensor_config.lod
-                }
+                feed_data[name] = {"data": tensor_config.data, "lod": tensor_config.lod}
             results: List[Dict[str, np.ndarray]] = []
 
             # baseline: cpu no ir_optim run
             base_config = self.create_inference_config(ir_optim=False)
             logging.info("RUN program_config: " + str(prog_config))
             results.append(
-                self.run_test_config(model, params, prog_config, base_config,
-                                     feed_data))
+                self.run_test_config(model, params, prog_config, base_config, feed_data)
+            )
             self.success_log("RUN_CPU_BASELINE done")
 
-            for pred_config, (
-                    atol, rtol) in self.sample_predictor_configs(prog_config):
+            for pred_config, (atol, rtol) in self.sample_predictor_configs(prog_config):
                 # skip info
                 skip_flag = False
                 for skip_info in self.skip_cases:
@@ -226,9 +223,12 @@ class MkldnnAutoScanTest(AutoScanTest):
                         skip_flag = True
                         if skip_info[1] == SkipReasons.MKLDNN_ACCURACY_ERROR:
                             self.skip_log(
-                                "[MKLDNN_ACCURACY_ERROR] " + skip_info[2] +
-                                " " + " vs " +
-                                self.inference_config_str(pred_config))
+                                "[MKLDNN_ACCURACY_ERROR] "
+                                + skip_info[2]
+                                + " "
+                                + " vs "
+                                + self.inference_config_str(pred_config)
+                            )
                         else:
                             raise NotImplementedError
                         break
@@ -240,20 +240,24 @@ class MkldnnAutoScanTest(AutoScanTest):
 
                 try:
                     results.append(
-                        self.run_test_config(model, params, prog_config,
-                                             pred_config, feed_data))
-                    self.assert_tensors_near(atol, rtol, results[-1],
-                                             results[0])
+                        self.run_test_config(
+                            model, params, prog_config, pred_config, feed_data
+                        )
+                    )
+                    self.assert_tensors_near(atol, rtol, results[-1], results[0])
                 except Exception as e:
                     self.fail_log(
-                        self.inference_config_str(pred_config) +
-                        "\033[1;31m \nERROR INFO: {}\033[0m".format(str(e)))
+                        self.inference_config_str(pred_config)
+                        + "\033[1;31m \nERROR INFO: {}\033[0m".format(str(e))
+                    )
                     if not skip_flag:
                         status = False
                     continue
-                self.success_log("RUN predictor_config " +
-                                 self.inference_config_str(pred_config) +
-                                 " done")
+                self.success_log(
+                    "RUN predictor_config "
+                    + self.inference_config_str(pred_config)
+                    + " done"
+                )
 
         self.assertTrue(status)
 
@@ -284,10 +288,8 @@ class PassAutoScanTest(AutoScanTest):
 
     def assert_op_list(self, op_list_after_fusion):
         if not self.passes:
-            raise ValueError(
-                "In PassAutoScan you should give a valid pass name.")
-        last_passed_program = os.path.join(self.cache_dir,
-                                           self.passes[-1] + ".pdmodel")
+            raise ValueError("In PassAutoScan you should give a valid pass name.")
+        last_passed_program = os.path.join(self.cache_dir, self.passes[-1] + ".pdmodel")
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
@@ -296,9 +298,12 @@ class PassAutoScanTest(AutoScanTest):
             if main_block.op(i).type() in ["feed", "fetch"]:
                 continue
             after_op_list.append(main_block.op(i).type())
-        self.assertTrue(op_list_after_fusion == after_op_list,
-            "Expected operator list after fusion is {}, but now it's {}".format(op_list_after_fusion, after_op_list))
-
+        self.assertTrue(
+            op_list_after_fusion == after_op_list,
+            "Expected operator list after fusion is {}, but now it's {}".format(
+                op_list_after_fusion, after_op_list
+            ),
+        )
 
     def sample_program_config(self, draw):
         """
@@ -346,34 +351,40 @@ class PassAutoScanTest(AutoScanTest):
             loop_func = reproduce(loop_func)
         logging.info("Start to running test of {}".format(type(self)))
         loop_func()
+        logging.info("===================Statistical Information===================")
         logging.info(
-            "===================Statistical Information===================")
-        logging.info("Number of Generated Programs: {}".format(
-            self.num_ran_programs + self.num_invalid_programs))
-        logging.info("Number of Invalid Programs: {}".format(
-            self.num_invalid_programs))
+            "Number of Generated Programs: {}".format(
+                self.num_ran_programs + self.num_invalid_programs
+            )
+        )
+        logging.info("Number of Invalid Programs: {}".format(self.num_invalid_programs))
         logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
-        logging.info("Number of Skipped Tests: {}".format(
-            self.num_skipped_tests))
-        successful_ran_programs = int(self.num_ran_programs -
-                                      self.num_skipped_tests /
-                                      self.num_predictor_kinds)
+        logging.info("Number of Skipped Tests: {}".format(self.num_skipped_tests))
+        successful_ran_programs = int(
+            self.num_ran_programs - self.num_skipped_tests / self.num_predictor_kinds
+        )
         logging.info(
-            "Number of successfully ran programs approximately equal to {}".
-            format(successful_ran_programs))
+            "Number of successfully ran programs approximately equal to {}".format(
+                successful_ran_programs
+            )
+        )
         if successful_ran_programs < min_success_num:
             logging.warning(
                 "satisfied_programs = ran_programs - num_skipped_tests / num_predictor_kinds"
             )
             logging.error(
-                "At least {} programs need to ran successfully, but now only about {} programs satisfied."
-                .format(min_success_num, successful_ran_programs))
+                "At least {} programs need to ran successfully, but now only about {} programs satisfied.".format(
+                    min_success_num, successful_ran_programs
+                )
+            )
             assert False
         used_time = time.time() - start_time
         if used_time > max_duration:
             logging.error(
-                "The duration exceeds {} seconds, if this is neccessary, try to set a larger number for parameter `max_duration`."
-                .format(max_duration))
+                "The duration exceeds {} seconds, if this is neccessary, try to set a larger number for parameter `max_duration`.".format(
+                    max_duration
+                )
+            )
             assert False
 
     def run_test(self, quant=False, prog_config=None):
@@ -392,23 +403,21 @@ class PassAutoScanTest(AutoScanTest):
 
         feed_data = {}
         for name, tensor_config in prog_config.inputs.items():
-            feed_data[name] = {
-                "data": tensor_config.data,
-                "lod": tensor_config.lod
-            }
+            feed_data[name] = {"data": tensor_config.data, "lod": tensor_config.lod}
         results: List[Dict[str, np.ndarray]] = []
 
         # baseline: cpu no ir_optim run
         base_config = self.create_inference_config(ir_optim=False)
         logging.info("RUN program_config: " + str(prog_config))
         results.append(
-            self.run_test_config(model, params, prog_config, base_config,
-                                 feed_data))
+            self.run_test_config(model, params, prog_config, base_config, feed_data)
+        )
         self.success_log("RUN_CPU_BASELINE done")
 
         self.num_predictor_kinds = 0
-        for pred_config, op_list, (
-                atol, rtol) in self.sample_predictor_configs(prog_config):
+        for pred_config, op_list, (atol, rtol) in self.sample_predictor_configs(
+            prog_config
+        ):
             self.num_predictor_kinds += 1
             # skip info
             skip_flag = False
@@ -417,9 +426,13 @@ class PassAutoScanTest(AutoScanTest):
                     skip_flag = True
                     self.num_skipped_tests += 1
                     if skip_info[1] == SkipReasons.PASS_ACCURACY_ERROR:
-                        self.skip_log("[PASS_ACCURACY_ERROR] " + skip_info[2] +
-                                      " " + " vs " +
-                                      self.inference_config_str(pred_config))
+                        self.skip_log(
+                            "[PASS_ACCURACY_ERROR] "
+                            + skip_info[2]
+                            + " "
+                            + " vs "
+                            + self.inference_config_str(pred_config)
+                        )
                     else:
                         raise NotImplementedError
                     break
@@ -431,21 +444,27 @@ class PassAutoScanTest(AutoScanTest):
 
             try:
                 results.append(
-                    self.run_test_config(model, params, prog_config,
-                                         pred_config, feed_data))
+                    self.run_test_config(
+                        model, params, prog_config, pred_config, feed_data
+                    )
+                )
                 self.assert_tensors_near(atol, rtol, results[-1], results[0])
                 if not skip_flag:
                     self.assert_op_list(op_list)
 
             except Exception as e:
                 self.fail_log(
-                    self.inference_config_str(pred_config) +
-                    "\033[1;31m \nERROR INFO: {}\033[0m".format(str(e)))
+                    self.inference_config_str(pred_config)
+                    + "\033[1;31m \nERROR INFO: {}\033[0m".format(str(e))
+                )
                 if not skip_flag:
                     status = False
                 continue
-            self.success_log("RUN predictor_config " +
-                             self.inference_config_str(pred_config) + " done")
+            self.success_log(
+                "RUN predictor_config "
+                + self.inference_config_str(pred_config)
+                + " done"
+            )
 
         status = self.check_op_version() and status
         self.assertTrue(status)
@@ -486,6 +505,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
         """
         TensorRT subgraph engine parameters.
         """
+
         def __init__(
             self,
             workspace_size,
@@ -506,6 +526,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
         """
         Prepare TensorRT subgraph engine dynamic shape parameters.
         """
+
         def __init__(
             self,
             min_input_shape,
@@ -530,7 +551,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
         )
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
         self.num_percent_cases = float(
-            os.getenv("TEST_NUM_PERCENT_CASES", default="1.0"))
+            os.getenv("TEST_NUM_PERCENT_CASES", default="1.0")
+        )
         # Choose different tests by week
         np.random.seed(int(time.strftime("%W")))
 
@@ -549,11 +571,13 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 use_static=self.trt_param.use_static,
                 use_calib_mode=self.trt_param.use_calib_mode,
             )
-            if (len(self.dynamic_shape.min_input_shape) != 0
-                    and self.dynamic_shape.min_input_shape.keys()
-                    == self.dynamic_shape.max_input_shape.keys()
-                    and self.dynamic_shape.min_input_shape.keys()
-                    == self.dynamic_shape.opt_input_shape.keys()):
+            if (
+                len(self.dynamic_shape.min_input_shape) != 0
+                and self.dynamic_shape.min_input_shape.keys()
+                == self.dynamic_shape.max_input_shape.keys()
+                and self.dynamic_shape.min_input_shape.keys()
+                == self.dynamic_shape.opt_input_shape.keys()
+            ):
                 config.set_trt_dynamic_shape_info(
                     self.dynamic_shape.min_input_shape,
                     self.dynamic_shape.max_input_shape,
@@ -564,7 +588,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
         last_passed_program = os.path.join(
-            self.cache_dir, "transpose_flatten_concat_fuse_pass.pdmodel")
+            self.cache_dir, "transpose_flatten_concat_fuse_pass.pdmodel"
+        )
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
@@ -576,13 +601,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
         paddle_op_size = op_size - trt_engine_size
         self.assertTrue(
             trt_engine_size == trt_engine_num,
-            "trt_engine_num is {}, but got {}!".format(trt_engine_size,
-                                                       trt_engine_num),
+            "trt_engine_num is {}, but got {}!".format(trt_engine_size, trt_engine_num),
         )
         self.assertTrue(
             paddle_op_size == paddle_op_num,
-            "paddle_op_num is {}, but got {}!".format(paddle_op_size,
-                                                      paddle_op_num),
+            "paddle_op_num is {}, but got {}!".format(paddle_op_size, paddle_op_num),
         )
 
     def inference_config_str(self, config: paddle_infer.Config) -> str:
@@ -609,7 +632,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 run_flags.append(False)
 
         for prog_config, run_flags in zip(
-                self.sample_program_configs(*args, **kwargs), run_flags):
+            self.sample_program_configs(*args, **kwargs), run_flags
+        ):
             if not run_flags:
                 continue
 
@@ -623,10 +647,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
             feed_data = {}
             for name, tensor_config in prog_config.inputs.items():
-                feed_data[name] = {
-                    "data": tensor_config.data,
-                    "lod": tensor_config.lod
-                }
+                feed_data[name] = {"data": tensor_config.data, "lod": tensor_config.lod}
 
             results: List[Dict[str, np.ndarray]] = []
 
@@ -634,12 +655,13 @@ class TrtLayerAutoScanTest(AutoScanTest):
             logging.info("RUN program_config: " + str(prog_config))
             gpu_config = self.create_inference_config(use_trt=False)
             results.append(
-                self.run_test_config(model, params, prog_config, gpu_config,
-                                     feed_data))
+                self.run_test_config(model, params, prog_config, gpu_config, feed_data)
+            )
             self.success_log("RUN_GPU_BASELINE done")
 
             for pred_config, nodes_num, threshold in self.sample_predictor_configs(
-                    prog_config):
+                prog_config
+            ):
 
                 if os.path.exists(self.cache_dir):
                     shutil.rmtree(self.cache_dir)
@@ -647,18 +669,23 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 if isinstance(threshold, float):
                     atol = threshold
                     rtol = 1e-8
-                elif isinstance(threshold, list) or isinstance(
-                        threshold, tuple):
+                elif isinstance(threshold, list) or isinstance(threshold, tuple):
                     atol = threshold[0]
                     rtol = threshold[1]
                 else:
                     raise NotImplementedError
 
-                if (quant and pred_config.tensorrt_precision_mode() !=
-                        paddle_infer.PrecisionType.Int8):
+                if (
+                    quant
+                    and pred_config.tensorrt_precision_mode()
+                    != paddle_infer.PrecisionType.Int8
+                ):
                     continue
-                if (pred_config.tensorrt_precision_mode()
-                        == paddle_infer.PrecisionType.Int8 and not quant):
+                if (
+                    pred_config.tensorrt_precision_mode()
+                    == paddle_infer.PrecisionType.Int8
+                    and not quant
+                ):
                     continue
 
                 skip_flag = False
@@ -667,12 +694,20 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         skip_flag = True
                         if skip_info[1] == SkipReasons.TRT_NOT_IMPLEMENTED:
                             self.skip_log(
-                                "[TRT_NOT_IMPLEMENTED] " + skip_info[2] + " " +
-                                " vs " + self.inference_config_str(pred_config))
+                                "[TRT_NOT_IMPLEMENTED] "
+                                + skip_info[2]
+                                + " "
+                                + " vs "
+                                + self.inference_config_str(pred_config)
+                            )
                         elif skip_info[1] == SkipReasons.TRT_NOT_SUPPORT:
                             self.skip_log(
-                                "[TRT_NOT_SUPPORT] " + skip_info[2] + " " +
-                                " vs " + self.inference_config_str(pred_config))
+                                "[TRT_NOT_SUPPORT] "
+                                + skip_info[2]
+                                + " "
+                                + " vs "
+                                + self.inference_config_str(pred_config)
+                            )
                         else:
                             raise NotImplementedError
                         break
@@ -680,10 +715,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 try:
                     pred_config_deserialize = paddle_infer.Config(pred_config)
                     results.append(
-                        self.run_test_config(model, params, prog_config,
-                                             pred_config, feed_data))
-                    self.assert_tensors_near(atol, rtol, results[-1],
-                                             results[0])
+                        self.run_test_config(
+                            model, params, prog_config, pred_config, feed_data
+                        )
+                    )
+                    self.assert_tensors_near(atol, rtol, results[-1], results[0])
                     if not skip_flag:
                         self.assert_op_size(nodes_num[0], nodes_num[1])
                     # deserialize test
@@ -697,14 +733,18 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         )
                 except Exception as e:
                     self.fail_log(
-                        str(prog_config) + " vs " +
-                        self.inference_config_str(pred_config) +
-                        "\033[1;31m \nERROR INFO: {}\033[0m".format(str(e)))
+                        str(prog_config)
+                        + " vs "
+                        + self.inference_config_str(pred_config)
+                        + "\033[1;31m \nERROR INFO: {}\033[0m".format(str(e))
+                    )
                     if not skip_flag:
                         status = False
                     continue
-                self.success_log("RUN predictor_config " +
-                                 self.inference_config_str(pred_config) +
-                                 " done")
+                self.success_log(
+                    "RUN predictor_config "
+                    + self.inference_config_str(pred_config)
+                    + " done"
+                )
 
         self.assertTrue(status)
