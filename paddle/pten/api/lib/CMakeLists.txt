@@ -14,7 +14,7 @@ cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor device_conte
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
 
-cc_library(pten_device_context_pool SRCS device_context_pool.cc DEPS pten tensor_base)
+cc_library(pten_device_context_pool SRCS device_context_pool.cc DEPS pten pten_api_utils)
 cc_library(math_api SRCS math.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(linalg_api SRCS linalg.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(creation_api SRCS creation.cc DEPS pten_tensor pten kernel_dispatch)

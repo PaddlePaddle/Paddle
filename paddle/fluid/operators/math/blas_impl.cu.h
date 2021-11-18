@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/dynload/cublas.h"
 
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/pten/core/backends/gpu/cuda_context.h"
+#include "paddle/pten/core/backends/gpu/context.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
 

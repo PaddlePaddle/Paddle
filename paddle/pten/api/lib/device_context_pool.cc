@@ -126,7 +126,6 @@ inline void EmplaceDeviceContext<pten::CUDAContext, CUDAPlace>(
         ptr->SetEigenDevice(device_ctx->eigen_device());
 #endif
         // device_ctx->cusolver_dn_handle()
-        // device_ctx->cudnn_workspace_handle()
 
         return ctx;
       }));
