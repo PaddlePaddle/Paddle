@@ -1335,7 +1335,7 @@ void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
 }
 
 void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   assert(date.size() == 8);
   int year = std::stoi(date.substr(0, 4));
   int month = std::stoi(date.substr(4, 2));
@@ -1353,7 +1353,7 @@ void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
     LOG(ERROR) << "setdate : " << date << " failed";
   }
 #else
-  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib";
+  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib-gpu";
 #endif
 }
 
@@ -1371,7 +1371,7 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 }
 
 void FleetWrapper::SetFileNumOneShard(const uint64_t table_id, int file_num) {
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   auto ret =
       pslib_ptr_->_worker_ptr->set_file_num_one_shard(table_id, file_num);
   ret.wait();
@@ -1380,7 +1380,7 @@ void FleetWrapper::SetFileNumOneShard(const uint64_t table_id, int file_num) {
     LOG(ERROR) << "set_file_num_one_shard failed";
   }
 #else
-  VLOG(0) << "FleetWrapper::SetFileNumOneShard does nothing when no pslib";
+  VLOG(0) << "FleetWrapper::SetFileNumOneShard does nothing when no pslib-gpu";
 #endif
 }
 
