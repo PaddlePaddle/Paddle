@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -62,7 +63,7 @@ class CinnLaunchContext {
 
   // Extract internal variable names from CinnScope
   // by excluding used input and output variables
-  std::vector<std::string> GetInternalVariableNames();
+  std::unordered_set<std::string> GetInternalVariableNames();
 
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
@@ -123,6 +124,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     const auto& scope = ctx.scope();
     const auto& place = ctx.GetPlace();
     // Step 1. Find graph object and prepare input
+    platform::RecordEvent record_event_1(
+        "Step 1. Find graph object and prepare input");
     PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey), true,
                       platform::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
@@ -144,6 +147,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                    });
 
     // Step 2. Get compilation result of the graph
+    platform::RecordEvent record_event_2(
+        "Step 2. Get compilation result of the graph");
     auto target = details::PlaceToCinnTarget(place);
     const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
         compilation_key, inputs_name2tensor, target);
@@ -153,6 +158,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         std::make_unique<details::CinnLaunchContext>(cinn_compiled_object);
 
     // Step 3. Prepare arguments needed for the compiled executable program.
+    platform::RecordEvent record_event_3("Step 3. Prepare arguments.");
     VLOG(4) << "CinnLaunchOp prepare arguments";
 
     // 3.1 Prepare input variables: tensors of input variables have
@@ -207,9 +213,11 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     }
 
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
+    platform::RecordEvent record_event_4("Step 4. Set CINN runtime FLAGS.");
     details::SetCinnRuntimeFlags();
 
     // Step 5. Launch CINN to execute the compiled executable program
+    platform::RecordEvent record_event_5("Step 5. Execute CINN program.");
     details::LaunchCinnExecution(cinn_compiled_object, *launch_context);
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }
