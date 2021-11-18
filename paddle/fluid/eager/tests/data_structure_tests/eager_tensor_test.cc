@@ -33,8 +33,8 @@ TEST(EagerTensor, Constructor) {
   EagerTensor et1 = EagerTensor();
   EagerTensor et2 = EagerTensor("et2");
 
-  PADDLE_ENFORCE_EQ(et1.defined(), false, "et1 should not been defined");
-  PADDLE_ENFORCE_EQ(et2.name(), "et2", "et2's name is wrong");
+  CHECK_EQ(et1.defined(), true);
+  CHECK_EQ(et2.name(), "et2");
 
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
