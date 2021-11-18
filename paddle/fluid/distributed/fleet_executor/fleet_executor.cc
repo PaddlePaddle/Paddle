@@ -79,7 +79,7 @@ void FleetExecutor::InitMessageBus() {
   MessageBus& message_bus_instance = MessageBus::Instance();
   if (!message_bus_instance.IsInit()) {
     message_bus_instance.Init(runtime_graph_->intercepter_id_to_rank(),
-                              rank_to_addr, addr);
+                              rank_to_addr, addr, cur_rank);
   }
 }
 

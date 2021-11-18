@@ -46,7 +46,7 @@ class MessageBus final {
 
   void Init(const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
             const std::unordered_map<int64_t, std::string>& rank_to_addr,
-            const std::string& addr);
+            const std::string& addr, const int cur_rank);
 
   bool IsInit() const;
 
@@ -70,6 +70,9 @@ class MessageBus final {
     !defined(PADDLE_WITH_ASCEND_CL)
   // send the message inter rank (dst is different rank with src)
   bool SendInterRank(const InterceptorMessage& interceptor_message);
+
+  void UpdateAddr(std::string new_addr, int port);
+  void ReceiveANewAddress();
 #endif
 
   // send the message intra rank (dst is the same rank with src)
@@ -86,6 +89,8 @@ class MessageBus final {
 
   // the ip needs to be listened
   std::string addr_;
+
+  int cur_rank_;
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)

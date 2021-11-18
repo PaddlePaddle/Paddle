@@ -12,12 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <chrono>
 #include <memory>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.cc"  //NOLINT
 
 namespace paddle {
 namespace distributed {
@@ -25,13 +33,14 @@ namespace distributed {
 void MessageBus::Init(
     const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
     const std::unordered_map<int64_t, std::string>& rank_to_addr,
-    const std::string& addr) {
+    const std::string& addr, const int cur_rank) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "MessageBus is already init."));
   is_init_ = true;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
+  cur_rank_ = cur_rank;
 
   ListenPort();
 
@@ -99,15 +108,34 @@ void MessageBus::ListenPort() {
                                        brpc::SERVER_DOESNT_OWN_SERVICE),
                     0, platform::errors::Unavailable(
                            "Message bus: init brpc service error."));
-
-  // start the server
-  const char* ip_for_brpc = addr_.c_str();
+  auto addr = paddle::string::Split(addr_, ':');
+  PADDLE_ENFORCE_EQ(
+      addr.size(), 2UL,
+      platform::errors::InvalidArgument(
+          "The endpoint should contain host and port, but got %s.", addr_));
+  std::string ip = addr[0];
+  int port = std::stoi(addr[1]);
   brpc::ServerOptions options;
   options.idle_timeout_sec = -1;
-  PADDLE_ENFORCE_EQ(
-      server_.Start(ip_for_brpc, &options), 0,
-      platform::errors::Unavailable("Message bus: start brpc service error."));
-  VLOG(3) << "Message bus's listen port thread starts successful.";
+  // start the server
+  if (server_.Start(addr_.c_str(), &options) == 0) {
+    VLOG(3) << "Message is going to use ip:port: " << addr_ << ".";
+    // NOTE: this if branch is used for ut, no need for comm the port. For real
+    // scenario, the addr must have been used by gen_comm_id.
+  } else {
+    while (true) {
+      port += 8;  // each time increase the port by 8 (# of gpus)
+      std::string new_addr = ip + ':' + std::to_string(port);
+      if (server_.Start(new_addr.c_str(), &options) == 0) {
+        VLOG(3) << "Message is going to use ip:port: " << new_addr << ".";
+        UpdateAddr(new_addr, port);
+        addr_ = new_addr;
+        break;
+      }
+    }
+  }
+  VLOG(3) << "Message bus's listen port thread starts successful on address: "
+          << addr_ << ".";
 #else
   VLOG(3) << "Fleet executor's ListenPort() is a fake function when Paddle is "
              "compiled with npu or Paddle isn't compiled "
@@ -186,6 +214,83 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
             << ctrl.ErrorText();
     return false;
   }
+}
+
+struct UpdateAddress {
+  int rank = -1;
+  int port = -1;
+};
+
+void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
+  int64_t nranks = rank_to_addr_.size();
+  VLOG(3) << cur_rank_
+          << "' message bus is broadcasting it's new addr: " << new_addr << ".";
+  UpdateAddress update_address;
+  update_address.rank = cur_rank_;
+  update_address.port = port;
+
+  std::vector<int> connects;
+  for (const auto& pair : rank_to_addr_) {
+    // establish socket connects with peers
+    if (pair.first == cur_rank_) {
+      continue;
+    }
+    std::string server = pair.second;
+    VLOG(3) << "Message bus is connecting endpoint: " << server << ".";
+    paddle::platform::CommHead fake_head;
+    int conn = paddle::platform::ConnectAddr(server, fake_head);
+    connects.emplace_back(conn);
+    VLOG(3) << "Connecting finished.";
+  }
+
+  int server = paddle::platform::CreateListenSocket(addr_);
+  VLOG(3) << "Message bus created a socket to listen address: " << addr_ << ".";
+  for (size_t i = 0; i < cur_rank_; ++i) {
+    // update the addresses for ranks before cur rank
+    ReceiveANewAddress();
+  }
+
+  VLOG(3) << "Sending new address to all peers.";
+  for (auto conn : connects) {
+    paddle::platform::CHECK_SYS_CALL(
+        paddle::platform::SocketSend(conn, msg.c_str(), sizeof(UpdateAddress)),
+        "Send new addr.");
+  }
+  VLOG(3) << "Finish sending.";
+
+  for (size_t i = cur_rank_ + 1; i < nranks; ++i) {
+    // update the addresses for ranks behind cur rank
+    ReceiveANewAddress();
+  }
+
+  std::stringstream ss;
+  ss << "\nThe DNS table of the message bus after updating is: \n";
+  for (const auto& pair : rank_to_addr_) {
+    ss << pair.first << "\t->\t" << pair.second << "\n";
+  }
+  VLOG(5) << ss.str();
+}
+
+void MessageBus::ReceiveANewAddress() {
+  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+  paddle::platform::CHECK_SYS_CALL(
+      paddle::platform::SocketRecv(server, &buffer, sizeof(UpdateAddress)),
+      "Receive new addr.");
+  UpdateAddress received;
+  memcpy(&received, buffer, sizeof(UpdateAddress));
+  VLOG(3) << "Update address for rank: " << received.rank
+          << ". The new port for it is: " << received.port << ".";
+  auto iter = rank_to_addr_.find(received.rank);
+  PADDLE_ENFORCE_NE(
+      iter, rank_to_addr_.end,
+      platform::errors::InvalidArgument(
+          "Message bus received an unknown rank: %d.", received.rank));
+  std::string old_ip =
+      paddle::string::Split(rank_to_addr_[received.rank], ':')[0];
+  std::string new_addr = old_ip + ':' + std::to_string(received.port);
+  VLOG(3) << "The new address for rank: " << received.rank << " is " << new_addr
+          << ".";
+  rank_to_addr_[received.rank] = new_addr;
 }
 #endif
 
