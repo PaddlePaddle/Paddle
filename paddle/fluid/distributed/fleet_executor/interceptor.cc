@@ -115,5 +115,27 @@ bool Interceptor::FetchRemoteMailbox() {
   return true;
 }
 
+static InterceptorFactory::CreateInterceptorMap& GetInterceptorMap() {
+  static InterceptorFactory::CreateInterceptorMap interceptorMap;
+  return interceptorMap;
+}
+
+std::unique_ptr<Interceptor> InterceptorFactory::Create(const std::string& type,
+                                                        int64_t id,
+                                                        TaskNode* node) {
+  auto& interceptor_map = GetInterceptorMap();
+  auto iter = interceptor_map.find(type);
+  PADDLE_ENFORCE_NE(
+      iter, interceptor_map.end(),
+      platform::errors::NotFound("interceptor %s is not register", type));
+  return iter->second(id, node);
+}
+
+void InterceptorFactory::Register(
+    const std::string& type, InterceptorFactory::CreateInterceptorFunc func) {
+  auto& interceptor_map = GetInterceptorMap();
+  interceptor_map.emplace(type, func);
+}
+
 }  // namespace distributed
 }  // namespace paddle

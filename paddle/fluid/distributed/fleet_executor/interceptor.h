@@ -98,27 +98,20 @@ class Interceptor {
   std::queue<InterceptorMessage> local_mailbox_;
 };
 
-using CreateInterceptorFunc = std::unique_ptr<Interceptor>(int64_t, TaskNode*);
-using CreateInterceptorMap =
-    std::unordered_map<std::string, CreateInterceptorFunc>;
+class InterceptorFactory {
+ public:
+  using CreateInterceptorFunc = std::unique_ptr<Interceptor> (*)(int64_t,
+                                                                 TaskNode*);
+  using CreateInterceptorMap =
+      std::unordered_map<std::string, CreateInterceptorFunc>;
 
-CreateInterceptorMap& GetCreateInterceptorMap() {
-  static CreateInterceptorMap create_interceptor_map;
-  return create_interceptor_map;
-}
+  static void Register(const std::string& type, CreateInterceptorFunc func);
 
-std::unique_ptr<Interceptor> CreateInterceptor(const std::string& type,
-                                               int64_t id, TaskNode* node) {
-  auto& map = GetCreateInterceptorMap();
-  auto iter = map.find(type);
-  PADDLE_ENFORCE_NE(
-      iter, map.end(),
-      platform::errors::NotFound("interceptor %s is not register", type));
-  return iter->second(id, node);
-}
+  static std::unique_ptr<Interceptor> Create(const std::string& type,
+                                             int64_t id, TaskNode* node);
+};
 
 #define REGISTER_INTERCEPTOR(interceptor_type, interceptor_class)          \
-  namespace {                                                              \
   std::unique_ptr<Interceptor> CreatorInterceptor_##interceptor_type(      \
       int64_t id, TaskNode* node) {                                        \
     return std::make_unique<interceptor_class>(id, node);                  \
@@ -126,17 +119,11 @@ std::unique_ptr<Interceptor> CreateInterceptor(const std::string& type,
   class __RegisterInterceptor_##interceptor_type {                         \
    public:                                                                 \
     __RegisterInterceptor_##interceptor_type() {                           \
-      auto& map = GetCreateInterceptorMap();                               \
-      auto iter = map.find(#interceptor_type);                             \
-      PADDLE_ENFORCE_EQ(                                                   \
-          iter, map.end(),                                                 \
-          platform::errors::AlreadyExists(                                 \
-              "interceptor %s is already registered", #interceptor_type)); \
-      map[#interceptor_type] = &CreatorInterceptor_##interceptor_type;     \
+      InterceptorFactory::Register(#interceptor_type,                      \
+                                   CreatorInterceptor_##interceptor_type); \
     }                                                                      \
   };                                                                       \
-  __RegisterInterceptor_##interceptor_type g_register_##interceptor_type;  \
-  }  // namespace
+  __RegisterInterceptor_##interceptor_type g_register_##interceptor_type;
 
 }  // namespace distributed
 }  // namespace paddle
