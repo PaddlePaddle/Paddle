@@ -282,7 +282,7 @@ class PassAutoScanTest(AutoScanTest):
     def add_skip_pass_case(self):
         return
 
-    def assert_op_size(self, fusion_before_num, fusion_after_num, origin_model):
+    def assert_op_list(self, op_list_after_fusion):
         if not self.passes:
             raise ValueError(
                 "In PassAutoScan you should give a valid pass name.")
@@ -291,20 +291,14 @@ class PassAutoScanTest(AutoScanTest):
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
-        after_op_size = main_block.op_size()
-        pg = paddle.static.deserialize_program(origin_model)
-        main_block = pg.desc.block(0)
-        before_op_size = main_block.op_size()
-        self.assertTrue(
-            before_op_size == fusion_before_num,
-            "before fusion op size is {}, but got {}!".format(
-                before_op_size, fusion_before_num),
-        )
-        self.assertTrue(
-            after_op_size == fusion_after_num,
-            "after fusion op size is {}, but got {}!".format(
-                after_op_size, fusion_after_num),
-        )
+        after_op_list = list()
+        for i in range(main_block.op_size()):
+            if main_block.op(i).type() in ["feed", "fetch"]:
+                continue
+            after_op_list.append(main_block.op(i).type())
+        self.assertTrue(op_list_after_fusion == after_op_list,
+            "Expected operator list after fusion is {}, but now it's {}".format(op_list_after_fusion, after_op_list))
+
 
     def sample_program_config(self, draw):
         """
@@ -413,7 +407,7 @@ class PassAutoScanTest(AutoScanTest):
         self.success_log("RUN_CPU_BASELINE done")
 
         self.num_predictor_kinds = 0
-        for pred_config, nodes_num, (
+        for pred_config, op_list, (
                 atol, rtol) in self.sample_predictor_configs(prog_config):
             self.num_predictor_kinds += 1
             # skip info
@@ -441,7 +435,7 @@ class PassAutoScanTest(AutoScanTest):
                                          pred_config, feed_data))
                 self.assert_tensors_near(atol, rtol, results[-1], results[0])
                 if not skip_flag:
-                    self.assert_op_size(nodes_num[0], nodes_num[1], model)
+                    self.assert_op_list(op_list)
 
             except Exception as e:
                 self.fail_log(
@@ -482,7 +476,7 @@ class PassAutoScanTest(AutoScanTest):
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.cache_dir)
         config.switch_ir_debug()
-        # for assert_op_size.
+        # for assert_op_list.
         self.passes = ["transpose_flatten_concat_fuse_pass"]
         return config
 

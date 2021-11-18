@@ -40,23 +40,23 @@ class TestFcFusePass(PassAutoScanTest):
         before_num_ops = len(program_config.ops) + 2
         config = self.create_inference_config(passes=["fc_fuse_pass"],
                                               use_gpu=False)
-        yield config, (before_num_ops, 3), (1e-5, 1e-5)
+        yield config, ["fc"], (1e-5, 1e-5)
 
         # for gpu
         config = self.create_inference_config(passes=["fc_fuse_pass"],
                                               use_gpu=True)
-        yield config, (before_num_ops, 3), (1e-5, 1e-5)
+        yield config, ["fc"], (1e-5, 1e-5)
 
-    #        # trt static_shape
-    #        config = self.create_trt_inference_config()
-    #        config.enable_tensorrt_engine(
-    #            max_batch_size=8,
-    #            workspace_size=102400,
-    #            min_subgraph_size=0,
-    #            precision_mode=paddle_infer.PrecisionType.Float32,
-    #            use_static=False,
-    #            use_calib_mode=False)
-    #        yield config, (before_num_ops, 3), (1e-5, 1e-5)
+#        # trt static_shape
+#        config = self.create_trt_inference_config()
+#        config.enable_tensorrt_engine(
+#            max_batch_size=8,
+#            workspace_size=102400,
+#            min_subgraph_size=0,
+#            precision_mode=paddle_infer.PrecisionType.Float32,
+#            use_static=False,
+#            use_calib_mode=False)
+#        yield config, ["fc"], (1e-5, 1e-5)
 
     def add_skip_pass_case(self):
         # Here we put some skip rules to avoid known bugs
@@ -100,7 +100,7 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of mul
         x_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=8),
+            st.lists(st.integers(min_value=1, max_value=4),
                      min_size=2,
                      max_size=4))
         # 2. Generate attr:x_num_col_dims/y_num_col_dims of mul

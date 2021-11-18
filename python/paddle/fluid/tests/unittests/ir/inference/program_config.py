@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import Optional, List, Callable, Dict, Any, Set
+import copy
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -71,6 +72,8 @@ class OpConfig:
         self.outputs = outputs
         if attrs is None:
             self.attrs = {}
+        else:
+            self.attrs = copy.deepcopy(attrs)
         self.attrs.update(kwargs)
 
     def __repr__(self):
