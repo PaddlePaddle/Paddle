@@ -148,8 +148,8 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             "section_program"]
         print(real_program)
 
-        real_startup = fluid.default_startup_program()._heter_pipeline_opt[
-            "startup_program"]
+        #real_startup = fluid.default_startup_program()._heter_pipeline_opt[
+        #    "startup_program"]
         exe.run(real_startup)
         fleet.init_worker()
 
@@ -185,7 +185,9 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
     def do_dataset_heter_training(self, fleet):
 
-        fleet.init_heter_worker()
+        exe = fluid.Executor()
+        exe.run(fluid.default_startup_program())
+        fleet.init_worker()
         real_program = fluid.default_main_program()._heter_pipeline_opt[
             "section_program"]
         print(real_program)
@@ -194,7 +196,12 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         batch_size = 128
 
         pass_start = time.time()
-        fleet.run_heter_worker(dataset=None)
+        exe.train_from_dataset(
+            program=fluid.default_main_program(),
+            fetch_list=[self.avg_cost],
+            fetch_info=["cost"],
+            print_period=2,
+            debug=int(os.getenv("Debug", "0")))
         pass_time = time.time() - pass_start
         print("do_dataset_heter_training done. using time {}".format(pass_time))
 

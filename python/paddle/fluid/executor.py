@@ -1300,6 +1300,24 @@ class Executor(object):
         if isinstance(program, Program) and program._heter_pipeline_opt:
             if "startup_program" in program._heter_pipeline_opt:
                 program = program._heter_pipeline_opt["startup_program"]
+            stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            if stage_id != 0:
+                ## change default executor
+                heter_device_type = os.getenv("HETER_DEVICE_TYPE",
+                                              "cpu").lower()
+                if not heter_device_type in ("cpu", "gpu"):
+                    raise RuntimeError(
+                        "HETER_DEVICE_TYPE should be cpu or gpu in heter pipeline mode"
+                    )
+                heter_place = "cpu"
+                ## now only support gpu
+                if heter_device_type == "gpu":
+                    heter_device_id = os.getenv("FLAGS_selected_gpus", "0")
+                    heter_place = ":".join((heter_device_type, heter_device_id))
+                heter_place = framework._get_paddle_place(heter_place)
+                p = core.Place()
+                p.set_place(heter_place)
+                self._default_executor = core.Executor(p)
             # TODO(zhangminxu): support heterps pipeline training using exe.run
 
         if isinstance(program, Program) and \
@@ -1699,8 +1717,10 @@ class Executor(object):
                 ## set executor for heter trainer
                 heter_device_type = os.getenv("HETER_DEVICE_TYPE",
                                               "cpu").lower()
-                assert heter_device_type in (
-                    "cpu", "gpu"), "HETER_DEVICE_TYPE should be cpu,gpu or xpu"
+                if not heter_device_type in ("cpu", "gpu"):
+                    raise RuntimeError(
+                        "HETER_DEVICE_TYPE should be cpu or gpu in heter pipeline mode"
+                    )
                 heter_place = "cpu"
                 ## now only support gpu
                 if heter_device_type == "gpu":
@@ -1710,7 +1730,6 @@ class Executor(object):
                 p = core.Place()
                 p.set_place(heter_place)
                 self._default_executor = core.Executor(p)
-
             else:
                 if dataset is None:
                     raise RuntimeError(
