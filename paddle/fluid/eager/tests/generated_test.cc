@@ -27,8 +27,6 @@
 
 #include "paddle/fluid/eager/generated/dygraph_forward_api.h"
 
-#include "gperftools/profiler.h"
-
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
