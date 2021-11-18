@@ -107,15 +107,16 @@ void testFeatureNodeSerializeFloat64() {
 
 void testSingleSampleNeighboor(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
-  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
+  std::vector<std::vector<uint64_t>> vs;
+  std::vector<std::vector<float>> vs1;
   auto pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 37), 4, vs);
+      0, std::vector<uint64_t>(1, 37), 4, vs, vs1, true);
   pull_status.wait();
 
   std::unordered_set<uint64_t> s;
   std::unordered_set<uint64_t> s1 = {112, 45, 145};
   for (auto g : vs[0]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
@@ -124,19 +125,21 @@ void testSingleSampleNeighboor(
   s.clear();
   s1.clear();
   vs.clear();
+  vs1.clear();
   pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 96), 4, vs);
+      0, std::vector<uint64_t>(1, 96), 4, vs, vs1, true);
   pull_status.wait();
   s1 = {111, 48, 247};
   for (auto g : vs[0]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
     ASSERT_EQ(true, s1.find(g) != s1.end());
   }
   vs.clear();
-  pull_status = worker_ptr_->batch_sample_neighbors(0, {96, 37}, 4, vs, 0);
+  pull_status =
+      worker_ptr_->batch_sample_neighbors(0, {96, 37}, 4, vs, vs1, true, 0);
   pull_status.wait();
   ASSERT_EQ(vs.size(), 2);
 }
@@ -194,14 +197,16 @@ void testAddNode(
 }
 void testBatchSampleNeighboor(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
-  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
+  std::vector<std::vector<uint64_t>> vs;
+  std::vector<std::vector<float>> vs1;
   std::vector<std::uint64_t> v = {37, 96};
-  auto pull_status = worker_ptr_->batch_sample_neighbors(0, v, 4, vs);
+  auto pull_status =
+      worker_ptr_->batch_sample_neighbors(0, v, 4, vs, vs1, false);
   pull_status.wait();
   std::unordered_set<uint64_t> s;
   std::unordered_set<uint64_t> s1 = {112, 45, 145};
   for (auto g : vs[0]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
@@ -211,7 +216,7 @@ void testBatchSampleNeighboor(
   s1.clear();
   s1 = {111, 48, 247};
   for (auto g : vs[1]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
@@ -221,10 +226,6 @@ void testBatchSampleNeighboor(
 
 void testCache();
 void testGraphToBuffer();
-// std::string nodes[] = {std::string("37\taa\t45;0.34\t145;0.31\t112;0.21"),
-//                        std::string("96\tfeature\t48;1.4\t247;0.31\t111;1.21"),
-//                        std::string("59\ttreat\t45;0.34\t145;0.31\t112;0.21"),
-//                        std::string("97\tfood\t48;1.4\t247;0.31\t111;1.21")};
 
 std::string edges[] = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
@@ -427,15 +428,16 @@ void RunBrpcPushSparse() {
       worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
   srand(time(0));
   pull_status.wait();
-  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
+  std::vector<std::vector<uint64_t>> _vs;
+  std::vector<std::vector<float>> vs;
   testSampleNodes(worker_ptr_);
   sleep(5);
   testSingleSampleNeighboor(worker_ptr_);
   testBatchSampleNeighboor(worker_ptr_);
   pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 10240001024), 4, vs);
+      0, std::vector<uint64_t>(1, 10240001024), 4, _vs, vs, true);
   pull_status.wait();
-  ASSERT_EQ(0, vs[0].size());
+  ASSERT_EQ(0, _vs[0].size());
   paddle::distributed::GraphTable* g =
       (paddle::distributed::GraphTable*)pserver_ptr_->table(0);
   size_t ttl = 6;
@@ -444,18 +446,19 @@ void RunBrpcPushSparse() {
   while (round--) {
     vs.clear();
     pull_status = worker_ptr_->batch_sample_neighbors(
-        0, std::vector<uint64_t>(1, 37), 1, vs);
+        0, std::vector<uint64_t>(1, 37), 1, _vs, vs, false);
     pull_status.wait();
 
     for (int i = 0; i < ttl; i++) {
-      std::vector<std::vector<std::pair<uint64_t, float>>> vs1;
+      std::vector<std::vector<uint64_t>> vs1;
+      std::vector<std::vector<float>> vs2;
       pull_status = worker_ptr_->batch_sample_neighbors(
-          0, std::vector<uint64_t>(1, 37), 1, vs1);
+          0, std::vector<uint64_t>(1, 37), 1, vs1, vs2, false);
       pull_status.wait();
-      ASSERT_EQ(vs[0].size(), vs1[0].size());
+      ASSERT_EQ(_vs[0].size(), vs1[0].size());
 
-      for (int j = 0; j < vs[0].size(); j++) {
-        ASSERT_EQ(vs[0][j].first, vs1[0][j].first);
+      for (int j = 0; j < _vs[0].size(); j++) {
+        ASSERT_EQ(_vs[0][j], vs1[0][j]);
       }
     }
   }
@@ -639,7 +642,7 @@ void testCache() {
   strcpy(str, "54321");
   ::paddle::distributed::SampleResult* result =
       new ::paddle::distributed::SampleResult(5, str);
-  ::paddle::distributed::SampleKey skey = {6, 1};
+  ::paddle::distributed::SampleKey skey = {6, 1, false};
   std::vector<std::pair<::paddle::distributed::SampleKey,
                         paddle::distributed::SampleResult>>
       r;
