@@ -33,7 +33,7 @@ TEST(EagerTensor, Constructor) {
   EagerTensor et1 = EagerTensor();
   EagerTensor et2 = EagerTensor("et2");
 
-  CHECK_EQ(et1.defined(), true);
+  CHECK_EQ(et1.defined(), false);
   CHECK_EQ(et2.name(), "et2");
 
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
