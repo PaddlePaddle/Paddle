@@ -193,7 +193,6 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
-      count++;
       auto values = paddle::string::split_string<std::string>(line, "\t");
       if (values.size() < 2) continue;
       auto id = std::stoull(values[1]);
@@ -207,7 +206,9 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 
       if (count % 1000000 == 0) {
         VLOG(0) << count << " nodes are loaded from filepath";
+        VLOG(0) << line;
       }
+      count++;
 
       std::string nt = values[0];
       if (nt != node_type) {
@@ -273,6 +274,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       }
       if (count % 1000000 == 0) {
         VLOG(0) << count << " edges are loaded from filepath";
+        VLOG(0) << line;
       }
 
       size_t index = src_shard_id - shard_start;
