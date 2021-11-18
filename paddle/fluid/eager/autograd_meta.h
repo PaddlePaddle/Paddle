@@ -101,19 +101,14 @@ class AutogradMeta : public AbstractAutogradMeta {
     return std::make_pair(out_slot_id_, out_rank_);
   }
 
-  bool IsInitialized() { return !grad_node_.get(); }
+  bool IsInitialized() { return grad_node_.get(); }
 
   bool StopGradient() const { return stop_gradient_ != 0; }
 
   int NumericStopGradient() const { return stop_gradient_; }
 
   void SetStopGradient(bool stop_gradient) {
-    if (stop_gradient_ == -1) {
-      stop_gradient_ = static_cast<int>(stop_gradient);
-    } else {
-      VLOG(0) << "Ignore Stop gradient conversion for Var: "
-              << "Set value is: " << stop_gradient_;
-    }
+    stop_gradient_ = static_cast<int>(stop_gradient);
   }
 
   bool Persistable() const { return persistable_; }

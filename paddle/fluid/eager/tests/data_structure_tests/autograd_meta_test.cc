@@ -20,10 +20,78 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 
+namespace eager_test {
+class GradTestNode : public egr::GradNodeBase {
+ public:
+  ~GradTestNode() override = default;
+  explicit GradTestNode(float val) : val_(val) {}
+  std::vector<std::vector<egr::EagerTensor>> operator()(
+      const std::vector<std::vector<egr::EagerTensor>>& grads) override {
+    val_ = std::dynamic_pointer_cast<pten::DenseTensor>(grads[0][0].impl())
+               ->data<float>()[0];
+    auto res = std::vector<std::vector<egr::EagerTensor>>();
+    return res;
+  }
+  float val_;
+};
+}  // namespace eager_test
+
 TEST(AutogradMeta, Constructor) {
   egr::EagerTensor et1;
   auto auto_grad = std::make_shared<egr::AutogradMeta>();
   et1.set_autograd_meta(auto_grad);
   auto* tmp_auto = static_cast<egr::AutogradMeta*>(et1.get_autograd_meta());
-  CHECK(tmp_auto);
+  CHECK_EQ(tmp_auto->OutRankInfo().first, size_t(0));
+  CHECK_EQ(tmp_auto->OutRankInfo().second, size_t(0));
+  CHECK(tmp_auto->IsInitialized() == false);
+}
+
+TEST(AutogradMeta, MemberFunction) {
+  egr::EagerTensor et1;
+  auto auto_grad = std::make_shared<egr::AutogradMeta>();
+  et1.set_autograd_meta(auto_grad);
+  auto* tmp_auto = static_cast<egr::AutogradMeta*>(et1.get_autograd_meta());
+  VLOG(6) << "Test Grad";
+  CHECK(tmp_auto->Grad().defined() == false);
+  auto* grad_t = tmp_auto->MutableGrad();
+  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
+      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace()),
+      meta);
+  auto* dt_ptr = dt->mutable_data<float>();
+  dt_ptr[0] = 5.0f;
+  dt_ptr[1] = 10.0f;
+  grad_t->set_impl(dt);
+  VLOG(6) << "Test Mutable Grad";
+  auto impl_ptr =
+      std::dynamic_pointer_cast<pten::DenseTensor>(tmp_auto->Grad().impl());
+  CHECK_EQ(impl_ptr->data<float>()[0], 5.0f);
+  CHECK_EQ(impl_ptr->data<float>()[1], 10.0f);
+  VLOG(6) << "Test IsInitialized";
+  CHECK(tmp_auto->IsInitialized() == false);
+  VLOG(6) << "Test GradNodeSetter Getter";
+  auto grad_node = std::make_shared<eager_test::GradTestNode>(0);
+  tmp_auto->SetGradNode(grad_node);
+  CHECK(tmp_auto->IsInitialized() == true);
+  auto tmp_grad_node = tmp_auto->GetMutableGradNode();
+  std::dynamic_pointer_cast<eager_test::GradTestNode>(tmp_grad_node)->val_ =
+      5.0;
+  CHECK_EQ(dynamic_cast<eager_test::GradTestNode*>(tmp_auto->GradNode())->val_,
+           5.0);
+  VLOG(6) << "Test rank Setter Getter";
+  CHECK_EQ(tmp_auto->OutRankInfo().first, size_t(0));
+  CHECK_EQ(tmp_auto->OutRankInfo().second, size_t(0));
+  tmp_auto->SetSingleOutRankWithSlot(2, 3);
+  CHECK_EQ(tmp_auto->OutRankInfo().first, size_t(2));
+  CHECK_EQ(tmp_auto->OutRankInfo().second, size_t(3));
+  VLOG(6) << "Test stop gradient Setter Getter";
+  CHECK_EQ(tmp_auto->NumericStopGradient(), -1);
+  tmp_auto->SetStopGradient(true);
+  CHECK(tmp_auto->StopGradient() == true);
+  VLOG(6) << "Test Persistable Setter Getter";
+  CHECK(tmp_auto->Persistable() == false);
+  tmp_auto->SetPersistable(true);
+  CHECK(tmp_auto->Persistable() == true);
 }
