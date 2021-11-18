@@ -728,9 +728,6 @@ def get_device_mode(backend):
 
 
 def get_device_proc_info(args):
-    if args.enable_auto_mapping:
-        return (DeviceMode.GPU, [])
-
     # device_mode
     device_mode = get_device_mode(args.backend)
 
