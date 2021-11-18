@@ -46,7 +46,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
@@ -62,6 +62,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/npu_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
+
+// This aias is required for now so that namespace name changes can be made to
+// less than 20 files at a time. After all the names are changed it will be
+// removed.
+namespace mkldnn = dnnl;
 
 namespace Eigen {
 struct DefaultDevice;
@@ -706,8 +711,8 @@ class MKLDNNDeviceContextThreadLocals {
     // know for converting MKL-DNN Tensor to non MKL-DNN
     paddle::framework::DataLayout cur_paddle_data_layout;
     // MKL-DNN stream used for execution of primitives (per-thread)
-    mkldnn::engine cur_engine;
-    mkldnn::stream cur_stream;
+    dnnl::engine cur_engine;
+    dnnl::stream cur_stream;
     std::string key_suffix;  // Key identifying current Executor
     bool key_attach_thread_id = true;
     void* exec_ptr_ = nullptr;
@@ -721,8 +726,8 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
-    const mkldnn::engine& get_engine(void);
-    mkldnn::stream& get_stream(void);
+    const dnnl::engine& get_engine(void);
+    dnnl::stream& get_stream(void);
     void set_key_suffix(const std::string& suffix) { key_suffix = suffix; }
     const std::string& get_key_suffix(void) const { return key_suffix; }
     void disable_tid_in_key(void) { key_attach_thread_id = false; }
@@ -776,7 +781,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
-  const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
+  const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
   // Register object to currently used executor's map
   void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;

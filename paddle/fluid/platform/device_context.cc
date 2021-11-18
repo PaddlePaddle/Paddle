@@ -589,7 +589,7 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 MKLDNNDeviceContextThreadLocals::Body::Body()
-    : cur_engine(mkldnn::engine::kind::cpu, 0), cur_stream(cur_engine) {
+    : cur_engine(dnnl::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
@@ -647,11 +647,11 @@ void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
   }
 }
 
-const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
+const dnnl::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
   return cur_engine;
 }
 
-mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
+dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 
