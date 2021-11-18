@@ -77,7 +77,7 @@ bool check_numpy_available() {
   return ret;
 }
 
-extern PyTypeObject* pEagerTensorType;
+extern PyTypeObject* p_eager_tensor_type;
 
 static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
                                               PyObject* kwargs) {
@@ -190,9 +190,9 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   std::shared_ptr<pten::DenseTensor> densetensor(
       new pten::DenseTensor(std::move(shared_storage), std::move(meta)));
 
-  PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
+  PyObject* obj = p_eager_tensor_type->tp_alloc(p_eager_tensor_type, 0);
   if (obj) {
-    auto v = (EagerTensorObject*)obj;  // NOLINT
+    auto v = reinterpret_cast<EagerTensorObject*>(obj);
     new (&(v->eagertensor)) egr::EagerTensor();
     v->eagertensor.set_impl(densetensor);
     v->eagertensor.set_name(egr::Controller::Instance().GenerateUniqueName());

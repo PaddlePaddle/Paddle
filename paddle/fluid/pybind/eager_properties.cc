@@ -46,7 +46,7 @@ int init_numpy_p() {
 }
 static const int numpy_initialized_m = init_numpy_p();
 
-extern PyTypeObject* pEagerTensorType;
+extern PyTypeObject* p_eager_tensor_type;
 
 PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
                                            void* closure) {
