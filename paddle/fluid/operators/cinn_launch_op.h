@@ -21,6 +21,7 @@
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/scope.h"
 #include "cinn/runtime/cinn_runtime.h"
+#include "cinn/runtime/flags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -29,9 +30,9 @@
 namespace paddle {
 namespace operators {
 
-static constexpr char kX[] = "X";
-static constexpr char kOutputs[] = "Out";
-static constexpr char kCompilationKey[] = "compilation_key";
+constexpr char kX[] = "X";
+constexpr char kOutputs[] = "Out";
+constexpr char kCompilationKey[] = "compilation_key";
 
 using LoDTensor = framework::LoDTensor;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
@@ -110,6 +111,9 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result);
 // Launch cinn to execute compiled executable program and wait done
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
                          const CinnLaunchContext& context);
+
+// Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
+void SetCinnRuntimeFlags();
 }  // namespace details
 
 template <typename DeviceContext, typename T>
@@ -202,7 +206,10 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       launch_context->AssignInternalVariable(var_name, tensor);
     }
 
-    // Step 4. Launch CINN to execute the compiled executable program
+    // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
+    details::SetCinnRuntimeFlags();
+
+    // Step 5. Launch CINN to execute the compiled executable program
     details::LaunchCinnExecution(cinn_compiled_object, *launch_context);
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }

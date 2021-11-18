@@ -76,11 +76,11 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
-  int64_t numel() const;
+  int64_t numel() const override;
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept { return meta_.dims; }
+  const DDim& dims() const noexcept override { return meta_.dims; }
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
@@ -88,56 +88,51 @@ class DenseTensor : public TensorBase,
     return meta_.lod;
   }
 
-  /// \brief Set the lod of the tensor.
-  void set_lod(const std::vector<std::vector<size_t>>& lod) { meta_.lod = lod; }
-
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType data_type() const noexcept { return meta_.type; }
+  DataType dtype() const noexcept override { return meta_.type; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept { return meta_.layout; }
+  DataLayout layout() const noexcept override { return meta_.layout; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
-  const Place& place() const { return storage_->place(); }
+  const Place& place() const override { return storage_->place(); }
 
   /// \brief Returns the meta information of the tensor.
   /// \return The meta information of the tensor.
   const DenseTensorMeta& meta() const noexcept { return meta_; }
 
+  /// \brief Sets the meta information of the tensor. Only when the original
+  /// attribute of Tensor is incomplete, can it be reset.
+  /// \param meta The meta information of the tensor.
+  void set_meta(DenseTensorMeta&& meta);
+
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
-  bool valid() const noexcept { return meta_.valid(); }
+  bool valid() const noexcept override { return meta_.valid(); }
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
-  bool initialized() const { return storage_->data(); }
+  bool initialized() const override {
+    return storage_ != nullptr && storage_->data() != nullptr;
+  }
 
   /// \brief Check if storage is shared with other objects.
   /// \return Whether the storage is shared with other objects.
   bool IsSharedWith(const DenseTensor& b) const;
 
-  /// \brief Change the dims information in the metadata. If the new size is
-  /// inconsistent with the original value, the storage area will be released
-  /// to avoid wrong access.
+  /// \brief Change the shape information in the metadata. If the new size is
+  /// larger than the original value, the storage area will be reallocated.
   /// \param dims The new dims of the dense tensor.
-  void Resize(const DDim& dims);
-
-  /// \brief Change the dims information in the metadata.
-  /// \param dims The new dims of the dense tensor. The product of the dims
-  /// elements must be consistent with the original value.
-  void set_dims(const DDim& dims);
+  /// \param lod The new lod of the dense tensor.
+  void Resize(const DDim& dims, const LoD& lod = {});
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.
-  size_t memory_size() const { return storage_->size(); }
-
-  /// \brief Check that the storage area is large enough to hold the data of the
-  /// metadata size, and throw an exception if the conditions are not met.
-  void check_memory_size() const;
+  size_t capacity() const { return storage_->size(); }
 
   /// \brief Release the storage area for other purposes. Because of the
   /// destruction of encapsulation, we do not support two dense tensors directly
@@ -171,12 +166,6 @@ class DenseTensor : public TensorBase,
   /// \brief Get the const data pointer value of raw type.
   /// \return The const data pointer value of raw type.
   const void* data() const;
-
-  /// \brief Get the shallow clone of current tensor.
-  /// \return The shallow clone of current tensor.
-  DenseTensor shallow_clone() const {
-    return DenseTensor(copy_intrusive(storage_), meta_);
-  }
 
  private:
   friend class CompatibleDenseTensorUtils;
