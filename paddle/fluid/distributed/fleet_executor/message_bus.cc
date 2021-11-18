@@ -17,6 +17,7 @@
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace distributed {
