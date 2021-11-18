@@ -344,7 +344,6 @@ elseif(WITH_PSLIB)
   ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-  index_sampler index_wrapper sampler index_dataset_proto
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor fleet_executor ${BRPC_DEP})
 else()
@@ -355,7 +354,6 @@ else()
   ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-  index_sampler index_wrapper sampler index_dataset_proto
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor fleet_executor)
 endif()
