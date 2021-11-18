@@ -275,7 +275,7 @@ void MessageBus::ReceiveANewAddress(int server) {
   char buffer[MAX_COMMUNIQUEID_LEN] = {0};
 
   CHECK_SYS_CALL(
-      paddle::platform::SocketRecv(server, &buffer, sizeof(UpdateAddress)),
+      paddle::platform::SocketRecv(server, buffer, sizeof(UpdateAddress)),
       "Receive new addr.");
   UpdateAddress received;
   memcpy(&received, buffer, sizeof(UpdateAddress));

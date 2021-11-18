@@ -46,7 +46,7 @@ class MessageBus final {
 
   void Init(const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
             const std::unordered_map<int64_t, std::string>& rank_to_addr,
-            const std::string& addr, const int cur_rank);
+            const std::string& addr, int cur_rank);
 
   bool IsInit() const;
 
