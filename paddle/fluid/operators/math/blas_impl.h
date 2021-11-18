@@ -1020,8 +1020,34 @@ void Blas<platform::CPUDeviceContext>::VSUB(int n, const T *x, const T *y,
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::VSUB(int n, const T *x, const T *y, T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSUB(n, x, y, z);
+#else
+  // try to find if openblas support vsub
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
                                             T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VMUL(n, x, y, z);
+#else
+  // try to find if openblas support vmul
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VMUL(int n, const T *x, const T *y, T *z) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VMUL(n, x, y, z);
 #else
@@ -1048,7 +1074,33 @@ void Blas<platform::CPUDeviceContext>::VDIV(int n, const T *x, const T *y,
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::VDIV(int n, const T *x, const T *y, T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VDIV(n, x, y, z);
+#else
+  // try to find if openblas support vdiv
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] / y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::VEXP(int n, const T *x, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VEXP(n, x, y);
+#else
+  // try to find if openblas support vexp
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VEXP(int n, const T *x, T *y) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VEXP(n, x, y);
 #else
@@ -1073,6 +1125,18 @@ void Blas<platform::CPUDeviceContext>::VSQUARE(int n, const T *x, T *y) const {
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::VSQUARE(int n, const T *x, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSQUARE(n, x, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] * x[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::VPOW(int n, const T *x, T a,
                                             T *y) const {
 #ifdef PADDLE_WITH_MKLML
@@ -1086,7 +1150,34 @@ void Blas<platform::CPUDeviceContext>::VPOW(int n, const T *x, T a,
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::VPOW(int n, const T *x, T a, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VPOW(n, x, a, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::pow(x[i], a);
+  }
+#endif
+}
+
+template <>
+template <typename T>
 T Blas<platform::CPUDeviceContext>::DOT(int n, const T *x, const T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  return CBlas<T>::DOT(n, x, 1, y, 1);
+#else
+  // try to find if openblas support cblas_dot
+  T sum = 0;
+  for (int i = 0; i < n; ++i) {
+    sum += x[i] * y[i];
+  }
+  return sum;
+#endif
+}
+
+template <>
+template <typename T>
+T Blas<pten::CPUContext>::DOT(int n, const T *x, const T *y) const {
 #ifdef PADDLE_WITH_MKLML
   return CBlas<T>::DOT(n, x, 1, y, 1);
 #else
@@ -1114,7 +1205,35 @@ void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
 
 template <>
 template <typename T>
+void Blas<pten::CPUContext>::SCAL(int n, const T a, T *x) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::SCAL(n, a, x, 1);
+#else
+  // try to find if openblas support cblas_scal
+  for (int i = 0; i < n; ++i) {
+    x[i] = a * x[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
 T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
+  auto sum = static_cast<T>(0.0);
+#ifdef PADDLE_WITH_MKLML
+  sum = CBlas<T>::ASUM(n, x, inc);
+#else
+  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
+  for (int c = 0; c < n; ++c) {
+    sum += x[c];
+  }
+#endif
+  return sum;
+}
+
+template <>
+template <typename T>
+T Blas<pten::CPUContext>::ASUM(int n, T *x, int inc) const {
   auto sum = static_cast<T>(0.0);
 #ifdef PADDLE_WITH_MKLML
   sum = CBlas<T>::ASUM(n, x, inc);

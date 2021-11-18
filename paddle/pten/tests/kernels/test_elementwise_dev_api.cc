@@ -101,16 +101,13 @@ TEST(DEV_API, subtract) {
     dense_y_data[i] = i * 2.0;
   }
   int axis = 1;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  paddle::experimental::DeviceContextPool& pool =
+      paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
   auto dense_out = pten::Subtract<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dense_y,
-      axis);
+      *(static_cast<pten::CPUContext*>(dev_ctx)), dense_x, dense_y, axis);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);

@@ -56,7 +56,10 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
     auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
-    pten::ElementwiseSub<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+    auto* pten_dev_ctx = reinterpret_cast<
+        typename framework::ConvertContextType<DeviceContext>::TYPE*>(
+        framework::ConvertContext(dev_ctx));
+    pten::ElementwiseSub<T>(*pten_dev_ctx, *pt_x.get(), *pt_y.get(), axis,
                             pt_z.get());
   }
 };
