@@ -229,20 +229,6 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
   update_address.rank = cur_rank_;
   update_address.port = port;
 
-  std::vector<int> connects;
-  for (const auto& pair : rank_to_addr_) {
-    // establish socket connects with peers
-    if (pair.first == cur_rank_) {
-      continue;
-    }
-    std::string server = pair.second;
-    VLOG(3) << "Message bus is connecting endpoint: " << server << ".";
-    paddle::platform::CommHead fake_head;
-    int conn = paddle::platform::ConnectAddr(server, fake_head);
-    connects.emplace_back(conn);
-    VLOG(3) << "Connecting finished.";
-  }
-
   int server = paddle::platform::CreateListenSocket(addr_);
   VLOG(3) << "Message bus created a socket to listen address: " << addr_ << ".";
   for (size_t i = 0; i < cur_rank_; ++i) {
@@ -251,10 +237,20 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
   }
 
   VLOG(3) << "Sending new address to all peers.";
-  for (auto conn : connects) {
+  for (const auto& pair : rank_to_addr_) {
+    // establish socket connects with peers
+    if (pair.first == cur_rank_) {
+      continue;
+    }
+    std::string ep = pair.second;
+    VLOG(3) << "Message bus is connecting endpoint: " << ep << ".";
+    paddle::platform::CommHead fake_head;
+    int conn = paddle::platform::ConnectAddr(ep, fake_head);
+    VLOG(3) << "Connecting finished.";
     paddle::platform::CHECK_SYS_CALL(
         paddle::platform::SocketSend(conn, msg.c_str(), sizeof(UpdateAddress)),
         "Send new addr.");
+    paddle::platform::CloseSocket(conn);
   }
   VLOG(3) << "Finish sending.";
 
