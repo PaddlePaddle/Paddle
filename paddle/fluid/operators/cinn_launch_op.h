@@ -67,6 +67,10 @@ class CinnLaunchContext {
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
 
+  std::vector<std::unique_ptr<cinn_buffer_t>>* hold_buffers() const {
+    return hold_buffers_;
+  }
+
  private:
   // Get CinnTensor with CINN variable name
   CinnTensor GetCinnTensor(const std::string& var_name);
@@ -96,7 +100,7 @@ class CinnLaunchContext {
   // because a cinn_pod_value_t does not own the cinn_buffer_t object,
   // an extra stroage is necessary to keep the object and it can
   // not be released until runtime program finish  execution.
-  std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers_;
+  std::vector<std::unique_ptr<cinn_buffer_t>>* hold_buffers_;
 
   // name to execution argument
   std::map<std::string, cinn_pod_value_t> name2argument_;
@@ -199,7 +203,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     //     names, because they will not be used outside the graph
     //     and should be destructed after computation finished.
     auto internal_variable_names = launch_context->GetInternalVariableNames();
-    auto temp_scope = scope.NewTmpScope();
+    framework::Scope* temp_scope = scope.NewTmpScope().release();
     for (const auto& var_name : internal_variable_names) {
       auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
       launch_context->MutableTensorData(var_name, place, tensor, true);
@@ -212,6 +216,22 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 5. Launch CINN to execute the compiled executable program
     details::LaunchCinnExecution(cinn_compiled_object, *launch_context);
     VLOG(4) << "CinnLaunchOp launch execution done.";
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaLaunchHostFunc(nullptr, ReleaseScope, temp_scope));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
+        nullptr, ReleaseBuffers, launch_context->hold_buffers()));
+  }
+
+ private:
+  static void CUDART_CB ReleaseScope(void* data) {
+    auto* temp_scope = reinterpret_cast<framework::Scope*>(data);
+    delete temp_scope;
+  }
+
+  static void CUDART_CB ReleaseBuffers(void* data) {
+    auto* buffers =
+        reinterpret_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(data);
+    delete buffers;
   }
 };
 

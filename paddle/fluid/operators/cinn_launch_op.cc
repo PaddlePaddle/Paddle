@@ -78,6 +78,7 @@ void SetCinnRuntimeFlags() {
 CinnLaunchContext::CinnLaunchContext(const CinnCompiledObject& compiled_obj)
     : paddle2cinn_varmap_(compiled_obj.paddle2cinn_varmap),
       cinn_scope_(compiled_obj.scope) {
+  hold_buffers_ = new std::vector<std::unique_ptr<cinn_buffer_t>>;
   auto var_names = cinn_scope_->var_names();
   cinn_variable_names_.reserve(var_names.size());
   std::transform(
@@ -183,7 +184,7 @@ void CinnLaunchContext::SetArgument(const std::string& cinn_name,
                                     LoDTensor* paddle_tensor) {
   auto buffer = ShareTensorWithCinnBuffer(paddle_tensor);
   name2argument_.emplace(cinn_name, buffer.get());
-  hold_buffers_.emplace_back(std::move(buffer));
+  hold_buffers_->emplace_back(std::move(buffer));
   VLOG(4) << "SetArgument-" << name2argument_.size() << ": "
           << "name(" << cinn_name << "), "
           << "type(" << framework::DataTypeToString(paddle_tensor->type())
