@@ -112,13 +112,13 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "instead. "
                   "reason: `reshape` means changing the tensor shape without "
                   "touching underlying data, this requires the total size of "
-                  "the tensor to remains constant.";
+                  "the tensor to remain constant.";
   if (detail::IsDenseTensor(impl_)) {
     std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->Resize(
         framework::make_ddim(shape));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Only supported reshape operation on DenseTensor now."));
+        "Only support reshape operation on DenseTensor now."));
   }
 }
 
@@ -259,7 +259,7 @@ Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
             end_idx))));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Only supported slice operation on DenseTensor now."));
+        "Only support slice operation on DenseTensor now."));
   }
 }
 
