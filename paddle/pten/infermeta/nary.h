@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/tensor_meta.h"
 namespace pten {
 
 // Common InferShape Functions for 0-nary operators(no input tensor), The format

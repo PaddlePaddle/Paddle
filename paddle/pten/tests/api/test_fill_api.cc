@@ -177,16 +177,20 @@ TEST(API, full_new) {
 
   paddle::experimental::Tensor shape_scalar1(dense_scalar);
   paddle::experimental::Tensor shape_scalar2(dense_scalar);
-  std::vector<paddle::experimental::Tensor> list_shape {shape_scalar1, shape_scalar2};
+  std::vector<paddle::experimental::Tensor> list_shape{shape_scalar1,
+                                                       shape_scalar2};
 
   std::vector<int64_t> vector_shape{2, 2};
 
   float val = 1.0;
 
   // 2. test API
-  auto out1 = paddle::experimental::full_new(tensor_shape, val, pten::DataType::FLOAT32);
-  auto out2 = paddle::experimental::full_new(list_shape, val, pten::DataType::FLOAT32);
-  auto out3 = paddle::experimental::full_new(vector_shape, val, pten::DataType::INT32);
+  auto out1 = paddle::experimental::full_new(
+      tensor_shape, val, pten::DataType::FLOAT32);
+  auto out2 =
+      paddle::experimental::full_new(list_shape, val, pten::DataType::FLOAT32);
+  auto out3 =
+      paddle::experimental::full_new(vector_shape, val, pten::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out1.shape().size(), 2UL);

@@ -117,9 +117,7 @@ class ScalarArrayList {
     return paddle::framework::make_ddim(array_);
   }
 
-  const std::vector<int64_t>& GetData() const {
-    return array_;
-  }
+  const std::vector<int64_t>& GetData() const { return array_; }
 
  private:
   /// \brief Assign the data_ from const data pointer value of type T.
@@ -149,5 +147,4 @@ using ScalarArray =
 namespace pten {
 
 using ScalarArray = paddle::experimental::ScalarArrayList<pten::DenseTensor>;
-
 }

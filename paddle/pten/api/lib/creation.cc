@@ -63,10 +63,10 @@ PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
 }
 
 PD_DLL_DECL Tensor full_new(const ScalarArray& shape,
-                        const Scalar& value,
-                        DataType dtype,
-                        Backend backend,
-                        DataLayout layout) {
+                            const Scalar& value,
+                            DataType dtype,
+                            Backend backend,
+                            DataLayout layout) {
   // 1. Get kernel signature and kernel
   pten::KernelKey kernel_key{backend, layout, dtype};
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
