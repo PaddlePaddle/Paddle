@@ -112,14 +112,11 @@ TEST(dense_tensor, resize) {
   auto alloc = std::make_shared<FancyAllocator>();
   DenseTensor tensor_0(alloc, meta);
 
-  CHECK_EQ(tensor_0.memory_size(), 2u);
-  tensor_0.check_memory_size();
+  CHECK_EQ(tensor_0.capacity(), 2u);
   tensor_0.Resize({1, 2, 3});
-  CHECK_EQ(tensor_0.memory_size(), 0u);
-  tensor_0.set_dims({2, 3});
-  CHECK_EQ(tensor_0.memory_size(), 0u);
+  CHECK_EQ(tensor_0.capacity(), 6u);
   tensor_0.mutable_data<int8_t>();
-  CHECK_EQ(tensor_0.memory_size(), 6u);
+  CHECK_EQ(tensor_0.capacity(), 6u);
 
   auto storage = tensor_0.release();
   CHECK_EQ(storage->size(), 6u);
