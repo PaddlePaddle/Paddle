@@ -58,7 +58,7 @@ class CinnCacheKey {
   };
 
  private:
-  std::string HashGraph(const ir::Graph& graph);
+  size_t HashGraph(const ir::Graph& graph);
 
   std::string graph_serialize_str_;
   std::map<std::string, DDim> input_shapes_;
