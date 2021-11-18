@@ -94,9 +94,6 @@ class AsyncWorkQueue {
   AtomicVectorSizeT atomic_var_ref_;
 };
 
-std::string get_memcpy_type(const platform::Place& src_place,
-                            const platform::Place& dst_place);
-
 void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope);
 

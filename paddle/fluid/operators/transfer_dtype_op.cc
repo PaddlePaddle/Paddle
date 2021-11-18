@@ -46,9 +46,13 @@ class TransferDtypeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    // dtype is not important
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    // kernel's device type is decided by input tensor place
+    auto *in = ctx.InputVar("X");
+    auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
+    PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The tensor of Input(X) is not initialized."));
+    return framework::OpKernelType(in_tensor->type(), in_tensor->place());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -94,4 +98,27 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 // dtype is not important
-REGISTER_OP_CPU_KERNEL_FUNCTOR(transfer_dtype, float, ops::TransferDtypeKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(
+    transfer_dtype, float, ops::TransferDtypeKernel, double,
+    ops::TransferDtypeKernel, uint8_t, ops::TransferDtypeKernel, int16_t,
+    ops::TransferDtypeKernel, int, ops::TransferDtypeKernel, int64_t,
+    ops::TransferDtypeKernel, bool, ops::TransferDtypeKernel, plat::bfloat16,
+    ops::TransferDtypeKernel, plat::float16, ops::TransferDtypeKernel);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(
+    transfer_dtype, float, ops::TransferDtypeKernel, double,
+    ops::TransferDtypeKernel, uint8_t, ops::TransferDtypeKernel, int16_t,
+    ops::TransferDtypeKernel, int, ops::TransferDtypeKernel, int64_t,
+    ops::TransferDtypeKernel, bool, ops::TransferDtypeKernel, plat::bfloat16,
+    ops::TransferDtypeKernel, plat::float16, ops::TransferDtypeKernel);
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+REGISTER_OP_NPU_KERNEL_FUNCTOR(
+    transfer_dtype, float, ops::TransferDtypeKernel, double,
+    ops::TransferDtypeKernel, uint8_t, ops::TransferDtypeKernel, int16_t,
+    ops::TransferDtypeKernel, int, ops::TransferDtypeKernel, int64_t,
+    ops::TransferDtypeKernel, bool, ops::TransferDtypeKernel, plat::bfloat16,
+    ops::TransferDtypeKernel, plat::float16, ops::TransferDtypeKernel);
+#endif

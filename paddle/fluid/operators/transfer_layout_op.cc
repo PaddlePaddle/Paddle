@@ -62,15 +62,23 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    // kernel's device type is decided by input tensor place
+    auto *in = ctx.InputVar("X");
+    auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
+    PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The tensor of Input(X) is not initialized."));
     // dtype is not important
     return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+                                   in_tensor->place());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return expected_kernel_type;
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   expected_kernel_type.data_layout_);
   }
 };
 
