@@ -351,12 +351,12 @@ static void BuildDygraphPtenKernelContext(
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
       if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-        kernel_ctx->EmplaceBackAttr(
-            std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+        kernel_ctx->InsertAttr(
+            i, std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
       } else if (std::type_index(attr.type()) ==
                  std::type_index(typeid(std::string))) {
-        kernel_ctx->EmplaceBackAttr(
-            std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        kernel_ctx->InsertAttr(
+            i, std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` to Scalar when construct "
@@ -366,11 +366,11 @@ static void BuildDygraphPtenKernelContext(
     } else {
       // TODO(chenweihang): support other attrs later
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+        kernel_ctx->InsertAttr(i, BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+        kernel_ctx->InsertAttr(i, BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+        kernel_ctx->InsertAttr(i, BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
                      std::type_index(typeid(std::vector<int64_t>)) &&
                  std::type_index(attr.type()) ==
@@ -379,7 +379,7 @@ static void BuildDygraphPtenKernelContext(
         const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
         const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
                                                      vector_int_attr.end());
-        kernel_ctx->EmplaceBackAttr(vector_int64_attr);
+        kernel_ctx->InsertAttr(i, vector_int64_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "

@@ -91,6 +91,14 @@ class KernelContext {
     attrs_.emplace_back(std::move(attr));
   }
 
+  void InsertAttr(size_t pos, paddle::any attr) {
+    if (attrs_.size() > pos) {
+      attrs_[pos] = std::move(attr);
+    } else {
+      attrs_.emplace_back(std::move(attr));
+    }
+  }
+
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
