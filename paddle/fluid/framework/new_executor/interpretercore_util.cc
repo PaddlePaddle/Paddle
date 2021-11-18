@@ -289,7 +289,6 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
     const OpKernelType& expected_kernel_key, const platform::Place& place,
     const std::string& var_name, const std::string& outer_name,
     const OpFuncNode& op_func_node, Variable* var, VariableScope* var_scope) {
-  auto& ins_name2id = op_func_node.input_index;
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   std::string new_var_name =
@@ -307,7 +306,7 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
           : is_gpu_place(expected_kernel_key.place_) ? 1 : -1;
 
   std::map<std::string, std::vector<int>> copy_ins_name2id;
-  copy_ins_name2id["X"] = ins_name2id.at(outer_name);
+  copy_ins_name2id["X"] = {var_scope->VarId(var_name)};
   std::map<std::string, std::vector<int>> copy_out_name2id;
   copy_out_name2id["Out"] = {var_scope->VarId(new_var_name)};
 

@@ -49,7 +49,14 @@ class CompatibleDenseTensorUtils {
   static DenseTensor Slice(DenseTensor* tensor,
                            int64_t begin_idx,
                            int64_t end_idx) {
-    tensor->check_memory_size();
+    size_t bytes = tensor->numel() * SizeOf(tensor->dtype());
+    PADDLE_ENFORCE_GE(tensor->capacity(),
+                      bytes,
+                      paddle::platform::errors::InvalidArgument(
+                          "The memory size %d should be enough to meet the "
+                          "volume required by metadata %d.",
+                          tensor->capacity(),
+                          bytes));
     PADDLE_ENFORCE_GE(begin_idx,
                       0,
                       paddle::platform::errors::OutOfRange(
