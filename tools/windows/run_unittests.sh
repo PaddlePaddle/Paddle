@@ -55,10 +55,6 @@ disable_wingpu_test="^test_model$|\
 ^test_generator_dataloader$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
-^test_parallel_executor_seresnext_base_gpu$|\
-^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
-^test_parallel_executor_seresnext_with_reduce_gpu$|\
-^test_program_prune_backward$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_fleet_base_single$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
@@ -69,7 +65,6 @@ disable_wingpu_test="^test_model$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
 ^test_reader_reset$|\
-^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
 ^test_imperative_static_runner_while$|\
 ^test_dataloader_keep_order$|\
@@ -93,10 +88,8 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_vision_models$|\
 ^test_dygraph_multi_forward$|\
 ^test_imperative_transformer_sorted_gradient$|\
-^test_program_prune_backward$|\
 ^test_imperative_resnet$|\
 ^test_imperative_resnet_sorted_gradient$|\
-^test_imperative_se_resnext$|\
 ^test_imperative_static_runner_mnist$|\
 ^test_bmn$|\
 ^test_mobile_net$|\
