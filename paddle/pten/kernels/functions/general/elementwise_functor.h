@@ -114,5 +114,51 @@ struct InverseSubFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b - a; }
 };
 
+// Divide
+template <typename DevCtx, typename T, class Enable = void>
+struct SameDimsDivFunctor {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z);
+};
+
+template <typename DevCtx, typename T>
+struct SameDimsDivFunctor<
+    DevCtx,
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z) {
+    blas::ElementwiseDiv<DevCtx, T>(dev_ctx, x, y, z);
+  }
+};
+
+#define DIV_ERROR_INFO                                             \
+  "InvalidArgumentError: Integer division by zero encountered in " \
+  "(floor) divide. Please check the input value."
+
+template <typename T, typename Enable = void>
+struct DivFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
+};
+
+template <typename T>
+struct DivFunctor<T,
+                  typename std::enable_if<std::is_integral<T>::value>::type> {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+    // For int32/int64, need to check whether the divison is zero.
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return a / b;
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseDivFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b / a; }
+};
+
 }  // namespace general
 }  // namespace pten
