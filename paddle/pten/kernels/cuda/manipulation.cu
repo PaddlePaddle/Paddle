@@ -76,7 +76,7 @@ void ReshapeFromDT(const CUDAContext& dev_ctx,
   auto vector_shape =
       std::vector<int64_t>(shape_data, shape_data + shape.numel());
   ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
-  out->set_lod(x.lod());
+  out->ResetLoD(x.lod());
 }
 
 void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
