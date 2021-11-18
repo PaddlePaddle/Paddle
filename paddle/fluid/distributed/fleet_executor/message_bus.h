@@ -71,7 +71,7 @@ class MessageBus final {
   // send the message inter rank (dst is different rank with src)
   bool SendInterRank(const InterceptorMessage& interceptor_message);
 
-  void UpdateAddr(const std::string new_addr, int port);
+  void UpdateAddr(const std::string& new_addr, int port);
   void ReceiveANewAddress();
 #endif
 

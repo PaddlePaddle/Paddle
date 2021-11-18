@@ -231,7 +231,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
 
   int server = paddle::platform::CreateListenSocket(addr_);
   VLOG(3) << "Message bus created a socket to listen address: " << addr_ << ".";
-  for (size_t i = 0; i < cur_rank_; ++i) {
+  for (int i = 0; i < cur_rank_; ++i) {
     // update the addresses for ranks before cur rank
     ReceiveANewAddress();
   }
@@ -254,7 +254,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
   }
   VLOG(3) << "Finish sending.";
 
-  for (size_t i = cur_rank_ + 1; i < nranks; ++i) {
+  for (int i = cur_rank_ + 1; i < nranks; ++i) {
     // update the addresses for ranks behind cur rank
     ReceiveANewAddress();
   }
