@@ -110,7 +110,6 @@ class TestDiffOp(unittest.TestCase):
 
     def test_grad(self):
         for place in self.places:
-            # paddle.disable_static(place)
             x = paddle.to_tensor(self.input, place=place, stop_gradient=False)
             if self.prepend is not None:
                 self.prepend = paddle.to_tensor(self.prepend, place=place)

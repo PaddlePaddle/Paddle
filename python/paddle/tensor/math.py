@@ -2683,7 +2683,6 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
     if in_dygraph_mode():
         has_pend = False
         input_list = []
-        # deal with pre_append
         if prepend is not None and append is not None:
             input_list = [prepend, x, append]
             has_pend = True
@@ -2694,12 +2693,10 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
             input_list = [x, append]
             has_pend = True
         if has_pend:
-            # print(input_list)
             new_input = _C_ops.concat(input_list, 'axis', dim)
         else:
             new_input = x
 
-        # slice
         attrs_1 = ()
         attrs_2 = ()
 
@@ -2718,7 +2715,6 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
         input_back = _C_ops.slice(new_input, None, None, 'axes', axes, \
             'infer_flags', infer_flags, *attrs_2)
 
-        # diff(sub or logical_xor)
         if x.dtype == paddle.bool:
             op = getattr(_C_ops, "logical_xor")
             out = op(input_back, input_front)
@@ -2726,7 +2722,6 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
             out = layers.elementwise_sub(input_back, input_front, axis=dim)
         return out
     else:
-        # pre_append
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
         check_type(dim, 'axis', (int), 'diff')
         helper = LayerHelper('diff', **locals())
@@ -2750,7 +2745,6 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
         else:
             new_input = x
 
-        # slice
         dim_len = new_input.shape[dim]
         attrs_1 = {'axes': axes}
         starts_1 = [0]
@@ -2771,7 +2765,6 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
             type='slice', inputs={'Input': new_input}, attrs=attrs_2, outputs={'Out': input_back}
         )
 
-        # diff(sub or logical_xor)
         if dtype == paddle.bool:
             out = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
