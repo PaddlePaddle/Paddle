@@ -39,11 +39,11 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # cpu
         before_num_ops = len(program_config.ops) + 2
-        config = self.create_inference_config(passes=["fc_fuse_pass"], use_gpu=False)
+        config = self.create_inference_config(use_gpu=False)
         yield config, ["fc"], (1e-5, 1e-5)
 
         # for gpu
-        config = self.create_inference_config(passes=["fc_fuse_pass"], use_gpu=True)
+        config = self.create_inference_config(use_gpu=True)
         yield config, ["fc"], (1e-5, 1e-5)
 
     #        # trt static_shape
@@ -175,7 +175,7 @@ class TestFcFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False, max_examples=2000)
+        self.run_and_statis(quant=False, max_examples=2000, passes=["fc_fuse_pass"])
 
 
 if __name__ == "__main__":

@@ -290,6 +290,8 @@ class PassAutoScanTest(AutoScanTest):
         if not self.passes:
             raise ValueError("In PassAutoScan you should give a valid pass name.")
         last_passed_program = os.path.join(self.cache_dir, self.passes[-1] + ".pdmodel")
+        if not os.path.exists(last_passed_program):
+            raise ValueError("Cannot find file {}, please make sure that your pass name is correct".format(last_passed_program))
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
@@ -320,6 +322,7 @@ class PassAutoScanTest(AutoScanTest):
         reproduce=None,
         min_success_num=100,
         max_duration=180,
+        passes=None,
     ):
         if os.getenv("PADDLE_TEST_PHASE") == "CE":
             max_examples *= 10
@@ -336,6 +339,8 @@ class PassAutoScanTest(AutoScanTest):
             report_multiple_bugs=False,
         )
         settings.load_profile("ci")
+        assert passes is not None, "Parameter of fuses must be defined in function run_and_statis."
+        self.passes = passes
 
         self.add_skip_pass_case()
 
