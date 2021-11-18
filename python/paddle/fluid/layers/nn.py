@@ -11401,10 +11401,12 @@ def shape(input):
         'complex128'
     ], 'shape')
     helper = LayerHelper('shape', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype='int32', stop_gradient=True)
+    out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
-        type='shape', inputs={'Input': input}, outputs={'Out': out})
+        type='shape',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        stop_gradient=True)
 
     return out
 
