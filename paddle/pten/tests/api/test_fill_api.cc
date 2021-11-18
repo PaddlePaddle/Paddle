@@ -152,7 +152,7 @@ TEST(API, full) {
   }
 }
 
-TEST(API, full_new) {
+TEST(API, full_new1) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -166,69 +166,85 @@ TEST(API, full_new) {
   shape_data[0] = 2;
   shape_data[1] = 3;
 
+  paddle::experimental::Tensor tensor_shape(dense_shape);
+
+  float val = 1.0;
+
+  // 2. test API
+  auto out = paddle::experimental::full_new(
+      tensor_shape, val, pten::DataType::FLOAT32);
+
+  // 3. check result
+  ASSERT_EQ(out.shape().size(), 2UL);
+  ASSERT_EQ(out.shape()[0], 2);
+  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.initialized(), true);
+
+  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto* actual_result = dense_out->data<float>();
+  for (auto i = 0; i < 6; i++) {
+    ASSERT_NEAR(actual_result[i], val, 1e-6f);
+  }
+}
+
+TEST(API, full_new2) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+
   auto dense_scalar = std::make_shared<pten::DenseTensor>(
       alloc,
       pten::DenseTensorMeta(pten::DataType::INT32,
                             framework::make_ddim({1}),
                             pten::DataLayout::NCHW));
-  dense_scalar->mutable_data<int64_t>()[0] = 2;
-
-  paddle::experimental::Tensor tensor_shape(dense_shape);
+  dense_scalar->mutable_data<int32_t>()[0] = 2;
 
   paddle::experimental::Tensor shape_scalar1(dense_scalar);
   paddle::experimental::Tensor shape_scalar2(dense_scalar);
   std::vector<paddle::experimental::Tensor> list_shape{shape_scalar1,
                                                        shape_scalar2};
 
-  std::vector<int64_t> vector_shape{2, 2};
+  float val = 1.0;
+
+  auto out =
+      paddle::experimental::full_new(list_shape, val, pten::DataType::FLOAT32);
+
+  ASSERT_EQ(out.shape().size(), 2UL);
+  ASSERT_EQ(out.shape()[0], 2);
+  ASSERT_EQ(out.numel(), 4);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.initialized(), true);
+
+  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto* actual_result = dense_out->data<float>();
+  for (auto i = 0; i < 4; i++) {
+    ASSERT_NEAR(actual_result[i], val, 1e-6f);
+  }
+}
+
+TEST(API, full_new3) {
+  std::vector<int64_t> vector_shape{2, 3};
 
   float val = 1.0;
 
-  // 2. test API
-  auto out1 = paddle::experimental::full_new(
-      tensor_shape, val, pten::DataType::FLOAT32);
-  auto out2 =
-      paddle::experimental::full_new(list_shape, val, pten::DataType::FLOAT32);
-  auto out3 =
+  auto out =
       paddle::experimental::full_new(vector_shape, val, pten::DataType::INT32);
 
-  // 3. check result
-  ASSERT_EQ(out1.shape().size(), 2UL);
-  ASSERT_EQ(out1.shape()[0], 2);
-  ASSERT_EQ(out1.numel(), 6);
-  ASSERT_EQ(out1.is_cpu(), true);
-  ASSERT_EQ(out1.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out1.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out1.initialized(), true);
+  ASSERT_EQ(out.shape().size(), 2UL);
+  ASSERT_EQ(out.shape()[0], 2);
+  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pten::DataType::INT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.initialized(), true);
 
-  ASSERT_EQ(out2.shape().size(), 2UL);
-  ASSERT_EQ(out2.shape()[0], 2);
-  ASSERT_EQ(out2.numel(), 4);
-  ASSERT_EQ(out2.is_cpu(), true);
-  ASSERT_EQ(out2.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out2.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out2.initialized(), true);
-
-  ASSERT_EQ(out3.shape().size(), 2UL);
-  ASSERT_EQ(out3.shape()[0], 2);
-  ASSERT_EQ(out3.numel(), 4);
-  ASSERT_EQ(out3.is_cpu(), true);
-  ASSERT_EQ(out3.type(), pten::DataType::INT32);
-  ASSERT_EQ(out3.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out3.initialized(), true);
-
-  auto dense_out1 = std::dynamic_pointer_cast<pten::DenseTensor>(out1.impl());
-  auto* actual_result1 = dense_out1->data<float>();
+  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto* actual_result = dense_out->data<int>();
   for (auto i = 0; i < 6; i++) {
-    ASSERT_NEAR(actual_result1[i], val, 1e-6f);
-  }
-
-  auto dense_out2 = std::dynamic_pointer_cast<pten::DenseTensor>(out2.impl());
-  auto dense_out3 = std::dynamic_pointer_cast<pten::DenseTensor>(out3.impl());
-  auto* actual_result2 = dense_out2->data<float>();
-  auto* actual_result3 = dense_out3->data<float>();
-  for (auto i = 0; i < 4; i++) {
-    ASSERT_NEAR(actual_result2[i], val, 1e-6f);
-    ASSERT_EQ(actual_result3[i], 1);
+    ASSERT_EQ(actual_result[i], 1);
   }
 }

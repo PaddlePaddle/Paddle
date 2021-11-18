@@ -64,7 +64,6 @@ void FillConstantNew(const CUDAContext& dev_ctx,
                      const Scalar& val,
                      DenseTensor* out) {
   out->Resize(shape.GetDim());
-  out->mutable_data<T>();
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
 

@@ -66,7 +66,7 @@ class ScalarArrayList {
       DataType data_type = tensor_list[0].dtype();
       switch (data_type) {
         case DataType::INT32: {
-          for (auto i = 0; i < n; i++) {
+          for (size_t i = 0; i < n; i++) {
             PADDLE_ENFORCE_EQ(
                 tensor_list[i].dtype(),
                 data_type,
@@ -75,13 +75,13 @@ class ScalarArrayList {
                     "the first tensor is %s, but %dth tensor is %s.",
                     data_type,
                     i,
-                    tensor_list[i].data_type()));
+                    tensor_list[i].dtype()));
             array_.push_back(*tensor_list[i].template data<int32_t>());
           }
           break;
         }
         case DataType::INT64: {
-          for (auto i = 0; i < n; i++) {
+          for (size_t i = 0; i < n; i++) {
             PADDLE_ENFORCE_EQ(
                 tensor_list[i].dtype(),
                 data_type,
@@ -90,7 +90,7 @@ class ScalarArrayList {
                     "the first tensor is %s, but %dth tensor is %s.",
                     data_type,
                     i,
-                    tensor_list[i].data_type()));
+                    tensor_list[i].dtype()));
             array_.push_back(*tensor_list[i].template data<int64_t>());
           }
           break;
