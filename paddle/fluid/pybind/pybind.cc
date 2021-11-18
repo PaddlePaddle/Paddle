@@ -2123,6 +2123,16 @@ All parameter, weight, gradient are variables in Paddle.
              }
              return py::cast(std::move(ret));
            })
+      .def("run",
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names,
+              std::vector<std::string> fetch_names) {
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, fetch_names);
+             }
+             return py::cast(std::move(ret));
+           })
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
