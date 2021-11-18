@@ -114,8 +114,8 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "touching underlying data, this requires the total size of "
                   "the tensor to remain constant.";
   if (detail::IsDenseTensor(impl_)) {
-    std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->Resize(
-        framework::make_ddim(shape));
+    std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
+        pten::DenseTensorMeta(dtype(), framework::make_ddim(shape)));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
