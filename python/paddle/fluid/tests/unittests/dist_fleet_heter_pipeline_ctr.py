@@ -148,8 +148,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             "section_program"]
         print(real_program)
 
-        #real_startup = fluid.default_startup_program()._heter_pipeline_opt[
-        #    "startup_program"]
         exe.run(fluid.default_startup_program())
         fleet.init_worker()
 
