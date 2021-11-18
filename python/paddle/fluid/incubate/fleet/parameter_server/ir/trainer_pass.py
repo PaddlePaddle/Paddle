@@ -105,8 +105,9 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
                 param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
-                # trick for matchnet, need to modify
-                param_name += op.input("Ids")[0][0]
+                if config.is_heter_ps_mode:
+                    # trick for matchnet, need to modify
+                    param_name += op.input("Ids")[0][0]
                 ops = pull_sparse_ops.get(param_name, [])
                 ops.append(op)
                 pull_sparse_ops[param_name] = ops
