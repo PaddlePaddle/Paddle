@@ -54,6 +54,17 @@ void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
   std::lock_guard<std::mutex> lock(mtx_);
   void *ptr = allocation->ptr();
   auto iter = npu_events_.find(allocation);
+
+  // Managed by GC if not called RecordEvent.
+  if (iter == npu_events_.end()) {
+    // double free? No such problem has been found so far.
+    // Or maybe we need a set<Allocation*> to record which
+    // Allocation managed by GC.
+    free(ptr);
+    delete allocation;
+    return;
+  }
+
   aclrtEvent event = iter->second;
   aclrtEventStatus status = ACL_EVENT_STATUS_COMPLETE;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, &status));

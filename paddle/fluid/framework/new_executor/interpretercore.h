@@ -49,6 +49,8 @@ class InterpreterCore {
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
+  paddle::framework::FetchList Run();
+
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
@@ -77,6 +79,8 @@ class InterpreterCore {
                            std::queue<size_t>* reserved_next_ops);
 
   void BuildSkipShareLoDInfo();
+
+  void BuildOperatorDependences();
 
   bool is_build_;
 
