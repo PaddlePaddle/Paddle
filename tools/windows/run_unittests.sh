@@ -159,6 +159,7 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     export CUDA_VISIBLE_DEVICES=0
 
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    echo "${UT_list}" > ${PADDLE_ROOT}/tools/UT_list
     num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
     echo "Windows 1 card TestCases count is $num"
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -171,14 +172,15 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
 
     set +e
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" )
+        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "")
         UT_list_prec=$(echo "${UT_list_res}" | grep -v 'PRECISION_TEST')
         echo "${UT_list_res}" | grep 'PRECISION_TEST'
         UT_list=$UT_list_prec
+        echo "${UT_list}" > ${PADDLE_ROOT}/tools/UT_list
     fi
     set -e
 
-    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "")
     cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
     tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
     two_parallel_job=$(echo $output | cut -d ";" -f 3)
@@ -319,6 +321,10 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
             echo "Added UT should pass three additional executions"
             echo "========================================"
             exit 8;
+        fi
+        if nvcc --version | grep 11.2; then
+            echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+            exit 0;
         fi
     fi
     run_unittest_gpu $cpu_parallel_job 10

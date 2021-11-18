@@ -14,6 +14,8 @@
 """To get a list of prec ut """
 
 import sys
+import os
+import platform
 
 
 def get_prec_ut_list(all_test_cases, prec_test_cases):
@@ -41,5 +43,11 @@ if __name__ == '__main__':
     with open('ut_list', 'r') as f:
         prec_test_cases = f.read()
     all_test_cases = sys.argv[1]
+    # sys.argv[1] may exceed max_arg_length when busybox run parallel_UT_rule in windows
+    if platform.system() == 'Windows':
+        file_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        file_path = os.path.join(file_dir, 'UT_list')
+        with open(file_path, 'r') as f:
+            all_test_cases = f.read()
     #prec_test_cases = sys.argv[2]
     get_prec_ut_list(all_test_cases, prec_test_cases)
