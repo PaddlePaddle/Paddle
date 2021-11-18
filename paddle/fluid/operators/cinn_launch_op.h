@@ -63,7 +63,7 @@ class CinnLaunchContext {
 
   // Extract internal variable names from CinnScope
   // by excluding used input and output variables
-  std::unordered_set<std::string> GetInternalVariableNames();
+  std::vector<std::string> GetInternalVariableNames();
 
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
