@@ -212,9 +212,15 @@ DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
   auto x_dims = x_meta.dims;
   auto out_dims = ValidateShape(shape, x_dims);
   DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
-  if (x_dims[0] == return_meta.dims[0]) {
-    // Only pass LoD when the first dimension of output and Input(X)
-    // are the same.
+  if (!x_meta.lod.empty()) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0],
+        return_meta.dims[0],
+        paddle::platform::errors::InvalidArgument(
+            "The first dimension of `output` (%d) and `InputX` (%d)"
+            "must be the same. Otherwise, the LoD will no longer be legal.",
+            x_dims[0],
+            return_meta.dims[0]));
     return_meta.lod = x_meta.lod;
   }
   return return_meta;

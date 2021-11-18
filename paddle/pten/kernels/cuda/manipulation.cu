@@ -44,27 +44,15 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
   general::SetXShape(x, xshape);
 }
 
-void ReshapeFromVectorValImpl(const CUDAContext& dev_ctx,
-                              const DenseTensor& x,
-                              const std::vector<int64_t>& shape,
-                              DenseTensor* out,
-                              bool set_lod) {
-  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
-  if (&x != out) {
-    pten::Copy(dev_ctx, x, false, out);
-  }
-  if (set_lod) {
-    out->Resize(out_meta.dims, out_meta.lod);
-  } else {
-    out->Resize(out_meta.dims);
-  }
-}
-
 void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int64_t>& shape,
                           DenseTensor* out) {
-  ReshapeFromVectorValImpl(dev_ctx, x, shape, out, false);
+  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  if (&x != out) {
+    pten::Copy(dev_ctx, x, false, out);
+  }
+  out->Resize(out_meta.dims, out_meta.lod);
 }
 
 void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,
@@ -83,7 +71,7 @@ void ReshapeFromDT(const CUDAContext& dev_ctx,
   auto* shape_data = shape.data<int>();
   auto vector_shape =
       std::vector<int64_t>(shape_data, shape_data + shape.numel());
-  ReshapeFromVectorValImpl(dev_ctx, x, vector_shape, out, true);
+  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
 }
 
 void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
