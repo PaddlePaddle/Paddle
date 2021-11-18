@@ -556,7 +556,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _heter_device_type(self):
         """
-        return the heter device that current heter worker is using
+        return the heter device type that current heter worker is using
         """
         if not self._role_is_generated:
             self._generate_role()
