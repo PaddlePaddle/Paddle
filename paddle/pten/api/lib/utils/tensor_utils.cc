@@ -220,7 +220,8 @@ void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
       shared_storage,
       platform::errors::NotFound(
           "Target DenseTensor's shared storage is nullptr."));
-  if (src.IsInitialized()) {
+  if (src.IsInitialized() &&
+      src.place() == pten::TransToFluidPlace(arg_def.backend)) {
     shared_storage->ResetAllocation(src.Holder(), src.offset());
   } else {
     shared_storage->ResetAllocationPlace(
