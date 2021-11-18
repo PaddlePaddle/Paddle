@@ -120,11 +120,12 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
   meta_ = std::move(meta);
 }
 
-void DenseTensor::Resize(const DDim& dims, const LoD& lod) {
+void DenseTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
-  meta_.lod = lod;
   mutable_data();
 }
+
+void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \
   template dtype* DenseTensor::mutable_data(); \
