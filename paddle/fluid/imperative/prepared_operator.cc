@@ -299,6 +299,11 @@ static void BuildDygraphPtenKernelContext(
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
 
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
     if (kernel_ctx->InputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (const auto& var : ins_vector) {
@@ -337,6 +342,11 @@ static void BuildDygraphPtenKernelContext(
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
     size_t end_idx = start_idx + outs_vector.size();
 
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
     if (kernel_ctx->OutputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
       for (auto& var : outs_vector) {

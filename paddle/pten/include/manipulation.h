@@ -42,7 +42,7 @@ DenseTensor Cast(const ContextT& dev_ctx,
                  const DenseTensor& x,
                  DataType out_dtype,
                  DataType in_dtype) {
-  auto out_meta = CastInferShape(x.meta(), out_dtype);
+  auto out_meta = CastInferMeta(x.meta(), out_dtype);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());

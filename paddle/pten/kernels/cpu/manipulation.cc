@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/cpu/manipulation.h"
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
 #include "paddle/pten/kernels/functions/general/manipulation.h"
@@ -121,10 +122,10 @@ void Cast(const CPUContext& dev_ctx,
           DataType out_dtype,
           DataType in_dtype,
           DenseTensor* out) {
-  PTEN_DISPATCH_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                            math::CastKernelImpl<CPUContext, T, data_t>(
-                                dev_ctx, x, out);
-                          }));
+  PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                       math::CastKernelImpl<CPUContext, T, data_t>(
+                           dev_ctx, x, out);
+                     }));
 }
 
 }  // namespace pten

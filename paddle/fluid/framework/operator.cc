@@ -1812,10 +1812,16 @@ void OperatorWithKernel::BuildPtenKernelContext(
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx.inputs.at(input_names[i]);
 
+    // calcute the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context_->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
 
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
     if (pt_kernel_context_->InputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (auto* var : ins_vector) {
@@ -1855,6 +1861,11 @@ void OperatorWithKernel::BuildPtenKernelContext(
         (i == 0 ? 0 : pt_kernel_context_->OutputRangeAt(i - 1).second);
     size_t end_idx = start_idx + outs_vector.size();
 
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
     if (pt_kernel_context_->OutputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
       for (auto* var : outs_vector) {

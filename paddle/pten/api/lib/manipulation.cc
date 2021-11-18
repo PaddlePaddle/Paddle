@@ -60,7 +60,7 @@ PD_DLL_DECL Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   return out;
 }
 
-Tensor cast(const Tensor& x, DataType out_dtype) {
+PD_DLL_DECL Tensor cast(const Tensor& x, DataType out_dtype) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -78,7 +78,7 @@ Tensor cast(const Tensor& x, DataType out_dtype) {
   kernel_context.EmplaceBackAttr(dense_x->meta().type);
 
   // 4. InferShape
-  auto out_meta = CastInferShape(dense_x->meta(), out_dtype);
+  auto out_meta = CastInferMeta(dense_x->meta(), out_dtype);
 
   // 5. Prepare outputs
   Tensor out;
