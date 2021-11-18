@@ -95,6 +95,9 @@ void ElementwiseSub(const CPUContext& dev_ctx,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out) {
+  // allocate memory for out
+  out->mutable_data<T>();
+
   if (x.dims() == y.dims()) {
     SameDimsElementwiseCompute<general::SameDimsSubFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
