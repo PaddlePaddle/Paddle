@@ -29,10 +29,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
-#if defined(PADDLE_WITH_CUDA)
-DECLARE_int64(gpu_allocator_retry_time);
-#endif
-
 namespace paddle {
 namespace memory {
 
@@ -175,6 +171,7 @@ TEST(Malloc, AllocZero) {
   EXPECT_GE(allocation_ptr->size(), 0);
 }
 
+#ifdef PADDLE_WITH_CUDA
 TEST(Malloc, StreamSafeCUDAAllocRetry) {
   platform::CUDAPlace place = platform::CUDAPlace();
   cudaStream_t stream1, stream2;
@@ -320,6 +317,7 @@ TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStream) {
   MultiThreadMUltiStreamRun();
   CheckResult();
 }
+#endif
 
 }  // namespace memory
 }  // namespace paddle

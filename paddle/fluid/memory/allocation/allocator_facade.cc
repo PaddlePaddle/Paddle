@@ -14,15 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-#include <atomic>
-#include <chrono>
-#include <condition_variable>
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <cuda_runtime.h>
-#endif
 #include "gflags/gflags.h"
-
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -30,7 +22,6 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
-#include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/place.h"
@@ -38,8 +29,10 @@
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <cuda_runtime.h>
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
@@ -169,10 +162,12 @@ class AllocatorFacadePrivate {
     VLOG(6) << "GetAllocator"
             << " " << place << " " << size;
 
+#ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place) && size > 0) {
       return GetCUDAAllocator(BOOST_GET_CONST(platform::CUDAPlace, place),
                               default_cuda_stream_);
     }
+#endif
 
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_

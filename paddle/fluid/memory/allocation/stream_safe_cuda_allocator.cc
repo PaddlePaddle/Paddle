@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace memory {

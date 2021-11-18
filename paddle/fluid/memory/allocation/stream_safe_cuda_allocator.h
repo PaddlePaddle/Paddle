@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <cuda_runtime.h>
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <unordered_map>
 #include "paddle/fluid/memory/allocation/allocator.h"
 
