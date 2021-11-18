@@ -251,7 +251,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
     int conn = paddle::platform::ConnectAddr(ep, fake_head);
     VLOG(3) << "Connecting finished.";
 
-    paddle::platform::CHECK_SYS_CALL(
+    CHECK_SYS_CALL(
         paddle::platform::SocketSend(conn, buffer, sizeof(UpdateAddress)),
         "Send new addr.");
     paddle::platform::CloseSocket(conn);
@@ -274,7 +274,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
 void MessageBus::ReceiveANewAddress(int server) {
   char buffer[MAX_COMMUNIQUEID_LEN] = {0};
 
-  paddle::platform::CHECK_SYS_CALL(
+  CHECK_SYS_CALL(
       paddle::platform::SocketRecv(server, &buffer, sizeof(UpdateAddress)),
       "Receive new addr.");
   UpdateAddress received;
