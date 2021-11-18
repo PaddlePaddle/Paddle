@@ -391,7 +391,7 @@ TEST(DataTypeTransform, CPUTransform) {
         in.mutable_data<paddle::platform::bfloat16>(
             paddle::framework::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
-      in_data_bf16[i] = i;
+      in_data_bf16[i] = paddle::platform::bfloat16(i);
     }
 
     paddle::framework::TransDataType(kernel_bf16, kernel_int32, in, &out);
