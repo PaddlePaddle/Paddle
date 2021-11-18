@@ -579,7 +579,8 @@ size_t DeformableConvPlugin::getSerializationSize() const TRT_NOEXCEPT {
   serialize_size += SerializedSize(offset_dim_);
   serialize_size += SerializedSize(mask_dim_);
   serialize_size += SerializedSize(output_dim_);
-  serialize_size += SerializedSize(with_fp16_) return serialize_size;
+  serialize_size += SerializedSize(with_fp16_);
+  return serialize_size;
 }
 
 void DeformableConvPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
