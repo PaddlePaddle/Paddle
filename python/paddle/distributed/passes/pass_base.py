@@ -40,9 +40,20 @@ class PassContext:
         del self._applied_passes[-1]
 
 
+class PassType:
+    UNKNOWN = 0
+    COMM_OPT = 1
+    CALC_OPT = 2
+    PARALLEL_OPT = 3
+    FUSION_OPT = 4
+
+
 class PassBase(ABC):
     _REGISTERED_PASSES = {}
     _COMMON_RULES = []
+    # TODO(zengjinle): add white/black list
+
+    name = None
 
     @staticmethod
     def _register(pass_name, pass_class):
@@ -66,6 +77,9 @@ class PassBase(ABC):
     @abstractmethod
     def _check_conflict(self, other_pass):
         pass
+
+    def _type(self):
+        return PassType.UNKNOWN
 
     def _check_conflict_including_common_rules(self, other_pass):
         return self._check_conflict(other_pass) and all(
@@ -142,40 +156,18 @@ class CPPPassWrapper(PassBase):
                         self._attrs, self.cpp_attr_types)
 
 
-# Like AutoParallel/HybridParallel, etc. 
-class ParallelOptPass(PassBase):
-    def __init__(self):
-        super(ParallelOptPass, self).__init__()
-
-
-# Like AMP, Recompute, etc.
-class CalcOptPass(PassBase):
-    def __init__(self):
-        super(CalcOptPass, self).__init__()
-
-
-# Like FuseAllReduce, FuseGradientMerge, etc. 
-class CommOptPass(PassBase):
-    def __init__(self):
-        super(CommOptPass, self).__init__()
-
-
-def _make_pass_order_rule(pass_class_before, pass_class_after):
-    def impl(pass_obj_before, pass_obj_after):
-        if isinstance(pass_obj_before, pass_class_after) \
-            and isinstance(pass_obj_after, pass_class_before):
-            return False
+def _fusion_opt_last_rule(pass_before, pass_after):
+    if pass_before._type() == PassType.FUSION_OPT and pass_after._type(
+    ) != PassType.FUSION_OPT:
+        return False
+    else:
         return True
-
-    return impl
 
 
 PassBase._COMMON_RULES = [
-    _make_pass_order_rule(CalcOptPass, CommOptPass),
-    _make_pass_order_rule(ParallelOptPass, CPPPassWrapper),
-    _make_pass_order_rule(CalcOptPass, CPPPassWrapper),
-    _make_pass_order_rule(CommOptPass, CPPPassWrapper),
+    _fusion_opt_last_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
+    # Add more common rules here
 ]
 
 

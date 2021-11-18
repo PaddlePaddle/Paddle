@@ -14,19 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#if !defined(_MSC_VER) && __cplusplus < 201402L
-#error C++14 or later compatible compiler is required to use Paddle.
-#endif
+#include "paddle/fluid/platform/place.h"
+#include "paddle/pten/api/ext/place.h"
 
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#endif
+namespace paddle {
+namespace experimental {
 
-#include "ext_dispatch.h"      // NOLINT
-#include "ext_dtype.h"         // NOLINT
-#include "ext_exception.h"     // NOLINT
-#include "ext_op_meta_info.h"  // NOLINT
-#include "ext_place.h"         // NOLINT
-#include "ext_tensor.h"        // NOLINT
+platform::Place ConvertExtPlaceToInnerPlace(const PlaceType& p);
+
+PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p);
+
+}  // namespace experimental
+}  // namespace paddle
