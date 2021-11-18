@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* pEagerTensorType;
+extern PyTypeObject* p_eager_tensor_type;
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj))) {
@@ -49,7 +49,7 @@ bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
 
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
-  if (PyFloat_Check(*obj) || PyLong_Check(*obj)) {  // NOLINT
+  if (PyFloat_Check(*obj) || PyLong_Check(*obj)) {
     return true;
   }
   if (std::string((reinterpret_cast<PyTypeObject*>((*obj)->ob_type))->tp_name)
@@ -94,7 +94,7 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos) {
 
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return (int64_t)PyLong_AsLong(obj);  // NOLINT
+    return reinterpret_cast<int64_t>(PyLong_AsLong(obj));
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -130,7 +130,8 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
 }
 
 egr::EagerTensor CastPyArg2EagerTensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(pEagerTensorType))) {
+  if (PyObject_IsInstance(obj,
+                          reinterpret_cast<PyObject*>(p_eager_tensor_type))) {
     return reinterpret_cast<EagerTensorObject*>(obj)->eagertensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -148,8 +149,8 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(pEagerTensorType))) {
+      if (PyObject_IsInstance(
+              item, reinterpret_cast<PyObject*>(p_eager_tensor_type))) {
         result.emplace_back(
             reinterpret_cast<EagerTensorObject*>(item)->eagertensor);
       } else {
@@ -165,8 +166,8 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(pEagerTensorType))) {
+      if (PyObject_IsInstance(
+              item, reinterpret_cast<PyObject*>(p_eager_tensor_type))) {
         result.emplace_back(
             reinterpret_cast<EagerTensorObject*>(item)->eagertensor);
       } else {
@@ -211,7 +212,7 @@ PyObject* ToPyObject(const std::string& value) {
 }
 
 PyObject* ToPyObject(const egr::EagerTensor& value) {
-  PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
+  PyObject* obj = p_eager_tensor_type->tp_alloc(p_eager_tensor_type, 0);
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
     new (&(v->eagertensor)) egr::EagerTensor();
@@ -277,7 +278,7 @@ PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
-    PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
+    PyObject* obj = p_eager_tensor_type->tp_alloc(p_eager_tensor_type, 0);
     if (obj) {
       auto v = reinterpret_cast<EagerTensorObject*>(obj);
       new (&(v->eagertensor)) egr::EagerTensor();
