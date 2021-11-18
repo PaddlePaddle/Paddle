@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"

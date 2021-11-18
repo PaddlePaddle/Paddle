@@ -31,6 +31,7 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
