@@ -233,7 +233,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
   VLOG(3) << "Message bus created a socket to listen address: " << addr_ << ".";
   for (int i = 0; i < cur_rank_; ++i) {
     // update the addresses for ranks before cur rank
-    ReceiveANewAddress();
+    ReceiveANewAddress(server);
   }
 
   VLOG(3) << "Sending new address to all peers.";
@@ -256,7 +256,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
 
   for (int i = cur_rank_ + 1; i < nranks; ++i) {
     // update the addresses for ranks behind cur rank
-    ReceiveANewAddress();
+    ReceiveANewAddress(server);
   }
 
   std::stringstream ss;
@@ -267,7 +267,7 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
   VLOG(5) << ss.str();
 }
 
-void MessageBus::ReceiveANewAddress() {
+void MessageBus::ReceiveANewAddress(int server) {
   char buffer[MAX_COMMUNIQUEID_LEN] = {0};
   paddle::platform::CHECK_SYS_CALL(
       paddle::platform::SocketRecv(server, &buffer, sizeof(UpdateAddress)),
