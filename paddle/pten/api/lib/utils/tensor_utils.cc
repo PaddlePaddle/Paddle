@@ -317,8 +317,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
     auto* tensor = variable->GetMutable<framework::SelectedRows>();
     auto dtype = pten::TransToProtoVarType(src->dtype());
 
-    if (tensor->value().IsInitialized()) {
-    } else {
+    if (!tensor->value().IsInitialized()) {
       auto storage = dynamic_cast<SharedStorage*>(
           pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
       tensor->mutable_value()->ResetHolderWithType(

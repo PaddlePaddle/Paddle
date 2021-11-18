@@ -1846,9 +1846,9 @@ void OperatorWithKernel::BuildPtenKernelContext(
           std::make_pair(start_idx, end_idx);
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "error start index when trying to set new tensor to inputs, start "
+          "Error start index when trying to set new tensor to inputs, start "
           "index is `%d`, but current pt_kernel_context_.inputs.size() is "
-          "`%d` ",
+          "`%d`.",
           start_idx, pt_kernel_context_->InputsSize()));
     }
   }
@@ -1890,9 +1890,9 @@ void OperatorWithKernel::BuildPtenKernelContext(
           std::make_pair(start_idx, end_idx);
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "error start index when trying to set new tensor to inputs, start "
+          "Error start index when trying to set new tensor to inputs, start "
           "index is `%d`, but current pt_kernel_context_.outputs.size() is "
-          "`%d` ",
+          "`%d`.",
           start_idx, pt_kernel_context_->OutputsSize()));
     }
   }

@@ -52,7 +52,6 @@ void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           DenseTensor* out) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
   if (&x == out) {
-    LOG(INFO) << "out_meta dims:" << out_meta.dims;
     out->Resize(out_meta.dims);
     return;
   }
