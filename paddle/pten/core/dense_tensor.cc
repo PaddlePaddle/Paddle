@@ -24,14 +24,12 @@ namespace pten {
 DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
                          const DenseTensorMeta& meta)
     : meta_(meta),
-      storage_(
-          make_intrusive<TensorStorage>(a, SizeOf(data_type()) * numel())) {}
+      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
                          DenseTensorMeta&& meta)
     : meta_(std::move(meta)),
-      storage_(
-          make_intrusive<TensorStorage>(a, SizeOf(data_type()) * numel())) {}
+      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
                          const DenseTensorMeta& meta)
@@ -60,7 +58,7 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
       storage_,
       paddle::platform::errors::PreconditionNotMet(
           "The storage must be valid when call the mutable data function."));
-  size_t bytes = numel() * SizeOf(data_type());
+  size_t bytes = numel() * SizeOf(dtype());
   if (request_bytes) {
     PADDLE_ENFORCE_GE(request_bytes,
                       bytes,
@@ -87,19 +85,19 @@ T* DenseTensor::mutable_data() {
         paddle::experimental::CppTypeToDataType<T>::Type();
   }
   PADDLE_ENFORCE(
-      (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       paddle::platform::errors::InvalidArgument(
           "The type of data (%d) we are trying to retrieve does not match the "
           "type of data currently contained in the container (%d).",
           static_cast<int>(paddle::experimental::CppTypeToDataType<T>::Type()),
-          static_cast<int>(data_type())));
+          static_cast<int>(dtype())));
   return static_cast<T*>(mutable_data());
 }
 
 template <typename T>
 const T* DenseTensor::data() const {
   PADDLE_ENFORCE(
-      (data_type() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       paddle::platform::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
@@ -114,29 +112,18 @@ const void* DenseTensor::data() const {
   return storage_->data();
 }
 
-void DenseTensor::check_memory_size() const {
-  size_t bytes = numel() * SizeOf(data_type());
-  PADDLE_ENFORCE_GE(memory_size(),
-                    bytes,
-                    paddle::platform::errors::InvalidArgument(
-                        "The memory size %d should be enough to meet the "
-                        "volume required by metadata %d.",
-                        memory_size(),
-                        bytes));
+void DenseTensor::set_meta(DenseTensorMeta&& meta) {
+  PADDLE_ENFORCE(!meta_.valid(),
+                 paddle::platform::errors::InvalidArgument(
+                     "Only when the original attribute of Tensor is "
+                     "incomplete, can it be reset."));
+  meta_ = std::move(meta);
 }
 
-void DenseTensor::Resize(const DDim& dims) {
-  if (product(dims) == product(meta_.dims)) {
-    set_dims(dims);
-  } else {
-    meta_.dims = dims;
-    storage_->Clear();
-  }
-}
-
-void DenseTensor::set_dims(const DDim& dims) {
-  CHECK(product(dims) == product(meta_.dims));
+void DenseTensor::Resize(const DDim& dims, const LoD& lod) {
   meta_.dims = dims;
+  meta_.lod = lod;
+  mutable_data();
 }
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \

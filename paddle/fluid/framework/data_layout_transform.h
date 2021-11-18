@@ -52,7 +52,7 @@ struct CastDataLayout {
 };
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNDataType = mkldnn::memory::data_type;
+using MKLDNNDataType = dnnl::memory::data_type;
 
 inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
   switch (layout) {
