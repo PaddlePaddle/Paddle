@@ -139,7 +139,7 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
           node_id,
           {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
            Dot::Attr("color", "#303A3A"), Dot::Attr("fontcolor", "#ffffff")},
-          n->Name());
+          n->Name(), true);
     } else if (n->IsVar()) {
       auto label = n->Name();
       if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
@@ -155,7 +155,7 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
            Dot::Attr("color", n->Var()->IsParameter() ? "#148b97" : "#dddddd"),
            Dot::Attr("fontcolor",
                      n->Var()->IsParameter() ? "#ffffff" : "#000000")},
-          label);
+          label, true);
     }
     node2dot[n] = node_id;
   }
