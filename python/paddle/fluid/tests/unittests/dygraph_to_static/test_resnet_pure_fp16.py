@@ -120,8 +120,7 @@ class TestResnet(unittest.TestCase):
             static_loss = self.train(to_static=True)
             dygraph_loss = self.train(to_static=False)
             self.assertTrue(
-                np.allclose(
-                    static_loss, dygraph_loss, atol=1e-3),
+                np.allclose(static_loss, dygraph_loss),
                 msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                                  dygraph_loss))
 

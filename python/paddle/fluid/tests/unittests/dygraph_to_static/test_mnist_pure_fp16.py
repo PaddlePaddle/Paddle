@@ -37,8 +37,7 @@ class TestAMP(TestMNIST):
             static_loss = self.train_static()
 
             self.assertTrue(
-                np.allclose(
-                    dygraph_loss, static_loss, atol=1e-3),
+                np.allclose(dygraph_loss, static_loss),
                 msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                                 static_loss))
 
