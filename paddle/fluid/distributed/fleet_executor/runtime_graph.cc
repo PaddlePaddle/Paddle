@@ -150,7 +150,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     int64_t role_id = static_cast<int64_t>(role);
     int64_t max_run_times = num_micro_batches;
     int64_t max_slot_nums = start_up_steps;
-    if (role_id == 2 || role_id == 16) {
+    if (IsLRSched(role_id) || IsOptimize(role_id)) {
       max_run_times = 1;
       max_slot_nums = 1;
     }

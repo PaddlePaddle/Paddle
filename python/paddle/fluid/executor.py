@@ -1969,6 +1969,7 @@ class Executor(object):
             fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
             fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
             fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
+        if "num_micro_batches" in fleet_opt:
             fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
         num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
