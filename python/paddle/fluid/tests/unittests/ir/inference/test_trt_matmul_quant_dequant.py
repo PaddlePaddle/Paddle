@@ -291,4 +291,3 @@ class TensorRTMatMulQuantDequantDims4TransposeXYDynamicTest(
 
 if __name__ == "__main__":
     unittest.main()
-
