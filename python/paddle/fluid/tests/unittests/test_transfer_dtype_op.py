@@ -28,7 +28,10 @@ class TestTransferDtypeOpFp32ToFp64(OpTest):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float64')}
-        self.attrs = {'dst_dtype': int(core.VarDesc.VarType.FP64)}
+        self.attrs = {
+            'out_dtype': int(core.VarDesc.VarType.FP64),
+            'in_dtype': int(core.VarDesc.VarType.FP32)
+        }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
@@ -40,7 +43,10 @@ class TestTransferDtypeOpFp16ToFp32(OpTest):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float16')}
         self.outputs = {'Out': ipt.astype('float32')}
-        self.attrs = {'dst_dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {
+            'out_dtype': int(core.VarDesc.VarType.FP32),
+            'in_dtype': int(core.VarDesc.VarType.FP16)
+        }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
@@ -52,7 +58,10 @@ class TestTransferDtypeOpFp32ToFp16(OpTest):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float16')}
-        self.attrs = {'dst_dtype': int(core.VarDesc.VarType.FP16)}
+        self.attrs = {
+            'out_dtype': int(core.VarDesc.VarType.FP16),
+            'in_dtype': int(core.VarDesc.VarType.FP32)
+        }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
@@ -64,7 +73,10 @@ class TestTransferDtypeOpBf16ToFp32(OpTest):
         ipt = np.array(np.random.randint(10, size=[10, 10])).astype('uint16')
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_uint16_to_float(ipt)}
-        self.attrs = {'dst_dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {
+            'out_dtype': int(core.VarDesc.VarType.FP32),
+            'in_dtype': int(core.VarDesc.VarType.BF16)
+        }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
@@ -76,7 +88,10 @@ class TestTransferDtypeFp32ToBf16(OpTest):
         ipt = np.random.random(size=[10, 10]).astype('float32')
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_float_to_uint16(ipt)}
-        self.attrs = {'dst_dtype': int(core.VarDesc.VarType.BF16)}
+        self.attrs = {
+            'out_dtype': int(core.VarDesc.VarType.BF16),
+            'in_dtype': int(core.VarDesc.VarType.FP32)
+        }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
