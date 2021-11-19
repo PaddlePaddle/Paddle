@@ -14,19 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#if !defined(_MSC_VER) && __cplusplus < 201402L
-#error C++14 or later compatible compiler is required to use Paddle.
-#endif
+#include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/common/backend.h"
 
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#endif
+namespace paddle {
+namespace experimental {
 
-#include "ext_dispatch.h"      // NOLINT
-#include "ext_dtype.h"         // NOLINT
-#include "ext_exception.h"     // NOLINT
-#include "ext_op_meta_info.h"  // NOLINT
-#include "ext_place.h"         // NOLINT
-#include "ext_tensor.h"        // NOLINT
+// TODO(chenweihang): Replace backend by place when place is ready
+// TODO(chenweihang): Add layout and dtype argument if needed
+PD_DLL_DECL Tensor to(const Tensor& x, Backend backend, bool blocking);
+
+}  // namespace experimental
+}  // namespace paddle

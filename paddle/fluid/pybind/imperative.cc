@@ -988,7 +988,6 @@ void BindImperative(py::module *m_ptr) {
             // otherwise call TensorToPyArray.
             // TODO(liym27): Try not to call TensorToPyArray because it always
             // copys data to cpu place, which reduces performance.
-
             if (parse_index) {
               std::vector<int> axes, starts, ends, steps, decrease_axes,
                   none_axes, infer_flags, list_select_idxs;

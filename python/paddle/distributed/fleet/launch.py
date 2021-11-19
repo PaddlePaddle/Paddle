@@ -218,6 +218,9 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     elastic_group = parser.add_argument_group("Elastic Parameters")
     elastic_group.add_argument(
         "--elastic_server", type=str, help="etcd server host:port")
+    elastic_group.add_argument(
+        "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
+
     elastic_group.add_argument("--job_id", type=str, help="job unique id")
     elastic_group.add_argument("--np", type=int, help="job pod/node number")
     elastic_group.add_argument("--scale", type=int, default=0, help="scale np")

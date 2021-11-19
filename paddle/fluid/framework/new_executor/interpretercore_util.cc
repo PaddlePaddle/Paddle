@@ -289,7 +289,6 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
     const OpKernelType& expected_kernel_key, const platform::Place& place,
     const std::string& var_name, const std::string& outer_name,
     const OpFuncNode& op_func_node, Variable* var, VariableScope* var_scope) {
-  auto& ins_name2id = op_func_node.input_index;
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   std::string new_var_name =
@@ -307,7 +306,7 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
           : is_gpu_place(expected_kernel_key.place_) ? 1 : -1;
 
   std::map<std::string, std::vector<int>> copy_ins_name2id;
-  copy_ins_name2id["X"] = ins_name2id.at(outer_name);
+  copy_ins_name2id["X"] = {var_scope->VarId(var_name)};
   std::map<std::string, std::vector<int>> copy_out_name2id;
   copy_out_name2id["Out"] = {var_scope->VarId(new_var_name)};
 
@@ -629,6 +628,97 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
   out.resize(std::distance(out.begin(), it));
 
   return out;
+}
+
+void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
+                          std::map<int, std::list<int>>& var2min_rw_op,
+                          int cur_op, int rw_var) {
+  // rw_var is inputs or outputs of cur_op
+  // this function update the var2min_rw_op set .
+  if (var2min_rw_op.find(rw_var) == var2min_rw_op.end())
+    var2min_rw_op[rw_var] = std::list<int>();
+  for (auto dep_op : op2dependences.at(cur_op)) {
+    var2min_rw_op[rw_var].remove(dep_op);
+  }
+  var2min_rw_op[rw_var].push_back(cur_op);
+}
+
+std::map<int, std::list<int>> get_downstream_map(
+    const std::map<int, std::set<int>>& op2dependences) {
+  // op2dependences is op -> it's dependences. we want to get op -> [ops] map,
+  // where ops is the next instruction of op.
+  std::map<int, std::list<int>> result;
+  for (auto& item : op2dependences) {
+    int op = item.first;
+    for (auto dep_op : item.second) {
+      if (result.find(dep_op) == result.end())
+        result[dep_op] = std::list<int>();
+      result[dep_op].push_back(op);
+    }
+  }
+  return std::move(result);
+}
+
+std::map<int, std::list<int>> build_op_downstream_map(
+    const std::vector<Instruction>& vec_instruction) {
+  auto var2min_rw_op = std::map<
+      int, std::list<int>>();  // # map from variable id to read / write op id.
+  auto var2recent_write_op =
+      std::map<int, int>();  // # map from variable to recent write op.
+  auto op2dependences =
+      std::map<int, std::set<int>>();  //# map from op to the dependence list,
+                                       // op must run after the dependence.
+  std::set<int>
+      remove_duplicate;  // remove the duplicate between inputs and outputs
+
+  // reserve
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    op2dependences[op_idx] = std::set<int>();
+  }
+
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    remove_duplicate.clear();
+    // step1: update the op2dependences structure
+    for (auto& item :
+         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        if (var2recent_write_op.count(var))
+          op2dependences[op_idx].insert(var2recent_write_op[var]);
+      }
+    }
+
+    for (auto& item :
+         vec_instruction[op_idx].Outputs()) {  // for all write vars
+      for (auto var : item.second) {
+        if (var2min_rw_op.count(var)) {
+          for (auto dep_op : var2min_rw_op[var]) {
+            op2dependences[op_idx].insert(dep_op);
+          }
+        }
+      }
+    }
+
+    // step2: update 2 var2xxxx data structure
+    for (auto& item :
+         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+        remove_duplicate.insert(var);
+      }
+    }
+
+    for (auto& item :
+         vec_instruction[op_idx].Outputs()) {  // for all write vars
+      for (auto var : item.second) {
+        var2recent_write_op[var] = op_idx;
+        if (remove_duplicate.count(var) ==
+            0) {  // var in input list and in output list, so remove it.
+          update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+        }
+      }
+    }
+  }
+  return std::move(get_downstream_map(op2dependences));
 }
 
 }  // namespace interpreter

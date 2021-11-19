@@ -26,7 +26,7 @@ void Flatten(const XPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
 }
 
@@ -47,20 +47,19 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->set_lod(x.lod());
+  xshape->Resize(paddle::framework::make_ddim(xshape_dims), x.meta().lod);
 }
 
 void ReshapeFromVectorVal(const XPUContext& dev_ctx,
                           const DenseTensor& x,
-                          const std::vector<int>& shape,
+                          const std::vector<int64_t>& shape,
                           DenseTensor* out) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
   if (&x == out) {
     out->Resize(out_meta.dims);
     return;
   }
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_meta.dims);
 }
 
@@ -69,7 +68,8 @@ void ReshapeFromDT(const XPUContext& dev_ctx,
                    const DenseTensor& shape,
                    DenseTensor* out) {
   auto* shape_data = shape.data<int>();
-  auto vector_shape = std::vector<int>(shape_data, shape_data + shape.numel());
+  auto vector_shape =
+      std::vector<int64_t>(shape_data, shape_data + shape.numel());
   ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
 }
 
@@ -77,7 +77,7 @@ void ReshapeFromVectorDT(const XPUContext& dev_ctx,
                          const DenseTensor& x,
                          const std::vector<DenseTensor>& shape,
                          DenseTensor* out) {
-  std::vector<int> vector_shape;
+  std::vector<int64_t> vector_shape;
   for (auto& tensor : shape) {
     PADDLE_ENFORCE_EQ(
         tensor.dims(),

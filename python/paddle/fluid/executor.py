@@ -493,29 +493,19 @@ class _StandaloneExecutor(object):
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed, fetch_list, return_numpy=True):
+    def run(self, feed_names, fetch_list, return_numpy=True):
         """
         Args:
-            feed(list|dict): This parameter represents the input Tensors of the model.
-                If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list of Tensors. If the
-                parameter type is dict, the data in the feed will be split and sent to
-                multiple devices (CPU/GPU), that is to say, the input data will be evenly
-                sent to different devices, so you should make sure the number of samples of
-                the current mini-batch must be greater than the number of places;
-                if the parameter type is list, those data are copied directly to each device,
-                so the length of this list should be equal to the number of places.
-                The default is None.
+            feed_names(list): This parameter represents the input names of the model.
             fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model runs. The default is None. 
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        feed = self._update_feed(feed)
         fetch_list = self._check_fetch(fetch_list)
 
-        tensors = self._new_exe.run(feed, fetch_list)._move_to_list()
+        tensors = self._new_exe.run(feed_names, fetch_list)._move_to_list()
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
@@ -598,9 +588,9 @@ class _ExecutorCache(object):
         assert isinstance(
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
+
         if str(program) not in self._cached_executors:
             new_program = program.clone()
-            _prune_feed_ops(new_program)
             new_exe = _StandaloneExecutor(self._place, new_program, scope)
             self._cached_executors[str(program)] = new_exe
 
@@ -744,8 +734,13 @@ class Executor(object):
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
 
-    def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
-                            fetch_var_name):
+    def _add_feed_fetch_ops(self,
+                            program,
+                            feed,
+                            fetch_list,
+                            feed_var_name,
+                            fetch_var_name,
+                            skip_fetch=False):
         tmp_program = program.clone()
 
         global_block = tmp_program.global_block()
@@ -780,6 +775,9 @@ class Executor(object):
                     warnings.warn(
                         "The variable %s is not found in program. It is not declared or is pruned."
                         % name)
+        if skip_fetch:
+            return tmp_program
+
         # append fetch_operators
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
@@ -1298,9 +1296,15 @@ class Executor(object):
                     use_program_cache=use_program_cache)
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
+            ## change default executor 
+            heter_place = program._heter_pipeline_opt["heter_place"]
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
+            # TODO(zhangminxu): support heterps pipeline training using exe.run
             if "startup_program" in program._heter_pipeline_opt:
                 program = program._heter_pipeline_opt["startup_program"]
-            # TODO(zhangminxu): support heterps pipeline training using exe.run
 
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
@@ -1325,8 +1329,40 @@ class Executor(object):
                 program, compiler.CompiledProgram) else program
             assert isinstance(inner_program_, framework.Program)
             if not inner_program_._is_start_up_program_:
-                return self._executor_cache.run(inner_program_, scope, feed,
-                                                fetch_list, return_numpy)
+                if feed is None:
+                    feed = {}
+                elif isinstance(feed, (list, tuple)):
+                    assert len(feed) == 1, "Not compiled with data parallel"
+                    feed = feed[0]
+                if not isinstance(feed, dict):
+                    raise TypeError(
+                        "feed requires dict as its Parameter. But you passed in %s"
+                        % (type(feed)))
+                feed = self._update_feed(program, feed)
+                program = self._add_feed_fetch_ops(
+                    program=inner_program_,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name,
+                    skip_fetch=True)
+                self._feed_data(program, feed, feed_var_name, scope)
+                if hasattr(program, 'lr_sheduler'):
+                    from paddle.optimizer.lr import LRScheduler
+                    assert isinstance(program.lr_sheduler,
+                                      LRScheduler), "must be LRScheduler"
+                    lr_sheduler = program.lr_sheduler
+                    lr_value = lr_sheduler()
+                    lr_var = program.global_block().vars[lr_sheduler._var_name]
+                    data = np.array(
+                        [lr_value]).astype(convert_dtype(lr_var.dtype))
+                    tensor = core.get_variable_tensor(scope,
+                                                      lr_sheduler._var_name)
+                    tensor.set(data, self.place)
+
+                return self._executor_cache.run(program, scope,
+                                                list(feed.keys()), fetch_list,
+                                                return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1672,6 +1708,39 @@ class Executor(object):
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
             dataset.set_use_var(data_vars)
+        elif program._heter_pipeline_opt is not None:
+            stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            heter_place = program._heter_pipeline_opt["heter_place"]
+            if stage_id != 0:
+                import paddle
+                if dataset is not None:
+                    raise RuntimeError(
+                        "dataset should be None for heter pipeline mode")
+                # The following fake dataset is created to call 
+                # the _prepare_trainer api, and it is meaningless.
+                data_vars = []
+                for var in program.global_block().vars.values():
+                    if var.is_data:
+                        data_vars.append(var)
+                if core.is_compiled_with_npu():
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'InMemoryDataset')
+                else:
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'FileInstantDataset')
+                dataset.set_batch_size(1)
+                dataset.set_thread(1)
+                dataset.set_filelist(['None'])
+                dataset.set_use_var(data_vars)
+            else:
+                if dataset is None:
+                    raise RuntimeError(
+                        "dataset is need and should be initialized")
+            ## change default executor
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")
@@ -1890,6 +1959,7 @@ class Executor(object):
         cur_rank = os.getenv("PADDLE_TRAINER_ID")
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+        nrank = 1
         if cur_rank and trainer_endpoints_str:
             fleet_exe_desc.cur_rank = int(cur_rank)
             trainer_endpoints = trainer_endpoints_str.split(',')
@@ -1898,8 +1968,23 @@ class Executor(object):
                 rank_info.rank = rank
                 rank_info.ip_port = endpoint
                 fleet_exe_desc.cluster_info.append(rank_info)
+            nrank = len(trainer_endpoints)
         else:
+            fleet_exe_desc.cur_rank = 0
+            rank_info = fleet_executor_desc_pb2.RankInfo()
+            rank_info.rank = 0
+            rank_info.ip_port = ''
+            fleet_exe_desc.cluster_info.append(rank_info)
             logging.warning("Fleet Executor will run on single device only.")
+        fleet_opt = program._pipeline_opt["fleet_opt"]
+        if "dist_strategy" in fleet_opt:
+            fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
+            fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
+            fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
+        if "num_micro_batches" in fleet_opt:
+            fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
+        num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
+        assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         fleet_exe.init(program._pipeline_opt["section_program"].desc)
         fleet_exe.run()
