@@ -29,6 +29,7 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   // 1. layout transform
   if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferLayout(src_var_name, new_var_name,
+                             kernel_type_for_var.data_layout_,
                              expected_kernel_key.data_layout_, var_scope_);
     RunAndConstructOpFuncNode(op, src_var_name, new_var_name,
                               new_op_func_nodes);
@@ -39,6 +40,7 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   // 2. dype transform
   if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferDtype(src_var_name, new_var_name,
+                            kernel_type_for_var.data_type_,
                             expected_kernel_key.data_type_, var_scope_);
     RunAndConstructOpFuncNode(op, src_var_name, new_var_name,
                               new_op_func_nodes);
@@ -109,7 +111,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 std::shared_ptr<OperatorBase> TransferLayout(
     const std::string& var_name,
     std::string& new_var_name,  // NOLINT
-    DataLayout layout, VariableScope* var_scope) {
+    DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope) {
   // 1. Generate new_var_name
   new_var_name =
       var_name + "_layout_" + std::to_string(var_scope->VarSize() + 1);
@@ -118,7 +120,7 @@ std::shared_ptr<OperatorBase> TransferLayout(
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {new_var_name}}};
-  AttributeMap attr_map = {{"dst_layout", static_cast<int>(layout)}};
+  AttributeMap attr_map = {{"dst_layout", static_cast<int>(out_layout)}};
 
   // 3. Create transfer_op
   std::string op_type("transfer_layout");
@@ -126,15 +128,16 @@ std::shared_ptr<OperatorBase> TransferLayout(
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
-  VLOG(3) << string::Sprintf("Insert %s with %s -> %s(%s).", op_type, var_name,
-                             new_var_name, layout);
+  VLOG(3) << string::Sprintf("Insert %s(%s) with %s -> %s(%s).", op_type,
+                             var_name, in_layout, new_var_name, out_layout);
   return op;
 }
 
 std::shared_ptr<OperatorBase> TransferDtype(
     const std::string& var_name,
     std::string& new_var_name,  // NOLINT
-    proto::VarType::Type dtype, VariableScope* var_scope) {
+    proto::VarType::Type in_dtype, proto::VarType::Type out_dtype,
+    VariableScope* var_scope) {
   // 1. Generate new_var_name
   new_var_name =
       var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
@@ -143,7 +146,11 @@ std::shared_ptr<OperatorBase> TransferDtype(
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {new_var_name}}};
-  AttributeMap attr_map = {{"dst_dtype", static_cast<int>(dtype)}};
+  AttributeMap attr_map;
+  attr_map["in_dtype"] = static_cast<int>(in_dtype);
+  attr_map["out_dtype"] = static_cast<int>(out_dtype);
+  // NOTE(Aurelius84): In whice case use_mkldnn = true?
+  attr_map["use_mkldnn"] = false;
 
   // 3. Create transfer_op
   std::string op_type("transfer_dtype");
@@ -151,8 +158,9 @@ std::shared_ptr<OperatorBase> TransferDtype(
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
-  VLOG(3) << string::Sprintf("Insert %s with %s -> %s(%s).", op_type, var_name,
-                             new_var_name, DataTypeToString(dtype));
+  VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
+                             var_name, DataTypeToString(in_dtype), new_var_name,
+                             DataTypeToString(out_dtype));
   return op;
 }
 

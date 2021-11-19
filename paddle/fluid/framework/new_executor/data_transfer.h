@@ -83,12 +83,13 @@ inline bool need_layout_transform(const OpKernelType& kernel_type_for_var,
 std::shared_ptr<OperatorBase> TransferLayout(
     const std::string& var_name,
     std::string& new_var_name,  // NOLINT
-    DataLayout layout, VariableScope* var_scope);
+    DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope);
 
 std::shared_ptr<OperatorBase> TransferDtype(
     const std::string& var_name,
     std::string& new_var_name,  // NOLINT
-    proto::VarType::Type dtype, VariableScope* var_scope);
+    proto::VarType::Type in_dtype, proto::VarType::Type out_dtype,
+    VariableScope* var_scope);
 
 std::shared_ptr<OperatorBase> TransferDevice(
     const std::string& var_name,
