@@ -27,10 +27,11 @@
 #include "paddle/pten/core/backends/gpu/context.h"
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-// using MKLDNNContext = paddle::platform::MKLDNNDeviceContext;
+#include "paddle/fluid/platform/device_context.h"
+using MKLDNNContext = paddle::platform::MKLDNNDeviceContext;
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/device_context.h"  // NOLINT
 using NPUContext = paddle::platform::NPUDeviceContext;
 #endif
 #ifdef PADDLE_WITH_XPU
