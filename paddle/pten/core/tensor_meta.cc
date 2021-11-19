@@ -16,23 +16,23 @@ limitations under the License. */
 
 namespace pten {
 
-DenseTensorMeta::DenseTensorMeta(DataType type, const DDim& dims)
-    : dims(dims), type(type) {}
+DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
+    : dims(dims), dtype(dtype) {}
 
-DenseTensorMeta::DenseTensorMeta(DataType type,
+DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout)
-    : dims(dims), type(type), layout(layout) {}
+    : dims(dims), dtype(dtype), layout(layout) {}
 
-DenseTensorMeta::DenseTensorMeta(DataType type,
+DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  const std::vector<std::vector<size_t>>& lod)
-    : dims(dims), type(type), layout(layout), lod(lod) {}
+    : dims(dims), dtype(dtype), layout(layout), lod(lod) {}
 
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
-  valid = valid && (type != DataType::UNDEFINED);
+  valid = valid && (dtype != DataType::UNDEFINED);
   valid = valid && (layout != DataLayout::UNDEFINED);
   valid = valid && (is_scalar || product(dims) >= 0);
   return valid;
@@ -41,7 +41,7 @@ bool DenseTensorMeta::valid() const noexcept {
 bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   bool ret = true;
   return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
-         (lhs.type == rhs.type) && (lhs.layout == rhs.layout) &&
+         (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
 }  // namespace pten
