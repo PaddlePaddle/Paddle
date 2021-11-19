@@ -100,10 +100,7 @@ PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
 
 PyObject* eager_tensor_properties_get_place(EagerTensorObject* self,
                                             void* closure) {
-  auto place = self->eagertensor.place();
-  auto obj = ::pybind11::cast(place);
-  obj.inc_ref();
-  return obj.ptr();
+  return ToPyObject(self->eagertensor.place());
 }
 
 PyObject* eager_tensor_properties_get_place_str(EagerTensorObject* self,

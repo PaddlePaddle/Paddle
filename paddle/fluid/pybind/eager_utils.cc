@@ -329,5 +329,11 @@ PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value) {
   return result;
 }
 
+PyObject* ToPyObject(const platform::Place& value) {
+  auto obj = ::pybind11::cast(value);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 }  // namespace pybind
 }  // namespace paddle
