@@ -15,15 +15,13 @@
 import itertools
 import re
 
+from ..fluid.dygraph.jit import declarative as to_static
+from ..fluid.dygraph.jit import not_to_static
 from ..fluid.layers import reshape, transpose
 from .linalg import matmul
 from .manipulation import squeeze, unsqueeze
 from .math import multiply
 from .math import sum as paddle_sum
-
-from paddle.common_ops_import import dygraph_only
-
-__all__ = []
 
 
 def parse_op_labels(labelstr, operand):
@@ -79,12 +77,12 @@ def parse_labels(labelstr, operands):
     list of full label strings for all input operands
     '''
 
-    nop_labels = labelstr.split(',')
-    assert len(nop_labels) == len(operands), (
+    op_labels = labelstr.split(',')
+    assert len(op_labels) == len(operands), (
         f"Invalid equation: the number of operands is {len(operands)}, "
-        f"but found {len(nop_labels)} segments in the label equation.")
+        f"but found {len(op_labels)} segments in the label equation.")
 
-    return list(map(parse_op_labels, nop_labels, operands))
+    return list(map(parse_op_labels, op_labels, operands))
 
 
 def validate_rhs(rhs, input_labels, n_bcast_dims):
@@ -196,7 +194,7 @@ def build_view(in_labels, out_labels):
     return inv_map
 
 
-def build_global_view(nop_labels, rhs, n_bcast_dims):
+def build_global_view(op_labels, rhs, n_bcast_dims):
     '''
     Build the global view, which is a layout of all dimension labels
     plus an index table that maps from the layout to the dimensions
@@ -206,7 +204,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
 
     Parameters
     ----------
-    nop_labels:
+    op_labels:
         The input full label strings of all input operands
     rhs:
         The equation right hand side
@@ -226,7 +224,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         the counter array for dimension contractions
     '''
     # Put all labels in alphabetical order
-    concat = sorted(''.join(nop_labels).replace('.', ''))
+    concat = sorted(''.join(op_labels).replace('.', ''))
     labels, count = [], []
     for a, b in zip(['.'] + concat, concat):
         if a != b:
@@ -249,7 +247,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
 
     g_labels_sum = ''.join(labels)
     g_labels = g_labels_out + g_labels_sum
-    g_view = list(map(lambda i: build_view(i, g_labels), nop_labels))
+    g_view = list(map(lambda i: build_view(i, g_labels), op_labels))
     g_nout = len(g_labels_out)
     g_count = count
 
@@ -738,7 +736,74 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
-@dygraph_only
+@not_to_static
+def preprocess(eqn, ops):
+    r"""Includes all the preprocessing logic, including equation parsing and
+    execution planning.
+
+    This part of work doesn't involve any actual tensor computation, and thus
+    is marked with `not_to_static`.
+    """
+
+    nop = len(ops)
+    assert nop > 0, "At least one operand is expected."
+
+    # Part the equation to left hand side and right hand side
+    lhs, *rhs = eqn.lower().replace(' ', '').split('->')
+    assert len(rhs) < 2, "Invalid equation: multiple `->` were found."
+
+    # Note, we distinguish between 'ij->' and 'ij' by setting rhs to '' and None
+    rhs = rhs[0] if rhs else None
+
+    # Parse labels for each operand and count the number of occurrences for each alphabet label
+    op_labels = parse_labels(lhs, ops)
+
+    # Diagonalize the operands which have duplicate labels
+    op_labels, ops = list(zip(*map(diagonalize, op_labels, ops)))
+
+    # To handle broadcasting, we should first know how many dimensions are there
+    # We need to use that number to generate output labels
+    # e.g. 1 for ['ij', 'i.', '.k']
+    n_bcast_dims = max(map(lambda s: s.count('.'), op_labels))
+
+    # Build the data structures for planning. It's helpful to think of all the operands
+    # broadcasting together from a global view. In this view, dimensions from multiple 
+    # operands are mapped to the same position if they are labeled uniquely. Broadcasting
+    # dimensions are mapped to adjacent positions with the right bound fixed. Subject to
+    # each operand, the map is injective but for all operands the map is on-to.  
+    # g_labels:
+    #   The labels of the global view 
+    # g_view:
+    #   Includes a list of maps from each operand's dimensions to the global view's dimensions
+    #   which we refer to as ax or axes in the code to distinguish from operand's dims
+    # g_shape:
+    #   The shape of the global view. The size of each dimension is what the aligned dimensions
+    #   should broadcast to
+    # g_nout:
+    #   Number of output axes
+    # g_supports
+    #   Booleans indicating each operand's non-trivial dimensions
+    # g_count
+    #   Counting how many non-trivial dimensions remain for each ax
+
+    g_labels, g_view, g_nout, g_count = build_global_view(op_labels, rhs,
+                                                          n_bcast_dims)
+    g_shape, g_supports = build_global_shape(g_view, g_labels,
+                                             [op.shape for op in ops])
+
+    # Now we're ready to build up an execution plan
+    args = ops, g_view, g_shape, g_supports, g_count, n_bcast_dims
+    plan = plan_einsum(*args)
+
+    return plan
+
+
+def einsum_internal(eqn, ops):
+    plan = preprocess(eqn, ops)
+    result = plan.execute()
+    return result
+
+
 def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
@@ -897,55 +962,6 @@ def einsum(equation, *operands):
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
 
-    nop = len(operands)
-    assert nop > 0, "At least one operand is expected."
+    f = to_static(einsum_internal)
 
-    # Part the equation to left hand side and right hand side
-    lhs, *rhs = equation.lower().replace(' ', '').split('->')
-    assert len(rhs) < 2, "Invalid equation: multiple `->` were found."
-
-    # Note, we distinguish between 'ij->' and 'ij' by setting rhs to '' and None
-    rhs = rhs[0] if rhs else None
-
-    # Parse labels for each operand and count the number of occurrences for each alphabet label
-    nop_labels = parse_labels(lhs, operands)
-
-    # Diagonalize the operands which have duplicate labels
-    nop_labels, operands = list(zip(*map(diagonalize, nop_labels, operands)))
-
-    # To handle broadcasting, we should first know how many dimensions are there
-    # We need to use that number to generate output labels
-    # e.g. 1 for ['ij', 'i.', '.k']
-    n_bcast_dims = max(map(lambda s: s.count('.'), nop_labels))
-
-    # Build the data structures for planning. It's helpful to think of all the operands
-    # broadcasting together from a global view. In this view, dimensions from multiple 
-    # operands are mapped to the same position if they are labeled uniquely. Broadcasting
-    # dimensions are mapped to adjacent positions with the right bound fixed. Subject to
-    # each operand, the map is injective but for all operands the map is on-to.  
-    # g_labels:
-    #   The labels of the global view 
-    # g_view:
-    #   Includes a list of maps from each operand's dimensions to the global view's dimensions
-    #   which we refer to as ax or axes in the code to distinguish from operand's dims
-    # g_shape:
-    #   The shape of the global view. The size of each dimension is what the aligned dimensions
-    #   should broadcast to
-    # g_nout:
-    #   Number of output axes
-    # g_supports
-    #   Booleans indicating each operand's non-trivial dimensions
-    # g_count
-    #   Counting how many non-trivial dimensions remain for each ax
-
-    g_labels, g_view, g_nout, g_count = build_global_view(nop_labels, rhs,
-                                                          n_bcast_dims)
-    g_shape, g_supports = build_global_shape(g_view, g_labels,
-                                             [op.shape for op in operands])
-
-    # Now we're ready to build up an execution plan
-    args = operands, g_view, g_shape, g_supports, g_count, n_bcast_dims
-    plan = plan_einsum(*args)
-    result = plan.execute()
-
-    return result
+    return f(equation, operands)

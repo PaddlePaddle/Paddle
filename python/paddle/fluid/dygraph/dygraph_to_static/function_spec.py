@@ -49,8 +49,10 @@ class FunctionSpec(object):
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
         # parse *args
         self.varargs_name = parse_varargs_name(function)
-        if self.varargs_name is not None and isinstance(function.__self__,
-                                                        TranslatedLayer):
+        # if self.varargs_name is not None and isinstance(function.__self__,
+        #                                                 TranslatedLayer):
+        if self.varargs_name is not None and isinstance(getattr(function,
+                "__self__", None), TranslatedLayer):
             self._arg_names += function.__self__._input_args_names
 
     def unified_args_and_kwargs(self, args, kwargs):
