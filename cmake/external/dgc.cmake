@@ -22,14 +22,10 @@ SET(DGC_LIBRARIES   "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc librar
 SET(DGC_URL         "https://fleet.bj.bcebos.com/dgc/collective_f66ef73.tgz")
 INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
 
-cache_third_party(extern_dgc
-        URL       ${DGC_URL}
-        DIR       DGC_SOURCES_DIR)
-
 ExternalProject_Add(
     extern_dgc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    "${DGC_DOWNLOAD_CMD}"
+    URL             ${DGC_URL}
     URL_MD5         "94e6fa1bc97169d0e1aad44570fe3251"
     PREFIX          "${DGC_PREFIX_DIR}"
     SOURCE_DIR      "${DGC_SOURCES_DIR}"

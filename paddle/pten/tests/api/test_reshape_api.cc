@@ -27,6 +27,9 @@ PT_DECLARE_MODULE(ManipulationCPU);
 PT_DECLARE_MODULE(ManipulationCUDA);
 #endif
 
+namespace pten {
+namespace tests {
+
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -68,3 +71,19 @@ TEST(API, reshape) {
   }
   ASSERT_EQ(value_equal, true);
 }
+
+TEST(Tensor, old_reshape) {
+  paddle::experimental::Tensor x(paddle::PlaceType::kCPU);
+  x.reshape({3, 4});
+
+  ASSERT_EQ(x.shape()[0], 3);
+  ASSERT_EQ(x.shape()[1], 4);
+  ASSERT_EQ(x.numel(), 12);
+  ASSERT_EQ(x.is_cpu(), true);
+  ASSERT_EQ(x.type(), pten::DataType::UNDEFINED);
+  ASSERT_EQ(x.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(x.initialized(), false);
+}
+
+}  // namespace tests
+}  // namespace pten

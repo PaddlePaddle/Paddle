@@ -191,7 +191,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   // get day_id: day nums from 1970
   struct std::tm b;
   b.tm_year = year_ - 1900;
