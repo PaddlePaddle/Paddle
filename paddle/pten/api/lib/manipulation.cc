@@ -75,7 +75,7 @@ PD_DLL_DECL Tensor cast(const Tensor& x, DataType out_dtype) {
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
   kernel_context.EmplaceBackAttr(out_dtype);
-  kernel_context.EmplaceBackAttr(dense_x->meta().type);
+  kernel_context.EmplaceBackAttr(dense_x->meta().dtype);
 
   // 4. InferShape
   auto out_meta = CastInferMeta(dense_x->meta(), out_dtype);

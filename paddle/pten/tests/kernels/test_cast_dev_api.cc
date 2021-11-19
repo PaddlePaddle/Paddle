@@ -64,7 +64,7 @@ TEST(DEV_API, cast) {
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 4);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT64);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT64);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   auto actual_result = out.data<double>();
