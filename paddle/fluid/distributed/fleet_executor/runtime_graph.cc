@@ -136,16 +136,31 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     role_to_ops.at(new_op_role_id).emplace_back(op.get());
   }
   int64_t cur_rank = exe_desc_.cur_rank();
+  DistCoordSys coord_sys(exe_desc_.dp_degree(), exe_desc_.pp_degree(),
+                         exe_desc_.mp_degree());
+  const auto& coord = coord_sys.RankToCoord(cur_rank);
+  int pipeline_stage = coord.pp_idx;
+  int64_t num_pipeline_stages = exe_desc_.pp_degree();
+  // TODO(fleet_executor dev): start up steps should be a config `num_slots`
+  int64_t start_up_steps = num_pipeline_stages - pipeline_stage - 1;
+  int64_t num_micro_batches = exe_desc_.num_micro_batches();
   int64_t task_id = cur_rank * functionality_order.size();
   for (std::size_t i = 0; i < functionality_order.size(); ++i) {
     OpRole role = functionality_order[i];
     int64_t role_id = static_cast<int64_t>(role);
+    int64_t max_run_times = num_micro_batches;
+    int64_t max_slot_nums = start_up_steps;
+    if (IsLRSched(role_id) || IsOptimize(role_id)) {
+      max_run_times = 1;
+      max_slot_nums = 1;
+    }
     if (role_to_ops.find(role_id) == role_to_ops.end()) {
-      task_nodes_.emplace_back(
-          TaskNode::CreateEmptyTaskNode(role_id, cur_rank, task_id));
+      task_nodes_.emplace_back(TaskNode::CreateEmptyTaskNode(
+          role_id, cur_rank, task_id, max_run_times, max_slot_nums));
     } else {
-      task_nodes_.emplace_back(TaskNode::CreateTaskNode(
-          role_id, role_to_ops.at(role_id), cur_rank, task_id));
+      task_nodes_.emplace_back(
+          TaskNode::CreateTaskNode(role_id, role_to_ops.at(role_id), cur_rank,
+                                   task_id, max_run_times, max_slot_nums));
     }
     ++task_id;
   }
