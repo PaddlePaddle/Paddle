@@ -35,6 +35,7 @@ FleetExecutor::~FleetExecutor() {
 
 void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
   runtime_graph_ = std::make_unique<RuntimeGraph>(program_desc, exe_desc_);
+  VLOG(5) << runtime_graph_->DebugString();
   InitCarrier();
   InitMessageBus();
 }
