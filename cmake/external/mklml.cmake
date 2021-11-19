@@ -46,10 +46,6 @@ MESSAGE(STATUS      "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
 SET(MKLML_PREFIX_DIR        ${THIRD_PARTY_PATH}/mklml)
 SET(MKLML_SOURCE_DIR        ${THIRD_PARTY_PATH}/mklml/src/extern_mklml)
 
-cache_third_party(${MKLML_PROJECT}
-    URL           ${MKLML_URL}
-    DIR           MKLML_SOURCE_DIR)
-
 # Ninja Generator can not establish the correct dependency relationship between the imported library with target, 
 # the product file in the ExternalProject need to be specified manually, please refer to
 # https://stackoverflow.com/questions/54866067/cmake-and-ninja-missing-and-no-known-rule-to-make-it
@@ -57,11 +53,10 @@ cache_third_party(${MKLML_PROJECT}
 ExternalProject_Add(
     ${MKLML_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    "${MKLML_DOWNLOAD_CMD}"
+    URL                   ${MKLML_URL}
     URL_MD5               ${MKLML_URL_MD5}
     PREFIX                ${MKLML_PREFIX_DIR}
     DOWNLOAD_DIR          ${MKLML_SOURCE_DIR}
-    SOURCE_DIR            ${MKLML_SOURCE_DIR}
     DOWNLOAD_NO_PROGRESS  1
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""

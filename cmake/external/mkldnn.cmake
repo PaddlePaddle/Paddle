@@ -61,7 +61,6 @@ ExternalProject_Add(
     "${MKLDNN_DOWNLOAD_CMD}"
     DEPENDS             ${MKLDNN_DEPENDS}
     PREFIX              ${MKLDNN_PREFIX_DIR}
-    SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     #BUILD_ALWAYS        1
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

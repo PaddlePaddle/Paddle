@@ -33,9 +33,6 @@ MESSAGE(STATUS "BOOST_VERSION: ${BOOST_VER}, BOOST_URL: ${BOOST_URL}")
 
 set(BOOST_PREFIX_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_SOURCE_DIR ${THIRD_PARTY_PATH}/boost/src/extern_boost)
-cache_third_party(${BOOST_PROJECT}
-        URL       ${BOOST_URL}
-        DIR       BOOST_SOURCE_DIR)
 
 set(BOOST_INCLUDE_DIR "${BOOST_SOURCE_DIR}" CACHE PATH "boost include directory." FORCE)
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
@@ -48,11 +45,10 @@ endif()
 ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    "${BOOST_DOWNLOAD_CMD}"
+    URL                   ${BOOST_URL}
     URL_MD5               51be7cc203628dc0848e97eee32d79e3
     PREFIX                ${BOOST_PREFIX_DIR}
     DOWNLOAD_DIR          ${BOOST_SOURCE_DIR}
-    SOURCE_DIR            ${BOOST_SOURCE_DIR}
     DOWNLOAD_NO_PROGRESS  1
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""

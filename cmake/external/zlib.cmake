@@ -31,16 +31,12 @@ ELSE(WIN32)
   SET(ZLIB_LIBRARIES "${ZLIB_INSTALL_DIR}/lib/libz.a" CACHE FILEPATH "zlib library." FORCE)
 ENDIF(WIN32)
 
-cache_third_party(extern_zlib
-    REPOSITORY    ${ZLIB_REPOSITORY}
-    TAG           ${ZLIB_TAG}
-    DIR           ZLIB_SOURCE_DIR)
-
 ExternalProject_Add(
     extern_zlib
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${ZLIB_DOWNLOAD_CMD}"
+    GIT_REPOSITORY  ${ZLIB_REPOSITORY}
+    GIT_TAG         ${ZLIB_TAG}
     PREFIX          ${ZLIB_PREFIX_DIR}
     SOURCE_DIR      ${ZLIB_SOURCE_DIR}
     UPDATE_COMMAND  ""

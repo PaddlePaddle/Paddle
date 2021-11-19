@@ -46,19 +46,14 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-cache_third_party(extern_warpctc
-    REPOSITORY   ${WARPCTC_REPOSITORY}
-    TAG          ${WARPCTC_TAG}
-    DIR          WARPCTC_SOURCE_DIR)
-
 if(WITH_ASCEND OR WITH_ASCEND_CL)
     ExternalProject_Add(
         extern_warpctc
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${WARPCTC_DOWNLOAD_CMD}"
+        GIT_REPOSITORY  ${WARPCTC_REPOSITORY}
+        GIT_TAG         ${WARPCTC_TAG}
         PREFIX          ${WARPCTC_PREFIX_DIR}
-        SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
         #UPDATE_COMMAND  ""
         PATCH_COMMAND   ""
         BUILD_ALWAYS    1
@@ -106,9 +101,9 @@ else()
         extern_warpctc
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${WARPCTC_DOWNLOAD_CMD}"
+        GIT_REPOSITORY  ${WARPCTC_REPOSITORY}
+        GIT_TAG         ${WARPCTC_TAG}
         PREFIX          ${WARPCTC_PREFIX_DIR}
-        SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
         UPDATE_COMMAND  ""
         PATCH_COMMAND   ""
         #BUILD_ALWAYS    1

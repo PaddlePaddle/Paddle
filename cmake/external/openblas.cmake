@@ -27,11 +27,6 @@ if(WITH_MIPS)
   SET(CBLAS_TAG         v0.3.13)
 endif()
 
-cache_third_party(extern_openblas
-    REPOSITORY    ${CBLAS_REPOSITORY}
-    TAG           ${CBLAS_TAG}
-    DIR           CBLAS_SOURCE_DIR)
-
 IF(NOT WIN32)
     SET(CBLAS_LIBRARIES
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
@@ -52,9 +47,9 @@ IF(NOT WIN32)
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${OPENBLAS_DOWNLOAD_CMD}"
+        GIT_REPOSITORY      ${CBLAS_REPOSITORY}
+        GIT_TAG             ${CBLAS_TAG}
         PREFIX              ${CBLAS_PREFIX_DIR}
-        SOURCE_DIR          ${CBLAS_SOURCE_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       make -j$(nproc) ${COMMON_ARGS} ${OPTIONAL_ARGS}
@@ -70,9 +65,9 @@ ELSE(NOT WIN32)
     ExternalProject_Add(
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        "${OPENBLAS_DOWNLOAD_CMD}"
+        GIT_REPOSITORY      ${CBLAS_REPOSITORY}
+        GIT_TAG             ${CBLAS_TAG}
         PREFIX              ${CBLAS_PREFIX_DIR}
-        SOURCE_DIR          ${CBLAS_SOURCE_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     0
         UPDATE_COMMAND      ""

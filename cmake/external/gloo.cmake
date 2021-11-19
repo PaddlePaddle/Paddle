@@ -39,7 +39,6 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
       ${SHALLOW_CLONE}
       "${GLOO_DOWNLOAD_CMD}"
       PREFIX                "${GLOO_PREFIX_DIR}"
-      SOURCE_DIR            "${GLOO_SOURCE_DIR}"
       UPDATE_COMMAND        ""
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
@@ -56,7 +55,6 @@ else()
       ${SHALLOW_CLONE}
       "${GLOO_DOWNLOAD_CMD}"
       PREFIX                "${GLOO_PREFIX_DIR}"
-      SOURCE_DIR            "${GLOO_SOURCE_DIR}"
       UPDATE_COMMAND        ""
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
