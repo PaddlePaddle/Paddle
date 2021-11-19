@@ -47,16 +47,12 @@ IF(WITH_MKLML)
     SET(GTEST_DEPENDS   ${MKLML_PROJECT})
 ENDIF()
 
-cache_third_party(extern_gtest
-    REPOSITORY       ${GTEST_REPOSITORY}
-    TAG              ${GTEST_TAG}
-    DIR              GTEST_SOURCE_DIR)
-
 ExternalProject_Add(
     extern_gtest
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${GTEST_DOWNLOAD_CMD}"
+    GIT_REPOSITORY  ${GTEST_REPOSITORY}
+    GIT_TAG         ${GTEST_TAG}
     DEPENDS         ${GTEST_DEPENDS}
     PREFIX          ${GTEST_PREFIX_DIR}
     SOURCE_DIR      ${GTEST_SOURCE_DIR}
