@@ -778,12 +778,16 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
                                              dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
+    merged_partiton = []
     for process in process_group:
         partition_index = _compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
-        _merge_parameter(partition_param_list, param_list[index],
-                         partition_index, complete_shape)
+        if partition_index not in merged_partiton:
+            merged_partiton.append(partition_index)
+            _merge_parameter(partition_param_list, param_list[index],
+                             partition_index, complete_shape)
+
     assert len(partition_param_list) == 1 or not partition_param_list, \
         "Fail to merge parameter"
     complete_param = _to_LodTensor(partition_param_list[0][0])
@@ -836,6 +840,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
         for idx, item in enumerate(partition_param_list[0][1]):
             if item[0] != 0 or item[1] != complete_shape[idx]:
                 is_complete_data = False
+                break
         if is_complete_data:
             return
 
@@ -843,12 +848,10 @@ def _merge_parameter(partition_param_list, param, partition_index,
         partition_param_list.append((param, partition_index))
     else:
         i = 0
-        has_concat = False
         while i < len(partition_param_list):
             concat_axis, first_order, new_partition = _compute_concat_info(
                 partition_param_list[i][1], partition_index)
             if concat_axis != -1:
-                has_concat = True
                 if first_order == 0:
                     new_param = np.concatenate(
                         (partition_param_list[i][0], param), axis=concat_axis)
@@ -861,15 +864,6 @@ def _merge_parameter(partition_param_list, param, partition_index,
                                  complete_shape)
                 break
             i += 1
-
-        if not has_concat:
-            need_append = True
-            for i in range(len(partition_param_list)):
-                if partition_index == partition_param_list[i][1]:
-                    need_append = False
-                    break
-            if need_append:
-                partition_param_list.append((param, partition_index))
 
 
 def _slice_parameter(complete_param, partition_index_list, length):
