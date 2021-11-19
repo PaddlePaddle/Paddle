@@ -2,7 +2,7 @@ set(INTERPRETERCORE_DEPS op_registry device_context scope framework_proto data_f
 lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
 graph_to_program_pass variable_helper timer monitor nan_inf_utils)
 
-cc_library(data_transfer SRCS data_transfer.cc DEPS enforce)
+cc_library(data_transfer SRCS data_transfer.cc DEPS enforc ${INTERPRETERCORE_DEPS})
 cc_library(workqueue SRCS workqueue.cc workqueue_utils.cc DEPS enforce)
 cc_library(new_executor_defs SRCS new_executor_defs.cc DEPS enforce glog scope)
 cc_library(interpretercore_garbage_collector SRCS interpretercore_garbage_collector.cc DEPS workqueue ${DEVICE_EVENT_LIBS} executor_gc_helper)
