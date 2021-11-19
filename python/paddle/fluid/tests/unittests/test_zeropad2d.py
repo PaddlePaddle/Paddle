@@ -114,16 +114,21 @@ class TestZeroPad2DLayer(unittest.TestCase):
     """
     test nn.ZeroPad2D
     """
+
     def setUp(self):
         self.shape = [4, 3, 224, 224]
         self.pad = [2, 2, 4, 1]
         self.padLayer = ZeroPad2D(padding=self.pad)
         self.x = np.random.randint(-255, 255, size=self.shape)
-        self.expect_res = np.pad(
-            self.x, [[0, 0], [0, 0], [self.pad[2], self.pad[3]], [self.pad[0], self.pad[1]]])
+        self.expect_res = np.pad(self.x,
+                                 [[0, 0], [0, 0], [self.pad[2], self.pad[3]],
+                                  [self.pad[0], self.pad[1]]])
 
     def test_layer(self):
-        self.assertTrue(np.allclose(zeropad2d(to_tensor(self.x), self.pad).numpy(), self.padLayer(to_tensor(self.x))))
+        self.assertTrue(
+            np.allclose(
+                zeropad2d(to_tensor(self.x), self.pad).numpy(),
+                self.padLayer(to_tensor(self.x))))
 
 
 if __name__ == '__main__':
