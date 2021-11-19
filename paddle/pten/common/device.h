@@ -28,7 +28,9 @@ enum class DeviceType : int8_t {
   NPU = 5,
 };
 
-struct Device {
+/// \brief The device is used to store hardware information. It has not yet
+/// stored information related to the math acceleration library.
+struct Device final {
  public:
   Device() = default;
 
@@ -36,6 +38,9 @@ struct Device {
 
   DeviceType type() const noexcept { return type_; }
 
+  /// \brief Returns the index of the device. Here, -1 is used to indicate an
+  /// invalid value, and 0 to indicate a default value.
+  /// \return The index of the device.
   int8_t id() const noexcept { return id_; }
 
   void set_type(DeviceType type) noexcept { type_ = type; }

@@ -21,7 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-class Place {
+/// \brief The place is used to specify where the data is stored.
+class Place final {
  public:
   Place() = default;
 
@@ -33,6 +34,10 @@ class Place {
 
   const Device& device() const noexcept { return device_; }
 
+  /// \brief Returns whether the memory is a locked page. The page lock
+  /// memory is actually located in the host memory, but it is used to
+  /// specify the device and can be directly transferred by DMA.
+  /// \return Whether the memory is a locked page.
   bool is_pinned() const noexcept { return is_pinned_; }
 
   void Reset(const Device& device, bool is_pinned = false) noexcept {
