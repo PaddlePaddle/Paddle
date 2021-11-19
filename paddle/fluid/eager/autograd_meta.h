@@ -103,6 +103,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   bool IsInitialized() { return grad_node_.get(); }
 
+  // TODO(jiabin): This may cause error, since -1 still can indication true;
   bool StopGradient() const { return stop_gradient_ != 0; }
 
   int NumericStopGradient() const { return stop_gradient_; }

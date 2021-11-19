@@ -75,7 +75,8 @@ void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
     if (fwd_out[i]->StopGradient()) {
-      // Set Stop Gradient only when its true, since all default value is false.
+      // Set Stop Gradient only when its true or non-initialized autograd_meta,
+      // since all default value is false.
       meta.SetStopGradient(i, fwd_out[i]->StopGradient());
     }
   }
@@ -106,7 +107,8 @@ void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
     if (fwd_in[i]->StopGradient()) {
-      // Set Stop Gradient only when its true, since all default value is false.
+      // Set Stop Gradient only when its true or non-initialized autograd_meta,
+      // since all default value is false.
       meta.SetStopGradient(i, fwd_in[i]->StopGradient());
     }
   }

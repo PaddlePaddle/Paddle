@@ -71,7 +71,7 @@ class GradSlotMeta {
 
  private:
   int size_{-1};
-  std::vector<bool> stop_gradient_;
+  std::vector<bool> stop_gradient_{false};
 };
 
 class GradNodeBase {
@@ -220,7 +220,7 @@ class Edge {
   }
 
   // Currently we use grad_node_ to identify if a edge is initialized.
-  bool IsInitialized() const { return !grad_node_.get(); }
+  bool IsInitialized() const { return grad_node_.get(); }
 
  private:
   size_t in_slot_id_;

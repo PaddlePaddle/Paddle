@@ -128,3 +128,32 @@ TEST(GradNodeInfo, GradNodeBase) {
                ->data<float>()[0],
            100.0);
 }
+
+TEST(GradNodeInfo, Edge) {
+  auto grad_test_node0 = std::make_shared<eager_test::GradTestNode>(5, 2, 2);
+  VLOG(6) << "Test Construct Edge";
+  egr::Edge edge0 = egr::Edge();
+  CHECK(edge0.IsInitialized() == false);
+  egr::Edge edge1 = egr::Edge(grad_test_node0, size_t(0), size_t(0));
+  CHECK(edge1.IsInitialized() == true);
+  egr::Edge edge2 =
+      egr::Edge(grad_test_node0, std::make_pair(size_t(1), size_t(0)));
+  VLOG(6) << "Test Set Edge's Grad Node";
+  auto* grad_node = edge1.GetGradNode();
+  CHECK_EQ(grad_node->InputMeta().size(), size_t(2));
+  auto mt_grad_node = edge1.GetMutableGradNode();
+  auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
+  std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
+  // Uninitialized AutogradMeta indicates
+  mt_grad_node->SetGradInMeta(metas, 0);
+  CHECK(grad_node->InputMeta()[0].IsStopGradient(0) == true);
+  VLOG(6) << "Test Get/Set Edge Rank Info";
+  CHECK_EQ(edge2.GetEdgeRankInfo().first, size_t(1));
+  CHECK_EQ(edge2.GetEdgeRankInfo().second, size_t(0));
+  edge2.SetEdgeRankInfo(2, 3);
+  CHECK_EQ(edge2.GetEdgeRankInfo().first, size_t(2));
+  CHECK_EQ(edge2.GetEdgeRankInfo().second, size_t(3));
+  edge2.SetEdgeRankInfo(std::make_pair(size_t(4), size_t(5)));
+  CHECK_EQ(edge2.GetEdgeRankInfo().first, size_t(4));
+  CHECK_EQ(edge2.GetEdgeRankInfo().second, size_t(5));
+}
