@@ -50,7 +50,6 @@ class StreamSafeCUDAAllocator : public Allocator {
       const std::shared_ptr<Allocator> &underlying_allocator,
       const gpuStream_t default_stream);
   bool IsAllocThreadSafe() const override;
-  void ProcessEventsAndFree();
 
  protected:
   Allocation *AllocateImpl(size_t size) override;
@@ -68,6 +67,7 @@ class StreamSafeCUDAAllocator : public Allocator {
       std::deque<gpuEvent_t> *outstanding_events);
   void FreeStreamSafeCUDAAllocation(Allocation *allocation);
   std::shared_ptr<AllocationInfo> GetAllocationInfo(Allocation *);
+  void ProcessEventsAndFree();
 
   std::shared_ptr<Allocator> underlying_allocator_;
   gpuStream_t default_stream_;

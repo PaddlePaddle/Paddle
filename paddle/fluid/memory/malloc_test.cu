@@ -171,7 +171,6 @@ TEST(Malloc, AllocZero) {
   EXPECT_GE(allocation_ptr->size(), 0);
 }
 
-#ifdef PADDLE_WITH_CUDA
 TEST(Malloc, StreamSafeCUDAAllocRetry) {
   platform::CUDAPlace place = platform::CUDAPlace();
   gpuStream_t stream1, stream2;
@@ -197,6 +196,13 @@ TEST(Malloc, StreamSafeCUDAAllocRetry) {
   allocation1.reset();  // free but not release
   th.join();
   EXPECT_GE(allocation2->size(), alloc_size);
+  allocation2.reset();
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+#else
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+#endif
 
   Release(place, stream1);
   Release(place, stream2);
@@ -218,8 +224,6 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     block_num_ = 64;
     data_num_ = 64;
     default_stream = nullptr;
-    cuda_malloc_size_before_test_ =
-        platform::RecordedCudaMallocSize(place_.GetDeviceId());
 
     streams_.reserve(stream_num_);
     streams_.emplace_back(default_stream);
@@ -300,9 +304,9 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
   void TearDown() override {
 #ifdef PADDLE_WITH_CUDA
-    cudaDeviceSynchronize();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
 #else
-    hipDeviceSynchronize();
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
 #endif
     for (gpuStream_t stream : streams_) {
       Release(place_, stream);
@@ -318,17 +322,15 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
     uint64_t cuda_malloc_size =
         platform::RecordedCudaMallocSize(place_.GetDeviceId());
-    ASSERT_EQ(cuda_malloc_size, cuda_malloc_size_before_test_)
-        << "Found " << cuda_malloc_size
-        << " bytes memory that not released yet, there may be a memory leak "
-           "problem.";
+    ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
+                                   << " bytes memory that not released yet,"
+                                   << " there may be a memory leak problem";
   }
 
   size_t stream_num_;
   size_t grid_num_;
   size_t block_num_;
   size_t data_num_;
-  uint64_t cuda_malloc_size_before_test_;
   platform::CUDAPlace place_;
   gpuStream_t default_stream;
   std::vector<gpuStream_t> streams_;
@@ -344,7 +346,6 @@ TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStream) {
   MultiThreadMUltiStreamRun();
   CheckResult();
 }
-#endif
 
 }  // namespace memory
 }  // namespace paddle

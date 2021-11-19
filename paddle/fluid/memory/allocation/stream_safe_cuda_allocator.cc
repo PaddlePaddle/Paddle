@@ -48,53 +48,6 @@ StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
-void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
-  for (auto map_it = allocation_info_map_.begin();
-       map_it != allocation_info_map_.end();) {
-    std::deque<gpuEvent_t>& outstanding_events =
-        map_it->second->outstanding_events;
-    VLOG(10) << "Check " << outstanding_events.size()
-             << " outstanding events for " << map_it->first->ptr();
-    auto deque_it = outstanding_events.begin();
-    while (deque_it != outstanding_events.end()) {
-#ifdef PADDLE_WITH_CUDA
-      gpuError_t err = cudaEventQuery(*deque_it);
-      if (err == cudaErrorNotReady) {
-        VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
-                 << " is not complete";
-        outstanding_events.erase(outstanding_events.begin(), deque_it);
-        break;
-      }
-      PADDLE_ENFORCE_CUDA_SUCCESS(err);
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(*deque_it));
-      ++deque_it;
-#else
-      gpuError_t err = hipEventQuery(*deque_it);
-      if (err == hipErrorNotReady) {
-        VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
-                 << " is not complete";
-        outstanding_events.erase(outstanding_events.begin(), deque_it);
-        break;
-      }
-      PADDLE_ENFORCE_CUDA_SUCCESS(err);
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(*deque_it));
-      ++deque_it;
-#endif
-    }
-
-    if (deque_it == outstanding_events.end()) {
-      outstanding_events.clear();
-      Allocation* allocation = map_it->first;
-      // "map_it" may be invalid after calling FreeStreamSafeCUDAAllocation
-      auto next_it = ++map_it;
-      FreeStreamSafeCUDAAllocation(allocation);
-      map_it = next_it;
-    } else {
-      ++map_it;
-    }
-  }
-}
-
 Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   ProcessEventsAndFree();
@@ -172,6 +125,53 @@ StreamSafeCUDAAllocator::GetAllocationInfo(Allocation* allocation) {
       platform::errors::NotFound(
           "The recorded allocation is not malloced by this allocator"));
   return it->second;
+}
+
+void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
+  for (auto map_it = allocation_info_map_.begin();
+       map_it != allocation_info_map_.end();) {
+    std::deque<gpuEvent_t>& outstanding_events =
+        map_it->second->outstanding_events;
+    VLOG(10) << "Check " << outstanding_events.size()
+             << " outstanding events for " << map_it->first->ptr();
+    auto deque_it = outstanding_events.begin();
+    while (deque_it != outstanding_events.end()) {
+#ifdef PADDLE_WITH_CUDA
+      gpuError_t err = cudaEventQuery(*deque_it);
+      if (err == cudaErrorNotReady) {
+        VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
+                 << " is not complete";
+        outstanding_events.erase(outstanding_events.begin(), deque_it);
+        break;
+      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(err);
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(*deque_it));
+      ++deque_it;
+#else
+      gpuError_t err = hipEventQuery(*deque_it);
+      if (err == hipErrorNotReady) {
+        VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
+                 << " is not complete";
+        outstanding_events.erase(outstanding_events.begin(), deque_it);
+        break;
+      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(err);
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(*deque_it));
+      ++deque_it;
+#endif
+    }
+
+    if (deque_it == outstanding_events.end()) {
+      outstanding_events.clear();
+      Allocation* allocation = map_it->first;
+      // "map_it" may be invalid after calling FreeStreamSafeCUDAAllocation
+      auto next_it = ++map_it;
+      FreeStreamSafeCUDAAllocation(allocation);
+      map_it = next_it;
+    } else {
+      ++map_it;
+    }
+  }
 }
 
 }  // namespace allocation
