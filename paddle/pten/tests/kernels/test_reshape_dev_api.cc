@@ -54,7 +54,7 @@ TEST(DEV_API, reshape) {
   ASSERT_EQ(out.dims()[0], expect_shape[0]);
   ASSERT_EQ(out.dims()[1], expect_shape[1]);
   ASSERT_EQ(out.numel(), 36);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   bool value_equal = true;

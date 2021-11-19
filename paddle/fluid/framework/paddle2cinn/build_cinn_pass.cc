@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/operators/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -381,7 +382,7 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                     input_names.emplace_back(n->Name());
                   }
                 });
-  cinn_op_desc.SetInput("X", input_names);
+  cinn_op_desc.SetInput(operators::kX, input_names);
   std::vector<std::string> output_names;
   std::for_each(cluster_outputs.begin(), cluster_outputs.end(),
                 [&output_names, &deny_var_set](Node* n) {
@@ -389,8 +390,8 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                     output_names.emplace_back(n->Name());
                   }
                 });
-  cinn_op_desc.SetOutput("Out", output_names);
-  cinn_op_desc.SetAttr(kCompilationKey, compilation_key);
+  cinn_op_desc.SetOutput(operators::kOutputs, output_names);
+  cinn_op_desc.SetAttr(operators::kCompilationKey, compilation_key);
   cinn_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                        ExtractOpRole(cluster));
   cinn_op_desc.Flush();

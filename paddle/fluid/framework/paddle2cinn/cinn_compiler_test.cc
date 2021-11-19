@@ -34,6 +34,7 @@
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -62,8 +63,8 @@ std::vector<std::string> GetCompilationKeys(const Graph& graph) {
   std::vector<std::string> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(
-          BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)));
+      compilation_keys.emplace_back(BOOST_GET_CONST(
+          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;
@@ -86,7 +87,8 @@ std::unordered_map<std::string, std::vector<int64_t>> GetInputsInfo(
   std::unordered_set<std::string> inputs;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      if (BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)) !=
+      if (BOOST_GET_CONST(std::string,
+                          node->Op()->GetAttr(operators::kCompilationKey)) !=
           key) {
         continue;
       }
