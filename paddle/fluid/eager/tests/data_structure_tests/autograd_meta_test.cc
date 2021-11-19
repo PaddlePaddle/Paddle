@@ -18,23 +18,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-
-namespace eager_test {
-class GradTestNode : public egr::GradNodeBase {
- public:
-  ~GradTestNode() override = default;
-  explicit GradTestNode(float val) : val_(val) {}
-  std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) override {
-    val_ = std::dynamic_pointer_cast<pten::DenseTensor>(grads[0][0].impl())
-               ->data<float>()[0];
-    auto res = std::vector<std::vector<egr::EagerTensor>>();
-    return res;
-  }
-  float val_;
-};
-}  // namespace eager_test
 
 TEST(AutogradMeta, Constructor) {
   egr::EagerTensor et1;
@@ -72,7 +57,7 @@ TEST(AutogradMeta, MemberFunction) {
   VLOG(6) << "Test IsInitialized";
   CHECK(tmp_auto->IsInitialized() == false);
   VLOG(6) << "Test GradNodeSetter Getter";
-  auto grad_node = std::make_shared<eager_test::GradTestNode>(0);
+  auto grad_node = std::make_shared<eager_test::GradTestNode>();
   tmp_auto->SetGradNode(grad_node);
   CHECK(tmp_auto->IsInitialized() == true);
   auto tmp_grad_node = tmp_auto->GetMutableGradNode();

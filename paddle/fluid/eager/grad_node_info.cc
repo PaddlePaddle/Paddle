@@ -31,6 +31,7 @@ namespace egr {
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
+  // adj_edges has the same num as backward outputs
   adj_edges_.resize(bwd_out_slot_num);
 }
 
@@ -80,11 +81,6 @@ void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
   }
 }
 
-void GradNodeBase::SetMultiGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
-                                      size_t slot_rank) {
-  SetGradInMeta(fwd_out, slot_rank);
-}
-
 void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
                                  size_t slot_rank) {
   PADDLE_ENFORCE_LE(slot_rank, (bwd_in_meta_.size() - 1),
@@ -114,11 +110,6 @@ void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
       meta.SetStopGradient(i, fwd_in[i]->StopGradient());
     }
   }
-}
-
-void GradNodeBase::SetMultiGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
-                                       size_t slot_rank) {
-  SetGradOutMeta(fwd_in, slot_rank);
 }
 
 void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,

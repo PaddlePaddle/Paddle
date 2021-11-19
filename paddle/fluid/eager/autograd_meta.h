@@ -68,8 +68,8 @@ using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
 class AutogradMeta : public AbstractAutogradMeta {
  public:
   explicit AutogradMeta(const Edge& edge = Edge()) {
-    out_rank_ = 0;
-    out_slot_id_ = 0;
+    out_slot_id_ = edge.GetEdgeRankInfo().first;
+    out_rank_ = edge.GetEdgeRankInfo().second;
     grad_node_ = edge.GetMutableGradNode();
   }
 
