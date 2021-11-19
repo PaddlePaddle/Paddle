@@ -146,7 +146,7 @@ void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
   meta->dims = src.dims();
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataType&>(meta->type) = pten::TransToPtenDataType(src.type());
+  const_cast<DataType&>(meta->dtype) = pten::TransToPtenDataType(src.type());
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataLayout&>(meta->layout) =
       pten::TransToPtenDataLayout(src.layout());
@@ -164,7 +164,7 @@ void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
   meta->dims = src.dims();
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataType&>(meta->type) = pten::TransToPtenDataType(src.type());
+  const_cast<DataType&>(meta->dtype) = pten::TransToPtenDataType(src.type());
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataLayout&>(meta->layout) =
       pten::TransToPtenDataLayout(src.layout());

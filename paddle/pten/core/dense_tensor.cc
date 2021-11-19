@@ -80,8 +80,8 @@ T* DenseTensor::mutable_data() {
   // In order to be compatible with the original Tensor design and
   // execution system, we have to reset the datatype in mutable_data<T>.
   // When the compatibility phase is over in the future, we can delete it
-  if (meta_.type == DataType::UNDEFINED) {
-    const_cast<DataType&>(meta_.type) =
+  if (meta_.dtype == DataType::UNDEFINED) {
+    const_cast<DataType&>(meta_.dtype) =
         paddle::experimental::CppTypeToDataType<T>::Type();
   }
   PADDLE_ENFORCE(
