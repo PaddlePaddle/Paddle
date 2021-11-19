@@ -382,7 +382,7 @@ struct EnforceNotMet : public std::exception {
 
   EnforceNotMet(const ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
-        err_str_(GetTraceBackString(error.to_string(), file, line)) {
+        err_str_(GetTraceBackString("lxd_debug error summy", file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 

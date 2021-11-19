@@ -34,9 +34,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/fluid/framework/op_registry.h"
-/*
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 //#include "xpu/kernel/cluster_header.h"
 //#include "xpu/kernel/debug.h"
@@ -79,8 +79,9 @@ class ElementwiseAddGradXPU2Kernel : public ElemwiseGradKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU2_KERNEL(elementwise_add, ops::ElementwiseAddXPU2Kernel<float>);
+
+REGISTER_OP_XPU_KERNEL(elementwise_add, ops::ElementwiseAddXPU2Kernel<float>);
                        
-REGISTER_OP_XPU2_KERNEL(
+REGISTER_OP_XPU_KERNEL(
     elementwise_add_grad, ops::ElementwiseAddGradXPU2Kernel<float>);
-*/
+
