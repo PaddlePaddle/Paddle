@@ -16,7 +16,7 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-# from .common import copy_distributed_attr_for_var
+from .common import infer_shape
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -171,7 +171,13 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         check_variable_and_dtype(Ids_var, 'input', ['int32', 'int64'],
                                  'c_embedding')
 
-        ref_shape = Out_var.shape
+        out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
+        assert out_tensor_dist_attr is not None
+        out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
+        assert out_var_dist_attr is not None
+        ref_shape = infer_shape(main_block, Out_var, out_tensor_dist_attr,
+                                out_var_dist_attr)
+
         intermediate_var_0 = main_block.create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
                 ["c_embedding", 'tmp'])),
@@ -180,12 +186,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=Out_var.stop_gradient)
-
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
-        # copy_distributed_attr_for_var(ctx, intermediate_var_0, Out_var)
-        tensor_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
-        ctx.set_tensor_dist_attr_for_program(intermediate_var_0, tensor_dist_attr)
+        ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
+                                             out_var_dist_attr)
 
         check_variable_and_dtype(
             Out_var, 'tensor',
@@ -214,18 +217,22 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
 
-        # c_embedding
+        # matmulv2
         embedding_op_dist_attr = OperatorDistributedAttribute()
         embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_embedding_op.desc.input_arg_names():
-            tensor_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
-            embedding_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+            assert input_dist_attr is not None, "dist_attr is {}".format(
+                op_dist_attr)
+            embedding_op_dist_attr.set_input_dist_attr(input_varname,
+                                                       input_dist_attr)
         output_varname = c_embedding_op.desc.output_arg_names()[0]
-        tensor_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
-        embedding_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
+        output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
+        assert output_dist_attr is not None, "dist_attr is {}".format(
+            op_dist_attr)
+        embedding_op_dist_attr.set_output_dist_attr(output_varname,
+                                                    output_dist_attr)
         ctx.set_op_dist_attr_for_program(c_embedding_op, embedding_op_dist_attr)
 
         # allreduce
@@ -236,12 +243,16 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             input_var = main_block.var(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
-            allreduce_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
+            allreduce_op_dist_attr.set_input_dist_attr(input_varname,
+                                                       tensor_dist_attr)
         for output_varname in c_allreduce_sum_op.desc.output_arg_names():
-            tensor_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert tensor_dist_attr is not None, "dist_attr is {}".format(op_dist_attr)
-            allreduce_op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
-        ctx.set_op_dist_attr_for_program(c_allreduce_sum_op, allreduce_op_dist_attr)
+            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
+            assert output_dist_attr is not None, "dist_attr is {}".format(
+                op_dist_attr)
+            allreduce_op_dist_attr.set_output_dist_attr(output_varname,
+                                                        output_dist_attr)
+        ctx.set_op_dist_attr_for_program(c_allreduce_sum_op,
+                                         allreduce_op_dist_attr)
 
         # param initialization sync
         assert Weight_var.name not in dist_op_context.already_init_sync_vars

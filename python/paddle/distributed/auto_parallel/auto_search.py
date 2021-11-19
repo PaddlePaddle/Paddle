@@ -48,6 +48,7 @@ from paddle.cost_model import CostModel
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.auto_parallel.cost_model import estimate_cost
 from .reshard import HAS_SENT, HAS_RECV, HAS_ALLGATHER
+from .process_group import _g_process_group_map
 
 paddle.enable_static()
 
@@ -324,7 +325,7 @@ def check_op_dims_mapping(op, op_dist_attr, vars):
             return False
         if vars[var_name].is_data and len(dims_mapping) > 1:
             for dim in dims_mapping[1:]:
-                if dim != -1: 
+                if dim != -1:
                     return False
 
     for var_name in op.output_arg_names:
@@ -371,7 +372,7 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
 
     # compose dims_mapping of all tensor
     composed_dims_mapping_list = list(
-        product(*[dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
+        product(* [dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
     for composed_dims_mapping in composed_dims_mapping_list:
         op_dist_attr = OperatorDistributedAttribute()
         op_dist_attr.process_mesh = process_mesh
@@ -409,10 +410,12 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
                         _ = []
                         for var_name in op.input_arg_names:
                             _.append(
-                                dist_op.dist_attr.get_input_dims_mapping(var_name))
+                                dist_op.dist_attr.get_input_dims_mapping(
+                                    var_name))
                         for var_name in op.output_arg_names:
                             _.append(
-                                dist_op.dist_attr.get_output_dims_mapping(var_name))
+                                dist_op.dist_attr.get_output_dims_mapping(
+                                    var_name))
                         if _ not in elementwise_op_dist_attr_list and \
                         check_special_op_dims_mapping(op, dist_op.dist_attr, vars):
                             dist_op.dist_attr.impl_idx = -1
@@ -434,10 +437,12 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
                         _ = []
                         for var_name in op.input_arg_names:
                             _.append(
-                                dist_op.dist_attr.get_input_dims_mapping(var_name))
+                                dist_op.dist_attr.get_input_dims_mapping(
+                                    var_name))
                         for var_name in op.output_arg_names:
                             _.append(
-                                dist_op.dist_attr.get_output_dims_mapping(var_name))
+                                dist_op.dist_attr.get_output_dims_mapping(
+                                    var_name))
                         if _ not in default_op_dist_attr_list and \
                         check_special_op_dims_mapping(op, dist_op.dist_attr, vars):
                             dist_op.dist_attr.impl_idx = -2
@@ -458,17 +463,21 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
 
 def check_special_op_dims_mapping(op, op_dist_attr, vars):
     if op.type == "layer_norm":
-        bias_dims_mapping = op_dist_attr.get_input_dims_mapping(op.input("Bias")[0])
-        scale_dims_mapping = op_dist_attr.get_input_dims_mapping(op.input("Scale")[0])
+        bias_dims_mapping = op_dist_attr.get_input_dims_mapping(
+            op.input("Bias")[0])
+        scale_dims_mapping = op_dist_attr.get_input_dims_mapping(
+            op.input("Scale")[0])
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(op.input("X")[0])
-        mean_dims_mapping = op_dist_attr.get_output_dims_mapping(op.output("Mean")[0])
-        variance_dims_mapping = op_dist_attr.get_output_dims_mapping(op.output("Variance")[0])
+        mean_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            op.output("Mean")[0])
+        variance_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            op.output("Variance")[0])
         y_dims_mapping = op_dist_attr.get_output_dims_mapping(op.output("Y")[0])
         if x_dims_mapping != y_dims_mapping:
             return False
         if scale_dims_mapping[0] != x_dims_mapping[-1]:
             return False
-        if bias_dims_mapping[0]!= y_dims_mapping[-1]:
+        if bias_dims_mapping[0] != y_dims_mapping[-1]:
             return False
         if mean_dims_mapping[0] != x_dims_mapping[0]:
             return False
@@ -505,10 +514,10 @@ def enumerate_ops_valid_dist_attr(program,
     # global_process_mesh = auto.ProcessMesh(mesh=np.array(
     #     process_mesh_global_group).reshape(process_mesh_topology).tolist())
     if len(process_mesh_topology) > 1:
-        global_process_mesh = auto.ProcessMesh(mesh=
-            np.array(process_mesh_global_group).reshape(process_mesh_topology).tolist())  
+        global_process_mesh = auto.ProcessMesh(mesh=np.array(
+            process_mesh_global_group).reshape(process_mesh_topology).tolist())
     else:
-        global_process_mesh =  auto.ProcessMesh(mesh=process_mesh_global_group) 
+        global_process_mesh = auto.ProcessMesh(mesh=process_mesh_global_group)
 
     pipeline_process_mesh_list = None
     if pipeline_mode:
@@ -690,9 +699,10 @@ def mcmc_search_strategy(program,
             process_mesh = selected_op_dist_attr.process_mesh
             tensor_dist_attr = TensorDistributedAttribute()
             tensor_dist_attr.process_mesh = process_mesh
-            tensor_dist_attr.dims_mapping = selected_op_dist_attr.get_output_dims_mapping(var_name)
-            new_dist_context.set_tensor_dist_attr_for_program(
-                vars[var_name], tensor_dist_attr)
+            tensor_dist_attr.dims_mapping = selected_op_dist_attr.get_output_dims_mapping(
+                var_name)
+            new_dist_context.set_tensor_dist_attr_for_program(vars[var_name],
+                                                              tensor_dist_attr)
             # process_mesh = selected_op_dist_attr.process_mesh
             # new_dist_context.get_tensor_dist_attr_for_program(vars[
             #     var_name]).process_mesh = process_mesh
@@ -706,8 +716,10 @@ def mcmc_search_strategy(program,
                 process_mesh = selected_op_dist_attr.process_mesh
                 tensor_dist_attr = TensorDistributedAttribute()
                 tensor_dist_attr.process_mesh = process_mesh
-                tensor_dist_attr.dims_mapping = selected_op_dist_attr.get_input_dims_mapping(var_name)
-                new_dist_context.set_tensor_dist_attr_for_program(vars[var_name], tensor_dist_attr)
+                tensor_dist_attr.dims_mapping = selected_op_dist_attr.get_input_dims_mapping(
+                    var_name)
+                new_dist_context.set_tensor_dist_attr_for_program(
+                    vars[var_name], tensor_dist_attr)
 
     if new_op_valid_dist_attr_dict is None:
         return op_valid_dist_attr_dict, new_dist_context
@@ -727,13 +739,13 @@ def mcmc(train_program,
     times = 0
     best_dist_context = init_dist_context
     cost = estimate_searched_strategy_cost(
-                train_program,
-                start_program,
-                init_dist_context,
-                loss,
-                optimizer,
-                pipeline_process_mesh_list,
-                cluster=None).runtime
+        train_program,
+        start_program,
+        init_dist_context,
+        loss,
+        optimizer,
+        pipeline_process_mesh_list,
+        cluster=None).runtime
     min_cost = cost
     while times < max_search_times:
         times += 1
@@ -743,13 +755,13 @@ def mcmc(train_program,
         if not check_tensors_dist_attr(new_dist_context):
             continue
         cur_cost = estimate_searched_strategy_cost(
-                    train_program,
-                    start_program,
-                    new_dist_context,
-                    loss,
-                    optimizer,
-                    pipeline_process_mesh_list,
-                    cluster=None).runtime
+            train_program,
+            start_program,
+            new_dist_context,
+            loss,
+            optimizer,
+            pipeline_process_mesh_list,
+            cluster=None).runtime
         print("cur_cost: ", cur_cost, "min_cost: ", min_cost)
         if (min_cost - cur_cost) > 0:
             best_dist_context = copy.deepcopy(new_dist_context)
@@ -794,6 +806,7 @@ def get_distributed_program(train_program, startup_program, dist_context, loss,
     HAS_SENT.clear()
     HAS_RECV.clear()
     HAS_ALLGATHER.clear()
+    _g_process_group_map.clear()
     return dist_main_program, dist_startup_program
 
 
@@ -950,13 +963,14 @@ def init(op_valid_dist_attr_dict, program):
         init_op_dist_attr = op_valid_dist_attr_list[random_op_dist_attr]
         new_dist_context.set_op_dist_attr_for_program(op, init_op_dist_attr)
         for var_name in op.input_arg_names:
-            if new_dist_context.get_tensor_dist_attr_for_program(vars[var_name]) is None:
+            if new_dist_context.get_tensor_dist_attr_for_program(vars[
+                    var_name]) is None:
                 tensor_dist_attr = TensorDistributedAttribute()
                 tensor_dist_attr.process_mesh = init_op_dist_attr.process_mesh
                 tensor_dist_attr.dims_mapping = init_op_dist_attr.get_input_dims_mapping(
                     var_name)
-                new_dist_context.set_tensor_dist_attr_for_program(vars[var_name],
-                                                                tensor_dist_attr)
+                new_dist_context.set_tensor_dist_attr_for_program(
+                    vars[var_name], tensor_dist_attr)
 
         for var_name in op.output_arg_names:
             tensor_dist_attr = TensorDistributedAttribute()
