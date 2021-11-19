@@ -124,6 +124,9 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
             if program_config.ops[0].attrs[
                     'scale'] <= 0 and self.dynamic_shape.min_input_shape:
                 return True
+            if program_config.ops[0].attrs[
+                    'align_corners'] == True and self.dynamic_shape.min_input_shape:
+                return True
             return False
 
         self.add_skip_case(
