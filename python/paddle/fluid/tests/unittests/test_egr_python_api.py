@@ -37,14 +37,6 @@ class EagerScaleTestCase(unittest.TestCase):
             self.assertEqual(tensor.stop_gradient, False)
             tensor.stop_gradient = True
             self.assertEqual(tensor.stop_gradient, False)
-            tensor.name = 'tensor_name_test'
-            self.assertEqual(tensor.name, 'tensor_name_test')
-            self.assertEqual(tensor.persistable, False)
-            tensor.persistable = True
-            self.assertEqual(tensor.persistable, True)
-            tensor.persistable = False
-            self.assertEqual(tensor.persistable, False)
-            self.assertTrue(tensor.place.is_cpu_place())
 
 
 class EagerDtypeTestCase(unittest.TestCase):
@@ -67,6 +59,24 @@ class EagerDtypeTestCase(unittest.TestCase):
         self.check_to_tesnsor_and_numpy('float64')
         self.check_to_tesnsor_and_numpy('complex64')
         self.check_to_tesnsor_and_numpy('complex128')
+
+
+class EagerTensorPropertiesTestCase(unittest.TestCase):
+    def test_properties(self):
+        with eager_guard():
+            paddle.set_device("cpu")
+            arr = np.ones([4, 16, 16, 32]).astype('float32')
+            tensor = paddle.to_tensor(arr, 'float32', core.CPUPlace())
+            self.assertEqual(tensor.shape, [4, 16, 16, 32])
+            tensor.name = 'tensor_name_test'
+            self.assertEqual(tensor.name, 'tensor_name_test')
+            self.assertEqual(tensor.persistable, False)
+            tensor.persistable = True
+            self.assertEqual(tensor.persistable, True)
+            tensor.persistable = False
+            self.assertEqual(tensor.persistable, False)
+            self.assertTrue(tensor.place.is_cpu_place())
+            self.assertEqual(tensor._place_str, 'CPUPlace')
 
 
 if __name__ == "__main__":

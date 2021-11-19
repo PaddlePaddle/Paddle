@@ -81,9 +81,7 @@ extern PyTypeObject* p_eager_tensor_type;
 
 static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
                                               PyObject* kwargs) {
-  auto place =
-      ::pybind11::handle(PyTuple_GET_ITEM(args, 0)).cast<platform::Place>();
-
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   egr::Controller::Instance().SetExpectedPlace(place);
 
   Py_INCREF(Py_None);
