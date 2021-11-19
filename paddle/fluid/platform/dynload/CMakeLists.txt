@@ -11,8 +11,8 @@ if (WITH_ROCM)
 endif()
 
 # There is no macOS version of NCCL.
-# Disable nvrtc and cuda_driver api on MacOS and Windows, and only do a early test on Linux.
-if (NOT APPLE AND NOT WIN32)
+# Disable nvrtc and cuda_driver api on MacOS, and only do a early test on Linux and Windows.
+if (NOT APPLE)
     list(APPEND CUDA_SRCS nvrtc.cc cuda_driver.cc)
   if (WITH_NCCL)
     list(APPEND CUDA_SRCS nccl.cc)
