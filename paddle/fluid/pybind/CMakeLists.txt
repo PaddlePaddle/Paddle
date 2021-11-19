@@ -208,7 +208,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info pten)
+    DEPS eager_api accumulation_node autograd_meta backward grad_node_info pten)
   list(APPEND PYBIND_DEPS paddle_eager)
 
   cc_library(paddle_pybind SHARED

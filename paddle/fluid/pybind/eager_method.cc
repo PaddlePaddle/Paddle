@@ -77,6 +77,17 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
         place, reinterpret_cast<void*>(
                    (reinterpret_cast<PyArrayObject_fields*>(array))->data),
         place, dense_tensor->data(), sizeof_dtype * numel);
+#if defined(PADDLE_WITH_CUDA)
+  } else if (self->eagertensor.is_cuda()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<pten::DenseTensor>(self->eagertensor.impl());
+
+    paddle::platform::GpuMemcpySync(
+        (reinterpret_cast<PyArrayObject_fields*>(array))->data,
+        dense_tensor->data(),
+        pten::DataTypeSize(dense_tensor->dtype()) * dense_tensor->numel(),
+        cudaMemcpyDeviceToHost);
+#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Tensor.numpy() only support cpu tensor."));

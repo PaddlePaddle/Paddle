@@ -65,6 +65,12 @@ PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
   return ToPyObject(meta->StopGradient());
 }
 
+PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
+                                           void* closure) {
+  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  return ToPyObject(meta->Grad());
+}
+
 int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
                                               PyObject* value, void* closure) {
   auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
@@ -119,6 +125,8 @@ PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
 }
 
 struct PyGetSetDef variable_properties[] = {
+    {"grad", (getter)eager_tensor_properties_get_grad, nullptr, nullptr,
+     nullptr},
     {"name", (getter)eager_tensor_properties_get_name,
      (setter)eager_tensor_properties_set_name, nullptr, nullptr},
     {"stop_gradient", (getter)eager_tensor_properties_get_stop_gradient,

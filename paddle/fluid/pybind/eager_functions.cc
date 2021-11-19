@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
@@ -30,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/common/data_type.h"
@@ -157,6 +159,12 @@ static inline PyObject* eager_api_numpy_to_tensor(
     v->eagertensor.set_name(egr::Controller::Instance().GenerateUniqueName());
     auto meta = egr::EagerUtils::autograd_meta(&(v->eagertensor));
     meta->SetStopGradient(stop_gradient);
+
+    // Created tensor will be leaf tensor
+    // So we append AccumulationNode to it.
+    auto accumulation_node = std::make_shared<egr::GradNodeAccumulation>();
+    meta->SetGradNode(accumulation_node);
+
     // TODO(jiabin): Shall we increase ref cnt here to make python ref cnt num
     // correctly?
   } else {
