@@ -1259,24 +1259,21 @@ def get_device_local_ids(machine):
 
 class TestAutoParallelMapper(unittest.TestCase):
     def test_mapper_dp_mp(self):
-        # cluster_json_file = ""
-        # cluster_json_object = json.loads(cluster_json)
-        # with open("./auto_parallel_cluster.json", "w") as cluster_json_file:
-        #     json.dump(cluster_json_object, cluster_json_file)
+        cluster_json_file = ""
+        cluster_json_object = json.loads(cluster_json)
+        with open("./auto_parallel_cluster.json", "w") as cluster_json_file:
+            json.dump(cluster_json_object, cluster_json_file)
         cluster = Cluster()
-        cluster.build_from_file(
-            "/home/aoyulong/workspace/auto_parallel_cluster.json")
-        # cluster.build_from_file("./auto_parallel_cluster.json")
-        # os.remove("./auto_parallel_cluster.json")
+        cluster.build_from_file("./auto_parallel_cluster.json")
+        os.remove("./auto_parallel_cluster.json")
 
         global _global_parallel_strategy
         _global_parallel_strategy = "dp_mp"
         global _global_num_stages
         _global_num_stages = 1
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[[0, 1], [2, 3]])
-        # _global_process_mesh = auto.ProcessMesh(
-        #     mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         dist_programs = {}
         for rank_id in _global_process_mesh.processes:
@@ -1307,7 +1304,6 @@ class TestAutoParallelMapper(unittest.TestCase):
             self.assertEqual(
                 len(machine_mapped_ranks), len(machine_mapped_device_local_ids))
             all_mapped_ranks.update(machine_mapped_ranks)
-        print(_global_process_mesh.processes, all_mapped_ranks)
         self.assertEqual(set(_global_process_mesh.processes), all_mapped_ranks)
 
     def test_mapper_dp_mp_pp(self):
