@@ -874,7 +874,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
       m, "VarBase", R"DOC()DOC");
-  g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
+  g_varbase_pytype = reinterpret_cast<PyTypeObject *>(varbase.ptr());
   varbase.def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
            [](imperative::VarBase &self) {

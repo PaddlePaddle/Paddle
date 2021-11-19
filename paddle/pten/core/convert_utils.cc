@@ -268,7 +268,7 @@ int TensorDtype2NumpyDtype(pten::DataType dtype) {
     case pten::DataType::INT64:
       return NPY_TYPES::NPY_INT64;
     case pten::DataType::FLOAT16:
-      return NPY_TYPES::NPY_FLOAT;  // numpy not have float16
+      return NPY_TYPES::NPY_FLOAT16;
     case pten::DataType::FLOAT32:
       return NPY_TYPES::NPY_FLOAT;
     case pten::DataType::FLOAT64:

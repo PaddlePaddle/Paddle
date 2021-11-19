@@ -30,6 +30,13 @@ namespace pybind {
 
 extern PyTypeObject* p_eager_tensor_type;
 
+extern PyTypeObject* g_place_pytype;
+extern PyTypeObject* g_cudaplace_pytype;
+extern PyTypeObject* g_cpuplace_pytype;
+extern PyTypeObject* g_xpuplace_pytype;
+extern PyTypeObject* g_npuplace_pytype;
+extern PyTypeObject* g_cudapinnedplace_pytype;
+
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj))) {
     return true;
@@ -185,6 +192,35 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return result;
+}
+
+platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
+  platform::Place place;
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(g_place_pytype))) {
+    place = ::pybind11::handle(obj).cast<platform::Place>();
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_cudaplace_pytype))) {
+    place = ::pybind11::handle(obj).cast<platform::CUDAPlace>();
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_cpuplace_pytype))) {
+    place = ::pybind11::handle(obj).cast<platform::CPUPlace>();
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_xpuplace_pytype))) {
+    place = ::pybind11::handle(obj).cast<platform::XPUPlace>();
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_npuplace_pytype))) {
+    place = ::pybind11::handle(obj).cast<platform::NPUPlace>();
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_cudapinnedplace_pytype))) {
+    place = ::pybind11::handle(obj).cast<platform::CUDAPinnedPlace>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "one of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace), "
+        "but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return place;
 }
 
 PyObject* ToPyObject(bool value) {
