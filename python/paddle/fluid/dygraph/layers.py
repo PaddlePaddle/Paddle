@@ -1096,6 +1096,8 @@ class Layer(core.Layer):
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
+                if in_declarative_mode() and not framework.in_dygraph_mode():
+                    return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
             _sub_layers = self.__dict__['_sub_layers']
