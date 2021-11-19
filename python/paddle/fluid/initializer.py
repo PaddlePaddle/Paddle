@@ -1039,8 +1039,9 @@ def calculate_gain(nonlinearity, param=None):
     Get the recommended gain value of some nonlinearity function.
 
     Args:
-        nonlinearity: nonlinearity function.
-        param: optional parameter for somme nonlinearity function
+        nonlinearity(str): nonlinearity function.
+        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to 'leaky_relu'. Default: None,  
+        it will be calculated as 0.01 in the formula.
 
     Returns:
         The recommended gain value for nonlinearity function.
@@ -1049,14 +1050,15 @@ def calculate_gain(nonlinearity, param=None):
         .. code-block:: python
 
             import paddle
-            gain = paddle.nn.initializer.calculate_gain('tanh')
-            initializer = paddle.nn.initializer.Orthogonal(gain)
+            gain = paddle.nn.initializer.calculate_gain('tanh') # 5.0 / 3
+            gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0) # 1.0 = math.sqrt(2.0 / (1+param^2))
 
     """
     if param is None:
         param = 0.01
     else:
         assert isinstance(param, (bool, int, float))
+        param = float(param)
     recommended_gain = {
         'sigmoid': 1,
         'linear': 1,
