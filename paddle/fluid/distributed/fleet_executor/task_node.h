@@ -28,27 +28,28 @@ namespace distributed {
 class TaskNode final {
  public:
   using OperatorBase = paddle::framework::OperatorBase;
-  TaskNode(int64_t role, int64_t rank, int64_t task_id, int64_t max_run_times,
+  TaskNode(int32_t role, int64_t rank, int64_t task_id, int64_t max_run_times,
            int64_t max_slot_nums);
-  TaskNode(int64_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
+  TaskNode(int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
            int64_t task_id, int64_t max_run_times, int64_t max_slot_nums);
   ~TaskNode() = default;
   int64_t rank() const { return rank_; }
   int64_t task_id() const { return task_id_; }
-  int64_t role() const { return role_; }
+  int32_t role() const { return role_; }
   int64_t max_run_times() const { return max_run_times_; }
   int64_t max_slot_nums() const { return max_slot_nums_; }
   const std::unordered_set<int64_t>& upstream() const { return upstream_; }
   const std::unordered_set<int64_t>& downstream() const { return downstream_; }
   void AddUpstreamTask(int64_t task_id);
   void AddDownstreamTask(int64_t task_id);
-  static std::unique_ptr<TaskNode> CreateEmptyTaskNode(int64_t role,
+  std::string DebugString() const;
+  static std::unique_ptr<TaskNode> CreateEmptyTaskNode(int32_t role,
                                                        int64_t rank,
                                                        int64_t task_id,
                                                        int64_t max_run_times,
                                                        int64_t max_slot_nums);
   static std::unique_ptr<TaskNode> CreateTaskNode(
-      int64_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
+      int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
       int64_t task_id, int64_t max_run_times, int64_t max_slot_nums);
 
  private:
@@ -57,7 +58,7 @@ class TaskNode final {
   std::vector<OperatorBase*> ops_;
   std::unordered_set<int64_t> upstream_;
   std::unordered_set<int64_t> downstream_;
-  int64_t role_;
+  int32_t role_;
   int64_t rank_;
   int64_t task_id_;
   int64_t max_run_times_;
