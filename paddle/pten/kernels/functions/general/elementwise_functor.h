@@ -70,5 +70,49 @@ struct InverseAddFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b + a; }
 };
 
+// Subtract
+template <typename DevCtx, typename T, class Enable = void>
+struct SameDimsSubFunctor {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z);
+};
+
+template <typename DevCtx, typename T>
+struct SameDimsSubFunctor<
+    DevCtx,
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z) {
+    blas::ElementwiseSub<DevCtx, T>(dev_ctx, x, y, z);
+  }
+};
+
+template <typename DevCtx, typename T>
+struct SameDimsSubFunctor<
+    DevCtx,
+    T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z) {
+    eigen::ElementwiseSub<DevCtx, T>(dev_ctx, x, y, z);
+  }
+};
+
+template <typename T>
+struct SubFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
+};
+template <typename T>
+struct InverseSubFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b - a; }
+};
+
 }  // namespace general
 }  // namespace pten
