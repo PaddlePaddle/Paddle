@@ -221,7 +221,7 @@ function check_op_benchmark_result {
     fi
     # check current result and update the file to benchmark test
     python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
-        --develop_logs_dir $(pwd)/logs-develop \
+        --develop_logs_dir $(pwd)/logs-dev_whl \
         --pr_logs_dir $(pwd)/logs-test_pr \
         --api_info_file ${api_info_file}
     check_status_code=$?
