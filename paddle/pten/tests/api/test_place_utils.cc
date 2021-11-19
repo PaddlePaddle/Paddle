@@ -22,54 +22,54 @@ namespace tests {
 
 TEST(place_utils, cpu_place) {
   auto pd_place = platform::CPUPlace();
-  Place pten_place = convert_to_pten_place(pd_place);
+  Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 0);
   CHECK(pten_place.device().type() == DeviceType::HOST);
   CHECK(pten_place.is_pinned() == false);
 
-  auto pd_place_1 = convert_to_pd_place(pten_place);
+  auto pd_place_1 = ConvertToPlatformPlace(pten_place);
   CHECK(platform::is_cpu_place(pd_place_1));
   CHECK(pd_place == BOOST_GET_CONST(platform::CPUPlace, pd_place_1));
-  CHECK(pten_place == convert_to_pten_place(pd_place_1));
+  CHECK(pten_place == ConvertToPtenPlace(pd_place_1));
 }
 
 TEST(place_utils, cuda_place) {
   auto pd_place = platform::CUDAPlace(1);
-  Place pten_place = convert_to_pten_place(pd_place);
+  Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 1);
   CHECK(pten_place.device().type() == DeviceType::CUDA);
   CHECK(pten_place.is_pinned() == false);
 
-  auto pd_place_1 = convert_to_pd_place(pten_place);
+  auto pd_place_1 = ConvertToPlatformPlace(pten_place);
   CHECK(platform::is_gpu_place(pd_place_1));
   CHECK(pd_place == BOOST_GET_CONST(platform::CUDAPlace, pd_place_1));
-  CHECK(pten_place == convert_to_pten_place(pd_place_1));
+  CHECK(pten_place == ConvertToPtenPlace(pd_place_1));
 }
 
 TEST(place_utils, cuda_pinned_place) {
   auto pd_place = platform::CUDAPinnedPlace();
-  Place pten_place = convert_to_pten_place(pd_place);
+  Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 0);
   CHECK(pten_place.device().type() == DeviceType::CUDA);
   CHECK(pten_place.is_pinned() == true);
 
-  auto pd_place_1 = convert_to_pd_place(pten_place);
+  auto pd_place_1 = ConvertToPlatformPlace(pten_place);
   CHECK(platform::is_cuda_pinned_place(pd_place_1));
   CHECK(pd_place == BOOST_GET_CONST(platform::CUDAPinnedPlace, pd_place_1));
-  CHECK(pten_place == convert_to_pten_place(pd_place_1));
+  CHECK(pten_place == ConvertToPtenPlace(pd_place_1));
 }
 
 TEST(place_utils, xpu_place) {
   auto pd_place = platform::XPUPlace(1);
-  Place pten_place = convert_to_pten_place(pd_place);
+  Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 1);
   CHECK(pten_place.device().type() == DeviceType::XPU);
   CHECK(pten_place.is_pinned() == false);
 
-  auto pd_place_1 = convert_to_pd_place(pten_place);
+  auto pd_place_1 = ConvertToPlatformPlace(pten_place);
   CHECK(platform::is_xpu_place(pd_place_1));
   CHECK(pd_place == BOOST_GET_CONST(platform::XPUPlace, pd_place_1));
-  CHECK(pten_place == convert_to_pten_place(pd_place_1));
+  CHECK(pten_place == ConvertToPtenPlace(pd_place_1));
 }
 
 }  // namespace tests

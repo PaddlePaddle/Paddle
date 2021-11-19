@@ -18,9 +18,9 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Place convert_to_pten_place(const platform::Place& src) {
+Place ConvertToPtenPlace(const platform::Place& src) {
   Place place;
-  if (is_cpu_place(src)) {
+  if (platform::is_cpu_place(src)) {
     place.Reset(Device(DeviceType::HOST, 0));
   } else if (platform::is_gpu_place(src)) {
     place.Reset(
@@ -37,7 +37,7 @@ Place convert_to_pten_place(const platform::Place& src) {
   return place;
 }
 
-platform::Place convert_to_pd_place(const Place& src) {
+platform::Place ConvertToPlatformPlace(const Place& src) {
   switch (src.device().type()) {
     case DeviceType::HOST: {
       return platform::CPUPlace();

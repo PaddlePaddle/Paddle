@@ -56,8 +56,7 @@ struct Device final {
 };
 
 inline bool operator==(const Device& lhs, const Device& rhs) noexcept {
-  bool ret = true;
-  return ret && (lhs.type_ == rhs.type_) && (lhs.id_ == rhs.id_);
+  return (lhs.type_ == rhs.type_) && (lhs.id_ == rhs.id_);
 }
 
 }  // namespace experimental

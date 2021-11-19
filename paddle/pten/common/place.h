@@ -35,8 +35,8 @@ class Place final {
   const Device& device() const noexcept { return device_; }
 
   /// \brief Returns whether the memory is a locked page. The page lock
-  /// memory is actually located in the host memory, but it is used to
-  /// specify the device and can be directly transferred by DMA.
+  /// memory is actually located in the host memory, but it can only be
+  /// used by certain devices and can be directly transferred by DMA.
   /// \return Whether the memory is a locked page.
   bool is_pinned() const noexcept { return is_pinned_; }
 
@@ -54,9 +54,7 @@ class Place final {
 };
 
 inline bool operator==(const Place& lhs, const Place& rhs) noexcept {
-  bool ret = true;
-  return ret && (lhs.device_ == rhs.device_) &&
-         (lhs.is_pinned_ == rhs.is_pinned_);
+  return (lhs.device_ == rhs.device_) && (lhs.is_pinned_ == rhs.is_pinned_);
 }
 
 }  // namespace experimental

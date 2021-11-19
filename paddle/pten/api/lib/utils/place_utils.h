@@ -20,9 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Place convert_to_pten_place(const platform::Place& src);
+Place ConvertToPtenPlace(const platform::Place& src);
 
-platform::Place convert_to_pd_place(const Place& src);
+platform::Place ConvertToPlatformPlace(const Place& src);
 
 }  // namespace experimental
 }  // namespace paddle
