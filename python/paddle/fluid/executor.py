@@ -1296,9 +1296,15 @@ class Executor(object):
                     use_program_cache=use_program_cache)
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
+            ## change default executor 
+            heter_place = program._heter_pipeline_opt["heter_place"]
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
+            # TODO(zhangminxu): support heterps pipeline training using exe.run
             if "startup_program" in program._heter_pipeline_opt:
                 program = program._heter_pipeline_opt["startup_program"]
-            # TODO(zhangminxu): support heterps pipeline training using exe.run
 
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
@@ -1704,6 +1710,7 @@ class Executor(object):
             dataset.set_use_var(data_vars)
         elif program._heter_pipeline_opt is not None:
             stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            heter_place = program._heter_pipeline_opt["heter_place"]
             if stage_id != 0:
                 import paddle
                 if dataset is not None:
@@ -1729,6 +1736,11 @@ class Executor(object):
                 if dataset is None:
                     raise RuntimeError(
                         "dataset is need and should be initialized")
+            ## change default executor
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")
@@ -1958,6 +1970,11 @@ class Executor(object):
                 fleet_exe_desc.cluster_info.append(rank_info)
             nrank = len(trainer_endpoints)
         else:
+            fleet_exe_desc.cur_rank = 0
+            rank_info = fleet_executor_desc_pb2.RankInfo()
+            rank_info.rank = 0
+            rank_info.ip_port = ''
+            fleet_exe_desc.cluster_info.append(rank_info)
             logging.warning("Fleet Executor will run on single device only.")
         fleet_opt = program._pipeline_opt["fleet_opt"]
         if "dist_strategy" in fleet_opt:
