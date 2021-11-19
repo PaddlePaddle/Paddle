@@ -73,7 +73,6 @@ void BasicEngine::Init(
       VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
               << " because of retain_graph=False when calling backward";
       var->GradVarBase()->SetGraphIsFreed(true);
-      var->GradVarBase()->ClearGradNode();
     }
 
     if (init_node == nullptr || var->OverridedStopGradient()) {
