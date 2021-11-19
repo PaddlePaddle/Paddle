@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/pten/api/include/utils.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
@@ -279,10 +280,12 @@ gpuStream_t Tensor::stream() const {
 
 template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The copy_to operation is not supported now, "
-      "and it will be implemented by calling the copy kernel later."));
-  return Tensor();
+  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
+                  "2.3, and will be removed in version 2.4, please use `to` "
+                  "method instead. "
+                  "reason: copying a Tensor to another device does not need "
+                  "to specify the data type template argument.";
+  return to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
 }
 
 template PD_DLL_DECL Tensor
@@ -308,11 +311,8 @@ template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<double>>(
 template PD_DLL_DECL Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
 
-Tensor Tensor::to(const PlaceType &target_place) const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The to operation is not supported now, "
-      "and it will be implemented by calling the copy kernel later."));
-  return Tensor();
+Tensor Tensor::to(Backend backend, bool blocking) const {
+  return experimental::to(*this, backend, blocking);
 }
 
 Tensor Tensor::cast(const DataType &target_type) const {
