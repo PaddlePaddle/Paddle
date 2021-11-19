@@ -320,12 +320,12 @@ void build_op_func_list(const platform::Place& place,
           &expected_kernel_key);  // change device by the device_guard()
       VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
 
-      // step 3. apply data transforms and insert memory ops
+      // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
-      std::vector<OpFuncNode> copy_op_to_insert;
+      std::vector<OpFuncNode> new_op_func_nodes;
       ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, &copy_op_to_insert);
-      for (auto& item : copy_op_to_insert) {
+                         &op_func_node, &new_op_func_nodes);
+      for (auto& item : new_op_func_nodes) {
         vec_func_list->emplace_back(std::move(item));
       }
       // step 4. Run op kernel

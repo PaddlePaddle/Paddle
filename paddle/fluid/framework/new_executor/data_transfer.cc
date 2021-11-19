@@ -23,7 +23,7 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                               const std::string& var_name,
                               std::string& new_var_name,
                               std::vector<OpFuncNode>* new_op_func_nodes) {
-  bool is_transferred = true;
+  bool is_transferred = false;
   std::string src_var_name(var_name);
 
   // 1. layout transform
@@ -34,24 +34,27 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                               new_op_func_nodes);
     // update src_var_name
     src_var_name = new_var_name;
-    // 2. dype transform
-  } else if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
+    is_transferred = true;
+  }
+  // 2. dype transform
+  if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferDtype(src_var_name, new_var_name,
                             expected_kernel_key.data_type_, var_scope_);
     RunAndConstructOpFuncNode(op, src_var_name, new_var_name,
                               new_op_func_nodes);
     // update src_var_name
     src_var_name = new_var_name;
-    // 3. device transform
-  } else if (need_device_transform(kernel_type_for_var, expected_kernel_key)) {
+    is_transferred = true;
+  }
+  // 3. device transform
+  if (need_device_transform(kernel_type_for_var, expected_kernel_key)) {
     auto src_place = kernel_type_for_var.place_;
     auto dst_place = expected_kernel_key.place_;
     auto op = TransferDevice(src_var_name, new_var_name, src_place, dst_place,
                              var_scope_);
     RunAndConstructOpFuncNode(op, src_var_name, new_var_name,
                               new_op_func_nodes);
-  } else {
-    is_transferred = false;
+    is_transferred = true;
   }
   return is_transferred;
 }
@@ -67,7 +70,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   runtime_context.outputs["Out"] = {var_scope_->Var(new_var_name)};
   InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
 
-  // 2. Execute transfer op
+  // 2. Execute infer shape and choose kernel
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   static_cast<const framework::OperatorWithKernel*>(op.get())->InferShape(
       &infer_shape_ctx);
@@ -81,18 +84,18 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
   Scope scope;
-  auto copy_exec_ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_context);
-  auto copy_expected_kernel_key =
+  auto exec_ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_context);
+  auto expected_kernel_key =
       dynamic_cast<const framework::OperatorWithKernel*>(op.get())
-          ->GetExpectedKernelType(copy_exec_ctx);
-  auto kernel_iter = kernels.find(copy_expected_kernel_key);
+          ->GetExpectedKernelType(exec_ctx);
+  auto kernel_iter = kernels.find(expected_kernel_key);
 
-  // 3. Construct OpFuncNode
+  // 3. Execute transfer op and construct OpFuncNode
   OpFuncNode new_op_func_node;
   new_op_func_node.input_index["X"] = {var_scope_->VarId(var_name)};
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
   new_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-  new_op_func_node.kernel_func_(copy_exec_ctx);
+  new_op_func_node.kernel_func_(exec_ctx);
   // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
   // as kQueueSync and execute them in thread pool.
   new_op_func_node.type_ = OpFuncType::kQueueSync;
@@ -119,9 +122,9 @@ std::shared_ptr<OperatorBase> TransferLayout(
 
   // 3. Create transfer_op
   std::string op_type("transfer_layout");
-  auto& copy_info = OpInfoMap::Instance().Get(op_type);
+  auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
-      copy_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
   VLOG(3) << string::Sprintf("Insert %s with %s -> %s(%s).", op_type, var_name,
                              new_var_name, layout);
@@ -144,9 +147,9 @@ std::shared_ptr<OperatorBase> TransferDtype(
 
   // 3. Create transfer_op
   std::string op_type("transfer_dtype");
-  auto& copy_info = OpInfoMap::Instance().Get(op_type);
+  auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
-      copy_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
   VLOG(3) << string::Sprintf("Insert %s with %s -> %s(%s).", op_type, var_name,
                              new_var_name, DataTypeToString(dtype));
@@ -173,9 +176,9 @@ std::shared_ptr<OperatorBase> TransferDevice(
 
   // 3. Create transfer_op
   std::string op_type = get_memcpy_type(src_place, dst_place);
-  auto& copy_info = OpInfoMap::Instance().Get(op_type);
+  auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
-      copy_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
   VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
                              var_name, src_place, new_var_name, dst_place);
@@ -186,7 +189,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
-                        std::vector<OpFuncNode>* copy_func_nodes) {
+                        std::vector<OpFuncNode>* new_op_func_nodes) {
   auto op_base = op_func_node->operator_base_.get();
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base is null, please pass a valid "
@@ -208,7 +211,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       if (!tensor_in->IsInitialized()) {
         continue;
       }
-      auto kernel_type_for_var =  // the true kernel type for op_base
+      auto kernel_type_for_var =
           static_cast<const framework::OperatorWithKernel*>(op_base)
               ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                     expected_kernel_key);
@@ -216,13 +219,19 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       std::string new_var_name;
       bool is_transferred =
           data_transfer_helper.apply(kernel_type_for_var, expected_kernel_key,
-                                     var_name, new_var_name, copy_func_nodes);
+                                     var_name, new_var_name, new_op_func_nodes);
 
-      if (!is_transferred) {
+      if (is_transferred) {
+        // update RuntimeContext.inputs and original op_func_node inputs
         op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
         var_name_item.second[i] = var_scope->Var(new_var_name);
         new_ins[var_name_item.first][i] = new_var_name;
+        // NOTE(Aurelius84): avoid deepcopy twice if we already insert data
+        // transfer op.
+        if (op_base->Type() == "fetch_v2") {
+          op_base->SetAttr("deepcopy", false);
+        }
       } else {
         // record no need data transformer input var_id
         VLOG(3) << op_base->Type()
@@ -234,8 +243,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   }
 
   // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
-  // with instruction
-  // hot fix, it is not good design here
+  // with instruction. (hot fix, it is not good design here)
   op_func_node->operator_base_ =
       std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
           op_base->Type(), new_ins, op_base->Outputs(), op_base->Attrs()));
