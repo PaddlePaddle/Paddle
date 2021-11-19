@@ -126,7 +126,8 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
         for op in _program.global_block().ops:
             if op.type in SPARSE_GRAD_OP_TYPE_DICT.keys():
                 param_name = op.input(SPARSE_GRAD_OP_TYPE_DICT[op.type])[0]
-                if op.input("Ids")[0] in pull_sparse_ids[param_name]:
+                if param_name in pull_sparse_ids and op.input("Ids")[
+                        0] in pull_sparse_ids[param_name]:
                     ops = push_sparse_ops.get(param_name, [])
                     ops.append(op)
                     push_sparse_ops[param_name] = ops
@@ -334,6 +335,9 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                         })
 
     def _push_sparse_fuse(_program, push_sparse_ops, use_ps_gpu):
+        if use_ps_gpu:
+            # in ps_gpu_pass
+            return
         if len(push_sparse_ops) == 0:
             return
         show = None
@@ -415,34 +419,34 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             for idx in op_idxs[::-1]:
                 program.global_block()._remove_op(idx)
 
-            if use_ps_gpu:
-                program.global_block().append_op(
-                    type="push_box_sparse",
-                    inputs={"Ids": inputs,
-                            'Out': outputs},
-                    outputs={"Out": outputs},
-                    attrs={
-                        "size": w.shape[1],
-                        "is_distributed": True,
-                        "is_sparse": True
-                    })
-            else:
-                program.global_block().append_op(
-                    type="distributed_push_sparse",
-                    inputs={
-                        "Ids": inputs,
-                        'W': w,
-                        "Outputs": outputs,
-                        "Shows": show,
-                        "Clicks": clk
-                    },
-                    outputs={"Outputs": outputs},
-                    attrs={
-                        "is_distributed": is_distributed,
-                        "padding_idx": padding_idx,
-                        "table_id": table_id,
-                        "size": emb_size[param]
-                    })
+#            if use_ps_gpu:
+#                program.global_block().append_op(
+#                    type="push_box_sparse",
+#                    inputs={"Ids": inputs,
+#                            'Out': outputs},
+#                    outputs={"Out": outputs},
+#                    attrs={
+#                        "size": w.shape[1],
+#                        "is_distributed": True,
+#                        "is_sparse": True
+#                    })
+#            else:
+            program.global_block().append_op(
+                type="distributed_push_sparse",
+                inputs={
+                    "Ids": inputs,
+                    'W': w,
+                    "Outputs": outputs,
+                    "Shows": show,
+                    "Clicks": clk
+                },
+                outputs={"Outputs": outputs},
+                attrs={
+                    "is_distributed": is_distributed,
+                    "padding_idx": padding_idx,
+                    "table_id": table_id,
+                    "size": emb_size[param]
+                })
 
     def _push_dense_fuse(program):
         cur_table = -1
