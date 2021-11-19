@@ -1837,9 +1837,13 @@ void OperatorWithKernel::BuildPtenKernelContext(
               *ins_vector[j], in_def,
               pt_kernel_context_->MutableInputAt<pten::DenseTensor>(start_idx +
                                                                     j));
-        } else {
-          pt_kernel_context_->EmplaceBackInputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(*ins_vector[j], in_def));
+          // TODO(chentianyu03): When multi input kernel, open this code
+          /*
+          } else {
+            pt_kernel_context_->EmplaceBackInputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(*ins_vector[j],
+          in_def));
+          */
         }
       }
       pt_kernel_context_->MutableInputRangeAt(i) =
@@ -1881,9 +1885,14 @@ void OperatorWithKernel::BuildPtenKernelContext(
               outs_vector[j], out_def,
               pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
                                                                      j));
-        } else {
-          pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(outs_vector[j], out_def));
+
+          // TODO(chentianyu03): When multi output kernel, open this code
+          /*
+          } else {
+            pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(outs_vector[j],
+          out_def));
+              */
         }
       }
       pt_kernel_context_->MutableOutputRangeAt(i) =
@@ -1930,10 +1939,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         pt_kernel_context_->EmplaceBackAttr(data_type);
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int>))) {
-        pt_kernel_context_->EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<int>, attr));
       } else if (attr_defs[i].type_index ==
                      std::type_index(typeid(std::vector<int64_t>)) &&
                  std::type_index(attr.type()) ==

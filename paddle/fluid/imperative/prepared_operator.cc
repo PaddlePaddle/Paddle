@@ -319,10 +319,13 @@ static void BuildDygraphPtenKernelContext(
           experimental::ReMakePtenDenseTensorFromVar(
               ins_vector[j]->Var(), in_def,
               kernel_ctx->MutableInputAt<pten::DenseTensor>(start_idx + j));
-        } else {
-          kernel_ctx->EmplaceBackInputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
-                                                      in_def));
+          // TODO(chentianyu03): When multi input kernel, open this code
+          /*
+          } else {
+            kernel_ctx->EmplaceBackInputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
+                                                        in_def));
+          */
         }
       }
       kernel_ctx->MutableInputRangeAt(i) = std::make_pair(start_idx, end_idx);
@@ -362,10 +365,13 @@ static void BuildDygraphPtenKernelContext(
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j]->MutableVar(), out_def,
               kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
-        } else {
-          kernel_ctx->EmplaceBackOutputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(
-                  outs_vector[j]->MutableVar(), out_def));
+          // TODO(chentianyu03): When multi output kernel, open this code
+          /*
+          } else {
+            kernel_ctx->EmplaceBackOutputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(
+                    outs_vector[j]->MutableVar(), out_def));
+          */
         }
       }
       kernel_ctx->MutableOutputRangeAt(i) = std::make_pair(start_idx, end_idx);
@@ -411,9 +417,6 @@ static void BuildDygraphPtenKernelContext(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         kernel_ctx->EmplaceBackAttr(data_type);
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int>))) {
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
       } else if (attr_defs[i].type_index ==
                      std::type_index(typeid(std::vector<int64_t>)) &&
                  std::type_index(attr.type()) ==
@@ -475,19 +478,6 @@ static void PreparedOpRunImpl(
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
         op.Type(), outs, dev_ctx->GetPlace());
-  }
-
-  /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
-    dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
-    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
-#endif
   }
 
   /**
