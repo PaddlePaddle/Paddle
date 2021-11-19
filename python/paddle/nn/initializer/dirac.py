@@ -21,10 +21,17 @@ __all__ = []
 
 
 class Dirac(Initializer):
-    """Initialize the 3D/4D/5D Tensor with Dirac delta function. 
+    """Initialize the 3D/4D/5D Tensor with Dirac delta function.
     
     It can reserve the feature of convolution layer input, which means that
     as many channels are reserved as possible.
+
+    In this initialize method, elements in the middle of convolution kernels will
+    be set to 1 . The formula can be described as:
+
+    $ Assuming:  N=min(in\_channels, out\_channels)$
+
+    $ X[d, d, shape[2]//2, shape[3]//2, ...]=1,  \   d=0,1...N$
 
     Args:
         groups(int): 0-dimension of the Tensor will be divided by groups, each group has the same value.
@@ -38,10 +45,12 @@ class Dirac(Initializer):
         .. code-block:: python
 
             import paddle
-
+            
+            #1.For kernel_size is uneven number:
+            
             attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
             conv = paddle.nn.Conv1D(3, 2, 3, weight_attr=attr)
-            # conv.weight:
+            conv.weight
             # Tensor(shape=[2, 3, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
             #       [[[0., 1., 0.],
             #         [0., 0., 0.],
@@ -53,10 +62,22 @@ class Dirac(Initializer):
 
             input = paddle.rand([8, 3, 10])
             output = conv(input)
-            paddle.equal_all(output, input[:, 0:2, 1:9])
-            # [True]
-            # It means output is almost the same with input, 2 channels are reserved.
+            output == input[:, 0:2, 1:9]  
+            # output.shape is [8, 2, 8], It means output is almost the same with input, 2 channels are reserved
 
+
+            #2. For kernel_size is even number:
+            attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
+            conv = paddle.nn.Conv1D(3, 2, 4, weight_attr=attr)
+            conv.weight
+            # Tensor(shape=[2, 3, 4], dtype=float32, place=CPUPlace, stop_gradient=False,
+            #       [[[0., 0., 1., 0.],
+            #         [0., 0., 0., 0.],
+            #         [0., 0., 0., 0.]],
+            # 
+            #        [[0., 0., 0., 0.],
+            #         [0., 0., 1., 0.],
+            #         [0., 0., 0., 0.]]])
     """
 
     def __init__(self, groups=1, name=None):
