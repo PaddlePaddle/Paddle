@@ -21,15 +21,15 @@ namespace experimental {
 Place ConvertToPtenPlace(const platform::Place& src) {
   Place place;
   if (platform::is_cpu_place(src)) {
-    place.Reset(Device(DeviceType::HOST, 0));
+    place.Reset(Device(DeviceType::kHost, 0));
   } else if (platform::is_gpu_place(src)) {
     place.Reset(
-        Device(DeviceType::CUDA,
+        Device(DeviceType::kCuda,
                BOOST_GET_CONST(platform::CUDAPlace, src).GetDeviceId()));
   } else if (platform::is_cuda_pinned_place(src)) {
-    place.Reset(Device(DeviceType::CUDA, 0), true);
+    place.Reset(Device(DeviceType::kCuda, 0), true);
   } else if (platform::is_xpu_place(src)) {
-    place.Reset(Device(DeviceType::XPU,
+    place.Reset(Device(DeviceType::kXpu,
                        BOOST_GET_CONST(platform::XPUPlace, src).GetDeviceId()));
   } else {
     PD_THROW("Invalid platform place type.");
@@ -39,17 +39,17 @@ Place ConvertToPtenPlace(const platform::Place& src) {
 
 platform::Place ConvertToPlatformPlace(const Place& src) {
   switch (src.device().type()) {
-    case DeviceType::HOST: {
+    case DeviceType::kHost: {
       return platform::CPUPlace();
     }
-    case DeviceType::CUDA: {
+    case DeviceType::kCuda: {
       if (src.is_pinned()) {
         return platform::CUDAPinnedPlace();
       } else {
         return platform::CUDAPlace(src.device().id());
       }
     }
-    case DeviceType::XPU: {
+    case DeviceType::kXpu: {
       return platform::XPUPlace(src.device().id());
     }
     default:

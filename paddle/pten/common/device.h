@@ -20,12 +20,12 @@ namespace paddle {
 namespace experimental {
 
 enum class DeviceType : int8_t {
-  UNDEFINED = 0,
-  HOST = 1,
-  XPU = 2,
-  CUDA = 3,
-  HIP = 4,
-  NPU = 5,
+  kUndef = 0,
+  kHost = 1,
+  kXpu = 2,
+  kCuda = 3,
+  kHip = 4,
+  kNpu = 5,
 };
 
 /// \brief The device is used to store hardware information. It has not yet
@@ -51,7 +51,7 @@ struct Device final {
   friend bool operator==(const Device&, const Device&) noexcept;
 
  private:
-  DeviceType type_{DeviceType::UNDEFINED};
+  DeviceType type_{DeviceType::kUndef};
   int8_t id_{-1};
 };
 

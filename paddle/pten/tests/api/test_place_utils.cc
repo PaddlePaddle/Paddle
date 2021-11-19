@@ -24,7 +24,7 @@ TEST(place_utils, cpu_place) {
   auto pd_place = platform::CPUPlace();
   Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 0);
-  CHECK(pten_place.device().type() == DeviceType::HOST);
+  CHECK(pten_place.device().type() == DeviceType::kHost);
   CHECK(pten_place.is_pinned() == false);
 
   auto pd_place_1 = ConvertToPlatformPlace(pten_place);
@@ -37,7 +37,7 @@ TEST(place_utils, cuda_place) {
   auto pd_place = platform::CUDAPlace(1);
   Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 1);
-  CHECK(pten_place.device().type() == DeviceType::CUDA);
+  CHECK(pten_place.device().type() == DeviceType::kCuda);
   CHECK(pten_place.is_pinned() == false);
 
   auto pd_place_1 = ConvertToPlatformPlace(pten_place);
@@ -50,7 +50,7 @@ TEST(place_utils, cuda_pinned_place) {
   auto pd_place = platform::CUDAPinnedPlace();
   Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 0);
-  CHECK(pten_place.device().type() == DeviceType::CUDA);
+  CHECK(pten_place.device().type() == DeviceType::kCuda);
   CHECK(pten_place.is_pinned() == true);
 
   auto pd_place_1 = ConvertToPlatformPlace(pten_place);
@@ -63,7 +63,7 @@ TEST(place_utils, xpu_place) {
   auto pd_place = platform::XPUPlace(1);
   Place pten_place = ConvertToPtenPlace(pd_place);
   CHECK_EQ(pten_place.device().id(), 1);
-  CHECK(pten_place.device().type() == DeviceType::XPU);
+  CHECK(pten_place.device().type() == DeviceType::kXpu);
   CHECK(pten_place.is_pinned() == false);
 
   auto pd_place_1 = ConvertToPlatformPlace(pten_place);
