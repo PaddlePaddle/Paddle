@@ -102,6 +102,7 @@ class ShardingStage2(nn.Layer):
         self._trainable_param2rank = {}
         self._trainable_param2align = {}
         self._trainable_mask = list(map(_trainable, self._all_params))
+        self._param_grads = []
 
         # Set grad storage size & Display param sizes and model sizes
         model_size = sum(
@@ -160,9 +161,15 @@ class ShardingStage2(nn.Layer):
         """
         Set zero to the gradient of the optimizer's current rank trainable parameters.
         """
+        # Release grad storages
         for dtype in self._grad_storages.keys():
             if self._rank in self._grad_storages[dtype].keys():
                 self._grad_storages[dtype][self._rank].buffer.zero_()
+
+        # # Release params
+        for param in self._trainable_params:
+            if param.name in self._param_grads and param.grad is not None:
+                param.clear_gradient()
 
     def _init_internal_storage(self, needs_fresh):
         """
@@ -425,6 +432,7 @@ class ShardingStage2(nn.Layer):
                     param, self._trainable_param2align[param.name])
                 self._has_grad_storage[index] = True
             else:
+                self._param_grads.append(param.name)
                 print(
                     "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, ".
                     format(param.name, param.shape, self._trainable_param2align[
