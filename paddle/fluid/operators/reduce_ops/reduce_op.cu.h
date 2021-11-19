@@ -823,6 +823,15 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
+
+  auto* ctx = static_cast<platform::CUDADeviceContext*>(
+          paddle::platform::DeviceContextPool::Instance().Get(x.place()));
+  dim3 max_grid_dim = ctx->GetCUDAMaxGridDimSize();
+  config.grid.x = config.grid.x < max_grid_dim.x ? config.grid.x : max_grid_dim.x;
+  config.grid.y = config.grid.y < max_grid_dim.y ? config.grid.y : max_grid_dim.y;
+  config.grid.z = config.grid.z < max_grid_dim.z ? config.grid.z : max_grid_dim.z;
+  
+
   int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,

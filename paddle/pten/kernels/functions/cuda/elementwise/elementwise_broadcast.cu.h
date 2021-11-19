@@ -276,7 +276,11 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
                   DimensionsTransform merge_dims) {
   int numel = out->numel();
   const int threads = 256;
-  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  int num_rows =
+      ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+  // actually, int num_rows < max_grid_size
+  int blocks = num_rows < maxGridDimX ? num_rows : maxGridDimX;
 
   int main_tid = numel / (VecSize * threads);
   int tail_tid = numel % (VecSize * threads);

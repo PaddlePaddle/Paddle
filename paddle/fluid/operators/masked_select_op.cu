@@ -101,7 +101,12 @@ class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
     int32_t* mask_prefix_sum_data =
         mask_prefix_sum.mutable_data<int32_t>(ctx.GetPlace());
     int threads = 512;
-    int grid = (mask_size + threads - 1) / threads;
+    int maxGridDimX =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+            .GetCUDAMaxGridDimSize().x;
+    int num_rows = (mask_size + threads - 1) / threads;
+    // actually, int num_rows < max_grid_size
+    int grid = num_rows < maxGridDimX ? num_rows : maxGridDimX;
     auto stream = ctx.cuda_device_context().stream();
     SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
                                                mask_size);

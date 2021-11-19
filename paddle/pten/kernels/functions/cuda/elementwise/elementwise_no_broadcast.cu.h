@@ -124,8 +124,12 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
                            Functor func) {
   auto numel = ins[0]->numel();
   int block_size = GetThreadsConfig(ctx, numel, VecSize);
-  int grid_size =
+  int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  int num_rows =
       ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
+  // actually, int num_rows < max_grid_size
+  int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
+
   auto stream = ctx.stream();
   OutT *out_data = (*outs)[0]->mutable_data<OutT>();
   paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
