@@ -224,22 +224,27 @@ struct UpdateAddress {
 
 void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
   int64_t nranks = rank_to_addr_.size();
-  VLOG(3) << cur_rank_
-          << "' message bus is broadcasting it's new addr: " << new_addr << ".";
   UpdateAddress update_address;
   update_address.rank = cur_rank_;
   update_address.port = port;
+
+  paddle::platform::CommHead fake_head;
+
   char buffer[MAX_COMMUNIQUEID_LEN] = {0};
   memcpy(buffer, &update_address, sizeof(UpdateAddress));
 
-  int server = paddle::platform::CreateListenSocket(addr_);
-  VLOG(3) << "Message bus created a socket to listen address: " << addr_ << ".";
+  int server_fd = paddle::platform::SocketServer::GetInstance(addr_).socket();
+  int server = paddle::platform::SocketAccept(server_fd, fake_head);
+  VLOG(3) << "Message bus got a socket " << server
+          << " to listen address: " << addr_ << ".";
   for (int i = 0; i < cur_rank_; ++i) {
     // update the addresses for ranks before cur rank
     ReceiveANewAddress(server);
   }
 
-  VLOG(3) << "Sending new address to all peers.";
+  VLOG(3) << cur_rank_
+          << "'s message bus is broadcasting it's new addr: " << new_addr
+          << ".";
   for (const auto& pair : rank_to_addr_) {
     // establish socket connects with peers
     if (pair.first == cur_rank_) {
@@ -247,7 +252,6 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
     }
     std::string ep = pair.second;
     VLOG(3) << "Message bus is connecting endpoint: " << ep << ".";
-    paddle::platform::CommHead fake_head;
     int conn = paddle::platform::ConnectAddr(ep, fake_head);
     VLOG(3) << "Connecting finished.";
 
