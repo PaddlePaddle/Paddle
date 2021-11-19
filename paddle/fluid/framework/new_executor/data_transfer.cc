@@ -21,29 +21,27 @@ namespace interpreter {
 bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                               const OpKernelType& expected_kernel_key,
                               const std::string& var_name,
-                              std::string& new_var_name,
-                              std::vector<OpFuncNode>* new_op_func_nodes) {
+                              std::string* new_var_name,
+                              std::vector<OpFuncNode>* op_func_nodes) {
   bool is_transferred = false;
-  std::string src_var_name(var_name);
+  auto* src_var_name = &var_name;
 
   // 1. layout transform
   if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferLayout(src_var_name, new_var_name,
+    auto op = TransferLayout(*src_var_name, new_var_name,
                              kernel_type_for_var.data_layout_,
                              expected_kernel_key.data_layout_, var_scope_);
-    RunAndConstructOpFuncNode(op, src_var_name, new_var_name,
-                              new_op_func_nodes);
+    RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
   }
   // 2. dype transform
   if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferDtype(src_var_name, new_var_name,
+    auto op = TransferDtype(*src_var_name, new_var_name,
                             kernel_type_for_var.data_type_,
                             expected_kernel_key.data_type_, var_scope_);
-    RunAndConstructOpFuncNode(op, src_var_name, new_var_name,
-                              new_op_func_nodes);
+    RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
@@ -52,10 +50,9 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   if (need_device_transform(kernel_type_for_var, expected_kernel_key)) {
     auto src_place = kernel_type_for_var.place_;
     auto dst_place = expected_kernel_key.place_;
-    auto op = TransferDevice(src_var_name, new_var_name, src_place, dst_place,
+    auto op = TransferDevice(*src_var_name, new_var_name, src_place, dst_place,
                              var_scope_);
-    RunAndConstructOpFuncNode(op, src_var_name, new_var_name,
-                              new_op_func_nodes);
+    RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
     is_transferred = true;
   }
   return is_transferred;
@@ -63,7 +60,8 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
 
 void DataTranferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op, const std::string& var_name,
-    std::string& new_var_name, std::vector<OpFuncNode>* new_op_func_nodes) {
+    const std::string& new_var_name,
+    std::vector<OpFuncNode>* new_op_func_nodes) {
   auto& op_type = op->Type();
 
   // 1. Construct RuntimeContext
@@ -108,18 +106,19 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_nodes->emplace_back(std::move(new_op_func_node));
 }
 
-std::shared_ptr<OperatorBase> TransferLayout(
-    const std::string& var_name,
-    std::string& new_var_name,  // NOLINT
-    DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope) {
+std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
+                                             std::string* new_var_name,
+                                             DataLayout in_layout,
+                                             DataLayout out_layout,
+                                             VariableScope* var_scope) {
   // 1. Generate new_var_name
-  new_var_name =
+  *new_var_name =
       var_name + "_layout_" + std::to_string(var_scope->VarSize() + 1);
-  var_scope->AddVar(new_var_name, nullptr);
+  var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
-  VariableNameMap out_name_map = {{"Out", {new_var_name}}};
+  VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
   AttributeMap attr_map = {{"dst_layout", static_cast<int>(out_layout)}};
 
   // 3. Create transfer_op
@@ -129,23 +128,23 @@ std::shared_ptr<OperatorBase> TransferLayout(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
   VLOG(3) << string::Sprintf("Insert %s(%s) with %s -> %s(%s).", op_type,
-                             var_name, in_layout, new_var_name, out_layout);
+                             var_name, in_layout, *new_var_name, out_layout);
   return op;
 }
 
-std::shared_ptr<OperatorBase> TransferDtype(
-    const std::string& var_name,
-    std::string& new_var_name,  // NOLINT
-    proto::VarType::Type in_dtype, proto::VarType::Type out_dtype,
-    VariableScope* var_scope) {
+std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
+                                            std::string* new_var_name,
+                                            proto::VarType::Type in_dtype,
+                                            proto::VarType::Type out_dtype,
+                                            VariableScope* var_scope) {
   // 1. Generate new_var_name
-  new_var_name =
+  *new_var_name =
       var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
-  var_scope->AddVar(new_var_name, nullptr);
+  var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
-  VariableNameMap out_name_map = {{"Out", {new_var_name}}};
+  VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
   AttributeMap attr_map;
   attr_map["in_dtype"] = static_cast<int>(in_dtype);
   attr_map["out_dtype"] = static_cast<int>(out_dtype);
@@ -159,24 +158,24 @@ std::shared_ptr<OperatorBase> TransferDtype(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
   VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
-                             var_name, DataTypeToString(in_dtype), new_var_name,
-                             DataTypeToString(out_dtype));
+                             var_name, DataTypeToString(in_dtype),
+                             *new_var_name, DataTypeToString(out_dtype));
   return op;
 }
 
-std::shared_ptr<OperatorBase> TransferDevice(
-    const std::string& var_name,
-    std::string& new_var_name,  // NOLINT
-    const platform::Place& src_place, const platform::Place& dst_place,
-    VariableScope* var_scope) {
+std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
+                                             std::string* new_var_name,
+                                             const platform::Place& src_place,
+                                             const platform::Place& dst_place,
+                                             VariableScope* var_scope) {
   // 1. Generate new_var_name
-  new_var_name =
+  *new_var_name =
       var_name + "_device_" + std::to_string(var_scope->VarSize() + 1);
-  var_scope->AddVar(new_var_name, nullptr);
+  var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
-  VariableNameMap out_name_map = {{"Out", {new_var_name}}};
+  VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
   int dst_place_type = platform::is_cpu_place(dst_place)
                            ? 0
                            : platform::is_gpu_place(dst_place) ? 1 : -1;
@@ -189,7 +188,7 @@ std::shared_ptr<OperatorBase> TransferDevice(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
   VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
-                             var_name, src_place, new_var_name, dst_place);
+                             var_name, src_place, *new_var_name, dst_place);
   return op;
 }
 
@@ -225,9 +224,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                     expected_kernel_key);
       // apply data transform
       std::string new_var_name;
-      bool is_transferred =
-          data_transfer_helper.apply(kernel_type_for_var, expected_kernel_key,
-                                     var_name, new_var_name, new_op_func_nodes);
+      bool is_transferred = data_transfer_helper.apply(
+          kernel_type_for_var, expected_kernel_key, var_name, &new_var_name,
+          new_op_func_nodes);
 
       if (is_transferred) {
         // update RuntimeContext.inputs and original op_func_node inputs

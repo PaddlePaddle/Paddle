@@ -55,10 +55,8 @@ class TransferLayoutFunctor {
 #ifdef PADDLE_WITH_MKLDNN
     auto in_layout = in_tensor.layout();
     if (in_layout == DataLayout::kMKLDNN || out_layout == DataLayout::kMKLDNN) {
-      PADDLE_ENFORCE_EQ(
-          !(in_layout == DataLayout::kMKLDNN &&
-            out_layout == DataLayout::kMKLDNN),
-          true,
+      PADDLE_ENFORCE_NE(
+          in_layout, out_layout,
           platform::errors::PreconditionNotMet(
               "No layout transform needed between two MKLDNN OPKernels."));
 

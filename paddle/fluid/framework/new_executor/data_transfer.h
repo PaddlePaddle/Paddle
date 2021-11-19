@@ -34,7 +34,7 @@ class DataTranferHelper {
 
   bool apply(const OpKernelType& kernel_type_for_var,
              const OpKernelType& expected_kernel_key,
-             const std::string& var_name, std::string& new_var_name,
+             const std::string& var_name, std::string* new_var_name,
              std::vector<OpFuncNode>* new_op_func_nodes);
 
  private:
@@ -43,15 +43,15 @@ class DataTranferHelper {
 
   void RunAndConstructOpFuncNode(const std::shared_ptr<OperatorBase>& op,
                                  const std::string& var_name,
-                                 std::string& new_var_name,  // NOLINT
-                                 std::vector<OpFuncNode>* new_op_func_nodes);
+                                 const std::string& new_var_name,
+                                 std::vector<OpFuncNode>* op_func_nodes);
 };
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
-                        std::vector<OpFuncNode>* copy_func_nodes);
+                        std::vector<OpFuncNode>* op_func_nodes);
 
 std::string get_memcpy_type(const platform::Place& src_place,
                             const platform::Place& dst_place);
@@ -80,22 +80,23 @@ inline bool need_layout_transform(const OpKernelType& kernel_type_for_var,
                                         expected_kernel_key.data_layout_);
 }
 
-std::shared_ptr<OperatorBase> TransferLayout(
-    const std::string& var_name,
-    std::string& new_var_name,  // NOLINT
-    DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope);
+std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
+                                             std::string* new_var_name,
+                                             DataLayout in_layout,
+                                             DataLayout out_layout,
+                                             VariableScope* var_scope);
 
-std::shared_ptr<OperatorBase> TransferDtype(
-    const std::string& var_name,
-    std::string& new_var_name,  // NOLINT
-    proto::VarType::Type in_dtype, proto::VarType::Type out_dtype,
-    VariableScope* var_scope);
+std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
+                                            std::string* new_var_name,
+                                            proto::VarType::Type in_dtype,
+                                            proto::VarType::Type out_dtype,
+                                            VariableScope* var_scope);
 
-std::shared_ptr<OperatorBase> TransferDevice(
-    const std::string& var_name,
-    std::string& new_var_name,  // NOLINT
-    const platform::Place& src_place, const platform::Place& dst_place,
-    VariableScope* var_scope);
+std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
+                                             std::string* new_var_name,
+                                             const platform::Place& src_place,
+                                             const platform::Place& dst_place,
+                                             VariableScope* var_scope);
 
 }  // namespace interpreter
 }  // namespace framework

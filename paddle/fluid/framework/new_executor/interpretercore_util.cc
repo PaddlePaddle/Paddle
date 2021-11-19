@@ -434,18 +434,18 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
   return out;
 }
 
-void update_var_min_rw_op(
-    const std::map<int, std::set<int>>& op2dependences,
-    std::map<int, std::list<int>>& var2min_rw_op,  // NOLINT
-    int cur_op, int rw_var) {
+void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
+                          std::map<int, std::list<int>>* var2min_rw_op,
+                          int cur_op, int rw_var) {
   // rw_var is inputs or outputs of cur_op
   // this function update the var2min_rw_op set .
-  if (var2min_rw_op.find(rw_var) == var2min_rw_op.end())
-    var2min_rw_op[rw_var] = std::list<int>();
-  for (auto dep_op : op2dependences.at(cur_op)) {
-    var2min_rw_op[rw_var].remove(dep_op);
+  if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
+    (*var2min_rw_op)[rw_var] = std::list<int>();
   }
-  var2min_rw_op[rw_var].push_back(cur_op);
+  for (auto dep_op : op2dependences.at(cur_op)) {
+    var2min_rw_op->at(rw_var).remove(dep_op);
+  }
+  var2min_rw_op->at(rw_var).push_back(cur_op);
 }
 
 std::map<int, std::list<int>> get_downstream_map(
@@ -507,7 +507,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
     for (auto& item :
          vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
       for (auto var : item.second) {
-        update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+        update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
         remove_duplicate.insert(var);
       }
     }
@@ -518,7 +518,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
         var2recent_write_op[var] = op_idx;
         if (remove_duplicate.count(var) ==
             0) {  // var in input list and in output list, so remove it.
-          update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
         }
       }
     }
