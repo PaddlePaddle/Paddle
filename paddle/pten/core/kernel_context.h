@@ -175,7 +175,6 @@ class KernelContext {
       CompatibleDenseTensorUtils::ClearStorage(
           static_cast<DenseTensor*>(out.get()));
     }
-    attrs_.clear();
   }
 
   size_t InputsSize() const { return inputs_.size(); }
