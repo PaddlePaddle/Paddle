@@ -56,6 +56,9 @@ def launch_elastic(args, distribute_mode):
         # wait for all nodes ready to run
         elastic.wait()
 
+        # execute pre hook action, eg: run shell
+        elastic.pre_hook()
+
         # run self with specified launcher
         elastic.run(CollectiveLauncher)
 

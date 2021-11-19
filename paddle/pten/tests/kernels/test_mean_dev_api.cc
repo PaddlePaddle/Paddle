@@ -21,12 +21,6 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(MathCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(MathCUDA);
-#endif
-
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -55,7 +49,7 @@ TEST(DEV_API, mean) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
   ASSERT_EQ(out.numel(), 1);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   auto expect_result = sum / 12;

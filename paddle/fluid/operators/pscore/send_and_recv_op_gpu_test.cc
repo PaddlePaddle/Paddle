@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP) && \
-    (defined PADDLE_WITH_PSCORE)
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSCORE)
 
 #include <stdlib.h>
 #include <memory>
@@ -188,12 +187,18 @@ TEST(SENDANDRECV, GPU) {
   b_rpc_service2->WaitServerReady();
   using MicroScope =
       std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
+  using MiniScope = std::unordered_map<int, framework::Scope*>;
+  std::shared_ptr<MiniScope> mini_scopes(new MiniScope{});
   std::shared_ptr<MicroScope> micro_scopes(new MicroScope{});
+  auto* mini_scope = new framework::Scope();
+  (*mini_scopes)[0] = mini_scope;
   std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
       new std::vector<framework::Scope*>{});
-  (*micro_scope).push_back(new framework::Scope());
+  auto* micro_scope_0 = &(mini_scope->NewScope());
+  (*micro_scope).push_back(micro_scope_0);
   (*micro_scopes)[0] = micro_scope;
   b_rpc_service2->SetMicroBatchScopes(micro_scopes);
+  b_rpc_service2->SetMiniBatchScopes(mini_scopes);
 
   using TaskQueue =
       std::unordered_map<int,
