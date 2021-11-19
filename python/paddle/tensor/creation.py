@@ -778,8 +778,9 @@ def meshgrid(*args, **kwargs):
 def zeropad2d(x, pad, data_format="NCHW", name=None):
     """
     Pads the input tensor boundaries with zero according to 'pad'.
+
     Args:
-        x(Tensor): The input tensor with data type float32/float64/int32/int64.
+        x(Tensor): The input tensor with data type float16/float32/float64/int32/int64.
         pad(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
             The input dimension should be 4 and pad has the form (pad_left, pad_right,
             pad_top, pad_bottom).
@@ -787,8 +788,9 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
             the input data. Default: "NCHW".
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
-    Returns: A Tensor padded with 0 according to pad and data type is same as input.
-    Returns: Tensor
+
+    Returns：Tensor，padded with 0 according to pad and data type is same as input.
+
     Examples:
         .. code-block:: python
 

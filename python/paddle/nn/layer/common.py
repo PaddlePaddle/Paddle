@@ -1122,29 +1122,28 @@ class ZeroPad2D(Layer):
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns:
-        None
+    Shape:
+        - x(Tensor): The input tensor of zeropad2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of zeropad2d operator, which is a 4-D tensor.
+          The data type is same as input x.
 
     Examples:
-        .. code-block:: text
+        Examples are as follows.
 
-            x = [[[[1., 2., 3.],
-                   [4., 5., 6.]]]]
-            padding = [1, 1, 0, 0]
-            Out = [[[[0. 1. 2. 3. 0.]
-                     [0. 4. 5. 6. 0.]]]]
-
-    Code Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn as nn
             import numpy as np
+
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+
             my_pad = nn.ZeroPad2D(padding=pad)
             result = my_pad(data)
+
             print(result)
             # [[[[0. 0. 0. 0.]
             #    [0. 1. 2. 3.]
