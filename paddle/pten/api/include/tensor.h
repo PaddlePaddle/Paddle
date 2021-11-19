@@ -163,9 +163,10 @@ class PD_DLL_DECL Tensor final {
 
   /**
    * @brief Reset the shape of the tensor.
-   * Reshape must be called before calling mutable_data() or
-   * copy_to(const PlaceType& place).
-   * This is a deprecated method and may be removed in the future!
+   * Note: This method means Reset the shape of the tensor,
+   * and must be called before calling mutable_data() or
+   * copy_to(const PlaceType& place), this is not a standard definition of
+   * reshape behavior, so we will deprecated this feature in the future.
    *
    * @param shape
    */

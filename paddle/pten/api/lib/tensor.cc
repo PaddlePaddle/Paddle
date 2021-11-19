@@ -105,9 +105,21 @@ std::vector<int64_t> Tensor::shape() const {
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The reshape operation is not supported now, "
-      "and it will be implemented by calling the reshape kernel later."));
+  LOG(WARNING) << "The function of resetting the shape of the uninitialized "
+                  "Tensor of the `reshape` method is deprecated since version "
+                  "2.3, and will be removed in version 2.4, please use "
+                  "`paddle::experimental::full` method to create a new Tensor "
+                  "instead. "
+                  "reason: `reshape` means changing the tensor shape without "
+                  "touching underlying data, this requires the total size of "
+                  "the tensor to remain constant.";
+  if (detail::IsDenseTensor(impl_)) {
+    std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
+        pten::DenseTensorMeta(dtype(), framework::make_ddim(shape)));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only support reshape operation on DenseTensor now."));
+  }
 }
 
 DataType Tensor::dtype() const { return impl_->dtype(); }
@@ -247,7 +259,7 @@ Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
             end_idx))));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Only supported slice operation on DenseTensor now."));
+        "Only support slice operation on DenseTensor now."));
   }
 }
 
@@ -314,12 +326,10 @@ Tensor Tensor::cast(const DataType &target_type) const {
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
-bool Tensor::initialized() const {
-  return impl_ != nullptr && impl_->initialized();
-}
+bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
-  return impl_ != nullptr && impl_->initialized();
+  return defined() && impl_->initialized();
 }
 
 void Tensor::reset() { impl_.reset(); }
