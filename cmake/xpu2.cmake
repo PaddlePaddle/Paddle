@@ -92,10 +92,11 @@ macro(compile_kernel COMPILE_ARGS)
 
   set(XTDK_DIR ${XPU_TOOLCHAIN})
   set(CXX_DIR ${HOST_SYSROOT})
-  set(XPU_CXX_INCLUDES  -I/workspace/paddle/Paddle/build -I/workspace/paddle/Paddle/paddle/fluid/framework/io -I/workspace/paddle/Paddle/build/third_party/install/zlib/include -I/workspace/paddle/Paddle/build/third_party/install -I/workspace/paddle/Paddle/build/third_party/install/gflags/include -I/workspace/paddle/Paddle/build/third_party/install/glog/include -I/workspace/paddle/Paddle/build/third_party/boost/src/extern_boost -I/workspace/paddle/Paddle/build/third_party/eigen3/src/extern_eigen3 -I/workspace/paddle/Paddle/build/third_party/threadpool/src/extern_threadpool -I/workspace/paddle/Paddle/build/third_party/dlpack/src/extern_dlpack/include -I/workspace/paddle/Paddle/build/third_party/install/xxhash/include -I/workspace/paddle/Paddle/build/third_party/install/warpctc/include -I/workspace/paddle/Paddle/build/third_party/install/openblas/include -I/workspace/paddle/Paddle/build/third_party/install/protobuf/include -I/usr/include/python3.7m -I/usr/local/lib/python3.7/dist-packages/numpy/core/include -I/workspace/paddle/Paddle/build/third_party/pybind/src/extern_pybind/include -I/workspace/paddle/Paddle/build/third_party/install/gtest/include -I/workspace/paddle/Paddle/build/third_party/install/xpu/include -I/workspace/paddle/Paddle/build/third_party/install/gloo/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include/xbyak -I/workspace/paddle/Paddle/build/third_party/install/cryptopp/include -I/workspace/paddle/Paddle/build/third_party/pocketfft/src -I/workspace/paddle/Paddle)
+  set(XPU_CXX_INCLUDES  -I/workspace/paddle/Paddle/build -I/workspace/paddle/Paddle/paddle/fluid/framework/io -I/workspace/paddle/Paddle/build/third_party/install/zlib/include -I/workspace/paddle/Paddle/build/third_party/install -I/workspace/paddle/Paddle/build/third_party/install/gflags/include -I/workspace/paddle/Paddle/build/third_party/install/glog/include -I/workspace/paddle/Paddle/build/third_party/boost/src/extern_boost -I/workspace/paddle/Paddle/build/third_party/eigen3/src/extern_eigen3 -I/workspace/paddle/Paddle/build/third_party/threadpool/src/extern_threadpool -I/workspace/paddle/Paddle/build/third_party/dlpack/src/extern_dlpack/include -I/workspace/paddle/Paddle/build/third_party/install/xxhash/include -I/workspace/paddle/Paddle/build/third_party/install/warpctc/include -I/workspace/paddle/Paddle/build/third_party/install/openblas/include -I/workspace/paddle/Paddle/build/third_party/install/protobuf/include -I/usr/include/python3.7m -I/usr/local/lib/python3.7/dist-packages/numpy/core/include -I/workspace/paddle/Paddle/build/third_party/pybind/src/extern_pybind/include -I/workspace/paddle/Paddle/build/third_party/install/gtest/include -I/workspace/paddle/Paddle/build/third_party/install/gloo/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include/xbyak -I/workspace/paddle/Paddle/build/third_party/install/cryptopp/include -I/workspace/paddle/Paddle/build/third_party/pocketfft/src -I/workspace/paddle/Paddle)
   #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -mavx -O3 -DNDEBUG )
-  set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
-  set(XPU_CXX_DEFINES -DHPPL_STUB_FUNC -DPADDLE_DISABLE_PROFILER -DPADDLE_DLL_EXPORT -DPADDLE_USE_OPENBLAS -DPADDLE_USE_PTHREAD_BARRIER -DPADDLE_USE_PTHREAD_SPINLOCK -DPADDLE_VERSION=0.0.0 -DPADDLE_VERSION_INTEGER=0 -DPADDLE_WITH_AVX -DPADDLE_WITH_CRYPTO -DPADDLE_WITH_POCKETFFT -DPADDLE_WITH_SSE3 -DPADDLE_WITH_TESTING -DPADDLE_WITH_XBYAK -DPADDLE_WITH_XPU -DPADDLE_WITH_XPU2 -DXBYAK64 -DXBYAK_NO_OP_NAMES)
+  set(XPU_CXX_FLAGS  -Wno-c++11-narrowing -Wno-shift-count-overflow -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
+  #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
+  set(XPU_CXX_DEFINES -DHPPL_STUB_FUNC -DPADDLE_DISABLE_PROFILER -DPADDLE_DLL_EXPORT -DPADDLE_USE_OPENBLAS -DPADDLE_USE_PTHREAD_BARRIER -DPADDLE_USE_PTHREAD_SPINLOCK -DPADDLE_VERSION=0.0.0 -DPADDLE_VERSION_INTEGER=0 -DPADDLE_WITH_AVX -DPADDLE_WITH_CRYPTO -DPADDLE_WITH_POCKETFFT -DPADDLE_WITH_SSE3 -DPADDLE_WITH_TESTING -DPADDLE_WITH_XBYAK -DPADDLE_WITH_XPU2 -DXBYAK64 -DXBYAK_NO_OP_NAMES)
 
   add_custom_command(
     OUTPUT
@@ -105,7 +106,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
     # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11
     ${XPU_CLANG} --sysroot=${CXX_DIR}   -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
-         -I.  -o kernel_build/${kernel_name}.bin.o.sec /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
+        -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.bin.o.sec /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
         --xpu-device-only -c -v 
     COMMAND
       ${XTDK_DIR}/bin/xpu2-elfconv kernel_build/${kernel_name}.bin.o.sec  kernel_build/${kernel_name}.bin.o ${XPU_CLANG} --sysroot=${CXX_DIR}
@@ -133,7 +134,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
     # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11
     ${XPU_CLANG} --sysroot=${CXX_DIR}   -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
-         -I.  -o kernel_build/${kernel_name}.host.o /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
+        -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.host.o /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
         --xpu-host-only -c -v 
     # COMMAND
     #   ${CMAKE_COMMAND} -E cmake_depends "Unix Makefiles" ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}
@@ -286,17 +287,17 @@ list(APPEND XPU_CFLAGS -Wno-dev)
 set(XPU_XPUCC_FLAGS ${XPU_CFLAGS})
 
 # set HIP link libs
-# set(xpuapi_library_name xpuapi)
-# message(STATUS "XPU API library name: ${xpuapi_library_name}")
-# # link in the generic.cmake
-# find_library(XPU2_CLANG_API_LIB ${xpuapi_library_name} HINTS ${XPU2_PATH}/shlib)
-# message(STATUS "XPU2_CLANG_API_LIB: ${XPU2_CLANG_API_LIB}")
+set(xpuapi_library_name xpuapi)
+message(STATUS "XPU API library name: ${xpuapi_library_name}")
+# link in the generic.cmake
+find_library(XPU2_CLANG_API_LIB ${xpuapi_library_name} HINTS ${XPU2_PATH}/shlib)
+message(STATUS "XPU2_CLANG_API_LIB: ${XPU2_CLANG_API_LIB}")
 
-# set(xpurt_library_name xpurt)
-# message(STATUS "XPU RT library name: ${xpurt_library_name}")
-# # link in the generic.cmake
-# find_library(XPU2_CLANG_RT_LIB ${xpurt_library_name} HINTS ${XPU2_PATH}/runtime/shlib)
-# message(STATUS "XPU2_CLANG_RT_LIB: ${XPU2_CLANG_RT_LIB}")
+set(xpurt_library_name xpurt)
+message(STATUS "XPU RT library name: ${xpurt_library_name}")
+# link in the generic.cmake
+find_library(XPU2_CLANG_RT_LIB ${xpurt_library_name} HINTS ${XPU2_PATH}/runtime/shlib)
+message(STATUS "XPU2_CLANG_RT_LIB: ${XPU2_CLANG_RT_LIB}")
 
 # # Ensure that xpu/api.h can be included without dependency errors.
 # file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.xpu_headers_dummy.cc CONTENT "")

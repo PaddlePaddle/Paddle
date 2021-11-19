@@ -330,10 +330,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_XPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
 
-// added by lxd
-#define REGISTER_OP_XPU2_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
-
 #define REGISTER_OP_NPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, NPU, ::paddle::platform::NPUPlace, __VA_ARGS__)
 

@@ -58,7 +58,6 @@ template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    std::cout << "lxd_debug: element_add in CPU !" << std::endl;
     auto *x = ctx.Input<framework::LoDTensor>("X");
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
