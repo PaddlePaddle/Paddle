@@ -48,6 +48,7 @@ PyObject* ToPyObject(const std::vector<int64_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
+PyObject* ToPyObject(const platform::Place& value);
 
 }  // namespace pybind
 }  // namespace paddle
