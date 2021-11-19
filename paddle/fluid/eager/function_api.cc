@@ -119,7 +119,7 @@ static void FillConstCUDAFunctor(pten::DenseTensor* tensor_dense,
                                  double value) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = dynamic_cast<paddle::platform::CUDAContext*>(
+  auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
       pool.Get(paddle::platform::CUDAPlace()));
   auto stream = dev_ctx->stream();
 
