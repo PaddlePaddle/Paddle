@@ -263,6 +263,8 @@ void MessageBus::UpdateAddr(const std::string& new_addr, int port) {
     ReceiveANewAddress(server);
   }
 
+  paddle::platform::CloseSocket(server);
+
   std::stringstream ss;
   ss << "\nThe DNS table of the message bus after updating is: \n";
   for (const auto& pair : rank_to_addr_) {
