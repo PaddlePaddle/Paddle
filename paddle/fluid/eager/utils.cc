@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 
 #include "paddle/pten/api/all.h"

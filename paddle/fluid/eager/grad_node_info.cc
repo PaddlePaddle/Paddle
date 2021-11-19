@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 
 #include "paddle/pten/api/all.h"
@@ -22,6 +21,9 @@
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -203,6 +205,23 @@ void GradNodeBase::ApplyReduceHooks() {
   }
 }
 
+static void FillUnderlyingVariableWithValue(
+    double value, const paddle::framework::DDim& ddim,
+    const paddle::platform::Place& place,
+    const paddle::framework::proto::VarType::Type& dtype,
+    egr::EagerTensor* target) {
+  auto* dst_tensor =
+      target->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  dst_tensor->Resize(ddim);
+  // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
+  // grad mission
+  // we can't get data_type_ directly. We need to check if we can only use
+  // default data_type for now.
+  dst_tensor->mutable_data(place, dtype);
+  paddle::operators::math::set_constant(*dev_ctx, dst_tensor, value);
+}
+
 void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
                       bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
@@ -268,8 +287,9 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
       switch (type) {
         case paddle::framework::proto::VarType::LOD_TENSOR: {
           auto t_ftensor = t.Var().Get<paddle::framework::LoDTensor>();
-          FillConstAPI(1.0, t_ftensor.dims(), t_ftensor.place(),
-                       t_ftensor.type(), &buffer_tensor);
+          FillUnderlyingVariableWithValue(1.0, t_ftensor.dims(),
+                                          t_ftensor.place(), t_ftensor.type(),
+                                          &buffer_tensor);
           break;
         }
         default: {

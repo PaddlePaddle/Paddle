@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"

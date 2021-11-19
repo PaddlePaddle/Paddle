@@ -19,7 +19,6 @@
 #include <tuple>
 #include <unordered_set>
 
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/legacy/type_def.h"

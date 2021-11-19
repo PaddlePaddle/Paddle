@@ -1,4 +1,4 @@
-set(eager_deps eager_api backward utils function_api autograd_meta grad_node_info legacy pten pten_api)
+set(eager_deps eager_api backward utils autograd_meta grad_node_info legacy pten pten_api)
 set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memcpy)
 set(generated_deps dygraph_function dygraph_node)
 
@@ -7,7 +7,7 @@ add_subdirectory(api)
 add_subdirectory(accumulation)
 add_subdirectory(legacy)
 
-cc_library(grad_node_info SRCS grad_node_info.cc DEPS gradient_accumulation function_api pten pten_api)
+cc_library(grad_node_info SRCS grad_node_info.cc DEPS gradient_accumulation pten pten_api)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS pten pten_api)
 cc_library(utils SRCS utils.cc DEPS pten pten_api layer proto_desc operator op_registry variable_helper memcpy scale_op accumulation_node autograd_meta)

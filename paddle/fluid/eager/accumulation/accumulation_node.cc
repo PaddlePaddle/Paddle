@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/function_api.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 
 #include "paddle/pten/api/all.h"
