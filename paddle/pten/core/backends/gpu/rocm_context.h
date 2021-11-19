@@ -197,7 +197,7 @@ class ROCMContext : public DeviceContext {
 
   void WaitStreamCallback();
 
-  void Wait(hipStream_t stream) const noexcept;
+  void Wait(hipStream_t stream) const;
 
   Place GetPlace() const noexcept override { return place_; }
 

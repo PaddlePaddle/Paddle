@@ -41,19 +41,19 @@ void CUDAContext::WaitStreamCallback() {
   callback_manager_->Wait();
 }
 
-// void CUDAContext::Wait(cudaStream_t stream) const {
-//   cudaError_t e_sync = cudaSuccess;
-// #if !defined(_WIN32)
-//   e_sync = cudaStreamSynchronize(stream);
-// #else
-//   while (e_sync = cudaStreamQuery(stream)) {
-//     if (e_sync == cudaErrorNotReady) continue;
-//     break;
-//   }
-// #endif
+void CUDAContext::Wait(cudaStream_t stream) const {
+  cudaError_t e_sync = cudaSuccess;
+#if !defined(_WIN32)
+  e_sync = cudaStreamSynchronize(stream);
+#else
+  while (e_sync = cudaStreamQuery(stream)) {
+    if (e_sync == cudaErrorNotReady) continue;
+    break;
+  }
+#endif
 
-//   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
-// }
+  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+}
 
 cublasHandle_t CUDAContext::cublas_handle() const { return cublas_handle_; }
 

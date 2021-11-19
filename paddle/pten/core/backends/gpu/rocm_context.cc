@@ -26,7 +26,7 @@ dim3 ROCMContext::GetCUDAMaxGridDimSize() const {
   return ret;
 }
 
-void ROCMContext::Wait(hipStream_t stream) const noexcept {
+void ROCMContext::Wait(hipStream_t stream) const {
   hipError_t e_sync = hipSuccess;
 #if !defined(_WIN32)
   e_sync = hipStreamSynchronize(stream);

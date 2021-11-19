@@ -38,7 +38,7 @@ struct DefaultDeviceContextType<paddle::platform::CPUPlace> {
   using TYPE = pten::CPUContext;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 struct DefaultDeviceContextType<paddle::platform::CUDAPlace> {
   using TYPE = pten::CUDAContext;

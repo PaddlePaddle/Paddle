@@ -222,19 +222,7 @@ class CUDAContext : public DeviceContext {
 
   void WaitStreamCallback();
 
-  void Wait(cudaStream_t stream) const {
-    cudaError_t e_sync = cudaSuccess;
-#if !defined(_WIN32)
-    e_sync = cudaStreamSynchronize(stream);
-#else
-    while (e_sync = cudaStreamQuery(stream)) {
-      if (e_sync == cudaErrorNotReady) continue;
-      break;
-    }
-#endif
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
-  }
+  void Wait(cudaStream_t stream) const;
 
   Place GetPlace() const noexcept override { return place_; }
 
