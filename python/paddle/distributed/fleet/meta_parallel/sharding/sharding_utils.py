@@ -82,6 +82,7 @@ def GpuInfo(fn):
 
 @contextlib.contextmanager
 def device_guard(dev_id, device="cpu"):
+    origin_device = paddle.device.get_device()
     if device == "cpu":
         paddle.set_device(device)
     elif device == "gpu":
@@ -89,7 +90,4 @@ def device_guard(dev_id, device="cpu"):
     try:
         yield
     finally:
-        if device == "cpu":
-            paddle.set_device("gpu:{}".format(dev_id))
-        elif device == "gpu":
-            paddle.set_device("cpu")
+        paddle.set_device(origin_device)

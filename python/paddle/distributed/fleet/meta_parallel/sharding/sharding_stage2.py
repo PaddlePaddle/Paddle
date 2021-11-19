@@ -149,7 +149,6 @@ class ShardingStage2(nn.Layer):
 
         # Normal FW on the base model
         fw = self._layer(*inputs, **kwargs)
-        # self._bw_hooks.append(1)
 
         # Post hook
         if self._post_hook:
@@ -282,7 +281,6 @@ class ShardingStage2(nn.Layer):
                     def cleanup():
                         if dst_rank != self._rank:
                             param.clear_gradient(False)
-                            param._gradient_set_empty(False)
 
                     # Synchronize the reduce parameter gradient
                     self._tasks_flow.append(
@@ -384,7 +382,7 @@ class ShardingStage2(nn.Layer):
         Sync all model states for all ranks
         """
 
-        for t in self._layer.state_dict().values():
+        for t in self._layer.parameters():
             dist.broadcast(
                 t,
                 src=self._global_root_rank,

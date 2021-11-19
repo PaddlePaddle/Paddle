@@ -172,7 +172,7 @@ class ParamStorage(InternalStorage):
 
         self._fill = 0
         for p in self._params:
-            self._convert_buffer(p, p, self.param2align[p.name])
+            self._convert_buffer(p, p.shape, self.param2align[p.name])
 
 
 class GradStorage(InternalStorage):
