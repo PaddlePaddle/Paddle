@@ -77,54 +77,14 @@ bool check_numpy_available() {
   return ret;
 }
 
-extern PyTypeObject* pEagerTensorType;
+extern PyTypeObject* p_eager_tensor_type;
 
 static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
                                               PyObject* kwargs) {
-  int place_id = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0);
-  int device_id = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1);
+  auto place =
+      ::pybind11::handle(PyTuple_GET_ITEM(args, 0)).cast<platform::Place>();
 
-  switch (static_cast<pten::Backend>(place_id)) {
-    case pten::Backend::CPU:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::CPUPlace());
-      break;
-    case pten::Backend::CUDA:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::CUDAPlace(device_id));
-      break;
-    case pten::Backend::XPU:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::XPUPlace(device_id));
-      break;
-    case pten::Backend::NPU:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::NPUPlace(device_id));
-      break;
-    case pten::Backend::MKLDNN:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::CPUPlace());
-      break;
-    case pten::Backend::CUDNN:
-      egr::Controller::Instance().SetExpectedPlace(
-          paddle::platform::CUDAPlace(device_id));
-      break;
-    // TODO(wanghuancoder)
-    // case pten::Backend::CUDAPinned:
-    //   egr::Controller::Instance().SetExpectedPlace(
-    //       paddle::platform::CUDAPinnedPlace());
-    //   break;
-    // case pten::Backend::HIP:
-    //   egr::Controller::Instance().SetExpectedPlace(
-    //       paddle::platform::CUDAPlace(device_id));
-    //   break;
-    // case pten::Backend::NPUPinned:
-    //   egr::Controller::Instance().SetExpectedPlace(
-    //       paddle::platform::NPUPinnedPlace());
-    //   break;
-    default:
-      break;
-  }
+  egr::Controller::Instance().SetExpectedPlace(place);
 
   Py_INCREF(Py_None);
   return Py_None;
@@ -170,10 +130,9 @@ class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
   PyObject* arr_;
 };
 
-static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
-                                                  pten::DataType dtype,
-                                                  int place_id, int device_id,
-                                                  bool stop_gradient) {
+static inline PyObject* eager_api_numpy_to_tensor(
+    PyObject* numpy_data, pten::DataType dtype,
+    const paddle::platform::Place& place, bool stop_gradient) {
   std::vector<int64_t> vec_dims;
   auto numpy_shape = PyArray_DIMS(reinterpret_cast<PyArrayObject*>(numpy_data));
   int rank = PyArray_NDIM(reinterpret_cast<PyArrayObject*>(numpy_data));
@@ -190,9 +149,9 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   std::shared_ptr<pten::DenseTensor> densetensor(
       new pten::DenseTensor(std::move(shared_storage), std::move(meta)));
 
-  PyObject* obj = pEagerTensorType->tp_alloc(pEagerTensorType, 0);
+  PyObject* obj = p_eager_tensor_type->tp_alloc(p_eager_tensor_type, 0);
   if (obj) {
-    auto v = (EagerTensorObject*)obj;  // NOLINT
+    auto v = reinterpret_cast<EagerTensorObject*>(obj);
     new (&(v->eagertensor)) egr::EagerTensor();
     v->eagertensor.set_impl(densetensor);
     v->eagertensor.set_name(egr::Controller::Instance().GenerateUniqueName());
@@ -214,15 +173,14 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
   PyObject* data = PyTuple_GET_ITEM(args, 0);
   auto str_dtype = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
   pten::DataType dtype = pten::String2DataType(str_dtype);
-  int place_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 2), 2);
-  int device_id = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 3), 3);
-  bool stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+  auto place =
+      ::pybind11::handle(PyTuple_GET_ITEM(args, 2)).cast<platform::Place>();
+  bool stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
   // TODO(jiabin): Support this when python given name
-  // auto str_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 5), 5);
+  // auto str_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
 
   if (check_numpy_available() && PyArray_Check(data)) {
-    return eager_api_numpy_to_tensor(data, dtype, place_id, device_id,
-                                     stop_gradient);
+    return eager_api_numpy_to_tensor(data, dtype, place, stop_gradient);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Eater to_tensor only support numpy to tensor."));

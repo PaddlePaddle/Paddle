@@ -32,13 +32,13 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
-PyTypeObject* pEagerTensorType;
+PyTypeObject* p_eager_tensor_type;
 
 PyObject* eagertensor_new(PyTypeObject* type, PyObject* args,
                           PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
-    auto v = (EagerTensorObject*)obj;  // NOLINT
+    auto v = reinterpret_cast<EagerTensorObject*>(obj);
     new (&(v->eagertensor)) egr::EagerTensor();
   }
   return obj;
@@ -49,16 +49,11 @@ static void eagertensor_dealloc(EagerTensorObject* self) {
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
-static int eagertensor_init(EagerTensorObject* self, PyObject* args,
-                            PyObject* kwargs) {
-  return 0;
-}
-
 extern struct PyGetSetDef variable_properties[];
 
 extern PyMethodDef variable_methods[];
 
-PyTypeObject EagerTensorType = {
+PyTypeObject eager_tensor_type = {
     PyVarObject_HEAD_INIT(NULL, 0) "core_avx.eager.EagerTensor", /* tp_name */
     sizeof(EagerTensorObject),       /* tp_basicsize */
     0,                               /* tp_itemsize */
@@ -78,50 +73,50 @@ PyTypeObject EagerTensorType = {
     0,                               /* tp_setattro */
     0,                               /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
-        Py_TPFLAGS_HEAPTYPE,    /* tp_flags */
-    0,                          /* tp_doc */
-    0,                          /* tp_traverse */
-    0,                          /* tp_clear */
-    0,                          /* tp_richcompare */
-    0,                          /* tp_weaklistoffset */
-    0,                          /* tp_iter */
-    0,                          /* tp_iternext */
-    variable_methods,           /* tp_methods */
-    0,                          /* tp_members */
-    variable_properties,        /* tp_getset */
-    0,                          /* tp_base */
-    0,                          /* tp_dict */
-    0,                          /* tp_descr_get */
-    0,                          /* tp_descr_set */
-    0,                          /* tp_dictoffset */
-    (initproc)eagertensor_init, /* tp_init */
-    0,                          /* tp_alloc */
-    eagertensor_new,            /* tp_new */
-    0,                          /* tp_free */
-    0,                          /* tp_is_gc */
-    0,                          /* tp_bases */
-    0,                          /* tp_mro */
-    0,                          /* tp_cache */
-    0,                          /* tp_subclasses */
-    0,                          /* tp_weaklist */
-    0,                          /* tp_del */
-    0                           /* tp_version_tag */
+        Py_TPFLAGS_HEAPTYPE, /* tp_flags */
+    0,                       /* tp_doc */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    0,                       /* tp_iter */
+    0,                       /* tp_iternext */
+    variable_methods,        /* tp_methods */
+    0,                       /* tp_members */
+    variable_properties,     /* tp_getset */
+    0,                       /* tp_base */
+    0,                       /* tp_dict */
+    0,                       /* tp_descr_get */
+    0,                       /* tp_descr_set */
+    0,                       /* tp_dictoffset */
+    0,                       /* tp_init */
+    0,                       /* tp_alloc */
+    eagertensor_new,         /* tp_new */
+    0,                       /* tp_free */
+    0,                       /* tp_is_gc */
+    0,                       /* tp_bases */
+    0,                       /* tp_mro */
+    0,                       /* tp_cache */
+    0,                       /* tp_subclasses */
+    0,                       /* tp_weaklist */
+    0,                       /* tp_del */
+    0                        /* tp_version_tag */
 };
 
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
 
-  pEagerTensorType = &EagerTensorType;
-  if (PyType_Ready(&EagerTensorType) < 0) {
+  p_eager_tensor_type = &eager_tensor_type;
+  if (PyType_Ready(&eager_tensor_type) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle erroe in BindEager(PyType_Ready)."));
     return;
   }
 
-  Py_INCREF(&EagerTensorType);
+  Py_INCREF(&eager_tensor_type);
   if (PyModule_AddObject(m.ptr(), "EagerTensor",
-                         reinterpret_cast<PyObject*>(&EagerTensorType)) < 0) {
-    Py_DECREF(&EagerTensorType);
+                         reinterpret_cast<PyObject*>(&eager_tensor_type)) < 0) {
+    Py_DECREF(&eager_tensor_type);
     Py_DECREF(m.ptr());
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle erroe in BindEager(PyModule_AddObject)."));
