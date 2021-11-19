@@ -1,1 +1,4 @@
-cc_library(eager_api SRCS fwd_ops_impl.cc api.cc DEPS function_api pten autograd_meta grad_node_info)
+add_subdirectory(utils)
+add_subdirectory(generated)
+
+cc_library(eager_api SRCS all.cc DEPS global_utils hook_utils eager_scale)

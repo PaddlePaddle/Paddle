@@ -19,13 +19,14 @@
 #include <vector>
 
 // Eager
-#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/fluid/eager/utils.h"
 
 // Eager Generated
-#include "paddle/fluid/eager/generated/dygraph_forward_api.h"
+#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 
 // Fluid
 #include "paddle/fluid/framework/op_registry.h"
@@ -34,6 +35,14 @@
 #include "paddle/fluid/memory/memcpy.h"
 
 #include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
+
+#include "paddle/pten/core/kernel_registry.h"
+
+PT_DECLARE_MODULE(CreationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(CreationCUDA);
+#endif
 
 static size_t max_num_benchmark_runs = 5000;
 

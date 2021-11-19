@@ -27,6 +27,9 @@
 */
 namespace egr {
 
+void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
+              bool bias_after_scale, egr::EagerTensor* out);
+
 class GradNodeScale : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node

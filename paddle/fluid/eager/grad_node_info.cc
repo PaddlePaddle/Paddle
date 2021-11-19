@@ -13,20 +13,24 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/fluid/eager/function_api.h"
-#include "paddle/fluid/eager/gradient_accumulation.h"
+
+#include "paddle/pten/api/all.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
 #include "glog/logging.h"
 
 /**
- * Implementation of GradNodeBase, Edge and InputBuffer.
+ * Implementation of GradNodeBase and Edge
 **/
 namespace egr {
 
@@ -82,11 +86,6 @@ void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
   }
 }
 
-void GradNodeBase::SetMultiGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
-                                      size_t slot_rank) {
-  SetGradInMeta(fwd_out, slot_rank);
-}
-
 void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
                                  size_t slot_rank) {
   PADDLE_ENFORCE_LE(slot_rank, (bwd_in_meta_.size() - 1),
@@ -116,11 +115,6 @@ void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
       meta.SetStopGradient(i, fwd_in[i]->StopGradient());
     }
   }
-}
-
-void GradNodeBase::SetMultiGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
-                                       size_t slot_rank) {
-  SetGradOutMeta(fwd_in, slot_rank);
 }
 
 void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
@@ -211,6 +205,23 @@ void GradNodeBase::ApplyReduceHooks() {
   }
 }
 
+static void FillUnderlyingVariableWithValue(
+    double value, const paddle::framework::DDim& ddim,
+    const paddle::platform::Place& place,
+    const paddle::framework::proto::VarType::Type& dtype,
+    egr::EagerTensor* target) {
+  auto* dst_tensor =
+      target->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  dst_tensor->Resize(ddim);
+  // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
+  // grad mission
+  // we can't get data_type_ directly. We need to check if we can only use
+  // default data_type for now.
+  dst_tensor->mutable_data(place, dtype);
+  paddle::operators::math::set_constant(*dev_ctx, dst_tensor, value);
+}
+
 void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
                       bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
@@ -265,17 +276,20 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
       // Fill 1.0
-      auto t_impl = t.impl();
-      FillConstAPI(1.0, t_impl->dims(), t_impl->place(), t_impl->dtype(),
-                   t_impl->layout(), &buffer_tensor);
+      paddle::experimental::Tensor tensor =
+          paddle::experimental::ones_like(*t.Tensor().get());
+      buffer_tensor.set_tensor(
+          std::make_shared<paddle::experimental::Tensor>(tensor));
+
     } else {
       // TODO(jiabin): Only Support LodTensorForNow
       auto type = paddle::framework::ToVarType(t.Var().Type());
       switch (type) {
         case paddle::framework::proto::VarType::LOD_TENSOR: {
           auto t_ftensor = t.Var().Get<paddle::framework::LoDTensor>();
-          FillConstAPI(1.0, t_ftensor.dims(), t_ftensor.place(),
-                       t_ftensor.type(), &buffer_tensor);
+          FillUnderlyingVariableWithValue(1.0, t_ftensor.dims(),
+                                          t_ftensor.place(), t_ftensor.type(),
+                                          &buffer_tensor);
           break;
         }
         default: {

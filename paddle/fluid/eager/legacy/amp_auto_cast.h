@@ -19,8 +19,8 @@
 #include <tuple>
 #include <unordered_set>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/eager/legacy/type_def.h"
 
 namespace egr {
@@ -32,9 +32,6 @@ enum class AmpLevel {
   O2,      // almost fp16
   O3,      // fp16
 };
-
-// Singleton implementation with C++ 11
-class Controller;
 
 class AmpOperators {
  public:

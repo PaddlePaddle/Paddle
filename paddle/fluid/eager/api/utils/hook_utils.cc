@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/api/utils/hook_utils.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/fluid/eager/nodes/accumulation_node.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace egr {

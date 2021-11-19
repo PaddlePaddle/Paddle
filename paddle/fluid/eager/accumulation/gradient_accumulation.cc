@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/gradient_accumulation.h"
+#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
 #include <algorithm>
 #include <memory>
 #include <utility>

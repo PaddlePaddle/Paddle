@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/nodes/accumulation_node.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/eager/function_api.h"
-#include "paddle/fluid/eager/gradient_accumulation.h"
-#include "paddle/fluid/platform/device_context.h"
+
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/include/core.h"
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 

@@ -1,0 +1,2 @@
+add_subdirectory(eager_generated)
+add_subdirectory(fluid_generated)

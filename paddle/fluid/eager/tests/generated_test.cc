@@ -18,14 +18,22 @@
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
+#include "paddle/fluid/eager/utils.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 
-#include "paddle/fluid/eager/generated/dygraph_forward_api.h"
+#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
+#include "paddle/pten/core/kernel_registry.h"
+
+PT_DECLARE_MODULE(CreationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(CreationCUDA);
+#endif
 
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT

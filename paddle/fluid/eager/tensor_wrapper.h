@@ -27,6 +27,7 @@
 #pragma once
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/utils.h"
 
 namespace egr {
 class TensorWrapper {
