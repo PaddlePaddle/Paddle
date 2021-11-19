@@ -584,6 +584,7 @@ void build_op_func_list(const platform::Place& place,
         for (auto& t : *lod_tensor_arr) {
           garbages->emplace_back(t.MoveMemoryHolder());
         }
+        lod_tensor_arr->clear();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Type %s of variable %s is not supported eager deletion.",
