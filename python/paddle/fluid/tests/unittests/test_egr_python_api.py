@@ -45,3 +45,29 @@ class EagerScaleTestCase(unittest.TestCase):
             tensor.persistable = False
             self.assertEqual(tensor.persistable, False)
             self.assertTrue(tensor.place.is_cpu_place())
+
+
+class EagerDtypeTestCase(unittest.TestCase):
+    def check_to_tesnsor_and_numpy(self, dtype):
+        with eager_guard():
+            arr = np.random.random([4, 16, 16, 32]).astype(dtype)
+            tensor = paddle.to_tensor(arr, dtype)
+            self.assertEqual(tensor.dtype, dtype)
+            self.assertTrue(np.array_equal(arr, tensor.numpy()))
+
+    def test_dtype_base(self):
+        self.check_to_tesnsor_and_numpy('bool')
+        self.check_to_tesnsor_and_numpy('int8')
+        self.check_to_tesnsor_and_numpy('uint8')
+        self.check_to_tesnsor_and_numpy('int16')
+        self.check_to_tesnsor_and_numpy('int32')
+        self.check_to_tesnsor_and_numpy('int64')
+        self.check_to_tesnsor_and_numpy('float16')
+        self.check_to_tesnsor_and_numpy('float32')
+        self.check_to_tesnsor_and_numpy('float64')
+        self.check_to_tesnsor_and_numpy('complex64')
+        self.check_to_tesnsor_and_numpy('complex128')
+
+
+if __name__ == "__main__":
+    unittest.main()

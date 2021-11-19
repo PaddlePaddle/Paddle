@@ -173,8 +173,7 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
   PyObject* data = PyTuple_GET_ITEM(args, 0);
   auto str_dtype = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
   pten::DataType dtype = pten::String2DataType(str_dtype);
-  auto place =
-      ::pybind11::handle(PyTuple_GET_ITEM(args, 2)).cast<platform::Place>();
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
   // TODO(jiabin): Support this when python given name
   // auto str_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
