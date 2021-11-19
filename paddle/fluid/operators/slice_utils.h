@@ -130,7 +130,7 @@ inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
       if (infer_flags && (*infer_flags)[i] != -1) {
         PADDLE_ENFORCE_EQ(decreased_dims[axis], 1,
                           platform::errors::InvalidArgument(
-                              "Decrease dim should be 1, but new received %d",
+                              "Decrease dim should be 1, but now received %d",
                               decreased_dims[axis]));
       }
     }
