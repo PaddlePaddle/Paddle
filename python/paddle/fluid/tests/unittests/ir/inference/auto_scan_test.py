@@ -34,6 +34,28 @@ from hypothesis import given, settings, seed, reproduce_failure
 import hypothesis.strategies as st
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
+settings.register_profile(
+    "ci",
+    max_examples=100,
+    suppress_health_check=hypothesis.HealthCheck.all(),
+    deadline=None,
+    print_blob=True,
+    derandomize=True,
+    report_multiple_bugs=False)
+settings.register_profile(
+    "dev",
+    max_examples=1000,
+    suppress_health_check=hypothesis.HealthCheck.all(),
+    deadline=None,
+    print_blob=True,
+    derandomize=True,
+    report_multiple_bugs=False)
+if float(os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')) < 1 or \
+    os.getenv('HYPOTHESIS_TEST_PROFILE', 'dev') == 'ci':
+    settings.load_profile("ci")
+else:
+    settings.load_profile("dev")
+
 
 class SkipReasons(enum.Enum):
     # Paddle not support, but trt support, we need to add the feature.
@@ -180,8 +202,10 @@ class MkldnnAutoScanTest(AutoScanTest):
         for prog_config in self.sample_program_configs(*args, **kwargs):
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
+                self.num_invalid_programs += 1
                 continue
 
+            self.num_ran_programs += 1
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)
@@ -202,13 +226,16 @@ class MkldnnAutoScanTest(AutoScanTest):
                                      feed_data))
             self.success_log('RUN_CPU_BASELINE done')
 
+            self.num_predictor_kinds = 0
             for pred_config, (
                     atol, rtol) in self.sample_predictor_configs(prog_config):
+                self.num_predictor_kinds += 1
                 # skip info
                 skip_flag = False
                 for skip_info in self.skip_cases:
                     if skip_info[0](prog_config, pred_config):
                         skip_flag = True
+                        self.num_skipped_tests += 1
                         if skip_info[1] == SkipReasons.MKLDNN_ACCURACY_ERROR:
                             self.skip_log("[MKLDNN_ACCURACY_ERROR] " +
                                           skip_info[2] + ' ' + ' vs ' + self.
@@ -304,7 +331,7 @@ class PassAutoScanTest(AutoScanTest):
             min_success_num=100,
             max_duration=180,
             passes=None, ):
-        if os.getenv("PADDLE_TEST_PHASE", "CI") == "CE":
+        if os.getenv('HYPOTHESIS_TEST_PROFILE', 'dev') != "ci":
             max_examples *= 10
             min_success_num *= 10
             max_duration = -1
