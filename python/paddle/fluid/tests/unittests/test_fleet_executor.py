@@ -26,12 +26,12 @@ class TestFleetExecutor(unittest.TestCase):
         with fluid.program_guard(empty_program, empty_program):
             x = fluid.layers.data(name='x', shape=[1], dtype=paddle.float32)
         empty_program._pipeline_opt = {
-            "fleet_opt": True,
+            "fleet_opt": {},
             "section_program": empty_program
         }
         exe.run(empty_program, feed={'x': [1]})
 
-    def test_executor_on_multi_devices(self):
+    def test_executor_on_single_device(self):
         places = [fluid.CPUPlace()]
         if fluid.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
