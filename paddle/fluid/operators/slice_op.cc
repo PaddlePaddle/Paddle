@@ -112,9 +112,6 @@ class SliceOp : public framework::OperatorWithKernel {
       out_dims = GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
     }
 
-    VLOG(1) << "######## slice_dims: " << slice_dims;
-    VLOG(1) << "######## out_dims: " << out_dims;
-
     ctx->SetOutputDim("Out", out_dims);
     if (axes.size() > 0 && axes[0] != 0) {
       ctx->ShareLoD("Input", /*->*/ "Out");

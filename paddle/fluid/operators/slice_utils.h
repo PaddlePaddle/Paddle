@@ -30,12 +30,20 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
                                      std::vector<T>* infer_flags = nullptr) {
   for (size_t i = 0; i < axes.size(); ++i) {
     T axis = axes[i];
+    PADDLE_ENFORCE_LT(
+        axis, in_dims.size(),
+        platform::errors::InvalidArgument(
+            "The axis value should be less than the rank of input, "
+            "but received axes[%d] = %d, rank of input is %d.",
+            i, axis, in_dims.size()));
+
+    if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
+      continue;
+    }
+
     T dim_value = in_dims[axis];
 
     if (dim_value > 0) {
-      if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
-        continue;
-      }
       T step = steps == nullptr ? 1 : (*steps)[i];
       PADDLE_ENFORCE_NE(
           step, 0, platform::errors::InvalidArgument(
@@ -73,6 +81,9 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
 
       (*starts)[i] = start;
       (*ends)[i] = end;
+    } else if (dim_value == 0) {
+      (*starts)[i] = 0;
+      (*ends)[i] = 0;
     }
   }
 }
@@ -115,12 +126,13 @@ inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
   if (decrease_axes.size() > 0) {
     for (size_t i = 0; i < decrease_axes.size(); ++i) {
       T axis = decrease_axes[i];
-      if (infer_flags && (*infer_flags)[i] != -1) {
-        PADDLE_ENFORCE_EQ(
-            decreased_dims[axis], 1,
-            platform::errors::InvalidArgument("decrease dim should be 1"));
-      }
       decrease_flag[axis] = 1;
+      if (infer_flags && (*infer_flags)[i] != -1) {
+        PADDLE_ENFORCE_EQ(decreased_dims[axis], 1,
+                          platform::errors::InvalidArgument(
+                              "Decrease dim should be 1, but new received %d",
+                              decreased_dims[axis]));
+      }
     }
 
     std::vector<T> new_shape;

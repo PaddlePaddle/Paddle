@@ -127,6 +127,14 @@ class TestSetValueItemSlice4(TestSetValueApi):
         self.data[0:, 1:2, :] = self.value
 
 
+class TestSetValueItemSlice5(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, 1:1, :] = self.value
+
+    def _get_answer(self):
+        self.data[0:, 1:1, :] = self.value
+
+
 class TestSetValueItemSliceInWhile(TestSetValueApi):
     def _call_setitem(self, x):
         def cond(i, x):
