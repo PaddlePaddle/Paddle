@@ -24,7 +24,8 @@ import threading
 import numpy as np
 import multiprocessing
 from collections import namedtuple
-from paddle.fluid.framework import _set_expected_place, _current_expected_place
+from paddle.fluid.framework import _set_expected_place, _current_expected_place, _dygraph_guard
+from paddle.fluid.dygraph.tracer import Tracer
 
 # NOTE: queue has a different name in python2 and python3
 import queue
@@ -206,11 +207,29 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             try:
                 indices = next(self._sampler_iter)
 
-                # read data from dataset in mini-batch
-                # with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
-                # read data from dataset in mini-batch
-                batch = self._dataset_fetcher.fetch(indices,
-                                                    self._thread_done_event)
+                # NOTE(chenweihang): [ Why need switch tracer here? ]
+                # Now, in order to ensure that the execution performance of the dynamic
+                # graph mode in pten compatible state does not decline significantly,
+                # we have adopted the approach of caching a KernelContext globally for
+                # the dynamic graph tracer to reduce the construction and deconstruction
+                # overhead of data interfaces such as the compatible state DenseTensor.
+                # The static graph is each op caches a KernelContext, but the op of
+                # the dynamic graph will be constructed and destroyed every round of
+                # execution, so it is impossible to cache KernelContext for each op.
+                # However, it is not thread-safe if using only one global tracer in
+                # dynamic graph. If the pten op of paddle is used in the DataLoader thread,
+                # it may cause access errors. There is currently no solution to this
+                # problem, we will find a better solution later and remove this setting.
+                if in_dygraph_mode():
+                    with _dygraph_guard(Tracer()):
+                        # read data from dataset in mini-batch
+                        # with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                        # read data from dataset in mini-batch
+                        batch = self._dataset_fetcher.fetch(
+                            indices, self._thread_done_event)
+                else:
+                    batch = self._dataset_fetcher.fetch(indices,
+                                                        self._thread_done_event)
             except StopIteration:
                 self._exit_thread_expectedly()
                 return
@@ -502,7 +521,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         _set_expected_place(legacy_expected_place)
 
         while not self._thread_done_event.is_set():
-            batch = self._get_data()
+            # See Note [ Why need switch tracer here? ]
+            if in_dygraph_mode():
+                with _dygraph_guard(Tracer()):
+                    batch = self._get_data()
+            else:
+                batch = self._get_data()
+
             if not self._thread_done_event.is_set():
                 if batch is None:
                     self._exit_thread_expectedly()

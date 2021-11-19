@@ -24,9 +24,9 @@
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(run_pten_kernel);
 DECLARE_string(tracer_mkldnn_ops_on);
 DECLARE_string(tracer_mkldnn_ops_off);
-
 namespace paddle {
 namespace imperative {
 
@@ -209,19 +209,28 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
           "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
     }
-
-    OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
+    VLOG(3) << "cwh: current tracer: " << g_current_tracer;
+    VLOG(3) << "cwh: kernel contxt input size: "
+            << pt_kernel_context_.InputsSize();
+    VLOG(3) << "cwh: kernel contxt output size: "
+            << pt_kernel_context_.OutputsSize();
+    VLOG(3) << "cwh: kernel contxt attr size: "
+            << pt_kernel_context_.AttrsSize();
+    OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place,
+                &pt_kernel_context_);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
     // Compatible impl: clear pten kernel context data when throw error
-    OpBase::GetKernelContext()->ClearData();
+    pt_kernel_context_.ClearData();
     throw std::move(exception);
   } catch (std::exception& ex) {
+    pt_kernel_context_.ClearData();
     PADDLE_THROW(platform::errors::Fatal(
         "Operator %s raises an %s exception.\n"
         "The exception content is\n:%s.",
         type, platform::demangle(typeid(ex).name()), ex.what()));
   } catch (...) {
+    pt_kernel_context_.ClearData();
     // NOTE: this branch represents a very serious bug with
     // low probability of occurrence, and we can't get its
     // exception content here.

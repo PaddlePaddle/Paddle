@@ -903,7 +903,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
 
   // Run op
   OpBase::Run(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(),
-              op->DefaultAttrsMap(), op->place());
+              op->DefaultAttrsMap(), op->place(), op->mutable_kernel_context());
 
   if (create_graph_) {
     auto double_grad_node =

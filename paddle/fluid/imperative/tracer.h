@@ -127,6 +127,10 @@ class Tracer {
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
   AmpLevel amp_level_{AmpLevel::O0};
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext,
+  // remove it after compatibility phase is over
+  pten::KernelContext pt_kernel_context_;
 };
 
 // To access static variable current_tracer

@@ -149,7 +149,10 @@ class KernelContext {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast&) {
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Attribute cast error in Op Kernel Context."));
+          "The %d-th attribute (total %d attrs) cast error in Op Kernel "
+          "Context.",
+          idx,
+          attrs_.size()));
     }
   }
 

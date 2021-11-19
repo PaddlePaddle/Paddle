@@ -409,8 +409,6 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
 }
 
-pten::KernelContext OpBase::pt_kernel_context_;
-
 void OpBase::SetType(const std::string& type) {
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
 }
@@ -496,9 +494,10 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VarBase>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place) {
+                 const platform::Place& place,
+                 pten::KernelContext* pt_kernel_context) {
   OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place,
-                         &pt_kernel_context_);
+                         pt_kernel_context);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -506,9 +505,10 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VariableWrapper>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place) {
+                 const platform::Place& place,
+                 pten::KernelContext* pt_kernel_context) {
   OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place,
-                                 &pt_kernel_context_);
+                                 pt_kernel_context);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

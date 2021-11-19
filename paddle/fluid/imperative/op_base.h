@@ -165,6 +165,8 @@ class OpBase {
             Type()));
   }
 
+  pten::KernelContext* mutable_kernel_context() { return &pt_kernel_context_; }
+
   static size_t GenerateUniqueId() {
     static std::atomic<size_t> unique_id{0};
     return unique_id.fetch_add(1);
@@ -175,16 +177,16 @@ class OpBase {
                   const NameVarMap<VarBase>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place);
+                  const platform::Place& place,
+                  pten::KernelContext* pt_kernel_context = nullptr);
 
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place);
-
-  static pten::KernelContext* GetKernelContext() { return &pt_kernel_context_; }
+                  const platform::Place& place,
+                  pten::KernelContext* pt_kernel_context = nullptr);
 
  private:
   static const std::string& UnknownOpType() {
@@ -201,8 +203,9 @@ class OpBase {
   platform::Place place_;
   size_t id_{-1UL};
   // In order to reduce the compatibility phase
-  // performance overhead, temporarily cache KernelContext
-  static pten::KernelContext pt_kernel_context_;
+  // performance overhead, temporarily cache KernelContext,
+  // remove it after compatibility phase is over
+  pten::KernelContext pt_kernel_context_;
 };
 
 class GradOpNode {
