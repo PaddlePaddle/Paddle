@@ -16,6 +16,8 @@
 #include <memory>
 #include "paddle/pten/core/allocator.h"
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace pten {
 
 dim3 CUDAContext::GetCUDAMaxGridDimSize() const {
