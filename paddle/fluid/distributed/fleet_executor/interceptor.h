@@ -98,5 +98,32 @@ class Interceptor {
   std::queue<InterceptorMessage> local_mailbox_;
 };
 
+class InterceptorFactory {
+ public:
+  using CreateInterceptorFunc = std::unique_ptr<Interceptor> (*)(int64_t,
+                                                                 TaskNode*);
+  using CreateInterceptorMap =
+      std::unordered_map<std::string, CreateInterceptorFunc>;
+
+  static void Register(const std::string& type, CreateInterceptorFunc func);
+
+  static std::unique_ptr<Interceptor> Create(const std::string& type,
+                                             int64_t id, TaskNode* node);
+};
+
+#define REGISTER_INTERCEPTOR(interceptor_type, interceptor_class)          \
+  std::unique_ptr<Interceptor> CreatorInterceptor_##interceptor_type(      \
+      int64_t id, TaskNode* node) {                                        \
+    return std::make_unique<interceptor_class>(id, node);                  \
+  }                                                                        \
+  class __RegisterInterceptor_##interceptor_type {                         \
+   public:                                                                 \
+    __RegisterInterceptor_##interceptor_type() {                           \
+      InterceptorFactory::Register(#interceptor_type,                      \
+                                   CreatorInterceptor_##interceptor_type); \
+    }                                                                      \
+  };                                                                       \
+  __RegisterInterceptor_##interceptor_type g_register_##interceptor_type;
+
 }  // namespace distributed
 }  // namespace paddle
