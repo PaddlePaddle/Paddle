@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+#include <string>
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"

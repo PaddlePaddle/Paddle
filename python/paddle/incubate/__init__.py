@@ -23,6 +23,7 @@ from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
+from .passes import fuse_resnet_unit_pass
 
 from . import nn  #noqa: F401
 
