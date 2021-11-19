@@ -27,24 +27,24 @@ using OpRole = paddle::framework::OpRole;
 using OpRegistry = paddle::framework::OpRegistry;
 using ProgramDesc = paddle::framework::ProgramDesc;
 
-bool IsForward(int64_t op_role) {
-  return (op_role == static_cast<int64_t>(OpRole::kForward)) ||
-         (op_role == (static_cast<int64_t>(OpRole::kForward) |
-                      static_cast<int64_t>(OpRole::kLoss)));
+bool IsForward(int32_t op_role) {
+  return (op_role == static_cast<int32_t>(OpRole::kForward)) ||
+         (op_role == (static_cast<int32_t>(OpRole::kForward) |
+                      static_cast<int32_t>(OpRole::kLoss)));
 }
 
-bool IsLRSched(int64_t op_role) {
-  return op_role == static_cast<int64_t>(OpRole::kLRSched);
+bool IsLRSched(int32_t op_role) {
+  return op_role == static_cast<int32_t>(OpRole::kLRSched);
 }
 
-bool IsBackward(int64_t op_role) {
-  return (op_role == static_cast<int64_t>(OpRole::kBackward)) ||
-         (op_role == (static_cast<int64_t>(OpRole::kBackward) |
-                      static_cast<int64_t>(OpRole::kLoss)));
+bool IsBackward(int32_t op_role) {
+  return (op_role == static_cast<int32_t>(OpRole::kBackward)) ||
+         (op_role == (static_cast<int32_t>(OpRole::kBackward) |
+                      static_cast<int32_t>(OpRole::kLoss)));
 }
 
-bool IsOptimize(int64_t op_role) {
-  return op_role == static_cast<int64_t>(OpRole::kOptimize);
+bool IsOptimize(int32_t op_role) {
+  return op_role == static_cast<int32_t>(OpRole::kOptimize);
 }
 
 struct DistCoord {
@@ -112,9 +112,9 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   for (const auto& op_desc : program.Block(0).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
-  std::unordered_map<int64_t, std::vector<OperatorBase*>> role_to_ops;
+  std::unordered_map<int32_t, std::vector<OperatorBase*>> role_to_ops;
   for (const auto& op : ops_) {
-    int64_t op_role = op->Attr<int64_t>("op_role");
+    int32_t op_role = op->Attr<int32_t>("op_role");
     OpRole new_op_role;
     if (IsLRSched(op_role)) {
       new_op_role = OpRole::kLRSched;
@@ -129,7 +129,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
           "The op %s is None of LRSched, Forward, Backward or Optimize.",
           op->Type()));
     }
-    int64_t new_op_role_id = static_cast<int64_t>(new_op_role);
+    int32_t new_op_role_id = static_cast<int32_t>(new_op_role);
     if (role_to_ops.find(new_op_role_id) == role_to_ops.end()) {
       role_to_ops.insert({new_op_role_id, {}});
     }
@@ -147,7 +147,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   int64_t task_id = cur_rank * functionality_order.size();
   for (std::size_t i = 0; i < functionality_order.size(); ++i) {
     OpRole role = functionality_order[i];
-    int64_t role_id = static_cast<int64_t>(role);
+    int32_t role_id = static_cast<int64_t>(role);
     int64_t max_run_times = num_micro_batches;
     int64_t max_slot_nums = start_up_steps;
     if (IsLRSched(role_id) || IsOptimize(role_id)) {
@@ -225,11 +225,21 @@ void RuntimeGraph::FakeRuntimeInfo() {
   int64_t nrank = exe_desc_.cluster_info().size();
   int32_t num_of_functionality = functionality_order.size();
   for (int64_t i = 0; i < nrank; ++i) {
-    for (int64_t j = 0; j < num_of_functionality; ++j) {
+    for (int32_t j = 0; j < num_of_functionality; ++j) {
       int64_t intercepter_id = i * num_of_functionality + j;
       intercepter_id_to_rank_.insert({intercepter_id, i});
     }
   }
+}
+
+std::string RuntimeGraph::DebugString() const {
+  std::ostringstream os;
+  os << "\nRuntime Graph Debug: \n";
+  for (const auto& task : task_nodes_) {
+    os << task->DebugString();
+    os << "\n";
+  }
+  return os.str();
 }
 
 }  // namespace distributed
