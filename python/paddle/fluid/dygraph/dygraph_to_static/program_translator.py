@@ -261,6 +261,23 @@ class StaticFunction(object):
         # Note: Hold a reference to ProgramTranslator for switching `enable_to_static`.
         self._program_trans = ProgramTranslator()
         self._kwargs = kwargs
+        self._training = True
+
+    def train(self):
+        if isinstance(self._class_instance, layers.Layer):
+            raise RuntimeError(
+                "Failed to switch train mode. {} is a Layer's method, "
+                "please use Layer.train() to switch train mode.".format(
+                    self.dygraph_function))
+        self._training = True
+
+    def eval(self):
+        if isinstance(self._class_instance, layers.Layer):
+            raise RuntimeError(
+                "Failed to switch eval mode. {} is a Layer's method, "
+                "please use Layer.eval() to switch eval mode.".format(
+                    self.dygraph_function))
+        self._training = False
 
     def __get__(self, instance, owner):
         """
@@ -340,6 +357,8 @@ class StaticFunction(object):
             # 3. synchronize self.training attribute.
             if isinstance(self._class_instance, layers.Layer):
                 partial_program_layer.training = self._class_instance.training
+            else:
+                partial_program_layer.training = self._training
 
             # 4. return outputs.
             try:
