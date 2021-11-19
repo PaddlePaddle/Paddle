@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-platform::Place ConvertExtPlaceToInnerPlace(const PlaceType& p) {
+platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
   if (p == PlaceType::kCPU) {
     return platform::Place(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -48,6 +48,22 @@ PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
                                         p));
   }
   return PlaceType::kUNK;
+}
+
+Backend ConvertExtPlaceToBackend(PlaceType p) {
+  switch (p) {
+    case PlaceType::kCPU:
+      return Backend::CPU;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case PlaceType::kGPU:
+      return Backend::CUDA;
+#endif
+    default:
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Unsupported place type `%s` when "
+                                          "casting enum place to backend.",
+                                          static_cast<int>(p)));
+  }
 }
 
 }  // namespace experimental

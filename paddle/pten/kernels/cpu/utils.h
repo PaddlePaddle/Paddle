@@ -20,6 +20,9 @@ limitations under the License. */
 
 namespace pten {
 
-void Copy(const CPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst);
+void Copy(const CPUContext& dev_ctx,
+          const DenseTensor& src,
+          bool blocking,
+          DenseTensor* dst);
 
 }  // namespace pten

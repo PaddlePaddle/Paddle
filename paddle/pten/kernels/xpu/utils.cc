@@ -19,7 +19,10 @@ limitations under the License. */
 
 namespace pten {
 
-void Copy(const XPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst) {
+void Copy(const XPUContext& dev_ctx,
+          const DenseTensor& src,
+          bool blocking,
+          DenseTensor* dst) {
   auto* src_ptr = src.data();
   auto* dst_ptr = dst->mutable_data();
   const auto& src_place = src.place();

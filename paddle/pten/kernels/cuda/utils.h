@@ -26,7 +26,7 @@ namespace pten {
 
 void Copy(const CUDAContext& dev_ctx,
           const DenseTensor& src,
-          bool is_sync,
+          bool blocking,
           DenseTensor* dst);
 
 }  // namespace pten

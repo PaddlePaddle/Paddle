@@ -14,18 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
-#include "paddle/pten/api/ext/place.h"
+#include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/backend.h"
 
 namespace paddle {
 namespace experimental {
 
-platform::Place ConvertExtPlaceToInnerPlace(PlaceType p);
-
-PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p);
-
-Backend ConvertExtPlaceToBackend(PlaceType p);
+// TODO(chenweihang): Replace backend by place when place is ready
+// TODO(chenweihang): Add layout and dtype argument if needed
+PD_DLL_DECL Tensor to(const Tensor& x, Backend backend, bool blocking);
 
 }  // namespace experimental
 }  // namespace paddle
