@@ -112,13 +112,6 @@ class FetchV2Op : public framework::OperatorWithKernel {
   }
 };
 
-class FetchV2InferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SyncTypeAndDataType("X", "Out");
-  }
-};
-
 class FetchV2Kernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -211,7 +204,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     fetch_v2, ops::FetchV2Op, ops::FetchV2OpProtoMaker,
-    ops::FetchV2InferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
