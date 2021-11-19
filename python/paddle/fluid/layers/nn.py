@@ -11396,6 +11396,11 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
+    if in_dygraph_mode():
+        out = _C_ops.shape(input)
+        out.stop_gradient = True
+        return out
+
     check_variable_and_dtype(input, 'input', [
         'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
         'complex128'
