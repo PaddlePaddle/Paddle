@@ -39,7 +39,6 @@ from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
 
 __all__ = ['Layer']
 
@@ -1093,6 +1092,7 @@ class Layer(core.Layer):
         self.__dict__.update(state)
 
     def __getattr__(self, name):
+        from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
