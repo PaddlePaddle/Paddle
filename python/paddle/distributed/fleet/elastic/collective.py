@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 from paddle.distributed.fleet import launch_utils
 from paddle.distributed.fleet import cloud_utils
 from paddle.distributed.fleet import ascend_utils

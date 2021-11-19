@@ -58,10 +58,6 @@ template <typename DeviceContext, typename T>
 class GPUDropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(!context.Attr<bool>("is_test"), true,
-                      platform::errors::PreconditionNotMet(
-                          "GradOp is only callable when is_test is false"));
-
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* mask = context.Input<Tensor>("Mask");
@@ -71,10 +67,12 @@ class GPUDropoutGradKernel : public framework::OpKernel<T> {
         context.Attr<std::string>("dropout_implementation");
     float dropout_prob = context.Attr<float>("dropout_prob");
 
+    bool is_test = context.Attr<bool>("is_test");
+
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     DropoutGradGPUKernelDriver<T>(dev_ctx, dropout_implementation, dropout_prob,
-                                  *grad_y, *mask, size, grad_x);
+                                  *grad_y, *mask, size, grad_x, is_test);
   }
 };
 

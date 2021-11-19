@@ -1,0 +1,8 @@
+cc_test(test_copy_dev_api SRCS test_copy_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_dot_dev_api SRCS test_dot_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_fill_dev_api SRCS test_fill_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_flatten_dev_api SRCS test_flatten_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_mean_dev_api SRCS test_mean_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_scale_dev_api SRCS test_scale_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_elementwise_dev_api SRCS test_elementwise_dev_api.cc DEPS pten pten_api_utils)
+cc_test(test_reshape_dev_api SRCS test_reshape_dev_api.cc DEPS pten pten_api_utils)

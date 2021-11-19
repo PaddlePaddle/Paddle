@@ -520,7 +520,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 
 def _inject_import_statements():
     import_statements = [
-        "import paddle", "import paddle.fluid as fluid", "from typing import *",
+        "import paddle", "from paddle import Tensor",
+        "import paddle.fluid as fluid", "from typing import *",
         "import numpy as np"
     ]
     return '\n'.join(import_statements) + '\n'
@@ -1044,7 +1045,8 @@ class ForNodeVisitor(object):
             gast.Name) and self.node.iter.func.id == "range"
 
     def is_for_iter(self):
-        if isinstance(self.node.iter, (gast.Name, gast.Attribute)):
+        if isinstance(self.node.iter,
+                      (gast.Name, gast.Attribute, gast.List, gast.Tuple)):
             return True
         elif isinstance(self.node.iter, gast.Call) and isinstance(
                 self.node.iter.func,
