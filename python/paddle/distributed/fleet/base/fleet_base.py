@@ -565,24 +565,6 @@ class Fleet(object):
         """
         return self._role_maker._is_server()
 
-    def is_heter_worker(self):
-        """
-        Check whether the node is an instance of heter worker.
-
-        Returns:
-            bool: True if this is a node of heter worker,
-                  False if not.
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.is_heter_worker()
-        """
-        return self._role_maker._is_heter_worker()
-
     def barrier_worker(self):
         """
         barrier all workers
@@ -616,30 +598,6 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker()
-
-    @is_non_distributed_check
-    @inited_runtime_handler
-    def init_heter_worker(self):
-        """
-        init_heter_worker executor to initialize startup program,
-
-        Returns:
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-
-                # build net
-                # fleet.distributed_optimizer(...)
-
-                fleet.init_heter_worker()
-
-        """
-        self._runtime_handle._init_heter_worker()
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -689,31 +647,6 @@ class Fleet(object):
 
         """
         self._runtime_handle.load_model(path, mode)
-
-    @is_non_distributed_check
-    @inited_runtime_handler
-    def run_heter_worker(self, dataset):
-        """
-        run_heter_worker will run heter trainer main program with executor.
-
-        Returns:
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-
-                # build net
-                # fleet.distributed_optimizer(...)
-                dataset = "" 
-                if fleet.is_heter_worker():
-                    fleet.run_heter_worker(dataset)
-
-        """
-        self._runtime_handle._run_heter_worker(dataset)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1636,13 +1569,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
