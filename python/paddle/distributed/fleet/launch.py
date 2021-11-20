@@ -297,8 +297,8 @@ def get_cluster_info(args):
 
     cluster = None
     pod = None
-
     start_port = 6170
+
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
     # auto mapping between processes and devices for auto-parallel
