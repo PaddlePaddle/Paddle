@@ -68,6 +68,12 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
                             "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
+// NOTE(Ruibiao): This FLAGS is just to be compatible with the old single-stream
+// CUDA allocator, and will be remove after StreamSafeCudaAllocator has been
+// fully tested
+PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
+                            "Enable StreamSafeCUDAAllocator");
+
 DECLARE_string(allocator_strategy);
 
 namespace paddle {
@@ -131,36 +137,88 @@ class AllocatorFacadePrivate {
 
   explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
     strategy_ = GetAllocatorStrategy();
-    CheckStrategy(strategy_);
-
-    InitNaiveBestFitCPUAllocator();
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    allow_free_idle_chunk_ = allow_free_idle_chunk;
-    default_stream_ = nullptr;
-    for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
-      InitCUDAAllocator(platform::CUDAPlace(dev_id), default_stream_);
-    }
-    InitNaiveBestFitCUDAPinnedAllocator();
-#endif
-
+    switch (strategy_) {
+      case AllocatorStrategy::kNaiveBestFit: {
+        InitNaiveBestFitCPUAllocator();
 #ifdef PADDLE_WITH_XPU
-    for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
-      InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
-    }
+        for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
+        }
 #endif
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+             ++dev_id) {
+          InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
+        }
+        InitNaiveBestFitCUDAPinnedAllocator();
+#endif
 #ifdef PADDLE_WITH_ASCEND_CL
-    if (strategy_ == AllocatorStrategy::kNaiveBestFit) {
-      for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
-        InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
-      }
-      InitNaiveBestFitNPUPinnedAllocator();
-    }
+        for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
+        }
+        InitNaiveBestFitNPUPinnedAllocator();
 #endif
+        break;
+      }
 
+      case AllocatorStrategy::kAutoGrowth: {
+        InitNaiveBestFitCPUAllocator();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        allow_free_idle_chunk_ = allow_free_idle_chunk;
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          // TODO(Ruibiao): Support multi-stream allocator for other strategies
+          default_stream_ = nullptr;
+          for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+               ++dev_id) {
+            InitStreamSafeCUDAAllocator(platform::CUDAPlace(dev_id),
+                                        default_stream_);
+          }
+        } else {
+          for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+               ++dev_id) {
+            InitAutoGrowthCUDAAllocator(platform::CUDAPlace(dev_id),
+                                        allow_free_idle_chunk_);
+          }
+        }
+        InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+#ifdef PADDLE_WITH_XPU
+        for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
+        }
+#endif
+        break;
+      }
+
+      case AllocatorStrategy::kThreadLocal: {
+        InitNaiveBestFitCPUAllocator();
+#ifdef PADDLE_WITH_XPU
+        for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
+        }
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+             ++dev_id) {
+          InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
+        }
+        InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+        break;
+      }
+
+      default: {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported allocator strategy: %d", static_cast<int>(strategy_)));
+      }
+    }
     InitZeroSizeAllocators();
     InitSystemAllocators();
+
+    if (FLAGS_gpu_allocator_retry_time > 0) {
+      WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
+    }
+
     CheckAllocThreadSafe();
   }
 
@@ -220,12 +278,6 @@ class AllocatorFacadePrivate {
   AllocationPtr CUDAAlloc(const platform::CUDAPlace& place,
                           const gpuStream_t& stream, size_t size) {
     std::shared_ptr<Allocator> cuda_allocator;
-    /* NOTE(Ruibiao): This code does not lead to lock competition
-     * for seraching initialized CUDA allocator in multithreaded scenario.
-     * However, when the corresponding CUDA allocator is not initialized,
-     * it may result in large lookup overhead,
-     * which call GetCUDAAAllocator 3 times in the worst case.
-    **/
     try {
       cuda_allocator = GetCUDAAllocator(place, stream);
     } catch (platform::EnforceNotMet& err) {
@@ -234,8 +286,10 @@ class AllocatorFacadePrivate {
       std::unique_lock<std::mutex> lock(cuda_init_mutex_);
       try {
         cuda_allocator = GetCUDAAllocator(place, stream);
+        VLOG(9) << "Other thread had build a new allocator for stream "
+                << stream << " in place " << place;
       } catch (platform::EnforceNotMet& err) {
-        InitCUDAAllocator(place, stream);
+        InitStreamSafeCUDAAllocator(place, stream);
         cuda_allocator = GetCUDAAllocator(place, stream);
       } catch (...) {
         throw;
@@ -314,15 +368,6 @@ class AllocatorFacadePrivate {
     platform::Place place_;
   };
 
-  void CheckStrategy(AllocatorStrategy strategy) {
-    if (strategy != AllocatorStrategy::kNaiveBestFit &&
-        strategy != AllocatorStrategy::kAutoGrowth &&
-        strategy != AllocatorStrategy::kThreadLocal) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported allocator strategy: %d", static_cast<int>(strategy_)));
-    }
-  }
-
   const AllocatorMap& GetAllocatorMap() {
 #ifdef PADDLE_WITH_CUDA
     if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
@@ -352,32 +397,23 @@ class AllocatorFacadePrivate {
         std::make_shared<NaiveBestFitAllocator>(platform::CUDAPinnedPlace());
   }
 
-  void InitCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
-    switch (strategy_) {
-      case AllocatorStrategy::kNaiveBestFit: {
-        InitNaiveBestFitCUDAAllocator(p, stream);
-        break;
-      }
-      case AllocatorStrategy::kAutoGrowth: {
-        InitAutoGrowthCUDAAllocator(p, stream);
-        break;
-      }
-      case AllocatorStrategy::kThreadLocal: {
-        InitThreadLocalCUDAAllocator(p, stream);
-        break;
-      }
-      default: {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unsupported allocator strategy: %d", static_cast<int>(strategy_)));
-      }
-    }
+  void InitStreamSafeCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    PADDLE_ENFORCE_EQ(
+        strategy_, AllocatorStrategy::kAutoGrowth,
+        platform::errors::Unimplemented(
+            "Now only support auto-growth strategey for "
+            "StreamSafeCUDAAllocator, "
+            "the allocator strategy %d is unsupported for multi-stream",
+            static_cast<int>(strategy_)));
+    VLOG(9) << "Init CUDA allocator for stream " << stream << " in place " << p;
+
+    InitAutoGrowthCUDAAllocator(p, stream);
     WrapStreamSafeCUDAAllocator(p, stream);
     WrapCUDARetryAllocator(p, stream, FLAGS_gpu_allocator_retry_time);
   }
 
-  void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p,
-                                     gpuStream_t stream) {
-    cuda_allocators_[p][stream] = std::make_shared<NaiveBestFitAllocator>(p);
+  void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
@@ -455,8 +491,83 @@ class AllocatorFacadePrivate {
 #endif
   }
 
-  void InitThreadLocalCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
-    cuda_allocators_[p][stream] = std::make_shared<ThreadLocalCUDAAllocator>(p);
+  // NOTE(Ruibiao): Old single-stream version, will be removed later
+  void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p,
+                                   bool allow_free_idle_chunk) {
+#if defined(PADDLE_WITH_HIP)
+    auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+#if CUDA_VERSION >= 10020
+    CUdevice device;
+    int val;
+    try {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
+
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          paddle::platform::dynload::cuDeviceGetAttribute(
+              &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+              device));
+    } catch (...) {
+      val = 0;
+    }
+
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+      auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
+      allocators_[p] =
+          std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+              cuda_allocator, platform::GpuMinChunkSize(), p);
+    } else {
+      auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+          cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+    }
+
+#else
+    auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    auto alignment = platform::GpuMinChunkSize();
+    bool need_addr_align = true;
+    // NOTE: sometimes, since cuda runtime can not be forked, calling any cuda
+    // API in that case may got cuda error(3), i.e.,
+    // cudaErrorInitializationError. And, the CUDAAllocator is only initialized
+    // but not really used.
+    // Here, the try-catch block is added to handle the case that
+    // GetDeviceProperties() may failed in the multiple process(for example, in
+    // dataloader with num_worker > 0)
+    try {
+      const auto& prop = platform::GetDeviceProperties(p.GetDeviceId());
+      need_addr_align = prop.textureAlignment < alignment;
+      VLOG(4) << "GetDeviceProperties ok, textureAlignment: "
+              << prop.textureAlignment
+              << ", set need_addr_align=" << need_addr_align;
+    } catch (...) {
+      need_addr_align = true;
+      VLOG(4) << "GetDeviceProperties failed, set need_addr_align=true";
+    }
+    // The address returned is aligned already,
+    // ref:
+    // https://stackoverflow.com/questions/14082964/cuda-alignment-256bytes-seriously/14083295#14083295
+    std::shared_ptr<Allocator> underlying_allocator{nullptr};
+    if (need_addr_align) {
+      VLOG(10) << "use AlignedAllocator with alignment: " << alignment;
+      underlying_allocator =
+          std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
+    } else {
+      VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
+      underlying_allocator = cuda_allocator;
+    }
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        underlying_allocator, alignment, 0, allow_free_idle_chunk);
+#endif
+#endif
+  }
+
+  void InitThreadLocalCUDAAllocator(platform::CUDAPlace p) {
+    allocators_[p] = std::make_shared<ThreadLocalCUDAAllocator>(p);
   }
 
   void WrapCUDARetryAllocator(platform::CUDAPlace p, gpuStream_t stream,
@@ -504,6 +615,27 @@ class AllocatorFacadePrivate {
   }
 #endif
 
+  void InitSystemAllocators() {
+    if (!system_allocators_.empty()) return;
+    system_allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
+#ifdef PADDLE_WITH_XPU
+    int device_count = platform::GetXPUDeviceCount();
+    for (int i = 0; i < device_count; ++i) {
+      platform::XPUPlace p(i);
+      system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+    }
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    system_allocators_[platform::CUDAPinnedPlace()] =
+        std::make_shared<CPUPinnedAllocator>();
+    int device_count = platform::GetCUDADeviceCount();
+    for (int i = 0; i < device_count; ++i) {
+      platform::CUDAPlace p(i);
+      system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
+    }
+#endif
+  }
+
   void InitZeroSizeAllocators() {
     if (!zero_size_allocators_.empty()) return;
     std::vector<platform::Place> places;
@@ -541,34 +673,28 @@ class AllocatorFacadePrivate {
     }
   }
 
-  void InitSystemAllocators() {
-    if (!system_allocators_.empty()) return;
-    system_allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
-#ifdef PADDLE_WITH_XPU
-    int device_count = platform::GetXPUDeviceCount();
-    for (int i = 0; i < device_count; ++i) {
-      platform::XPUPlace p(i);
-      system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
-    }
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    system_allocators_[platform::CUDAPinnedPlace()] =
-        std::make_shared<CPUPinnedAllocator>();
-    int device_count = platform::GetCUDADeviceCount();
-    for (int i = 0; i < device_count; ++i) {
-      platform::CUDAPlace p(i);
-      system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
-    }
-#endif
-  }
-
   void CheckAllocThreadSafe() const {
     CheckAllocThreadSafe(allocators_);
     CheckAllocThreadSafe(zero_size_allocators_);
     CheckAllocThreadSafe(system_allocators_);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    CheckCUDAAllocThreadSafe(cuda_allocators_);
+    if (FLAGS_use_stream_safe_cuda_allocator) {
+      CheckCUDAAllocThreadSafe(cuda_allocators_);
+    }
 #endif
+  }
+
+  // NOTE(Ruibiao): Old single-stream version, will be removed later
+  void WrapCUDARetryAllocator(size_t retry_time) {
+    PADDLE_ENFORCE_GT(
+        retry_time, 0,
+        platform::errors::InvalidArgument(
+            "Retry time should be larger than 0, but got %d", retry_time));
+    for (auto& pair : allocators_) {
+      if (platform::is_gpu_place(pair.first)) {
+        pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+      }
+    }
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -610,7 +736,7 @@ std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place)) {
     return Alloc(BOOST_GET_CONST(platform::CUDAPlace, place),
                  m_->GetDefaultStream(), size);
   }
@@ -620,7 +746,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place)) {
     return Release(BOOST_GET_CONST(platform::CUDAPlace, place),
                    m_->GetDefaultStream());
   }
@@ -637,11 +763,25 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::CUDAPlace& place, const gpuStream_t& stream, size_t size) {
+  PADDLE_ENFORCE_EQ(
+      FLAGS_use_stream_safe_cuda_allocator, true,
+      platform::errors::Unimplemented(
+          "StreamSafeCUDAAllocator is disabled, you should not call this "
+          "multi-stream 'AllocaShared' function. "
+          "To enable it, you can enter 'export "
+          "FLAGS_use_stream_safe_cuda_allocator=true' in the terminal."));
   return std::shared_ptr<Allocation>(Alloc(place, stream, size));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::CUDAPlace& place,
                                      const gpuStream_t& stream, size_t size) {
+  PADDLE_ENFORCE_EQ(
+      FLAGS_use_stream_safe_cuda_allocator, true,
+      platform::errors::Unimplemented(
+          "StreamSafeCUDAAllocator is disabled, you should not call this "
+          "multi-stream 'Alloca' function. "
+          "To enable it, you can enter 'export "
+          "FLAGS_use_stream_safe_cuda_allocator=true' in the terminal."));
   if (size > 0) {
     return m_->CUDAAlloc(place, stream, size);
   } else {
@@ -651,11 +791,25 @@ AllocationPtr AllocatorFacade::Alloc(const platform::CUDAPlace& place,
 
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
                                   const gpuStream_t& stream) {
+  PADDLE_ENFORCE_EQ(
+      FLAGS_use_stream_safe_cuda_allocator, true,
+      platform::errors::Unimplemented(
+          "StreamSafeCUDAAllocator is disabled, you should not call this "
+          "multi-stream 'Release' function. "
+          "To enable it, you can enter 'export "
+          "FLAGS_use_stream_safe_cuda_allocator=true' in the terminal."));
   return m_->GetCUDAAllocator(place, stream)->Release(place);
 }
 
 void AllocatorFacade::RecordStream(Allocation* allocation,
                                    const gpuStream_t& stream) {
+  PADDLE_ENFORCE_EQ(
+      FLAGS_use_stream_safe_cuda_allocator, true,
+      platform::errors::Unimplemented(
+          "StreamSafeCUDAAllocator is disabled, you should not call this "
+          "'RecordStream' function. "
+          "To enable it, you can enter 'export "
+          "FLAGS_use_stream_safe_cuda_allocator=true' in the terminal."));
   m_->RecordStream(allocation, stream);
 }
 
