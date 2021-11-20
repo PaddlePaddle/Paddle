@@ -31,7 +31,8 @@ from typing import Optional, List, Callable, Dict, Any, Set
 from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
 
 import hypothesis
-from hypothesis import given, settings, seed, example, assume
+from hypothesis import given, settings, seed, reproduce_failure
+import hypothesis.strategies as st
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -78,6 +79,10 @@ class AutoScanTest(unittest.TestCase):
         abs_dir = os.path.abspath(os.path.dirname(__file__))
         self.cache_dir = os.path.join(abs_dir,
                                       str(self.__module__) + '_cache_dir')
+        self.num_ran_programs = 0
+        self.num_invalid_programs = 0
+        self.num_skipped_tests = 0
+        self.num_predictor_kinds = 0
 
     @abc.abstractmethod
     def sample_program_configs(self):
@@ -99,9 +104,8 @@ class AutoScanTest(unittest.TestCase):
             note: str):
         self.skip_cases.append((teller, reason, note))
 
-    @abc.abstractmethod
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        raise NotImplementedError
+        return True
 
     def run_test_config(self, model, params, prog_config, pred_config,
                         feed_data) -> Dict[str, np.ndarray]:
@@ -281,6 +285,32 @@ class PassAutoScanTest(AutoScanTest):
                 self.fail_log('{} version check failed.'.format(pass_name))
                 status = False
         return status
+
+    def add_skip_pass_case(self):
+        return
+
+    def assert_op_list(self, op_list_after_fusion):
+        if not self.passes:
+            raise ValueError(
+                "In PassAutoScan you should give a valid pass name.")
+        last_passed_program = os.path.join(self.cache_dir,
+                                           self.passes[-1] + ".pdmodel")
+        if not os.path.exists(last_passed_program):
+            raise ValueError(
+                "Cannot find file {}, please make sure that your pass name is correct".
+                format(last_passed_program))
+        model_bytes = paddle.static.load_from_file(last_passed_program)
+        pg = paddle.static.deserialize_program(model_bytes)
+        main_block = pg.desc.block(0)
+        after_op_list = list()
+        for i in range(main_block.op_size()):
+            if main_block.op(i).type() in ["feed", "fetch"]:
+                continue
+            after_op_list.append(main_block.op(i).type())
+        self.assertTrue(
+            op_list_after_fusion == after_op_list,
+            "Expected operator list after fusion is {}, but now it's {}".format(
+                op_list_after_fusion, after_op_list), )
 
     def assert_op_size(self, fusion_before_num, fusion_after_num, origin_model):
         if not self.passes:
