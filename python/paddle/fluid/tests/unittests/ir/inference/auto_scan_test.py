@@ -29,11 +29,9 @@ from paddle import compat as cpt
 import paddle.inference as paddle_infer
 from typing import Optional, List, Callable, Dict, Any, Set
 from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
-
 import hypothesis
 from hypothesis import given, settings, seed, reproduce_failure
 import hypothesis.strategies as st
-
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 settings.register_profile(
@@ -85,7 +83,7 @@ class AutoScanTest(unittest.TestCase):
         self.num_predictor_kinds = 0
 
     @abc.abstractmethod
-    def sample_program_configs(self):
+    def sample_program_configs(self, draw):
         '''
         Generate all config with the combination of different Input tensor shape and
         different Attr values.
@@ -204,8 +202,10 @@ class MkldnnAutoScanTest(AutoScanTest):
         for prog_config in self.sample_program_configs(*args, **kwargs):
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
+                self.num_invalid_programs += 1
                 continue
 
+            self.num_ran_programs += 1
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)
@@ -226,13 +226,16 @@ class MkldnnAutoScanTest(AutoScanTest):
                                      feed_data))
             self.success_log('RUN_CPU_BASELINE done')
 
+            self.num_predictor_kinds = 0
             for pred_config, (
                     atol, rtol) in self.sample_predictor_configs(prog_config):
+                self.num_predictor_kinds += 1
                 # skip info
                 skip_flag = False
                 for skip_info in self.skip_cases:
                     if skip_info[0](prog_config, pred_config):
                         skip_flag = True
+                        self.num_skipped_tests += 1
                         if skip_info[1] == SkipReasons.MKLDNN_ACCURACY_ERROR:
                             self.skip_log("[MKLDNN_ACCURACY_ERROR] " +
                                           skip_info[2] + ' ' + ' vs ' + self.
@@ -312,33 +315,95 @@ class PassAutoScanTest(AutoScanTest):
             "Expected operator list after fusion is {}, but now it's {}".format(
                 op_list_after_fusion, after_op_list), )
 
-    def assert_op_size(self, fusion_before_num, fusion_after_num, origin_model):
-        if not self.passes:
-            raise ValueError(
-                'In PassAutoScan you should give a valid pass name.')
-        last_passed_program = os.path.join(self.cache_dir,
-                                           self.passes[-1] + '.pdmodel')
-        model_bytes = paddle.static.load_from_file(last_passed_program)
-        pg = paddle.static.deserialize_program(model_bytes)
-        main_block = pg.desc.block(0)
-        after_op_size = main_block.op_size()
-        pg = paddle.static.deserialize_program(origin_model)
-        main_block = pg.desc.block(0)
-        before_op_size = main_block.op_size()
-        self.assertTrue(before_op_size == fusion_before_num,
-                        'before fusion op size is {}, but got {}!'.format(
-                            before_op_size, fusion_before_num))
-        self.assertTrue(after_op_size == fusion_after_num,
-                        'after fusion op size is {}, but got {}!'.format(
-                            after_op_size, fusion_after_num))
+    def sample_program_config(self, draw):
+        """
+        Define strategy to generate a program.
+        """
+        raise Exception(
+            "You need to implement a function of sample_program_config in your test cast."
+        )
 
-    def run_test(self, quant=False, *args, **kwargs):
+    def run_and_statis(
+            self,
+            quant=False,
+            max_examples=100,
+            reproduce=None,
+            min_success_num=50,
+            max_duration=180,
+            passes=None, ):
+        if os.getenv('HYPOTHESIS_TEST_PROFILE', 'ci') == "dev":
+            max_examples *= 10
+            min_success_num *= 10
+            max_duration = -1
+        start_time = time.time()
+        settings.register_profile(
+            "ci",
+            max_examples=max_examples,
+            suppress_health_check=hypothesis.HealthCheck.all(),
+            deadline=None,
+            print_blob=True,
+            derandomize=True,
+            report_multiple_bugs=False, )
+        settings.load_profile("ci")
+        assert passes is not None, "Parameter of passes must be defined in function run_and_statis."
+        self.passes = passes
+
+        self.add_skip_pass_case()
+
+        def program_generator(draw):
+            return self.sample_program_config(draw)
+
+        def run_test(prog_config):
+            return self.run_test(quant=quant, prog_configs=[prog_config])
+
+        generator = st.composite(program_generator)
+        loop_func = given(generator())(run_test)
+        if reproduce is not None:
+            loop_func = reproduce(loop_func)
+        logging.info("Start to running test of {}".format(type(self)))
+        loop_func()
+        logging.info(
+            "===================Statistical Information===================")
+        logging.info("Number of Generated Programs: {}".format(
+            self.num_ran_programs + self.num_invalid_programs))
+        logging.info("Number of Invalid Programs: {}".format(
+            self.num_invalid_programs))
+        logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
+        logging.info("Number of Skipped Tests: {}".format(
+            self.num_skipped_tests))
+        successful_ran_programs = int(self.num_ran_programs -
+                                      self.num_skipped_tests /
+                                      self.num_predictor_kinds)
+        logging.info(
+            "Number of successfully ran programs approximately equal to {}".
+            format(successful_ran_programs))
+        if successful_ran_programs < min_success_num:
+            logging.warning(
+                "satisfied_programs = ran_programs - num_skipped_tests / num_predictor_kinds"
+            )
+            logging.error(
+                "At least {} programs need to ran successfully, but now only about {} programs satisfied.".
+                format(min_success_num, successful_ran_programs))
+            assert False
+        used_time = time.time() - start_time
+        if max_duration > 0 and used_time > max_duration:
+            logging.error(
+                "The duration exceeds {} seconds, if this is neccessary, try to set a larger number for parameter `max_duration`.".
+                format(max_duration))
+            assert False
+
+    def run_test(self, quant=False, prog_configs=None):
         status = True
 
-        for prog_config in self.sample_program_configs(*args, **kwargs):
+        if not isinstance(prog_configs, list):
+            prog_configs = [prog_configs]
+
+        for prog_config in prog_configs:
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
+                self.num_invalid_programs += 1
                 continue
+            self.num_ran_programs += 1
 
             model, params = create_fake_model(prog_config)
             if quant:
@@ -360,13 +425,16 @@ class PassAutoScanTest(AutoScanTest):
                                      feed_data))
             self.success_log('RUN_CPU_BASELINE done')
 
-            for pred_config, nodes_num, (
+            self.num_predictor_kinds = 0
+            for pred_config, op_list, (
                     atol, rtol) in self.sample_predictor_configs(prog_config):
+                self.num_predictor_kinds += 1
                 # skip info
                 skip_flag = False
                 for skip_info in self.skip_cases:
                     if skip_info[0](prog_config, pred_config):
                         skip_flag = True
+                        self.num_skipped_tests += 1
                         if skip_info[1] == SkipReasons.PASS_ACCURACY_ERROR:
                             self.skip_log("[PASS_ACCURACY_ERROR] " + skip_info[
                                 2] + ' ' + ' vs ' + self.inference_config_str(
@@ -387,7 +455,7 @@ class PassAutoScanTest(AutoScanTest):
                     self.assert_tensors_near(atol, rtol, results[-1],
                                              results[0])
                     if not skip_flag:
-                        self.assert_op_size(nodes_num[0], nodes_num[1], model)
+                        self.assert_op_list(op_list)
 
                 except Exception as e:
                     self.fail_log(
@@ -428,7 +496,7 @@ class PassAutoScanTest(AutoScanTest):
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.cache_dir)
         config.switch_ir_debug()
-        # for assert_op_size.
+        # for assert_op_list.
         self.passes = ['transpose_flatten_concat_fuse_pass']
         return config
 
