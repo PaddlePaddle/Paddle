@@ -329,7 +329,7 @@ class PassAutoScanTest(AutoScanTest):
             max_examples=100,
             reproduce=None,
             min_success_num=50,
-            max_duration=180,
+            max_duration=500,
             passes=None, ):
         if os.getenv('HYPOTHESIS_TEST_PROFILE', 'ci') == "dev":
             max_examples *= 10
