@@ -140,17 +140,22 @@ class AllocatorFacadePrivate {
     switch (strategy_) {
       case AllocatorStrategy::kNaiveBestFit: {
         InitNaiveBestFitCPUAllocator();
-#ifdef PADDLE_WITH_XPU
-        for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
-        }
-#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          LOG(WARNING) << "FLAGS_use_stream_safe_cuda_allocator is invalid for "
+                          "naive_best_fit strategy";
+          FLAGS_use_stream_safe_cuda_allocator = false;
+        }
         for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
              ++dev_id) {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+#ifdef PADDLE_WITH_XPU
+        for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
+        }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
         for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
@@ -198,6 +203,12 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          LOG(WARNING) << "FLAGS_use_stream_safe_cuda_allocator is invalid for "
+                          "thread_local strategy";
+          FLAGS_use_stream_safe_cuda_allocator = false;
+        }
+
         for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
              ++dev_id) {
           InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
@@ -228,7 +239,8 @@ class AllocatorFacadePrivate {
             << " " << place << " " << size;
 
 #ifdef PADDLE_WITH_CUDA
-    if (platform::is_gpu_place(place) && size > 0) {
+    if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
+        size > 0) {
       return GetCUDAAllocator(BOOST_GET_CONST(platform::CUDAPlace, place),
                               default_stream_);
     }
