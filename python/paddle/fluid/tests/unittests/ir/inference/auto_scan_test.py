@@ -29,9 +29,11 @@ from paddle import compat as cpt
 import paddle.inference as paddle_infer
 from typing import Optional, List, Callable, Dict, Any, Set
 from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
+
 import hypothesis
 from hypothesis import given, settings, seed, reproduce_failure
 import hypothesis.strategies as st
+
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 settings.register_profile(
@@ -83,7 +85,7 @@ class AutoScanTest(unittest.TestCase):
         self.num_predictor_kinds = 0
 
     @abc.abstractmethod
-    def sample_program_configs(self, draw):
+    def sample_program_configs(self):
         '''
         Generate all config with the combination of different Input tensor shape and
         different Attr values.
@@ -103,7 +105,7 @@ class AutoScanTest(unittest.TestCase):
         self.skip_cases.append((teller, reason, note))
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
+        raise True
 
     def run_test_config(self, model, params, prog_config, pred_config,
                         feed_data) -> Dict[str, np.ndarray]:
@@ -202,10 +204,8 @@ class MkldnnAutoScanTest(AutoScanTest):
         for prog_config in self.sample_program_configs(*args, **kwargs):
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
-                self.num_invalid_programs += 1
                 continue
 
-            self.num_ran_programs += 1
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)
@@ -226,16 +226,13 @@ class MkldnnAutoScanTest(AutoScanTest):
                                      feed_data))
             self.success_log('RUN_CPU_BASELINE done')
 
-            self.num_predictor_kinds = 0
             for pred_config, (
                     atol, rtol) in self.sample_predictor_configs(prog_config):
-                self.num_predictor_kinds += 1
                 # skip info
                 skip_flag = False
                 for skip_info in self.skip_cases:
                     if skip_info[0](prog_config, pred_config):
                         skip_flag = True
-                        self.num_skipped_tests += 1
                         if skip_info[1] == SkipReasons.MKLDNN_ACCURACY_ERROR:
                             self.skip_log("[MKLDNN_ACCURACY_ERROR] " +
                                           skip_info[2] + ' ' + ' vs ' + self.
@@ -315,25 +312,18 @@ class PassAutoScanTest(AutoScanTest):
             "Expected operator list after fusion is {}, but now it's {}".format(
                 op_list_after_fusion, after_op_list), )
 
-    def sample_program_config(self, draw):
-        """
-        Define strategy to generate a program.
-        """
-        raise Exception(
-            "You need to implement a function of sample_program_config in your test cast."
-        )
-
     def run_and_statis(
             self,
             quant=False,
             max_examples=100,
             reproduce=None,
-            min_success_num=50,
+            min_success_num=25,
             max_duration=180,
             passes=None, ):
         if os.getenv('HYPOTHESIS_TEST_PROFILE', 'ci') == "dev":
             max_examples *= 10
             min_success_num *= 10
+            # while at ce phase, there's no limit on time
             max_duration = -1
         start_time = time.time()
         settings.register_profile(
@@ -395,16 +385,12 @@ class PassAutoScanTest(AutoScanTest):
     def run_test(self, quant=False, prog_configs=None):
         status = True
 
-        if not isinstance(prog_configs, list):
-            prog_configs = [prog_configs]
-
         for prog_config in prog_configs:
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 self.num_invalid_programs += 1
                 continue
             self.num_ran_programs += 1
-
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)
@@ -496,7 +482,7 @@ class PassAutoScanTest(AutoScanTest):
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.cache_dir)
         config.switch_ir_debug()
-        # for assert_op_list.
+        # for assert_op_size.
         self.passes = ['transpose_flatten_concat_fuse_pass']
         return config
 

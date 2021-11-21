@@ -14,7 +14,6 @@
 
 from typing import Optional, List, Callable, Dict, Any, Set
 import numpy as np
-import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -35,24 +34,24 @@ class TensorConfig:
 
     def __init__(self,
                  lod: Optional[List[List[int]]]=None,
-                 shape: Optional[List[List[int]]]=None,
-                 data_gen: Optional[Callable[..., np.array]]=None):
+                 data_gen: Optional[Callable[..., np.array]]=None,
+                 shape: Optional[List[List[int]]]=None):
         '''
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
         data: The value of WeightVar. for input, it should be None 
         '''
         self.lod = lod
-        self.data_gen = data_gen
         if data_gen is not None:
+            self.data_gen = data_gen
             self.data = data_gen()
-            self.shape = self.data.shape
-            self.dtype = self.data.dtype
+            self.dtype = data_gen().dtype
+            self.shape = data_gen().shape
         else:
             assert shape is not None, "While data_gen is not defined, shape must not be None"
             self.data = np.random.normal(0.0, 1.0, shape).astype(np.float32)
             self.shape = shape
-            self.dtype = np.float32
+            self.dtype = self.data.dtype
 
     def __repr__(self):
         return str({'shape': self.shape, 'lod': self.lod, 'dtype': self.dtype})
@@ -70,10 +69,9 @@ class OpConfig:
         self.type = type
         self.inputs = inputs
         self.outputs = outputs
-        if attrs is None:
-            self.attrs = {}
-        else:
-            self.attrs = copy.deepcopy(attrs)
+        self.attrs = attrs
+        if self.attrs is None:
+            self.attrs = dict()
         self.attrs.update(kwargs)
 
     def __repr__(self):
