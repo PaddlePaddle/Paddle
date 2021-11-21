@@ -22,7 +22,9 @@ from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .utils import make_data_unshard
+from .utils import set_grad_var_shape
 from .reshard import reshard
+from .auto_search import auto_search
 
 
 class AutoParallelizer:
@@ -59,9 +61,27 @@ class AutoParallelizer:
         assert startup_program is not None
         main_program = loss.block.program
 
-        # Annotation completion
-        completed_main_program = complete_annotation(main_program,
-                                                     self._dist_context)
+        if self._dist_strategy.auto_search:
+            print("============" * 3)
+            print("Auto search")
+            self._dist_context, _ = auto_search(main_program, startup_program,
+                                                loss, self._optimizer)
+            completed_main_program = main_program
+            print("tensor *****************" * 3)
+            for key, item in self._dist_context._dist_tensors_for_program.items(
+            ):
+                print(item)
+            print("op *****************" * 3)
+            for key, item in self._dist_context._dist_ops_for_program.items():
+                print(item)
+
+        else:
+            print("============" * 3)
+            print("Annotation completion")
+            # Annotation completion
+            completed_main_program = complete_annotation(main_program,
+                                                         self._dist_context)
+
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)
@@ -74,13 +94,8 @@ class AutoParallelizer:
             self._optimizer, dist_params_grads, partitioned_main_prog,
             partitioned_startup_prog)
 
-        # Traverse different rank programs and traverse each op of them,
-        # instantiate communication by process_mapping.
-        all_process_groups = get_all_process_groups()
-        for process_group in all_process_groups:
-            if rank not in process_group._ranks:
-                continue
-            process_group.instantiate()
+        # set the grad var shape
+        set_grad_var_shape(partitioned_main_prog, self._dist_context)
 
         # The last step: remove all distributed attributes to be compatiable
         # with inference.
@@ -90,6 +105,14 @@ class AutoParallelizer:
 
         reshard(partitioned_main_prog, partitioned_startup_prog, rank,
                 self._dist_context)
+
+        # Traverse different rank programs and traverse each op of them,
+        # instantiate communication by process_mapping.
+        all_process_groups = get_all_process_groups()
+        for process_group in all_process_groups:
+            if rank not in process_group._ranks:
+                continue
+            process_group.instantiate()
 
         # Copy distributed info to the default context
         set_default_distributed_context(self._dist_context)
