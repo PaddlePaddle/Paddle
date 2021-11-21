@@ -411,7 +411,7 @@ class PassAutoScanTest(AutoScanTest):
             self.success_log('RUN_CPU_BASELINE done')
 
             self.num_predictor_kinds = 0
-            for pred_config, nodes_num, (
+            for pred_config, op_list, (
                     atol, rtol) in self.sample_predictor_configs(prog_config):
                 self.num_predictor_kinds += 1
                 # skip info
