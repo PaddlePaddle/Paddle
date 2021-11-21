@@ -11384,6 +11384,8 @@ def shape(input):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = fluid.layers.shape(inputs)
