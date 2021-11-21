@@ -52,25 +52,8 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-
         if len(x_dims_mapping) != len(out_dims_mapping) - 1:
             return False
-        #print('x dims mapping len', len(x_dims_mapping))
-        #print('qnmd',x_name.shape)
-        if len(x_dims_mapping) != len(x_name.shape):
-            return False
-        # [0, 1] [0, -1]
-        # x_shard_dims = []
-        # y_shard_dims = []
-        # for dim in x_dims_mapping:
-        #     if is_dim_shard(dim):
-        #         x_shard_dims.append(dim)
-
-        # for dim in out_dims_mapping:
-        #     if is_dim_shard(dim):
-        #         out_shard_dims.append(dim)
-        # print('x_shard_dims', x_shard_dims)
-        # print('out_shard_dims', out_shard_dims)        
         return True
 
     def is_output_compatible(self, dist_op):
@@ -80,11 +63,42 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        if len(x_dims_mapping) != len(out_dims_mapping) - 1:
+            return False
+        if is_dim_shard(out_dims_mapping[-1]):
+            return False
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
+
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
+        # print('reshape***************')
+        # print(x_dims_mapping)
+        # print(out_dims_mapping)
+        # print(x_shape_name)
+        # print(x_shape_dims_mapping)
+
+        # dims = []
+        # for i in range(len(x_dims_mapping)):
+        #     dim_changed = compute_compatible_and_update_dim_mapping([x_dims_mapping, out_dims_mapping], [i, i])
+        #     print('dim_changed',dim_changed)
+        # #     dims.append(dim_changed)
+        # print('dims', dims)
 
         if len(x_dims_mapping) != len(out_dims_mapping) - 1:
             return False
-
         if is_dim_shard(out_dims_mapping[-1]):
+            return False
+        if set(x_dims_mapping) != set(out_dims_mapping):
             return False
 
         return True
@@ -200,29 +214,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        #print('x dims mapping len', len(x_dims_mapping))
-        #print('qnmd',op_desc.attr("shape"))
-        #if len(x_dims_mapping) != op_desc.attr("shape"):
-        #    return False
-        # [0, 1] [0, -1]
-        x_shard_dims = []
-        out_shard_dims = []
-        for dim in x_dims_mapping:
-            if is_dim_shard(dim):
-                for dim in out_dims_mapping:
-                    if not is_dim_shard(dim):
-                        return False
-            if is_dim_replicate(dim):
-                for dim in out_dims_mapping:
-                    if is_dim_shard(dim):
-                        return False
-        print('*************')
-        print('x_dims_mapping', x_dims_mapping)
-        print('out_dims_mapping', out_dims_mapping)
-        print('&&&&&&&&&&&&&')
 
-        # print('x_shard_dims', x_shard_dims)
-        # print('out_shard_dims', out_shard_dims)
         return True
 
     def is_output_compatible(self, dist_op):
@@ -234,6 +226,28 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
         if len(x_dims_mapping) != len(out_dims_mapping) + 1:
+            return False
+
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
+        #print('reshape************')
+        #print(x_shape_name)
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
+        if set(x_dims_mapping) != set(out_dims_mapping):
+            return False
+
+        if len(x_dims_mapping) != len(out_dims_mapping) + 1:
+            return False
+
+        if is_dim_shard(x_dims_mapping[-1]):
             return False
 
         return True

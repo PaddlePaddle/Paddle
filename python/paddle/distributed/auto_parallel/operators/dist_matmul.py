@@ -670,6 +670,58 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 return False
         return True
 
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        y_name = op_desc.input('Y')[0]
+        out_name = op_desc.output('Out')[0]
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+
+        input_dims_mapping = []
+        ordered_input_shard_dims_mapping = []
+
+        for dim in (x_dims_mapping + y_dims_mapping):
+            input_dims_mapping.append(dim)
+        for item in input_dims_mapping:
+            if item not in ordered_input_shard_dims_mapping and item != -1:
+                ordered_input_shard_dims_mapping.append(item)
+
+        # [-1, -1] [-1, 0] [-1, 1]
+        for mapping in out_dims_mapping:
+            if mapping not in input_dims_mapping:
+                return False
+
+        # [0, -1] [-1, 1] [1, 0]
+        if is_dim_shard(x_dims_mapping[0]):
+            order_index = 0
+            for idx, item in enumerate(out_dims_mapping):
+                if item != -1:
+                    if item != ordered_input_shard_dims_mapping[order_index]:
+                        return False
+                    else:
+                        order_index += 1
+            if order_index != len(ordered_input_shard_dims_mapping):
+                return False
+
+        if is_dim_shard(x_dims_mapping[-1]):
+            return False
+        if is_dim_shard(y_dims_mapping[0]) or is_dim_replicate(y_dims_mapping[
+                1]):
+            return False
+        for mapping in x_dims_mapping[1:-1]:
+            if is_dim_shard(mapping):
+                return False
+
+        if is_dim_shard(x_dims_mapping[0]):
+            for mapping in y_dims_mapping[1:]:
+                if is_dim_shard(mapping) and mapping == x_dims_mapping[0]:
+                    return False
+
+        return True
+
     def update_dims_mapping(self, dist_op):
         changed = False
         dim_changed = _update_dims_mapping_for_matmul(dist_op)
@@ -818,6 +870,68 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         # Other dimensions must be replicate except the batch dimension
         for mapping in out_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
+                return False
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        y_name = op_desc.input('Y')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        out_name = op_desc.output('Out')[0]
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        print("******************")
+        print(x_dims_mapping, y_dims_mapping, out_dims_mapping)
+        if is_dim_replicate(x_dims_mapping[-1]):
+            return False
+        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
+                -1]):
+            return False
+        # Other dimensions must be replicate except the batch dimension
+        for mapping in x_dims_mapping[1:-1]:
+            if is_dim_shard(mapping):
+                return False
+
+        # [0, 1] [0, -1]
+        x_shard_dim_count = 0
+        x_shard_dims = []
+        y_shard_dim_count = 0
+        y_shard_dims = []
+        for dim in x_dims_mapping:
+            if is_dim_shard(dim):
+                x_shard_dim_count += 1
+                x_shard_dims.append(dim)
+
+        for dim in y_dims_mapping:
+            if is_dim_shard(dim):
+                y_shard_dim_count += 1
+                y_shard_dims.append(dim)
+
+        if not x_shard_dims and not y_shard_dims:
+            return False
+
+        if x_shard_dims[-1] != y_shard_dims[0]:
+            return False
+
+        # [-1, 0] [0, -1] [0, -1] -> [-1, -1]
+        if x_shard_dim_count == y_shard_dim_count:
+            for dim in out_dims_mapping:
+                if is_dim_shard(dim):
+                    return False
+            if x_shard_dims != y_shard_dims:
+                return False
+
+        else:
+            # [0, 1] [1, -1] [1, -1] -> [0, -1]
+            if x_shard_dim_count < y_shard_dim_count:
+                return False
+            output_shard_dims = []
+            for dim in out_dims_mapping:
+                if is_dim_shard(dim):
+                    output_shard_dims.append(dim)
+            if not output_shard_dims or output_shard_dims[0] != x_shard_dims[0]:
                 return False
         return True
 
@@ -971,6 +1085,35 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
                                -2) and is_dim_shard(out_dims_mapping[-2]):
             return False
 
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        y_name = op_desc.input('Y')[0]
+        out_name = op_desc.output('Out')[0]
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
+        if is_dim_shard(out_dims_mapping[-1]):
+            return False
+        if is_valid_list_index(out_dims_mapping,
+                               -2) and is_dim_shard(out_dims_mapping[-2]):
+            return False
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+
+        if is_dim_shard(x_dims_mapping[-1]):
+            return False
+        if is_valid_list_index(x_dims_mapping,
+                               -2) and is_dim_shard(x_dims_mapping[-2]):
+            return False
+
+        if is_dim_shard(y_dims_mapping[-1]):
+            return False
+        if is_valid_list_index(y_dims_mapping,
+                               -2) and is_dim_shard(y_dims_mapping[-2]):
+            return False
         return True
 
     def update_dims_mapping(self, dist_op):
