@@ -323,6 +323,7 @@ class PassAutoScanTest(AutoScanTest):
         if os.getenv('HYPOTHESIS_TEST_PROFILE', 'ci') == "dev":
             max_examples *= 10
             min_success_num *= 10
+            # while at ce phase, there's no limit on time
             max_duration = -1
         start_time = time.time()
         settings.register_profile(
