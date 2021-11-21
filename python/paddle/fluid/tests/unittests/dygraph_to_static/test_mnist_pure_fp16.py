@@ -16,7 +16,7 @@ import paddle
 import unittest
 import numpy as np
 from time import time
-from test_mnist import MNIST, TestMNIST, SEED
+from test_mnist import TestMNIST, SEED, SimpleImgConvPool
 from paddle.jit import ProgramTranslator
 from paddle.fluid.optimizer import AdamOptimizer
 
@@ -24,7 +24,47 @@ if paddle.fluid.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
-class TestAMP(TestMNIST):
+class MNIST(paddle.fluid.dygraph.Layer):
+    def __init__(self):
+        super(MNIST, self).__init__()
+
+        self._simple_img_conv_pool_1 = SimpleImgConvPool(
+            1, 20, 5, 2, 2, act="relu")
+
+        self._simple_img_conv_pool_2 = SimpleImgConvPool(
+            20, 30, 5, 2, 2, act="relu")
+
+        self.pool_2_shape = 30 * 4 * 4
+        SIZE = 10
+        scale = (2.0 / (self.pool_2_shape**2 * SIZE))**0.5
+        self._fc = paddle.fluid.Linear(
+            self.pool_2_shape,
+            10,
+            param_attr=paddle.fluid.param_attr.ParamAttr(
+                initializer=paddle.fluid.initializer.NormalInitializer(
+                    loc=0.0, scale=scale)),
+            act="softmax")
+
+    def forward(self, inputs, label=None):
+        x = self.inference(inputs)
+        if label is not None:
+            acc = paddle.fluid.layers.accuracy(input=x, label=label)
+            loss = paddle.fluid.layers.cross_entropy(x, label)
+            avg_loss = paddle.fluid.layers.mean(loss)
+
+            return x, acc, avg_loss
+        else:
+            return x
+
+    def inference(self, inputs):
+        x = self._simple_img_conv_pool_1(inputs)
+        x = self._simple_img_conv_pool_2(x)
+        x = paddle.fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = self._fc(x)
+        return x
+
+
+class TestPureFP16(TestMNIST):
     def train_static(self):
         return self.train(to_static=True)
 
@@ -42,7 +82,10 @@ class TestAMP(TestMNIST):
                                                                 static_loss))
 
     def train(self, to_static=False):
+        np.random.seed(SEED)
         paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+
         mnist = MNIST()
 
         if to_static:
