@@ -64,11 +64,15 @@ class OpConfig:
                  type: str,
                  inputs: Dict[str, List[str]],
                  outputs: Dict[str, List[str]],
-                 attrs: Dict[str, Any]):
+                 attrs: Dict[str, Any]=None,
+                 **kwargs):
         self.type = type
         self.inputs = inputs
         self.outputs = outputs
         self.attrs = attrs
+        if self.attrs is None:
+            self.attrs = dict()
+        self.attrs.update(kwargs)
 
     def __repr__(self):
         log_str = self.type
