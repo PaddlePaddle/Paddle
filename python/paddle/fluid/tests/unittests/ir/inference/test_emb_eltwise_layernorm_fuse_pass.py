@@ -287,7 +287,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
         # this fuse need to fix, now there's no program can ran successfully
         self.run_and_statis(
             quant=False,
-            max_examples=100,
+            max_examples=50,
             passes=["embedding_eltwise_layernorm_fuse_pass"],
             min_success_num=0)
 
