@@ -455,7 +455,7 @@ def enumerate_op_valid_dist_attr(program, op, process_mesh):
         # if op has distributed implements, find all valid dist attr of this op
         impls = dist_op_impl_container.get_impls()
         for idx, impl in enumerate(impls):
-            if impl.is_compatible(dist_op):
+            if impl.is_auto_compatible(dist_op):
                 if check_op_dims_mapping(op, dist_op.dist_attr, vars):
                     dist_op.dist_attr.impl_idx = idx
                     valid_op_dist_attr_list.append(dist_op.dist_attr)
