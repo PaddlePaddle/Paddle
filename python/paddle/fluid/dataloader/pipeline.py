@@ -109,7 +109,7 @@ class Pipeline:
         tic = time.time()
         _C_ops.dataloader(self._output_vars, *self._attrs)
         toc = time.time()
-        print("_C_ops calling cost {}ms".format(toc - tic))
+        print("_C_ops calling cost {}ms".format((toc - tic) * 1000.))
         sys.stdout.flush()
         # except KeyboardInterrupt:
         #     pass

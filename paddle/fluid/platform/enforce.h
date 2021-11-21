@@ -79,6 +79,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/fluid/platform/dynload/nvjpeg.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
 #include "paddle/fluid/platform/dynload/nccl.h"
@@ -714,6 +715,7 @@ DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
 DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
 DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
 DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS, CUFFT);
+DEFINE_EXTERNAL_API_TYPE(nvjpegStatus_t, NVJPEG_STATUS_SUCCESS, NVJPEG);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
@@ -753,6 +755,8 @@ inline const char* GetErrorMsgUrl(T status) {
       break;
     case platform::proto::ApiType::CUFFT:
       return "https://docs.nvidia.com/cuda/cufft/index.html#cufftresult";
+    case platform::proto::ApiType::NVJPEG:
+      return "https://docs.nvidia.com/cuda/nvjpeg/index.html#nvjpeg-api-return-codes";
     default:
       return "Unknown type of External API, can't get error message URL!";
       break;
@@ -911,6 +915,26 @@ inline std::string build_nvidia_error_msg(cufftResult_t stat) {
   return sout.str();
 }
 
+/**************** NVJPEG ERROR ****************/
+inline bool is_error(nvjpegStatus_t stat) { return stat != NVJPEG_STATUS_SUCCESS; }
+
+inline std::string get_nvjpeg_error_str(nvjpegStatus_t stat) {
+  switch (stat) {
+    case NVJPEG_STATUS_SUCCESS: return "NVJPEG_STATUS_SUCCESS";
+    case NVJPEG_STATUS_NOT_INITIALIZED: return "NVJPEG_STATUS_NOT_INITIALIZED";
+    case NVJPEG_STATUS_INVALID_PARAMETER: return "NVJPEG_STATUS_INVALID_PARAMETER";
+    case NVJPEG_STATUS_BAD_JPEG: return "NVJPEG_STATUS_BAD_JPEG";
+    case NVJPEG_STATUS_JPEG_NOT_SUPPORTED: return "NVJPEG_STATUS_JPEG_NOT_SUPPORTED";
+    case NVJPEG_STATUS_ALLOCATOR_FAILURE: return "NVJPEG_STATUS_ALLOCATOR_FAILURE";
+    case NVJPEG_STATUS_EXECUTION_FAILED: return "NVJPEG_STATUS_EXECUTION_FAILED";
+    case NVJPEG_STATUS_ARCH_MISMATCH: return "NVJPEG_STATUS_ARCH_MISMATCH";
+    case NVJPEG_STATUS_INTERNAL_ERROR: return "NVJPEG_STATUS_INTERNAL_ERROR";
+    case NVJPEG_STATUS_IMPLEMENTATION_NOT_SUPPORTED:
+      return "NVJPEG_STATUS_IMPLEMENTATION_NOT_SUPPORTED";
+  }
+  return "Invalid nvjpeg status code";
+}
+
 /**************** NCCL ERROR ****************/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
@@ -959,6 +983,21 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
       PADDLE_THROW(platform::errors::Fatal("CUDA error after kernel (%s): %s", \
                                            OP, msg));                          \
     }                                                                          \
+  } while (0)
+
+#define PADDLE_ENFORCE_NVJPEG_SUCCESS(COND)                      \
+  do {                                                           \
+    auto __cond__ = (COND);                                      \
+    using __NVJPEG_STATUS_TYPE__ = decltype(__cond__);           \
+    constexpr auto __success_type__ =                            \
+        ::paddle::platform::details::ExternalApiType<            \
+            __NVJPEG_STATUS_TYPE__>::kSuccess;                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                \
+      auto __summary__ = ::paddle::platform::errors::External(   \
+            "Nvjpeg failed: %s",                                 \
+					  ::paddle::platform::get_nvjpeg_error_str(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                     \
+    }                                                            \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {

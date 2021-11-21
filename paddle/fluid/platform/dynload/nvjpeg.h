@@ -37,11 +37,31 @@ extern void *nvjpeg_dso_handle;
   };                                                                         \
   extern DynLoad__##__name __name
 
-#define NVJPEG_RAND_ROUTINE_EACH(__macro) \
-  __macro(nvjpegCreateSimple);            \
-  __macro(nvjpegJpegStateCreate);         \
-  __macro(nvjpegGetImageInfo);            \
-  __macro(nvjpegJpegStateDestroy);        \
+#define NVJPEG_RAND_ROUTINE_EACH(__macro)         \
+  __macro(nvjpegCreateSimple);                    \
+  __macro(nvjpegCreateEx);                        \
+  __macro(nvjpegJpegStateCreate);                 \
+  __macro(nvjpegJpegStreamCreate);                \
+  __macro(nvjpegDecodeParamsCreate);              \
+  __macro(nvjpegDecoderCreate);                   \
+  __macro(nvjpegDecoderStateCreate);              \
+  __macro(nvjpegBufferDeviceCreate);              \
+  __macro(nvjpegBufferPinnedCreate);              \
+  __macro(nvjpegDecodeParamsSetOutputFormat);     \
+  __macro(nvjpegStateAttachPinnedBuffer);         \
+  __macro(nvjpegStateAttachDeviceBuffer);         \
+  __macro(nvjpegJpegStreamParse);                 \
+  __macro(nvjpegDecodeJpegHost);                  \
+  __macro(nvjpegDecodeJpegTransferToDevice);      \
+  __macro(nvjpegDecodeJpegDevice);                \
+  __macro(nvjpegJpegStreamDestroy);               \
+  __macro(nvjpegDecodeParamsDestroy);             \
+  __macro(nvjpegDecoderDestroy);                  \
+  __macro(nvjpegBufferDeviceDestroy);             \
+  __macro(nvjpegBufferPinnedDestroy);             \
+  __macro(nvjpegGetImageInfo);                    \
+  __macro(nvjpegJpegStateDestroy);                \
+  __macro(nvjpegDestroy);                         \
   __macro(nvjpegDecode);
 
 NVJPEG_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP);

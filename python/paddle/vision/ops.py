@@ -918,7 +918,7 @@ def file_label_reader(file_root, batch_size, name=None):
     return out
 
 
-def image_decode(x, mode='unchanged', name=None):
+def image_decode(x, mode='unchanged', num_threads=2, name=None):
     """
     Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
     Optionally converts the image to the desired format. 
@@ -955,7 +955,7 @@ def image_decode(x, mode='unchanged', name=None):
         return _C_ops.decode(x, "mode", mode)
 
     inputs = {'X': x}
-    attrs = {"mode": mode}
+    attrs = {"mode": mode, "num_theads": num_threads}
 
     helper = LayerHelper("image_decode", **locals())
     out = helper.create_variable(
