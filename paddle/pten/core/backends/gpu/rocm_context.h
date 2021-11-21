@@ -201,7 +201,7 @@ class ROCMContext : public DeviceContext {
 
   Place GetPlace() const noexcept override { return place_; }
 
-  rocblas_handle cublas_handle() const;
+  rocblas_handle cublas_handle() const { return cublas_handle_; }
   void SetCublasHandle(rocblas_handle handle) { cublas_handle_ = handle; }
 
 #ifdef PADDLE_WITH_CUDNN
