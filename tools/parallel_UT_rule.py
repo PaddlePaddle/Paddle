@@ -2205,7 +2205,12 @@ def main():
     lowest_high_parallel_job = '^job$'
     non_parallel_job = '^job$'
 
-    test_cases = sys.argv[1]
+    # sys.argv[1] may exceed max_arg_length when busybox run parallel_UT_rule in windows
+    BUILD_DIR = os.getcwd()
+    file_path = os.path.join(BUILD_DIR, 'all_ut_list')
+    with open(file_path, 'r') as f:
+        test_cases = f.read()
+
     test_cases = test_cases.split("\n")
 
     if platform.system() == 'Windows':
