@@ -62,8 +62,9 @@ TEST(context, gpu_context) {
   context.SetCublasHandle(fluid_ctx->cublas_handle());
   context.cublas_handle();
 
-  context.SetEigenDevice(fluid_ctx->eigen_device());
-  context.eigen_device();
+  // only cuda has eigen device.
+  // context.SetEigenDevice(fluid_ctx->eigen_device());
+  // context.eigen_device();
 }
 #endif
 

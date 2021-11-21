@@ -1,5 +1,14 @@
 add_subdirectory(host)
-set(backends_context ${host_context} PARENT_SCOPE)
+
+message(WARNING "WITH_MKLDNN is ${WITH_MKLDNN}")
+if(WITH_MKLDNN)
+  set(MKLDNN_CTX_DEPS mkldnn)
+else()
+  set(MKLDNN_CTX_DEPS)
+endif()
+
+# TODO(support mkldnn context)
+set(backends_context host_context ${MKLDNN_CTX_DEPS})
 
 if (WITH_GPU OR WITH_ROCM)
   add_subdirectory(gpu)

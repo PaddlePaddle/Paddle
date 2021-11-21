@@ -7,15 +7,11 @@ else()
 endif()
 
 cc_library(pten_device_context SRCS device_context.cc DEPS place)
+
+
 # pten device context
 add_subdirectory(backends)
-set(pten_ctx pten_device_context ${backends_context} PARENT_SCOPE)
-if(WITH_GPU OR WITH_ROCM)
-  set(pten_ctx ${pten_ctx} ${gpu_context} PARENT_SCOPE)
-endif()
-if (WITH_XPU)
-  set(pten_ctx ${pten_ctx} xpu_context PARENT_SCOPE)
-endif()
+cc_library(pten_ctx SRCS context.cc DEPS pten_device_context ${backends_context} place)
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce)
 cc_library(kernel_context SRCS kernel_context.cc DEPS enforce pten_device_context)
