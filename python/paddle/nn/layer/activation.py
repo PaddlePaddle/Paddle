@@ -31,7 +31,13 @@ class ELU(Layer):
 
     .. math::
 
-        ELU(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        ELU(x)=
+            \left\{
+                \begin{array}{lcl}
+                x,& &\text{if } \ x > 0 \\
+                alpha * (e^{x} - 1),& &\text{if } \ x <= 0
+                \end{array}
+            \right.
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
