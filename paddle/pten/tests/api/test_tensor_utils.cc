@@ -47,8 +47,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   CHECK(dense_tensor.lod().size() == lod_tensor.lod().size());
   CHECK(dense_tensor.lod()[0] ==
         static_cast<std::vector<size_t>>((lod_tensor.lod()[0])));
-  CHECK(dense_tensor.data_type() ==
-        pten::TransToPtenDataType(lod_tensor.type()));
+  CHECK(dense_tensor.dtype() == pten::TransToPtenDataType(lod_tensor.type()));
   CHECK(dense_tensor.layout() ==
         pten::TransToPtenDataLayout(lod_tensor.layout()));
   CHECK(platform::is_cpu_place(lod_tensor.place()));
@@ -58,7 +57,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
 
   auto dense_tensor_1 = MakePtenDenseTensor(lod_tensor);
   CHECK(dense_tensor_1->dims() == dims);
-  CHECK(dense_tensor_1->data_type() == dtype);
+  CHECK(dense_tensor_1->dtype() == dtype);
   CHECK(dense_tensor_1->layout() == layout);
   CHECK(dense_tensor_1->lod().size() == lod.size());
   CHECK(dense_tensor_1->lod()[0] == lod[0]);
@@ -83,7 +82,7 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   framework::Tensor tensor;
   MovesStorage(&dense_tensor, &tensor);
 
-  CHECK(dense_tensor.data_type() == pten::TransToPtenDataType(tensor.type()));
+  CHECK(dense_tensor.dtype() == pten::TransToPtenDataType(tensor.type()));
   CHECK(dense_tensor.layout() == pten::TransToPtenDataLayout(tensor.layout()));
   CHECK(platform::is_cpu_place(tensor.place()));
 
@@ -92,7 +91,7 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
 
   auto dense_tensor_1 = MakePtenDenseTensor(tensor);
   CHECK(dense_tensor_1->dims() == dims);
-  CHECK(dense_tensor_1->data_type() == dtype);
+  CHECK(dense_tensor_1->dtype() == dtype);
   CHECK(dense_tensor_1->layout() == layout);
   const float* data_1 = dense_tensor_1->data<float>();
   CHECK(data_1[0] == 1.0f);
@@ -117,7 +116,7 @@ TEST(PtenUtils, VarToPtTensor) {
   // 2. test API
   auto tensor_x = MakePtenTensorBaseFromVar(v, tensor_def);
   // 3. check result
-  ASSERT_EQ(tensor_x->data_type(), pten::DataType::INT32);
+  ASSERT_EQ(tensor_x->dtype(), pten::DataType::INT32);
 }
 
 }  // namespace tests

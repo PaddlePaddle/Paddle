@@ -170,11 +170,11 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
       layer_norm_compute.ComputeForward(x_data, ln_scale_data, ln_bias_data,
                                         ln_out_data, ln_mean_data, ln_var_data);
-      qkv_compute.ComputeForward(qkv_weight_data, ln_out_data, qkv_bias_data,
-                                 qkv_out_data, qkv_bias_out_data);
+      qkv_compute.ComputeForward(qkv_weight, ln_out, qkv_bias, qkv_out,
+                                 qkv_bias_out);
     } else {
-      qkv_compute.ComputeForward(qkv_weight_data, x_data, qkv_bias_data,
-                                 qkv_out_data, qkv_bias_out_data);
+      qkv_compute.ComputeForward(qkv_weight, input_x, qkv_bias, qkv_out,
+                                 qkv_bias_out);
     }
     fmha_ref_compute.ComputeForward(*qkv_bias_out, src_mask, transpose_out_2,
                                     qk_out, src_mask_out, softmax_out,
@@ -184,8 +184,8 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // fmha_out: [batch_size, seq_len, num_head, head_dim]
     // weight:   [embed_dim, embed_dim]
     // out_linear_out: [batch_size, seq_len, embed_dim]
-    out_linear_compute.ComputeForward(out_linear_weight_data, fmha_out_data,
-                                      nullptr, out_linear_out_data, nullptr);
+    out_linear_compute.ComputeForward(out_linear_weight, fmha_out, nullptr,
+                                      out_linear_out, nullptr);
     if (pre_layer_norm) {
       // output = (residual + dropout(input + bias))
       fused_dropout_layernorm_helper.ResidualDropoutBias(
@@ -401,9 +401,10 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
           d_out_linear_out_data, d_out_linear_bias_data, d_residual_data);
     }
 
-    out_linear_compute.ComputeBackward(fmha_out_data, out_linear_weight_data,
-                                       d_out_linear_out_data, d_fmha_out_data,
-                                       d_out_linear_weight_data, nullptr);
+    out_linear_compute.ComputeBackward(fmha_out, out_linear_weight,
+                                       d_out_linear_out, d_fmha_out,
+                                       d_out_linear_weight, nullptr);
+
     fmha_ref_compute.ComputeBackward(
         *transpose_out_2, src_mask, *softmax_out, *attn_dropout_mask_out,
         *attn_dropout_out, *qk_out, *src_mask_out, *d_fmha_out, d_qktv_out,
@@ -432,15 +433,14 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
           (d_ln_bias == nullptr ? nullptr
                                 : d_ln_bias->mutable_data<U>(ctx.GetPlace()));
 
-      qkv_compute.ComputeBackward(ln_out_data, qkv_weight_data,
-                                  d_qkv_bias_out_data, d_ln_out_data,
-                                  d_qkv_weight_data, d_qkv_bias_data);
+      qkv_compute.ComputeBackward(ln_out, qkv_weight, d_qkv_bias_out, d_ln_out,
+                                  d_qkv_weight, d_qkv_bias);
       layer_norm_compute.ComputeBackward(x_data, d_ln_out_data, ln_scale_data,
                                          ln_mean_data, ln_var_data, d_x_data,
                                          d_ln_scale_data, d_ln_bias_data);
     } else {
-      qkv_compute.ComputeBackward(x_data, qkv_weight_data, d_qkv_bias_out_data,
-                                  d_x_data, d_qkv_weight_data, d_qkv_bias_data);
+      qkv_compute.ComputeBackward(input_x, qkv_weight, d_qkv_bias_out, d_x,
+                                  d_qkv_weight, d_qkv_bias);
     }
     // gradient accumulation
     std::vector<const Tensor *> ins;
