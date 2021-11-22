@@ -775,13 +775,13 @@ def meshgrid(*args, **kwargs):
     return out
 
 
-def zeropad2d(x, pad, data_format="NCHW", name=None):
+def zeropad2d(x, padding, data_format="NCHW", name=None):
     """
     Pads the input tensor boundaries with zero according to 'pad'.
 
     Args:
         x(Tensor): The input tensor with data type float16/float32/float64/int32/int64.
-        pad(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
+        padding(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
             The input dimension should be 4 and pad has the form (pad_left, pad_right,
             pad_top, pad_bottom).
         data_format(str): An string from: "NHWC", "NCHW". Specify the data format of
@@ -807,7 +807,7 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
     """
 
     return paddle.nn.functional.pad(x,
-                                    pad=pad,
+                                    pad=padding,
                                     mode='constant',
                                     value=0,
                                     data_format=data_format,
