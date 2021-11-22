@@ -29,8 +29,6 @@ from test_resnet import ResNet, optimizer_setting, SEED
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
-    else fluid.CPUPlace()
 
 program_translator = ProgramTranslator()
 
@@ -42,70 +40,65 @@ def train(to_static, build_strategy=None):
     """
     Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
     """
-    with fluid.dygraph.guard(place):
-        np.random.seed(SEED)
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
+    np.random.seed(SEED)
+    paddle.seed(SEED)
+    paddle.framework.random._manual_program_seed(SEED)
 
-        resnet = ResNet()
-        if to_static:
-            resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
-        optimizer = optimizer_setting(parameter_list=resnet.parameters())
-        scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+    resnet = ResNet()
+    if to_static:
+        resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
+    optimizer = optimizer_setting(parameter_list=resnet.parameters())
+    scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-        resnet, optimizer = paddle.amp.decorate(
-            models=resnet,
-            optimizers=optimizer,
-            level='O2',
-            save_dtype='float32')
+    resnet, optimizer = paddle.amp.decorate(
+        models=resnet, optimizers=optimizer, level='O2', save_dtype='float32')
 
-        for epoch in range(epoch_num):
-            loss_data = []
-            total_loss = 0.0
-            total_acc1 = 0.0
-            total_acc5 = 0.0
-            total_sample = 0
+    for epoch in range(epoch_num):
+        loss_data = []
+        total_loss = 0.0
+        total_acc1 = 0.0
+        total_acc5 = 0.0
+        total_sample = 0
 
-            for batch_id in range(100):
-                start_time = time.time()
-                img = paddle.to_tensor(
-                    np.random.random([batch_size, 3, 224, 224]).astype(
-                        'float32'))
-                label = paddle.to_tensor(
-                    np.random.randint(
-                        0, 100, [batch_size, 1], dtype='int64'))
-                img.stop_gradient = True
-                label.stop_gradient = True
+        for batch_id in range(100):
+            start_time = time.time()
+            img = paddle.to_tensor(
+                np.random.random([batch_size, 3, 224, 224]).astype('float32'))
+            label = paddle.to_tensor(
+                np.random.randint(
+                    0, 100, [batch_size, 1], dtype='int64'))
+            img.stop_gradient = True
+            label.stop_gradient = True
 
-                with paddle.amp.auto_cast(
-                        enable=True,
-                        custom_white_list=None,
-                        custom_black_list=None,
-                        level='O2'):
-                    pred = resnet(img)
-                    loss = fluid.layers.cross_entropy(input=pred, label=label)
-                avg_loss = fluid.layers.mean(x=pred)
-                acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
+            with paddle.amp.auto_cast(
+                    enable=True,
+                    custom_white_list=None,
+                    custom_black_list=None,
+                    level='O2'):
+                pred = resnet(img)
+                loss = fluid.layers.cross_entropy(input=pred, label=label)
+            avg_loss = fluid.layers.mean(x=pred)
+            acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
+            acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
 
-                scaled = scaler.scale(avg_loss)
-                scaled.backward()
-                scaler.minimize(optimizer, scaled)
-                resnet.clear_gradients()
+            scaled = scaler.scale(avg_loss)
+            scaled.backward()
+            scaler.minimize(optimizer, scaled)
+            resnet.clear_gradients()
 
-                loss_data.append(avg_loss.numpy()[0])
-                total_loss += avg_loss
-                total_acc1 += acc_top1
-                total_acc5 += acc_top5
-                total_sample += 1
+            loss_data.append(avg_loss.numpy()[0])
+            total_loss += avg_loss
+            total_acc1 += acc_top1
+            total_acc5 += acc_top5
+            total_sample += 1
 
-                end_time = time.time()
-                if batch_id % 2 == 0:
-                    print( "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f" % \
-                        ( epoch, batch_id, total_loss.numpy() / total_sample, \
-                            total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
-                if batch_id == 10:
-                    break
+            end_time = time.time()
+            if batch_id % 2 == 0:
+                print( "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f" % \
+                    ( epoch, batch_id, total_loss.numpy() / total_sample, \
+                        total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
+            if batch_id == 10:
+                break
 
     return loss_data
 
@@ -119,8 +112,10 @@ class TestResnet(unittest.TestCase):
         if fluid.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)
             dygraph_loss = self.train(to_static=False)
+            # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
             self.assertTrue(
-                np.allclose(static_loss, dygraph_loss),
+                np.allclose(
+                    static_loss, dygraph_loss, atol=1e-3),
                 msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                                  dygraph_loss))
 

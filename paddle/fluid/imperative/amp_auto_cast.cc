@@ -261,6 +261,9 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
     dst_type = framework::proto::VarType::FP32;
   }
   for (auto& pair : new_ins) {
+    // NOTE: The run_program OP only has FP32 kernel. In dy2stat pure fp16
+    // training, we have correctly cast the inputs of run_program OP before,
+    // so here should avoid casting for run_program OP.
     if (op_type == "run_program") {
       continue;
     }
