@@ -41,12 +41,20 @@ void Sum(const DeviceContext& dev_ctx,
   }
   reduce_all = (reduce_all || full_dim);
 
-  auto* cast_input = &x;
   // no need to cast dtype
   if (out_dtype == pten::DataType::UNDEFINED || out_dtype == x.dtype()) {
     if (out_dtype == pten::DataType::UNDEFINED) {
       out_dtype = x.dtype();
     }
+
+    // do reduce sum
+    PD_VISIT_ALL_TYPES(out_dtype, "SumKernelImpl", ([&] {
+                         pten::eigen::ReduceKernlImpl<DeviceContext,
+                                                      T,
+                                                      data_t,
+                                                      pten::eigen::SumFunctor>(
+                             dev_ctx, x, out, dims, keep_dim, reduce_all);
+                       }));
   } else {
     const auto alloc =
         std::make_shared<paddle::experimental::DefaultAllocator>(x.place());
@@ -59,16 +67,16 @@ void Sum(const DeviceContext& dev_ctx,
                              dev_ctx, x, &tmp_tensor);
                        }));
 
-    cast_input = &tmp_tensor;
+    // do reduce sum
+    PD_VISIT_ALL_TYPES(
+        out_dtype, "SumKernelImpl", ([&] {
+          pten::eigen::ReduceKernlImpl<DeviceContext,
+                                       T,
+                                       data_t,
+                                       pten::eigen::SumFunctor>(
+              dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
+        }));
   }
-
-  // do reduce sum
-  PD_VISIT_ALL_TYPES(
-      out_dtype, "SumKernelImpl", ([&] {
-        pten::eigen::
-            ReduceKernlImpl<DeviceContext, T, data_t, pten::eigen::SumFunctor>(
-                dev_ctx, *cast_input, out, dims, keep_dim, reduce_all);
-      }));
 }
 
 }  // namespace general
