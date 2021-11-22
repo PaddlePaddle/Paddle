@@ -34,9 +34,10 @@ def mha_seq_data_prep(seq_data_info, seq_data_cache_key):
         'cache_key': seq_data_cache_key
     }
 
+    output = helper.create_variable_for_type_inference(seq_data_info.qo_kv_seqlen.dtype, stop_gradient=True)
     helper.append_op(
-        type='mha_seq_data_prep', inputs=inputs, attrs=attrs)
-
+        type='mha_seq_data_prep', inputs=inputs, outputs={'QKVO_seqlen_for_output': output}, attrs=attrs)
+    return output
 
 def multi_head_attn(q, k, v, weight, meta_data, seq_data_info, seq_data_cache_key=None):
 

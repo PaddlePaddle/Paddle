@@ -39,8 +39,7 @@ class MHASeqDataPrepKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpy(MHASeqDataSingleton::Instance().Data(key).qkvo_seq_len->ptr(),
                    reinterpret_cast<const void*>(qo_kv_slen_data),
-                   qkvo_seqlen->dims()[0] * sizeof(int),
-                   cudaMemcpyDeviceToHost));
+                   qkvo_seqlen_size, cudaMemcpyDeviceToHost));
 
     const Tensor* low_high_windows = context.Input<Tensor>("lo_hi_windows");
     const int* low_high_windows_data = low_high_windows->data<int>();
@@ -51,6 +50,14 @@ class MHASeqDataPrepKernel : public framework::OpKernel<T> {
                     reinterpret_cast<const void*>(low_high_windows_data),
                     low_high_windows->dims()[0] * sizeof(int),
                     cudaMemcpyDeviceToHost));
+
+    Tensor* qkvo_seqlen_for_output = context.Output<Tensor>("QKVO_seqlen_for_output");
+    qkvo_seqlen_for_output->mutable_data<int>(context.GetPlace());
+    int* qkvo_seqlen_for_output_data = qkvo_seqlen_for_output->data<int>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpyAsync(reinterpret_cast<void*>(qkvo_seqlen_for_output_data),
+                   reinterpret_cast<const void*>(qo_kv_slen_data),
+                   qkvo_seqlen_size, cudaMemcpyDeviceToDevice));
   }
 };
 

@@ -135,7 +135,7 @@ class CUDNNSeqInfoInfer(Layer):
         
         seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen)
         if self.enable_cache:
-            F.mha_seq_data_prep(seq_info, self.id)
+            seq_info.qo_kv_seqlen = F.mha_seq_data_prep(seq_info, self.id)
         return seq_info
 
 
