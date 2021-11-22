@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <cstdint>
 #include <limits>
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/core/dense_tensor.h"
 
+#include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/api/include/tensor.h"
 namespace paddle {
 namespace experimental {
 
@@ -101,12 +101,11 @@ class ScalarBase {
 
   // The Tensor must have one dim
   ScalarBase(const T& tensor) : data_type_(tensor.dtype()) {  // NOLINT
-    PADDLE_ENFORCE_EQ(tensor.numel(),
-                      1,
-                      paddle::platform::errors::InvalidArgument(
-                          "The Scalar only supports Tensor with 1 element, "
-                          "but now Tensor has %d element.",
-                          tensor.numel()));
+    PD_CHECK(
+        tensor.numel() == 1,
+        "The Scalar only supports Tensor with 1 element, but now Tensor has `",
+        tensor.numel(),
+        "` element.");
     switch (data_type_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
@@ -238,5 +237,6 @@ using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
 }  // namespace paddle
 
 namespace pten {
-using Scalar = paddle::experimental::ScalarBase<pten::DenseTensor>;
+class DenseTensor;
+using Scalar = paddle::experimental::ScalarBase<DenseTensor>;
 }  // namespace pten

@@ -14,12 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/ddim.h"
+
+#include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/api/include/tensor.h"
 
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
-
 namespace paddle {
+
+namespace framework {
+class DDim;
+}
+
 namespace experimental {
 
 template <typename T>
@@ -50,11 +55,12 @@ class ScalarArrayBase {
         AssignData(tensor.template data<int64_t>(), n);
         break;
       default:
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PD_THROW(
             "Data type error. Currently, The data type of ScalarArrayBase "
             "only supports Tensor with int32 and int64, "
-            "but now received %s.",
-            tensor.type()));
+            "but now received `",
+            tensor.type(),
+            "`.");
     }
   }
 
@@ -67,40 +73,41 @@ class ScalarArrayBase {
       switch (data_type) {
         case DataType::INT32: {
           for (size_t i = 0; i < n; i++) {
-            PADDLE_ENFORCE_EQ(
-                tensor_list[i].dtype(),
-                data_type,
-                paddle::platform::errors::InvalidArgument(
-                    "The data_type of tensors in the list isn't consistent."
-                    "the first tensor is %s, but %dth tensor is %s.",
-                    data_type,
-                    i,
-                    tensor_list[i].dtype()));
+            PD_CHECK(tensor_list[i].dtype() == data_type,
+                     "The data_type of tensors in the list isn't consistent."
+                     "the first tensor is`",
+                     data_type,
+                     "` but `",
+                     i,
+                     "`th tensor is`",
+                     tensor_list[i].dtype(),
+                     "`.");
             array_.push_back(*tensor_list[i].template data<int32_t>());
           }
           break;
         }
         case DataType::INT64: {
           for (size_t i = 0; i < n; i++) {
-            PADDLE_ENFORCE_EQ(
-                tensor_list[i].dtype(),
-                data_type,
-                paddle::platform::errors::InvalidArgument(
-                    "The data_type of tensors in the list isn't consistent."
-                    "the first tensor is %s, but %dth tensor is %s.",
-                    data_type,
-                    i,
-                    tensor_list[i].dtype()));
+            PD_CHECK(tensor_list[i].dtype() == data_type,
+                     "The data_type of tensors in the list isn't consistent."
+                     "the first tensor is`",
+                     data_type,
+                     "` but `",
+                     i,
+                     "`th tensor is`",
+                     tensor_list[i].dtype(),
+                     "`.");
             array_.push_back(*tensor_list[i].template data<int64_t>());
           }
           break;
         }
         default:
-          PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          PD_THROW(
               "Data type error. Currently, The data type of ScalarArrayBase "
               "only supports Tensor with int32 and int64, "
-              "but now received %s.",
-              data_type));
+              "but now received `",
+              data_type,
+              "`.");
       }
     }
   }
@@ -120,8 +127,7 @@ class ScalarArrayBase {
         array_.push_back(static_cast<int64_t>(value_data[i]));
       }
     } else {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "The input data pointer is null."));
+      PD_THROW("The input data pointer is null.");
     }
   }
 
@@ -147,5 +153,6 @@ using ScalarArray =
 
 namespace pten {
 
-using ScalarArray = paddle::experimental::ScalarArrayBase<pten::DenseTensor>;
+class DenseTensor;
+using ScalarArray = paddle::experimental::ScalarArrayBase<DenseTensor>;
 }
