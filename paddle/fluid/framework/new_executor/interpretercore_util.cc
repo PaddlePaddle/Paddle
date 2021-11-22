@@ -394,12 +394,7 @@ void apply_data_transform(const OpKernelType& expected_kernel_key,
           static_cast<const framework::OperatorWithKernel*>(op_base)
               ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                     expected_kernel_key);
-      if ((expected_kernel_key.data_type_ != kernel_type_for_var.data_type_) ||
-          NeedTransformLayout(expected_kernel_key.data_layout_,
-                              kernel_type_for_var.data_layout_)) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "Unsupported different dtype or data_layout"));
-      }
+
       if (need_place_transform_for_var(kernel_type_for_var,
                                        expected_kernel_key)) {
         if (op_base->Type() == "fetch_v2") {
