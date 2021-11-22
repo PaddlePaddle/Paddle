@@ -68,9 +68,10 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
                             "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
-// NOTE(Ruibiao): This FLAGS is just to be compatible with the old single-stream
-// CUDA allocator, and will be remove after StreamSafeCudaAllocator has been
-// fully tested
+// NOTE(Ruibiao): This FLAGS is just to be compatibled with the old
+// single-stream
+// CUDA allocator. It will be removed after StreamSafeCudaAllocator has been
+// fully tested.
 PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
                             "Enable StreamSafeCUDAAllocator");
 

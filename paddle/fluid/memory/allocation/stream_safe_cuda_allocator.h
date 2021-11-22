@@ -20,11 +20,12 @@
 #endif
 
 #include <deque>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <set>
-#include <unordered_map>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/spin_lock.h"
 
 namespace paddle {
 namespace memory {
@@ -41,7 +42,7 @@ class StreamSafeCUDAAllocation : public Allocation {
   AllocationPtr underlying_allocation_;
   gpuStream_t owning_stream_;
   std::shared_ptr<std::set<gpuStream_t>> recorded_streams_;
-  std::mutex mutex_;
+  SpinLock spin_lock_;
 };
 
 class StreamSafeCUDAAllocator : public Allocator {
@@ -57,23 +58,16 @@ class StreamSafeCUDAAllocator : public Allocator {
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
-  struct AllocationInfo {
-    std::deque<gpuEvent_t> outstanding_events;
-    bool can_be_freed{false};
-  };
-
   void CreateEventForAllRecordedStream(
       std::set<gpuStream_t> *recorded_streams,
       std::deque<gpuEvent_t> *outstanding_events);
   void FreeStreamSafeCUDAAllocation(Allocation *allocation);
-  std::shared_ptr<AllocationInfo> GetAllocationInfo(Allocation *);
   void ProcessEventsAndFree();
 
   std::shared_ptr<Allocator> underlying_allocator_;
   gpuStream_t default_stream_;
-  std::unordered_map<Allocation *, std::shared_ptr<AllocationInfo>>
-      allocation_info_map_;
-  mutable std::recursive_mutex mutex_;
+  std::map<Allocation *, std::deque<gpuEvent_t>> outstanding_events_map_;
+  SpinLock spin_lock_;
 };
 
 }  // namespace allocation

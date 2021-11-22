@@ -31,7 +31,7 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
   if (stream == owning_stream_) {
     return;
   }
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard<SpinLock> lock_guard(spin_lock_);
   recorded_streams_->insert(stream);
 }
 
@@ -49,24 +49,22 @@ StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
 Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  std::lock_guard<SpinLock> lock_guard(spin_lock_);
   ProcessEventsAndFree();
   AllocationPtr underlying_allocation = underlying_allocator_->Allocate(size);
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
       std::move(underlying_allocation), default_stream_);
-  allocation_info_map_[allocation] = std::make_shared<AllocationInfo>();
   return allocation;
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
-  GetAllocationInfo(allocation)->can_be_freed = true;
+  std::lock_guard<SpinLock> lock_guard(spin_lock_);
   FreeStreamSafeCUDAAllocation(allocation);
 }
 
 uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
   /*lock_guard*/ {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    std::lock_guard<SpinLock> lock_guard(spin_lock_);
     ProcessEventsAndFree();
   }
   return underlying_allocator_->Release(place);
@@ -94,14 +92,8 @@ void StreamSafeCUDAAllocator::CreateEventForAllRecordedStream(
 
 void StreamSafeCUDAAllocator::FreeStreamSafeCUDAAllocation(
     Allocation* allocation) {
-  std::shared_ptr<AllocationInfo> allocation_info =
-      GetAllocationInfo(allocation);
-  if (!allocation_info->can_be_freed) {
-    return;
-  }
-
   std::deque<gpuEvent_t>& outstanding_events =
-      allocation_info->outstanding_events;
+      outstanding_events_map_[allocation];
   CreateEventForAllRecordedStream(
       dynamic_cast<StreamSafeCUDAAllocation*>(allocation)
           ->GetRecordedStreams()
@@ -113,25 +105,14 @@ void StreamSafeCUDAAllocator::FreeStreamSafeCUDAAllocation(
   }
 
   VLOG(8) << "Free " << allocation->ptr();
-  allocation_info_map_.erase(allocation);
+  outstanding_events_map_.erase(allocation);
   delete allocation;
 }
 
-std::shared_ptr<StreamSafeCUDAAllocator::AllocationInfo>
-StreamSafeCUDAAllocator::GetAllocationInfo(Allocation* allocation) {
-  auto it = allocation_info_map_.find(allocation);
-  PADDLE_ENFORCE_NE(
-      it, allocation_info_map_.end(),
-      platform::errors::NotFound(
-          "The recorded allocation is not malloced by this allocator"));
-  return it->second;
-}
-
 void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
-  for (auto map_it = allocation_info_map_.begin();
-       map_it != allocation_info_map_.end();) {
-    std::deque<gpuEvent_t>& outstanding_events =
-        map_it->second->outstanding_events;
+  for (auto map_it = outstanding_events_map_.begin();
+       map_it != outstanding_events_map_.end();) {
+    std::deque<gpuEvent_t>& outstanding_events = map_it->second;
     VLOG(10) << "Check " << outstanding_events.size()
              << " outstanding events for " << map_it->first->ptr();
     auto deque_it = outstanding_events.begin();
@@ -140,25 +121,25 @@ void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
       gpuError_t err = cudaEventQuery(*deque_it);
       if (err == cudaErrorNotReady) {
         VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
-                 << " is not complete";
+                 << " is not completed";
         outstanding_events.erase(outstanding_events.begin(), deque_it);
         break;
       }
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(*deque_it));
-      ++deque_it;
 #else
       gpuError_t err = hipEventQuery(*deque_it);
       if (err == hipErrorNotReady) {
         VLOG(10) << "Event " << *deque_it << " for " << map_it->first->ptr()
-                 << " is not complete";
+                 << " is not completed";
+        // Erase the completded event before "deque_it"
         outstanding_events.erase(outstanding_events.begin(), deque_it);
         break;
       }
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
       PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(*deque_it));
-      ++deque_it;
 #endif
+      ++deque_it;
     }
 
     if (deque_it == outstanding_events.end()) {
