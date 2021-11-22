@@ -22,6 +22,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace platform {
 
