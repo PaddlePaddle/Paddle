@@ -20,11 +20,6 @@ set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
 set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
 set(EIGEN_TAG        f612df273689a19d25b45ca4f8269463207c4fee)
 
-cache_third_party(extern_eigen3
-    REPOSITORY    ${EIGEN_REPOSITORY}
-    TAG           ${EIGEN_TAG}
-    DIR           EIGEN_SOURCE_DIR)
-
 if(WIN32)
     add_definitions(-DEIGEN_STRONG_INLINE=inline)
 elseif(LINUX)
@@ -46,9 +41,10 @@ ExternalProject_Add(
     extern_eigen3
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${EIGEN_DOWNLOAD_CMD}"
-    PREFIX          ${EIGEN_PREFIX_DIR}
-    SOURCE_DIR      ${EIGEN_SOURCE_DIR}
+    GIT_REPOSITORY    ${EIGEN_REPOSITORY}
+    GIT_TAG           ${EIGEN_TAG}
+    PREFIX            ${EIGEN_PREFIX_DIR}
+    SOURCE_DIR        ${EIGEN_SOURCE_DIR}
     UPDATE_COMMAND    ""
     PATCH_COMMAND     ${EIGEN_PATCH_COMMAND}
     CONFIGURE_COMMAND ""

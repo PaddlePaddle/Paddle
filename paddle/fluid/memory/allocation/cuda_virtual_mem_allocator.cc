@@ -49,22 +49,25 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 
   // Prepare the access descriptor array indicating where and how the backings
   // should be visible.
-  access_desc_.resize(platform::GetCUDADeviceCount());
   for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
     if (place.device != dev_id) {
       int capable = 0;
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaDeviceCanAccessPeer(&capable, place.device, dev_id));
       if (!capable) {
+        VLOG(1) << "device(" << place.device
+                << ") can not access peer to device(" << dev_id << ")";
         continue;
       }
     }
+    CUmemAccessDesc access_desc = {};
     // Specify which device we are adding mappings for.
-    access_desc_[dev_id].location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-    access_desc_[dev_id].location.id = dev_id;
+    access_desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    access_desc.location.id = dev_id;
 
     // Specify both read and write access.
-    access_desc_[dev_id].flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    access_desc.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    access_desc_.push_back(access_desc);
   }
 
   // Get the minimum granularity needed for all devices
