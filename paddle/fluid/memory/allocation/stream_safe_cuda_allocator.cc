@@ -59,7 +59,13 @@ Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
 
 void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
   std::lock_guard<SpinLock> lock_guard(spin_lock_);
-  FreeStreamSafeCUDAAllocation(allocation);
+  if (dynamic_cast<StreamSafeCUDAAllocation*>(allocation)
+          ->GetRecordedStreams()
+          ->empty()) {
+    delete allocation;
+  } else {
+    FreeStreamSafeCUDAAllocation(allocation);
+  }
 }
 
 uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {

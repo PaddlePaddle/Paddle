@@ -68,10 +68,9 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
                             "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
-// NOTE(Ruibiao): This FLAGS is just to be compatibled with the old
-// single-stream
-// CUDA allocator. It will be removed after StreamSafeCudaAllocator has been
-// fully tested.
+// NOTE(Ruibiao): This FLAGS is just to be compatibled with
+// the old single-stream CUDA allocator. It will be removed
+// after StreamSafeCudaAllocator has been fully tested.
 PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
                             "Enable StreamSafeCUDAAllocator");
 
@@ -234,11 +233,10 @@ class AllocatorFacadePrivate {
     CheckAllocThreadSafe();
   }
 
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
-                                                 size_t size) {
+  inline const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place, size_t size) {
     VLOG(6) << "GetAllocator"
             << " " << place << " " << size;
-
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : GetAllocatorMap())
@@ -575,21 +573,21 @@ class AllocatorFacadePrivate {
     allocators_[p] = std::make_shared<ThreadLocalCUDAAllocator>(p);
   }
 
+  void WrapStreamSafeCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    const std::shared_ptr<Allocator>& underlying_allocator =
+        GetAllocator(p, stream);
+    cuda_allocators_[p][stream] =
+        std::make_shared<StreamSafeCUDAAllocator>(underlying_allocator, stream);
+  }
+
   void WrapCUDARetryAllocator(platform::CUDAPlace p, gpuStream_t stream,
                               size_t retry_time) {
     PADDLE_ENFORCE_GT(
         retry_time, 0,
         platform::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
-    std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
+    std::shared_ptr<Allocator> allocator = GetAllocator(p, stream);
     allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
-  }
-
-  void WrapStreamSafeCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
-    const std::shared_ptr<Allocator>& underlying_allocator =
-        GetAllocator(p, stream);
-    cuda_allocators_[p][stream] =
-        std::make_shared<StreamSafeCUDAAllocator>(underlying_allocator, stream);
   }
 
   static void CheckCUDAAllocThreadSafe(const CUDAAllocatorMap& allocators) {
