@@ -27,17 +27,13 @@ SET(GLOO_LIBRARIES     "${GLOO_INSTALL_DIR}/lib/libgloo.a" CACHE FILEPATH "gloo 
 
 INCLUDE_DIRECTORIES(${GLOO_INCLUDE_DIR})
 
-cache_third_party(extern_gloo
-    REPOSITORY    ${GLOO_REPOSITORY}
-    TAG           ${GLOO_TAG}
-    DIR           GLOO_SOURCE_DIR)
-
 if(WITH_ASCEND OR WITH_ASCEND_CL)
   ExternalProject_Add(
       extern_gloo
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
-      "${GLOO_DOWNLOAD_CMD}"
+      GIT_REPOSITORY        ${GLOO_REPOSITORY}
+      GIT_TAG               ${GLOO_TAG}
       PREFIX                "${GLOO_PREFIX_DIR}"
       SOURCE_DIR            "${GLOO_SOURCE_DIR}"
       UPDATE_COMMAND        ""
@@ -54,7 +50,8 @@ else()
       extern_gloo
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
-      "${GLOO_DOWNLOAD_CMD}"
+      GIT_REPOSITORY        ${GLOO_REPOSITORY}
+      GIT_TAG               ${GLOO_TAG}
       PREFIX                "${GLOO_PREFIX_DIR}"
       SOURCE_DIR            "${GLOO_SOURCE_DIR}"
       UPDATE_COMMAND        ""

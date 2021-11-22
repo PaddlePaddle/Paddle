@@ -116,23 +116,35 @@ get_unused_vars(const BlockDesc& block,
 }
 
 void build_variable_scope(const framework::BlockDesc& block,
-                          VariableScope* var_scope) {
+                          VariableScope* var_scope, bool use_local_scope) {
+  VLOG(3) << "Creating Variables";
+  auto inner_scope = var_scope->GetMutableScope();
+
+  // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
+  // created in var_scope.scope_ , and other scope is created in local scope.
+  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
+                                       : var_scope->GetMutableScope();
+
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
     if (var_name == framework::kEmptyVarName) {
       continue;
     }
+    if (var_desc->Persistable()) {
+      auto* ptr = inner_scope->Var(var_name);
 
-    if (nullptr == var_scope->FindVar(var_name)) {
-      var_scope->AddVar(var_desc->Name(), var_desc);
+      VLOG(3) << "Initialize Variable " << var_name;
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
+              << ptr << " type is " << static_cast<int>(var_desc->GetType());
     } else {
-      auto* var_desc_tmp = var_scope->VarDesc(var_name);
-      if (nullptr == var_desc_tmp) {
-        VLOG(3) << "update var:" << var_name << " desc from nullptr into "
-                << var_desc;
-        var_scope->SetVarDesc(var_name, var_desc);
-      }
+      auto* ptr = local_scope->Var(var_name);
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+              << ptr << "Variable Type "
+              << static_cast<int>(var_desc->GetType());
     }
+    var_scope->SetVarDesc(var_name, var_desc);
   }
 }
 
@@ -221,14 +233,14 @@ void apply_device_guard(const OperatorBase* op_base,
 void deal_operator_base(const platform::Place& place,
                         const VariableScope* var_scope,
                         std::shared_ptr<OperatorBase> op_base,
-                        OpFuncNode* op_func_node) {
+                        OpFuncNode* op_func_node, Scope* local_scope) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
   op_func_node->type_ = OpFuncType::kQueueSync;  // alway Sync
   op_func_node->kernel_func_ = nullptr;
-  op_base->Run(*var_scope->GetScope(), place);  // Run without data transformer.
+  op_base->Run(*local_scope, place);  // Run without data transformer.
 
   std::unordered_set<int> no_data_transform_index;
   for (auto& it : op_func_node->input_index) {
@@ -244,7 +256,9 @@ void deal_operator_base(const platform::Place& place,
 void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope) {
+                        VariableScope* var_scope, bool use_local_scope) {
+  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
+                                       : var_scope->GetMutableScope();
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   std::vector<std::shared_ptr<OperatorBase>>
       ops;  // its elements will be moved to vec_func_list
@@ -285,7 +299,7 @@ void build_op_func_list(const platform::Place& place,
 
     if (dynamic_cast<const framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-      deal_operator_base(place, var_scope, ops[i], &op_func_node);
+      deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
     } else {
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});

@@ -21,6 +21,8 @@
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Compute);
+
 void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
