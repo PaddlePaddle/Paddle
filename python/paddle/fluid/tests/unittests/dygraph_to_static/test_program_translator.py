@@ -333,9 +333,13 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
     def test_raise_error(self):
         paddle.disable_static()
         net = SwitchModeNet()
+
+        self.assertEqual(net.training, True)
         with self.assertRaises(RuntimeError):
             net.forward.eval()
 
+        net.eval()
+        self.assertEqual(net.training, False)
         with self.assertRaises(RuntimeError):
             net.foo.train()
 
