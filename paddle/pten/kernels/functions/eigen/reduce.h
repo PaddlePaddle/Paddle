@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/functions/eigen/common.h"
-
 #include "paddle/pten/kernels/math/transpose.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -123,7 +123,10 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  pten::DenseTensor shuffled_input;
+  const auto alloc =
+      std::make_shared<paddle::experimental::DefaultAllocator>(input.place());
+  pten::DenseTensor shuffled_input = pten::DenseTensor(alloc, input.meta());
+
   GetShuffledInput<DeviceContext, OutT>(dev_ctx, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
@@ -185,11 +188,19 @@ void ReduceKernlImpl(const DeviceContext& dev_ctx,
   }
 }
 
-//////// Functor
+//////// Sum Functor ///////
 struct SumFunctor {
   template <typename DeviceContext, typename X, typename Y, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
     y->device(place) = x->sum(dim);
+  }
+};
+
+//////// Mean Functor ///////
+struct MeanFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->mean(dim);
   }
 };
 

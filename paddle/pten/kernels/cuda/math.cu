@@ -243,4 +243,6 @@ PT_REGISTER_KERNEL("reduce_sum",
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
