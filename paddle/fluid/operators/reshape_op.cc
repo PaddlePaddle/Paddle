@@ -580,14 +580,13 @@ class Reshape2Op : public ReshapeOp {
       const framework::ExecutionContext &ctx) const override {
     auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
     if (multi_inputs.size() > 0) {
-      return framework::KernelSignature(
-          "reshape2.mulhost.mid", {"X", "ShapeTensor"}, {}, {"XShape", "Out"});
+      return framework::KernelSignature("reshape2.mulhost",
+                                        {"X", "ShapeTensor"}, {}, {"Out"});
     } else if (ctx.HasInput("Shape")) {
-      return framework::KernelSignature("reshape2.host.mid", {"X", "Shape"}, {},
-                                        {"XShape", "Out"});
+      return framework::KernelSignature("reshape2.host", {"X", "Shape"}, {},
+                                        {"Out"});
     } else {
-      return framework::KernelSignature("reshape2.mid", {"X"}, {"shape"},
-                                        {"XShape", "Out"});
+      return framework::KernelSignature("reshape2", {"X"}, {"shape"}, {"Out"});
     }
   }
 };

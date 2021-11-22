@@ -15,17 +15,23 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/math.h"
+#include "paddle/pten/api/include/manipulation.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+PT_DECLARE_MODULE(ManipulationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(ManipulationCUDA);
+#endif
+
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
-TEST(API, mean) {
+TEST(API, cast) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -36,28 +42,28 @@ TEST(API, mean) {
                             pten::DataLayout::NCHW));
   auto* dense_x_data = dense_x->mutable_data<float>();
 
-  float sum = 0.0;
-  for (size_t i = 0; i < 12; ++i) {
-    dense_x_data[i] = i * 1.0;
-    sum += i * 1.0;
+  for (int i = 0; i < dense_x->numel(); i++) {
+    dense_x_data[i] = i;
   }
 
   paddle::experimental::Tensor x(dense_x);
-
+  pten::DataType out_dtype = pten::DataType::FLOAT64;
   // 2. test API
-  auto out = paddle::experimental::mean(x);
+  auto out = paddle::experimental::cast(x, out_dtype);
 
   // 3. check result
-  ASSERT_EQ(out.dims().size(), 1);
-  ASSERT_EQ(out.dims()[0], 1);
-  ASSERT_EQ(out.numel(), 1);
+  std::vector<int> expect_shape = {3, 4};
+  ASSERT_EQ(out.shape().size(), size_t(2));
+  ASSERT_EQ(out.shape()[0], expect_shape[0]);
+  ASSERT_EQ(out.shape()[1], expect_shape[1]);
+  ASSERT_EQ(out.numel(), 12);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT64);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
-
-  auto expect_result = sum / 12;
   auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
-  auto actual_result = dense_out->data<float>()[0];
-  ASSERT_NEAR(expect_result, actual_result, 1e-6f);
+  auto* dense_out_data = dense_out->data<double>();
+  for (int i = 0; i < dense_x->numel(); i++) {
+    ASSERT_NEAR(dense_out_data[i], static_cast<double>(dense_x_data[i]), 1e-6f);
+  }
 }

@@ -28,6 +28,7 @@ void Mean(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   // TODO(chenweihang): if we design new tensor, we should support
   // the low-level calc functor use new tensor as input,
   // which may be a big project!
+  out->mutable_data<T>();
   auto eigen_x = pten::EigenVector<T>::Flatten(x);
   auto eigen_out = pten::EigenScalar<T>::From(*out);
 

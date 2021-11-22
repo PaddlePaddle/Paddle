@@ -160,4 +160,24 @@ paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
   }
 }
 
+paddle::framework::LoD TransToFluidLoD(const pten::LoD& lod) {
+  paddle::framework::LoD out;
+  out.reserve(lod.size());
+
+  for (auto& elem : lod) {
+    out.emplace_back(elem);
+  }
+  return out;
+}
+
+pten::LoD TransToPtenLoD(const paddle::framework::LoD& lod) {
+  pten::LoD out;
+  out.reserve(lod.size());
+
+  for (auto& elem : lod) {
+    out.emplace_back(elem);
+  }
+  return out;
+}
+
 }  // namespace pten

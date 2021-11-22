@@ -23,12 +23,6 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/cuda/utils.h"
 
-PT_DECLARE_MODULE(LinalgCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(LinalgCUDA);
-#endif
-
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
