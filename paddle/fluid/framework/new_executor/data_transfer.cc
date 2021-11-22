@@ -22,15 +22,19 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                               const OpKernelType& expected_kernel_key,
                               const std::string& var_name,
                               std::string* new_var_name,
-                              std::vector<OpFuncNode>* op_func_nodes) {
+                              std::vector<OpFuncNode>* op_func_nodes,
+                              bool use_local_scope) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
+  Scope* local_scope = use_local_scope ? var_scope_->GetMutableLocalScope()
+                                       : var_scope_->GetMutableScope();
+
   // 1. layout transform
   if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferLayout(*src_var_name, new_var_name,
-                             kernel_type_for_var.data_layout_,
-                             expected_kernel_key.data_layout_, var_scope_);
+    auto op = TransferLayout(
+        *src_var_name, new_var_name, kernel_type_for_var.data_layout_,
+        expected_kernel_key.data_layout_, var_scope_, local_scope);
     RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
     // update src_var_name
     src_var_name = new_var_name;
@@ -38,9 +42,9 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   }
   // 2. dype transform
   if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferDtype(*src_var_name, new_var_name,
-                            kernel_type_for_var.data_type_,
-                            expected_kernel_key.data_type_, var_scope_);
+    auto op = TransferDtype(
+        *src_var_name, new_var_name, kernel_type_for_var.data_type_,
+        expected_kernel_key.data_type_, var_scope_, local_scope);
     RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
     // update src_var_name
     src_var_name = new_var_name;
@@ -51,7 +55,7 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
     auto src_place = kernel_type_for_var.place_;
     auto dst_place = expected_kernel_key.place_;
     auto op = TransferDevice(*src_var_name, new_var_name, src_place, dst_place,
-                             var_scope_);
+                             var_scope_, local_scope);
     RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
     is_transferred = true;
   }
@@ -110,11 +114,18 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                                              std::string* new_var_name,
                                              DataLayout in_layout,
                                              DataLayout out_layout,
-                                             VariableScope* var_scope) {
-  // 1. Generate new_var_name
+                                             VariableScope* var_scope,
+                                             framework::Scope* local_scope) {
+  // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_layout_" + std::to_string(var_scope->VarSize() + 1);
-  var_scope->AddVar(*new_var_name, nullptr);
+  auto* ptr = local_scope->Var(new_var_name);
+
+  auto var_type = var_scope->Var(var_name)->Type();
+  InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
+  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+          << ptr << "Variable Type " << var_type;
+  var_scope->SetVarDesc(var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -136,11 +147,18 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
                                             std::string* new_var_name,
                                             proto::VarType::Type in_dtype,
                                             proto::VarType::Type out_dtype,
-                                            VariableScope* var_scope) {
-  // 1. Generate new_var_name
+                                            VariableScope* var_scope,
+                                            framework::Scope* local_scope) {
+  // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
-  var_scope->AddVar(*new_var_name, nullptr);
+  auto* ptr = local_scope->Var(new_var_name);
+
+  auto var_type = var_scope->Var(var_name)->Type();
+  InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
+  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+          << ptr << "Variable Type " << var_type;
+  var_scope->SetVarDesc(var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -167,11 +185,18 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
                                              const platform::Place& src_place,
                                              const platform::Place& dst_place,
-                                             VariableScope* var_scope) {
-  // 1. Generate new_var_name
+                                             VariableScope* var_scope,
+                                             framework::Scope* local_scope) {
+  // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_device_" + std::to_string(var_scope->VarSize() + 1);
-  var_scope->AddVar(*new_var_name, nullptr);
+  auto* ptr = local_scope->Var(new_var_name);
+
+  auto var_type = var_scope->Var(var_name)->Type();
+  InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
+  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+          << ptr << "Variable Type " << var_type;
+  var_scope->SetVarDesc(var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -196,7 +221,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
-                        std::vector<OpFuncNode>* new_op_func_nodes) {
+                        std::vector<OpFuncNode>* new_op_func_nodes,
+                        bool use_local_scope) {
   auto op_base = op_func_node->operator_base_.get();
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base is null, please pass a valid "
@@ -226,7 +252,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       std::string new_var_name;
       bool is_transferred = data_transfer_helper.apply(
           kernel_type_for_var, expected_kernel_key, var_name, &new_var_name,
-          new_op_func_nodes);
+          new_op_func_nodes, use_local_scope);
 
       if (is_transferred) {
         // update RuntimeContext.inputs and original op_func_node inputs

@@ -35,7 +35,7 @@ class DataTranferHelper {
   bool apply(const OpKernelType& kernel_type_for_var,
              const OpKernelType& expected_kernel_key,
              const std::string& var_name, std::string* new_var_name,
-             std::vector<OpFuncNode>* new_op_func_nodes);
+             std::vector<OpFuncNode>* new_op_func_nodes, bool use_local_scope);
 
  private:
   platform::Place place_;
@@ -51,7 +51,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
-                        std::vector<OpFuncNode>* op_func_nodes);
+                        std::vector<OpFuncNode>* op_func_nodes,
+                        bool use_local_scope = true);
 
 std::string get_memcpy_type(const platform::Place& src_place,
                             const platform::Place& dst_place);
@@ -84,19 +85,22 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                                              std::string* new_var_name,
                                              DataLayout in_layout,
                                              DataLayout out_layout,
-                                             VariableScope* var_scope);
+                                             VariableScope* var_scope,
+                                             framework::Scope* local_scope);
 
 std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
                                             std::string* new_var_name,
                                             proto::VarType::Type in_dtype,
                                             proto::VarType::Type out_dtype,
-                                            VariableScope* var_scope);
+                                            VariableScope* var_scope,
+                                            framework::Scope* local_scope);
 
 std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
                                              const platform::Place& src_place,
                                              const platform::Place& dst_place,
-                                             VariableScope* var_scope);
+                                             VariableScope* var_scope,
+                                             framework::Scope* local_scope);
 
 }  // namespace interpreter
 }  // namespace framework

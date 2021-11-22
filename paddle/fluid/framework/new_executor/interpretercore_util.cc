@@ -338,7 +338,7 @@ void build_op_func_list(const platform::Place& place,
       VariableValueMap& ins_map_temp = runtime_context.inputs;
       std::vector<OpFuncNode> new_op_func_nodes;
       ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, &new_op_func_nodes);
+                         &op_func_node, &new_op_func_nodes, use_local_scope);
       for (auto& item : new_op_func_nodes) {
         vec_func_list->emplace_back(std::move(item));
       }
