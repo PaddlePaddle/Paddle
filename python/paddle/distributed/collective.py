@@ -352,7 +352,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     As shown below, 4 GPUs each start 4 processes and GPU0 owns data 0. Through broadcast operator,
     the data 0 will be sent to all GPUs from GPU0.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/broadcast.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/broadcast.png
         :width: 800
         :alt: broadcast
         :align: center
@@ -428,7 +428,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     by the GPU number. The reduce operator is sum. Through all_reduce operator, 
     each GPU will have the sum of the data from all GPUs.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/allreduce.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
         :width: 800
         :alt: all_reduce
         :align: center
@@ -516,7 +516,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     by the GPU number. The destination of the reduce operator is GPU0 and the process is sum. Through reduce operator,
     the GPU0 will owns the sum of all data from all GPUs.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/reduce.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/reduce.png
         :width: 800
         :alt: reduce
         :align: center
@@ -619,7 +619,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     by the GPU number. Through the all_gather operator, each GPU will have data
     from all GPUs.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/allgather.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allgather.png
         :width: 800
         :alt: all_gather
         :align: center
@@ -703,7 +703,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     Scatter a tensor to all participators. As shown below, 4 GPUs each start 4 processes and the source of the scatter
     is GPU0. Through scatter operator, the data in GPU0 will be sent to all GPUs averagely.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/scatter.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/scatter.png
         :width: 800
         :alt: scatter
         :align: center
@@ -1302,7 +1302,7 @@ def split(x,
 
         The Embedding put on single card is as shown below:
 
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_embedding_single.png
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_single.png
             :width: 800
             :height: 350
             :alt: single_embedding
@@ -1310,7 +1310,7 @@ def split(x,
 
         Parallel Embedding is shown as below:
 
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_embedding_split.png
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_split.png
             :width: 800
             :alt: split_embedding
             :align: center
@@ -1324,7 +1324,7 @@ def split(x,
         the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is 
         simple matrix multiplication operation, O = X * W.
 
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_single.png
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_single.png
             :width: 800
             :alt: single_linear
             :align: center
@@ -1333,7 +1333,7 @@ def split(x,
         [[W_row1], [W_row2]] along the row. And accordingly the input is splitted along the column into [X_col1, X_col2] and multiply their
         respective weight matrices. Finally apply AllReduce on the output from each card to get the final output.
 
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_row.png
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_row.png
             :width: 800
             :alt: split_row
             :align: center
@@ -1488,7 +1488,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     Through alltoall operator, the 0_0 in GPU0 will be sent to GPU0 and 0_1 to GPU1, 1_0 in GPU1 sent to GPU0 and 1_1 to GPU1.
     Finally the out_tensor_list in GPU0 includes 0_0 and 1_0, and GPU1 includes 0_1 and 1_1.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/alltoall.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/alltoall.png
         :width: 800
         :alt: alltoall
         :align: center

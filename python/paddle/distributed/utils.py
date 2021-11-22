@@ -88,7 +88,7 @@ def global_scatter(x,
 
     the global_count[1] of the 1th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1th expert.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
         :width: 800
         :alt: global_scatter_gather
         :align: center
@@ -201,7 +201,7 @@ def global_gather(x,
     
     The global_count[1] of the 1th card represents sending 0 data to the 1th expert of the 0th card.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
         :width: 800
         :alt: global_scatter_gather
         :align: center
