@@ -37,25 +37,17 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 settings.register_profile(
     "ci",
-    max_examples=100,
+    max_examples=10000,
     suppress_health_check=hypothesis.HealthCheck.all(),
     deadline=None,
     print_blob=True,
     derandomize=True,
     report_multiple_bugs=False)
-settings.register_profile(
-    "dev",
-    max_examples=1000,
-    suppress_health_check=hypothesis.HealthCheck.all(),
-    deadline=None,
-    print_blob=True,
-    derandomize=True,
-    report_multiple_bugs=False)
+settings.load_profile("ci")
+max_test_times = 100
 if float(os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')) < 1 or \
     os.getenv('HYPOTHESIS_TEST_PROFILE', 'dev') == 'ci':
-    settings.load_profile("ci")
-else:
-    settings.load_profile("dev")
+        max_test_times = 100
 
 
 class SkipReasons(enum.Enum):
@@ -78,6 +70,7 @@ class AutoScanTest(unittest.TestCase):
         abs_dir = os.path.abspath(os.path.dirname(__file__))
         self.cache_dir = os.path.join(abs_dir,
                                       str(self.__module__) + '_cache_dir')
+        self.ran_program_counter = 0
 
     @abc.abstractmethod
     def sample_program_configs(self):
@@ -195,12 +188,20 @@ class MkldnnAutoScanTest(AutoScanTest):
         super(MkldnnAutoScanTest, self).__init__(*args, **kwargs)
 
     def run_test(self, quant=False, *args, **kwargs):
+        if self.ran_program_counter > max_test_times:
+            return
+
         status = True
 
         for prog_config in self.sample_program_configs(*args, **kwargs):
+
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
+
+            self.ran_program_counter += 1
+            if self.ran_program_counter > max_test_times:
+                logging.info("There are {} programs have been ran. If you want to run more tests, modify max_test_times to a larger number".format(max_test_times))
 
             model, params = create_fake_model(prog_config)
             if quant:
@@ -257,7 +258,6 @@ class MkldnnAutoScanTest(AutoScanTest):
                     continue
                 self.success_log('RUN predictor_config ' + self.
                                  inference_config_str(pred_config) + ' done')
-
         self.assertTrue(status)
 
     def inference_config_str(self, config) -> str:
@@ -303,12 +303,18 @@ class PassAutoScanTest(AutoScanTest):
                             after_op_size, fusion_after_num))
 
     def run_test(self, quant=False, *args, **kwargs):
+        if self.ran_program_counter > max_test_times:
+            return
         status = True
 
         for prog_config in self.sample_program_configs(*args, **kwargs):
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
+
+            self.ran_program_counter += 1
+            if self.ran_program_counter > max_test_times:
+                logging.info("There are {} programs have been ran. If you want to run more tests, modify max_test_times to a larger number".format(max_test_times))
 
             model, params = create_fake_model(prog_config)
             if quant:
@@ -505,6 +511,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
         return str(dic)
 
     def run_test(self, quant=False, *args, **kwargs):
+        if self.ran_program_counter > max_test_times:
+            return
         status = True
         run_flags = []
         for prog_config in self.sample_program_configs(*args, **kwargs):
@@ -513,7 +521,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 run_flags.append(True)
             else:
                 run_flags.append(False)
-
+        
         for prog_config, run_flags in zip(
                 self.sample_program_configs(*args, **kwargs), run_flags):
             if not run_flags:
@@ -522,6 +530,10 @@ class TrtLayerAutoScanTest(AutoScanTest):
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
+
+            self.ran_program_counter += 1
+            if self.ran_program_counter > max_test_times:
+                logging.info("There are {} programs have been ran. If you want to run more tests, modify max_test_times to a larger number".format(max_test_times))
 
             model, params = create_fake_model(prog_config)
             if quant:
