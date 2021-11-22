@@ -23,7 +23,7 @@ DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta) {
 
 DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta) {
   const auto& out_dims = paddle::framework::make_ddim({1});
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
   return return_meta;
 }
 
@@ -63,7 +63,7 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
     out_shape.push_back(x_dims[i]);
   }
   const auto& out_dims = paddle::framework::make_ddim(out_shape);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
 
   if (x_dims[0] == return_meta.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
@@ -77,7 +77,7 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
 DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
                                    DataType dtype,
                                    DataLayout layout) {
-  return {dtype == DataType::UNDEFINED ? x_meta.type : dtype,
+  return {dtype == DataType::UNDEFINED ? x_meta.dtype : dtype,
           x_meta.dims,
           layout == DataLayout::UNDEFINED ? x_meta.layout : layout};
 }
@@ -211,7 +211,7 @@ DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
                         "But received 'shape' is empty."));
   auto x_dims = x_meta.dims;
   auto out_dims = ValidateShape(shape, x_dims);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
   if (x_dims[0] == return_meta.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.

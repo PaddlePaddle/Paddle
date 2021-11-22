@@ -313,7 +313,12 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   // create plan
   FFTConfigKey key =
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
-  if (CUFFT_VERSION < 10200) {
+  bool using_cache = false;
+#if !defined(CUFFT_VERSION) || (CUFFT_VERSION < 10200)
+  using_cache = true;
+#endif
+
+  if (using_cache) {
     const int64_t device_id = static_cast<int64_t>(
         reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
             ->GetDeviceId());

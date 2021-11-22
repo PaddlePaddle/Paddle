@@ -65,7 +65,7 @@ TEST(DEV_API, elementwise_add) {
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
-  ASSERT_EQ(dense_out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(dense_out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(dense_out.meta().layout, pten::DataLayout::NCHW);
 
   auto expect_result = sum;
@@ -118,7 +118,7 @@ TEST(DEV_API, subtract) {
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
-  ASSERT_EQ(dense_out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(dense_out.dtype(), pten::DataType::FLOAT32);
   ASSERT_EQ(dense_out.meta().layout, pten::DataLayout::NCHW);
 
   auto expect_result = sub;
