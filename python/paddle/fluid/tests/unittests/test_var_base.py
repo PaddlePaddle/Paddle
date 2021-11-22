@@ -1197,7 +1197,7 @@ class TestVarBaseShareBufferTo(unittest.TestCase):
         # empty_var
         dst = core.VarBase()
         src._share_buffer_to(dst)
-        self.assertEqual(src._is_shared_buffer_to(dst), True)
+        self.assertEqual(src._is_shared_buffer_with(dst), True)
 
 
 class TestVarBaseTo(unittest.TestCase):
