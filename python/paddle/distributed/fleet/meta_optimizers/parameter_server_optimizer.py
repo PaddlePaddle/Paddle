@@ -105,17 +105,15 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
 
             # for main program
-            #print("before build_distributed_ops_pass, _main = ", _main)
             _main = worker.distributed_ops_pass(_main, compiled_config,
                                                 use_ps_gpu)
-            #print("after build_distributed_ops_pass, _main = ", _main)
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
                 _startup = worker.delete_extra_optimizes_pass(_startup,
                                                               compiled_config)
 
-                # for startup program
+            # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
             if use_ps_gpu:
                 _main = worker.ps_gpu_pass(_main)
@@ -163,8 +161,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             # ):
             #     wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
-        with open("test_main_program.pbtxt", "w") as fout:
-            print(_main, file=fout)
+        # with open("test_main_program.pbtxt", "w") as fout:
+        #     print(_main, file=fout)
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):

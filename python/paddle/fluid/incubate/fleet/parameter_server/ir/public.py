@@ -169,78 +169,12 @@ class CompileTimeStrategy(object):
 
         self._build_var_distributed()
 
-        #self._find_multi_distributed_lookup_table()
-
         self.tensor_table_dict = {}
 
         # for heter-ps save variables
         self.origin_merged_variables_pairs = list(self.merged_variables_pairs)
         self.origin_merged_dense_pairs = list(self.merged_dense_pairs)
         self.origin_merged_sparse_pairs = list(self.merged_sparse_pairs)
-
-    def _find_multi_distributed_lookup_table(self):
-        """
-        find multi-sparse-table
-        """
-        table_names = set()
-        cnt = 0
-        tmp_list = []
-        ret_list = []
-        for op in self.origin_main_program.global_block().ops:
-            if op.type in SPARSE_OP_LIST:
-                if op.attr('is_distributed') is True:
-                    table_name = op.input("W")[0]
-                    if table_name not in table_names:
-                        table_names.add(table_name)
-                        tmp_list.append([table_name, cnt])
-                        cnt += 1
-        tmp_list.sort(key=lambda k: k[1])
-        for x in tmp_list:
-            ret_list.append(x[0])
-        sparse_table_to_index = collections.OrderedDict()
-        sparse_table_index = 0
-        for tn in ret_list:
-            if sparse_table_to_index.get(tn) is None:
-                sparse_table_to_index[tn] = sparse_table_index
-                sparse_table_index += 1
-        grads_dict = self._find_distributed_lookup_table_grads(ret_list)
-        inputs_dict = self._find_distributed_lookup_table_inputs(ret_list)
-        return ret_list
-
-    def _find_distributed_lookup_table_grads(self, table_names):
-        local_vars = self.origin_main_program.current_block().vars
-        grads_dict = dict()
-        for table_name in table_names:
-            grads_dict[table_name] = []
-
-        for op in self.origin_main_program.global_block().ops:
-            if op.type in SPARSE_OP_GRAD_LIST:
-                if op.input("W")[0] in table_names:
-                    grads_dict[op.input("W")[0]].extend(
-                        [local_vars[name] for name in op.input("Out@GRAD")])
-        return grads_dict
-
-    def _find_distributed_lookup_table_inputs(self, table_names):
-        """
-        Find input variable of distribute lookup table in program.
-        We could support multi-distribute table now.
-        Args:
-            program(Program): given program, locate distributed lookup table
-            table_name(str): given table names that is found beforehand
-        Returns:
-            inputs
-        """
-        local_vars = self.origin_main_program.current_block().vars
-        inputs_dict = dict()
-        for table_name in table_names:
-            inputs_dict[table_name] = []
-
-        for op in self.origin_main_program.global_block().ops:
-            if op.type in SPARSE_OP_LIST:
-                if op.input("W")[0] in table_names:
-                    inputs_dict[op.input("W")[0]].extend(
-                        [local_vars[name] for name in op.input("Ids")])
-        return inputs_dict
 
     def get_distributed_mode(self):
         trainer = self.strategy.get_trainer_runtime_config()
