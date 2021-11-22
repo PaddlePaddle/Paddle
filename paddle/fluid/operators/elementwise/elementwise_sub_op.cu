@@ -24,22 +24,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class ElementwiseSubKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    std::vector<const framework::Tensor*> ins;
-    std::vector<framework::Tensor*> outs;
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-
-    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, SubFunctor<T>());
-  }
-};
-
-template <typename T>
 static __global__ void SimpleElemwiseSubGradCUDAKernel(const T* dout,
                                                        int64_t size, T* dx,
                                                        T* dy) {

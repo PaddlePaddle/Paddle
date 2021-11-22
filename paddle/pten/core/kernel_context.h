@@ -58,6 +58,10 @@ class KernelContext {
     input_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
+  void EmplaceBackInputWithoutSetRange(std::shared_ptr<TensorBase> input) {
+    inputs_.emplace_back(std::move(input));
+  }
+
   void EmplaceBackInputs(
       paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
     int index = inputs_.size();
@@ -74,6 +78,10 @@ class KernelContext {
     outputs_.emplace_back(std::move(output));
     // Record the start and end index of the input
     output_range_.emplace_back(std::pair<int, int>(index, index + 1));
+  }
+
+  void EmplaceBackOutputWithoutSetRange(std::shared_ptr<TensorBase> output) {
+    outputs_.emplace_back(std::move(output));
   }
 
   void EmplaceBackOutputs(
@@ -170,9 +178,6 @@ class KernelContext {
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
-
- private:
-  bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
 
  private:
   // DeviceContext base class

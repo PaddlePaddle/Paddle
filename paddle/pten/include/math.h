@@ -87,4 +87,19 @@ DenseTensor ElementwiseAdd(const ContextT& dev_ctx,
   ElementwiseAdd<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
+
+template <typename T, typename ContextT>
+DenseTensor Subtract(const ContextT& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis) {
+  auto out_meta = ElementwiseInferShape(x.meta(), y.meta(), axis);
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
+  ElementwiseSub<T>(dev_ctx, x, y, axis, &dense_out);
+  return dense_out;
+}
+
 }  // namespace pten

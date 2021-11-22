@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
 #include "paddle/pten/kernels/functions/general/manipulation.h"
+#include "paddle/pten/kernels/functions/math/cast_func.h"
 
 namespace pten {
 
@@ -50,7 +52,6 @@ void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           DenseTensor* out) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
   if (&x == out) {
-    LOG(INFO) << "out_meta dims:" << out_meta.dims;
     out->Resize(out_meta.dims);
     return;
   }
@@ -63,8 +64,8 @@ void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,
                                     const std::vector<int64_t>& shape,
                                     DenseTensor* xshape,
                                     DenseTensor* out) {
-  ReshapeFromVectorVal(dev_ctx, x, shape, out);
   general::SetXShape(x, xshape);
+  ReshapeFromVectorVal(dev_ctx, x, shape, out);
 }
 
 void ReshapeFromDT(const CUDAContext& dev_ctx,
@@ -75,7 +76,7 @@ void ReshapeFromDT(const CUDAContext& dev_ctx,
   auto vector_shape =
       std::vector<int64_t>(shape_data, shape_data + shape.numel());
   ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
-  out->set_lod(x.lod());
+  out->ResetLoD(x.lod());
 }
 
 void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
@@ -83,8 +84,8 @@ void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
                              const DenseTensor& shape,
                              DenseTensor* xshape,
                              DenseTensor* out) {
-  ReshapeFromDT(dev_ctx, x, shape, out);
   general::SetXShape(x, xshape);
+  ReshapeFromDT(dev_ctx, x, shape, out);
 }
 
 void ReshapeFromVectorDT(const CUDAContext& dev_ctx,
@@ -111,8 +112,20 @@ void ReshapeFromVectorDTWithXShape(const CUDAContext& dev_ctx,
                                    const std::vector<DenseTensor>& shape,
                                    DenseTensor* xshape,
                                    DenseTensor* out) {
-  ReshapeFromVectorDT(dev_ctx, x, shape, out);
   general::SetXShape(x, xshape);
+  ReshapeFromVectorDT(dev_ctx, x, shape, out);
+}
+
+template <typename T>
+void Cast(const CUDAContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out) {
+  PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                       math::CastKernelImpl<CUDAContext, T, data_t>(
+                           dev_ctx, x, out);
+                     }));
 }
 
 }  // namespace pten
@@ -145,6 +158,23 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+// todo: Hip need support bfloat16
+PT_REGISTER_KERNEL("cast",
+                   CUDA,
+                   ANY,
+                   pten::Cast,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   int16_t,
+                   bool,
+                   uint8_t,
+                   paddle::platform::float16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
 
 PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
                                 CUDA,
