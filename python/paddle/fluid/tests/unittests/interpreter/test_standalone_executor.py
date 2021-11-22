@@ -251,6 +251,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 class TestException(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CPUPlace()
+        self.fetch_vars = None
 
     def build_program(self):
         main_program = paddle.static.Program()
@@ -275,7 +276,8 @@ class TestException(unittest.TestCase):
 
         for feed in feeds:
             out = exe.run(main_program, feed=feed, fetch_list=fetch_vars)
-        print(out)
+        print(main_program)
+        self.fetch_vars = fetch_vars
         return out
 
     def run_new_executor(self, feed):
@@ -287,15 +289,15 @@ class TestException(unittest.TestCase):
     def test_exception(self):
         feed = [{
             'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
-            'data': np.array([1, 2, 3, 4]).astype(np.float32),
+            'data': np.array([1, 2, 3]).astype(np.float32),
         }, {
             'id': np.array([1, 2, 3, 4, 11]).astype(np.int64),
-            'data': np.array([1, 2, 3, 4]).astype(np.float32),
+            'data': np.array([1, 2, 3]).astype(np.float32),
         }]
         self.assertRaises(ValueError, self.run_new_executor, feed)
 
     def test_nan(self):
-        flags = {'FLAGS_check_nan_inf': True}
+        flags = {'FLAGS_check_nan_inf': True, 'FLAGS_benchmark': True}
         paddle.fluid.set_flags(flags)
         feed = [{
             'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
@@ -306,6 +308,18 @@ class TestException(unittest.TestCase):
         }]
         feed[1]['data'][0] = np.nan
         self.assertRaises(RuntimeError, self.run_new_executor, feed)
+
+    def test_scope(self):
+        feed = [{
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([1, 2, 3]).astype(np.float32),
+        }, {
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([2, 2, 2]).astype(np.float32),
+        }]
+        self.run_new_executor(feed)
+        self.assertIsNotNone(paddle.static.global_scope().find_var(
+            self.fetch_vars.name))
 
 
 if __name__ == "__main__":

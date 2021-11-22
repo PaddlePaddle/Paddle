@@ -63,7 +63,7 @@ class TriangularSolveOp : public framework::OperatorWithKernel {
                                         y_dims_vec.end() - 2);
 
     std::vector<int64_t> expand_batch_portion =
-        infer_size(x_dims_vec_cut, y_dims_vec_cut);
+        get_broadcast_batch_portion(x_dims_vec_cut, y_dims_vec_cut);
 
     std::vector<int64_t> y_broadcast_dims({expand_batch_portion});
     y_broadcast_dims.insert(y_broadcast_dims.end(), {y_dims_vec[y_dims_n - 2],

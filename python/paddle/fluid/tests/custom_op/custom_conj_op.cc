@@ -71,8 +71,7 @@ void ConjCPUKernel(const data_t* x_data, int64_t numel, data_t* out_data) {
 std::vector<paddle::Tensor> ConjFunction(const paddle::Tensor& x) {
   CHECK_INPUT(x);
 
-  paddle::Tensor out(x.place());
-  out.reshape(x.shape());
+  paddle::Tensor out(x.place(), x.shape());
 
   PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES(
       x.type(), "ConjCPUKernel", ([&] {

@@ -48,9 +48,10 @@
 namespace paddle {
 namespace framework {
 
-namespace interpretercore {
+namespace interpreter {
 
 using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
+static constexpr char kFetchVarName[] = "fetch_vars";
 
 class AsyncWorkQueue {
  public:
@@ -96,17 +97,23 @@ class AsyncWorkQueue {
 std::string get_memcpy_type(const platform::Place& src_place,
                             const platform::Place& dst_place);
 
-void build_variable_scope(const framework::ProgramDesc& pdesc,
+void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope);
 
 void build_op_func_list(const platform::Place& place,
-                        const framework::ProgramDesc& pdesc,
+                        const framework::BlockDesc& block,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope);
+
+std::map<int, std::list<int>> build_op_downstream_map(
+    const std::vector<Instruction>& vec_instruction);
+
+void add_fetch(const std::vector<std::string>& fetch_names,
+               framework::BlockDesc* block);
 
 std::vector<size_t> merge_vector(const std::vector<size_t>& first,
                                  const std::vector<size_t>& second);
 
-}  // namespace interpretercore
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
