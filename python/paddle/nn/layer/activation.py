@@ -77,7 +77,7 @@ class ELU(Layer):
             \left\{
                 \begin{array}{lcl}
                 x,& &\text{if } \ x > 0 \\
-                alpha * e^{x} - alpha,& &\text{if } \ x <= 0
+                alpha * (e^{x} - 1),& &\text{if } \ x <= 0
                 \end{array}
             \right.
 
