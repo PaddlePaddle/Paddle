@@ -105,7 +105,7 @@ class AutoScanTest(unittest.TestCase):
         self.skip_cases.append((teller, reason, note))
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        raise True
+        return True
 
     def run_test_config(self, model, params, prog_config, pred_config,
                         feed_data) -> Dict[str, np.ndarray]:
