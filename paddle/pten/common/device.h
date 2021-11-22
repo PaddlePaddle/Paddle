@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace paddle {
 namespace experimental {
@@ -28,13 +29,17 @@ enum class DeviceType : int8_t {
   kNpu = 5,
 };
 
+const char* DeviceTypeStr(DeviceType type);
+
 /// \brief The device is used to store hardware information. It has not yet
 /// stored information related to the math acceleration library.
 struct Device final {
  public:
   Device() = default;
 
-  Device(DeviceType type, int8_t id) noexcept : type_(type), id_(id) {}
+  Device(DeviceType type, int8_t id);
+
+  Device(DeviceType type);
 
   DeviceType type() const noexcept { return type_; }
 
@@ -46,6 +51,8 @@ struct Device final {
   void set_type(DeviceType type) noexcept { type_ = type; }
 
   void set_id(int8_t id) noexcept { id_ = id; }
+
+  std::string DebugString() const;
 
  private:
   friend bool operator==(const Device&, const Device&) noexcept;

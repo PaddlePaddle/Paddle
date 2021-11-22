@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <ostream>
+#include <string>
 
 #include "paddle/pten/common/device.h"
 
@@ -26,7 +26,11 @@ class Place final {
  public:
   Place() = default;
 
-  explicit Place(const Device& device) noexcept : device_(device) {}
+  explicit Place(const Device& device) : device_(device) {}
+
+  Place(DeviceType type, int8_t id) : device_(type, id) {}
+
+  Place(DeviceType type) : device_(type) {}
 
   Place(const Device& device, bool is_pinned) noexcept : device_(device),
                                                          is_pinned_(is_pinned) {
@@ -44,6 +48,8 @@ class Place final {
     device_ = device;
     is_pinned_ = is_pinned;
   }
+
+  std::string DebugString() const;
 
  private:
   friend bool operator==(const Place&, const Place&) noexcept;
