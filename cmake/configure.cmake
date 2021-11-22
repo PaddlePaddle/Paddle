@@ -32,7 +32,7 @@ if(WITH_AVX AND AVX_FOUND)
     set(SIMD_FLAG ${AVX_FLAG})
     add_definitions(-DPADDLE_WITH_AVX)
 elseif(SSE3_FOUND)
-    set(SIMD_FLAG ${SSE3_FLAG})
+    set(SIMD_FLAG "")
 endif()
 
 if (SSE3_FOUND)
