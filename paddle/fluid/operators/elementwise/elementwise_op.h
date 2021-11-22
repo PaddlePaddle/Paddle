@@ -129,7 +129,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
@@ -138,6 +138,23 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
     }
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (Type() == "elementwise_add") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("elementwise_add", {"X", "Y"},
+                                          {"axis"}, {"Out"});
+      }
+    }
+    if (Type() == "elementwise_sub") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("elementwise_sub", {"X", "Y"},
+                                          {"axis"}, {"Out"});
+      }
+    }
+    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
   }
 };
 
@@ -440,23 +457,24 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       ctx->ShareDim("DDY", "D_DDY");
       ctx->ShareLoD("DDY", "D_DDY");
     }
+    if (ctx->HasOutput("D_X")) {
+      ctx->ShareDim("X", "D_X");
+      ctx->ShareLoD("X", "D_X");
+    }
+    if (ctx->HasOutput("D_Y")) {
+      ctx->ShareDim("Y", "D_Y");
+      ctx->ShareLoD("Y", "D_Y");
+    }
+    if (ctx->HasOutput("D_DOut")) {
+      ctx->ShareDim("DOut", "D_DOut");
+      ctx->ShareLoD("DOut", "D_DOut");
+    }
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
-    if (ctx.HasInput("DDX") == false) {
-      OP_INOUT_CHECK(ctx.HasInput("DDY"), "Input", "DDY",
-                     "ElementwiseOpTripleGrad");
-      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDY");
-    } else if (ctx.HasInput("DDY") == false) {
-      OP_INOUT_CHECK(ctx.HasInput("DDX"), "Input", "DDX",
-                     "ElementwiseOpTripleGrad");
-      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
-    } else {
-      input_data_type =
-          OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "DDX", "DDY");
-    }
+    input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "D_DDOut");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {

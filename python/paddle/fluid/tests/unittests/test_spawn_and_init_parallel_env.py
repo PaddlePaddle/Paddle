@@ -24,6 +24,7 @@ from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_ch
 
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
+import multiprocessing
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be 
@@ -89,8 +90,8 @@ class TestSpawnAssistMethod(unittest.TestCase):
 
     def test_get_default_nprocs(self):
         paddle.set_device('cpu')
-        with self.assertRaises(RuntimeError):
-            nprocs = _get_default_nprocs()
+        nprocs = _get_default_nprocs()
+        self.assertEqual(nprocs, multiprocessing.cpu_count())
 
         paddle.set_device('gpu')
         nprocs = _get_default_nprocs()

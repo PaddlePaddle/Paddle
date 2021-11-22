@@ -24,7 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -46,6 +45,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/api/ext/op_meta_info.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -619,6 +619,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    argument_.SetXpuDeviceId(config_.xpu_device_id_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
@@ -1414,6 +1415,8 @@ USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
+USE_TRT_CONVERTER(deformable_conv);
+USE_TRT_CONVERTER(pool3d)
 #endif
 
 namespace paddle_infer {

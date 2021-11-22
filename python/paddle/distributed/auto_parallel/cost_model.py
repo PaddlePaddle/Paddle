@@ -131,7 +131,7 @@ class TensorCostNode(CostNode):
         elif node.dtype == paddle.int64:
             self.dtype_factor *= 8
         else:
-            raise NotImplementedError("{} not counted".format(v.node.dtype))
+            raise NotImplementedError("{} not counted".format(node.dtype))
 
         self.batch_size = None
         if batch_size is not None:
