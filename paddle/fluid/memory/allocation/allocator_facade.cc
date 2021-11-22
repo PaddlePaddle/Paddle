@@ -239,14 +239,6 @@ class AllocatorFacadePrivate {
     VLOG(6) << "GetAllocator"
             << " " << place << " " << size;
 
-#ifdef PADDLE_WITH_CUDA
-    if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-        size > 0) {
-      return GetCUDAAllocator(BOOST_GET_CONST(platform::CUDAPlace, place),
-                              default_stream_);
-    }
-#endif
-
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : GetAllocatorMap())
@@ -259,7 +251,7 @@ class AllocatorFacadePrivate {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  const std::shared_ptr<Allocator>& GetCUDAAllocator(
+  const std::shared_ptr<Allocator>& GetAllocator(
       const platform::CUDAPlace& place, const gpuStream_t& stream) {
     auto place_it = cuda_allocators_.find(place);
     PADDLE_ENFORCE_NE(place_it, cuda_allocators_.end(),
@@ -292,18 +284,18 @@ class AllocatorFacadePrivate {
                           const gpuStream_t& stream, size_t size) {
     std::shared_ptr<Allocator> cuda_allocator;
     try {
-      cuda_allocator = GetCUDAAllocator(place, stream);
+      cuda_allocator = GetAllocator(place, stream);
     } catch (platform::EnforceNotMet& err) {
       VLOG(9) << "No allocator found for stream " << stream << " in place "
               << place << " , build a new one";
       std::unique_lock<std::mutex> lock(cuda_init_mutex_);
       try {
-        cuda_allocator = GetCUDAAllocator(place, stream);
+        cuda_allocator = GetAllocator(place, stream);
         VLOG(9) << "Other thread had build a new allocator for stream "
                 << stream << " in place " << place;
       } catch (platform::EnforceNotMet& err) {
         InitStreamSafeCUDAAllocator(place, stream);
-        cuda_allocator = GetCUDAAllocator(place, stream);
+        cuda_allocator = GetAllocator(place, stream);
       } catch (...) {
         throw;
       }
@@ -595,7 +587,7 @@ class AllocatorFacadePrivate {
 
   void WrapStreamSafeCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
     const std::shared_ptr<Allocator>& underlying_allocator =
-        GetCUDAAllocator(p, stream);
+        GetAllocator(p, stream);
     cuda_allocators_[p][stream] =
         std::make_shared<StreamSafeCUDAAllocator>(underlying_allocator, stream);
   }
@@ -749,7 +741,8 @@ std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place)) {
+  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
+      size > 0 && FLAGS_use_system_allocator == false) {
     return Alloc(BOOST_GET_CONST(platform::CUDAPlace, place),
                  m_->GetDefaultStream(), size);
   }
@@ -759,7 +752,8 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place)) {
+  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
+      FLAGS_use_system_allocator == false) {
     return Release(BOOST_GET_CONST(platform::CUDAPlace, place),
                    m_->GetDefaultStream());
   }
@@ -770,6 +764,13 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
+      FLAGS_use_system_allocator == false) {
+    return m_->GetAllocator(BOOST_GET_CONST(platform::CUDAPlace, place),
+                            m_->GetDefaultStream());
+  }
+#endif
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
@@ -795,7 +796,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::CUDAPlace& place,
           "multi-stream 'Alloca' function. "
           "To enable it, you can enter 'export "
           "FLAGS_use_stream_safe_cuda_allocator=true' in the terminal."));
-  if (size > 0) {
+  if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     return m_->CUDAAlloc(place, stream, size);
   } else {
     return m_->GetAllocator(place, size)->Allocate(size);
@@ -811,7 +812,7 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
           "multi-stream 'Release' function. "
           "To enable it, you can enter 'export "
           "FLAGS_use_stream_safe_cuda_allocator=true' in the terminal."));
-  return m_->GetCUDAAllocator(place, stream)->Release(place);
+  return m_->GetAllocator(place, stream)->Release(place);
 }
 
 void AllocatorFacade::RecordStream(Allocation* allocation,
