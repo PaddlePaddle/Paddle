@@ -34,6 +34,8 @@ class DeviceContext {
 
   virtual ~DeviceContext() {}
 
+  virtual void Wait() {}
+
  protected:
   Allocator* allocator_{nullptr};
 };

@@ -40,6 +40,8 @@ void ROCMContext::Wait(hipStream_t stream) const {
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
+void ROCMContext::Wait() { Wait(this->stream()); }
+
 CudnnWorkspaceHandle::CudnnWorkspaceHandle(pten::Allocator* allocator,
                                            std::mutex* mtx)
     : allocator_(allocator), mtx_(mtx) {}

@@ -199,6 +199,8 @@ class ROCMContext : public DeviceContext {
 
   void Wait(hipStream_t stream) const;
 
+  void Wait() override;
+
   Place GetPlace() const noexcept override { return place_; }
 
   rocblas_handle cublas_handle() const { return cublas_handle_; }

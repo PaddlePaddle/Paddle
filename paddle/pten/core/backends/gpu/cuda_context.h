@@ -224,6 +224,8 @@ class CUDAContext : public DeviceContext {
 
   void Wait(cudaStream_t stream) const;
 
+  void Wait() override;
+
   Place GetPlace() const noexcept override { return place_; }
 
   cublasHandle_t cublas_handle() const;

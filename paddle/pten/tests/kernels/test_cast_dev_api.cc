@@ -16,6 +16,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/include/manipulation.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -47,18 +48,14 @@ TEST(DEV_API, cast) {
     dense_x_data[i] = i * 1.0;
     sum += i * 1.0;
   }
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   pten::DataType out_dtype = pten::DataType::FLOAT64;
   pten::DataType in_dtype = pten::DataType::FLOAT32;
   // 2. test API
   auto out = pten::Cast<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      out_dtype,
-      in_dtype);
+      *(static_cast<pten::CPUContext*>(dev_ctx)), dense_x, out_dtype, in_dtype);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

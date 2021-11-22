@@ -16,7 +16,7 @@
 
 namespace pten {
 
-void XPUContext::Wait() const {
+void XPUContext::Wait() {
   int ret = xpu_set_device(place_.device);
   PADDLE_ENFORCE_EQ(ret,
                     XPU_SUCCESS,

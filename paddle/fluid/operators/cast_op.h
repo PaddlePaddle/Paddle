@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/transform.h"
 
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/manipulation.h"
@@ -75,7 +76,10 @@ class CastOpKernel : public framework::OpKernel<InT> {
         static_cast<framework::proto::VarType::Type>(in_dtype));
 
     // call new kernel
-    pten::Cast<InT>(dev_ctx, *pt_x.get(), pt_out_dtype, pt_in_dtype,
+    auto* pten_dev_ctx = reinterpret_cast<
+        typename framework::ConvertContextType<DeviceContext>::TYPE*>(
+        framework::ConvertContext(dev_ctx));
+    pten::Cast<InT>(*pten_dev_ctx, *pt_x.get(), pt_out_dtype, pt_in_dtype,
                     pt_out.get());
   }
 };

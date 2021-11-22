@@ -52,7 +52,7 @@ class XPUContext : public DeviceContext {
   void SetXpuVersion(XPUVersion ver) { xpu_version_ = ver; }
 
   /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const;
+  void Wait() override;
 
 #ifdef PADDLE_WITH_XPU_BKCL
   /*! \brief  Return bkcl context. */

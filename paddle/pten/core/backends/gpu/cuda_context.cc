@@ -57,6 +57,8 @@ void CUDAContext::Wait(cudaStream_t stream) const {
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
+void CUDAContext::Wait() { Wait(this->stream()); }
+
 cublasHandle_t CUDAContext::cublas_handle() const { return cublas_handle_; }
 
 CudnnWorkspaceHandle::CudnnWorkspaceHandle(pten::Allocator* allocator,

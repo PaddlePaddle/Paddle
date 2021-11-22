@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/backends/host/context.h"
+#include "paddle/pten/core/context.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
@@ -120,6 +120,53 @@ struct Transform<platform::CUDADeviceContext> {
   template <typename InputIter1, typename InputIter2, typename OutputIter,
             typename BinaryOperation>
   void operator()(const platform::CUDADeviceContext& context, InputIter1 first1,
+                  InputIter1 last1, InputIter2 first2, OutputIter result,
+                  BinaryOperation op) {
+    auto place = context.GetPlace();
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in GPU place."));
+#ifdef __HIPCC__
+    thrust::transform(thrust::hip::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first1),
+                      details::CastToCUDATransformIterator(last1),
+                      details::CastToCUDATransformIterator(first2),
+                      details::CastToCUDATransformIterator(result), op);
+#else
+    thrust::transform(thrust::cuda::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first1),
+                      details::CastToCUDATransformIterator(last1),
+                      details::CastToCUDATransformIterator(first2),
+                      details::CastToCUDATransformIterator(result), op);
+#endif
+  }
+};
+
+template <>
+struct Transform<pten::CUDAContext> {
+  template <typename InputIter, typename OutputIter, typename UnaryOperation>
+  void operator()(const pten::CUDAContext& context, InputIter first,
+                  InputIter last, OutputIter result, UnaryOperation op) {
+    auto place = context.GetPlace();
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in GPU place."));
+#ifdef __HIPCC__
+    thrust::transform(thrust::hip::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first),
+                      details::CastToCUDATransformIterator(last),
+                      details::CastToCUDATransformIterator(result), op);
+#else
+    thrust::transform(thrust::cuda::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first),
+                      details::CastToCUDATransformIterator(last),
+                      details::CastToCUDATransformIterator(result), op);
+#endif
+  }
+
+  template <typename InputIter1, typename InputIter2, typename OutputIter,
+            typename BinaryOperation>
+  void operator()(const pten::CUDAContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();
