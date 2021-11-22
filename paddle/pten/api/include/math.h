@@ -26,5 +26,9 @@ Tensor mean(const Tensor& x);
 Tensor add(const Tensor& x, const Tensor& y);
 
 Tensor subtract(const Tensor& x, const Tensor& y);
+
+Tensor subtract(const Tensor& x, const Tensor& y);
+
+Tensor divide(const Tensor& x, const Tensor& y);
 }  // namespace experimental
 }  // namespace paddle
