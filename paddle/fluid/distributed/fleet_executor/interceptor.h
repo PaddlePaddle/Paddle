@@ -62,6 +62,9 @@ class Interceptor {
 
   DISABLE_COPY_AND_ASSIGN(Interceptor);
 
+ protected:
+  TaskNode* GetTaskNode() const { return node_; }
+
  private:
   // pool the local mailbox, parse the Message
   void PoolTheMailbox();
@@ -114,19 +117,30 @@ class InterceptorFactory {
                                              int64_t id, TaskNode* node);
 };
 
+template <typename InterceptorClass>
+std::unique_ptr<Interceptor> CreatorInterceptor(int64_t id, TaskNode* node) {
+  return std::make_unique<InterceptorClass>(id, node);
+}
+
 #define REGISTER_INTERCEPTOR(interceptor_type, interceptor_class)          \
-  std::unique_ptr<Interceptor> CreatorInterceptor_##interceptor_type(      \
-      int64_t id, TaskNode* node) {                                        \
-    return std::make_unique<interceptor_class>(id, node);                  \
-  }                                                                        \
   class __RegisterInterceptor_##interceptor_type {                         \
    public:                                                                 \
     __RegisterInterceptor_##interceptor_type() {                           \
       InterceptorFactory::Register(#interceptor_type,                      \
-                                   CreatorInterceptor_##interceptor_type); \
+                                   CreatorInterceptor<interceptor_class>); \
     }                                                                      \
+    void Touch() {}                                                        \
   };                                                                       \
-  __RegisterInterceptor_##interceptor_type g_register_##interceptor_type;
+  __RegisterInterceptor_##interceptor_type g_register_##interceptor_type;  \
+  int TouchRegisterInterceptor_##interceptor_type() {                      \
+    g_register_##interceptor_type.Touch();                                 \
+    return 0;                                                              \
+  }
+
+#define USE_INTERCEPTOR(interceptor_type)                   \
+  extern int TouchRegisterInterceptor_##interceptor_type(); \
+  UNUSED static int use_interceptor_##interceptor_type =    \
+      TouchRegisterInterceptor_##interceptor_type();
 
 }  // namespace distributed
 }  // namespace paddle

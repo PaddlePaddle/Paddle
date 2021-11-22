@@ -309,7 +309,7 @@ class TestException(unittest.TestCase):
         feed[1]['data'][0] = np.nan
         self.assertRaises(RuntimeError, self.run_new_executor, feed)
 
-    def test_scope(self):
+    def test_scope_find_temp_var(self):
         feed = [{
             'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
             'data': np.array([1, 2, 3]).astype(np.float32),
@@ -318,7 +318,7 @@ class TestException(unittest.TestCase):
             'data': np.array([2, 2, 2]).astype(np.float32),
         }]
         self.run_new_executor(feed)
-        self.assertIsNotNone(paddle.static.global_scope().find_var(
+        self.assertIsNone(paddle.static.global_scope().find_var(
             self.fetch_vars.name))
 
 
