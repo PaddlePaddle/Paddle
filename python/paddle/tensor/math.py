@@ -2641,7 +2641,7 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
     
     Returns:
         Tensor: The output tensor with same dtype with x.
-    
+
     Examples:
         .. code-block:: python
 
