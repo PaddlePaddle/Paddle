@@ -31,6 +31,9 @@ ENDIF()
 
 if (WIN32)
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
+  # block warning about inline function
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4710 /wd4711")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4710 /wd4711")
 else()
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
 endif ()
@@ -60,6 +63,12 @@ if(WIN32)
                       -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
                       -DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}
                       -DBUILD_SHARED_LIBS=OFF
+                      -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                      -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                      -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                      -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                      -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                      -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                       ${OPTIONAL_CACHE_ARGS}
       TEST_COMMAND      ""
       BUILD_BYPRODUCTS ${XXHASH_LIBRARIES}
