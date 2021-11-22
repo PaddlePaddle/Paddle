@@ -79,6 +79,7 @@ class AutoScanTest(unittest.TestCase):
         abs_dir = os.path.abspath(os.path.dirname(__file__))
         self.cache_dir = os.path.join(abs_dir,
                                       str(self.__module__) + '_cache_dir')
+        self.available_passes_in_framework = set()
         self.num_ran_programs = 0
         self.num_invalid_programs = 0
         self.num_skipped_tests = 0
@@ -114,6 +115,8 @@ class AutoScanTest(unittest.TestCase):
         '''
         pred_config.set_model_buffer(model, len(model), params, len(params))
         predictor = paddle_infer.create_predictor(pred_config)
+        self.available_passes_in_framework = self.available_passes_in_framework | set(
+            pred_config.pass_builder().all_passes())
 
         for name, _ in prog_config.inputs.items():
             input_tensor = predictor.get_input_handle(name)
@@ -281,6 +284,8 @@ class PassAutoScanTest(AutoScanTest):
     def check_op_version(self):
         status = True
         for pass_name in self.passes:
+            if pass_name not in self.available_passes_in_framework:
+                continue
             if not PassVersionChecker.IsCompatible(pass_name):
                 self.fail_log('{} version check failed.'.format(pass_name))
                 status = False
