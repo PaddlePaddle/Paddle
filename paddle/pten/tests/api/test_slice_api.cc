@@ -19,12 +19,6 @@ limitations under the License. */
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
-
 namespace pten {
 namespace tests {
 
