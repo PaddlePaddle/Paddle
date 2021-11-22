@@ -33,15 +33,15 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_registry.h" //TODO
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
-//#include "xpu/kernel/cluster_header.h"
-//#include "xpu/kernel/debug.h"
-//#include "xpu/kernel/math.h"
-//#include <xpu/runtime.h>
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
+#include <xpu/runtime.h>
 
 
 namespace paddle {

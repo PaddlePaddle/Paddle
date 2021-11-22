@@ -95,7 +95,7 @@ macro(compile_kernel COMPILE_ARGS)
   #-Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow
   set(XPU_CXX_INCLUDES  -I/workspace/paddle/Paddle/build -I/workspace/paddle/Paddle/paddle/fluid/framework/io -I/workspace/paddle/Paddle/build/third_party/install/zlib/include -I/workspace/paddle/Paddle/build/third_party/install -I/workspace/paddle/Paddle/build/third_party/install/gflags/include -I/workspace/paddle/Paddle/build/third_party/install/glog/include -I/workspace/paddle/Paddle/build/third_party/boost/src/extern_boost -I/workspace/paddle/Paddle/build/third_party/eigen3/src/extern_eigen3 -I/workspace/paddle/Paddle/build/third_party/threadpool/src/extern_threadpool -I/workspace/paddle/Paddle/build/third_party/dlpack/src/extern_dlpack/include -I/workspace/paddle/Paddle/build/third_party/install/xxhash/include -I/workspace/paddle/Paddle/build/third_party/install/warpctc/include -I/workspace/paddle/Paddle/build/third_party/install/openblas/include -I/workspace/paddle/Paddle/build/third_party/install/protobuf/include -I/usr/include/python3.7m -I/usr/local/lib/python3.7/dist-packages/numpy/core/include -I/workspace/paddle/Paddle/build/third_party/pybind/src/extern_pybind/include -I/workspace/paddle/Paddle/build/third_party/install/gtest/include -I/workspace/paddle/Paddle/build/third_party/install/gloo/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include/xbyak -I/workspace/paddle/Paddle/build/third_party/install/cryptopp/include -I/workspace/paddle/Paddle/build/third_party/pocketfft/src -I/workspace/paddle/Paddle)
   #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -mavx -O3 -DNDEBUG )
-  set(XPU_CXX_FLAGS  -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
+  set(XPU_CXX_FLAGS  -Wno-error=pessimizing-move -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer  -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
   #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
   set(XPU_CXX_DEFINES -DHPPL_STUB_FUNC -DPADDLE_DISABLE_PROFILER -DPADDLE_DLL_EXPORT -DPADDLE_USE_OPENBLAS -DPADDLE_USE_PTHREAD_BARRIER -DPADDLE_USE_PTHREAD_SPINLOCK -DPADDLE_VERSION=0.0.0 -DPADDLE_VERSION_INTEGER=0 -DPADDLE_WITH_AVX -DPADDLE_WITH_CRYPTO -DPADDLE_WITH_POCKETFFT -DPADDLE_WITH_SSE3 -DPADDLE_WITH_TESTING -DPADDLE_WITH_XBYAK -DPADDLE_WITH_XPU2 -DXBYAK64 -DXBYAK_NO_OP_NAMES)
 
@@ -105,8 +105,8 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-    # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11
-    ${XPU_CLANG} --sysroot=${CXX_DIR}   -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
+    # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
+    ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
         -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.bin.o.sec /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
         --xpu-device-only -c -v 
     COMMAND
@@ -133,8 +133,8 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-    # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11
-    ${XPU_CLANG} --sysroot=${CXX_DIR}   -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
+    # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
+    ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
         -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.host.o /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
         --xpu-host-only -c -v 
     # COMMAND
