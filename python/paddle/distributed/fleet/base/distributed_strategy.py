@@ -469,12 +469,21 @@ class DistributedStrategy(object):
     def sparse_table_configs(self, configs):
         from google.protobuf.descriptor import FieldDescriptor
         table_param = self.strategy.downpour_table_param
-        def set_table_config(msg, config_name, configs):
+        def set_table_config(msg, config_name, configs, index=0):
             for field in msg.DESCRIPTOR.fields:
                 name = config_name + "." + field.name
                 if field.type == FieldDescriptor.TYPE_MESSAGE:
                     print("message:", name)
-                    set_table_config(getattr(msg, field.name), name, configs)
+                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                        if name + ".num" not in configs:
+                            continue
+                        num = configs[name + ".num"]
+                        print("message num:", name, num)
+                        for i in range(num):
+                            data = getattr(msg, field.name).add()
+                            set_table_config(data, name, configs, i)
+                    else:
+                        set_table_config(getattr(msg, field.name), name, configs)
                 else:
                     print("not message:", name)
                     if name not in configs:
@@ -482,9 +491,15 @@ class DistributedStrategy(object):
                     if field.label == FieldDescriptor.LABEL_REPEATED:
                         getattr(msg, field.name).extend(configs[name])
                     else:
-                        setattr(msg, field.name, configs[name])
+                        if type(configs[name]) == list:
+                            setattr(msg, field.name, configs[name][index])
+                        else:
+                            setattr(msg, field.name, configs[name])
                 
-        set_table_config(table_param, "table_parameters", configs)
+        if not configs:
+            print("table configs is empty")
+        else:
+            set_table_config(table_param, "table_parameters", configs)
  
     @property
     def amp(self):
