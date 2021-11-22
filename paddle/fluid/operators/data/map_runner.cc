@@ -165,7 +165,7 @@ void MapRunner::Shutdown() {
   }
 
   // set running_ as false to exit map thread, then release thread pool
-  running_ = false;
+  running_.store(false);
   // FIXME: ThreadPool doesn't have shutdown method
   delete &thread_pool_;
 }

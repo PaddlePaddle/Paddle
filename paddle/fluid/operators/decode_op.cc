@@ -99,7 +99,8 @@ or 1 dimensional Gray Tensor. Optionally converts the image to the
 desired format. The values of the output tensor are uint8 between 0 
 and 255.
 )DOC");
-    AddAttr<int>("num_threads", "Path of the file to be readed.").SetDefault(2);
+    AddAttr<int>("num_threads", "Path of the file to be readed.")
+      .SetDefault(2);
     AddAttr<std::string>(
         "mode",
         "(string, default \"unchanged\"), The read mode used "

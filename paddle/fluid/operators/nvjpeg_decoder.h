@@ -92,7 +92,7 @@ class NvjpegDecoder {
 
     void ParseOutputInfo(
         const uint8_t* bit_stream, size_t bit_len, LoDTensor* out,
-        nvjpegImage_t* out_image, framework::ExecutionContext ctx) {
+        nvjpegImage_t* out_image, framework::ExecutionContext& ctx) {
       int components;
       nvjpegChromaSubsampling_t subsampling;
       int widths[NVJPEG_MAX_COMPONENT];
@@ -161,7 +161,7 @@ class NvjpegDecoder {
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(cuda_stream_));
     }
 
-    void Run(const uint8_t* bit_stream, size_t bit_len, LoDTensor* out, const framework::ExecutionContext& ctx) {
+    void Run(const uint8_t* bit_stream, size_t bit_len, LoDTensor* out, framework::ExecutionContext& ctx) {
       nvjpegImage_t image;
       ParseOutputInfo(bit_stream, bit_len, out, &image, ctx);
       Decode(bit_stream, bit_len, &image);

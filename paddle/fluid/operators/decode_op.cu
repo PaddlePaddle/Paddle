@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
-#include "paddle/fluid/operators/nvjpeg_decoder.h"
+#include "paddle/fluid/operators/nvjpeg_decoder_thread_pool.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +29,8 @@ static std::vector<cudaStream_t> nvjpeg_streams;
 static nvjpegHandle_t batch_nvjpeg_handle = nullptr;
 static std::unique_ptr<::ThreadPool> pool_;
 
-static NvjpegDecoder* nvjpeg_decoder = nullptr;
+// static NvjpegDecoder* nvjpeg_decoder = nullptr;
+static NvjpegDecoderThreadPool* decode_pool = nullptr;
 
 void batch_InitNvjpegImage(nvjpegImage_t* img) {
   for (int c = 0; c < NVJPEG_MAX_COMPONENT; c++) {
@@ -42,13 +43,13 @@ template <typename T>
 class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start";
-    int num_threads_ = ctx.Attr<int>("num_threads");
+    int num_threads = ctx.Attr<int>("num_threads");
+    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads;
     auto mode = ctx.Attr<std::string>("mode");
     
-    // multi-phrase decode
-    if (!nvjpeg_decoder) {
-      nvjpeg_decoder = new NvjpegDecoder(mode);
+    // multi-phrase decode thread pool
+    if (!decode_pool) {
+      decode_pool = new NvjpegDecoderThreadPool(num_threads, mode);
     }
 
     const framework::LoDTensorArray* inputs =
@@ -61,10 +62,39 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < inputs->size(); i++) {
       const framework::LoDTensor x = inputs->at(i);
       auto* x_data = x.data<T>();
+      size_t x_numel = static_cast<size_t>(x.numel());
 
-      nvjpeg_decoder->Run(x_data, static_cast<size_t>(x.numel()),
-                          &out_array[i], ctx);
+      NvjpegDecodeWork work = {
+        .bit_stream = x_data,
+        .bit_len = x_numel,
+        .tensor = &out_array[i],
+        .ctx = ctx
+      };
+      decode_pool->AddWork(std::make_shared<NvjpegDecodeWork>(work));
     }
+
+    decode_pool->RunAll(true);
+
+    // // multi-phrase decode single thread
+    // if (!nvjpeg_decoder) {
+    //   nvjpeg_decoder = new NvjpegDecoder(mode);
+    // }
+    //
+    // const framework::LoDTensorArray* inputs =
+    //     ctx.Input<framework::LoDTensorArray>("X");
+    //
+    // auto* out = ctx.OutputVar("Out");
+    // auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
+    // out_array.resize(inputs->size());
+    //
+    // for (size_t i = 0; i < inputs->size(); i++) {
+    //   const framework::LoDTensor x = inputs->at(i);
+    //   auto* x_data = x.data<T>();
+    //
+    //   nvjpeg_decoder->Run(x_data, static_cast<size_t>(x.numel()),
+    //                       &out_array[i], &ctx);
+    // }
+
     // // Create nvJPEG handle
     // if (batch_nvjpeg_handle == nullptr) {
     //   nvjpegStatus_t create_status =

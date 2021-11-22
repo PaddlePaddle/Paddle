@@ -955,9 +955,9 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
         return _C_ops.decode(x, "mode", mode)
 
     inputs = {'X': x}
-    attrs = {"mode": mode, "num_theads": num_threads}
+    attrs = {"mode": mode, "num_threads": num_threads}
 
-    helper = LayerHelper("image_decode", **locals())
+    helper = LayerHelper("decode", **locals())
     out = helper.create_variable(
         name=unique_name.generate("image_decode"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
