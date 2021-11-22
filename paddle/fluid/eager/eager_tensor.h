@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <Python.h>
 // framework deps
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/pten_utils.h"
