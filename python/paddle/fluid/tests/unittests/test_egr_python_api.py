@@ -33,10 +33,23 @@ class EagerScaleTestCase(unittest.TestCase):
             print(tensor)
             self.assertEqual(tensor.shape, [4, 16, 16, 32])
             self.assertEqual(tensor.stop_gradient, True)
-            tensor.stop_gradient = False
-            self.assertEqual(tensor.stop_gradient, False)
-            tensor.stop_gradient = True
-            self.assertEqual(tensor.stop_gradient, False)
+
+    def test_retain_grad_and_run_backward(self):
+        with eager_guard():
+            paddle.set_device("cpu")
+
+            input_data = np.ones([4, 16, 16, 32]).astype('float32')
+            data_eager = paddle.to_tensor(input_data, 'float32',
+                                          core.CPUPlace(), False)
+
+            grad_data = np.ones([4, 16, 16, 32]).astype('float32')
+            grad_eager = paddle.to_tensor(grad_data, 'float32', core.CPUPlace())
+
+            core.eager.retain_grad_for_tensor(data_eager)
+
+            for i in range(10):
+                out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
+                core.eager.run_backward([out_eager], [grad_eager], False)
 
 
 class EagerDtypeTestCase(unittest.TestCase):
@@ -77,6 +90,11 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
             self.assertEqual(tensor.persistable, False)
             self.assertTrue(tensor.place.is_cpu_place())
             self.assertEqual(tensor._place_str, 'CPUPlace')
+            self.assertEqual(tensor.stop_gradient, True)
+            tensor.stop_gradient = False
+            self.assertEqual(tensor.stop_gradient, False)
+            tensor.stop_gradient = True
+            self.assertEqual(tensor.stop_gradient, True)
 
 
 if __name__ == "__main__":
