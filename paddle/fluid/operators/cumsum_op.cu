@@ -25,7 +25,8 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
-
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/operators/math/inclusive_scan.h"
 using Tensor = paddle::framework::Tensor;
 using LoDTensor = paddle::framework::LoDTensor;
 
@@ -190,7 +191,8 @@ class CumCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-
+    auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
@@ -213,25 +215,37 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     // Use thrust for parallel acceleration when the input size is equal to the
     // length of the ‘axis’ dimension.
     if (size == out_dims[axis]) {
+      platform::CUDAGraphCaptureModeGuard guard;
       if (reverse) {
         thrust::device_ptr<const T> dev_ptr =
             thrust::device_pointer_cast(in_data);
         thrust::device_vector<T> vec(dev_ptr, dev_ptr + size);
         if (exclusive) {
-          thrust::exclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
+          const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+          thrust::exclusive_scan(exec_policy, vec.rbegin(), vec.rend(),
                                  out_data);
+          printf("1................");
         } else {
-          thrust::inclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
+          const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+          thrust::inclusive_scan(exec_policy, vec.rbegin(), vec.rend(),
                                  out_data);
+          printf("2.................");
         }
-        thrust::reverse(thrust::device, out_data, out_data + size);
+        const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+        thrust::reverse(exec_policy, out_data, out_data + size);
       } else {
         if (exclusive) {
-          thrust::exclusive_scan(thrust::device, in_data, in_data + size,
+          const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+          thrust::exclusive_scan(exec_policy, in_data, in_data + size,
                                  out_data);
+          printf("3...............");
         } else {
-          thrust::inclusive_scan(thrust::device, in_data, in_data + size,
-                                 out_data);
+    
+          math::InclusiveScan<T>(in_data, out_data, 1, size, 1, 0, cub::Sum(), false, dev_ctx);
+          // const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+          // thrust::inclusive_scan(exec_policy, in_data, in_data + size,
+          //                       out_data);
+          printf("4...............");
         }
       }
       return;
@@ -253,7 +267,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     dim3 blocks(32, 8);
     dim3 transpose_grids((width + tile_size - 1) / tile_size,
                          (height + tile_size - 1) / tile_size);
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    // auto& dev_ctx = context.template device_context<DeviceContext>();
     Tensor tmp;
     tmp.Resize(out_dims);
     auto* tmp_data = tmp.mutable_data<T>(context.GetPlace());

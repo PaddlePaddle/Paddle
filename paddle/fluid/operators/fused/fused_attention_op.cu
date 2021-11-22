@@ -410,9 +410,12 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         *attn_dropout_out, *qk_out, *src_mask_out, *d_fmha_out, d_qktv_out,
         d_attn_dropout_out, d_softmax_out, d_src_mask_out, d_qk_out,
         d_transpose_out_2, nullptr, d_qkv_bias_out);
+
+    auto& dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
     cudaMemcpyAsync(d_qkv_out_data, d_qkv_bias_out_data,
                     bsz_seq * 3 * num_head * dim_head * sizeof(T),
-                    cudaMemcpyDeviceToDevice);
+                    cudaMemcpyDeviceToDevice, dev_ctx.stream());
 
     if (pre_layer_norm) {
       auto *ln_mean = ctx.Input<Tensor>("LnMean");
