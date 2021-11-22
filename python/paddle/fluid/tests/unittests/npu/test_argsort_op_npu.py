@@ -17,9 +17,8 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
-# sys.path.append("..")
-# from op_test import OpTest
-from paddle.fluid.tests.unittests.op_test import OpTest
+sys.path.append("..")
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -210,7 +209,7 @@ class TestArgsortOpDescendingAxisNeg2NPUFP32(TestArgsortOpAxisNeg2NPUFP32):
         self.descending = True
 
 
-@unittest.skipIf(False, "tmp")
+# test cases for int64
 class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
     def setUp(self):
         self.set_npu()
@@ -241,30 +240,22 @@ class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
     def set_npu(self):
         self.__class__.use_npu = True
 
-    # def test_check_grad(self):
-    #     self.check_grad_with_place(
-    #         self.place, ["X"], "Out", max_relative_error=0.03)
 
-
-@unittest.skipIf(False, "tmp")
 class TestArgsortOpAxis1NPUINT64(TestArgsortOpAxis0NPUINT64):
     def init_axis(self):
         self.axis = 1
 
 
-@unittest.skipIf(False, "tmp")
 class TestArgsortOpAxis2NPUINT64(TestArgsortOpAxis0NPUINT64):
     def init_axis(self):
         self.axis = 2
 
 
-@unittest.skipIf(False, "tmp")
 class TestArgsortOpAxisNeg1NPUINT64(TestArgsortOpAxis0NPUINT64):
     def init_axis(self):
         self.axis = -1
 
 
-@unittest.skipIf(False, "tmp")
 class TestArgsortOpAxisNeg2NPUINT64(TestArgsortOpAxis0NPUINT64):
     def init_axis(self):
         self.axis = -2

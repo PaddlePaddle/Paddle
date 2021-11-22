@@ -46,37 +46,15 @@ static void CastToInt64(const framework::ExecutionContext& ctx,
       .Run(stream);
 }
 
-template <typename T>
-static void TranposeNPU_2(const framework::ExecutionContext& ctx,
-                          const aclrtStream& stream, std::vector<int64_t>* perm,
-                          const Tensor& in, Tensor* out) {
-  NpuOpRunner runner;
-  runner.SetType("Transpose")
-      .AddInput(in)
-      .AddInput(std::move(*perm))
-      .AddOutput(*out)
-      .Run(stream);
-}
-
-static void CastToFP32_2(const framework::ExecutionContext& ctx,
-                         const aclrtStream& stream, const Tensor& in,
-                         Tensor* out) {
+static void CastToFP32(const framework::ExecutionContext& ctx,
+                       const aclrtStream& stream, const Tensor& in,
+                       Tensor* out) {
+  out->mutable_data<float>(ctx.GetPlace());
   NpuOpRunner runner;
   runner.SetType("Cast")
       .AddInput(in)
       .AddOutput(*out)
       .AddAttr("dst_type", ACL_FLOAT)
-      .Run(stream);
-}
-
-static void CastToInt64_2(const framework::ExecutionContext& ctx,
-                          const aclrtStream& stream, const Tensor& in,
-                          Tensor* out) {
-  NpuOpRunner runner;
-  runner.SetType("Cast")
-      .AddInput(in)
-      .AddOutput(*out)
-      .AddAttr("dst_type", ACL_INT64)
       .Run(stream);
 }
 
@@ -101,28 +79,21 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
     indices_tmp.Resize(indices->dims());
 
     if (input->type() == framework::proto::VarType::INT64) {
-      LOG(WARNING) << "input->type(): " << input->type();
-
       Tensor input_fp32(framework::proto::VarType::FP32);
       input_fp32.Resize(input->dims());
-      input_fp32.mutable_data<float>(ctx.GetPlace());
-      CastToFP32_2(ctx, stream, *input, &input_fp32);
+      CastToFP32(ctx, stream, *input, &input_fp32);
 
       Tensor output_fp32(framework::proto::VarType::FP32);
       output_fp32.Resize(output->dims());
-      output_fp32.mutable_data<float>(ctx.GetPlace());
 
       if (axis == -1 || axis + 1 == in_dims.size()) {
-        LOG(WARNING) << "axis: " << axis;
-
-        // output->mutable_data<T>(ctx.GetPlace());
+        output_fp32.mutable_data<float>(ctx.GetPlace());
         indices_tmp.mutable_data<int32_t>(ctx.GetPlace());
         const auto& runner =
             NpuOpRunner("Sort", {input_fp32}, {output_fp32, indices_tmp}, attr);
         runner.Run(stream);
 
-        output->mutable_data<T>(ctx.GetPlace());
-        CastToInt64_2(ctx, stream, output_fp32, output);
+        CastToInt64(ctx, stream, output_fp32, output);
       } else {
         std::vector<int64_t> perm;
         for (int64_t i = 0; i < in_dims.size(); i++) {
@@ -136,14 +107,9 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         }
         auto trans_dims = framework::make_ddim(shape);
 
-        LOG(WARNING) << "input->type(): " << input->type();
-
         Tensor trans_input(input_fp32.type());
         trans_input.Resize(trans_dims);
-        trans_input.mutable_data<float>(ctx.GetPlace());
-        TranposeNPU_2<T>(ctx, stream, &perm, input_fp32, &trans_input);
-
-        LOG(WARNING) << "input->type(): " << input->type();
+        TranposeNPU<float>(ctx, stream, &perm, input_fp32, &trans_input);
 
         Tensor trans_output(input_fp32.type());
         Tensor trans_indices(framework::proto::VarType::INT32);
@@ -154,12 +120,10 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
                                          {trans_output, trans_indices}, attr);
         runner.Run(stream);
 
-        TranposeNPU_2<T>(ctx, stream, &perm, trans_output, &output_fp32);
-        indices_tmp.mutable_data<int32_t>(ctx.GetPlace());
-        TranposeNPU_2<int32_t>(ctx, stream, &perm, trans_indices, &indices_tmp);
+        TranposeNPU<float>(ctx, stream, &perm, trans_output, &output_fp32);
+        TranposeNPU<int32_t>(ctx, stream, &perm, trans_indices, &indices_tmp);
 
-        output->mutable_data<T>(ctx.GetPlace());
-        CastToInt64_2(ctx, stream, output_fp32, output);
+        CastToInt64(ctx, stream, output_fp32, output);
       }
     } else {
       if (axis == -1 || axis + 1 == in_dims.size()) {
@@ -199,7 +163,6 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    // indices->mutable_data<int64_t>(ctx.GetPlace());
     CastToInt64(ctx, stream, indices_tmp, indices);
   }
 };
