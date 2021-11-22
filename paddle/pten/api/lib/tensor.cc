@@ -316,7 +316,9 @@ Tensor Tensor::copy_to(Backend backend, bool blocking) const {
   return experimental::copy_to(*this, backend, blocking);
 }
 
-Tensor Tensor::cast(const DataType &target_type) const { return Tensor(); }
+Tensor Tensor::cast(DataType target_type) const {
+  return experimental::cast(*this, target_type);
+}
 
 /* Part 6: Status utils methods */
 

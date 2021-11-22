@@ -373,7 +373,7 @@ class PD_DLL_DECL Tensor final {
    * @param target_type
    * @return Tensor
    */
-  Tensor cast(const DataType& target_type) const;
+  Tensor cast(DataType target_type) const;
 
   /* Part 6: Status utils methods */
 
