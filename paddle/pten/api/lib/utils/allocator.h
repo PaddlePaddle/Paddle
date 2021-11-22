@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/pten/api/lib/utils/place_utils.h"
 #include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/storage.h"
 
@@ -35,7 +36,7 @@ class DefaultAllocator : public pten::Allocator {
   Allocation Allocate(size_t bytes_size) override {
     paddle::memory::AllocationPtr a = memory::Alloc(place_, bytes_size);
     void* ptr = a->ptr();
-    return Allocation(ptr, a.release(), &Delete, place_);
+    return Allocation(ptr, a.release(), &Delete, ConvertToPtenPlace(place_));
   }
 
  private:

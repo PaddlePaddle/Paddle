@@ -17,13 +17,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/api/ext/place.h"
 #include "paddle/pten/common/backend.h"
+#include "paddle/pten/common/place.h"
 
 namespace paddle {
 namespace experimental {
 
-platform::Place ConvertExtPlaceToInnerPlace(PlaceType p);
+platform::Place ConvertExtPlaceToPlatformPlace(const PlaceType& p);
 
-PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p);
+Place ConvertExtPlaceToInnerPlace(PlaceType p);
+
+PlaceType ConvertInnerPlaceToExtPlace(const Place& p);
 
 Backend ConvertExtPlaceToBackend(PlaceType p);
 

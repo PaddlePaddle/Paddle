@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/platform/place.h"
+#include <memory>
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/common/place.h"
 
 namespace pten {
 
@@ -23,7 +25,7 @@ namespace pten {
 /// deallocation and construction/destruction of objects.
 class RawAllocator {
  public:
-  using Place = paddle::platform::Place;
+  using Place = paddle::experimental::Place;
 
   /// \brief Default destructor.
   virtual ~RawAllocator() = default;
@@ -54,7 +56,7 @@ class RawAllocator {
 /// support being inherited.
 class Allocation final {
  public:
-  using Place = paddle::platform::Place;
+  using Place = paddle::experimental::Place;
   using DeleterFnPtr = void (*)(void*);
 
   Allocation() = default;

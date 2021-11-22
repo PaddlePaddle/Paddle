@@ -112,8 +112,8 @@ void ScaleHost(const CUDAContext& dev_ctx,
                float bias,
                bool bias_after_scale,
                DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(scale.place()),
-                    false,
+  PADDLE_ENFORCE_EQ(scale.place().device_type(),
+                    paddle::experimental::DeviceType::kHost,
                     paddle::platform::errors::InvalidArgument(
                         "Scale argument isn't a host tensor."));
   eigen::Scale<CUDAContext, T>(dev_ctx,

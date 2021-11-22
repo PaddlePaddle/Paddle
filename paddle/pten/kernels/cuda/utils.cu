@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/pten/api/lib/utils/place_utils.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -25,8 +26,8 @@ void Copy(const CUDAContext& dev_ctx,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
-  const auto& src_place = src.place();
-  const auto& dst_place = dst->place();
+  const auto& src_place = ConvertToPlatformPlace(src.place());
+  const auto& dst_place = ConvertToPlatformPlace(dst->place());
 
   if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -34,7 +35,7 @@ void Copy(const CUDAContext& dev_ctx,
         "function in CPU mode."));
   }
 
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
+  VLOG(3) << "TensorCopy " << src.dims() << " from " << src_place << " to "
           << dst_place;
 
   dst->Resize(src.dims());
@@ -216,13 +217,9 @@ void Copy(const CUDAContext& dev_ctx,
       if (paddle::platform::is_same_place(ctx_place, src_place)) {
         paddle::memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-        paddle::platform::DeviceContextPool::Instance()
-            .Get(src.place())
-            ->Wait();
+        paddle::platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       } else if (paddle::platform::is_same_place(ctx_place, dst_place)) {
-        paddle::platform::DeviceContextPool::Instance()
-            .Get(src.place())
-            ->Wait();
+        paddle::platform::DeviceContextPool::Instance().Get(src_place)->Wait();
         paddle::memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {

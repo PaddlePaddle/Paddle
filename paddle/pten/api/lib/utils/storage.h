@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/pten/api/lib/utils/place_utils.h"
 #include "paddle/pten/core/storage.h"
 
 namespace paddle {
@@ -22,7 +23,9 @@ namespace experimental {
 
 class ExternalStorage : public pten::Storage {
  public:
-  ExternalStorage(void* ptr, size_t size, const paddle::platform::Place& place);
+  ExternalStorage(void* ptr,
+                  size_t size,
+                  const paddle::experimental::Place& place);
   ExternalStorage(const pten::intrusive_ptr<pten::Storage>& root,
                   size_t delta,
                   size_t size);
@@ -40,7 +43,7 @@ class ExternalStorage : public pten::Storage {
   }
 
   size_t size() const noexcept override { return size_; }
-  const paddle::platform::Place& place() const override {
+  const paddle::experimental::Place& place() const override {
     return data_.place();
   }
   bool OwnsMemory() const noexcept override { return false; }
@@ -59,7 +62,7 @@ class SharedStorage : public pten::Storage {
     data_ = pten::Allocation(
         reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(allocation->ptr()) +
                                 offset),
-        allocation->place());
+        ConvertToPtenPlace(allocation->place()));
     size_ = allocation->size();
   }
 
@@ -67,6 +70,10 @@ class SharedStorage : public pten::Storage {
   // system, we need to allow the uninitialized SharedStorage to exist,
   // and it can be removed after the compatibility phase is over in the future
   explicit SharedStorage(const paddle::platform::Place& place) {
+    data_ = pten::Allocation(nullptr, ConvertToPtenPlace(place));
+  }
+
+  explicit SharedStorage(const Place& place) {
     data_ = pten::Allocation(nullptr, place);
   }
 
@@ -76,7 +83,8 @@ class SharedStorage : public pten::Storage {
   // system, we need to allow the SharedStorage realloc,
   // and it can be removed after the compatibility phase is over in the future
   void Realloc(size_t n) override {
-    ResetAllocation(paddle::memory::AllocShared(place(), n), 0);
+    ResetAllocation(
+        paddle::memory::AllocShared(ConvertToPlatformPlace(place()), n), 0);
   }
 
   void Clear() override {
@@ -85,7 +93,7 @@ class SharedStorage : public pten::Storage {
   }
 
   size_t size() const noexcept override { return size_; }
-  const paddle::platform::Place& place() const override {
+  const paddle::experimental::Place& place() const override {
     return data_.place();
   }
   bool OwnsMemory() const noexcept override { return false; }
@@ -101,13 +109,13 @@ class SharedStorage : public pten::Storage {
     data_ = pten::Allocation(
         reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(allocation->ptr()) +
                                 offset),
-        allocation->place());
+        ConvertToPtenPlace(allocation->place()));
     size_ = allocation->size();
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
   void ResetAllocationPlace(const paddle::platform::Place& place) {
-    data_ = pten::Allocation(nullptr, place);
+    data_ = pten::Allocation(nullptr, ConvertToPtenPlace(place));
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
@@ -128,7 +136,9 @@ class TensorStorage : public paddle::memory::allocation::Allocation {
  public:
   explicit TensorStorage(pten::intrusive_ptr<pten::Storage> storage)
       : paddle::memory::allocation::Allocation(
-            storage->data(), storage->size(), storage->place()),
+            storage->data(),
+            storage->size(),
+            ConvertToPlatformPlace(storage->place())),
         storage_(std::move(storage)) {}
 
  private:

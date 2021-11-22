@@ -29,7 +29,8 @@ TEST(host_storage, internal) {
   const auto a = std::make_shared<FancyAllocator>();
   TensorStorage storage(a, size);
   CHECK_EQ(storage.size(), size);
-  CHECK(paddle::platform::is_cpu_place(storage.place()));
+  CHECK(storage.place().device_type() ==
+        paddle::experimental::DeviceType::kHost);
   CHECK(storage.OwnsMemory());
   CHECK(storage.allocator() == a);
   storage.Realloc(size + 100);

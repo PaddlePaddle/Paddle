@@ -31,6 +31,10 @@ enum class DeviceType : int8_t {
 
 const char* DeviceTypeStr(DeviceType type);
 
+inline std::ostream& operator<<(std::ostream& os, DeviceType& device_type) {
+  return os << std::string(DeviceTypeStr(device_type));
+}
+
 /// \brief The device is used to store hardware information. It has not yet
 /// stored information related to the math acceleration library.
 struct Device final {
@@ -64,6 +68,10 @@ struct Device final {
 
 inline bool operator==(const Device& lhs, const Device& rhs) noexcept {
   return (lhs.type_ == rhs.type_) && (lhs.id_ == rhs.id_);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Device& device) {
+  return os << device.DebugString();
 }
 
 }  // namespace experimental

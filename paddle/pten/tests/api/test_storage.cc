@@ -37,7 +37,7 @@ TEST(host_storage, external_stroage) {
   const size_t n{10};
   auto ex_storage = pten::make_intrusive<ExternalStorage>(in_storage, delta, n);
   CHECK_EQ(ex_storage->size(), n);
-  CHECK(paddle::platform::is_cpu_place(ex_storage->place()));
+  CHECK(ex_storage->place().device_type() == DeviceType::kHost);
   CHECK(!ex_storage->OwnsMemory());
   for (size_t i = delta; i < delta + n; ++i) {
     CHECK_EQ(data[i], static_cast<char>(i));
@@ -52,9 +52,9 @@ TEST(host_storage, external_vector) {
   const size_t delta{1};
   const size_t n{10};
   auto ex_storage = pten::make_intrusive<ExternalStorage>(
-      data.data(), n, paddle::platform::CPUPlace());
+      data.data(), n, Place(DeviceType::kHost));
   CHECK_EQ(ex_storage->size(), n);
-  CHECK(paddle::platform::is_cpu_place(ex_storage->place()));
+  CHECK(ex_storage->place().device_type() == DeviceType::kHost);
   CHECK(!ex_storage->OwnsMemory());
   for (size_t i = delta; i < delta + n; ++i) {
     CHECK_EQ(data[i], static_cast<char>(i));

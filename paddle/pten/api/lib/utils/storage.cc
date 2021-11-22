@@ -19,7 +19,7 @@ namespace experimental {
 
 ExternalStorage::ExternalStorage(void* ptr,
                                  size_t size,
-                                 const paddle::platform::Place& place)
+                                 const paddle::experimental::Place& place)
     : pten::Storage(pten::Allocation(ptr, place)), size_(size) {}
 
 ExternalStorage::ExternalStorage(const pten::intrusive_ptr<pten::Storage>& root,

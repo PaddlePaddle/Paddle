@@ -30,6 +30,16 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
   }
 }
 
+Backend TransToPtenBackend(const paddle::experimental::Place& place) {
+  if (place.device_type() == paddle::experimental::DeviceType::kHost) {
+    return Backend::CPU;
+  } else if (place.device_type() == paddle::experimental::DeviceType::kCuda) {
+    return Backend::CUDA;
+  } else {
+    return Backend::UNDEFINED;
+  }
+}
+
 paddle::experimental::DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype) {
   // Set the order of case branches according to the frequency with

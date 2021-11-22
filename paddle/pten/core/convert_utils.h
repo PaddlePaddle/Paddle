@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/common/place.h"
 
 // TODO(chenweihang): this file may need to be removed
 
@@ -33,6 +34,7 @@ using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
 Backend TransToPtenBackend(const paddle::platform::Place& place);
+Backend TransToPtenBackend(const paddle::experimental::Place& place);
 DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype);
 DataLayout TransToPtenDataLayout(const paddle::framework::DataLayout& layout);

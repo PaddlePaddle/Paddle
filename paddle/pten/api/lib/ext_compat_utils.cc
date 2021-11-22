@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/api/lib/ext_compat_utils.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace experimental {
 
-platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
+platform::Place ConvertExtPlaceToPlatformPlace(const PlaceType& p) {
   if (p == PlaceType::kCPU) {
     return platform::Place(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -34,10 +35,26 @@ platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
   return platform::Place();
 }
 
-PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
-  if (platform::is_cpu_place(p)) {
+Place ConvertExtPlaceToInnerPlace(PlaceType p) {
+  if (p == PlaceType::kCPU) {
+    return Place(DeviceType::kHost);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (p == PlaceType::kGPU) {
+    return Place(DeviceType::kCuda, platform::GetCurrentDeviceId());
+#endif
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Unsupported place type code(%d) when "
+                                        "casting enum place to paddle place.",
+                                        static_cast<int>(p)));
+  }
+  return {};
+}
+
+PlaceType ConvertInnerPlaceToExtPlace(const Place& p) {
+  if (p.device_type() == DeviceType::kHost) {
     return PlaceType::kCPU;
-  } else if (platform::is_gpu_place(p)) {
+  } else if (p.device_type() == DeviceType::kCuda) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     return PlaceType::kGPU;
 #endif
@@ -45,7 +62,7 @@ PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
     PADDLE_THROW(
         platform::errors::Unimplemented("Unsupported place type `%s` when "
                                         "casting paddle place to enum place.",
-                                        p));
+                                        p.DebugString()));
   }
   return PlaceType::kUNK;
 }

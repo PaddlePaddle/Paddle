@@ -17,12 +17,12 @@ limitations under the License. */
 #include <cstddef>
 
 #include "boost/intrusive_ptr.hpp"
+
+#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/utils/intrusive_ptr.h"
 #include "paddle/pten/core/utils/intrusive_ref_counter.h"
 #include "paddle/pten/core/utils/type_info.h"
-
-#include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/allocator.h"
 
 namespace pten {
 
@@ -31,7 +31,7 @@ namespace pten {
 /// all default copy operations to ensure the integrity of the package.
 class Storage : public intrusive_ref_counter<Storage> {
  public:
-  using Place = paddle::platform::Place;
+  using Place = paddle::experimental::Place;
   Storage() = default;
   Storage(const Storage&) = delete;
 
@@ -57,7 +57,7 @@ class Storage : public intrusive_ref_counter<Storage> {
 
 class TensorStorage : public Storage {
  public:
-  using Place = paddle::platform::Place;
+  using Place = paddle::experimental::Place;
 
   explicit TensorStorage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
   TensorStorage(const std::shared_ptr<Allocator>& a, size_t size)

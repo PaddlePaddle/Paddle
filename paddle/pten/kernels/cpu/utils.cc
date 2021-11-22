@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/cpu/utils.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/pten/api/lib/utils/place_utils.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 
@@ -25,10 +26,10 @@ void Copy(const CPUContext& dev_ctx,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
-  const auto& src_place = src.place();
-  const auto& dst_place = dst->place();
+  const auto& src_place = ConvertToPlatformPlace(src.place());
+  const auto& dst_place = ConvertToPlatformPlace(dst->place());
 
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
+  VLOG(3) << "TensorCopy " << src.dims() << " from " << src_place << " to "
           << dst_place;
 
   dst->Resize(src.dims());

@@ -89,7 +89,7 @@ TEST(EagerTensor, MemberFunction) {
   CHECK_EQ(et3.shape(), expected_dim);
   CHECK_EQ(et3.type(), paddle::experimental::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), paddle::experimental::DataLayout::NCHW);
-  CHECK(paddle::platform::is_cpu_place(et3.place()));
+  CHECK(et3.place().device_type() == paddle::experimental::DeviceType::kHost);
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();

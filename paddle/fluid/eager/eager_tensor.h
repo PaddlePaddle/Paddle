@@ -108,13 +108,21 @@ class EagerTensor final {
    * @param None
    * @return {Place}
    */
-  paddle::platform::Place place() const { return tensor_->inner_place(); }
+  const paddle::experimental::Place& place() const {
+    return tensor_->inner_place();
+  }
 
   /**
    * Backend judgment APIs, shield the concept of Backend.
    */
-  bool is_cpu() const { return paddle::platform::is_cpu_place(place()); }
-  bool is_cuda() const { return paddle::platform::is_gpu_place(place()); }
+  bool is_cpu() const {
+    return tensor_->inner_place().device_type() ==
+           paddle::experimental::DeviceType::kHost;
+  }
+  bool is_cuda() const {
+    return tensor_->inner_place().device_type() ==
+           paddle::experimental::DeviceType::kCuda;
+  }
 
   /* Part 4: Data Access methods */
   /**

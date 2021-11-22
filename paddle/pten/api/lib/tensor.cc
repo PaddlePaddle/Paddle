@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/common/place.h"
 #include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
@@ -135,14 +136,14 @@ PlaceType Tensor::place() const {
   return ConvertInnerPlaceToExtPlace(impl_->place());
 }
 
-paddle::platform::Place Tensor::inner_place() const { return impl_->place(); }
+const Place &Tensor::inner_place() const { return impl_->place(); }
 
 bool Tensor::is_cpu() const {
-  return paddle::platform::is_cpu_place(impl_->place());
+  return inner_place().device_type() == DeviceType::kHost;
 }
 
 bool Tensor::is_cuda() const {
-  return paddle::platform::is_gpu_place(impl_->place());
+  return inner_place().device_type() == DeviceType::kCuda;
 }
 
 /* Part 4: Data Access methods */
@@ -175,8 +176,8 @@ template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   auto inner_place = ConvertExtPlaceToInnerPlace(place);
   PADDLE_ENFORCE_EQ(
-      platform::is_same_place(inner_place, impl_->place()),
-      true,
+      inner_place,
+      impl_->place(),
       platform::errors::Unimplemented("Modification of tensor place through "
                                       "mutable_data is not supported now"));
   return mutable_data<T>();

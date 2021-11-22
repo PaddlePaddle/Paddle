@@ -23,7 +23,9 @@ namespace tests {
 
 class HostAllocatorSample : public pten::RawAllocator {
  public:
-  using Place = paddle::platform::Place;
+  using Place = paddle::experimental::Place;
+  using DeviceType = paddle::experimental::DeviceType;
+
   void* Allocate(size_t bytes_size) override {
     return ::operator new(bytes_size);
   }
@@ -33,16 +35,19 @@ class HostAllocatorSample : public pten::RawAllocator {
   const Place& place() const override { return place_; }
 
  private:
-  Place place_{paddle::platform::CPUPlace()};
+  Place place_{paddle::experimental::DeviceType::kHost, 0};
 };
 
 class FancyAllocator : public pten::Allocator {
  public:
+  using Place = paddle::experimental::Place;
+  using DeviceType = paddle::experimental::DeviceType;
+
   static void Delete(void* data) { ::operator delete(data); }
 
   Allocation Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    return Allocation(data, data, &Delete, paddle::platform::CPUPlace());
+    return Allocation(data, data, &Delete, Place(DeviceType::kHost, 0));
   }
 };
 

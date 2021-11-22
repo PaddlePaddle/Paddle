@@ -44,6 +44,8 @@ class Place final {
   /// \return Whether the memory is a locked page.
   bool is_pinned() const noexcept { return is_pinned_; }
 
+  DeviceType device_type() const noexcept { return device_.type(); }
+
   void Reset(const Device& device, bool is_pinned = false) noexcept {
     device_ = device;
     is_pinned_ = is_pinned;
@@ -61,6 +63,10 @@ class Place final {
 
 inline bool operator==(const Place& lhs, const Place& rhs) noexcept {
   return (lhs.device_ == rhs.device_) && (lhs.is_pinned_ == rhs.is_pinned_);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Place& place) {
+  return os << place.DebugString();
 }
 
 }  // namespace experimental

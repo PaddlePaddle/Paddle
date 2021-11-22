@@ -484,7 +484,7 @@ void RegisterOperatorKernelWithPlace(const std::string& name,
                                      const std::vector<std::string>& inputs,
                                      const std::vector<std::string>& outputs,
                                      const std::vector<std::string>& attrs) {
-  OpKernelType key(type, experimental::ConvertExtPlaceToInnerPlace(place));
+  OpKernelType key(type, experimental::ConvertExtPlaceToPlatformPlace(place));
   VLOG(1) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
       [kernel_func, inputs, outputs,
