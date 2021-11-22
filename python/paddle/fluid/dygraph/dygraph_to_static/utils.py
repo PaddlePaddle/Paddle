@@ -1045,7 +1045,8 @@ class ForNodeVisitor(object):
             gast.Name) and self.node.iter.func.id == "range"
 
     def is_for_iter(self):
-        if isinstance(self.node.iter, (gast.Name, gast.Attribute)):
+        if isinstance(self.node.iter,
+                      (gast.Name, gast.Attribute, gast.List, gast.Tuple)):
             return True
         elif isinstance(self.node.iter, gast.Call) and isinstance(
                 self.node.iter.func,

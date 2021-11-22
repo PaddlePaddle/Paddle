@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
 namespace distributed {
@@ -21,7 +22,8 @@ namespace distributed {
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
     : interceptor_id_(interceptor_id), node_(node) {
   interceptor_thread_ = std::thread([this]() {
-    VLOG(3) << "Start pooling local mailbox's thread.";
+    VLOG(3) << "Interceptor " << interceptor_id_
+            << " starts the thread pooling it's local mailbox.";
     PoolTheMailbox();
   });
 }
@@ -33,6 +35,16 @@ void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 void Interceptor::Handle(const InterceptorMessage& msg) {
   if (handle_) {
     handle_(msg);
+  } else {
+    VLOG(3) << "Interceptor is using default message handler. This handler is "
+               "only used for test purpose. Check whether you init interceptor "
+               "in the proper way.";
+    if (msg.message_type() == DATA_IS_READY) {
+      VLOG(3) << "Fake handler is sending stop message to it self.";
+      InterceptorMessage msg;
+      msg.set_message_type(STOP);
+      Send(interceptor_id_, msg);
+    }
   }
 }
 
@@ -103,6 +115,28 @@ bool Interceptor::FetchRemoteMailbox() {
     remote_mailbox_.pop();
   }
   return true;
+}
+
+static InterceptorFactory::CreateInterceptorMap& GetInterceptorMap() {
+  static InterceptorFactory::CreateInterceptorMap interceptorMap;
+  return interceptorMap;
+}
+
+std::unique_ptr<Interceptor> InterceptorFactory::Create(const std::string& type,
+                                                        int64_t id,
+                                                        TaskNode* node) {
+  auto& interceptor_map = GetInterceptorMap();
+  auto iter = interceptor_map.find(type);
+  PADDLE_ENFORCE_NE(
+      iter, interceptor_map.end(),
+      platform::errors::NotFound("interceptor %s is not register", type));
+  return iter->second(id, node);
+}
+
+void InterceptorFactory::Register(
+    const std::string& type, InterceptorFactory::CreateInterceptorFunc func) {
+  auto& interceptor_map = GetInterceptorMap();
+  interceptor_map.emplace(type, func);
 }
 
 }  // namespace distributed

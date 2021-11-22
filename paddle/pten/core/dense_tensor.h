@@ -90,7 +90,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override { return meta_.type; }
+  DataType dtype() const noexcept override { return meta_.dtype; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
