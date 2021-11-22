@@ -18,6 +18,7 @@
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 
 namespace paddle {
 namespace experimental {
@@ -27,6 +28,12 @@ PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
                         DataType dtype = DataType::FLOAT32,
                         Backend backend = Backend::CPU,
                         DataLayout layout = DataLayout::NCHW);
+
+PD_DLL_DECL Tensor full_new(const ScalarArray& shape,
+                            const Scalar& value,
+                            DataType dtype = DataType::FLOAT32,
+                            Backend backend = Backend::CPU,
+                            DataLayout layout = DataLayout::NCHW);
 
 PD_DLL_DECL Tensor full_like(const Tensor& x,
                              const Scalar& value,

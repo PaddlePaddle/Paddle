@@ -254,7 +254,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     dim3 transpose_grids((width + tile_size - 1) / tile_size,
                          (height + tile_size - 1) / tile_size);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    Tensor tmp;
+    framework::Tensor tmp;
     tmp.Resize(out_dims);
     auto* tmp_data = tmp.mutable_data<T>(context.GetPlace());
     T* next_in_data = out_data;
