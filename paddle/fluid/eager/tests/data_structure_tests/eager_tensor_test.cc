@@ -18,6 +18,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 
+
 namespace eager_test {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
 class AutogradMetaTest : public AbstractAutogradMeta {
@@ -29,6 +30,7 @@ class AutogradMetaTest : public AbstractAutogradMeta {
 TEST(EagerTensor, Constructor) {
   egr::EagerTensor et1 = egr::EagerTensor();
   egr::EagerTensor et2 = egr::EagerTensor("et2");
+
 
   CHECK_EQ(et1.defined(), false);
   CHECK_EQ(et2.name(), "et2");

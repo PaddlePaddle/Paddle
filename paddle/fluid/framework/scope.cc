@@ -67,7 +67,7 @@ Variable* Scope::Var(const std::string& name) {
     ret = VarInternal(name);
   }
   for (auto l : listeners_) {
-    l->onCreateVariable(name);
+    l->onCreateVariable(name, ret);
   }
   return ret;
 }
@@ -85,7 +85,7 @@ Variable* Scope::Var(std::string* name) {
     ret = VarInternal(new_name);
   }
   for (auto l : listeners_) {
-    l->onCreateVariable(new_name);
+    l->onCreateVariable(new_name, ret);
   }
   return ret;
 }
