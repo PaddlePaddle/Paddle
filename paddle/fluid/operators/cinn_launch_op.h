@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include "cinn/hlir/framework/graph_compiler.h"
@@ -114,7 +115,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result);
 
 // Launch cinn to execute compiled executable program and wait done
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context);
+                         const CinnLaunchContext& context,
+                         const gpuStream_t& stream);
 
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
@@ -213,13 +215,24 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
+    gpuStream_t stream = nullptr;
+#ifdef PADDLE_WITH_CUDA
+    if (std::is_same<DeviceContext, platform::CUDADeviceContext>::value) {
+      const auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      stream = dev_ctx.stream();
+    }
+#endif
+
     // Step 5. Launch CINN to execute the compiled executable program
-    details::LaunchCinnExecution(cinn_compiled_object, *launch_context);
+    VLOG(4) << "Run Cinn compiled executable program with stream: " << stream;
+    details::LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
     VLOG(4) << "CinnLaunchOp launch execution done.";
+
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaLaunchHostFunc(nullptr, ReleaseScope, temp_scope));
+        cudaLaunchHostFunc(stream, ReleaseScope, temp_scope));
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
-        nullptr, ReleaseBuffers, launch_context->hold_buffers()));
+        stream, ReleaseBuffers, launch_context->hold_buffers()));
   }
 
  private:
