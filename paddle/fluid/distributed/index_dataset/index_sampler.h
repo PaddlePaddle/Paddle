@@ -39,7 +39,12 @@ class IndexSampler {
       const std::vector<uint16_t>& layer_sample_counts,
       uint16_t start_sample_layer = 1, uint16_t seed = 0) {}
   virtual void init_beamsearch_conf(const int64_t k) {}
-  virtual void sample(
+  virtual std::vector<std::vector<uint64_t>> sample(
+      const std::vector<std::vector<uint64_t>>& user_inputs,
+      const std::vector<uint64_t>& input_targets,
+      bool with_hierarchy = false) = 0;
+
+  virtual void sample_from_dataset(
       const uint16_t sample_slot,
       std::vector<paddle::framework::Record>* src_datas,
       std::vector<paddle::framework::Record>* sample_results) = 0;
@@ -105,9 +110,14 @@ class LayerWiseSampler : public IndexSampler {
       idx++;
     }
   }
-  void sample(const uint16_t sample_slot,
-              std::vector<paddle::framework::Record>* src_datas,
-              std::vector<paddle::framework::Record>* sample_results) override;
+  std::vector<std::vector<uint64_t>> sample(
+      const std::vector<std::vector<uint64_t>>& user_inputs,
+      const std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
+
+  void sample_from_dataset(
+      const uint16_t sample_slot,
+      std::vector<paddle::framework::Record>* src_datas,
+      std::vector<paddle::framework::Record>* sample_results) override;
 
  private:
   std::vector<int> layer_counts_;

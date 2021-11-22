@@ -599,7 +599,7 @@ void MultiSlotDataset::TDMSample(const std::string tree_name,
   for (unsigned int i = 0; i < data.size(); i++) {
     VLOG(1) << "data[" << i << "]: size = " << data[i].size();
     std::vector<Record> tmp_results;
-    _layer_wise_sample.sample(sample_slot, &data[i], &tmp_results);
+    _layer_wise_sample.sample_from_dataset(sample_slot, &data[i], &tmp_results);
     VLOG(1) << "sample_results(" << sample_slot << ") = " << tmp_results.size();
     VLOG(0) << "start to put sample in vector!";
     // sample_results.push_back(tmp_results);
