@@ -93,9 +93,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
-        with open("test_main_program_origin.pbtxt", "w") as fout:
-            print(_main, file=fout)
-
         use_ps_gpu = self.user_defined_strategy.a_sync_configs["use_ps_gpu"]
 
         if not compiled_config.is_geo_mode():
@@ -113,7 +110,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 _startup = worker.delete_extra_optimizes_pass(_startup,
                                                               compiled_config)
 
-            # for startup program
+                # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
             if use_ps_gpu:
                 _main = worker.ps_gpu_pass(_main)
@@ -161,8 +158,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             # ):
             #     wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
-        # with open("test_main_program.pbtxt", "w") as fout:
-        #     print(_main, file=fout)
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
