@@ -184,13 +184,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "depthwise_conv2d") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
-      if (paddings.size() > 2) return false;
-    }
-
     if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
         op_type == "sigmoid") {
       auto* block = desc.Block();
