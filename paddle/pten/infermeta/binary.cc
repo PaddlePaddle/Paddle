@@ -56,7 +56,7 @@ DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
                         y_dims.to_str()));
 
   x_dims[x_dims.size() - 1] = 1;
-  DenseTensorMeta return_meta(x_meta.type, x_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, x_dims, x_meta.layout);
   return return_meta;
 }
 
@@ -127,13 +127,13 @@ DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
 
   auto ddim_out = paddle::framework::make_ddim(new_dims);
 
-  return {x_meta.type, ddim_out, x_meta.layout};
+  return {x_meta.dtype, ddim_out, x_meta.layout};
 }
 
 DenseTensorMeta ElementwiseInferShape(const DenseTensorMeta& x_meta,
                                       const DenseTensorMeta& y_meta,
                                       int axis) {
-  DenseTensorMeta return_meta(x_meta.type, x_meta.dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, x_meta.dims, x_meta.layout);
   if (x_meta.dims != y_meta.dims) {
     auto x_dims = x_meta.dims;
     auto y_dims = y_meta.dims;

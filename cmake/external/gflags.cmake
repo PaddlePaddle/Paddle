@@ -30,16 +30,12 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
-cache_third_party(extern_gflags
-    REPOSITORY   ${GFLAGS_REPOSITORY}
-    TAG          ${GFLAGS_TAG}
-    DIR          GFLAGS_SOURCE_DIR)
-
 ExternalProject_Add(
     extern_gflags
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${GFLAGS_DOWNLOAD_CMD}"
+    GIT_REPOSITORY  ${GFLAGS_REPOSITORY}
+    GIT_TAG         ${GFLAGS_TAG}
     PREFIX          ${GFLAGS_PREFIX_DIR}
     UPDATE_COMMAND  ""
     SOURCE_DIR      ${GFLAGS_SOURCE_DIR}

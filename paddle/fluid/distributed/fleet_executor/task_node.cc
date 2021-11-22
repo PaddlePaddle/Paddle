@@ -21,29 +21,54 @@ namespace {
 using OperatorBase = TaskNode::OperatorBase;
 }
 
-TaskNode::TaskNode(int64_t role, const std::vector<OperatorBase*>& ops,
-                   int64_t rank, int64_t task_id)
-    : ops_(ops), role_(role), rank_(rank), task_id_(task_id) {}
+TaskNode::TaskNode(int32_t role, const std::vector<OperatorBase*>& ops,
+                   int64_t rank, int64_t task_id, int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : ops_(ops),
+      role_(role),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {}
 
-TaskNode::TaskNode(int64_t role, int64_t rank, int64_t task_id)
-    : role_(role), rank_(rank), task_id_(task_id) {}
+TaskNode::TaskNode(int32_t role, int64_t rank, int64_t task_id,
+                   int64_t max_run_times, int64_t max_slot_nums)
+    : role_(role),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {}
 
-std::unique_ptr<TaskNode> TaskNode::CreateEmptyTaskNode(int64_t role,
+std::unique_ptr<TaskNode> TaskNode::CreateEmptyTaskNode(int32_t role,
                                                         int64_t rank,
-                                                        int64_t task_id) {
-  return std::make_unique<TaskNode>(role, rank, task_id);
+                                                        int64_t task_id,
+                                                        int64_t max_run_times,
+                                                        int64_t max_slot_nums) {
+  return std::make_unique<TaskNode>(role, rank, task_id, max_run_times,
+                                    max_slot_nums);
 }
 
 std::unique_ptr<TaskNode> TaskNode::CreateTaskNode(
-    int64_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
-    int64_t task_id) {
-  return std::make_unique<TaskNode>(role, ops, rank, task_id);
+    int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
+    int64_t task_id, int64_t max_run_times, int64_t max_slot_nums) {
+  return std::make_unique<TaskNode>(role, ops, rank, task_id, max_run_times,
+                                    max_slot_nums);
 }
 
 void TaskNode::AddUpstreamTask(int64_t task_id) { upstream_.insert(task_id); }
 
 void TaskNode::AddDownstreamTask(int64_t task_id) {
   downstream_.insert(task_id);
+}
+
+std::string TaskNode::DebugString() const {
+  std::ostringstream os;
+  os << "role: " << role_ << ", task_id: " << task_id_ << "\n";
+  for (std::size_t i = 0; i < ops_.size(); ++i) {
+    os << ops_[i]->Type() << " ";
+  }
+  os << "\n";
+  return os.str();
 }
 }  // namespace distributed
 }  // namespace paddle
