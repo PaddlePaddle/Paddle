@@ -1347,7 +1347,7 @@ def split(x,
         is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and 
         these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output. 
 
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_col.png
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col.png
             :width: 800
             :alt: split_col
             :align: center
@@ -1355,7 +1355,7 @@ def split(x,
     As observed, the column parallel linear and row parallel linear can be combined to skip one ALLGATHER communication
     operator. Furthermore the Attention and MLP can be combined to imporve the performance as shown below.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/tree/develop/docs/api/paddle/distributed/img/split_col_row.png
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col_row.png
             :width: 800
             :alt: split_col_row
             :align: center

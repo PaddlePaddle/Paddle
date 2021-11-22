@@ -93,14 +93,9 @@ class PipelineParallel(MetaParallelBase):
         # store data id for micro_batch
         self.micro_batch_id = 0
 
-        print("num_stages: ", self.num_stages)
-        print("stage_id: ", self.stage_id)
-        print("accumulate_steps: ", self.accumulate_steps)
         startup_steps = (self.num_stages - self.stage_id - 1)
         startup_steps = min(startup_steps, self.accumulate_steps)
-        print("startup_steps: ", startup_steps)
         steady_steps = self.accumulate_steps - startup_steps
-        print("steady_steps: ", steady_steps)
 
         input_buffers = []
         output_buffers = []
