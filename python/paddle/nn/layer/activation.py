@@ -603,6 +603,52 @@ class LeakyReLU(Layer):
         return 'negative_slope={}{}'.format(self._negative_slope, name_str)
 
 
+class RReLU(Layer):
+    r"""
+    RReLU Activation.
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        lower_bound (float): lower bound of the uniform distribution. Default is 0.125.
+        upper_bound (float): upper bound of the uniform distribution. Default is 0.333.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            m = paddle.nn.RReLU()
+            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
+            out = m(x)
+    """
+
+    def __init__(self, lower_bound=0.125, upper_bound=0.333, name=None):
+        super(RReLU, self).__init__()
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+        self.name = name
+
+    def forward(self, x):
+        return F.rrelu(
+            x,
+            lower_bound=self.lower_bound,
+            upper_bound=self.upper_bound,
+            training=self.training,
+            name=self.name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'lower_bound={}, upper_bound={}{}'.format(
+            self.lower_bound, self.upper_bound, name_str)
+
+
 class Sigmoid(Layer):
     """
     this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.

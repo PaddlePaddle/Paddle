@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ from ...tensor.math import multiply
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
+from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_, default_main_program
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
@@ -432,6 +432,84 @@ def leaky_relu(x, negative_slope=0.01, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'alpha': negative_slope})
+    return out
+
+
+def rrelu(x, lower_bound=0.125, upper_bound=0.333, training=True, name=None):
+    r"""
+    rrelu activation
+
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        lower_bound (float): lower bound of the uniform distribution. Default is 0.125.
+        upper_bound (float): upper bound of the uniform distribution. Default is 0.333.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.to_tensor([-2., 0., 1.])
+            out = F.rrelu(x)
+
+    """
+    if not isinstance(lower_bound, (float, int)):
+        raise TypeError("lower_bound argument should be a number")
+    if not isinstance(upper_bound, (float, int)):
+        raise TypeError("upper_bound argument should be a number")
+    if lower_bound < 0 or lower_bound >= 1:
+        raise ValueError("lower_bound argument should between 0 and 1")
+    if upper_bound < 0 or upper_bound >= 1:
+        raise ValueError("upper_bound argument should between 0 and 1")
+    if lower_bound >= upper_bound:
+        raise ValueError("lower_bound argument should be less than upper_bound")
+    seed = None
+
+    if in_dygraph_mode():
+        if default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
+        out, mask = _C_ops.rrelu(x, 'lower_bound', lower_bound, 'upper_bound',
+                                 upper_bound, 'is_test', not training,
+                                 'fix_seed', seed is not None, 'seed', seed
+                                 if seed is not None else 0)
+        return out
+
+    helper = LayerHelper('rrelu', **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    mask = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.FP32, stop_gradient=True)
+
+    def get_attrs(prog, lower_bound, upper_bound, is_test, seed):
+        if (seed is None or seed == 0) and prog.random_seed != 0:
+            seed = prog.random_seed
+        attrs = {
+            'lower_bound': lower_bound,
+            'upper_bound': upper_bound,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+        }
+        return attrs
+
+    attrs = get_attrs(helper.main_program, lower_bound, upper_bound,
+                      not training, seed)
+
+    helper.append_op(
+        type='rrelu',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'Mask': [mask]},
+        attrs=attrs)
     return out
 
 
