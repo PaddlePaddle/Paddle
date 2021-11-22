@@ -109,7 +109,12 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     // Check dims of inputs
     const auto x_dims = ctx->GetInputDim("X");
     const auto w_dims = ctx->GetInputDim("FilterX");
-    const auto bn_param_dims = ctx->GetInputDim("ScaleX");
+    std::vector<int64_t> bn_param_shape =
+        framework::vectorize(ctx->GetInputDim("ScaleX"));
+    if (1 == bn_param_shape.size()) {
+      bn_param_shape = {1, 1, 1, bn_param_shape[0]};
+    }
+    framework::DDim bn_param_dims = framework::make_ddim(bn_param_shape);
     PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
                                             "The dimensions of input "
                                             "must equal to 4."

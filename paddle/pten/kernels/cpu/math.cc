@@ -70,6 +70,9 @@ void ElementwiseAdd(const CPUContext& dev_ctx,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out) {
+  // allocate memory for out
+  out->mutable_data<T>();
+
   if (x.dims() == y.dims()) {
     SameDimsElementwiseCompute<general::SameDimsAddFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
@@ -85,6 +88,32 @@ void ElementwiseAdd(const CPUContext& dev_ctx,
     }
   }
 }
+
+template <typename T>
+void ElementwiseSub(const CPUContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  // allocate memory for out
+  out->mutable_data<T>();
+
+  if (x.dims() == y.dims()) {
+    SameDimsElementwiseCompute<general::SameDimsSubFunctor<CPUContext, T>>()(
+        dev_ctx, x, y, out);
+  } else {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    if (x_dims.size() >= y_dims.size()) {
+      ElementwiseCompute<general::SubFunctor<T>, T>(
+          dev_ctx, x, y, axis, general::SubFunctor<T>(), out);
+    } else {
+      ElementwiseCompute<general::InverseSubFunctor<T>, T>(
+          dev_ctx, x, y, axis, general::InverseSubFunctor<T>(), out);
+    }
+  }
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -129,6 +158,16 @@ PT_REGISTER_KERNEL("elementwise_add",
                    CPU,
                    ANY,
                    pten::ElementwiseAdd,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_sub",
+                   CPU,
+                   ANY,
+                   pten::ElementwiseSub,
                    float,
                    double,
                    int,

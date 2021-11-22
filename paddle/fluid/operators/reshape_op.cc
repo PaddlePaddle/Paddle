@@ -459,7 +459,9 @@ class ReshapeKernel {
       }
 #endif
     } else {
-      auto &shape_vec = ctx.Attr<std::vector<int>>("shape");
+      auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
+      const std::vector<int64_t> shape_vec(shape_attr.begin(),
+                                           shape_attr.end());
       if (platform::is_cpu_place(ctx.GetPlace())) {
         auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
         pten::ReshapeFromVectorVal(dev_ctx, *pt_x.get(), shape_vec, pt_out);
@@ -550,14 +552,13 @@ class Reshape2Op : public ReshapeOp {
       const framework::ExecutionContext &ctx) const override {
     auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
     if (multi_inputs.size() > 0) {
-      return framework::KernelSignature(
-          "reshape2.mulhost.mid", {"X", "ShapeTensor"}, {}, {"XShape", "Out"});
+      return framework::KernelSignature("reshape2.mulhost",
+                                        {"X", "ShapeTensor"}, {}, {"Out"});
     } else if (ctx.HasInput("Shape")) {
-      return framework::KernelSignature("reshape2.host.mid", {"X", "Shape"}, {},
-                                        {"XShape", "Out"});
+      return framework::KernelSignature("reshape2.host", {"X", "Shape"}, {},
+                                        {"Out"});
     } else {
-      return framework::KernelSignature("reshape2.mid", {"X"}, {"shape"},
-                                        {"XShape", "Out"});
+      return framework::KernelSignature("reshape2", {"X"}, {"shape"}, {"Out"});
     }
   }
 };

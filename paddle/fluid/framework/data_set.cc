@@ -19,6 +19,10 @@
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 
+#ifdef PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/fleet.h"
+#endif
+
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
@@ -208,13 +212,17 @@ void DatasetImpl<T>::CreateChannel() {
 // if sent message between workers, should first call this function
 template <typename T>
 void DatasetImpl<T>::RegisterClientToClientMsgHandler() {
-  auto fleet_ptr = FleetWrapper::GetInstance();
-  VLOG(3) << "RegisterClientToClientMsgHandler";
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
+  VLOG(1) << "RegisterClientToClientMsgHandler";
   fleet_ptr->RegisterClientToClientMsgHandler(
       0, [this](int msg_type, int client_id, const std::string& msg) -> int {
         return this->ReceiveFromClient(msg_type, client_id, msg);
       });
-  VLOG(3) << "RegisterClientToClientMsgHandler done";
+  VLOG(1) << "RegisterClientToClientMsgHandler done";
 }
 static void compute_left_batch_num(const int ins_num, const int thread_num,
                                    std::vector<std::pair<int, int>>* offset,
@@ -523,7 +531,7 @@ void DatasetImpl<T>::LocalShuffle() {
     VLOG(3) << "DatasetImpl<T>::LocalShuffle() end, no data to shuffle";
     return;
   }
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   input_channel_->Close();
   std::vector<T> data;
   input_channel_->ReadAll(data);
@@ -540,11 +548,14 @@ void DatasetImpl<T>::LocalShuffle() {
 }
 
 void MultiSlotDataset::GlobalShuffle(int thread_num) {
-#ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "MultiSlotDataset::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
-  auto fleet_ptr = FleetWrapper::GetInstance();
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
 
   if (!input_channel_ || input_channel_->Size() == 0) {
     VLOG(3) << "MultiSlotDataset::GlobalShuffle() end, no data to shuffle";
@@ -576,7 +587,12 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   };
 
   auto global_shuffle_func = [this, get_client_id]() {
-    auto fleet_ptr = FleetWrapper::GetInstance();
+#ifdef PADDLE_WITH_PSCORE
+    auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
+    // auto fleet_ptr = framework::FleetWrapper::GetInstance();
     std::vector<Record> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
@@ -633,7 +649,6 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   timeline.Pause();
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
-#endif
 }
 
 template <typename T>
@@ -936,7 +951,7 @@ int MultiSlotDataset::ReceiveFromClient(int msg_type, int client_id,
   }
   CHECK(ar.Cursor() == ar.Finish());
 
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   // not use random because it doesn't perform well here.
   // to make sure each channel get data equally, we just put data to
   // channel one by one.
@@ -976,7 +991,7 @@ void MultiSlotDataset::DynamicAdjustReadersNum(int thread_num) {
 void MultiSlotDataset::PostprocessInstance() {
   // divide pv instance, and merge to input_channel_
   if (enable_pv_merge_) {
-    auto fleet_ptr = FleetWrapper::GetInstance();
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
     std::shuffle(input_records_.begin(), input_records_.end(),
                  fleet_ptr->LocalRandomEngine());
     input_channel_->Open();
@@ -1014,7 +1029,7 @@ void MultiSlotDataset::PreprocessInstance() {
   if (!enable_pv_merge_) {  // means to use Record
     this->LocalShuffle();
   } else {  // means to use Pv
-    auto fleet_ptr = FleetWrapper::GetInstance();
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
     input_channel_->Close();
     std::vector<PvInstance> pv_data;
     input_channel_->ReadAll(input_records_);
@@ -1073,7 +1088,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
   }
 
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
-  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  auto fleet_ptr_ = framework::FleetWrapper::GetInstance();
   std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
       local_map_tables = fleet_ptr_->GetLocalTable();
   local_map_tables.resize(shard_num);
@@ -1315,7 +1330,7 @@ void MultiSlotDataset::MergeByInsId() {
   LOG(WARNING) << "total drop ins num: " << drop_ins_num;
   results.shrink_to_fit();
 
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   std::shuffle(results.begin(), results.end(), fleet_ptr->LocalRandomEngine());
   channel_data->Open();
   channel_data->Write(std::move(results));
