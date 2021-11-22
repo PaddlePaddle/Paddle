@@ -53,6 +53,10 @@ void BasicEngine::Init(
                     platform::errors::AlreadyExists(
                         "Accumulators are not empty before preparing it for "
                         "backward network execution."));
+  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators with grad_node as the key are not empty "
+                        "before preparing it for backward network execution."));
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto var = tensors[i];
@@ -107,13 +111,30 @@ void BasicEngine::Init(
     }
 
     VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
-    auto& accumulator = accumulators_[init_grad_var];
-    if (!accumulator) {
-      if (FLAGS_sort_sum_gradient) {
-        accumulator.reset(new SortedGradientAccumulator(init_grad_var));
-      } else {
-        accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+    if (!init_grad_var->HasGradNode()) {
+      auto& accumulator = accumulators_[init_grad_var];
+      if (!accumulator) {
+        if (FLAGS_sort_sum_gradient) {
+          accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+        } else {
+          accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+        }
       }
+      accumulator->IncreaseRefCnt();
+      accumulator->IncreaseCurCnt();
+    } else {
+      auto& accumulator =
+          accumulators_with_grad_node_[init_grad_var->GetGradNode()]
+                                      [init_grad_var];
+      if (!accumulator) {
+        if (FLAGS_sort_sum_gradient) {
+          accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+        } else {
+          accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+        }
+      }
+      accumulator->IncreaseRefCnt();
+      accumulator->IncreaseCurCnt();
     }
 
     init_nodes_.push_back(init_node);
@@ -252,10 +273,6 @@ void BasicEngine::PrepareDeps() {
       node_deps_.empty(), true,
       platform::errors::AlreadyExists("Op deps are not empty before preparing "
                                       "it for backward network execution."));
-  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
-                    platform::errors::AlreadyExists(
-                        "Accumulators with grad_node as the key are not empty "
-                        "before preparing it for backward network execution."));
 
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
