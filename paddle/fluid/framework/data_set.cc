@@ -543,7 +543,6 @@ void DatasetImpl<T>::LocalShuffle() {
           << timeline.ElapsedSec() << " seconds";
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 // do tdm sample
 void MultiSlotDataset::TDMSample(const std::string tree_name,
                                  const std::string tree_path,
@@ -551,6 +550,7 @@ void MultiSlotDataset::TDMSample(const std::string tree_name,
                                  const uint16_t start_sample_layer,
                                  const bool with_hierachy, const uint16_t seed_,
                                  const uint16_t sample_slot) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   // init tdm tree
   auto wrapper_ptr = paddle::distributed::IndexWrapper::GetInstance();
   wrapper_ptr->insert_tree_index(tree_name, tree_path);
@@ -616,9 +616,9 @@ void MultiSlotDataset::TDMSample(const std::string tree_name,
   timeline.Pause();
   VLOG(0) << "DatasetImpl<T>::Sample() end, cost time=" << timeline.ElapsedSec()
           << " seconds";
+#endif
   return;
 }
-#endif
 
 void MultiSlotDataset::GlobalShuffle(int thread_num) {
 #ifdef PADDLE_WITH_PSLIB
