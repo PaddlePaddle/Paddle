@@ -409,7 +409,7 @@ def get_ports(num, offset):
         if ports is not None:
             ports = list(ports)
     else:
-        start_port = os.environ.get('FLAGS_START_PORT')
+        start_port = int(os.environ.get('FLAGS_START_PORT'))
         ports = range(start_port + offset, start_port + offset + num, 1)
     return ports
 
@@ -1020,12 +1020,12 @@ class ParameterServerLauncher(object):
 
         # get http_port
         if args.http_port:
-            self.http_port = args.http_port
+            http_port = [args.http_port]
         else:
             http_port = get_ports(
                 1, self.server_num + self.worker_num + self.heter_worker_num)
-            http_ip = self.server_endpoints.split(",")[0].split(":")[0]
-            self.http_port = http_ip + ":" + str(http_port[0])
+        http_ip = self.server_endpoints.split(",")[0].split(":")[0]
+        self.http_port = http_ip + ":" + str(http_port[0])
 
         # check local or user define
         self.server_endpoints_ips = [
