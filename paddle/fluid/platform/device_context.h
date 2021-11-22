@@ -48,6 +48,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/data_layout.h"
+namespace mkldnn = dnnl;
 #endif
 
 #include <map>
@@ -66,7 +67,6 @@ limitations under the License. */
 // This aias is required for now so that namespace name changes can be made to
 // less than 20 files at a time. After all the names are changed it will be
 // removed.
-namespace mkldnn = dnnl;
 
 namespace Eigen {
 struct DefaultDevice;
