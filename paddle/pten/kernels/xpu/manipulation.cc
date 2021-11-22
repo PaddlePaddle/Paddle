@@ -47,7 +47,8 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims), x.meta().lod);
+  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
+  xshape->ResetLoD(x.lod());
 }
 
 void ReshapeFromVectorVal(const XPUContext& dev_ctx,

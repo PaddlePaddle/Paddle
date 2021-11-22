@@ -1910,54 +1910,50 @@ void BindImperative(py::module *m_ptr) {
       .def("_clear",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              t->clear();
            })
       .def("_offset",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->offset();
            })
-      .def("_share_buffer_with",
+      .def("_share_buffer_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
-              std::shared_ptr<imperative::VarBase> &target_t) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *t_t =
-                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             t->ShareBufferWith(*t_t);
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 src->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             dst_->ShareBufferWith(*src);
            })
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
-              std::shared_ptr<imperative::VarBase> &target_t) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *t_t =
-                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             return t->IsSharedBufferWith(*t_t);
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+               return false;
+             }
+             return dst_->IsSharedBufferWith(*src);
            })
       .def("_slice",
            [](const std::shared_ptr<imperative::VarBase> &self,
               int64_t begin_idx, int64_t end_idx) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->Slice(begin_idx, end_idx);
            })
       .def("_copy_gradient_from",
@@ -1966,9 +1962,10 @@ void BindImperative(py::module *m_ptr) {
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,

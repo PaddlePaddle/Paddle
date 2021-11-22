@@ -69,7 +69,9 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
                           bytes));
     bytes = request_bytes;
   }
-  if (storage_->size() < bytes) {
+  if (storage_->size() < bytes || storage_->size() == 0) {
+    VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
+             << ", new size: " << bytes;
     storage_->Realloc(bytes);
   }
   return storage_->data();
@@ -81,6 +83,8 @@ T* DenseTensor::mutable_data() {
   // execution system, we have to reset the datatype in mutable_data<T>.
   // When the compatibility phase is over in the future, we can delete it
   if (meta_.dtype == DataType::UNDEFINED) {
+    VLOG(10) << "change data type in mutbale_data, target dtype - "
+             << paddle::experimental::CppTypeToDataType<T>::Type();
     const_cast<DataType&>(meta_.dtype) =
         paddle::experimental::CppTypeToDataType<T>::Type();
   }
@@ -120,11 +124,12 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
   meta_ = std::move(meta);
 }
 
-void DenseTensor::Resize(const DDim& dims, const LoD& lod) {
+void DenseTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
-  meta_.lod = lod;
   mutable_data();
 }
+
+void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \
   template dtype* DenseTensor::mutable_data(); \
