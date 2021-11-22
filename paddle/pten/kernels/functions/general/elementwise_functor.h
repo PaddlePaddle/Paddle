@@ -127,6 +127,20 @@ template <typename DevCtx, typename T>
 struct SameDimsDivFunctor<
     DevCtx,
     T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z) {
+    paddle::platform::errors::InvalidArgument(
+        "If use SameDimsDivFunctor, template args(T) must be floating point. ");
+  }
+};
+
+template <typename DevCtx, typename T>
+struct SameDimsDivFunctor<
+    DevCtx,
+    T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   void operator()(const DevCtx& dev_ctx,
                   const DenseTensor& x,
