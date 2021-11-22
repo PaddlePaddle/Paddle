@@ -60,4 +60,12 @@ void ElementwiseSub(const CPUContext& dev_ctx,
                     int axis,
                     DenseTensor* out);
 
+// TODO(YuanRisheng) Need add ElementwiseMul api for SelectedRows(x)
+template <typename T>
+void ElementwiseMul(const CPUContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
+
 }  // namespace pten
