@@ -27,7 +27,7 @@ struct TransposeNormal {
   void operator()(const DeviceContext& dev_ctx,
                   const pten::DenseTensor& in,
                   pten::DenseTensor* out,
-                  const std::vector<int>& axis);
+                  const std::vector<int64_t>& axis);
 };
 
 }  // namespace math

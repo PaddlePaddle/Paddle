@@ -64,7 +64,7 @@ template <typename T>
 void Sum(const CPUContext& dev_ctx,
          const DenseTensor& x,
          bool reduce_all,
-         std::vector<int> dim,
+         std::vector<int64_t> dim,
          bool keep_dim,
          DataType out_dtype,
          DenseTensor* out);

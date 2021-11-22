@@ -15,10 +15,14 @@
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/functions/math/cast_func.h"
 #include "paddle/pten/kernels/math/transpose.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace pten {
 
@@ -54,7 +58,7 @@ struct TransposeNormal<CUDAContext, T> {
   void operator()(const CUDAContext& dev_ctx,
                   const pten::DenseTensor& in,
                   pten::DenseTensor* out,
-                  const std::vector<int>& axis) {
+                  const std::vector<int64_t>& axis) {
     const int rank = axis.size();
     auto in_stride = paddle::framework::stride(in.dims());
     auto out_stride = paddle::framework::stride(out->dims());
@@ -105,16 +109,19 @@ struct TransposeNormal<CUDAContext, T> {
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<CUDAContext, TYPE>
 
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::float16);
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::bfloat16);
+DEFINE_GPU_TRANS_NORMAL(bool);
+DEFINE_GPU_TRANS_NORMAL(int8_t);
+DEFINE_GPU_TRANS_NORMAL(uint8_t);
+DEFINE_GPU_TRANS_NORMAL(int16_t);
+DEFINE_GPU_TRANS_NORMAL(uint16_t);
+DEFINE_GPU_TRANS_NORMAL(int32_t);
+DEFINE_GPU_TRANS_NORMAL(uint32_t);
+DEFINE_GPU_TRANS_NORMAL(int64_t);
+DEFINE_GPU_TRANS_NORMAL(uint64_t);
 DEFINE_GPU_TRANS_NORMAL(float);
 DEFINE_GPU_TRANS_NORMAL(double);
-DEFINE_GPU_TRANS_NORMAL(int);
-DEFINE_GPU_TRANS_NORMAL(int64_t);
-DEFINE_GPU_TRANS_NORMAL(bool);
-DEFINE_GPU_TRANS_NORMAL(int16_t);
-DEFINE_GPU_TRANS_NORMAL(uint8_t);
-DEFINE_GPU_TRANS_NORMAL(int8_t);
+DEFINE_GPU_TRANS_NORMAL(paddle::platform::float16);
+DEFINE_GPU_TRANS_NORMAL(paddle::platform::bfloat16);
 DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<float>);
 DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<double>);
 

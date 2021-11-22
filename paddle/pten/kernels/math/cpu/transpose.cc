@@ -17,7 +17,10 @@
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/float16.h"
 namespace pten {
 namespace math {
 using CPUContext = paddle::platform::CPUDeviceContext;
@@ -28,7 +31,7 @@ struct TransposeNormal<CPUContext, T> {
   void operator()(const CPUContext& dev_ctx,
                   const pten::DenseTensor& in,
                   pten::DenseTensor* out,
-                  const std::vector<int>& axis) {
+                  const std::vector<int64_t>& axis) {
     const int rank = axis.size();
     auto in_stride = paddle::framework::stride(in.dims());
     auto out_stride = paddle::framework::stride(out->dims());
@@ -56,16 +59,19 @@ struct TransposeNormal<CPUContext, T> {
 #define DEFINE_CPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<CPUContext, TYPE>
 
-DEFINE_CPU_TRANS_NORMAL(paddle::platform::float16);
-DEFINE_CPU_TRANS_NORMAL(paddle::platform::bfloat16);
+DEFINE_CPU_TRANS_NORMAL(bool);
+DEFINE_CPU_TRANS_NORMAL(int8_t);
+DEFINE_CPU_TRANS_NORMAL(uint8_t);
+DEFINE_CPU_TRANS_NORMAL(int16_t);
+DEFINE_CPU_TRANS_NORMAL(uint16_t);
+DEFINE_CPU_TRANS_NORMAL(int32_t);
+DEFINE_CPU_TRANS_NORMAL(uint32_t);
+DEFINE_CPU_TRANS_NORMAL(int64_t);
+DEFINE_CPU_TRANS_NORMAL(uint64_t);
 DEFINE_CPU_TRANS_NORMAL(float);
 DEFINE_CPU_TRANS_NORMAL(double);
-DEFINE_CPU_TRANS_NORMAL(int);
-DEFINE_CPU_TRANS_NORMAL(int64_t);
-DEFINE_CPU_TRANS_NORMAL(bool);
-DEFINE_CPU_TRANS_NORMAL(int16_t);
-DEFINE_CPU_TRANS_NORMAL(uint8_t);
-DEFINE_CPU_TRANS_NORMAL(int8_t);
+DEFINE_CPU_TRANS_NORMAL(paddle::platform::float16);
+DEFINE_CPU_TRANS_NORMAL(paddle::platform::bfloat16);
 DEFINE_CPU_TRANS_NORMAL(paddle::platform::complex<float>);
 DEFINE_CPU_TRANS_NORMAL(paddle::platform::complex<double>);
 

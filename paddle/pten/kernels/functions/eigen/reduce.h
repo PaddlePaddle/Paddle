@@ -33,12 +33,12 @@ template <typename DeviceContext,
 void ReduceFunctor(const DeviceContext& context,
                    const pten::DenseTensor& input,
                    pten::DenseTensor* output,
-                   const std::vector<int>& dims,
+                   const std::vector<int64_t>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto reduce_dim = Eigen::array<int, R_D>();
-  std::vector<int> dims_ref = dims;
+  std::vector<int64_t> dims_ref = dims;
   for (size_t i = 0; i < dims_ref.size(); ++i) {
     if (dims_ref[i] < 0) dims_ref[i] = x_rank + dims_ref[i];
     reduce_dim[i] = dims_ref[i];
@@ -76,8 +76,8 @@ void ReduceFunctor(const DeviceContext& context,
 
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,
-                           const std::vector<int>& reduced_dims,
-                           std::vector<int>* perm_axis) {
+                           const std::vector<int64_t>& reduced_dims,
+                           std::vector<int64_t>* perm_axis) {
   // check if it's a reduced dim
   std::vector<bool> src_dims_check(src_dims.size(), false);
   size_t src_size = src_dims.size();
@@ -102,9 +102,9 @@ template <typename DeviceContext, typename OutT>
 void GetShuffledInput(const DeviceContext& dev_ctx,
                       const pten::DenseTensor& input,
                       pten::DenseTensor* shuffled_input,
-                      const std::vector<int>& dims) {
+                      const std::vector<int64_t>& dims) {
   DDim shuffled_dims(input.dims());
-  std::vector<int> perm_axis(input.dims().size());
+  std::vector<int64_t> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
   // TODO(chentianyu03): init out densetensor
@@ -118,9 +118,9 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
 
 template <typename DeviceContext, typename OutT, typename Functor>
 void HandleLargeDim(const DeviceContext& dev_ctx,
-                    const pten::DenseTensor* input,
+                    const pten::DenseTensor& input,
                     pten::DenseTensor* output,
-                    const std::vector<int>& dims,
+                    const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
   pten::DenseTensor shuffled_input;
@@ -143,7 +143,7 @@ template <typename DeviceContext, typename T, typename OutT, typename Functor>
 void ReduceKernlImpl(const DeviceContext& dev_ctx,
                      const pten::DenseTensor& input,
                      pten::DenseTensor* output,
-                     const std::vector<int>& dims,
+                     const std::vector<int64_t>& dims,
                      bool keep_dim,
                      bool reduce_all) {
   output->mutable_data<OutT>();
@@ -151,7 +151,7 @@ void ReduceKernlImpl(const DeviceContext& dev_ctx,
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
     auto x = EigenVector<OutT>::Flatten(input);
-    auto out = EigenVector<OutT>::From(*out);
+    auto out = EigenVector<OutT>::From(*output);
     auto& dev = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
 
@@ -162,7 +162,7 @@ void ReduceKernlImpl(const DeviceContext& dev_ctx,
     int rdim = dims.size();
     if (ndim > 6) {
       HandleLargeDim<DeviceContext, OutT, Functor>(
-          dev_ctx, &input, output, dims, keep_dim);
+          dev_ctx, input, output, dims, keep_dim);
 
     } else {
       HANDLE_REDUCE_DIM(6, 5);

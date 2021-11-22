@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
 
+#include "paddle/pten/kernels/functions/general/sum_impl.h"
+
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
@@ -158,6 +160,18 @@ void ElementwiseSub(const CUDAContext& dev_ctx,
       dev_ctx, inputs, &outputs, axis, general::SubFunctor<T>());
 }
 
+template <typename T>
+void Sum(const CUDAContext& dev_ctx,
+         const DenseTensor& x,
+         bool reduce_all,
+         std::vector<int64_t> dims,
+         bool keep_dim,
+         DataType out_dtype,
+         DenseTensor* out) {
+  pten::general::Sum<CUDAContext, T>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -215,5 +229,17 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    int,
                    int64_t,
                    float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("reduce_sum",
+                   CUDA,
+                   ANY,
+                   pten::Sum,
+                   bool,
+                   float,
+                   double,
+                   float16,
+                   int,
+                   int64_t,
                    complex64,
                    complex128) {}
