@@ -2508,13 +2508,13 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
-  m.def("register_pass", [](const std::string &pass_type,
-                            const py::object &callable) {
+  m.def("register_pass", [](const std::string &pass_type, py::object callable) {
     PADDLE_ENFORCE_EQ(
         framework::ir::PassRegistry::Instance().Has(pass_type), false,
         platform::errors::AlreadyExists(
             "Pass '%s' is registered more than once. Please use another name.",
             pass_type));
+    callable.inc_ref();
     framework::ir::PassRegistry::Instance().Insert(pass_type, [pass_type,
                                                                callable]() {
       py::gil_scoped_acquire guard;
