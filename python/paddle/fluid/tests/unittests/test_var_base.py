@@ -568,10 +568,12 @@ class TestVarBase(unittest.TestCase):
         var14 = var[1:-1, 0:2, ::-1]
         var15 = var[::-1, ::-1, ::-1]
         var16 = var[-4:4]
+        var17 = var[:, 0, 0:0]
+        var18 = var[:, 1:1:2]
 
         vars = [
             var, var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
-            var11, var12, var13, var14, var15, var16
+            var11, var12, var13, var14, var15, var16, var17, var18
         ]
         local_out = [var.numpy() for var in vars]
 
@@ -600,6 +602,8 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
         self.assertTrue(np.array_equal(local_out[16], tensor_array[-4:4]))
+        self.assertTrue(np.array_equal(local_out[17], tensor_array[:, 0, 0:0]))
+        self.assertTrue(np.array_equal(local_out[18], tensor_array[:, 1:1:2]))
 
     def _test_slice_for_tensor_attr(self):
         tensor_array = np.array(
