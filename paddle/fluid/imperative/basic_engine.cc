@@ -40,7 +40,6 @@ void BasicEngine::Init(
     const std::vector<std::shared_ptr<VarBase>>& tensors,
     const std::vector<std::shared_ptr<VarBase>>& grad_tensors,
     bool retain_graph) {
-  platform::RecordEvent record_event("BasicEngine::Init");
   retain_graph_ = retain_graph;
 
   PADDLE_ENFORCE_EQ(
@@ -123,7 +122,6 @@ void BasicEngine::Init(
 }
 
 void BasicEngine::CheckBackwardInputs(const OpBase& op) {
-  platform::RecordEvent record_event("BasicEngine::CheckBackwardInputs");
   for (auto& pair : op.GetInsMap()) {
     if (!pair.second.IsGrad()) {
       continue;
@@ -160,7 +158,6 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
 void BasicEngine::PrepareGradAccumulators(
     const OpBase& op,
     const std::vector<std::shared_ptr<GradOpNode>>& grad_pending_nodes) {
-  platform::RecordEvent record_event("BasicEngine::PrepareGradAccumulators");
   for (const auto& pair : op.GetOutsMap()) {
     if (!pair.second.IsGrad()) {
       continue;
@@ -252,7 +249,6 @@ void BasicEngine::PrepareGradAccumulators(
 }
 
 void BasicEngine::PrepareDeps() {
-  platform::RecordEvent record_event("BasicEngine::PrepareDeps");
   PADDLE_ENFORCE_EQ(
       node_deps_.empty(), true,
       platform::errors::AlreadyExists("Op deps are not empty before preparing "
