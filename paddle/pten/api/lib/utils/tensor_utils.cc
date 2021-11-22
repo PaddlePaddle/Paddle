@@ -54,6 +54,49 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
                                              std::move(meta));
 }
 
+std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
+    const paddle::framework::Tensor& tensor,
+    const pten::TensorArgDef& arg_def) {
+  pten::DenseTensorMeta meta{arg_def.dtype,
+                             tensor.dims(),
+                             pten::TransToPtenDataLayout(tensor.layout())};
+
+  if (tensor.IsInitialized() &&
+      tensor.place() == pten::TransToFluidPlace(arg_def.backend)) {
+    auto shared_storage =
+        pten::make_intrusive<SharedStorage>(tensor.Holder(), tensor.offset());
+    return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
+                                               std::move(meta));
+  } else {
+    return std::make_unique<pten::DenseTensor>(
+        std::move(pten::make_intrusive<SharedStorage>(
+            pten::TransToFluidPlace(arg_def.backend))),
+        std::move(meta));
+  }
+}
+
+std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
+    const paddle::framework::LoDTensor& tensor,
+    const pten::TensorArgDef& arg_def) {
+  pten::DenseTensorMeta meta{arg_def.dtype,
+                             tensor.dims(),
+                             pten::TransToPtenDataLayout(tensor.layout()),
+                             pten::TransToPtenLoD(tensor.lod())};
+
+  if (tensor.IsInitialized() &&
+      tensor.place() == pten::TransToFluidPlace(arg_def.backend)) {
+    auto shared_storage =
+        pten::make_intrusive<SharedStorage>(tensor.Holder(), tensor.offset());
+    return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
+                                               std::move(meta));
+  } else {
+    return std::make_unique<pten::DenseTensor>(
+        std::move(pten::make_intrusive<SharedStorage>(
+            pten::TransToFluidPlace(arg_def.backend))),
+        std::move(meta));
+  }
+}
+
 std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def) {
   auto expected_place = pten::TransToFluidPlace(arg_def.backend);
@@ -93,17 +136,12 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
   // KernelContext to original tensor
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
-    tensor->mutable_data(pten::TransToFluidPlace(arg_def.backend),
-                         pten::TransToProtoVarType(arg_def.dtype));
-    return MakePtenDenseTensor(*tensor);
+    return MakePtenDenseTensor(*tensor, arg_def);
   } else if (variable->template IsType<framework::SelectedRows>()) {
     auto* tensor = variable->template GetMutable<framework::SelectedRows>();
-    tensor->mutable_value()->mutable_data(
-        pten::TransToFluidPlace(arg_def.backend),
-        pten::TransToProtoVarType(arg_def.dtype));
     // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
     // here the row and height will lost in output!
-    return MakePtenDenseTensor(tensor->value());
+    return MakePtenDenseTensor(tensor->value(), arg_def);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared output `%s` type now when call pt kernel.",
@@ -113,58 +151,83 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
 }
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
-  CHECK(src);
-  CHECK(dst);
+  PADDLE_ENFORCE_NOT_NULL(
+      src,
+      platform::errors::InvalidArgument(
+          "The source DenseTensor is nullptr when move storage."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dst,
+      platform::errors::InvalidArgument(
+          "The destination Tensor is nullptr when move storage."));
   dst->Resize(src->dims());
+  dst->set_type(pten::TransToProtoVarType(src->dtype()));
   auto storage = src->release();
-  CHECK(storage->OwnsMemory());
   std::shared_ptr<paddle::memory::allocation::Allocation> holder(
       new TensorStorage(std::move(storage)));
-  dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->data_type()));
+  dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->dtype()));
 }
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
-  CHECK(src);
-  CHECK(dst);
+  PADDLE_ENFORCE_NOT_NULL(
+      src,
+      platform::errors::InvalidArgument(
+          "The source DenseTensor is nullptr when move storage."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dst,
+      platform::errors::InvalidArgument(
+          "The destination LoDTensor is nullptr when move storage."));
   SetLoD(dst->mutable_lod(), src->lod());
   MovesStorage(src, static_cast<paddle::framework::Tensor*>(dst));
 }
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
+                           const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
   meta->dims = src.dims();
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataType&>(meta->type) = pten::TransToPtenDataType(src.type());
+  const_cast<DataType&>(meta->dtype) = arg_def.dtype;
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataLayout&>(meta->layout) =
       pten::TransToPtenDataLayout(src.layout());
+
   auto* shared_storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
   PADDLE_ENFORCE_NOT_NULL(
       shared_storage,
       platform::errors::NotFound(
           "Target DenseTensor's shared storage is nullptr."));
-  shared_storage->ResetAllocation(src.Holder(), src.offset());
+
+  if (src.IsInitialized()) {
+    shared_storage->ResetAllocation(src.Holder(), src.offset());
+  }
 }
 
 void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
   meta->dims = src.dims();
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataType&>(meta->type) = pten::TransToPtenDataType(src.type());
+  const_cast<DataType&>(meta->dtype) = arg_def.dtype;
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataLayout&>(meta->layout) =
       pten::TransToPtenDataLayout(src.layout());
   SetLoD(&(meta->lod), src.lod());
+
   auto* shared_storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
   PADDLE_ENFORCE_NOT_NULL(
       shared_storage,
       platform::errors::NotFound(
           "Target DenseTensor's shared storage is nullptr."));
-  shared_storage->ResetAllocation(src.Holder(), src.offset());
+  if (src.IsInitialized() &&
+      src.place() == pten::TransToFluidPlace(arg_def.backend)) {
+    shared_storage->ResetAllocation(src.Holder(), src.offset());
+  } else {
+    shared_storage->ResetAllocationPlace(
+        pten::TransToFluidPlace(arg_def.backend));
+  }
 }
 
 void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
@@ -177,9 +240,9 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
-      ReMakePtenDenseTensor(tmp_tensor, dst);
+      ReMakePtenDenseTensor(tmp_tensor, arg_def, dst);
     } else {
-      ReMakePtenDenseTensor(tensor, dst);
+      ReMakePtenDenseTensor(tensor, arg_def, dst);
     }
   } else if (variable.IsType<framework::SelectedRows>()) {
     // TODO(chenweihang): now we don't deal with row and height
@@ -189,9 +252,9 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
       framework::Tensor tmp_tensor;
       TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
       // TODO(chenweihang): adapt SelectedRows by xiaowei's design
-      ReMakePtenDenseTensor(tmp_tensor, dst);
+      ReMakePtenDenseTensor(tmp_tensor, arg_def, dst);
     } else {
-      ReMakePtenDenseTensor(tensor.value(), dst);
+      ReMakePtenDenseTensor(tensor.value(), arg_def, dst);
     }
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -207,21 +270,63 @@ void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
   // KernelContext to original tensor
   if (variable->template IsType<framework::LoDTensor>()) {
     auto* tensor = variable->template GetMutable<framework::LoDTensor>();
-    // TODO(chenweihang): use original var type if arg_def.dtype is UNDEFINED
-    tensor->mutable_data(pten::TransToFluidPlace(arg_def.backend),
-                         pten::TransToProtoVarType(arg_def.dtype));
-    ReMakePtenDenseTensor(*tensor, dst);
+    ReMakePtenDenseTensor(*tensor, arg_def, dst);
   } else if (variable->template IsType<framework::SelectedRows>()) {
     auto* tensor = variable->template GetMutable<framework::SelectedRows>();
-    tensor->mutable_value()->mutable_data(
-        pten::TransToFluidPlace(arg_def.backend),
-        pten::TransToProtoVarType(arg_def.dtype));
     // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
     // here the row and height will lost in output!
-    ReMakePtenDenseTensor(tensor->value(), dst);
+    ReMakePtenDenseTensor(tensor->value(), arg_def, dst);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported shared output `%s` type now when call pt kernel.",
+        framework::ToTypeName(variable->Type())));
+  }
+}
+
+static bool IsSameAllocation(const std::shared_ptr<memory::Allocation>& a,
+                             const std::shared_ptr<memory::Allocation>& b) {
+  return a->ptr() == b->ptr() && a->size() == b->size() &&
+         platform::is_same_place(a->place(), b->place());
+}
+
+void MakeVariableFromPtenTensor(pten::DenseTensor* src,
+                                framework::Variable* variable) {
+  if (variable->IsType<framework::LoDTensor>()) {
+    auto* tensor = variable->GetMutable<framework::LoDTensor>();
+
+    auto dtype = pten::TransToProtoVarType(src->dtype());
+    tensor->Resize(src->dims());
+    SetLoD(tensor->mutable_lod(), src->lod());
+
+    // here dynamic_cast is slow
+    auto* storage = static_cast<SharedStorage*>(
+        pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+
+    if (!tensor->IsInitialized() ||
+        (tensor->IsInitialized() &&
+         !IsSameAllocation(tensor->Holder(), storage->GetAllocation()))) {
+      tensor->ResetHolderWithType(std::move(storage->GetAllocation()), dtype);
+    } else {
+      // Even the pten tensor and Variable have the same Alloctation (both have
+      // the same pointer address, same size and same place)
+      // but there is possible that they do not have the same data_type.
+      // so, here we set the variable's type with the pten tensor dtype.
+      tensor->set_type(dtype);
+    }
+
+  } else if (variable->IsType<framework::SelectedRows>()) {
+    auto* tensor = variable->GetMutable<framework::SelectedRows>();
+    auto dtype = pten::TransToProtoVarType(src->dtype());
+
+    if (!tensor->value().IsInitialized()) {
+      auto storage = dynamic_cast<SharedStorage*>(
+          pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+      tensor->mutable_value()->ResetHolderWithType(
+          std::move(storage->GetAllocation()), dtype);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported shared input `%s` type now when call pt kernel.",
         framework::ToTypeName(variable->Type())));
   }
 }

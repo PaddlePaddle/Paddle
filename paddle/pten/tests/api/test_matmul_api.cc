@@ -63,9 +63,9 @@ TEST(API, matmul_cpu) {
   auto out = paddle::experimental::matmul(x, y, false, false);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
-  ASSERT_EQ(out.shape()[1], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
+  ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
@@ -135,9 +135,9 @@ TEST(API, matmul_cuda) {
   auto out = paddle::experimental::matmul(x, y, false, false);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
-  ASSERT_EQ(out.shape()[1], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
+  ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
@@ -148,7 +148,7 @@ TEST(API, matmul_cuda) {
   auto ref_out = std::make_shared<pten::DenseTensor>(
       alloc_cpu,
       pten::DenseTensorMeta(
-          pten::DataType::FLOAT32, out.shape(), pten::DataLayout::NCHW));
+          pten::DataType::FLOAT32, out.dims(), pten::DataLayout::NCHW));
 
   pten::Copy(*dev_ctx, *dense_out.get(), false, ref_out.get());
 

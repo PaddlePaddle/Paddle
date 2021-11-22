@@ -124,6 +124,9 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph);
 void GraphToProgram(const Graph &graph, ProgramDesc *p_program,
                     const SortKind *sort_kind = nullptr);
 
+std::vector<std::vector<std::vector<ir::Node::Dep>>> GetOpDependencies(
+    const ProgramDesc &program);
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

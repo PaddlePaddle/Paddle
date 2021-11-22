@@ -192,13 +192,24 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
   virtual ~RequestSendAndRecvHandler() {}
 
-  // void SetMiniScopes(SharedMiniScope mini_scopes) {
-  //  mini_scopes_ = mini_scopes;
-  //  num_minibatch_ = mini_scopes_->size();
-  //}
+  void SetMiniScopes(SharedMiniScope mini_scopes) {
+    mini_scopes_ = mini_scopes;
+    num_minibatch_ = mini_scopes_->size();
+  }
+
   void SetMicroScopes(SharedMicroScope micro_scopes) {
     micro_scopes_ = micro_scopes;
-    num_microbatch_ = micro_scopes_->size();
+    for (auto& scope_pair : (*micro_scopes_)) {
+      // auto mini_idx = scope_pair.first;
+      auto& micro_scopes = scope_pair.second;
+      num_microbatch_ = micro_scopes->size();
+      break;
+    }
+  }
+
+  int GetThreadNum() {
+    std::unique_lock<std::mutex> lk(scope_mutex_);
+    return (*task_queue_).size();
   }
 
   void SetTaskQueue(SharedTaskQueue task_queue) { task_queue_ = task_queue; }
@@ -235,25 +246,43 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     int minibatch_index = micro_id / 10;
     int microbatch_index = micro_id % 10;
 
-    // PADDLE_ENFORCE_EQ(
-    //    (*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
-    //    platform::errors::InvalidArgument(
-    //        "minibatch index should in current trainer"));
-    PADDLE_ENFORCE_EQ(
-        (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(), 1,
-        platform::errors::InvalidArgument(
-            "minibatch index should in current trainer"));
+    // check minibatch_index is in mini_scopes_
+    std::unique_lock<std::mutex> lk(scope_mutex_);
+    if ((*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end()) {
+      lk.unlock();
+      // PADDLE_ENFORCE_EQ(
+      //    (*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
+      //    platform::errors::InvalidArgument(
+      //        "minibatch index should in current trainer"));
+      PADDLE_ENFORCE_EQ(
+          (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(), 1,
+          platform::errors::InvalidArgument(
+              "minibatch index should in current trainer"));
+
+    } else {
+      // create mini scope & micro scopes
+      auto* minibatch_scope = &(scope_->NewScope());
+      (*mini_scopes_)[minibatch_index] = minibatch_scope;
+      (*micro_scopes_)[minibatch_index].reset(
+          new std::vector<paddle::framework::Scope*>{});
+      for (int i = 0; i < num_microbatch_; i++) {
+        auto* micro_scope = &(minibatch_scope->NewScope());
+        (*((*micro_scopes_)[minibatch_index])).push_back(micro_scope);
+      }
+      (*task_queue_)[minibatch_index].reset(
+          new ::paddle::framework::BlockingQueue<
+              std::pair<std::string, int>>());
+      lk.unlock();
+    }
 
     auto* micro_scope =
         (*((*micro_scopes_)[minibatch_index]))[microbatch_index];
 
     distributed::DeserializeFromMultiVarMsgAndIOBuf(
         *request, &request_io_buffer, *dev_ctx_, micro_scope);
-
     // blocking queue handles multi thread
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));
-
     auto response_var_nums = request->recv_var_names_size();
     std::vector<std::string> response_var_names(response_var_nums),
         empty_var_names{};
@@ -269,11 +298,12 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
  private:
   // share with HeterPipelineTrainer
-  // SharedMiniScope mini_scopes_{nullptr};
+  SharedMiniScope mini_scopes_{nullptr};
   SharedMicroScope micro_scopes_{nullptr};
 
   int num_microbatch_;
   int num_minibatch_;
+  std::mutex scope_mutex_;
 
   bool is_first_stage_ = false;
   bool is_last_stage_ = false;
@@ -321,13 +351,15 @@ class HeterServer {
     request_handler_ = request_handler;
   }
 
-  // void SetMiniBatchScopes(SharedMiniScope mini_scopes) {
-  //  request_handler_->SetMiniScopes(mini_scopes);
-  //}
+  void SetMiniBatchScopes(SharedMiniScope mini_scopes) {
+    request_handler_->SetMiniScopes(mini_scopes);
+  }
 
   void SetMicroBatchScopes(SharedMicroScope micro_scopes) {
     request_handler_->SetMicroScopes(micro_scopes);
   }
+
+  int GetThreadNum() { return request_handler_->GetThreadNum(); }
 
   void SetTaskQueue(SharedTaskQueue task_queue) {
     request_handler_->SetTaskQueue(task_queue);

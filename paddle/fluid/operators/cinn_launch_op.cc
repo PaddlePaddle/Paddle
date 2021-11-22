@@ -15,6 +15,8 @@
 #include "paddle/fluid/operators/cinn_launch_op.h"
 #include "paddle/fluid/string/string_helper.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace paddle {
 namespace operators {
 
@@ -67,6 +69,12 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
   compiled_obj.runtime_program->Execute(&context.FinalizeArguments());
 }
 
+void SetCinnRuntimeFlags() {
+  VLOG(4) << "Set FLAGS_cinn_cudnn_deterministic to "
+          << FLAGS_cudnn_deterministic;
+  ::cinn::runtime::SetCinnCudnnDeterministic(FLAGS_cudnn_deterministic);
+}
+
 CinnLaunchContext::CinnLaunchContext(const CinnCompiledObject& compiled_obj)
     : paddle2cinn_varmap_(compiled_obj.paddle2cinn_varmap),
       cinn_scope_(compiled_obj.scope) {
@@ -90,13 +98,13 @@ CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& var_name) {
   return cinn_scope_->GetTensor(var_name);
 }
 
-std::vector<std::string> CinnLaunchContext::GetInternalVariableNames() {
+std::unordered_set<std::string> CinnLaunchContext::GetInternalVariableNames() {
   std::unordered_set<std::string> all_parameters(cinn_variable_names_);
   std::for_each(name2argument_.begin(), name2argument_.end(),
                 [&all_parameters](const auto& name2arg) {
                   all_parameters.erase(name2arg.first);
                 });
-  return {all_parameters.begin(), all_parameters.end()};
+  return all_parameters;
 }
 
 void CinnLaunchContext::MutableTensorData(const std::string& var_name,

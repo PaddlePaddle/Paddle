@@ -70,6 +70,9 @@ void ElementwiseAdd(const CPUContext& dev_ctx,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out) {
+  // allocate memory for out
+  out->mutable_data<T>();
+
   if (x.dims() == y.dims()) {
     SameDimsElementwiseCompute<general::SameDimsAddFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
@@ -92,6 +95,9 @@ void ElementwiseSub(const CPUContext& dev_ctx,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out) {
+  // allocate memory for out
+  out->mutable_data<T>();
+
   if (x.dims() == y.dims()) {
     SameDimsElementwiseCompute<general::SameDimsSubFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
@@ -108,28 +114,6 @@ void ElementwiseSub(const CPUContext& dev_ctx,
   }
 }
 
-template <typename T>
-void ElementwiseDiv(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
-    SameDimsElementwiseCompute<general::SameDimsDivFunctor<CPUContext, T>>()(
-        dev_ctx, x, y, out);
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::DivFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::DivFunctor<T>(), out);
-    } else {
-      ElementwiseCompute<general::InverseDivFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseDivFunctor<T>(), out);
-    }
-  }
-}
-
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -142,7 +126,8 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 
 PT_REGISTER_KERNEL("sign", CPU, ANY, pten::Sign, float, double) {}
-PT_REGISTER_KERNEL("mean", CPU, ANY, pten::Mean, float, double) {}
+PT_REGISTER_KERNEL(
+    "mean", CPU, ANY, pten::Mean, float, double, paddle::platform::bfloat16) {}
 PT_REGISTER_KERNEL("scale",
                    CPU,
                    ANY,
@@ -183,16 +168,6 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    CPU,
                    ANY,
                    pten::ElementwiseSub,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL("elementwise_div",
-                   CPU,
-                   ANY,
-                   pten::ElementwiseDiv,
                    float,
                    double,
                    int,
