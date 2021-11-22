@@ -192,14 +192,6 @@ class TensorRTMatMulQuantDequantDims4TransposeXYTest(
         self.alpha = 11.2
 
 
-class TensorRTMatMulQuantDequantDims4ScaleTest(
-        TensorRTMatMulQuantDequantDims4Test):
-    def set_params(self):
-        self.transpose_x = False
-        self.transpose_y = False
-        self.alpha = 2.0
-
-
 class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
     def setUp(self):
         self.set_params()
