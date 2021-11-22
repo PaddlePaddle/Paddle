@@ -1433,7 +1433,7 @@ set +x
                         exec_times=$[$exec_times+1]
                         failed_test_lists=''
                         collect_failed_tests
-                        echo "failed_test_listss: $failed_test_lists"
+                        echo "failed_test_lists: $failed_test_lists"
                         rm -f $tmp_dir/*
                         one_card_retry=''
                         multiple_card_retry=''
@@ -1442,6 +1442,7 @@ set +x
                         break
                     fi 
                 done
+            retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
 
         rerun_ut_endTime_s=`date +%s`
