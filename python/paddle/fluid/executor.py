@@ -288,7 +288,10 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
     return feed_count > 0
 
 
-def has_fetch_operators(block, fetch_targets, fetch_holder_name):
+def has_fetch_operators(block,
+                        fetch_targets,
+                        fetch_holder_name,
+                        fetch_op='fetch'):
     """ Check whether the block already has fetch operators.
 
     Return false if the block does not have any fetch operators.
@@ -303,6 +306,7 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
         fetch_holder_name: the name of the variable that holds the data of
             all fetch targets. The type of this fetch_holder variable is
             FETCH_LIST, which is essentially vector<LoDTensor>.
+        fetch_op: the operator name of fetch
 
     Return:
         A boolean value that indicates whether a block has fetch operators
@@ -311,7 +315,7 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
 
     fetch_count = 0
     for op in block.ops:
-        if op.desc.type() == 'fetch':
+        if op.desc.type() == fetch_op:
             fetch_count += 1
             assert op.desc.output('Out')[0] == fetch_holder_name
             fetch_target_name = op.desc.input('X')[0]
@@ -740,7 +744,7 @@ class Executor(object):
                             fetch_list,
                             feed_var_name,
                             fetch_var_name,
-                            skip_fetch=False):
+                            use_fetch_v2=False):
         tmp_program = program.clone()
 
         global_block = tmp_program.global_block()
@@ -775,17 +779,21 @@ class Executor(object):
                     warnings.warn(
                         "The variable %s is not found in program. It is not declared or is pruned."
                         % name)
-        if skip_fetch:
-            return tmp_program
+
+        if use_fetch_v2:
+            fetch_op = 'fetch_v2'
+        else:
+            fetch_op = 'fetch'
 
         # append fetch_operators
-        if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name,
+                                   fetch_op):
             for i, var in enumerate(fetch_list):
                 assert isinstance(var, Variable) or isinstance(
                     var, six.string_types), (
                         "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
                 global_block.append_op(
-                    type='fetch',
+                    type=fetch_op,
                     inputs={'X': [var]},
                     outputs={'Out': [fetch_var]},
                     attrs={'col': i})
@@ -1345,7 +1353,13 @@ class Executor(object):
                     fetch_list=fetch_list,
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name,
-                    skip_fetch=True)
+                    use_fetch_v2=True)
+
+                # NPTE(zhiqiu): Construct standalone_executor first, so 
+                # the scope is binded with the variable_scope of standalone_executor
+                new_exe = self._executor_cache._get_exe_from_cache(program,
+                                                                   scope)
+
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
                     from paddle.optimizer.lr import LRScheduler
@@ -1360,9 +1374,7 @@ class Executor(object):
                                                       lr_sheduler._var_name)
                     tensor.set(data, self.place)
 
-                return self._executor_cache.run(program, scope,
-                                                list(feed.keys()), fetch_list,
-                                                return_numpy)
+                return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1981,6 +1993,8 @@ class Executor(object):
             fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
             fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
             fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
+        if "num_micro_batches" in fleet_opt:
+            fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
         num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
