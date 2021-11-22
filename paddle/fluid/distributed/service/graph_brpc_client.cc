@@ -304,10 +304,15 @@ std::future<int32_t> GraphBrpcClient::remove_graph_node(
 // char* &buffer,int &actual_size
 std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
-    std::vector<std::vector<std::pair<uint64_t, float>>> &res,
+    // std::vector<std::vector<std::pair<uint64_t, float>>> &res,
+    std::vector<std::vector<uint64_t>> &res,
+    std::vector<std::vector<float>> &res_weight, bool need_weight,
     int server_index) {
   if (server_index != -1) {
     res.resize(node_ids.size());
+    if (need_weight) {
+      res_weight.resize(node_ids.size());
+    }
     DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
       int ret = 0;
       auto *closure = (DownpourBrpcClosure *)done;
@@ -331,11 +336,14 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
           int actual_size = actual_sizes[node_idx];
           int start = 0;
           while (start < actual_size) {
-            res[node_idx].push_back(
-                {*(uint64_t *)(node_buffer + offset + start),
-                 *(float *)(node_buffer + offset + start +
-                            GraphNode::id_size)});
-            start += GraphNode::id_size + GraphNode::weight_size;
+            res[node_idx].emplace_back(
+                *(uint64_t *)(node_buffer + offset + start));
+            start += GraphNode::id_size;
+            if (need_weight) {
+              res_weight[node_idx].emplace_back(
+                  *(float *)(node_buffer + offset + start));
+              start += GraphNode::weight_size;
+            }
           }
           offset += actual_size;
         }
@@ -352,6 +360,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     closure->request(0)->add_params((char *)node_ids.data(),
                                     sizeof(uint64_t) * node_ids.size());
     closure->request(0)->add_params((char *)&sample_size, sizeof(int));
+    closure->request(0)->add_params((char *)&need_weight, sizeof(bool));
     ;
     // PsService_Stub rpc_stub(get_cmd_channel(server_index));
     GraphPsService_Stub rpc_stub =
@@ -364,13 +373,18 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
   res.clear();
+  res_weight.clear();
   for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
     int server_index = get_server_index_by_id(node_ids[query_idx]);
     if (server2request[server_index] == -1) {
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
     }
-    res.push_back(std::vector<std::pair<uint64_t, float>>());
+    // res.push_back(std::vector<std::pair<uint64_t, float>>());
+    res.push_back({});
+    if (need_weight) {
+      res_weight.push_back({});
+    }
   }
   size_t request_call_num = request2server.size();
   std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
@@ -413,11 +427,14 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
               int actual_size = actual_sizes[node_idx];
               int start = 0;
               while (start < actual_size) {
-                res[query_idx].push_back(
-                    {*(uint64_t *)(node_buffer + offset + start),
-                     *(float *)(node_buffer + offset + start +
-                                GraphNode::id_size)});
-                start += GraphNode::id_size + GraphNode::weight_size;
+                res[query_idx].emplace_back(
+                    *(uint64_t *)(node_buffer + offset + start));
+                start += GraphNode::id_size;
+                if (need_weight) {
+                  res_weight[query_idx].emplace_back(
+                      *(float *)(node_buffer + offset + start));
+                  start += GraphNode::weight_size;
+                }
               }
               offset += actual_size;
             }
@@ -445,6 +462,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
                      sizeof(uint64_t) * node_num);
     closure->request(request_idx)
         ->add_params((char *)&sample_size, sizeof(int));
+    closure->request(request_idx)
+        ->add_params((char *)&need_weight, sizeof(bool));
     // PsService_Stub rpc_stub(get_cmd_channel(server_index));
     GraphPsService_Stub rpc_stub =
         getServiceStub(get_cmd_channel(server_index));
