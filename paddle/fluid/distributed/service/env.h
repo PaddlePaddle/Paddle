@@ -144,8 +144,8 @@ class PSEnvironment {
 
   virtual std::vector<uint64_t> get_client_info() {
     std::vector<uint64_t> client_info;
-    for (auto &i : _ps_client_sign_set) {
-      client_info.push_back(i);
+    for (auto &i : _ps_client_list) {
+      client_info.push_back(i.serialize_to_uint64());
     }
     return client_info;
   }
@@ -250,7 +250,7 @@ class PaddlePSEnvironment : public PSEnvironment {
     return 0;
   }
 
-  virtual int32_t set_ps_clients(std::vector<std::string> *host_sign_list,
+  virtual int32_t set_ps_clients(const std::vector<std::string> *host_sign_list,
                                  int node_num) {
     _ps_client_list.clear();
     _ps_client_sign_set.clear();
@@ -265,6 +265,7 @@ class PaddlePSEnvironment : public PSEnvironment {
     std::sort(
         _ps_client_list.begin(), _ps_client_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
+    VLOG(1) << "env.set_ps_clients done\n";
     return 0;
   }
 

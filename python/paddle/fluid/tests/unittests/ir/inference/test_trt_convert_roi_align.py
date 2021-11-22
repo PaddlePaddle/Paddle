@@ -14,6 +14,7 @@
 
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
+import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -141,6 +142,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                     return 1, 3
                 else:
                     return 0, 4
+            return 0, 4
 
         attrs = [
             program_config.ops[i].attrs

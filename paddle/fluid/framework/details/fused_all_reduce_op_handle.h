@@ -67,11 +67,18 @@ struct FusedAllReduceOpHandle : public AllReduceOpHandle {
 #endif
   std::string Name() const override;
 
+  ~FusedAllReduceOpHandle();
+
  protected:
   void RunImpl() override;
 
  private:
   size_t num_of_all_reduce_;
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  gpuEvent_t start_event_{nullptr};
+  gpuEvent_t end_event_{nullptr};
+#endif
 
   // Check the dtype of the input
   void GetDTypeAndNumel(

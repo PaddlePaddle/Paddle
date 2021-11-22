@@ -97,5 +97,27 @@ class TestStackOp6(TestStackOpBase):
         self.axis = 3
 
 
+class TestStackOpint64(TestStackOpBase):
+    def initDefaultParameters(self):
+        self.num_inputs = 4
+        self.input_dim = (5, 6, 7)
+        self.axis = 0
+        self.dtype = 'int64'
+
+    def initParameters(self):
+        self.num_inputs = 16
+
+
+class TestStackOpint(TestStackOpBase):
+    def initDefaultParameters(self):
+        self.num_inputs = 4
+        self.input_dim = (5, 6, 7)
+        self.axis = 0
+        self.dtype = 'int'
+
+    def initParameters(self):
+        self.num_inputs = 16
+
+
 if __name__ == '__main__':
     unittest.main()

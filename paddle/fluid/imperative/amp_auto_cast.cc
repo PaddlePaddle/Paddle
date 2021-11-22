@@ -24,6 +24,17 @@ namespace imperative {
 
 class VarBase;
 
+AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
+    : tracer_(tracer) {
+  pre_amp_level_ = tracer_->GetAmpLevel();
+
+  if (pre_amp_level_ != level) {
+    tracer_->SetAmpLevel(level);
+  }
+}
+
+AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
+
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
       block_ops_(new std::unordered_set<std::string>()),
@@ -117,7 +128,7 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
   imperative::NameVarBaseMap outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(tracer, 0);
+    AutoCastGuard guard(tracer, AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 
@@ -180,6 +191,14 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
         continue;
       }
 
+      if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+        if (pair.first == "LnScale" || pair.first == "LnBias" ||
+            pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+            pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+          continue;
+        }
+      }
+
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float16";
       for (auto& var : pair.second) {
@@ -212,6 +231,14 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
+      if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
+          dst_type == framework::proto::VarType::FP32) {
+        if (pair.first != "LnScale" && pair.first != "LnBias" &&
+            pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&
+            pair.first != "Ln1Scale" && pair.first != "Ln1Bias") {
+          continue;
+        }
+      }
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to "
               << framework::DataTypeToString(dst_type);
@@ -238,6 +265,13 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
       continue;
+    }
+    if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+      if (pair.first == "LnScale" || pair.first == "LnBias" ||
+          pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+          pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+        continue;
+      }
     }
     VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
             << GetDtypeStr(*pair.second.cbegin()) << " to "

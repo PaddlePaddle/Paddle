@@ -282,6 +282,27 @@ static void InitVarBaseFromTensorWithArgDefault(
   }
 }
 
+template <typename P>
+static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
+                                         const framework::Tensor &tensor,
+                                         const P &place) {
+  VLOG(4) << "Init VarBase";
+  new (self) imperative::VarBase(
+      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
+  self->SetPersistable(false);
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+  self->SetDataType(tensor.type());
+  auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  // Same place，share data directly
+  if (platform::is_same_place(place, tensor.place())) {
+    new_tensor->ShareDataWith(tensor);
+    VLOG(4) << "Same place, do ShareDataWith";
+  } else {
+    framework::TensorCopy(tensor, place, new_tensor);
+    VLOG(4) << "Different place, do TensorCopy";
+  }
+}
+
 static std::string GetTypeName(const imperative::VarBase &var) {
   if (var.Type() == framework::proto::VarType::RAW) {
     return "RAW";
@@ -528,13 +549,20 @@ static void ParseIndexingSlice(
   // specified_dims is the number of dimensions which indexed by Interger,
   // Slices.
   int specified_dims = 0;
+  int ell_count = 0;
   for (int dim = 0; dim < size; ++dim) {
     PyObject *slice_item = PyTuple_GetItem(index, dim);
     if (PyCheckInteger(slice_item) || PySlice_Check(slice_item)) {
       specified_dims++;
+    } else if (slice_item == Py_Ellipsis) {
+      ell_count++;
     }
   }
 
+  PADDLE_ENFORCE_LE(ell_count, 1,
+                    platform::errors::InvalidArgument(
+                        "An index can only have a single ellipsis ('...')"));
+  int none_count = 0;
   for (int i = 0, dim = 0; i < size; ++i) {
     PyObject *slice_item = PyTuple_GetItem(index, i);
 
@@ -580,7 +608,8 @@ static void ParseIndexingSlice(
     } else if (slice_item == Py_Ellipsis) {
       dim += rank - specified_dims;
     } else if (slice_item == Py_None) {
-      none_axes->push_back(dim);
+      none_axes->push_back(dim + none_count);
+      none_count++;
     } else if (PyList_Check(slice_item)) {
       *list_select_flag = true;
       PADDLE_ENFORCE_EQ(
@@ -639,7 +668,7 @@ static void ParseIndexingSlice(
   }
 
   // valid_index is the number of dimensions exclude None index
-  const int valid_indexs = size - none_axes->size();
+  const int valid_indexs = size - none_axes->size() - ell_count;
   PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
                     platform::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",
@@ -899,6 +928,16 @@ void BindImperative(py::module *m_ptr) {
            py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::XPUPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
+           py::arg("tensor"), py::arg("place"))
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
+           py::arg("tensor"), py::arg("place"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def(
           "__setitem_varbase__",
@@ -985,6 +1024,12 @@ void BindImperative(py::module *m_ptr) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});
+
+                // pass the stop_gradient from value to tensor
+                if (!value_tensor->OverridedStopGradient() &&
+                    self->OverridedStopGradient()) {
+                  self->SetOverridedStopGradient(false);
+                }
               } else if (py::isinstance<py::array>(value_obj)) {
                 auto value_tensor = std::shared_ptr<imperative::VarBase>(
                     new imperative::VarBase(false,
@@ -1168,29 +1213,6 @@ void BindImperative(py::module *m_ptr) {
                      }
                    }
                    axis -= len;
-                 }
-
-                 // Deal with cases that there are more than one
-                 // prefix none index, For example:
-                 // [None, None, :, :, None]
-                 // the none_axes int the return of ParseIndexingSlice is:
-                 // [0,    0,          2   ]
-                 // according to the interface of "unsqueeze2",
-                 // we should convert it to:
-                 // [0,    0,          4   ]
-                 int prefix_zero_cnt = 0;
-                 for (const auto &axis : none_axes) {
-                   if (axis == 0) {
-                     prefix_zero_cnt++;
-                   } else {
-                     break;
-                   }
-                 }
-                 if (prefix_zero_cnt > 0) {
-                   int none_axes_num = static_cast<int>(none_axes.size());
-                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
-                     none_axes[i] += prefix_zero_cnt;
-                   }
                  }
 
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
@@ -1443,7 +1465,8 @@ void BindImperative(py::module *m_ptr) {
                 #   one of the variables needed for gradient computation has been modified by an inplace operation.
              
        )DOC")
-      .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
+      .def("clear_gradient", &imperative::VarBase::ClearGradient,
+           py::arg("set_to_zero") = true, R"DOC(
 
         Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 
@@ -1463,6 +1486,9 @@ void BindImperative(py::module *m_ptr) {
                 linear.weight.clear_gradient()
                 print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
       )DOC")
+      .def("_gradient_set_empty", &imperative::VarBase::_GradientSetEmpty,
+           py::arg("set_is_empty") = true)
+      .def("_is_gradient_set_empty", &imperative::VarBase::_IsGradientSetEmpty)
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
              const auto &tensor = self->Var().Get<framework::LoDTensor>();
@@ -1591,6 +1617,26 @@ void BindImperative(py::module *m_ptr) {
                      "Cannot remove gradient hook on a Tensor that stop "
                      "gradient or without gradient."));
              return self.GradVarBase()->RemoveVariableWrapperHook(hook_id);
+           })
+      .def("_register_void_function_post_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register void function post hook on a Tensor that "
+                     "stop "
+                     "gradient or without gradient."));
+             auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
+             VLOG(1) << 111;
+             auto grad_node = self.MutableGradVarBase()->GradNode();
+             VLOG(1) << 222;
+             VLOG(1) << (grad_node == nullptr);
+             for (auto &cur_op : *grad_node) {
+               VLOG(1) << 333;
+               cur_op.AddVoidFunctionPostHook(
+                   std::make_shared<std::function<void()>>(py_func));
+               VLOG(1) << 444;
+             }
            })
       .def("_register_backward_hook",
            [](imperative::VarBase &self, const py::handle &hook) {
@@ -1859,6 +1905,67 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
+      .def("_clear",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             t->clear();
+           })
+      .def("_offset",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             return t->offset();
+           })
+      .def("_share_buffer_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 src->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             dst_->ShareBufferWith(*src);
+           })
+      .def("_is_shared_buffer_with",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+               return false;
+             }
+             return dst_->IsSharedBufferWith(*src);
+           })
+      .def("_slice",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              int64_t begin_idx, int64_t end_idx) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             return t->Slice(begin_idx, end_idx);
+           })
+      .def("_copy_gradient_from",
+           [](std::shared_ptr<imperative::VarBase> &self,
+              const imperative::VarBase &src) { self->_CopyGradientFrom(src); })
+      .def("_numel",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             return t->numel();
+           })
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property("stop_gradient",
@@ -1875,6 +1982,12 @@ void BindImperative(py::module *m_ptr) {
             } else if (self.Var().IsType<framework::SelectedRows>()) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
+            } else if (self.Var().IsType<framework::Strings>()) {
+              return std::vector<int>{static_cast<int>(
+                  self.Var().Get<framework::Strings>().size())};
+            } else if (self.Var().IsType<framework::Vocab>()) {
+              return std::vector<int>{
+                  static_cast<int>(self.Var().Get<framework::Vocab>().size())};
             } else {
               VLOG(2) << "It is meaningless to get shape of "
                          "variable type "
@@ -1940,6 +2053,13 @@ void BindImperative(py::module *m_ptr) {
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
+  py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
+      .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("O1", paddle::imperative::AmpLevel::O1)
+      .value("O2", paddle::imperative::AmpLevel::O2)
+      .value("O3", paddle::imperative::AmpLevel::O3)
+      .export_values();
+
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
       .def("__init__",
@@ -1947,8 +2067,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def_property("_amp_level", &imperative::Tracer::AMPLevel,
-                    &imperative::Tracer::SetAMPLevel)
+      .def_property("_amp_level", &imperative::Tracer::GetAmpLevel,
+                    &imperative::Tracer::SetAmpLevel)
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
@@ -2242,6 +2362,343 @@ void BindImperative(py::module *m_ptr) {
            const py::args args, const py::kwargs kwargs) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });
+
+#if defined(PADDLE_WITH_CUDA)
+  m.def(
+      "async_write",
+      [](const imperative::VarBase &src, imperative::VarBase &dst,
+         const imperative::VarBase &offset, const imperative::VarBase &count) {
+        PADDLE_ENFORCE_EQ(
+            platform::is_gpu_place(src.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `src` device should be CUDAPlace, but received %d. ",
+                src.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_cuda_pinned_place(dst.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `dst` device should be CUDAPinnedPlace, "
+                "but received %d. ",
+                dst.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_cpu_place(offset.Place()), true,
+            platform::errors::InvalidArgument("Required `offset` device should "
+                                              "be CPUPlace, but received %d. ",
+                                              offset.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_cpu_place(count.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `count` device should be CPUPlace, but received %d. ",
+                count.Place()));
+
+        // TODO(daisiming): In future, add index as arguments following
+        // async_read.
+        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+        auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
+        auto &count_tensor = count.Var().Get<framework::LoDTensor>();
+        const auto &deviceId = paddle::platform::GetCurrentDeviceId();
+
+        PADDLE_ENFORCE_EQ(offset_tensor.dims().size(), 1,
+                          platform::errors::InvalidArgument(
+                              "`offset` tensor should be one-dimensional."));
+        PADDLE_ENFORCE_EQ(count_tensor.dims().size(), 1,
+                          platform::errors::InvalidArgument(
+                              "`count` tensor should be one-dimensional."));
+        PADDLE_ENFORCE_EQ(offset_tensor.numel(), count_tensor.numel(),
+                          platform::errors::InvalidArgument(
+                              "`offset` and `count` tensor size dismatch."));
+        PADDLE_ENFORCE_EQ(
+            src_tensor.dims().size(), dst_tensor->dims().size(),
+            platform::errors::InvalidArgument(
+                "`src` and `dst` should have the same tensor shape, "
+                "except for the first dimension."));
+        for (int i = 1; i < src_tensor.dims().size(); i++) {
+          PADDLE_ENFORCE_EQ(
+              src_tensor.dims()[i], dst_tensor->dims()[i],
+              platform::errors::InvalidArgument(
+                  "`src` and `dst` should have the same tensor shape, "
+                  "except for the first dimension."));
+        }
+
+        auto stream = paddle::platform::stream::get_current_stream(deviceId)
+                          ->raw_stream();
+
+        int64_t size = src_tensor.numel() / src_tensor.dims()[0];
+        auto *src_data = src_tensor.data<float>();
+        auto *dst_data = dst_tensor->mutable_data<float>(dst.Place());
+        const int64_t *offset_data = offset_tensor.data<int64_t>();
+        const int64_t *count_data = count_tensor.data<int64_t>();
+        int64_t src_offset = 0, dst_offset, c;
+        for (int64_t i = 0; i < offset_tensor.numel(); i++) {
+          dst_offset = offset_data[i], c = count_data[i];
+          PADDLE_ENFORCE_LE(src_offset + c, src_tensor.dims()[0],
+                            platform::errors::InvalidArgument(
+                                "Invalid offset or count index"));
+          PADDLE_ENFORCE_LE(dst_offset + c, dst_tensor->dims()[0],
+                            platform::errors::InvalidArgument(
+                                "Invalid offset or count index"));
+          cudaMemcpyAsync(
+              dst_data + (dst_offset * size), src_data + (src_offset * size),
+              c * size * sizeof(float), cudaMemcpyDeviceToHost, stream);
+          src_offset += c;
+        }
+      },
+      R"DOC(
+  This api provides a way to write pieces of source tensor to destination tensor 
+  inplacely and asynchronously. In which, we use `offset` and `count` to determine 
+  where to copy. `offset` means the begin points of the copy pieces of `src`, and 
+  `count` means the lengths of the copy pieces of `src`. To be noted, the copy process 
+  will run asynchronously from cuda to pin memory. We can simply remember this as 
+  "gpu async_write to pin_memory".
+  
+  Arguments:
+  
+    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+                  Besides, `src` should be placed on CUDAPlace.
+
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
+                  Besides, `dst` should be placed on CUDAPinnedPlace. The shape of `dst` 
+                  should be the same with `src` except for the first dimension. 
+
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
+                     should be one-dimensional. 
+    
+    count (Tensor): The count tensor, and the data type should be `int64` currently. 
+                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
+                    should be one-dimensinal. 
+
+  Examples:
+      .. code-block:: python
+
+          import numpy as np
+          import paddle
+          from paddle.fluid import core  
+          from paddle.device import cuda
+          
+          if core.is_compiled_with_cuda():
+              src = paddle.rand(shape=[100, 50, 50])
+              dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
+              offset = paddle.to_tensor(
+                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+              count = paddle.to_tensor(
+                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+
+              stream = cuda.Stream()
+              with cuda.stream_guard(stream):
+                  core.async_write(src, dst, offset, count)
+
+              offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
+              offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
+              offset_array = paddle.concat([offset_a, offset_b], axis=0)
+              print(np.allclose(src.numpy(), offset_array.numpy())) # True
+)DOC");
+
+  m.def(
+      "async_read",
+      [](const imperative::VarBase &src, imperative::VarBase &dst,
+         const imperative::VarBase &index, imperative::VarBase &buffer,
+         const imperative::VarBase &offset, const imperative::VarBase &count) {
+        PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(src.Place()), true,
+                          platform::errors::InvalidArgument(
+                              "Required `src` device should be "
+                              "CUDAPinnedPlace, but received %d.",
+                              src.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_gpu_place(dst.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `dst` device should be CUDAPlace, but received %d.",
+                dst.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_cpu_place(index.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `index` device should be CPUPlace, but received %d.",
+                index.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_cuda_pinned_place(buffer.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `buffer` device should be CUDAPinnedPlace, "
+                "but received %d.",
+                buffer.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_cpu_place(offset.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `offset` device should be CPUPlace, but received %d.",
+                offset.Place()));
+        PADDLE_ENFORCE_EQ(
+            platform::is_cpu_place(count.Place()), true,
+            platform::errors::InvalidArgument(
+                "Required `count` device should be CPUPlace, but received %d.",
+                count.Place()));
+
+        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+        auto &index_tensor = index.Var().Get<framework::LoDTensor>();
+        auto *buffer_tensor =
+            buffer.MutableVar()->GetMutable<framework::LoDTensor>();
+        auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
+        auto &count_tensor = count.Var().Get<framework::LoDTensor>();
+        auto *dst_data = dst_tensor->mutable_data<float>(dst.Place());
+        const auto &deviceId = paddle::platform::GetCurrentDeviceId();
+
+        PADDLE_ENFORCE_EQ(src_tensor.dims().size(), dst_tensor->dims().size(),
+                          platform::errors::InvalidArgument(
+                              "`src` and `dst` should have same tensor shape, "
+                              "except for the first dimension."));
+        PADDLE_ENFORCE_EQ(
+            src_tensor.dims().size(), buffer_tensor->dims().size(),
+            platform::errors::InvalidArgument(
+                "`src` and `buffer` should have same tensor shape, "
+                "except for the first dimension."));
+        for (int i = 1; i < src_tensor.dims().size(); i++) {
+          PADDLE_ENFORCE_EQ(
+              src_tensor.dims()[i], dst_tensor->dims()[i],
+              platform::errors::InvalidArgument(
+                  "`src` and `dst` should have the same tensor shape, "
+                  "except for the first dimension."));
+          PADDLE_ENFORCE_EQ(
+              src_tensor.dims()[i], buffer_tensor->dims()[i],
+              platform::errors::InvalidArgument(
+                  "`src` and `buffer` should have the same tensor shape, "
+                  "except for the first dimension."));
+        }
+        PADDLE_ENFORCE_EQ(index_tensor.dims().size(), 1,
+                          platform::errors::InvalidArgument(
+                              "`index` tensor should be one-dimensional."));
+
+        auto stream = paddle::platform::stream::get_current_stream(deviceId)
+                          ->raw_stream();
+
+        int64_t numel = 0;  // total copy length
+        int64_t copy_flag = offset_tensor.dims()[0];
+        int64_t size = src_tensor.numel() / src_tensor.dims()[0];
+
+        if (copy_flag != 0) {
+          PADDLE_ENFORCE_EQ(offset_tensor.dims().size(), 1,
+                            platform::errors::InvalidArgument(
+                                "`offset` tensor should be one-dimensional."));
+          PADDLE_ENFORCE_EQ(count_tensor.dims().size(), 1,
+                            platform::errors::InvalidArgument(
+                                "`count` tensor should be one-dimensional."));
+          PADDLE_ENFORCE_EQ(offset_tensor.numel(), count_tensor.numel(),
+                            platform::errors::InvalidArgument(
+                                "`offset` and `count` tensor size dismatch."));
+          auto *offset_data = offset_tensor.data<int64_t>();
+          auto *count_data = count_tensor.data<int64_t>();
+          for (int64_t i = 0; i < count_tensor.numel(); i++) {
+            numel += count_data[i];
+          }
+          PADDLE_ENFORCE_LE(numel + index_tensor.numel(),
+                            buffer_tensor->dims()[0],
+                            platform::errors::InvalidArgument(
+                                "Buffer tensor size is too small."));
+          PADDLE_ENFORCE_LE(numel + index_tensor.numel(), dst_tensor->dims()[0],
+                            platform::errors::InvalidArgument(
+                                "Target tensor size is too small."));
+
+          int64_t src_offset, dst_offset = 0, c;
+          auto *src_data = src_tensor.data<float>();
+          for (int64_t i = 0; i < offset_tensor.numel(); i++) {
+            src_offset = offset_data[i], c = count_data[i];
+            PADDLE_ENFORCE_LE(src_offset + c, src_tensor.dims()[0],
+                              platform::errors::InvalidArgument(
+                                  "Invalid offset or count index."));
+            PADDLE_ENFORCE_LE(dst_offset + c, dst_tensor->dims()[0],
+                              platform::errors::InvalidArgument(
+                                  "Invalid offset or count index."));
+            cudaMemcpyAsync(
+                dst_data + (dst_offset * size), src_data + (src_offset * size),
+                c * size * sizeof(float), cudaMemcpyHostToDevice, stream);
+            dst_offset += c;
+          }
+        } else {
+          PADDLE_ENFORCE_LE(index_tensor.numel(), buffer_tensor->dims()[0],
+                            platform::errors::InvalidArgument(
+                                "Buffer tensor size is too small."));
+        }
+
+        // Select the index data to the buffer
+        auto index_select = [](const framework::Tensor &src_tensor,
+                               const framework::Tensor &index_tensor,
+                               framework::Tensor *buffer_tensor) {
+          auto *src_data = src_tensor.data<float>();
+          auto *index_data = index_tensor.data<int64_t>();
+          auto *buffer_data =
+              buffer_tensor->mutable_data<float>(buffer_tensor->place());
+          const int &slice_size = src_tensor.numel() / src_tensor.dims()[0];
+          const int &copy_bytes = slice_size * sizeof(float);
+          int64_t c = 0;
+          for (int64_t i = 0; i < index_tensor.numel(); i++) {
+            std::memcpy(buffer_data + c * slice_size,
+                        src_data + index_data[i] * slice_size, copy_bytes);
+            c += 1;
+          }
+        };
+        index_select(src_tensor, index_tensor, buffer_tensor);
+
+        // Copy the data to device memory
+        cudaMemcpyAsync(dst_data + (numel * size), buffer_tensor->data<float>(),
+                        index_tensor.numel() * size * sizeof(float),
+                        cudaMemcpyHostToDevice, stream);
+      },
+      R"DOC(
+  This api provides a way to read from pieces of source tensor to destination tensor 
+  asynchronously. In which, we use `index`, `offset` and `count` to determine where 
+  to read. `index` means the index position of src tensor we want to read. `offset` 
+  and count means the begin points and length of pieces of src tensor we want to read. 
+  To be noted, the copy process will run asynchronously from pin memory to cuda place. 
+  We can simply remember this as "cuda async_read from pin_memory".
+
+  Arguments:
+  
+    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+                  Besides, `src` should be placed on CUDAPinnedPlace.
+  
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
+                  Besides, `dst` should be placed on CUDAPlace. The shape of `dst` should 
+                  be the same with `src` except for the first dimension.
+
+    index (Tensor): The index tensor, and the data type should be `int64` currently. 
+                    Besides, `index` should be on CPUplace. The shape of `index` should 
+                    be one-dimensional.
+
+    buffer (Tensor): The buffer tensor, used to buffer index copy tensor temporarily. 
+                     The data type should be `float32` currently, and should be placed 
+                     on CUDAPinnedPlace. The shape of `buffer` should be the same with `src` except for the first dimension.
+
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
+                     should be one-dimensional.
+
+    count (Tensor): The count tensor, and the data type should be `int64` currently. 
+                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
+                    should be one-dimensinal.
+    
+  Examples:
+      .. code-block:: python
+
+          import numpy as np
+          import paddle
+          from paddle.fluid import core
+          from paddle.device import cuda
+
+          if core.is_compiled_with_cuda():
+              src = paddle.rand(shape=[100, 50, 50], dtype="float32").pin_memory()
+              dst = paddle.empty(shape=[100, 50, 50], dtype="float32")
+              offset = paddle.to_tensor(
+                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+              count = paddle.to_tensor(
+                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+              buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
+              index = paddle.to_tensor(
+                  np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
+          
+              stream = cuda.Stream()
+              with cuda.stream_guard(stream):
+                  core.async_read(src, dst, index, buffer, offset, count)
+ 
+)DOC");
+#endif
 }
 
 }  // namespace pybind

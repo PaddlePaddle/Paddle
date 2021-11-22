@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 class TestFleetBase(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36000"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
             "127.0.0.1:36001,127.0.0.2:36001"
@@ -36,8 +37,13 @@ class TestFleetBase(unittest.TestCase):
 
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
+        input_slot = paddle.fluid.layers.data(
+            name="slot", shape=[1], dtype='int64')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
+        emb = paddle.fluid.layers.embedding(
+            input=input_slot, size=[10, 9], is_sparse=True)
+        input_x = paddle.concat(x=[input_x, emb], axis=1)
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
@@ -63,10 +69,13 @@ class TestFleetBase(unittest.TestCase):
         compiled_prog = fluid.compiler.CompiledProgram(
             fluid.default_main_program())
 
+        fleet.init_worker()
         fleet.fleet.save(dirname="/tmp", feed=['x', 'y'], fetch=[avg_cost])
         fleet.fleet.save(
             dirname="/tmp", feed=[input_x, input_y], fetch=[avg_cost])
         fleet.fleet.save(dirname="/tmp")
+
+        fleet.load_model(path="/tmp", mode=0)
 
         self.assertRaises(
             Exception,

@@ -36,4 +36,5 @@ using gpuEvent_t = cudaEvent_t;
 using gpuDeviceProp = cudaDeviceProp;
 #endif
 
+using CUDAGraphID = unsigned long long;  // NOLINT
 }  // namespace paddle

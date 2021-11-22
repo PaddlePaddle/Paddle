@@ -108,8 +108,15 @@ class FillIDiagonalKernel : public framework::OpKernel<T> {
       size = std::min(size, out_dims[1] * out_dims[1]);
     }
 
-    for (int64_t i = offset; i < size; i += strides) {
-      out_data[i] = temp_var;
+    for (int64_t i = 0; i < size; i += strides) {
+      // to check if the new position with offset is still in the same line;
+      // this modify should not affect across lines.
+      // out_dims[1] is also work for tensor with dim>2, for which the dims must
+      // be the same number
+      if (i % out_dims[1] + offset >= 0 &&
+          i % out_dims[1] + offset < out_dims[1]) {
+        out_data[i + offset] = temp_var;
+      }
     }
   }
 };
@@ -176,8 +183,11 @@ class FillIDiagonalGradKernel : public framework::OpKernel<T> {
         wrapsize = size;
       }
 
-      for (int64_t i = offset; i < wrapsize; i += strides) {
-        data[i] = T(0);
+      for (int64_t i = 0; i < wrapsize; i += strides) {
+        if (i % dx_dims[1] + offset >= 0 &&
+            i % dx_dims[1] + offset < dx_dims[1]) {
+          data[i + offset] = T(0);
+        }
       }
     }
   }

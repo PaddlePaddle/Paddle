@@ -93,14 +93,14 @@ def create_fill_constant_node(name, value):
     func_code = "{} = paddle.fluid.layers.fill_constant(shape=[1], ".format(
         name)
     if isinstance(value, bool):
-        func_code += "dtype='bool', value={})".format(value)
+        func_code += "dtype='bool', value={}, name='{}')".format(value, name)
         return gast.parse(func_code).body[0]
     if isinstance(value, float):
-        func_code += "dtype='float64', value={})".format(value)
+        func_code += "dtype='float64', value={}, name='{}')".format(value, name)
         return gast.parse(func_code).body[0]
 
     if isinstance(value, int):
-        func_code += "dtype='int64', value={})".format(value)
+        func_code += "dtype='int64', value={}, name='{}')".format(value, name)
         return gast.parse(func_code).body[0]
 
 

@@ -88,7 +88,7 @@ function run_tools_test() {
     cd ${CUR_PWD}
 }
 
-changed_env_var_count=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/paddle | grep 'DEFINE_EXPORTED' | wc -l`
+changed_env_var_count=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/paddle | grep 'DEFINE_EXPORTED' | grep -v '@@' | wc -l`
 if [[ $changed_env_var_count -gt 0 ]]; then
     echo_line="You must have one RD (lanxianghit (Recommend), phlrain or luotao1) approval for changing the FLAGS, which manages the environment variables.\n"
     check_approval 1 6836917 47554610 43953930
@@ -366,9 +366,9 @@ if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${GIT_PR_ID}" ]; then
                wanghuancoder or luotao1) approval for modifying
                unity_build_rule.cmake which the rules of Unity Build."
     echo_line=$(echo ${echo_line})
-    # Avin0323(16167147) zhouwei25(52485244)
+    # Avin0323(23427135) zhouwei25(52485244)
     # wanghuancoder(26922892) luotao1(6836917)
-    check_approval 1 16167147 52485244 26922892 6836917
+    check_approval 1 23427135 52485244 26922892 6836917
 fi
 
 if [ -n "${echo_list}" ];then

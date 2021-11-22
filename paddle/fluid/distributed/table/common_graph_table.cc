@@ -125,7 +125,7 @@ FeatureNode *GraphShard::add_feature_node(uint64_t id) {
   return (FeatureNode *)bucket[node_location[id]];
 }
 
-void GraphShard::add_neighboor(uint64_t id, uint64_t dst_id, float weight) {
+void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
   find_node(id)->add_edge(dst_id, weight);
 }
 
@@ -193,7 +193,6 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
-      count++;
       auto values = paddle::string::split_string<std::string>(line, "\t");
       if (values.size() < 2) continue;
       auto id = std::stoull(values[1]);
@@ -207,7 +206,9 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 
       if (count % 1000000 == 0) {
         VLOG(0) << count << " nodes are loaded from filepath";
+        VLOG(0) << line;
       }
+      count++;
 
       std::string nt = values[0];
       if (nt != node_type) {
@@ -273,11 +274,12 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       }
       if (count % 1000000 == 0) {
         VLOG(0) << count << " edges are loaded from filepath";
+        VLOG(0) << line;
       }
 
       size_t index = src_shard_id - shard_start;
       shards[index].add_graph_node(src_id)->build_edges(is_weighted);
-      shards[index].add_neighboor(src_id, dst_id, weight);
+      shards[index].add_neighbor(src_id, dst_id, weight);
       valid_count++;
     }
   }
@@ -305,12 +307,12 @@ Node *GraphTable::find_node(uint64_t id) {
   return node;
 }
 uint32_t GraphTable::get_thread_pool_index(uint64_t node_id) {
-  return node_id % shard_num % shard_num_per_table % task_pool_size_;
+  return node_id % shard_num % shard_num_per_server % task_pool_size_;
 }
 
 uint32_t GraphTable::get_thread_pool_index_by_shard_index(
     uint64_t shard_index) {
-  return shard_index % shard_num_per_table % task_pool_size_;
+  return shard_index % shard_num_per_server % task_pool_size_;
 }
 
 int32_t GraphTable::clear_nodes() {
@@ -392,47 +394,89 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
   memcpy(pointer, res.data(), actual_size);
   return 0;
 }
-int32_t GraphTable::random_sample_neighboors(
+int32_t GraphTable::random_sample_neighbors(
     uint64_t *node_ids, int sample_size,
-    std::vector<std::unique_ptr<char[]>> &buffers,
-    std::vector<int> &actual_sizes) {
+    std::vector<std::shared_ptr<char>> &buffers, std::vector<int> &actual_sizes,
+    bool need_weight) {
   size_t node_num = buffers.size();
+  std::function<void(char *)> char_del = [](char *c) { delete[] c; };
   std::vector<std::future<int>> tasks;
+  std::vector<std::vector<uint32_t>> seq_id(shard_end - shard_start);
+  std::vector<std::vector<SampleKey>> id_list(shard_end - shard_start);
+  size_t index;
   for (size_t idx = 0; idx < node_num; ++idx) {
-    uint64_t &node_id = node_ids[idx];
-    std::unique_ptr<char[]> &buffer = buffers[idx];
-    int &actual_size = actual_sizes[idx];
-
-    int thread_pool_index = get_thread_pool_index(node_id);
-    auto rng = _shards_task_rng_pool[thread_pool_index];
-
-    tasks.push_back(_shards_task_pool[thread_pool_index]->enqueue([&]() -> int {
-      Node *node = find_node(node_id);
-
-      if (node == nullptr) {
-        actual_size = 0;
-        return 0;
+    index = get_thread_pool_index(node_ids[idx]);
+    seq_id[index].emplace_back(idx);
+    id_list[index].emplace_back(node_ids[idx], sample_size, need_weight);
+  }
+  for (int i = 0; i < seq_id.size(); i++) {
+    if (seq_id[i].size() == 0) continue;
+    tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {
+      uint64_t node_id;
+      std::vector<std::pair<SampleKey, SampleResult>> r;
+      LRUResponse response = LRUResponse::blocked;
+      if (use_cache) {
+        response =
+            scaled_lru->query(i, id_list[i].data(), id_list[i].size(), r);
       }
-      std::vector<int> res = node->sample_k(sample_size, rng);
-      actual_size = res.size() * (Node::id_size + Node::weight_size);
-      int offset = 0;
-      uint64_t id;
-      float weight;
-      char *buffer_addr = new char[actual_size];
-      buffer.reset(buffer_addr);
-      for (int &x : res) {
-        id = node->get_neighbor_id(x);
-        weight = node->get_neighbor_weight(x);
-        memcpy(buffer_addr + offset, &id, Node::id_size);
-        offset += Node::id_size;
-        memcpy(buffer_addr + offset, &weight, Node::weight_size);
-        offset += Node::weight_size;
+      int index = 0;
+      uint32_t idx;
+      std::vector<SampleResult> sample_res;
+      std::vector<SampleKey> sample_keys;
+      auto &rng = _shards_task_rng_pool[i];
+      for (size_t k = 0; k < id_list[i].size(); k++) {
+        if (index < r.size() &&
+            r[index].first.node_key == id_list[i][k].node_key) {
+          idx = seq_id[i][k];
+          actual_sizes[idx] = r[index].second.actual_size;
+          buffers[idx] = r[index].second.buffer;
+          index++;
+        } else {
+          node_id = id_list[i][k].node_key;
+          Node *node = find_node(node_id);
+          idx = seq_id[i][k];
+          int &actual_size = actual_sizes[idx];
+          if (node == nullptr) {
+            actual_size = 0;
+            continue;
+          }
+          std::shared_ptr<char> &buffer = buffers[idx];
+          std::vector<int> res = node->sample_k(sample_size, rng);
+          actual_size =
+              res.size() * (need_weight ? (Node::id_size + Node::weight_size)
+                                        : Node::id_size);
+          int offset = 0;
+          uint64_t id;
+          float weight;
+          char *buffer_addr = new char[actual_size];
+          if (response == LRUResponse::ok) {
+            sample_keys.emplace_back(node_id, sample_size, need_weight);
+            sample_res.emplace_back(actual_size, buffer_addr);
+            buffer = sample_res.back().buffer;
+          } else {
+            buffer.reset(buffer_addr, char_del);
+          }
+          for (int &x : res) {
+            id = node->get_neighbor_id(x);
+            memcpy(buffer_addr + offset, &id, Node::id_size);
+            offset += Node::id_size;
+            if (need_weight) {
+              weight = node->get_neighbor_weight(x);
+              memcpy(buffer_addr + offset, &weight, Node::weight_size);
+              offset += Node::weight_size;
+            }
+          }
+        }
+      }
+      if (sample_res.size()) {
+        scaled_lru->insert(i, sample_keys.data(), sample_res.data(),
+                           sample_keys.size());
       }
       return 0;
     }));
   }
-  for (size_t idx = 0; idx < node_num; ++idx) {
-    tasks[idx].get();
+  for (auto &t : tasks) {
+    t.get();
   }
   return 0;
 }
@@ -575,6 +619,11 @@ int32_t GraphTable::pull_graph_list(int start, int total_size,
   actual_size = size;
   return 0;
 }
+
+int32_t GraphTable::get_server_index_by_id(uint64_t id) {
+  return id % shard_num / shard_num_per_server;
+}
+
 int32_t GraphTable::initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
@@ -611,13 +660,12 @@ int32_t GraphTable::initialize() {
   shard_num = _config.shard_num();
   VLOG(0) << "in init graph table shard num = " << shard_num << " shard_idx"
           << _shard_idx;
-  shard_num_per_table = sparse_local_shard_num(shard_num, server_num);
-  shard_start = _shard_idx * shard_num_per_table;
-  shard_end = shard_start + shard_num_per_table;
+  shard_num_per_server = sparse_local_shard_num(shard_num, server_num);
+  shard_start = _shard_idx * shard_num_per_server;
+  shard_end = shard_start + shard_num_per_server;
   VLOG(0) << "in init graph table shard idx = " << _shard_idx << " shard_start "
           << shard_start << " shard_end " << shard_end;
-  // shards.resize(shard_num_per_table);
-  shards = std::vector<GraphShard>(shard_num_per_table, GraphShard(shard_num));
+  shards = std::vector<GraphShard>(shard_num_per_server, GraphShard(shard_num));
   return 0;
 }
 }  // namespace distributed
