@@ -111,31 +111,18 @@ void BasicEngine::Init(
     }
 
     VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
-    if (!init_grad_var->HasGradNode()) {
-      auto& accumulator = accumulators_[init_grad_var];
-      if (!accumulator) {
-        if (FLAGS_sort_sum_gradient) {
-          accumulator.reset(new SortedGradientAccumulator(init_grad_var));
-        } else {
-          accumulator.reset(new EagerGradientAccumulator(init_grad_var));
-        }
+    auto& accumulator =
+        accumulators_with_grad_node_[init_grad_var->GetGradNode()]
+                                    [init_grad_var];
+    if (!accumulator) {
+      if (FLAGS_sort_sum_gradient) {
+        accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+      } else {
+        accumulator.reset(new EagerGradientAccumulator(init_grad_var));
       }
-      accumulator->IncreaseRefCnt();
-      accumulator->IncreaseCurCnt();
-    } else {
-      auto& accumulator =
-          accumulators_with_grad_node_[init_grad_var->GetGradNode()]
-                                      [init_grad_var];
-      if (!accumulator) {
-        if (FLAGS_sort_sum_gradient) {
-          accumulator.reset(new SortedGradientAccumulator(init_grad_var));
-        } else {
-          accumulator.reset(new EagerGradientAccumulator(init_grad_var));
-        }
-      }
-      accumulator->IncreaseRefCnt();
-      accumulator->IncreaseCurCnt();
     }
+    accumulator->IncreaseRefCnt();
+    accumulator->IncreaseCurCnt();
 
     init_nodes_.push_back(init_node);
   }
