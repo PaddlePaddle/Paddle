@@ -394,7 +394,6 @@ void apply_data_transform(const OpKernelType& expected_kernel_key,
           static_cast<const framework::OperatorWithKernel*>(op_base)
               ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                     expected_kernel_key);
-
       if (need_place_transform_for_var(kernel_type_for_var,
                                        expected_kernel_key)) {
         if (op_base->Type() == "fetch_v2") {

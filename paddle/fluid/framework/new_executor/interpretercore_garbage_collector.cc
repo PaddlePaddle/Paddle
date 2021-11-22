@@ -63,6 +63,7 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
   if (!var) {
     return;
   }
+
   if (var->IsType<LoDTensor>()) {
     Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
   } else if (var->IsType<
