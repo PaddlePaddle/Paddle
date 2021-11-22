@@ -142,8 +142,8 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
     dim = dim >= 0 ? dim : dim + input_dim.size();
     auto stride_dim = framework::stride(input_dim);
     int64_t stride = stride_dim[dim];
-    int64_t size = output_dim[dim];
-    int64_t delta = input_dim[dim] - size;
+    int64_t size = input_dim[dim];
+    int64_t delta = output_dim[dim] - size;
 
     const auto& index_type = index->type();
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
