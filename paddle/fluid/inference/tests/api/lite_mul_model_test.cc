@@ -20,6 +20,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/pten/api/lib/device_context_pool.h"
 
 namespace paddle {
 namespace inference {
@@ -139,7 +140,48 @@ TEST(AnalysisPredictor, thread_local_stream) {
   }
 }
 
-TEST(AnalysisPredictor, lite_engine) {
+TEST(AnalysisPredictor_norm, lite_engine) {
+  auto place = paddle::platform::CUDAPlace();
+  auto* fluid_ctx = static_cast<platform::CUDADeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  VLOG(3) << "The prediction process will be completed using a separate "
+             "normal-priority stream on each thread.";
+  fluid_ctx->ResetThreadContext(platform::stream::Priority::kNormal);
+
+  // TODO(wilber): seems temporarily lose thread_stream ability, need to fix
+  // after pten is done.
+  auto* pten_ctx =
+      paddle::experimental::DeviceContextPool::Instance().Get(place);
+  auto* ptr = dynamic_cast<pten::CUDAContext*>(pten_ctx);
+  ptr->SetCUDAMaxGridDimX(fluid_ctx->GetCUDAMaxGridDimSize().x);
+  ptr->SetCUDAMaxGridDimY(fluid_ctx->GetCUDAMaxGridDimSize().y);
+  ptr->SetCUDAMaxGridDimZ(fluid_ctx->GetCUDAMaxGridDimSize().z);
+  ptr->SetSMCount(fluid_ctx->GetSMCount());
+  ptr->SetTensorCoreAvailable(fluid_ctx->tensor_core_available());
+  ptr->SetComputeCapability(fluid_ctx->GetComputeCapability());
+  ptr->SetMaxThreadsPerBlock(fluid_ctx->GetMaxThreadsPerBlock());
+
+  // need to set 3 cublas handle?
+  ptr->SetCublasHandle(fluid_ctx->cublas_handle());
+  //  device_ctx->cublas_handle()
+
+  // Fluid now only support one stream.
+  ptr->SetStream(fluid_ctx->stream());
+  ptr->SetHostToDeviceStream(fluid_ctx->stream());
+  ptr->SetDeviceToHostStream(fluid_ctx->stream());
+
+#ifdef PADDLE_WITH_CUDNN
+  ptr->SetCudnnHandle(fluid_ctx->cudnn_handle());
+#endif
+
+#ifdef PADDLE_WITH_NCCL
+  ptr->SetNcclComm(fluid_ctx->nccl_comm());
+#endif
+
+  // #if defined(PADDLE_WITH_EIGEN) && !defined(PADDLE_WITH_HIP)
+  ptr->SetEigenDevice(fluid_ctx->eigen_device());
+  // #endif
+
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_infer_model + "/" + "mul_model");
