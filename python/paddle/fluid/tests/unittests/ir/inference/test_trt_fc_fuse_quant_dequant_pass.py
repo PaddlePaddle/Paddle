@@ -80,64 +80,6 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
                     'quant_conv2d_dequant_fuse_pass'))
 
 
-class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
-    def setUp(self):
-        def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
-            fc_out = fluid.layers.fc(input=self.data,
-                                     size=28,
-                                     num_flatten_dims=2,
-                                     bias_attr=False,
-                                     act=None)
-            c_out = fluid.layers.reshape(fc_out, shape=[1, 1, 784])
-            result = fluid.layers.relu(c_out)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
-            return avg_loss, result
-
-        self.main_program.random_seed = 2
-        self.startup_program.random_seed = 2
-        self.test_main_program.random_seed = 2
-        #self.test_startup_program.random_seed = 2
-        with fluid.unique_name.guard():
-            with fluid.program_guard(self.main_program, self.startup_program):
-                self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
-                opt.minimize(self.loss)
-        with fluid.unique_name.guard():
-            with fluid.program_guard(self.test_main_program,
-                                     self.startup_program):
-                network()
-        self.feeds = {"data": np.random.random((1, 28, 28)).astype("float32")}
-        self.fetch_list = [result]
-        self.enable_trt = True
-        self.trt_parameters = FCQuantDequantFusePassTRTDims3Cols2Test.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
-        self.dynamic_shape_params = FCQuantDequantFusePassTRTDims3Cols2Test.DynamicShapeParam(
-            {
-                'data': [1, 28, 28],
-                'reshape2_1.tmp_0': [1, 1, 784]
-            }, {'data': [4, 28, 28],
-                'reshape2_1.tmp_0': [4, 1, 784]},
-            {'data': [1, 28, 28],
-             'reshape2_1.tmp_0': [1, 1, 784]}, False)
-        self.activation_quantize_type = 'moving_average_abs_max'
-        self.weight_quantize_type = 'channel_wise_abs_max'
-
-    def test_check_output(self):
-        #self.quant_dequant()
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible(
-                    'quant_conv2d_dequant_fuse_pass'))
-
-
 class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
     def setUp(self):
         def network():
