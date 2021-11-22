@@ -155,7 +155,7 @@ class VariableScope;
 class VariableScopeListener : public ScopeListener {
  public:
   explicit VariableScopeListener(VariableScope* var_scope_);
-  void onCreateVariable(const std::string& name) override;
+  void onCreateVariable(const std::string& name, Variable* v) override;
   void onDeleteVariable(const std::string& name) override;
   void onRenameVariable(const std::string& old_name,
                         const std::string& new_name) override;
@@ -177,7 +177,11 @@ class VariableScope : public ScopeBase {
  public:
   explicit VariableScope(Scope* scope);
 
-  const Scope* GetScope() const;
+  Scope* GetMutableScope() const;
+
+  Scope* GetMutableLocalScope() const;
+
+  void SetLocalScope(Scope* local_scope);
 
   Variable* FindVar(const std::string& name) const;
 
@@ -199,7 +203,8 @@ class VariableScope : public ScopeBase {
 
   size_t VarSize() const;
 
-  void AddVar(const std::string& name, VarDesc* var_desc);
+  void AddVar(const std::string& name, VarDesc* var_desc,
+              bool local_scope = false);
 
   void AddVar(const std::string& name, const Variable& var);
 
@@ -219,15 +224,21 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
+  const std::shared_ptr<VariableScopeListener>& Listener() const {
+    return listener_;
+  }
+
   friend class VariableScopeListener;
 
  private:
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-  Scope* scope_ = nullptr;
+  Scope* scope_{nullptr};
+  // TODO(zhiqiu): find a better way to support local scope.
+  Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
-  std::shared_ptr<VariableScopeListener> listener_;
+  std::shared_ptr<VariableScopeListener> listener_{nullptr};
 };
 
 class NextInstruction {
