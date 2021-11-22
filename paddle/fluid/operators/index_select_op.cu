@@ -164,10 +164,6 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
     auto stream =
         context.template device_context<platform::CUDADeviceContext>().stream();
 
-    index_select_grad_init<
-        T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_grad_data, numel);
-
     if (index_type == framework::proto::VarType::INT64) {
       const int64_t* index_data = index->data<int64_t>();
       index_select_grad_cuda_kernel<T, int64_t><<<
