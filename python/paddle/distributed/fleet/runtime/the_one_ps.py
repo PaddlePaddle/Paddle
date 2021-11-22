@@ -847,6 +847,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                         print('table proto:', table_proto)
                         if table.table_class == 'MemorySparseTable' and table.accessor_proto == '':
+                            emb_dim = ctx.sections()[1]
                             table.shard_num = 1950
                             table.accessor_proto = 'accessor_class: "CtrCommonAccessor"\n' \
                                                    'embed_sgd_param {\n' \
@@ -869,8 +870,8 @@ class TheOnePSRuntime(RuntimeBase):
                                                    '    weight_bounds: 10.0\n' \
                                                    '  }\n' \
                                                    '}\n' \
-                                                   'fea_dim: 11\n' \
-                                                   'embedx_dim: 8\n' \
+                                                   'fea_dim: ' + str(emb_dim+2) + '\n' \
+                                                   'embedx_dim: ' + str(emb_dim-1) + '\n' \
                                                    'embedx_threshold: 10\n' \
                                                    'ctr_accessor_param {\n' \
                                                    '  nonclk_coeff: 0.1\n' \
