@@ -348,23 +348,21 @@ class TracedGradOp {
     //  changed. Otherwise, it will affect the accuracy of the model
     //  results and affect double grad.
     if (!var_wrapper->MutableVar()->IsInitialized()) {
+      return var_wrapper;
+    } else if (var_wrapper->InplaceVersionSnapshot() ==
+               var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+      return var_wrapper;
+    } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
+               var_wrapper->MutableVar()->IsType<framework::SelectedRows>()) {
+      auto* tensor =
+          var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
+              ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
+              : var_wrapper->MutableVar()
+                    ->GetMutable<framework::SelectedRows>()
+                    ->mutable_value();
+      if (!tensor->IsInitialized()) {
         return var_wrapper;
-
-    } else if(var_wrapper->InplaceVersionSnapshot() == var_wrapper->MutableVar()->CurrentInplaceVersion()) {
-        return var_wrapper;
-
-    } else if(var_wrapper->MutableVar()->IsType<framework::LoDTensor>() 
-            || var_wrapper->MutableVar()->IsType<framework::SelectedRows>()){
-        auto *tensor =
-            var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
-               ? var_wrapper->MutableVar()
-                     ->GetMutable<framework::LoDTensor>()
-               : var_wrapper->MutableVar()
-                     ->GetMutable<framework::SelectedRows>()
-                     ->mutable_value();
-        if(!tensor->IsInitialized()) {
-            return var_wrapper;
-        }
+      }
     }
 
     VariableWrapper new_var_wrapper = *var_wrapper.get();
