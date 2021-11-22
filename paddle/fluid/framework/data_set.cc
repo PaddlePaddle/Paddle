@@ -516,17 +516,6 @@ void DatasetImpl<T>::ReleaseMemory() {
   STAT_SUB(STAT_total_feasign_num_in_mem, total_fea_num_);
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-// do sample
-template <typename T>
-void DatasetImpl<T>::TDMSample(const std::string tree_name,
-                               const std::string tree_path,
-                               const std::vector<uint16_t> tdm_layer_counts,
-                               const uint16_t start_sample_layer,
-                               const bool with_hierachy, const uint16_t seed_,
-                               const uint16_t sample_slot) {}
-#endif
-
 // do local shuffle
 template <typename T>
 void DatasetImpl<T>::LocalShuffle() {
