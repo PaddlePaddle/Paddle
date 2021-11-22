@@ -990,8 +990,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         import paddle
         for var in remaining_vars:
-            if var.name not in recv_dense_varnames:
-                continue
+            # if var.name not in recv_dense_varnames:
+            #     continue
             tensor = var.get_value()
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)

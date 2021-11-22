@@ -31,6 +31,7 @@ using gpuStream_t = hipStream_t;
 
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/place.h"
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
@@ -85,12 +86,15 @@ class AbstractAutogradMeta {
 
 class PD_DLL_DECL Tensor final {
  public:
-  /* Part 1: Construction and destruction methods */
-
   /**
    * @brief Construct a new Tensor object
    */
   Tensor() = default;
+
+  /**
+   * @brief Construct a new Tensor object with name
+   * */
+  explicit Tensor(const std::string& name) { name_ = name; }
 
   /**
    * @brief Construct a new Tensor object by copy
@@ -127,7 +131,19 @@ class PD_DLL_DECL Tensor final {
    */
   Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
 
-  /* Part 2: Dimension, DataType and DataLayout methods */
+  /**
+   * @brief Return the name of Tensor.
+   *
+   * @return const std::string&
+   */
+  const std::string& name() const { return name_; }
+
+  /**
+   * @brief Set name of Tensor.
+   *
+   * @param const std::string& name
+   */
+  void set_name(const std::string& name) { name_ = name; }
 
   /**
    * @brief Return the number of elements of Tensor.
@@ -317,9 +333,11 @@ class PD_DLL_DECL Tensor final {
 
   /**
    * @brief Copy the current Tensor data to the specified device
-   * and return the new Tensor.
-   * It's usually used to set the input tensor data.
-   * This is a deprecated method and may be removed in the future!
+   * and return the new Tensor. It's usually used to set the input tensor data.
+   * Note: The Tensor's `copy_to` method is deprecated since version 2.3, and
+   * will be removed in version 2.4, please use `to` method instead. reason:
+   * copying a Tensor to another device does not need to specify the
+   * data type template argument
    *
    * @tparam T
    * @param target_place, the target place of which the tensor will copy to.
@@ -334,7 +352,9 @@ class PD_DLL_DECL Tensor final {
    * @param place, the target place of which the tensor will copy to.
    * @return Tensor
    */
-  Tensor to(const PlaceType& place) const;
+  // TODO(chenweihang): replace Backend by new Place, may be append dtype and
+  // layout arguments in the future
+  Tensor to(Backend backend, bool blocking) const;
 
   /**
    * @brief Cast datatype from one to another
