@@ -233,24 +233,24 @@ class Edge {
  * Since we will have one output used by multi preceding ops in forward pass,
  * we will meet a problem that we need to accumulate multiple grads into one.
  *
- * InputBuffer should have as same format as forward output **/
-class InputBuffer {
+ * GradTensorHolder should have as same format as forward output **/
+class GradTensorHolder {
  public:
-  explicit InputBuffer(const std::vector<GradSlotMeta>& meta) {
-    VLOG(7) << "Init InputBuffer with meta size: " << meta.size();
+  explicit GradTensorHolder(const std::vector<GradSlotMeta>& meta) {
+    VLOG(7) << "Init GradTensorHolder with meta size: " << meta.size();
     buffer_.resize(meta.size());
     for (size_t i = 0; i < buffer_.size(); i++) {
-      VLOG(7) << "Init InputBuffer with meta rank: " << meta[i].Size();
+      VLOG(7) << "Init GradTensorHolder with meta rank: " << meta[i].Size();
       buffer_[i].resize(meta[i].Size());
     }
   }
 
-  InputBuffer(const InputBuffer& other) = default;
+  GradTensorHolder(const GradTensorHolder& other) = default;
 
-  explicit InputBuffer(std::vector<std::vector<egr::EagerTensor>>&& inputs)
+  explicit GradTensorHolder(std::vector<std::vector<egr::EagerTensor>>&& inputs)
       : buffer_(std::move(inputs)) {}
 
-  InputBuffer& operator=(const InputBuffer& other) = default;
+  GradTensorHolder& operator=(const GradTensorHolder& other) = default;
 
   // Create new tensor and copy tensor->impl
   void add(size_t slot_id, size_t rank, const egr::EagerTensor& t,

@@ -78,7 +78,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
   // 1. Init queue with starting nodes
   // 2. Prepare initial input buffers
   std::queue<GradNodeBase*> queue;
-  std::unordered_map<GradNodeBase*, std::unique_ptr<InputBuffer>>
+  std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
   for (size_t i = 0; i < tensors.size(); i++) {
     const egr::EagerTensor& tensor = tensors[i];
@@ -95,11 +95,11 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     PADDLE_ENFORCE(grad_node,
                    paddle::platform::errors::Fatal(
                        "Grad Node is nullptr for grad input tensor %d", i));
-    // Prepare InputBuffer
+    // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
       VLOG(6) << "Create Value for grad input tensor " << i;
       node_input_buffers_dict[grad_node] =
-          std::make_unique<InputBuffer>(grad_node->InputMeta());
+          std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
 
     if (grad_tensors.size() > 0) {
@@ -117,7 +117,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
       // Initialize tensor with 1.0
       // Forward Tensor "tensor" is passed to indicate tensortype, datatype and
       // dims
-      // InputBuffer will initialize another tensor with same tensortype,
+      // GradTensorHolder will initialize another tensor with same tensortype,
       // datatype and dims but filled with 1.0
       node_input_buffers_dict[grad_node]->add(
           input_info.first, input_info.second, tensor, true /*fill_one=true*/);
@@ -147,9 +147,9 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     PADDLE_ENFORCE(
         node_input_buffers_dict.count(node),
         paddle::platform::errors::Fatal(
-            "Trying to run Node without configuring its InputBuffer"));
+            "Trying to run Node without configuring its GradTensorHolder"));
 
-    std::unique_ptr<InputBuffer> node_input_buffer =
+    std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
     VLOG(6) << "Run Backward Kernel with input_buffer";
     // Run Backward Node and get outputs
@@ -158,7 +158,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     // TODO(jiabin): Should we erase it or find a more efficient way.
     node_input_buffers_dict.erase(node);
 
-    // Prepare InputBuffer for next node
+    // Prepare GradTensorHolder for next node
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
 
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
@@ -184,7 +184,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
 
         if (!node_input_buffers_dict.count(next_node)) {
           node_input_buffers_dict[next_node] =
-              std::make_unique<InputBuffer>(next_node->InputMeta());
+              std::make_unique<GradTensorHolder>(next_node->InputMeta());
         }
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;

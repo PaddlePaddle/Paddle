@@ -222,14 +222,14 @@ static void FillUnderlyingVariableWithValue(
   paddle::operators::math::set_constant(*dev_ctx, dst_tensor, value);
 }
 
-void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
-                      bool fill_one) {
+void GradTensorHolder::add(size_t slot_id, size_t rank,
+                           const egr::EagerTensor& t, bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
-  PADDLE_ENFORCE(
-      slot_id < buffer_.size(),
-      paddle::platform::errors::Fatal("Invalid slot_id for InputBuffer::add() "
-                                      "which exceeds size of buffer"));
+  PADDLE_ENFORCE(slot_id < buffer_.size(),
+                 paddle::platform::errors::Fatal(
+                     "Invalid slot_id for GradTensorHolder::add() "
+                     "which exceeds size of buffer"));
   VLOG(6) << "Add Tensor for buffer_ slot: " << slot_id
           << ", size: " << buffer_[slot_id].size();
   if (buffer_[slot_id].empty()) {
@@ -237,11 +237,12 @@ void InputBuffer::add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
             << " since its buffer_ is empty ";
     return;
   }
-  PADDLE_ENFORCE(rank < buffer_[slot_id].size(),
-                 paddle::platform::errors::Fatal(
-                     "Invalid rank for InputBuffer::add() which exceeds size "
-                     "of buffer slot %d, got slot size is: %d rank is: %d",
-                     slot_id, buffer_[slot_id].size(), rank));
+  PADDLE_ENFORCE(
+      rank < buffer_[slot_id].size(),
+      paddle::platform::errors::Fatal(
+          "Invalid rank for GradTensorHolder::add() which exceeds size "
+          "of buffer slot %d, got slot size is: %d rank is: %d",
+          slot_id, buffer_[slot_id].size(), rank));
   egr::EagerTensor& buffer_tensor = buffer_[slot_id][rank];
   if (!fill_one) {
     // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
