@@ -29,12 +29,7 @@ import paddle.distributed.auto_parallel as auto
 
 from paddle.distributed import fleet
 from paddle.fluid.initializer import NumpyArrayInitializer
-from paddle.distributed.auto_parallel.utils import make_data_unshard
-from paddle.distributed.auto_parallel.utils import save_distributed_checkpoint, load_distributed_checkpoint
-from paddle.distributed.auto_parallel.reshard import reshard
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.process_group import get_all_process_groups
+from paddle.distributed.auto_parallel.utils import save_distributed_checkpoint, load_checkpoint_into_program
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -204,7 +199,7 @@ class TestMLPSaveLoad(unittest.TestCase):
             if step == 10:
                 path = "./output_dp{}".format(paddle.distributed.get_rank())
                 os.makedirs(path, exist_ok=True)
-                save_distributed_checkpoint(dist_main_prog, path)
+                save_distributed_checkpoint(dist_main_prog, path, path)
 
             res = exe.run(dist_main_prog,
                           feed={
@@ -218,7 +213,11 @@ class TestMLPSaveLoad(unittest.TestCase):
             "./output_dp0/model_state_rank0.pdmodel",
             "./output_dp1/model_state_rank1.pdmodel"
         ]
-        load_distributed_checkpoint(ckpt_path, dist_main_prog)
+        dist_attr_path = [
+            "./output_dp0/dist_attr_rank0.pdattr",
+            "./output_dp1/dist_attr_rank1.pdattr"
+        ]
+        load_checkpoint_into_program(ckpt_path, dist_attr_path, dist_main_prog)
         for step in range(10, 20):
             res = exe.run(dist_main_prog,
                           feed={
@@ -248,7 +247,7 @@ class TestMLPSaveLoad(unittest.TestCase):
             if step == 10:
                 path = "./output_mp{}".format(paddle.distributed.get_rank())
                 os.makedirs(path, exist_ok=True)
-                save_distributed_checkpoint(dist_main_prog, path)
+                save_distributed_checkpoint(dist_main_prog, path, path)
 
             res = exe.run(dist_main_prog,
                           feed={
@@ -262,7 +261,11 @@ class TestMLPSaveLoad(unittest.TestCase):
             "./output_mp0/model_state_rank0.pdmodel",
             "./output_mp1/model_state_rank1.pdmodel"
         ]
-        load_distributed_checkpoint(ckpt_path, dist_main_prog)
+        dist_attr_path = [
+            "./output_mp0/dist_attr_rank0.pdattr",
+            "./output_mp1/dist_attr_rank1.pdattr"
+        ]
+        load_checkpoint_into_program(ckpt_path, dist_attr_path, dist_main_prog)
         for step in range(10, 20):
             res = exe.run(dist_main_prog,
                           feed={
@@ -296,7 +299,7 @@ class TestMLPSaveLoad(unittest.TestCase):
             if step == 10:
                 path = "./output_pp{}".format(paddle.distributed.get_rank())
                 os.makedirs(path, exist_ok=True)
-                save_distributed_checkpoint(dist_main_prog, path)
+                save_distributed_checkpoint(dist_main_prog, path, path)
 
             if paddle.distributed.get_rank() in [0]:
                 res = exe.run(dist_main_prog,
@@ -319,7 +322,11 @@ class TestMLPSaveLoad(unittest.TestCase):
             "./output_pp0/model_state_rank0.pdmodel",
             "./output_pp1/model_state_rank1.pdmodel"
         ]
-        load_distributed_checkpoint(ckpt_path, dist_main_prog)
+        dist_attr_path = [
+            "./output_pp0/dist_attr_rank0.pdattr",
+            "./output_pp1/dist_attr_rank1.pdattr"
+        ]
+        load_checkpoint_into_program(ckpt_path, dist_attr_path, dist_main_prog)
         for step in range(10, 20):
             if paddle.distributed.get_rank() in [0]:
                 res = exe.run(dist_main_prog,

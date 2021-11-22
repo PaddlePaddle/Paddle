@@ -34,6 +34,8 @@ from .models import resnet34  # noqa: F401
 from .models import resnet50  # noqa: F401
 from .models import resnet101  # noqa: F401
 from .models import resnet152  # noqa: F401
+from .models import wide_resnet50_2  # noqa: F401
+from .models import wide_resnet101_2  # noqa: F401
 from .models import MobileNetV1  # noqa: F401
 from .models import mobilenet_v1  # noqa: F401
 from .models import MobileNetV2  # noqa: F401

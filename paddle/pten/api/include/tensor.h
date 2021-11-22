@@ -17,35 +17,39 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 
-#include "paddle/pten/core/tensor_base.h"
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+using gpuStream_t = cudaStream_t;
+#endif
 
-/**
- * [ Why still include the fluid headers? ]
- *
- * We hope to organize the basic implementation of Tensor and the logic related
- * to Tensor computation into an independent library, which we call
- * [Tensor Operation Library, pten], so we extract or rewrite the original
- * Kernels.
- *
- * In the future, the training library, inference library and custom operators
- * will link to this Tensor Operation library.
- *
- * However, if we directly split the link relation, we need to make too many
- * changes, which will affect the stability of the framework, so here we still
- * rely on the implementation of the framework, which is a intermediate state.
- *
- * In the future, the necessary components will be moved to the this library,
- * or the corresponding components will be re-implemented.
- */
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+using gpuStream_t = hipStream_t;
+#endif
+
+#include "paddle/pten/api/ext/dll_decl.h"
+#include "paddle/pten/api/ext/place.h"
+#include "paddle/pten/common/backend.h"
+#include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/layout.h"
+
+namespace pten {
+class TensorBase;
+}  // namespace pten
 
 namespace paddle {
+namespace framework {
+class DDim;
+}
+namespace platform {
+class Place;
+}
 namespace experimental {
 
 class Tensor;
+class CompatiblePTenTensorUtils;
 
 class AbstractAutogradMeta {
  public:
@@ -80,138 +84,341 @@ class AbstractAutogradMeta {
  * another simple Tensor design may be required for inference.
  */
 
-class Tensor final {
+class PD_DLL_DECL Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
-  Tensor() {}
+
+  /**
+   * @brief Construct a new Tensor object
+   */
+  Tensor() = default;
+
+  /**
+   * @brief Construct a new Tensor object by copy
+   */
   Tensor(const Tensor&) = default;
+
+  /**
+   * @brief Construct a new Tensor object by move
+   */
   Tensor(Tensor&&) = default;
 
   /**
-   * @description: Use a TensorImpl pointer to construct a Tensor
-   * @param {shared_ptr<TensorBase>} tensor_impl
-   * @return {Tensor}
+   * @brief Construct a new Tensor object by a TensorBase pointer
+   *
+   * @param tensor_impl
    */
-  explicit Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
-      : impl_(std::move(tensor_impl)) {
-    PADDLE_ENFORCE_NOT_NULL(impl_,
-                            platform::errors::InvalidArgument(
-                                "TensorImpl with nullptr is not supported"));
-  }
+  explicit Tensor(std::shared_ptr<pten::TensorBase> tensor_impl);
+
+  /**
+   * @brief Construct a new Tensor object on the target place.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @param place
+   */
+  explicit Tensor(const PlaceType& place);
+
+  /**
+   * @brief Construct a new Tensor object on the target place
+   * with specified shape.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @param place
+   * @param shape
+   */
+  Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
 
   /* Part 2: Dimension, DataType and DataLayout methods */
-  /**
-   * @description: Return the number of elements of current Tensor.
-   * @param None
-   * @return {int64_t}
-   */
-  int64_t numel() const { return impl_->numel(); }
 
   /**
-   * @description: Return the shape (dimensions) of current Tensor.
-   * @param None
-   * @return {DDim}
+   * @brief Return the number of elements of Tensor.
+   *
+   * @return int64_t
    */
-  paddle::framework::DDim shape() const { return impl_->dims(); }
+  int64_t numel() const;
 
   /**
-   * @description: Return the data type of current Tensor.
-   * @param None
-   * @return {DataType}
+   * @brief Get the size of current tensor.
+   * The compatible method of `Tensor::numel()`.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return int64_t
    */
-  paddle::experimental::DataType type() const { return impl_->data_type(); }
+  int64_t size() const;
 
   /**
-   * @description: Return the layout of current Tensor.
-   * @param None
-   * @return {DataLayout}
+   * @brief Return the dimensions of Tensor.
+   *
+   * @return paddle::framework::DDim
    */
-  paddle::experimental::DataLayout layout() const { return impl_->layout(); }
+  paddle::framework::DDim dims() const;
+
+  /**
+   * @brief Return the shape (dimensions) of Tensor.
+   * The compatible method of `Tensor::dims()`.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return std::vector<int64_t>
+   */
+  std::vector<int64_t> shape() const;
+
+  /**
+   * @brief Reset the shape of the tensor.
+   * Note: This method means Reset the shape of the tensor,
+   * and must be called before calling mutable_data() or
+   * copy_to(const PlaceType& place), this is not a standard definition of
+   * reshape behavior, so we will deprecated this feature in the future.
+   *
+   * @param shape
+   */
+  void reshape(const std::vector<int64_t>& shape);
+
+  /**
+   * @brief Return the data type of Tensor.
+   *
+   * @return DataType
+   */
+  DataType dtype() const;
+
+  /**
+   * @brief Return the data type of Tensor.
+   * The compatible method of `Tensor::dtype()`.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return DataType
+   */
+  DataType type() const;
+
+  /**
+   * @brief Return the layout of Tensor.
+   *
+   * @return DataLayout
+   */
+  DataLayout layout() const;
 
   /* Part 3: Device and Backend methods */
-  /**
-   * @description: Return the place (device) of current Tensor.
-   * @param None
-   * @return {Place}
-   */
-  paddle::platform::Place place() const { return impl_->place(); }
 
   /**
-   * Backend judgment APIs, shield the concept of Backend.
+   * @brief Return the place (device) of Tensor.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return PlaceType
    */
-  bool is_cpu() const { return paddle::platform::is_cpu_place(place()); }
-  bool is_cuda() const { return paddle::platform::is_gpu_place(place()); }
+  PlaceType place() const;
 
   /**
-   * Backend convert APIs.
+   * @brief Return the place (device) of Tensor.
+   * Because the `place` method already exists, so we need to use a new name,
+   * here we temporarily use `inner_place`.
+   *
+   * @return paddle::platform::Place
    */
-  Tensor cpu() const;
-  Tensor cuda() const;
+  paddle::platform::Place inner_place() const;
+
+  /**
+   * @brief Determine whether the tensor device is CPU
+   *
+   * @return true
+   * @return false
+   */
+  bool is_cpu() const;
+
+  /**
+   * @brief Determine whether the tensor device is CUDA
+   *
+   * @return true
+   * @return false
+   */
+  bool is_cuda() const;
 
   /* Part 4: Data Access methods */
-  /**
-   * @description: Return the implemention of current Tensor.
-   * @param None
-   * @return {std::shared_ptr<TensorBase>}
-   */
-  std::shared_ptr<pten::TensorBase> impl() const { return impl_; }
 
   /**
-   * @description: Set the implemention of current Tensor.
-   * @param {std::shared_ptr<TensorBase>}
-   * @return None
+   * @brief Get the memory pointer in CPU or GPU with specific data type.
+   * It's usually used to get the output data pointer.
+   *
+   * @tparam T
+   * @return T*
    */
-  void set_impl(const std::shared_ptr<pten::TensorBase>& impl) { impl_ = impl; }
-
-  // TODO(chenweihang): Whether API Tensor need `data` and `mutable_data`?
-
-  // TODO(chenweihang): slice and split methods use kernels?
-
-  /* Part 5: Status utils methods */
-  /**
-   * @description: Determine whether it is a meaningful Tensor
-   * @param None
-   * @return {bool}
-   */
-  bool defined() const { return impl_ != nullptr; }
+  template <typename T>
+  T* mutable_data();
 
   /**
-   * @description: Determine whether Tensor is initialized
-   * @param None
-   * @return {bool}
+   * @brief Get the memory pointer in CPU or GPU with specific data type.
+   * It's usually used to get the output data pointer.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @tparam T
+   * @param place
+   * @return T*
    */
-  bool initialized() const { return impl_->initialized(); }
+  template <typename T>
+  T* mutable_data(const PlaceType& place);
 
   /**
-   * @description: Reset the Tensor implementation
-   * @param None
-   * @return {void}
+   * @brief Get the const memory pointer directly.
+   * It's usually used to get the output data pointer.
+   *
+   * @tparam T
+   * @return T*
    */
-  void reset() { impl_.reset(); }
+  template <typename T>
+  const T* data() const;
 
-  /* Part 6: Operator overloading */
-  Tensor& operator=(const Tensor& x) & {
-    impl_ = x.impl_;
-    autograd_meta_ = x.autograd_meta_;
-    return *this;
-  }
-  Tensor& operator=(Tensor&& x) & {
-    impl_ = std::move(x.impl_);
-    autograd_meta_ = std::move(x.autograd_meta_);
-    return *this;
-  }
+  /**
+   * @brief Get the memory pointer directly.
+   * It's usually used to get the output data pointer.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @tparam T
+   * @return T*
+   */
+  template <typename T>
+  T* data();
 
-  /* Part 7: Autograd methods */
-  AbstractAutogradMeta* get_autograd_meta() const {
-    return autograd_meta_.get();
-  }
+  /**
+   * @brief Return a sub-tensor of the given tensor.
+   * It is usually used to extract a sub-tensor (which supports
+   * modifying the data of the original tensor) to perform further
+   * operations.
+   *
+   * @param begin_idx The index of the start row (inclusive) to slice.
+   *                  The index number begins from 0.
+   * @param end_idx The index of the end row (exclusive) to slice.
+   *                 The index number begins from begin_idx + 1.
+   * @return Tensor
+   */
+  Tensor slice(const int64_t begin_idx, const int64_t end_idx) const;
 
-  void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
-    autograd_meta_ = std::move(autograd_meta);
-  }
+  /**
+   * @brief Return the implemention of current Tensor.
+   *
+   * @return std::shared_ptr<pten::TensorBase>
+   */
+  std::shared_ptr<pten::TensorBase> impl() const;
 
-  /* Part 8: Auto generated Tensor methods */
-  // ...
+  /**
+   * @brief Set the implemention of current Tensor.
+   *
+   * @param impl
+   */
+  void set_impl(const std::shared_ptr<pten::TensorBase>& impl);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  /**
+   * @brief Get the stream where the tensor is currently located
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return gpuStream_t
+   */
+  gpuStream_t stream() const;
+#endif
+
+  /* Part 5: Data Transform methods */
+
+  /**
+   * @brief Copy the current Tensor data to the specified device
+   * and return the new Tensor. It's usually used to set the input tensor data.
+   * Note: The Tensor's `copy_to` method is deprecated since version 2.3, and
+   * will be removed in version 2.4, please use `to` method instead. reason:
+   * copying a Tensor to another device does not need to specify the
+   * data type template argument
+   *
+   * @tparam T
+   * @param target_place, the target place of which the tensor will copy to.
+   * @return Tensor
+   */
+  template <typename T>
+  Tensor copy_to(const PlaceType& target_place) const;
+
+  /**
+   * @brief Transfer the current Tensor to the specified device and return.
+   *
+   * @param place, the target place of which the tensor will copy to.
+   * @return Tensor
+   */
+  // TODO(chenweihang): replace Backend by new Place, may be append dtype and
+  // layout arguments in the future
+  Tensor to(Backend backend, bool blocking) const;
+
+  /**
+   * @brief Cast datatype from one to another
+   *
+   * @param target_type
+   * @return Tensor
+   */
+  Tensor cast(const DataType& target_type) const;
+
+  /* Part 6: Status utils methods */
+
+  /**
+   * @brief Determine whether it is a meaningful Tensor
+   *
+   * @return true
+   * @return false
+   */
+  bool defined() const;
+
+  /**
+   * @brief Determine whether Tensor is initialized.
+   *
+   * @return true
+   * @return false
+   */
+  bool initialized() const;
+
+  /**
+   * @brief Determine whether Tensor is initialized.
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return true
+   * @return false
+   */
+  bool is_initialized() const;
+
+  /**
+   * @brief Reset the Tensor implementation
+   */
+  void reset();
+
+  /* Part 7: Operator overloading */
+
+  /**
+   * @brief Assignment operator
+   *
+   * @param x
+   * @return Tensor&
+   */
+  Tensor& operator=(const Tensor& x) &;
+
+  /**
+   * @brief Move assignment operator
+   *
+   * @param x
+   * @return Tensor&
+   */
+  Tensor& operator=(Tensor&& x) &;
+
+  /* Part 8: Autograd methods */
+
+  /**
+   * @brief Get the autograd meta object
+   *
+   * @return AbstractAutogradMeta*
+   */
+  AbstractAutogradMeta* get_autograd_meta() const;
+
+  /**
+   * @brief Set the autograd meta object
+   *
+   * @param autograd_meta
+   */
+  void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta);
+
+  /* Part 9: Auto generated Tensor methods */
+
+ private:
+  friend class CompatiblePTenTensorUtils;
 
  private:
   /**
@@ -249,10 +456,15 @@ class Tensor final {
 
   /**
    * Tensor name: used for adapt original execution mechanism and debug analysis
-   * in the development of new dygraph.
+   * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_;
 };
 
 }  // namespace experimental
+}  // namespace paddle
+
+namespace paddle {
+// In order to be compatible with the original custom operator Tensor interface
+using Tensor = paddle::experimental::Tensor;
 }  // namespace paddle
