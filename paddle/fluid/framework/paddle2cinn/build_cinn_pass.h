@@ -21,7 +21,6 @@ namespace framework {
 namespace paddle2cinn {
 
 constexpr char kCinnLaunchOp[] = "cinn_launch";
-constexpr char kCompilationKey[] = "compilation_key";
 
 // A pass named BuildCinnPass, the function of this pass is:
 //

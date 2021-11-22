@@ -56,6 +56,10 @@ class Carrier final {
 
   void SetCreatingFlag(bool flag);
 
+  void Start();
+
+  bool IsInit() const;
+
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
  private:
@@ -75,6 +79,7 @@ class Carrier final {
 
   std::vector<InterceptorMessage> message_tmp_{};
   bool creating_interceptors_{true};
+  bool is_init_{false};
 };
 
 }  // namespace distributed

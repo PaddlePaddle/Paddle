@@ -62,7 +62,7 @@ TEST(DEV_API, dot) {
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   auto expect_result = sum;

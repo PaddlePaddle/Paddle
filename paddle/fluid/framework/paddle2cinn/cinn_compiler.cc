@@ -139,7 +139,7 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
           node_id,
           {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
            Dot::Attr("color", "#303A3A"), Dot::Attr("fontcolor", "#ffffff")},
-          n->Name());
+          n->Name(), true);
     } else if (n->IsVar()) {
       auto label = n->Name();
       if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
@@ -155,7 +155,7 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
            Dot::Attr("color", n->Var()->IsParameter() ? "#148b97" : "#dddddd"),
            Dot::Attr("fontcolor",
                      n->Var()->IsParameter() ? "#ffffff" : "#000000")},
-          label);
+          label, true);
     }
     node2dot[n] = node_id;
   }
@@ -201,11 +201,15 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   ApplyPass(cinn_graph.get(), "OpFusion");
   auto scope = BuildScope(target, cinn_graph);
 
+  auto fetch_ids = symbol.GetFetchIds();
+  VLOG(4) << "All fetch var ids in CINN: "
+          << string::join_strings(fetch_ids, ',');
+
   auto graph_compiler =
       std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
-  auto compiled_res = graph_compiler->Build(options);
+  auto compiled_res = graph_compiler->Build(options, std::move(fetch_ids));
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(compiled_res.runtime_program), scope,

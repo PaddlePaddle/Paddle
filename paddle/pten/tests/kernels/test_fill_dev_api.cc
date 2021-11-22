@@ -50,7 +50,7 @@ TEST(DEV_API, fill_any_like) {
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   auto* actual_result = out.data<float>();
