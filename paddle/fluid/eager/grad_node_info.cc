@@ -37,10 +37,12 @@ GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
 
 void GradNodeBase::AddEdges(const std::vector<AutogradMeta*>& metas,
                             size_t slot_id) {
-  PADDLE_ENFORCE_LT(slot_id, adj_edges_.size(),
-                    "Given slot id is out of range of adj_edges outter size, "
-                    "adj_edges is designed to has the same size of grad "
-                    "inputs's slot num.");
+  PADDLE_ENFORCE_LT(
+      slot_id, adj_edges_.size(),
+      paddle::platform::errors::InvalidArgument(
+          "Given slot id is out of range of adj_edges outter size, "
+          "adj_edges is designed to has the same size of grad "
+          "inputs's slot num."));
   for (const auto& meta : metas) {
     // adj_edges has as same rank as fwd inputs, and record it's output rank
     // from
@@ -51,10 +53,12 @@ void GradNodeBase::AddEdges(const std::vector<AutogradMeta*>& metas,
 }
 
 void GradNodeBase::AddEdges(const AutogradMeta& meta, size_t slot_id) {
-  PADDLE_ENFORCE_LT(slot_id, adj_edges_.size(),
-                    "Given slot id is out of range of adj_edges outter size, "
-                    "adj_edges is designed to has the same size of grad "
-                    "inputs's slot num.");
+  PADDLE_ENFORCE_LT(
+      slot_id, adj_edges_.size(),
+      paddle::platform::errors::InvalidArgument(
+          "Given slot id is out of range of adj_edges outter size, "
+          "adj_edges is designed to has the same size of grad "
+          "inputs's slot num."));
   adj_edges_[slot_id].emplace_back(meta.GetMutableGradNode(),
                                    meta.OutRankInfo());
 }
@@ -70,15 +74,18 @@ const std::vector<GradSlotMeta>& GradNodeBase::OutputMeta() const {
 void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
                                  size_t slot_rank) {
   size_t slot_size = fwd_out.size();
-  PADDLE_ENFORCE_LE(slot_rank, (bwd_in_meta_.size() - 1),
-                    "Slot Rank should less equal than bwd_in_meta_ size, since "
-                    "bwd_in_meta_ is designed to hold as same num as backward "
-                    "inputs.");
+  PADDLE_ENFORCE_LE(
+      slot_rank, (bwd_in_meta_.size() - 1),
+      paddle::platform::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_in_meta_ size, since "
+          "bwd_in_meta_ is designed to hold as same num as backward "
+          "inputs."));
   auto& meta = bwd_in_meta_.at(slot_rank);
   PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    "Bwd_in_meta should only be init once, addition "
-                    "initialization for it is forbidden. If you got this "
-                    "error, it indicates bugs in framework.");
+                    paddle::platform::errors::PreconditionNotMet(
+                        "Bwd_in_meta should only be init once, addition "
+                        "initialization for it is forbidden. If you got this "
+                        "error, it indicates bugs in framework."));
   // Init stop gradient vector before use to avoid push back
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
@@ -92,15 +99,18 @@ void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
 
 void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
                                  size_t slot_rank) {
-  PADDLE_ENFORCE_LE(slot_rank, (bwd_in_meta_.size() - 1),
-                    "Slot Rank should less equal than bwd_in_meta_ size, since "
-                    "bwd_in_meta_ is designed to hold as same num as backward "
-                    "inputs.");
+  PADDLE_ENFORCE_LE(
+      slot_rank, (bwd_in_meta_.size() - 1),
+      paddle::platform::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_in_meta_ size, since "
+          "bwd_in_meta_ is designed to hold as same num as backward "
+          "inputs."));
   auto& meta = bwd_in_meta_.at(slot_rank);
   PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    "Bwd_in_meta should only be init once, Additional "
-                    "initialization for it is forbidden. If you got this "
-                    "error, it indicates bugs in framework.");
+                    paddle::platform::errors::PreconditionNotMet(
+                        "Bwd_in_meta should only be init once, Additional "
+                        "initialization for it is forbidden. If you got this "
+                        "error, it indicates bugs in framework."));
   // Init stop gradient vector before use to avoid push back
   VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
   meta.Init(1);
@@ -110,15 +120,18 @@ void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
 void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
                                   size_t slot_rank) {
   size_t slot_size = fwd_in.size();
-  PADDLE_ENFORCE_LE(slot_rank, (bwd_out_meta_.size() - 1),
-                    "Slot Rank should less equal than bwd_out_meta_ size, "
-                    "since bwd_out_meta_ is designed to hold as same num as "
-                    "backward outputs.");
+  PADDLE_ENFORCE_LE(
+      slot_rank, (bwd_out_meta_.size() - 1),
+      paddle::platform::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_out_meta_ size, "
+          "since bwd_out_meta_ is designed to hold as same num as "
+          "backward outputs."));
   auto& meta = bwd_out_meta_.at(slot_rank);
   PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    "Bwd_out_meta should only be init once. Additional "
-                    "initialization for it is forbidden. If you got this "
-                    "error, it indicates bugs in framework.");
+                    paddle::platform::errors::PreconditionNotMet(
+                        "Bwd_out_meta should only be init once. Additional "
+                        "initialization for it is forbidden. If you got this "
+                        "error, it indicates bugs in framework."));
   // Init stop gradient vector before use to avoid push back
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
@@ -132,15 +145,18 @@ void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
 
 void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
                                   size_t slot_rank) {
-  PADDLE_ENFORCE_LE((slot_rank + 1), bwd_out_meta_.size(),
-                    "Slot Rank should less equal than bwd_out_meta_ size, "
-                    "since bwd_out_meta_ is designed to hold as same num as "
-                    "backward outputs.");
+  PADDLE_ENFORCE_LE(
+      (slot_rank + 1), bwd_out_meta_.size(),
+      paddle::platform::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_out_meta_ size, "
+          "since bwd_out_meta_ is designed to hold as same num as "
+          "backward outputs."));
   auto& meta = bwd_out_meta_.at(slot_rank);
   PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    "Bwd_out_meta should only be init once. Additional "
-                    "initialization for it is forbidden. If you got this "
-                    "error, it indicates bugs in framework.");
+                    paddle::platform::errors::PreconditionNotMet(
+                        "Bwd_out_meta should only be init once. Additional "
+                        "initialization for it is forbidden. If you got this "
+                        "error, it indicates bugs in framework."));
   // Init stop gradient vector before use to avoid push back
   meta.Init(1);
   meta.SetStopGradient(0, fwd_in.StopGradient());
@@ -148,7 +164,7 @@ void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
 
 void GradNodeBase::SetDefaultGradInOutMeta() {
   PADDLE_ENFORCE((bwd_out_meta_.size() == 1) && (bwd_in_meta_.size() == 1),
-                 paddle::platform::errors::Fatal(
+                 paddle::platform::errors::PreconditionNotMet(
                      "We can only support 1 input and 1 output in default grad "
                      "meta setter, other size of inputs and outputs should "
                      "create with Setter and Getters"));
