@@ -21,9 +21,16 @@ limitations under the License. */
 #include "paddle/pten/api/include/registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infershape.h"
 #include "paddle/pten/infermeta/unary.h"
+
+PT_DECLARE_MODULE(MathCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(MathCUDA);
+#endif
 
 namespace paddle {
 namespace experimental {

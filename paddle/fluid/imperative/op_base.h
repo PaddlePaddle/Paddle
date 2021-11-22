@@ -188,6 +188,19 @@ class OpBase {
                   const platform::Place& place,
                   pten::KernelContext* pt_kernel_context = nullptr);
 
+  bool HasVoidFunctionPostHook() const {
+    return !void_function_post_hooks_.empty();
+  }
+
+  void AddVoidFunctionPostHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_function_post_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>&
+  GetVoidFunctionPostHooks() const {
+    return void_function_post_hooks_;
+  }
+
  private:
   static const std::string& UnknownOpType() {
     static std::string kUnknownOpType{"unknown"};
@@ -206,6 +219,7 @@ class OpBase {
   // performance overhead, temporarily cache KernelContext,
   // remove it after compatibility phase is over
   pten::KernelContext pt_kernel_context_;
+  std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 
 class GradOpNode {
