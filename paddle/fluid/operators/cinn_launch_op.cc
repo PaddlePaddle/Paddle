@@ -65,8 +65,9 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 }
 
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context) {
-  compiled_obj.runtime_program->Execute(&context.FinalizeArguments());
+                         const CinnLaunchContext& context,
+                         const gpuStream_t& stream) {
+  compiled_obj.runtime_program->Execute(&context.FinalizeArguments(), stream);
 }
 
 void SetCinnRuntimeFlags() {
