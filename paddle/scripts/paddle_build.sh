@@ -2316,8 +2316,8 @@ function build_document_preview() {
 
 # origin name: example
 function exec_samplecode_test() {
-    if [ -d "${PADDLE_ROOT}/build/PR" ];then
-        pip install ${PADDLE_ROOT}/build/PR/*.whl
+    if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
     else
         pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     fi
