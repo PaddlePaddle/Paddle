@@ -132,23 +132,35 @@ std::string get_memcpy_type(const platform::Place& src_place,
 }
 
 void build_variable_scope(const framework::BlockDesc& block,
-                          VariableScope* var_scope) {
+                          VariableScope* var_scope, bool use_local_scope) {
+  VLOG(3) << "Creating Variables";
+  auto inner_scope = var_scope->GetMutableScope();
+
+  // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
+  // created in var_scope.scope_ , and other scope is created in local scope.
+  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
+                                       : var_scope->GetMutableScope();
+
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
     if (var_name == framework::kEmptyVarName) {
       continue;
     }
+    if (var_desc->Persistable()) {
+      auto* ptr = inner_scope->Var(var_name);
 
-    if (nullptr == var_scope->FindVar(var_name)) {
-      var_scope->AddVar(var_desc->Name(), var_desc);
+      VLOG(3) << "Initialize Variable " << var_name;
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
+              << ptr << " type is " << static_cast<int>(var_desc->GetType());
     } else {
-      auto* var_desc_tmp = var_scope->VarDesc(var_name);
-      if (nullptr == var_desc_tmp) {
-        VLOG(3) << "update var:" << var_name << " desc from nullptr into "
-                << var_desc;
-        var_scope->SetVarDesc(var_name, var_desc);
-      }
+      auto* ptr = local_scope->Var(var_name);
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+              << ptr << "Variable Type "
+              << static_cast<int>(var_desc->GetType());
     }
+    var_scope->SetVarDesc(var_name, var_desc);
   }
 }
 
@@ -237,14 +249,14 @@ void apply_device_guard(const OperatorBase* op_base,
 void deal_operator_base(const platform::Place& place,
                         const VariableScope* var_scope,
                         std::shared_ptr<OperatorBase> op_base,
-                        OpFuncNode* op_func_node) {
+                        OpFuncNode* op_func_node, Scope* local_scope) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
   op_func_node->type_ = OpFuncType::kQueueSync;  // alway Sync
   op_func_node->kernel_func_ = nullptr;
-  op_base->Run(*var_scope->GetScope(), place);  // Run without data transformer.
+  op_base->Run(*local_scope, place);  // Run without data transformer.
 
   std::unordered_set<int> no_data_transform_index;
   for (auto& it : op_func_node->input_index) {
@@ -288,12 +300,21 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
     const OpKernelType& kernel_type_for_var,
     const OpKernelType& expected_kernel_key, const platform::Place& place,
     const std::string& var_name, const std::string& outer_name,
-    const OpFuncNode& op_func_node, Variable* var, VariableScope* var_scope) {
+    const OpFuncNode& op_func_node, Variable* var, VariableScope* var_scope,
+    bool use_local_scope = true) {
+  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
+                                       : var_scope->GetMutableScope();
+
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   std::string new_var_name =
       var_name + "_copy_" + std::to_string(var_scope->VarSize() + 1);
-  var_scope->AddVar(new_var_name, nullptr);
+
+  auto* ptr = local_scope->Var(new_var_name);
+  InitializeVariable(ptr, static_cast<proto::VarType::Type>(var->Type()));
+  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+          << ptr << "Variable Type " << var->Type();
+  var_scope->SetVarDesc(var_name, nullptr);
 
   VariableNameMap copy_in_map;
   copy_in_map["X"] = {var_name};
@@ -368,7 +389,8 @@ void apply_data_transform(const OpKernelType& expected_kernel_key,
                           const platform::Place& place,
                           VariableValueMap* ins_map_temp,
                           VariableScope* var_scope, OpFuncNode* op_func_node,
-                          std::vector<OpFuncNode>* copy_func_nodes) {
+                          std::vector<OpFuncNode>* copy_func_nodes,
+                          bool use_local_scope = true) {
   auto op_base = op_func_node->operator_base_.get();
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
                                        "op_base is null, please pass a valid "
@@ -402,9 +424,10 @@ void apply_data_transform(const OpKernelType& expected_kernel_key,
         std::string new_var_name;
         OpFuncNode copy_op_func_node;
         std::tie(new_var_name, copy_op_func_node) =
-            apply_place_transform_for_var(
-                kernel_type_for_var, expected_kernel_key, place, var_name,
-                var_name_item.first, *op_func_node, var, var_scope);
+            apply_place_transform_for_var(kernel_type_for_var,
+                                          expected_kernel_key, place, var_name,
+                                          var_name_item.first, *op_func_node,
+                                          var, var_scope, use_local_scope);
         op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
         copy_func_nodes->emplace_back(copy_op_func_node);
@@ -438,7 +461,9 @@ void apply_data_transform(const OpKernelType& expected_kernel_key,
 void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope) {
+                        VariableScope* var_scope, bool use_local_scope) {
+  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
+                                       : var_scope->GetMutableScope();
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   std::vector<std::shared_ptr<OperatorBase>>
       ops;  // its elements will be moved to vec_func_list
@@ -478,7 +503,7 @@ void build_op_func_list(const platform::Place& place,
 
     if (dynamic_cast<const framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-      deal_operator_base(place, var_scope, ops[i], &op_func_node);
+      deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
     } else {
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
@@ -520,7 +545,7 @@ void build_op_func_list(const platform::Place& place,
       // apply_data_transform.
       op_func_node.operator_base_ = ops[i];
       apply_data_transform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                           &op_func_node, &copy_op_to_insert);
+                           &op_func_node, &copy_op_to_insert, use_local_scope);
       for (auto& item : copy_op_to_insert) {
         vec_func_list->push_back(item);
       }
@@ -631,16 +656,16 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
 }
 
 void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
-                          std::map<int, std::list<int>>& var2min_rw_op,
+                          std::map<int, std::list<int>>* var2min_rw_op,
                           int cur_op, int rw_var) {
   // rw_var is inputs or outputs of cur_op
   // this function update the var2min_rw_op set .
-  if (var2min_rw_op.find(rw_var) == var2min_rw_op.end())
-    var2min_rw_op[rw_var] = std::list<int>();
+  if (var2min_rw_op->find(rw_var) == var2min_rw_op->end())
+    (*var2min_rw_op)[rw_var] = std::list<int>();
   for (auto dep_op : op2dependences.at(cur_op)) {
-    var2min_rw_op[rw_var].remove(dep_op);
+    (*var2min_rw_op)[rw_var].remove(dep_op);
   }
-  var2min_rw_op[rw_var].push_back(cur_op);
+  (*var2min_rw_op)[rw_var].push_back(cur_op);
 }
 
 std::map<int, std::list<int>> get_downstream_map(
@@ -702,7 +727,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
     for (auto& item :
          vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
       for (auto var : item.second) {
-        update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+        update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
         remove_duplicate.insert(var);
       }
     }
@@ -713,7 +738,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
         var2recent_write_op[var] = op_idx;
         if (remove_duplicate.count(var) ==
             0) {  // var in input list and in output list, so remove it.
-          update_var_min_rw_op(op2dependences, var2min_rw_op, op_idx, var);
+          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
         }
       }
     }

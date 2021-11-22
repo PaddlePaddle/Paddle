@@ -295,7 +295,16 @@ static void BuildDygraphPtenKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ins.at(input_names[i]);
-    if (kernel_ctx->InputsSize() <= i) {
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + ins_vector.size();
+
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
+    if (kernel_ctx->InputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (const auto& var : ins_vector) {
         const auto& variable = var->Var();
@@ -303,25 +312,45 @@ static void BuildDygraphPtenKernelContext(
             experimental::MakePtenTensorBaseFromVar(variable, in_def));
       }
       kernel_ctx->EmplaceBackInputs(std::move(tmp_inputs));
-    } else {
+    } else if (kernel_ctx->InputsSize() > start_idx) {
       size_t input_size = kernel_ctx->InputsSize();
       for (size_t j = 0; j < ins_vector.size(); ++j) {
-        if (input_size > i + j) {
+        if (input_size > start_idx + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               ins_vector[j]->Var(), in_def,
-              kernel_ctx->MutableInputAt<pten::DenseTensor>(i + j));
+              kernel_ctx->MutableInputAt<pten::DenseTensor>(start_idx + j));
+          // TODO(chentianyu03): When multi input kernel, open this code
+          /*
+          } else {
+            kernel_ctx->EmplaceBackInputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
+                                                        in_def));
+          */
         }
-        // TODO(chenweihang): adapt multi-input case later
       }
-      kernel_ctx->MutableInputRangeAt(i) =
-          std::make_pair(i, i + ins_vector.size());
+      kernel_ctx->MutableInputRangeAt(i) = std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.inputs.size() is "
+          "`%d`.",
+          start_idx, kernel_ctx->InputsSize()));
     }
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto& out_def = output_defs.at(i);
     auto& outs_vector = outs.at(output_names[i]);
-    if (kernel_ctx->OutputsSize() <= i) {
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + outs_vector.size();
+
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
+    if (kernel_ctx->OutputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
       for (auto& var : outs_vector) {
         auto* variable = var->MutableVar();
@@ -329,18 +358,29 @@ static void BuildDygraphPtenKernelContext(
             experimental::MakePtenTensorBaseFromVar(variable, out_def));
       }
       kernel_ctx->EmplaceBackOutputs(std::move(tmp_outputs));
-    } else {
+    } else if (kernel_ctx->OutputsSize() > start_idx) {
       size_t output_size = kernel_ctx->OutputsSize();
       for (size_t j = 0; j < outs_vector.size(); ++j) {
         if (output_size > i + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j]->MutableVar(), out_def,
               kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
+          // TODO(chentianyu03): When multi output kernel, open this code
+          /*
+          } else {
+            kernel_ctx->EmplaceBackOutputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(
+                    outs_vector[j]->MutableVar(), out_def));
+          */
         }
-        // TODO(chenweihang): adapt multi-output case later
       }
-      kernel_ctx->MutableOutputRangeAt(i) =
-          std::make_pair(i, i + outs_vector.size());
+      kernel_ctx->MutableOutputRangeAt(i) = std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.outputs.size() is "
+          "`%d`.",
+          start_idx, kernel_ctx->OutputsSize()));
     }
   }
 
@@ -372,20 +412,48 @@ static void BuildDygraphPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         kernel_ctx->InsertAttr(i, BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
-                     std::type_index(typeid(std::vector<int64_t>)) &&
-                 std::type_index(attr.type()) ==
-                     std::type_index(typeid(std::vector<int>))) {
-        // Emplace Back Attr according to the type of Pten_Kernel args.
-        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
-        const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
-                                                     vector_int_attr.end());
-        kernel_ctx->InsertAttr(i, vector_int64_attr);
+                 std::type_index(typeid(pten::DataType))) {
+        auto data_type = pten::TransToPtenDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        kernel_ctx->InsertAttr(i, data_type);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          // Insert Back Attr according to the type of Pten_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          kernel_ctx->InsertAttr(i, vector_int64_attr);
+        }
+        // TODO(YuanRisheng) Need support vector<int64_t> attr
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
             "KernelContext in dygraph.",
             attr_names[i]));
       }
+    }
+  }
+}
+
+template <typename VarType>
+static void WriteBackToOutputs(
+    const framework::KernelSignature& pt_kernel_signature,
+    const NameVarMap<VarType>& outs, pten::KernelContext* kernel_ctx) {
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto& outs_vector = outs.at(output_names[i]);
+
+    auto& range_pair = kernel_ctx->OutputRangeAt(i);
+    auto pten_outs = kernel_ctx->MutableOutputBetween<pten::DenseTensor>(
+        range_pair.first, range_pair.second);
+
+    for (size_t j = 0; j < pten_outs.size(); ++j) {
+      experimental::MakeVariableFromPtenTensor(pten_outs[j],
+                                               outs_vector[j]->MutableVar());
     }
   }
 }
@@ -412,19 +480,6 @@ static void PreparedOpRunImpl(
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
         op.Type(), outs, dev_ctx->GetPlace());
-  }
-
-  /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
-    dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
-    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
-#endif
   }
 
   /**
@@ -462,6 +517,20 @@ static void PreparedOpRunPtImpl(
                                          pt_kernel_context);
 
   pt_kernel(pt_kernel_context);
+
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+#if defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+  }
+
+  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, pt_kernel_context);
 
   // Ensure that it does not affect the VarBase life cycle management
   pt_kernel_context->ClearData();

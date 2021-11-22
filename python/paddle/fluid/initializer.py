@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import math
 from . import framework
 from . import core
 from .framework import in_dygraph_mode, default_main_program
@@ -1031,6 +1032,52 @@ def _global_bias_initializer():
     Return the global weight initializer, The user doesn't need to use it.
     """
     return _global_bias_initializer_
+
+
+def calculate_gain(nonlinearity, param=None):
+    """
+    Get the recommended gain value of some nonlinearity function.
+
+    Args:
+        nonlinearity(str): nonlinearity function.
+        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to 'leaky_relu'. Default: None,  
+        it will be calculated as 0.01 in the formula.
+
+    Returns:
+        The recommended gain value for nonlinearity function.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            gain = paddle.nn.initializer.calculate_gain('tanh') # 5.0 / 3
+            gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0) # 1.0 = math.sqrt(2.0 / (1+param^2))
+
+    """
+    if param is None:
+        param = 0.01
+    else:
+        assert isinstance(param, (bool, int, float))
+        param = float(param)
+    recommended_gain = {
+        'sigmoid': 1,
+        'linear': 1,
+        'conv1d': 1,
+        'conv2d': 1,
+        'conv3d': 1,
+        'conv_transpose1d': 1,
+        'conv_transpose2d': 1,
+        'conv_transpose3d': 1,
+        'tanh': 5.0 / 3,
+        'relu': math.sqrt(2.0),
+        'leaky_relu': math.sqrt(2.0 / (1 + param**2)),
+        'selu': 3.0 / 4
+    }
+    if nonlinearity in recommended_gain.keys():
+        return recommended_gain[nonlinearity]
+    else:
+        raise ValueError("nonlinearity function {} is not suppported now.".
+                         format(nonlinearity))
 
 
 # We short the class name, since users will use the initializer with the package
