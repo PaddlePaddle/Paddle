@@ -312,9 +312,9 @@ std::tuple<std::string, OpFuncNode> apply_place_transform_for_var(
 
   auto* ptr = local_scope->Var(new_var_name);
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var->Type()));
-  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+  VLOG(3) << "Create Variable " << new_var_name << " locally, which pointer is "
           << ptr << "Variable Type " << var->Type();
-  var_scope->SetVarDesc(var_name, nullptr);
+  var_scope->SetVarDesc(new_var_name, nullptr);
 
   VariableNameMap copy_in_map;
   copy_in_map["X"] = {var_name};
