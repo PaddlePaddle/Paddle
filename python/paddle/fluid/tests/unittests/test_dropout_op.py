@@ -381,7 +381,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 mode='upscale_in_train')
 
             res13 = paddle.nn.functional.dropout(
-                x=input2, p=0.5, axis=1, training=True, mode='upscale_in_train')
+                x=input, p=0.5, axis=1, training=True, mode='upscale_in_train')
 
             in_np = np.ones([1, 500000000]).astype("float32")
             res_np = in_np
