@@ -46,9 +46,16 @@ class SocketServer {
  public:
   SocketServer() = default;
 
-  ~SocketServer() { CloseSocket(server_fd_); }
+  ~SocketServer() {
+    std::call_once(release_flag_, [&]() { CloseSocket(server_fd_); });
+  }
 
   int socket() const { return server_fd_; }
+
+  void Release() const {
+    VLOG(3) << "Server will be closed by external call.";
+    std::call_once(release_flag_, [&]() { CloseSocket(server_fd_); });
+  }
 
   static SocketServer& GetInstance(const std::string& end_point);
 
@@ -56,6 +63,7 @@ class SocketServer {
   int server_fd_{-1};
   std::string end_point_;
 
+  static std::once_flag release_flag_;
   static std::once_flag init_flag_;
 };
 

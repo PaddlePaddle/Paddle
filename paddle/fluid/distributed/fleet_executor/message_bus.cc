@@ -17,6 +17,7 @@
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -31,6 +32,13 @@ void MessageBus::Init(
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
+
+  // NOTE: To be compatible with collective, need release the handler holding
+  // the ip address.
+  VLOG(3) << "Message bus is releasing the fd held by gen_comm_id";
+  paddle::platform::SocketServer socket_server =
+      paddle::platform::SocketServer::GetInstance(addr_);
+  socket_server.Release();
 
   ListenPort();
 
