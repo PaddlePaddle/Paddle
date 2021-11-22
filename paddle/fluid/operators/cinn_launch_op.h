@@ -30,9 +30,9 @@
 namespace paddle {
 namespace operators {
 
-static constexpr char kX[] = "X";
-static constexpr char kOutputs[] = "Out";
-static constexpr char kCompilationKey[] = "compilation_key";
+constexpr char kX[] = "X";
+constexpr char kOutputs[] = "Out";
+constexpr char kCompilationKey[] = "compilation_key";
 
 using LoDTensor = framework::LoDTensor;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
@@ -62,7 +62,7 @@ class CinnLaunchContext {
 
   // Extract internal variable names from CinnScope
   // by excluding used input and output variables
-  std::vector<std::string> GetInternalVariableNames();
+  std::unordered_set<std::string> GetInternalVariableNames();
 
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;

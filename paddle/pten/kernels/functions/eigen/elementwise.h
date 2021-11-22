@@ -32,5 +32,17 @@ void ElementwiseAdd(const DevCtx& dev_ctx,
   eigen_z.device(place) = eigen_x + eigen_y;
 }
 
+template <typename DevCtx, typename T>
+void ElementwiseSub(const DevCtx& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  auto eigen_x = pten::EigenVector<T>::Flatten(x);
+  auto eigen_y = pten::EigenVector<T>::Flatten(y);
+  auto eigen_z = pten::EigenVector<T>::Flatten(*out);
+  auto& place = *dev_ctx.eigen_device();
+  eigen_z.device(place) = eigen_x - eigen_y;
+}
+
 }  // namespace eigen
 }  // namespace pten
