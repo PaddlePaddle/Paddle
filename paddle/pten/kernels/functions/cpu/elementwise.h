@@ -235,6 +235,7 @@ struct SameDimsElementwiseCompute {
                          const DenseTensor &y,                               \
                          int axis,                                           \
                          DenseTensor *out) {                                 \
+    out->mutable_data<T>();                                                  \
     if (x.dims() == y.dims()) {                                              \
       SameDimsElementwiseCompute<                                            \
           general::SameDims##name##Functor<CPUContext, T>>()(                \

@@ -57,6 +57,7 @@ void LaunchElementwiseCudaKernel(
     inputs.emplace_back(&x);                                           \
     inputs.emplace_back(&y);                                           \
     outputs.emplace_back(out);                                         \
+    out->mutable_data<T>();                                            \
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(       \
         dev_ctx, inputs, &outputs, axis, general::name##Functor<T>()); \
   }
