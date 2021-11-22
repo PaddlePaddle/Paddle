@@ -2321,6 +2321,7 @@ function exec_samplecode_test() {
     else
         pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     fi
+
     paddle version
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
