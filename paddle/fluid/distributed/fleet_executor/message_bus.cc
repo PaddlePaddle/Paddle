@@ -119,9 +119,12 @@ void MessageBus::ListenPort() {
   const char* ip_for_brpc = addr_.c_str();
   brpc::ServerOptions options;
   options.idle_timeout_sec = -1;
+  int retry_times = 0;
   while (server_.Start(ip_for_brpc, &options) != 0) {
-    VLOG(3) << "Message bus is retring for starting brpc.";
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    ++retry_times;
+    VLOG(3) << "Message bus is retring for starting brpc for " << retry_times
+            << " times.";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
   VLOG(3) << "Message bus's listen port thread starts successful.";
 #else
