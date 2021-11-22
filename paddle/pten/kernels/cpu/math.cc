@@ -14,8 +14,10 @@
 
 #include "paddle/pten/kernels/cpu/math.h"
 
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/kernels/functions/cpu/elementwise.h"
 #include "paddle/pten/kernels/functions/eigen/mean.h"
+#include "paddle/pten/kernels/functions/eigen/reduce.h"
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
@@ -111,6 +113,52 @@ void ElementwiseSub(const CPUContext& dev_ctx,
       ElementwiseCompute<general::InverseSubFunctor<T>, T>(
           dev_ctx, x, y, axis, general::InverseSubFunctor<T>(), out);
     }
+  }
+}
+
+template <typename T>
+void Sum(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         bool reduce_all,
+         std::vector<int> dims,
+         bool keep_dim,
+         DataType out_dtype,
+         DenseTensor* out) {
+  // If the dims has full dim, set the reduce_all is True
+  const auto& input_dim_size = x.dims().size();
+  std::set<int> dims_set(dims.begin(), dims.end());
+  bool full_dim = true;
+  for (auto i = 0; i < input_dim_size; ++i) {
+    if (dims_set.find(i) == dims_set.end()) {
+      full_dim = false;
+      break;
+    }
+  }
+  reduce_all = (reduce_all || full_dim);
+
+  if (out_dtype == pten::DataType::UNDEFINED) {
+    out_dtype = x.dtype;
+
+    PD_VISIT_ALL_TYPES(
+        out_dtype, "SumKernelImpl", ([&] {
+          // todo not impl yet
+          pten::eigen::
+              ReduceKernlImpl<CPUContext, T, data_t, pten::eigen::SumFunctor>(
+                  dev_ctx, &x, out, dims, keep_dim, reduce_all);
+        }));
+  } else {
+    // cast
+    const auto alloc =
+        std::make_shared<paddle::experimental::DefaultAllocator>(x.place());
+    pten::DenseTensor tmp_tensor = pten::DenseTensor(
+        alloc, pten::DenseTensorMeta(out_dtype, x.dims(), x.layout));
+
+    PD_VISIT_ALL_TYPES(
+        out_dtype, "SumKernelImpl", ([&] {
+          pten::eigen::
+              ReduceKernlImpl<CPUContext, T, data_t, pten::eigen::SumFunctor>(
+                  dev_ctx, &x, out, dims, keep_dim, reduce_all);
+        }));
   }
 }
 

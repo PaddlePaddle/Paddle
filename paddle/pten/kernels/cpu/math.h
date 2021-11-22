@@ -60,4 +60,13 @@ void ElementwiseSub(const CPUContext& dev_ctx,
                     int axis,
                     DenseTensor* out);
 
+template <typename T>
+void Sum(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         bool reduce_all,
+         std::vector<int> dim,
+         bool keep_dim,
+         DataType out_dtype,
+         DenseTensor* out);
+
 }  // namespace pten
