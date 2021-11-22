@@ -38,7 +38,7 @@ void MessageBus::Init(
   // NOTE: To be compatible with collective, need release the handler holding
   // the ip address.
   VLOG(3) << "Message bus is releasing the fd held by gen_comm_id";
-  paddle::platform::SocketServer socket_server =
+  paddle::platform::SocketServer& socket_server =
       paddle::platform::SocketServer::GetInstance(addr_);
   socket_server.Release();
 #endif
