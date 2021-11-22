@@ -81,7 +81,9 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
-                            "Should Not set NULL as GradNode pointer!");
+                            "Should Not set NULL as GradNode pointer, since "
+                            "our default Edge and autogradMeta has nullptr for "
+                            "grad node. Set Nullptr will lead error.");
     grad_node_ = grad_node;
   }
 
