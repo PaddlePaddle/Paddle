@@ -321,7 +321,7 @@ function(op_library TARGET)
     endif()
 
     if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
+        #file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
 
     if (WITH_XPU2 AND ${xpu2_cc_srcs_len} GREATER 0)
