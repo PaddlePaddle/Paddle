@@ -17,9 +17,8 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
-# sys.path.append("..")
-# from op_test import OpTest
-from paddle.fluid.tests.unittests.op_test import OpTest
+sys.path.append("..")
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core

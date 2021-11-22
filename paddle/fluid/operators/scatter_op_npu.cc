@@ -61,7 +61,7 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
-    // out->mutable_data<T>(place);
+    out->mutable_data<T>(place);
 
     framework::Tensor tmp_tensor(index->type());
     const auto index_dims = index->dims();
@@ -77,8 +77,6 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     if (x->type() == framework::proto::VarType::INT64) {
-      LOG(WARNING) << "x->type(): " << x->type();
-
       Tensor x_fp32(framework::proto::VarType::FP32);
       x_fp32.Resize(x->dims());
       CastToFP32(ctx, stream, *x, &x_fp32);
@@ -104,8 +102,6 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
 
       CastToInt64(ctx, stream, out_fp32, out);
     } else {
-      out->mutable_data<T>(place);
-
       if (overwrite) {
         const auto& runner_update = NpuOpRunner(
             "TensorScatterUpdate", {*x, *index, *updates}, {*out}, {});
