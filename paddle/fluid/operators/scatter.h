@@ -169,7 +169,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   const size_t& slice_bytes = slice_size * sizeof(T);
 
   // if not in overwrite mode, need to init output data
-  auto max_index = src_dims[0];
+  auto max_index = dst_dims[0];
   for (int64_t i = 0; i < index_size; ++i) {
     const IndexT& index_val = p_index[i];
     PADDLE_ENFORCE_GE(index_val, 0,
