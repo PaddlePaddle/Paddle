@@ -27,7 +27,7 @@ DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
 DenseTensorMeta FullInferShape(const ScalarArray& shape,
                                DataType dtype,
                                DataLayout layout) {
-  const auto& out_dims = paddle::experimental::GetDimFromScalarArray(shape);
+  const auto& out_dims = paddle::framework::make_ddim(shape.GetData());
   return {dtype, out_dims, layout};
 }
 

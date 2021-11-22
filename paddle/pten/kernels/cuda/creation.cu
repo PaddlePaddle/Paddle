@@ -63,7 +63,7 @@ void FillConstantNew(const CUDAContext& dev_ctx,
                      const ScalarArray& shape,
                      const Scalar& val,
                      DenseTensor* out) {
-  out->Resize(paddle::experimental::GetDimFromScalarArray(shape));
+  out->Resize(paddle::framework::make_ddim(shape.GetData()));
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
 

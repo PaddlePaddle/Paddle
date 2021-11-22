@@ -14,17 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/ddim.h"
-
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/api/include/tensor.h"
 
 namespace paddle {
-
-namespace framework {
-class DDim;
-}
-
 namespace experimental {
 
 template <typename T>
@@ -131,19 +124,19 @@ class ScalarArrayBase {
     }
   }
 
-  template <typename TT>
-  friend paddle::framework::DDim GetDimFromScalarArray(
-      const ScalarArrayBase<TT>& scalar_array);
+  // template <typename TT>
+  // friend paddle::framework::DDim GetDimFromScalarArray(
+  //     const ScalarArrayBase<TT>& scalar_array);
 
  private:
   std::vector<int64_t> array_;
 };
 
-template <typename T>
-paddle::framework::DDim GetDimFromScalarArray(
-    const ScalarArrayBase<T>& scalar_array) {
-  return paddle::framework::make_ddim(scalar_array.array_);
-}
+// template <typename T>
+// paddle::framework::DDim GetDimFromScalarArray(
+//     const ScalarArrayBase<T>& scalar_array) {
+//   return paddle::framework::make_ddim(scalar_array.array_);
+// }
 
 using ScalarArray =
     paddle::experimental::ScalarArrayBase<paddle::experimental::Tensor>;
