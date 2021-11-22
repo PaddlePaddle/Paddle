@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
 #include <memory>
+#include <thread>
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
@@ -117,9 +119,10 @@ void MessageBus::ListenPort() {
   const char* ip_for_brpc = addr_.c_str();
   brpc::ServerOptions options;
   options.idle_timeout_sec = -1;
-  PADDLE_ENFORCE_EQ(
-      server_.Start(ip_for_brpc, &options), 0,
-      platform::errors::Unavailable("Message bus: start brpc service error."));
+  while (server_.Start(ip_for_brpc, &options) != 0) {
+    VLOG(3) << "Message bus is retring for starting brpc.";
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  }
   VLOG(3) << "Message bus's listen port thread starts successful.";
 #else
   VLOG(3) << "Fleet executor's ListenPort() is a fake function when Paddle is "
