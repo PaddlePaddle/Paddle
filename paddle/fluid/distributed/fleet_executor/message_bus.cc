@@ -37,8 +37,8 @@ void MessageBus::Init(
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
-  // NOTE: To be compatible with collective, need release the handler holding
-  // the ip address.
+  // NOTE: To make the brpc is compatible with collective,
+  // need release the handler holding the ip address.
   if (addr_ != "") {
     VLOG(3) << "Message bus is releasing the fd held by gen_comm_id.";
     paddle::platform::SocketServer& socket_server =
