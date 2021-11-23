@@ -178,9 +178,11 @@ TEST(AnalysisPredictor_norm, lite_engine) {
   ptr->SetNcclComm(fluid_ctx->nccl_comm());
 #endif
 
-  // #if defined(PADDLE_WITH_EIGEN) && !defined(PADDLE_WITH_HIP)
+// TODO(wilber): support eigen macro.
+// #if defined(PADDLE_WITH_EIGEN) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_HIP)
   ptr->SetEigenDevice(fluid_ctx->eigen_device());
-  // #endif
+#endif
 
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);

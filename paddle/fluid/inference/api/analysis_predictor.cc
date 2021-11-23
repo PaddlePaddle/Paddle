@@ -276,9 +276,11 @@ bool AnalysisPredictor::CreateExecutor() {
       ptr->SetNcclComm(fluid_ctx->nccl_comm());
 #endif
 
-      // #if defined(PADDLE_WITH_EIGEN) && !defined(PADDLE_WITH_HIP)
+// TODO(Wilber): support eigen macro.
+// #if defined(PADDLE_WITH_EIGEN) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_HIP)
       ptr->SetEigenDevice(fluid_ctx->eigen_device());
-      // #endif
+#endif
     }
 #endif
   } else if (config_.use_xpu()) {

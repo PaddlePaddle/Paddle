@@ -223,7 +223,9 @@ pten::DeviceContext* ConvertContext(const platform::DeviceContext& context) {
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument("Unsupported type"));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unsupported fluid DeviceContext type, we now support CUDA, XPU and "
+        "CPU."));
     return nullptr;
   }
 }

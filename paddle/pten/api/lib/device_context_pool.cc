@@ -219,8 +219,8 @@ DeviceContextPool::DeviceContextPool(const std::vector<Place>& places) {
           &device_contexts_, &allocators_, p);
 #else
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "XPUPlace is not"
-          "supported. Please re-compile with WITH_XPU option."));
+          "XPUPlace is not supported. Please re-compile with WITH_XPU "
+          "option."));
 #endif
     } else if (paddle::platform::is_npu_place(p)) {
       // #ifdef PADDLE_WITH_ASCEND_CL
