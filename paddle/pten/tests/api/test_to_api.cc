@@ -58,32 +58,16 @@ void CheckOutputResult(const paddle::experimental::Tensor& out) {
   }
 }
 
-TEST(API, to) {
+TEST(API, copy_to) {
   // 1. create tensor
   auto x = CreateInputTensor();
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = paddle::experimental::to(x, pten::Backend::CUDA, false);
-  auto out = paddle::experimental::to(tmp, pten::Backend::CPU, true);
+  auto tmp = paddle::experimental::copy_to(x, pten::Backend::CUDA, false);
+  auto out = paddle::experimental::copy_to(tmp, pten::Backend::CPU, true);
 #else
-  auto out = paddle::experimental::to(x, pten::Backend::CPU, false);
-#endif
-
-  // 3. check result
-  CheckOutputResult(out);
-}
-
-TEST(Tensor, to) {
-  // 1. create tensor
-  auto x = CreateInputTensor();
-
-// 2. test API
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = x.to(pten::Backend::CUDA, false);
-  auto out = tmp.to(pten::Backend::CPU, true);
-#else
-  auto out = x.to(pten::Backend::CPU, false);
+  auto out = paddle::experimental::copy_to(x, pten::Backend::CPU, false);
 #endif
 
   // 3. check result
@@ -91,6 +75,22 @@ TEST(Tensor, to) {
 }
 
 TEST(Tensor, copy_to) {
+  // 1. create tensor
+  auto x = CreateInputTensor();
+
+// 2. test API
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto tmp = x.copy_to(pten::Backend::CUDA, false);
+  auto out = tmp.copy_to(pten::Backend::CPU, true);
+#else
+  auto out = x.copy_to(pten::Backend::CPU, false);
+#endif
+
+  // 3. check result
+  CheckOutputResult(out);
+}
+
+TEST(Tensor, old_copy_to) {
   // 1. create tensor
   auto x = CreateInputTensor();
 
