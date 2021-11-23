@@ -383,7 +383,8 @@ class TestDropoutFAPI(unittest.TestCase):
             res13 = paddle.nn.functional.dropout(
                 x=input, p=0.5, axis=1, training=True, mode='upscale_in_train')
 
-            in_np = np.ones([4, 500000000]).astype("float32")
+            in_np = np.ones([40, 40]).astype("float32")
+            in_np2 = np.ones([1, 500000000]).astype("float32")
             res_np = in_np
             res_np2 = np.zeros_like(in_np)
 
@@ -402,7 +403,7 @@ class TestDropoutFAPI(unittest.TestCase):
                                fetch_list=[res10])
             self.assertTrue(np.allclose(fetches2[0], res_np2))
             fetches3 = exe.run(fluid.default_main_program(),
-                               feed={"input": in_np},
+                               feed={"input": in_np2},
                                fetch_list=[res13])
             self.assertTrue(
                 np.isclose(np.sum(fetches3[0]) / np.sum(in_np), 0.5))
