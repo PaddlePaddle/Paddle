@@ -384,7 +384,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 x=input, p=0.7, axis=1, training=True, mode='upscale_in_train')
 
             in_np = np.ones([40, 40]).astype("float32")
-            in_np2 = np.ones([1, 500000000]).astype("float32")
+            in_np2 = np.ones([1, 250000000]).astype("float32")
             res_np = in_np
             res_np2 = np.zeros_like(in_np)
 
