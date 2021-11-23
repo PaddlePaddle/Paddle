@@ -103,7 +103,7 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
 
 void MessageBus::ListenPort() {
   if (addr_ == "") {
-    VLOG(3) << "No need listen to port since training on single card.";
+    LOG(INFO) << "No need listen to port since training on single card.";
     return;
   }
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
@@ -123,17 +123,18 @@ void MessageBus::ListenPort() {
   int interval = 1000;
   while (server_.Start(ip_for_brpc, &options) != 0) {
     ++retry_times;
-    VLOG(3) << "Message bus is retring for starting brpc for " << retry_times
-            << " times. And will retry after " << interval / 1000
-            << " seconds.";
+    LOG(INFO) << "Message bus is retring for starting brpc for " << retry_times
+              << " times. And will retry after " << interval / 1000
+              << " seconds.";
     std::this_thread::sleep_for(std::chrono::milliseconds(interval));
     interval += 2;
   }
-  VLOG(3) << "Message bus's listen port thread starts successful.";
+  LOG(INFO) << "Message bus's listen port thread starts successful.";
 #else
-  VLOG(3) << "Fleet executor's ListenPort() is a fake function when Paddle is "
-             "compiled with npu or Paddle isn't compiled "
-             "with distributed for now.";
+  LOG(WARNING)
+      << "Fleet executor's ListenPort() is a fake function when Paddle is "
+         "compiled with npu or Paddle isn't compiled "
+         "with distributed for now.";
 #endif
 }
 
