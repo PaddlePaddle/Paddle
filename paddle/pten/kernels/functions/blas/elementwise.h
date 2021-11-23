@@ -29,5 +29,23 @@ void ElementwiseAdd(const DevCtx& dev_ctx,
   blas.VADD(x.numel(), x.data<T>(), y.data<T>(), out->mutable_data<T>());
 }
 
+template <typename DevCtx, typename T>
+void ElementwiseSub(const DevCtx& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
+  blas.VSUB(x.numel(), x.data<T>(), y.data<T>(), out->mutable_data<T>());
+}
+
+template <typename DevCtx, typename T>
+void ElementwiseDiv(const DevCtx& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
+  blas.VDIV(x.numel(), x.data<T>(), y.data<T>(), out->mutable_data<T>());
+}
+
 }  // namespace blas
 }  // namespace pten

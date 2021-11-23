@@ -148,6 +148,18 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                                           {"axis"}, {"Out"});
       }
     }
+    if (Type() == "elementwise_sub") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("elementwise_sub", {"X", "Y"},
+                                          {"axis"}, {"Out"});
+      }
+    }
+    if (Type() == "elementwise_div") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("elementwise_div", {"X", "Y"},
+                                          {"axis"}, {"Out"});
+      }
+    }
     return framework::KernelSignature("None", {"X"}, {}, {"Out"});
   }
 };
@@ -450,6 +462,18 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput("D_DDY")) {
       ctx->ShareDim("DDY", "D_DDY");
       ctx->ShareLoD("DDY", "D_DDY");
+    }
+    if (ctx->HasOutput("D_X")) {
+      ctx->ShareDim("X", "D_X");
+      ctx->ShareLoD("X", "D_X");
+    }
+    if (ctx->HasOutput("D_Y")) {
+      ctx->ShareDim("Y", "D_Y");
+      ctx->ShareLoD("Y", "D_Y");
+    }
+    if (ctx->HasOutput("D_DOut")) {
+      ctx->ShareDim("DOut", "D_DOut");
+      ctx->ShareLoD("DOut", "D_DOut");
     }
   }
 

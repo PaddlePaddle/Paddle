@@ -387,4 +387,5 @@ REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::PoolMKLDNNOpKernel<paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::PoolMKLDNNGradOpKernel<float>);
+                   ops::PoolMKLDNNGradOpKernel<float>,
+                   ops::PoolMKLDNNGradOpKernel<paddle::platform::bfloat16>);
