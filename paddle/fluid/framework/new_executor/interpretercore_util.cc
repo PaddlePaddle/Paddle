@@ -388,6 +388,7 @@ void apply_data_transform(const OpKernelType& expected_kernel_key,
       auto& var_name = new_ins[var_name_item.first].at(i);
       auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       if (!tensor_in->IsInitialized()) {
+        VLOG(10) << var_name << " is not initialized, may cause a error";
         continue;
       }
       auto kernel_type_for_var =  // the true kernel type for op_base

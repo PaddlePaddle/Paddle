@@ -74,7 +74,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*(fetch_var->GetMutable<framework::FetchList>()));
 }
 
 paddle::framework::FetchList InterpreterCore::Run() {
@@ -92,7 +92,7 @@ paddle::framework::FetchList InterpreterCore::Run() {
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*(fetch_var->GetMutable<framework::FetchList>()));
 }
 
 void InterpreterCore::BuildOperatorDependences() {
@@ -300,7 +300,7 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  VLOG(4) << "Start run" << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(global_scope_);
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
@@ -312,8 +312,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   if (op_with_kernel != nullptr &&
       FLAGS_new_executor_use_inplace) {  // TODO(xiongkun03) Does operator
-                                         // base support
-                                         // inplace ?
+                                         // base support inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
       const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
@@ -331,7 +330,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
   }
 
-  VLOG(4) << "End run" << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
