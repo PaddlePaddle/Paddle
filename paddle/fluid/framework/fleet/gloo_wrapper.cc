@@ -295,7 +295,7 @@ void ParallelConnectContext::connectFullMesh(
                 VLOG(0) << "gloo connect failed, retrying...";
               }
             }
-            transportContext->getPair(i)->connect(addr);
+            //transportContext->getPair(i)->connect(addr);
           }
           VLOG(0) << "peer connected success";
         },
