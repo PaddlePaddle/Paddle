@@ -1227,8 +1227,8 @@ set +x
         is_nightly=''             # indicate whether the case will only run at night
         get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
 
-        UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
-        output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+        output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
         high_parallel_job=$(echo $output | cut -d ";" -f 1)
         secondary_high_parallel_job=$(echo $output | cut -d ";" -f 2)
         third_high_parallel_job=$(echo $output | cut -d ";" -f 3)
