@@ -780,11 +780,14 @@ function generate_upstream_develop_api_spec() {
     generate_api_spec "$1" "DEV"
     git branch -D develop_base_pr
     ENABLE_MAKE_CLEAN="ON"
+    set -x
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    echo 1111, $cmake_change
     if [ ${cmake_change} ];then
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
+    set +x
 }
 
 function generate_api_spec() {
