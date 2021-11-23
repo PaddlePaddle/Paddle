@@ -495,6 +495,57 @@ def flip(x, axis, name=None):
     return out
 
 
+def rot90(x, k, dims):
+    """
+    Rotate a n-D tensor by 90 degrees in the plane specified by dims axis. Rotation direction is from the first towards the second axis if k > 0, and from the second towards the first for k < 0.
+
+    Args:
+        x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
+            should be float32, float64, int32, int64, bool.
+        axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: Tensor or LoDTensor calculated by rot90. The data type is same with input x.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          image_shape=(3, 2, 2)
+          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
+          x = x.astype('float32')
+          img = paddle.to_tensor(x)
+          tmp = paddle.flip(img, [0,1])
+          print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
+
+          out = paddle.flip(tmp,-1)
+          print(out) # [[[11,10],[9, 8]], [[7, 6],[5, 4]], [[3, 2],[1, 0]]]
+    """
+    #const int64_t total_dims = self.dim(), total_rot_dims = dims.size();
+    #TORCH_CHECK(total_rot_dims == 2, "expected total rotation dims == 2, but got dims = ", total_rot_dims);
+    #TORCH_CHECK(total_dims >= 2, "expected total dims >= 2, but got total dims = ", total_dims);
+    #TORCH_CHECK(dims[0] != dims[1] && std::abs(dims[0] - dims[1]) != total_dims, "expected rotation dims to be different, but got dim0 = ", dims[0], " and dim1 = ", dims[1]);
+    #// check range of dims
+    #TORCH_CHECK(dims[0] < total_dims && dims[0] >= -total_dims, "Rotation dim0 out of range, dim0 = ", dims[0]);
+    #TORCH_CHECK(dims[1] < total_dims && dims[1] >= -total_dims,"Rotation dim1 out of range, dim1 = ", dims[1]);
+    #// handle modulo with negative k
+    #k = (4 + (k % 4)) % 4;
+    #switch(k) {
+    #  case 1:
+    #    return self.flip({dims[1]}).transpose_(dims[0], dims[1]);
+    #  case 2:
+    #    return self.flip(dims);
+    #  case 3:
+    #    return self.flip({dims[0]}).transpose_(dims[0], dims[1]);
+    #  default:
+    #    return self.clone(at::MemoryFormat::Contiguous);
+    #} 
+
+
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     r"""
     **Flatten op**
