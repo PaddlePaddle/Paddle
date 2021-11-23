@@ -35,6 +35,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 ELASTIC_EXIT_CODE = 101
+ELASTIC_AUTO_PARALLEL_EXIT_CODE = 102
 
 # wait for timeout, unit: seconds
 ELASTIC_TIMEOUT = 2 * 60
@@ -571,6 +572,11 @@ class ElasticManager(object):
 
             if ret is not None:  # self terminated
                 logger.info('job exit with code {}'.format(ret))
+                if ret == ELASTIC_AUTO_PARALLEL_EXIT_CODE:
+                    logger.info('job re-launch for auto parallel')
+                    self.launcher.stop()
+                    return ElasticStatus.HOLD
+
                 # process is completed if ret >= 0 or error else
                 completed = True if ret == 0 else False
                 self.exit(completed=completed)
