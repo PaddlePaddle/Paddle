@@ -204,6 +204,10 @@ NpuOpRunner &NpuOpRunner::AddAttrDataType(const std::string &name,
 }
 
 NpuOpRunner &NpuOpRunner::AddAttrs(const NPUAttributeMap &attrs) {
+  if (!attr_) {
+    attr_ = aclopCreateAttr();
+  }
+
   for (const auto &pair : attrs) {
     AddAttr(pair.first, pair.second);
   }
@@ -381,7 +385,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   // OP must be a scalar with shape[0]. At present, the shape
   // of the `prob` Tensor of this OP is forced to be set to 0
   // in `npu_op_runner.cc`, which needs to be optimized later.
-  if (op_type_ == "DropOutGenMask" && size == 1 && *(dims.data()) == 1) {
+  if (op_type_ == "DropOutGenMaskV4" && size == 1 && *(dims.data()) == 1) {
     size = 0;
   }
 
@@ -427,11 +431,12 @@ void NpuOpRunner::Run(aclrtStream stream) const {
     VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mode;
   }
 
-  aclError ret = aclopCompileAndExecute(
+   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),
       input_buffers_.data(), output_descs_.size(), output_descs_.data(),
       output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
       stream);
+   
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }

@@ -37,7 +37,6 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
-    auto is_reset = ctx.Attr<bool>("reset");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -68,9 +67,9 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
         tmp_x.Resize(framework::make_ddim({vec_dim[0], 1}));
         tmp_out.Resize(framework::make_ddim({vec_dim[0], 1}));
       }
-
-      int seed = 0;
-      int seed2 = 0;
+      
+      int64_t seed = 0;
+      int64_t seed2 = 0;
       float keep_prob = 1. - dropout_prob;
       if (seed_tensor) {
         std::vector<int> seed_data;
@@ -79,11 +78,10 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       } else {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
-
-      Tensor keep_prob_tensor(x->type());
-      keep_prob_tensor.mutable_data<T>({1}, ctx.GetPlace());
-      FillNpuTensorWithConstant<T>(&keep_prob_tensor,
-                                   static_cast<T>(keep_prob));
+      Tensor keep_prob_tensor(framework::proto::VarType::FP32);
+      keep_prob_tensor.mutable_data<float>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<float>(&keep_prob_tensor,
+                                   static_cast<float>(keep_prob));
 
       mask->mutable_data<uint8_t>(ctx.GetPlace());
 
@@ -98,15 +96,29 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       // OP must be a scalar with shape[0]. At present, the shape
       // of the `prob` Tensor of this OP is forced to be set to 0
       // in `npu_op_runner.cc`, which needs to be optimized later.
+
+     
+      Tensor seed1_tensor(framework::proto::VarType::INT64);
+      seed1_tensor.mutable_data<int64_t>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<int64_t>(&seed1_tensor,seed);
+      
+      Tensor seed2_tensor(framework::proto::VarType::INT64);
+      seed2_tensor.mutable_data<int64_t>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<int64_t>(&seed2_tensor, seed2);
+      
+      
+      //NpuOpRunner runner_gen_mask{"DropOutGenMaskV4" ,{framework::vectorize(tmp_out.dims()), keep_prob_tensor, seed1_tensor, seed2_tensor}, {npu_mask}, {}};
+      //runner_gen_mask.Run(stream);
       NpuOpRunner runner_gen_mask;
-      runner_gen_mask.SetType("DropOutGenMask")
+      runner_gen_mask.SetType("DropOutGenMaskV4")
           .AddInput(framework::vectorize(tmp_out.dims()))
           .AddInput(keep_prob_tensor)
-          .AddOutput(npu_mask)
-          .AddAttr("seed", seed)
-          .AddAttr("seed2", seed2)
-          .AddAttr("reset", is_reset);
+          .AddInput(seed1_tensor)
+          .AddInput(seed2_tensor)
+	  .AddAttrs({})
+          .AddOutput(npu_mask);
       runner_gen_mask.Run(stream);
+      
 
       NpuOpRunner runner_dropout;
       runner_dropout.SetType("DropOutDoMask")
@@ -115,7 +127,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
           .AddInput(keep_prob_tensor)
           .AddOutput(tmp_out);
       runner_dropout.Run(stream);
-
+      
       // cast `out` from float/float16 to bool
       Tensor cast_mask(framework::proto::VarType::BOOL);
       cast_mask.Resize(mask->dims());
