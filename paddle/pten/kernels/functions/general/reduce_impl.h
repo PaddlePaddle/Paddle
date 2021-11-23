@@ -21,14 +21,14 @@
 namespace pten {
 namespace general {
 
-template <typename DeviceContext, typename T>
-void Sum(const DeviceContext& dev_ctx,
-         const DenseTensor& x,
-         bool reduce_all,
-         std::vector<int64_t> dims,
-         bool keep_dim,
-         DataType out_dtype,
-         DenseTensor* out) {
+template <typename DeviceContext, typename T, typename Functor>
+void Reduce(const DeviceContext& dev_ctx,
+            const DenseTensor& x,
+            bool reduce_all,
+            std::vector<int64_t> dims,
+            bool keep_dim,
+            DataType out_dtype,
+            DenseTensor* out) {
   // If the dims has full dim, set the reduce_all is True
   const auto& input_dim_size = x.dims().size();
   std::set<int> dims_set(dims.begin(), dims.end());
@@ -70,10 +70,7 @@ void Sum(const DeviceContext& dev_ctx,
     // do reduce sum
     PD_VISIT_ALL_TYPES(
         out_dtype, "SumKernelImpl", ([&] {
-          pten::eigen::ReduceKernlImpl<DeviceContext,
-                                       T,
-                                       data_t,
-                                       pten::eigen::SumFunctor>(
+          pten::eigen::ReduceKernlImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }

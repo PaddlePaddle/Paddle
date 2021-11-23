@@ -21,7 +21,7 @@
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
-#include "paddle/pten/kernels/functions/general/sum_impl.h"
+#include "paddle/pten/kernels/functions/general/reduce_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -150,7 +150,7 @@ void Sum(const CPUContext& dev_ctx,
          DataType in_dtype,
          DataType out_dtype,
          DenseTensor* out) {
-  pten::general::Sum<CPUContext, T>(
+  pten::general::Reduce<CPUContext, T, pten::eigen::SumFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
