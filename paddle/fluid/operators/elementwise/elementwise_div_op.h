@@ -23,6 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
+#include "paddle/fluid/framework/pten_utils.h"
+
+// only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
 namespace paddle {
 namespace operators {
 
@@ -42,13 +48,6 @@ void default_elementwise_div(const framework::ExecutionContext& ctx,
   }
 }
 
-template <typename DeviceContext, typename T, class Enable = void>
-struct SameDimsElemwiseDiv {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z);
-};
-
 template <typename DeviceContext, typename T>
 class ElementwiseDivKernel : public framework::OpKernel<T> {
  public:
@@ -58,13 +57,13 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
 
-    auto dims_equal = x->dims() == y->dims();
-    if (dims_equal) {
-      SameDimsElemwiseDiv<DeviceContext, T> same_dims_div;
-      same_dims_div(ctx, x, y, z);
-    } else {
-      default_elementwise_div<DeviceContext, T>(ctx, x, y, z);
-    }
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    int axis = ctx.Attr<int>("axis");
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+    pten::ElementwiseDiv<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+                            pt_z.get());
   }
 };
 
