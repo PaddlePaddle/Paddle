@@ -962,7 +962,6 @@ class TheOnePSRuntime(RuntimeBase):
                              .fs_client_param)
         proto_txt = proto_txt + "\n" + fs_client.to_string()
 
-        print("sever_proto =", proto_txt)
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))
@@ -1300,8 +1299,6 @@ class TheOnePSRuntime(RuntimeBase):
     def load_model(self, path, mode):
         if mode == 0 or mode == 3:
             self._load_distributed_persistables(path, mode)
-        else:
-            self._ps_inference_load_inference_model(path, mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet

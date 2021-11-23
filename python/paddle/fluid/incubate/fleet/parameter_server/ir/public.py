@@ -44,7 +44,6 @@ OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
 SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
 SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
-SPARSE_OP_GRAD_LIST = ["lookup_table_grad", "push_sparse", "push_sparse_v2"]
 
 
 def _get_lr_ops(program):
@@ -114,11 +113,6 @@ class MergedVariable:
         self.merged_var = merged
         self.ordered_vars = ordered
         self.offsets = offsets
-
-    def __str__(self):
-        ov = ','.join([str(oo) for oo in self.ordered_vars])
-        return 'merged_var: {}, ordered_vars: {}, offsets: {}'.format(
-            self.merged_var, ov, self.offsets)
 
 
 def Singleton(cls):

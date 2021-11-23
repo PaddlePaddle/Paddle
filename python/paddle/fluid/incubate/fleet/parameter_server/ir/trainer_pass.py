@@ -448,13 +448,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     "size": emb_size[param]
                 })
 
-    def _push_dense_fuse(program):
-        cur_table = -1
-        for i in w_2_table_id.values():
-            if (i >= cur_table):
-                cur_table = i
-        cur_table += 1
-
     pull_sparse_ops, push_sparse_ops = _get_pull_sparse_ops(program)
     _pull_sparse_fuse(program, pull_sparse_ops, use_ps_gpu)
     _push_sparse_fuse(program, push_sparse_ops, use_ps_gpu)
