@@ -93,7 +93,7 @@ macro(compile_kernel COMPILE_ARGS)
   set(XTDK_DIR ${XPU_TOOLCHAIN})
   set(CXX_DIR ${HOST_SYSROOT})
   #-Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow
-  set(XPU_CXX_INCLUDES  -I/workspace/paddle/Paddle/build -I/workspace/paddle/Paddle/paddle/fluid/framework/io -I/workspace/paddle/Paddle/build/third_party/install/zlib/include -I/workspace/paddle/Paddle/build/third_party/install -I/workspace/paddle/Paddle/build/third_party/install/gflags/include -I/workspace/paddle/Paddle/build/third_party/install/glog/include -I/workspace/paddle/Paddle/build/third_party/boost/src/extern_boost -I/workspace/paddle/Paddle/build/third_party/eigen3/src/extern_eigen3 -I/workspace/paddle/Paddle/build/third_party/threadpool/src/extern_threadpool -I/workspace/paddle/Paddle/build/third_party/dlpack/src/extern_dlpack/include -I/workspace/paddle/Paddle/build/third_party/install/xxhash/include -I/workspace/paddle/Paddle/build/third_party/install/warpctc/include -I/workspace/paddle/Paddle/build/third_party/install/openblas/include -I/workspace/paddle/Paddle/build/third_party/install/protobuf/include -I/usr/include/python3.7m -I/usr/local/lib/python3.7/dist-packages/numpy/core/include -I/workspace/paddle/Paddle/build/third_party/pybind/src/extern_pybind/include -I/workspace/paddle/Paddle/build/third_party/install/gtest/include -I/workspace/paddle/Paddle/build/third_party/install/gloo/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include -I/workspace/paddle/Paddle/build/third_party/install/xbyak/include/xbyak -I/workspace/paddle/Paddle/build/third_party/install/cryptopp/include -I/workspace/paddle/Paddle/build/third_party/pocketfft/src -I/workspace/paddle/Paddle)
+  set(XPU_CXX_INCLUDES  -I${CMAKE_SOURCE_DIR}/build -I${CMAKE_SOURCE_DIR}/paddle/fluid/framework/io -I${CMAKE_SOURCE_DIR}/build/third_party/install/zlib/include -I${CMAKE_SOURCE_DIR}/build/third_party/install -I${CMAKE_SOURCE_DIR}/build/third_party/install/gflags/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/glog/include -I${CMAKE_SOURCE_DIR}/build/third_party/boost/src/extern_boost -I${CMAKE_SOURCE_DIR}/build/third_party/eigen3/src/extern_eigen3 -I${CMAKE_SOURCE_DIR}/build/third_party/threadpool/src/extern_threadpool -I${CMAKE_SOURCE_DIR}/build/third_party/dlpack/src/extern_dlpack/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xxhash/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/warpctc/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/utf8proc/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/openblas/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/protobuf/include -I/usr/include/python3.7m -I/usr/local/lib/python3.7/dist-packages/numpy/core/include -I${CMAKE_SOURCE_DIR}/build/third_party/pybind/src/extern_pybind/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/gtest/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xpu/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/gloo/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xbyak/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xbyak/include/xbyak -I${CMAKE_SOURCE_DIR}/build/third_party/install/cryptopp/include -I${CMAKE_SOURCE_DIR}/build/third_party/pocketfft/src -I${CMAKE_SOURCE_DIR} -I${CMAKE_SOURCE_DIR}/paddle/fluid/platform)
   #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -mavx -O3 -DNDEBUG )
   set(XPU_CXX_FLAGS  -Wno-error=pessimizing-move -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer  -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
   #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
@@ -107,7 +107,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
     # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
-        -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.bin.o.sec /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
+        -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.bin.o.sec ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/elementwise/${kernel_name}.xpu
         --xpu-device-only -c -v 
     COMMAND
       ${XTDK_DIR}/bin/xpu2-elfconv kernel_build/${kernel_name}.bin.o.sec  kernel_build/${kernel_name}.bin.o ${XPU_CLANG} --sysroot=${CXX_DIR}
@@ -135,7 +135,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
     # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
-        -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.host.o /workspace/paddle/Paddle/paddle/fluid/operators/elementwise/${kernel_name}.xpu
+        -I${XTDK_DIR}/include -I.  -o kernel_build/${kernel_name}.host.o ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/elementwise/${kernel_name}.xpu
         --xpu-host-only -c -v 
     # COMMAND
     #   ${CMAKE_COMMAND} -E cmake_depends "Unix Makefiles" ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}
@@ -263,42 +263,42 @@ macro(xpu_add_library TARGET_NAME)
 endmacro()
 
 # XPU2 PATH
-if(NOT DEFINED ENV{XPU2_PATH})
-    set(XPU2_PATH "/workspace/paddle/xpu-demo/XTDK" CACHE PATH "Path to which XPU2 has been installed")
-    set(XPU_CLANG_PATH ${XPU2_PATH}/bin/clang CACHE PATH "Path to which XPU2 CLANG has been installed")
-else()
-    set(XPU2_PATH $ENV{XPU2_PATH} CACHE PATH "Path to which ROCm has been installed")
-    set(XPU_CLANG_PATH ${XPU2_PATH}/bin/clang CACHE PATH "Path to which XPU2 CLANG has been installed")
-endif()
-set(CMAKE_MODULE_PATH "${XPU2_CLANG_PATH}/cmake" ${CMAKE_MODULE_PATH})
+# if(NOT DEFINED ENV{XPU2_PATH})
+#     set(XPU2_PATH "/workspace/paddle/xpu-demo/XTDK" CACHE PATH "Path to which XPU2 has been installed")
+#     set(XPU_CLANG_PATH ${XPU2_PATH}/bin/clang CACHE PATH "Path to which XPU2 CLANG has been installed")
+# else()
+#     set(XPU2_PATH $ENV{XPU2_PATH} CACHE PATH "Path to which ROCm has been installed")
+#     set(XPU_CLANG_PATH ${XPU2_PATH}/bin/clang CACHE PATH "Path to which XPU2 CLANG has been installed")
+# endif()
+# set(CMAKE_MODULE_PATH "${XPU2_CLANG_PATH}/cmake" ${CMAKE_MODULE_PATH})
 
-# define XPU_CXX_FLAGS
-list(APPEND XPU_CFLAGS -fPIC)
-list(APPEND XPU_CFLAGS --sysroot = /opt/compiler/gcc-8.2)
-list(APPEND XPU_CFLAGS -std=c++11)
-list(APPEND XPU_CFLAGS -O2)
-list(APPEND XPU_CFLAGS -g)
-list(APPEND XPU_CFLAGS -mcpu=xpu2)
-list(APPEND XPU_CFLAGS --target=x86_64-linux-gnu)
-list(APPEND XPU_CFLAGS -v)
-list(APPEND XPU_CFLAGS --dyld-prefix=/opt/compiler/gcc-8.2)
-list(APPEND XPU_CFLAGS -fno-builtin)
-list(APPEND XPU_CFLAGS -Wno-dev)
+# # define XPU_CXX_FLAGS
+# list(APPEND XPU_CFLAGS -fPIC)
+# list(APPEND XPU_CFLAGS --sysroot = /opt/compiler/gcc-8.2)
+# list(APPEND XPU_CFLAGS -std=c++11)
+# list(APPEND XPU_CFLAGS -O2)
+# list(APPEND XPU_CFLAGS -g)
+# list(APPEND XPU_CFLAGS -mcpu=xpu2)
+# list(APPEND XPU_CFLAGS --target=x86_64-linux-gnu)
+# list(APPEND XPU_CFLAGS -v)
+# list(APPEND XPU_CFLAGS --dyld-prefix=/opt/compiler/gcc-8.2)
+# list(APPEND XPU_CFLAGS -fno-builtin)
+# list(APPEND XPU_CFLAGS -Wno-dev)
 
-set(XPU_XPUCC_FLAGS ${XPU_CFLAGS})
+# set(XPU_XPUCC_FLAGS ${XPU_CFLAGS})
 
 # set HIP link libs
-set(xpuapi_library_name xpuapi)
-message(STATUS "XPU API library name: ${xpuapi_library_name}")
-# link in the generic.cmake
-find_library(XPU2_CLANG_API_LIB ${xpuapi_library_name} HINTS ${XPU2_PATH}/shlib)
-message(STATUS "XPU2_CLANG_API_LIB: ${XPU2_CLANG_API_LIB}")
+# set(xpuapi_library_name xpuapi)
+# message(STATUS "XPU API library name: ${xpuapi_library_name}")
+# # link in the generic.cmake
+# find_library(XPU2_CLANG_API_LIB ${xpuapi_library_name} HINTS ${XPU2_PATH}/shlib)
+# message(STATUS "XPU2_CLANG_API_LIB: ${XPU2_CLANG_API_LIB}")
 
-set(xpurt_library_name xpurt)
-message(STATUS "XPU RT library name: ${xpurt_library_name}")
-# link in the generic.cmake
-find_library(XPU2_CLANG_RT_LIB ${xpurt_library_name} HINTS ${XPU2_PATH}/runtime/shlib)
-message(STATUS "XPU2_CLANG_RT_LIB: ${XPU2_CLANG_RT_LIB}")
+# set(xpurt_library_name xpurt)
+# message(STATUS "XPU RT library name: ${xpurt_library_name}")
+# # link in the generic.cmake
+# find_library(XPU2_CLANG_RT_LIB ${xpurt_library_name} HINTS ${XPU2_PATH}/runtime/shlib)
+# message(STATUS "XPU2_CLANG_RT_LIB: ${XPU2_CLANG_RT_LIB}")
 
 # # Ensure that xpu/api.h can be included without dependency errors.
 # file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.xpu_headers_dummy.cc CONTENT "")

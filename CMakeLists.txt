@@ -270,13 +270,13 @@ if (NOT WITH_GPU AND WITH_NCCL)
         "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
-# XPU XPU2 use BKCL
-# if (NOT (WITH_XPU OR WITH_XPU2) AND WITH_XPU_BKCL)
-#     MESSAGE(WARNING
-#         "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
-#     set(WITH_XPU_BKCL OFF CACHE STRING
-#         "Disable BKCL when compiling without XPU" FORCE)
-# endif()
+# force XPU on when WITH_XPU2
+if (WITH_XPU2 AND NOT WITH_XPU)
+    MESSAGE(WARNING
+        "Enable XPU when compiling with XPU2. Force WITH_XPU=ON.")
+    set(WITH_XPU ON CACHE STRING
+        "Enable XPU when compiling with XPU2" FORCE)
+endif()
 
 #
 if (NOT WITH_XPU AND WITH_XPU_BKCL)
