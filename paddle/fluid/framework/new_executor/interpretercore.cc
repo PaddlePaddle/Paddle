@@ -77,7 +77,7 @@ void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }
 
-paddle::framework::FetchList InterpreterCore::Run(
+void InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
   bool is_build = is_build_;
@@ -87,13 +87,9 @@ paddle::framework::FetchList InterpreterCore::Run(
   if (is_build) {
     ExecuteInstructionList(vec_instruction_);
   }
-
-  // return Fetch Tensors
-  auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
-paddle::framework::FetchList InterpreterCore::Run() {
+void InterpreterCore::Run() {
   if (!is_build_) {
     if (create_local_scope_ &&
         global_scope_->GetMutableLocalScope() !=
@@ -119,10 +115,6 @@ paddle::framework::FetchList InterpreterCore::Run() {
   } else {
     ExecuteInstructionList(vec_instruction_);
   }
-
-  // return Fetch Tensors
-  auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
 void InterpreterCore::BuildOperatorDependences() {

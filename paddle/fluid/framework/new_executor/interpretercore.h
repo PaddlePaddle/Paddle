@@ -45,11 +45,10 @@ class InterpreterCore {
 
   ~InterpreterCore();
 
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+  void Run(const std::vector<std::string>& feed_names,
+           const std::vector<framework::LoDTensor>& feed_tensors);
 
-  paddle::framework::FetchList Run();
+  void Run();
 
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,

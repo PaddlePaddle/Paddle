@@ -150,12 +150,14 @@ class MultiStreamModelTestCase(unittest.TestCase):
 
         p = core.Place()
         p.set_place(self.place)
+        scope = core.Scope()
         inter_core = StandaloneExecutor(p, startup_program.desc,
-                                        main_program.desc, core.Scope())
+                                        main_program.desc, scope)
         outs = []
         for i in range(self.iter_n):
-            outs.append(
-                np.array(inter_core.run({}, fetch_list)._move_to_list()[0]))
+            inter_core.run({}, fetch_list)
+            arr = scope.find_var("fetch").get_fetch_list()
+            outs.append(np.array(arr._move_to_list()[0]))
         return outs
 
 

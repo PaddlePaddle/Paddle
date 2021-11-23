@@ -2097,12 +2097,10 @@ All parameter, weight, gradient are variables in Paddle.
                feed_tensors.push_back(t);
              }
 
-             paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names, feed_tensors, fetch_names);
+               self.Run(feed_names, feed_tensors, fetch_names);
              }
-             return py::cast(std::move(ret));
            })
       .def("run",
            [](StandaloneExecutor &self,
@@ -2117,22 +2115,18 @@ All parameter, weight, gradient are variables in Paddle.
                feed_tensors.push_back(item.second);
              }
 
-             paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names, feed_tensors, fetch_names);
+               self.Run(feed_names, feed_tensors, fetch_names);
              }
-             return py::cast(std::move(ret));
            })
       .def("run",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
-             paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names, fetch_names);
+               self.Run(feed_names, fetch_names);
              }
-             return py::cast(std::move(ret));
            })
       .def("dry_run",
            [](StandaloneExecutor &self,

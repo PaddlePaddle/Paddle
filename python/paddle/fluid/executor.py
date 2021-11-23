@@ -497,9 +497,11 @@ class _StandaloneExecutor(object):
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, fetch_list, return_numpy=True):
+    def run(self, scope, feed_names, fetch_list, return_numpy=True):
         """
         Args:
+            scope(Scope): the scope used to run this program, you can switch 
+                it to different scope.
             feed_names(list): This parameter represents the input names of the model.
             fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model runs. The default is None. 
@@ -509,7 +511,9 @@ class _StandaloneExecutor(object):
         """
         fetch_list = self._check_fetch(fetch_list)
 
-        tensors = self._new_exe.run(feed_names, fetch_list)._move_to_list()
+        self._new_exe.run(feed_names, fetch_list)
+        arr = scope.find_var("fetch").get_fetch_list()
+        tensors = arr._move_to_list()
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
@@ -1387,7 +1391,8 @@ class Executor(object):
                                                       lr_sheduler._var_name)
                     tensor.set(data, self.place)
 
-                return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
+                return new_exe.run(scope,
+                                   list(feed.keys()), fetch_list, return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
