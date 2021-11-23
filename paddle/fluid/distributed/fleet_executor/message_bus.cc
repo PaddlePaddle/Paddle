@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
 #include <memory>
+#include <thread>
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -31,6 +34,21 @@ void MessageBus::Init(
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+  // NOTE: To make the brpc is compatible with collective,
+  // need release the handler holding the ip address.
+  if (addr_ != "") {
+    VLOG(3) << "Message bus is releasing the fd held by gen_comm_id.";
+    paddle::platform::SocketServer& socket_server =
+        paddle::platform::SocketServer::GetInstance(addr_);
+    int server_fd = socket_server.socket();
+    if (server_fd != -1) {
+      socket_server.Release();
+    }
+  }
+#endif
 
   ListenPort();
 
@@ -87,7 +105,7 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
 
 void MessageBus::ListenPort() {
   if (addr_ == "") {
-    VLOG(3) << "No need listen to port since training on single card.";
+    LOG(INFO) << "No need listen to port since training on single card.";
     return;
   }
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
@@ -103,14 +121,22 @@ void MessageBus::ListenPort() {
   const char* ip_for_brpc = addr_.c_str();
   brpc::ServerOptions options;
   options.idle_timeout_sec = -1;
-  PADDLE_ENFORCE_EQ(
-      server_.Start(ip_for_brpc, &options), 0,
-      platform::errors::Unavailable("Message bus: start brpc service error."));
-  VLOG(3) << "Message bus's listen port thread starts successful.";
+  int retry_times = 0;
+  int interval = 1000;
+  while (server_.Start(ip_for_brpc, &options) != 0) {
+    ++retry_times;
+    LOG(INFO) << "Message bus is retring for starting brpc for " << retry_times
+              << " times. And will retry after " << interval / 1000
+              << " seconds.";
+    std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+    interval += 2000;
+  }
+  LOG(INFO) << "Message bus's listen port thread starts successful.";
 #else
-  VLOG(3) << "Fleet executor's ListenPort() is a fake function when Paddle is "
-             "compiled with npu or Paddle isn't compiled "
-             "with distributed for now.";
+  LOG(WARNING)
+      << "Fleet executor's ListenPort() is a fake function when Paddle is "
+         "compiled with npu or Paddle isn't compiled "
+         "with distributed for now.";
 #endif
 }
 
