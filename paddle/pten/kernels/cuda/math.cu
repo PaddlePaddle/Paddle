@@ -161,6 +161,23 @@ void ElementwiseSub(const CUDAContext& dev_ctx,
 }
 
 template <typename T>
+void ElementwiseDiv(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  // allocate memory for out
+  out->mutable_data<T>();
+  outputs.emplace_back(out);
+  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, general::DivFunctor<T>());
+}
+
+template <typename T>
 void Sum(const CUDAContext& dev_ctx,
          const DenseTensor& x,
          std::vector<int64_t> dims,
@@ -225,6 +242,17 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    CUDA,
                    ANY,
                    pten::ElementwiseSub,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_div",
+                   CUDA,
+                   ANY,
+                   pten::ElementwiseDiv,
                    float,
                    double,
                    int,

@@ -61,6 +61,13 @@ void ElementwiseSub(const CPUContext& dev_ctx,
                     DenseTensor* out);
 
 template <typename T>
+void ElementwiseDiv(const CPUContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
+
+template <typename T>
 void Sum(const CPUContext& dev_ctx,
          const DenseTensor& x,
          std::vector<int64_t> dims,
