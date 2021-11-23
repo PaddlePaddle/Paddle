@@ -884,33 +884,6 @@ class TheOnePSRuntime(RuntimeBase):
         host, port = ep.split(":")
         self._server.run_server(host, int(port))
 
-    def _init_heter_worker(self):
-        executor = self._get_executor()
-        startup_program = fluid.default_startup_program()
-        #real_startup_program = startup_program._heter_pipeline_opt[
-        #    "startup_program"]
-        executor.run(startup_program)
-        self._init_worker()
-
-    def _run_heter_worker(self,
-                          dataset=None,
-                          scope=None,
-                          thread=0,
-                          debug=False,
-                          fetch_list=None,
-                          fetch_info=None,
-                          print_period=100,
-                          fetch_handler=None):
-        executor = self._get_executor()
-        # dataset is not needed for heter worker
-        executor.train_from_dataset(
-            program=fluid.default_main_program(),
-            dataset=None,
-            debug=debug,
-            fetch_list=fetch_list,
-            fetch_info=fetch_info,
-            print_period=print_period)
-
     def _stop_worker(self):
         self._communicator.stop()
         if self.role_maker._is_heter_parameter_server_mode:
