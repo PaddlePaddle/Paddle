@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -68,8 +69,8 @@ class CinnLaunchContext {
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
 
-  std::vector<std::unique_ptr<cinn_buffer_t>>* hold_buffers() const {
-    return hold_buffers_;
+  std::vector<std::unique_ptr<cinn_buffer_t>> ReleaseBuffers() {
+    return std::move(hold_buffers_);
   }
 
  private:
@@ -101,7 +102,7 @@ class CinnLaunchContext {
   // because a cinn_pod_value_t does not own the cinn_buffer_t object,
   // an extra stroage is necessary to keep the object and it can
   // not be released until runtime program finish  execution.
-  std::vector<std::unique_ptr<cinn_buffer_t>>* hold_buffers_;
+  std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers_;
 
   // name to execution argument
   std::map<std::string, cinn_pod_value_t> name2argument_;
@@ -115,11 +116,33 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result);
 
 // Launch cinn to execute compiled executable program and wait done
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context,
-                         const gpuStream_t& stream);
+                         const CinnLaunchContext& context, void* stream);
 
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
+
+template <typename DeviceContext>
+void ReleaseResource(const std::vector<void*>& resources, void* stream) {
+  auto* temp_scope = static_cast<framework::Scope*>(resources[0]);
+  auto* buffers =
+      static_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(resources[1]);
+  delete temp_scope;
+  delete buffers;
+}
+
+template <>
+void ReleaseResource<platform::CUDADeviceContext>(
+    const std::vector<void*>& resources, void* stream);
+
+template <typename DeviceContext>
+void* GetStream(const framework::ExecutionContext& ctx) {
+  return nullptr;
+}
+
+template <>
+void* GetStream<platform::CUDADeviceContext>(
+    const framework::ExecutionContext& ctx);
+
 }  // namespace details
 
 template <typename DeviceContext, typename T>
@@ -128,7 +151,10 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto& scope = ctx.scope();
     const auto& place = ctx.GetPlace();
+    void* stream = details::GetStream<DeviceContext>(ctx);
     // Step 1. Find graph object and prepare input
+    platform::RecordEvent record_event_1(
+        "Step 1. Find graph object and prepare input");
     PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey), true,
                       platform::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
@@ -150,15 +176,18 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                    });
 
     // Step 2. Get compilation result of the graph
+    platform::RecordEvent record_event_2(
+        "Step 2. Get compilation result of the graph");
     auto target = details::PlaceToCinnTarget(place);
     const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
-        compilation_key, inputs_name2tensor, target);
+        compilation_key, inputs_name2tensor, target, stream);
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
     auto launch_context =
         std::make_unique<details::CinnLaunchContext>(cinn_compiled_object);
 
     // Step 3. Prepare arguments needed for the compiled executable program.
+    platform::RecordEvent record_event_3("Step 3. Prepare arguments.");
     VLOG(4) << "CinnLaunchOp prepare arguments";
 
     // 3.1 Prepare input variables: tensors of input variables have
@@ -213,38 +242,20 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     }
 
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
+    platform::RecordEvent record_event_4("Step 4. Set CINN runtime FLAGS.");
     details::SetCinnRuntimeFlags();
 
-    gpuStream_t stream = nullptr;
-#ifdef PADDLE_WITH_CUDA
-    if (std::is_same<DeviceContext, platform::CUDADeviceContext>::value) {
-      const auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
-      stream = dev_ctx.stream();
-    }
-#endif
-
     // Step 5. Launch CINN to execute the compiled executable program
+    platform::RecordEvent record_event_5("Step 5. Execute CINN program.");
     VLOG(4) << "Run Cinn compiled executable program with stream: " << stream;
     details::LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
     VLOG(4) << "CinnLaunchOp launch execution done.";
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaLaunchHostFunc(stream, ReleaseScope, temp_scope));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
-        stream, ReleaseBuffers, launch_context->hold_buffers()));
-  }
-
- private:
-  static void CUDART_CB ReleaseScope(void* data) {
-    auto* temp_scope = reinterpret_cast<framework::Scope*>(data);
-    delete temp_scope;
-  }
-
-  static void CUDART_CB ReleaseBuffers(void* data) {
-    auto* buffers =
-        reinterpret_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(data);
-    delete buffers;
+    // Step 6. Release some resources, such as `temp_scope` and cinn_buffers.
+    auto* buffers_holder = new std::vector<std::unique_ptr<cinn_buffer_t>>{
+        launch_context->ReleaseBuffers()};
+    details::ReleaseResource<DeviceContext>({temp_scope, buffers_holder},
+                                            stream);
   }
 };
 

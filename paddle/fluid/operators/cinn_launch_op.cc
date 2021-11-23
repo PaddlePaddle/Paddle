@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
+#include <cuda_runtime.h>
+#include <memory>
+#include <vector>
+#include "cinn/hlir/framework/scope.h"
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(cudnn_deterministic);
@@ -65,8 +69,7 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 }
 
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context,
-                         const gpuStream_t& stream) {
+                         const CinnLaunchContext& context, void* stream) {
   compiled_obj.runtime_program->Execute(&context.FinalizeArguments(), stream);
 }
 
@@ -79,7 +82,6 @@ void SetCinnRuntimeFlags() {
 CinnLaunchContext::CinnLaunchContext(const CinnCompiledObject& compiled_obj)
     : paddle2cinn_varmap_(compiled_obj.paddle2cinn_varmap),
       cinn_scope_(compiled_obj.scope) {
-  hold_buffers_ = new std::vector<std::unique_ptr<cinn_buffer_t>>;
   auto var_names = cinn_scope_->var_names();
   cinn_variable_names_.reserve(var_names.size());
   std::transform(
@@ -185,7 +187,7 @@ void CinnLaunchContext::SetArgument(const std::string& cinn_name,
                                     LoDTensor* paddle_tensor) {
   auto buffer = ShareTensorWithCinnBuffer(paddle_tensor);
   name2argument_.emplace(cinn_name, buffer.get());
-  hold_buffers_->emplace_back(std::move(buffer));
+  hold_buffers_.emplace_back(std::move(buffer));
   VLOG(4) << "SetArgument-" << name2argument_.size() << ": "
           << "name(" << cinn_name << "), "
           << "type(" << framework::DataTypeToString(paddle_tensor->type())
@@ -204,6 +206,34 @@ CinnLaunchContext::FinalizeArguments() const {
                                         var_name));
                 });
   return name2argument_;
+}
+
+void CUDART_CB ReleaseScope(void* data) {
+  auto* temp_scope = static_cast<framework::Scope*>(data);
+  delete temp_scope;
+}
+
+void CUDART_CB ReleaseBuffers(void* data) {
+  auto* buffers =
+      static_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(data);
+  delete buffers;
+}
+
+template <>
+void ReleaseResource<platform::CUDADeviceContext>(
+    const std::vector<void*>& resources, void* stream) {
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
+      static_cast<gpuStream_t>(stream), ReleaseScope, resources[0]));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
+      static_cast<gpuStream_t>(stream), ReleaseBuffers, resources[1]));
+}
+
+template <>
+void* GetStream<platform::CUDADeviceContext>(
+    const framework::ExecutionContext& ctx) {
+  const auto& dev_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  return dev_ctx.stream();
 }
 
 }  // namespace details
