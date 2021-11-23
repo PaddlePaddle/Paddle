@@ -16,9 +16,8 @@
 
 namespace paddle {
 namespace framework {
-
-void EventManager::WaitEvent(const Instruction& instruction,
-                             const platform::Place& place) {
+namespace interpreter {
+void WaitEvent(const Instruction& instruction, const platform::Place& place) {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) return;
 
@@ -32,8 +31,7 @@ void EventManager::WaitEvent(const Instruction& instruction,
   }
 }
 
-void EventManager::RecordEvent(const Instruction& instruction,
-                               const platform::Place& place) {
+void RecordEvent(const Instruction& instruction, const platform::Place& place) {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) return;
 
@@ -43,5 +41,16 @@ void EventManager::RecordEvent(const Instruction& instruction,
   }
 }
 
+void RecordEvent(const Instruction& instruction) {
+  // If InterpreterCore in on CPUPlace, do nothing.
+  if (platform::is_cpu_place(instruction.DeviceContext().GetPlace())) return;
+
+  for (auto& event : instruction.OutputEvents()) {
+    VLOG(3) << "Record event in out_var_id: " << event.var_id_;
+    event.event_->Record(&instruction.DeviceContext());
+  }
+}
+
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
