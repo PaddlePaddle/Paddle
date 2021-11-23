@@ -116,11 +116,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   OpFuncNode new_op_func_node;
   new_op_func_node.input_index["X"] = {var_scope_->VarId(var_name)};
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
-  if (op->Type() == "share_buffer") {
-    new_op_func_node.output_index["Out"] = {var_scope_->VarId(var_name)};
-  }
   new_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-  VLOG(3) << "Run " << op_type << " ....";
   new_op_func_node.kernel_func_(exec_ctx);
   // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
   // as kQueueSync and execute them in thread pool.
@@ -397,7 +393,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
               << framework::DataTypeToString(dst_type)
               << " real var in static graph.";
 
-      // TODO(Aurelius84): Consider to define a complex2real op to deal this
+      // NOTE(Aurelius84): Consider to define a complex2real op to deal this
       // case.
       std::string new_var_name;
       auto op = TransferDtype(var_name, &new_var_name, src_type, dst_type,
