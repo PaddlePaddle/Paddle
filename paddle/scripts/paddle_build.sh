@@ -2301,7 +2301,12 @@ function build_document_preview() {
 
 # origin name: example
 function exec_samplecode_test() {
-    pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+    if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+    else
+        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+    fi
+
     paddle version
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
