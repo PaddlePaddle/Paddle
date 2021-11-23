@@ -782,7 +782,7 @@ function generate_upstream_develop_api_spec() {
     ENABLE_MAKE_CLEAN="ON"
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [ ${cmake_change} ];then
+    if [[ ${cmake_change} ]];then
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
 }
