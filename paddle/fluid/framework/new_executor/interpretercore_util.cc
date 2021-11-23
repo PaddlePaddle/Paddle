@@ -415,9 +415,12 @@ void build_op_func_list(const platform::Place& place,
   }
 }
 
-void add_fetch(const std::vector<std::string>& fetch_names,
-               framework::BlockDesc* block) {
-  auto* fetch_holder = block->Var(kFetchVarName);
+std::string add_fetch(const std::vector<std::string>& fetch_names,
+                      framework::BlockDesc* block) {
+  static int fetch_var_name_id = 1;
+  std::string fetch_var_name =
+      kFetchVarName + std::to_string(fetch_var_name_id++);
+  auto* fetch_holder = block->Var(fetch_var_name);
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
 
@@ -427,11 +430,13 @@ void add_fetch(const std::vector<std::string>& fetch_names,
     auto* op = block->AppendOp();
     op->SetType("fetch_v2");
     op->SetInput("X", {fetch_name});
-    op->SetOutput("Out", {kFetchVarName});
+    op->SetOutput("Out", {fetch_var_name});
     op->SetAttr("col", {static_cast<int>(i)});
     op->CheckAttrs();
     i++;
   }
+
+  return fetch_var_name;
 }
 
 std::vector<size_t> merge_vector(const std::vector<size_t>& first,

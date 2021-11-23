@@ -41,7 +41,8 @@ using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 class InterpreterCore {
  public:
   InterpreterCore(const platform::Place& place, const BlockDesc& block,
-                  VariableScope* global_scope);
+                  VariableScope* global_scope,
+                  const std::string& fetch_var_name = "");
 
   ~InterpreterCore();
 
@@ -112,6 +113,8 @@ class InterpreterCore {
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   bool create_local_scope_{true};
   Scope* local_scope_{nullptr};  // not owned
+
+  std::string fetch_var_name_;
 };
 }  // namespace framework
 }  // namespace paddle

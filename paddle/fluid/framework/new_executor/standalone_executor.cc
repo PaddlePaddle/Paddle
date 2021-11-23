@@ -114,9 +114,10 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
       // new program.
       auto new_prog = std::make_shared<framework::ProgramDesc>(main_prog_);
       auto* block = new_prog->MutableBlock(0);
-      interpreter::add_fetch(fetch_names, block);
+      auto fetch_var_name = interpreter::add_fetch(fetch_names, block);
 
-      core = std::make_shared<InterpreterCore>(place_, *block, &global_scope_);
+      core = std::make_shared<InterpreterCore>(place_, *block, &global_scope_,
+                                               fetch_var_name);
       core->SetCopyProgram(new_prog);
     } else {
       core = std::make_shared<InterpreterCore>(place_, main_prog_.Block(0),

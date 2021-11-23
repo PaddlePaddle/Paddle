@@ -38,11 +38,13 @@ static constexpr size_t kHostNumThreads = 4;
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
-                                 VariableScope* global_scope)
+                                 VariableScope* global_scope,
+                                 const std::string& fetch_var_name)
     : place_(place),
       block_(block),
       global_scope_(global_scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      fetch_var_name_(fetch_var_name) {
   is_build_ = false;
   async_work_queue_.reset(
       new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
@@ -89,7 +91,7 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   // return Fetch Tensors
-  auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
+  auto* fetch_var = global_scope_->Var(fetch_var_name_);
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
@@ -121,7 +123,7 @@ paddle::framework::FetchList InterpreterCore::Run() {
   }
 
   // return Fetch Tensors
-  auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
+  auto* fetch_var = global_scope_->Var(fetch_var_name_);
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
