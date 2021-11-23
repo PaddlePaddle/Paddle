@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-namespace pten {
+namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
@@ -107,4 +107,4 @@ TEST(Tensor, old_copy_to) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace paddle

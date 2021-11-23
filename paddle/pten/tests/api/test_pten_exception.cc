@@ -14,6 +14,9 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/pten/api/ext/exception.h"
 
+namespace paddle {
+namespace tests {
+
 TEST(PD_THROW, empty) {
   bool caught_exception = false;
   try {
@@ -156,3 +159,6 @@ TEST(PD_CHECK, FAILED) {
   }
   EXPECT_TRUE(caught_exception);
 }
+
+}  // namespace tests
+}  // namespace paddle

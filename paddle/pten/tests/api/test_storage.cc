@@ -20,13 +20,12 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 
 namespace paddle {
-namespace experimental {
 namespace tests {
 
 TEST(host_storage, external_stroage) {
   const size_t size{100};
-  const auto a =
-      std::make_shared<DefaultAllocator>(paddle::platform::CPUPlace());
+  const auto a = std::make_shared<experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
   pten::intrusive_ptr<pten::Storage> in_storage =
       pten::make_intrusive<pten::TensorStorage>(a, size);
   char* data = static_cast<char*>(in_storage->data());
@@ -35,7 +34,8 @@ TEST(host_storage, external_stroage) {
   }
   const size_t delta{1};
   const size_t n{10};
-  auto ex_storage = pten::make_intrusive<ExternalStorage>(in_storage, delta, n);
+  auto ex_storage =
+      pten::make_intrusive<experimental::ExternalStorage>(in_storage, delta, n);
   CHECK_EQ(ex_storage->size(), n);
   CHECK(paddle::platform::is_cpu_place(ex_storage->place()));
   CHECK(!ex_storage->OwnsMemory());
@@ -51,7 +51,7 @@ TEST(host_storage, external_vector) {
   }
   const size_t delta{1};
   const size_t n{10};
-  auto ex_storage = pten::make_intrusive<ExternalStorage>(
+  auto ex_storage = pten::make_intrusive<experimental::ExternalStorage>(
       data.data(), n, paddle::platform::CPUPlace());
   CHECK_EQ(ex_storage->size(), n);
   CHECK(paddle::platform::is_cpu_place(ex_storage->place()));
@@ -60,6 +60,6 @@ TEST(host_storage, external_vector) {
     CHECK_EQ(data[i], static_cast<char>(i));
   }
 }
+
 }  // namespace tests
-}  // namespace experimental
 }  // namespace paddle
