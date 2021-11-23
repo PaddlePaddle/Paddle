@@ -22,6 +22,62 @@
 
 namespace egr {
 
+/**
+ * EagerUtils is utils used to do some static conversion or autograd
+ * members access, this class is desinged to be a full static functional
+ * utils class
+ * **/
+
+template <typename ElementType>
+class IterHelper {
+  virtual void visit(ElementType element) = 0;
+
+  void visit(std::vector<ElementType>* elements) {
+    for (auto element : *elements) visit(element);
+  }
+
+  template <typename... Args>
+  void apply() {}
+
+ public:
+  template <typename T, typename... Args>
+  void apply(T&& arg, Args&&... args) {
+    visit(std::forward<T>(arg));
+    return apply(std::forward<Args>(args)...);
+  }
+  virtual ~IterHelper() = default;
+};
+
+class ComputeRequireGradIter : public IterHelper<AutogradMeta*> {
+ public:
+  bool RequireGrad() { return require_grad_; }
+
+ private:
+  void visit(AutogradMeta* element) override {
+    bool stop_gradient = element->StopGradient();
+    if (!stop_gradient) require_grad_ = true;
+  }
+
+  bool require_grad_ = false;
+};
+
+class PassStopGradientIter : public IterHelper<AutogradMeta*> {
+ public:
+  void SetStopGradient(bool stop_gradient) { stop_gradient_ = stop_gradient; }
+
+ private:
+  void visit(AutogradMeta* element) override {
+    if (!element) {
+      // TODO(jiabin): Add Tensor name here when we supported.
+      VLOG(2) << "Tensor is NULL";
+      return;
+    }
+    element->SetStopGradient(stop_gradient_);
+  }
+
+  bool stop_gradient_ = true;
+};
+
 class EagerUtils {
  public:
   /**
@@ -31,6 +87,22 @@ class EagerUtils {
    * constructor (it's abstract class there)
    *
    * **/
+  template <typename T, typename... Args>
+  static bool ComputeRequireGrad(T trace_backward, Args&&... args) {
+    if (!trace_backward) return false;
+
+    auto iter = ComputeRequireGradIter();
+    iter.apply(std::forward<Args>(args)...);
+
+    return iter.RequireGrad();
+  }
+
+  template <typename T, typename... Args>
+  static void PassStopGradient(T stop_gradient, Args&&... args) {
+    auto iter = PassStopGradientIter();
+    iter.SetStopGradient(stop_gradient);
+    iter.apply(std::forward<Args>(args)...);
+  }
   static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);
   // This method will return an AutogradMeta pointer unsafely.
   static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
