@@ -17,7 +17,7 @@ limitations under the License. */
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/pten/api/include/registry.h"
+#include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
