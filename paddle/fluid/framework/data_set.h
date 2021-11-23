@@ -54,7 +54,7 @@ class Dataset {
                          const std::vector<uint16_t> tdm_layer_counts,
                          const uint16_t start_sample_layer,
                          const bool with_hierachy, const uint16_t seed_,
-                         const uint16_t sample_slot) {}
+                         const uint16_t sample_slot);
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   // set readers' num
@@ -322,7 +322,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
                          const std::vector<uint16_t> tdm_layer_counts,
                          const uint16_t start_sample_layer,
                          const bool with_hierachy, const uint16_t seed_,
-                         const uint16_t sample_slot) {}
+                         const uint16_t sample_slot);
   virtual void MergeByInsId();
   virtual void PreprocessInstance();
   virtual void PostprocessInstance();
