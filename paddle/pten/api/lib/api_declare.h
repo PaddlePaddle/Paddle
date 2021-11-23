@@ -14,14 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/backend.h"
+// api symbols declare, remove in the future
+#include "paddle/pten/api/lib/api_registry.h"
 
-namespace paddle {
-namespace experimental {
-
-// TODO(chenweihang): Replace backend by place when place is ready
-PD_DLL_DECL Tensor copy_to(const Tensor& x, Backend backend, bool blocking);
-
-}  // namespace experimental
-}  // namespace paddle
+PT_DECLARE_API(Creation);
+PT_DECLARE_API(Linalg);
+PT_DECLARE_API(Manipulation);
+PT_DECLARE_API(Math);
+PT_DECLARE_API(Utils);

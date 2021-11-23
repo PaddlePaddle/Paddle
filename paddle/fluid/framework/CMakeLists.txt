@@ -375,7 +375,7 @@ if(WITH_PSCORE)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
         conditional_block_op executor gloo_wrapper ${RPC_DEPS})
     cc_test(heter_pipeline_trainer_test SRCS heter_pipeline_trainer_test.cc DEPS
-           conditional_block_op scale_op heter_listen_and_serv_op executor heter_server gloo_wrapper ${RPC_DEPS})
+           conditional_block_op scale_op heter_listen_and_serv_op executor heter_server gloo_wrapper eigen_function ${RPC_DEPS})
 else()
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
         conditional_block_op executor gloo_wrapper)
