@@ -198,56 +198,6 @@ def print_valid_all_op_dist_attr(valid_op_dist_attr_dict):
         print("")
 
 
-class MLPLayer(nn.Layer):
-    def __init__(self,
-                 hidden_size=1024,
-                 intermediate_size=4 * 1024,
-                 initializer_range=0.02):
-        super(MLPLayer, self).__init__()
-        d_model = hidden_size
-        dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-            mean=0.0, std=initializer_range))
-        bias_attr = None
-
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
-        self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
-
-    def forward(self, input):
-
-        out = self.norm(input)
-        out = self.linear0(out)
-        out = F.gelu(out, approximate=True)
-        out = self.linear1(out)
-
-        return out
-
-
-def mlp_forward(train_program, start_program):
-    with static.program_guard(train_program,
-                              start_program), utils.unique_name.guard():
-        batch_size = 4
-        hidden_size = 1024
-        input = static.data(
-            name="input", shape=[batch_size, hidden_size], dtype='float32')
-        label = static.data(
-            name="label", shape=[batch_size, 1], dtype='float32')
-
-        mlp = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            initializer_range=0.02)
-
-        predict = mlp(input)
-        error_cost = paddle.nn.functional.square_error_cost(predict, label)
-        loss = paddle.mean(error_cost)
-
-    return loss, train_program, start_program
-
-
 def enumerate_process_mesh(processes):
     """enumerate all process meshes with the given processes"""
     # compute divisors
@@ -507,26 +457,42 @@ def check_ops_valid_dist_attr(program, op_valid_dist_attr_dict):
 def enumerate_ops_valid_dist_attr(program,
                                   process_mesh_topology,
                                   pipeline_mode=False):
+    no_need_enum_ops = [
+        "create_py_reader", "create_double_buffer_reader", "read"
+    ]
+    special_vars = [
+        "lod_tensor_blocking_queue_0", "create_py_reader_0", "double_buffer_0"
+    ]
     op_valid_dist_attr_dict = OrderedDict()
     ops = program.global_block().ops
+    vars = program.global_block().vars
     processes = reduce(lambda x, y: x * y, process_mesh_topology)
     process_mesh_global_group = [i for i in range(processes)]
     # global_process_mesh = auto.ProcessMesh(mesh=np.array(
     #     process_mesh_global_group).reshape(process_mesh_topology).tolist())
-    if len(process_mesh_topology) > 1:
-        global_process_mesh = auto.ProcessMesh(mesh=np.array(
-            process_mesh_global_group).reshape(process_mesh_topology).tolist())
-    else:
-        global_process_mesh = auto.ProcessMesh(mesh=process_mesh_global_group)
-
+    global_process_mesh = None
     pipeline_process_mesh_list = None
+
     if pipeline_mode:
         pipeline_stages = process_mesh_topology[-1]
         op_count_per_stage = len(ops) // pipeline_stages
-        process_mesh_shape = process_mesh_topology[:-1]
-        per_process_mesh_group = processes // pipeline_stages
-        pipeline_process_mesh_list = [auto.ProcessMesh(mesh=list(np.array(process_mesh_global_group[i*per_process_mesh_group: \
-        (i+1)*per_process_mesh_group]).reshape(process_mesh_shape))) for i in range(pipeline_stages)]
+        if len(process_mesh_topology) > 1:
+            process_mesh_shape = process_mesh_topology[:-1]
+            per_process_mesh_group = processes // pipeline_stages
+            pipeline_process_mesh_list = [auto.ProcessMesh(mesh=list(np.array(process_mesh_global_group[i*per_process_mesh_group: \
+            (i+1)*per_process_mesh_group]).reshape(process_mesh_shape))) for i in range(pipeline_stages)]
+        elif len(process_mesh_topology) == 1:
+            pipeline_process_mesh_list = [
+                auto.ProcessMesh(mesh=[i]) for i in range(pipeline_stages)
+            ]
+    else:
+        if len(process_mesh_topology) > 1:
+            global_process_mesh = auto.ProcessMesh(
+                mesh=np.array(process_mesh_global_group).reshape(
+                    process_mesh_topology).tolist())
+        else:
+            global_process_mesh = auto.ProcessMesh(
+                mesh=process_mesh_global_group)
 
     for idx, op in enumerate(ops):
         op_process_mesh = global_process_mesh
@@ -534,13 +500,36 @@ def enumerate_ops_valid_dist_attr(program,
         if pipeline_process_mesh_list is not None:
             pipeline_stage = idx // op_count_per_stage if idx // op_count_per_stage < len(
                 pipeline_process_mesh_list) else idx // op_count_per_stage - 1
+            if pipeline_stage >= len(pipeline_process_mesh_list):
+                pipeline_stage = len(pipeline_process_mesh_list) - 1
             op_process_mesh = pipeline_process_mesh_list[pipeline_stage]
-        op_valid_dist_attr_list = enumerate_op_valid_dist_attr(program, op,
-                                                               op_process_mesh)
+
+        if op.type in no_need_enum_ops:
+            op_dist_attr = OperatorDistributedAttribute()
+            op_dist_attr.process_mesh = op_process_mesh
+            for var_name in op.input_arg_names:
+                if var_name in special_vars:
+                    op_dist_attr.set_input_dims_mapping(var_name, [])
+                else:
+                    dims_mapping = [-1 for i in vars[var_name].shape]
+                    op_dist_attr.set_input_dims_mapping(var_name, dims_mapping)
+
+            for var_name in op.output_arg_names:
+                if var_name in special_vars:
+                    op_dist_attr.set_output_dims_mapping(var_name, [])
+                else:
+                    dims_mapping = [-1 for i in vars[var_name].shape]
+                    op_dist_attr.set_output_dims_mapping(var_name, dims_mapping)
+            op_valid_dist_attr_list = [op_dist_attr]
+            pipeline_stage = 0 if pipeline_stage != -1 else pipeline_stage
+
+        else:
+            op_valid_dist_attr_list = enumerate_op_valid_dist_attr(
+                program, op, op_process_mesh)
         op_valid_dist_attr_dict[op.desc.id(
         )] = [op_valid_dist_attr_list, pipeline_stage]
     check_ops_valid_dist_attr(program, op_valid_dist_attr_dict)
-    return op_valid_dist_attr_dict, pipeline_process_mesh_list
+    return op_valid_dist_attr_dict, pipeline_process_mesh_list, global_process_mesh
 
 
 def mcmc_search_strategy(program,
@@ -818,8 +807,7 @@ def get_all_distributed_main_program(train_program,
                                      cluster=None):
 
     all_dist_main_program = []
-    #ranks = get_ranks(cluster)
-    ranks = 4
+    ranks = get_ranks(cluster)
     for rank_id in range(ranks):
         used_dist_context = copy.deepcopy(dist_context)
         used_dist_context._dist_op_context = DistributedOperatorContext()
@@ -953,16 +941,20 @@ def estimate_searched_strategy_cost(train_program,
     return cost
 
 
-def init(op_valid_dist_attr_dict, program):
+def init(op_valid_dist_attr_dict, program, pipeline_process_mesh_list,
+         global_process_mesh):
     ops = program.global_block().ops
     new_dist_context = DistributedContext()
     vars = program.global_block().vars
+    print(" ***** start init with new process mesh *****")
     for op in ops:
         op_valid_dist_attr_list = op_valid_dist_attr_dict[op.desc.id()][0]
         random_op_dist_attr = np.random.randint(len(op_valid_dist_attr_list))
         init_op_dist_attr = op_valid_dist_attr_list[random_op_dist_attr]
         new_dist_context.set_op_dist_attr_for_program(op, init_op_dist_attr)
         for var_name in op.input_arg_names:
+            if var_name == "lod_tensor_blocking_queue_0":
+                continue
             if new_dist_context.get_tensor_dist_attr_for_program(vars[
                     var_name]) is None:
                 tensor_dist_attr = TensorDistributedAttribute()
@@ -979,6 +971,12 @@ def init(op_valid_dist_attr_dict, program):
                 var_name)
             new_dist_context.set_tensor_dist_attr_for_program(vars[var_name],
                                                               tensor_dist_attr)
+    # add process meshes
+    if global_process_mesh is not None:
+        new_dist_context.add_process_mesh(global_process_mesh)
+    elif pipeline_process_mesh_list is not None:
+        for process_mesh in pipeline_process_mesh_list:
+            new_dist_context.add_process_mesh(process_mesh)
     return new_dist_context
 
 
@@ -1001,31 +999,29 @@ def auto_search(serial_main_program,
         evenly dividing the pipeline stage of all ops, then enumerate all valid op dist attr of one op. 
         when select the op dist attr, it firstly selects dims_mapping and then select process mesh.
     """
-    #processes = get_ranks(cluster=None)
-    #process_meshes = enumerate_process_mesh(processes)
+    processes = get_ranks(cluster=None)
+    process_meshes = enumerate_process_mesh(processes)
 
-    op_valid_dist_attr_dict = enumerate_ops_valid_dist_attr(serial_main_program,
-                                                            [2, 2], False)[0]
-    init_dist_context = init(op_valid_dist_attr_dict, serial_main_program)
-    best_dist_context, runtime = mcmc(
-        serial_main_program,
-        serial_startup_program,
-        op_valid_dist_attr_dict,
-        init_dist_context,
-        loss,
-        optimizer,
-        pipeline_process_mesh_list=None,
-        cluster=None)
-    best_dist_context._dist_op_context = DistributedOperatorContext()
-    return best_dist_context, runtime
-
-
-# train_program = paddle.static.Program()
-# startup_program = paddle.static.Program()
-# loss, train_program, start_program = mlp_forward(train_program, startup_program)
-# optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
-# best_dist_context, run_time = auto_search(train_program, startup_program, loss,
-#                                           optimizer)
-# for key, item in best_dist_context._dist_ops_for_program.items():
-#     print(item)
-# print(run_time)
+    searched_dist_context = None
+    min_runtime = None
+    for process_mesh in process_meshes:
+        op_valid_dist_attr_dict, pipeline_process_mesh_list, global_process_mesh = enumerate_ops_valid_dist_attr(
+            serial_main_program, process_mesh, False)
+        init_dist_context = init(op_valid_dist_attr_dict, serial_main_program,
+                                 pipeline_process_mesh_list,
+                                 global_process_mesh)
+        best_dist_context, runtime = mcmc(
+            serial_main_program,
+            serial_startup_program,
+            op_valid_dist_attr_dict,
+            init_dist_context,
+            loss,
+            optimizer,
+            pipeline_process_mesh_list=pipeline_process_mesh_list,
+            cluster=None)
+        best_dist_context._dist_op_context = DistributedOperatorContext()
+        min_runtime = runtime if min_runtime is None else min_runtime
+        min_runtime = runtime if runtime < min_runtime else min_runtime
+        searched_dist_context = best_dist_context if searched_dist_context is None else searched_dist_context
+        searched_dist_context = best_dist_context if runtime < min_runtime else searched_dist_context
+    return searched_dist_context, min_runtime
