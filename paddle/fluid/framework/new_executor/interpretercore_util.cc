@@ -367,9 +367,11 @@ void build_op_func_list(const platform::Place& place,
 
       // post-process grad_op.outputs if need cast complex grad into real grad.
       // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
-      interpreter::HandleComplexGradToRealGrad(
-          op_func_node, place, outputs_names, &runtime_context.outputs,
-          var_scope, vec_func_list, local_scope);
+      if (framework::IsComplexType(expected_kernel_key.data_type_)) {
+        interpreter::HandleComplexGradToRealGrad(
+            op_func_node, place, outputs_names, &runtime_context.outputs,
+            var_scope, vec_func_list, local_scope);
+      }
     }
 
     vec_func_list->emplace_back(op_func_node);
