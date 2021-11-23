@@ -30,234 +30,220 @@ using platform::to_void_cast;
 
 template <typename T>
 class PoolingMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
-                                      mkldnn::pooling_backward> {
+    : public platform::MKLDNNHandlerNoCachingT<T, mkldnn::pooling_forward,
+                                               mkldnn::pooling_backward> {
  public:
   PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                       const platform::MKLDNNDeviceContext& dev_ctx,
-                       platform::Place cpu_place, const Tensor* input,
-                       Tensor* output, const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
-                                 mkldnn::pooling_backward>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
-                                framework::ToMKLDNNDataType(input->type()),
-                                unique_name)) {
-    if (!this->isCached()) {
-      PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                        platform::errors::InvalidArgument(
-                            "Wrong layout set for Input tensor."));
-      PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Input tensor."));
+                       const mkldnn::engine mkldnn_engine, const Tensor* input,
+                       Tensor* output)
+      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::pooling_forward,
+                                          mkldnn::pooling_backward>(
+            mkldnn_engine, ctx.GetPlace()) {
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      platform::errors::InvalidArgument(
+                          "Wrong layout set for Input tensor."));
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Input tensor."));
 
-      const std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    const std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
-      std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
-      std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
+    std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
+    std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
 
-      std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
-      std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
+    std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
-      std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
-      std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
+    std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
-      const bool global_pooling = ctx.Attr<bool>("global_pooling");
-      const std::string padding_algorithm =
-          ctx.Attr<std::string>("padding_algorithm");
+    const bool global_pooling = ctx.Attr<bool>("global_pooling");
+    const std::string padding_algorithm =
+        ctx.Attr<std::string>("padding_algorithm");
 
-      // Only 2D pooling is supported now
-      PADDLE_ENFORCE_EQ(
-          ksize.size(), 2,
-          platform::errors::InvalidArgument(
-              "The ksize must be 2D, i.e. 2D pooling, but received %dD.",
-              ksize.size()));
-      PADDLE_ENFORCE_EQ(
-          pooling_type == "max" || pooling_type == "avg", true,
-          platform::errors::InvalidArgument(
-              "The pooling_type must be 'max' or 'avg', but received %s.",
-              pooling_type));
-      PADDLE_ENFORCE_EQ(
-          input->dims().size(), 4,
-          platform::errors::InvalidArgument(
-              "Input dim must be with 4, i.e. NCHW, but received %d.",
-              input->dims().size()));
+    // Only 2D pooling is supported now
+    PADDLE_ENFORCE_EQ(
+        ksize.size(), 2,
+        platform::errors::InvalidArgument(
+            "The ksize must be 2D, i.e. 2D pooling, but received %dD.",
+            ksize.size()));
+    PADDLE_ENFORCE_EQ(
+        pooling_type == "max" || pooling_type == "avg", true,
+        platform::errors::InvalidArgument(
+            "The pooling_type must be 'max' or 'avg', but received %s.",
+            pooling_type));
+    PADDLE_ENFORCE_EQ(
+        input->dims().size(), 4,
+        platform::errors::InvalidArgument(
+            "Input dim must be with 4, i.e. NCHW, but received %d.",
+            input->dims().size()));
 
-      const auto input_dims = input->dims();
-      framework::DDim data_dims =
-          framework::slice_ddim(input_dims, 2, input_dims.size());
+    const auto input_dims = input->dims();
+    framework::DDim data_dims =
+        framework::slice_ddim(input_dims, 2, input_dims.size());
 
-      if (global_pooling) {
-        operators::UpdateKsize(&ksize, data_dims);
-      }
-
-      operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
-                               data_dims, strides, ksize);
-
-      const auto src_tz = paddle::framework::vectorize(input->dims());
-      const auto dst_tz = paddle::framework::vectorize(output->dims());
-
-      const auto is_test = ctx.Attr<bool>("is_test");
-
-      const auto dt = framework::ToMKLDNNDataType(input->type());
-
-      const auto exclude_padding = ctx.Attr<bool>("exclusive");
-
-      const auto src_md = mkldnn::memory::desc(src_tz, dt, input->format());
-      /* create memory descriptor for pooling without specified format
-       * ('any') which lets a primitive (pooling in this case) choose
-       * the memory format preferred for best performance
-       */
-
-      const auto dst_md =
-          platform::MKLDNNMemDesc(dst_tz, dt, MKLDNNMemoryFormat::any);
-
-      auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-
-      const bool ceil_mode = ctx.Attr<bool>("ceil_mode");
-
-      if (ceil_mode) {
-        CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
-                          mkldnn_paddings[1]);
-      }
-
-      ComputeAdaptivePoolParameters(ctx, src_tz, &ksize, &strides);
-
-      this->AcquireForwardPrimitiveDescriptor(
-          is_test ? mkldnn::prop_kind::forward_inference
-                  : mkldnn::prop_kind::forward_training,
-          pooling_type == "max"
-              ? mkldnn::algorithm::pooling_max
-              : (exclude_padding
-                     ? mkldnn::algorithm::pooling_avg_exclude_padding
-                     : mkldnn::algorithm::pooling_avg_include_padding),
-          src_md, dst_md, strides, ksize, mkldnn_paddings[0],
-          mkldnn_paddings[1]);
+    if (global_pooling) {
+      operators::UpdateKsize(&ksize, data_dims);
     }
+
+    operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
+                             data_dims, strides, ksize);
+
+    const auto src_tz = paddle::framework::vectorize(input->dims());
+    const auto dst_tz = paddle::framework::vectorize(output->dims());
+
+    const auto is_test = ctx.Attr<bool>("is_test");
+
+    const auto dt = framework::ToMKLDNNDataType(input->type());
+
+    const auto exclude_padding = ctx.Attr<bool>("exclusive");
+
+    const auto src_md = mkldnn::memory::desc(src_tz, dt, input->format());
+    /* create memory descriptor for pooling without specified format
+     * ('any') which lets a primitive (pooling in this case) choose
+     * the memory format preferred for best performance
+     */
+
+    const auto dst_md =
+        platform::MKLDNNMemDesc(dst_tz, dt, MKLDNNMemoryFormat::any);
+
+    auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+
+    const bool ceil_mode = ctx.Attr<bool>("ceil_mode");
+
+    if (ceil_mode) {
+      CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
+                        mkldnn_paddings[1]);
+    }
+
+    ComputeAdaptivePoolParameters(ctx, src_tz, &ksize, &strides);
+
+    this->AcquireForwardPrimitiveDescriptor(
+        is_test ? mkldnn::prop_kind::forward_inference
+                : mkldnn::prop_kind::forward_training,
+        pooling_type == "max"
+            ? mkldnn::algorithm::pooling_max
+            : (exclude_padding
+                   ? mkldnn::algorithm::pooling_avg_exclude_padding
+                   : mkldnn::algorithm::pooling_avg_include_padding),
+        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
   }
 
   PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                       const platform::MKLDNNDeviceContext& dev_ctx,
-                       platform::Place cpu_place, const Tensor* in_x,
-                       const Tensor* out_grad, Tensor* in_x_grad,
-                       const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
-                                 mkldnn::pooling_backward>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(in_x->dims()),
-                                framework::ToMKLDNNDataType(in_x->type()),
-                                unique_name)) {
-    if (!this->isBwdCached()) {
-      PADDLE_ENFORCE_EQ(in_x->layout(), DataLayout::kMKLDNN,
-                        platform::errors::InvalidArgument(
-                            "Wrong layout set for Input tensor"));
-      PADDLE_ENFORCE_NE(in_x->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Input tensor"));
+                       const mkldnn::engine mkldnn_engine, const Tensor* in_x,
+                       const Tensor* out_grad, Tensor* in_x_grad)
 
-      PADDLE_ENFORCE_EQ(out_grad->layout(), DataLayout::kMKLDNN,
-                        platform::errors::InvalidArgument(
-                            "Wrong layout set for Input output_grad tensor"));
-      PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Input output_grad tensor"));
+      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::pooling_forward,
+                                          mkldnn::pooling_backward>(
+            mkldnn_engine, ctx.GetPlace()) {
+    PADDLE_ENFORCE_EQ(
+        in_x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
+    PADDLE_ENFORCE_NE(
+        in_x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
 
-      PADDLE_ENFORCE_EQ(
-          ctx.Attr<bool>("is_test"), false,
-          platform::errors::InvalidArgument(
-              "is_test attribute should be set to False in training phase."));
+    PADDLE_ENFORCE_EQ(out_grad->layout(), DataLayout::kMKLDNN,
+                      platform::errors::InvalidArgument(
+                          "Wrong layout set for Input output_grad tensor"));
+    PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Input output_grad tensor"));
 
-      std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    PADDLE_ENFORCE_EQ(
+        ctx.Attr<bool>("is_test"), false,
+        platform::errors::InvalidArgument(
+            "is_test attribute should be set to False in training phase."));
 
-      std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
-      std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
+    std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
-      std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
-      std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
+    std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
+    std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
 
-      std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
-      std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
+    std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
-      bool global_pooling = ctx.Attr<bool>("global_pooling");
-      std::string padding_algorithm =
-          ctx.Attr<std::string>("padding_algorithm");
+    std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
-      auto in_x_dims = in_x->dims();
-      framework::DDim data_dims =
-          framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    bool global_pooling = ctx.Attr<bool>("global_pooling");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
 
-      if (global_pooling) {
-        operators::UpdateKsize(&ksize, data_dims);
-      }
+    auto in_x_dims = in_x->dims();
+    framework::DDim data_dims =
+        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
-      operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
-                               data_dims, strides, ksize);
-
-      auto src_tz = paddle::framework::vectorize<int64_t>(in_x->dims());
-      auto diff_src_tz =
-          paddle::framework::vectorize<int64_t>(in_x_grad->dims());
-      auto diff_dst_tz =
-          paddle::framework::vectorize<int64_t>(out_grad->dims());
-
-      const auto dt = framework::ToMKLDNNDataType(in_x->type());
-      auto src_md = mkldnn::memory::desc(src_tz, dt, in_x->format());
-      auto dst_md =
-          mkldnn::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
-      auto diff_dst_md = mkldnn::memory::desc(
-          diff_dst_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
-      auto diff_src_md =
-          mkldnn::memory::desc(diff_src_tz, platform::MKLDNNGetDataType<T>(),
-                               MKLDNNMemoryFormat::any);
-
-      auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-      const bool ceil_mode = ctx.Attr<bool>("ceil_mode");
-
-      if (ceil_mode) {
-        CorrectOutputSize(src_tz, diff_dst_tz, ksize, paddings, strides,
-                          mkldnn_paddings[1]);
-      }
-      ComputeAdaptivePoolParameters(ctx, diff_src_tz, &ksize, &strides);
-
-      const auto exclude_padding = ctx.Attr<bool>("exclusive");
-
-      this->AcquireForwardPrimitiveDescriptor(
-          mkldnn::prop_kind::forward_training,
-          pooling_type == "max"
-              ? mkldnn::algorithm::pooling_max
-              : (exclude_padding
-                     ? mkldnn::algorithm::pooling_avg_exclude_padding
-                     : mkldnn::algorithm::pooling_avg_include_padding),
-          src_md, dst_md, strides, ksize, mkldnn_paddings[0],
-          mkldnn_paddings[1]);
-
-      this->AcquireBackwardPrimitiveDescriptor(
-          pooling_type == "max"
-              ? mkldnn::algorithm::pooling_max
-              : (exclude_padding
-                     ? mkldnn::algorithm::pooling_avg_exclude_padding
-                     : mkldnn::algorithm::pooling_avg_include_padding),
-          diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
-          mkldnn_paddings[1]);
+    if (global_pooling) {
+      operators::UpdateKsize(&ksize, data_dims);
     }
+
+    operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
+                             data_dims, strides, ksize);
+
+    auto src_tz = paddle::framework::vectorize<int64_t>(in_x->dims());
+    auto diff_src_tz = paddle::framework::vectorize<int64_t>(in_x_grad->dims());
+    auto diff_dst_tz = paddle::framework::vectorize<int64_t>(out_grad->dims());
+
+    const auto dt = framework::ToMKLDNNDataType(in_x->type());
+    auto src_md = mkldnn::memory::desc(src_tz, dt, in_x->format());
+    auto dst_md =
+        mkldnn::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
+    auto diff_dst_md = mkldnn::memory::desc(
+        diff_dst_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
+    auto diff_src_md = mkldnn::memory::desc(
+        diff_src_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+
+    auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+    const bool ceil_mode = ctx.Attr<bool>("ceil_mode");
+
+    if (ceil_mode) {
+      CorrectOutputSize(src_tz, diff_dst_tz, ksize, paddings, strides,
+                        mkldnn_paddings[1]);
+    }
+    ComputeAdaptivePoolParameters(ctx, diff_src_tz, &ksize, &strides);
+
+    const auto exclude_padding = ctx.Attr<bool>("exclusive");
+
+    this->AcquireForwardPrimitiveDescriptor(
+        mkldnn::prop_kind::forward_training,
+        pooling_type == "max"
+            ? mkldnn::algorithm::pooling_max
+            : (exclude_padding
+                   ? mkldnn::algorithm::pooling_avg_exclude_padding
+                   : mkldnn::algorithm::pooling_avg_include_padding),
+        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
+
+    this->AcquireBackwardPrimitiveDescriptor(
+        pooling_type == "max"
+            ? mkldnn::algorithm::pooling_max
+            : (exclude_padding
+                   ? mkldnn::algorithm::pooling_avg_exclude_padding
+                   : mkldnn::algorithm::pooling_avg_include_padding),
+        diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(void) {
+  std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(
+      const platform::MKLDNNDeviceContext& dev_ctx,
+      const std::string& unique_name) {
     mkldnn::memory::desc workspace_md = this->fwd_pd_->workspace_desc();
-    // Pooling PD has to be passed to Grad op that
+    // Pooling Workspace has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
-    auto local_key = this->key_common_ + "@workspace";
+    std::string workspace_key =
+        platform::CreateKey(dev_ctx, workspace_md.dims(),
+                            workspace_md.data_type(), unique_name, "@wrk");
     auto mem_p = std::static_pointer_cast<mkldnn::memory>(
-        this->dev_ctx_.GetBlob(local_key));
+        dev_ctx.GetBlob(workspace_key));
     if (mem_p == nullptr) {
       static std::mutex acquire_barrier;
       std::lock_guard<std::mutex> block_threads_until_finish_this_job(
           acquire_barrier);
       mem_p = std::static_pointer_cast<mkldnn::memory>(
-          this->dev_ctx_.GetBlob(local_key));
+          dev_ctx.GetBlob(workspace_key));
       if (mem_p == nullptr) {
         mem_p = std::make_shared<mkldnn::memory>(workspace_md, this->engine_);
-        this->dev_ctx_.SetBlob(local_key, mem_p);
+        dev_ctx.SetBlob(workspace_key, mem_p);
       }
     }
     return mem_p;
@@ -319,8 +305,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* input = ctx.Input<Tensor>("X");
     Tensor* output = ctx.Output<Tensor>("Out");
 
-    PoolingMKLDNNHandler<T> handler(ctx, dev_ctx, ctx.GetPlace(), input, output,
-                                    ctx.OutputName("Out"));
+    PoolingMKLDNNHandler<T> handler(ctx, dev_ctx.GetEngine(), input, output);
 
     auto src_memory = handler.AcquireSrcMemory(input);
     auto dst_memory = handler.AcquireDstMemory(output);
@@ -331,7 +316,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if ((ctx.Attr<bool>("is_test") == false) &&
         (ctx.Attr<std::string>("pooling_type") == "max")) {
       // Training
-      auto workspace_memory = handler.AcquireWorkspaceMemory();
+      auto workspace_memory =
+          handler.AcquireWorkspaceMemory(dev_ctx, ctx.OutputName("Out"));
       pool_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                 {MKLDNN_ARG_DST, *dst_memory},
                                 {MKLDNN_ARG_WORKSPACE, *workspace_memory}});
@@ -361,8 +347,8 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
-    PoolingMKLDNNHandler<T> handler(ctx, dev_ctx, ctx.GetPlace(), in_x,
-                                    out_grad, in_x_grad, ctx.InputName("Out"));
+    PoolingMKLDNNHandler<T> handler(ctx, dev_ctx.GetEngine(), in_x, out_grad,
+                                    in_x_grad);
 
     auto diff_dst_memory = handler.AcquireDiffDstMemory(out_grad);
     auto diff_src_memory = handler.AcquireDiffSrcMemory(in_x_grad);
@@ -372,7 +358,8 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (ctx.Attr<std::string>("pooling_type") == "max") {
       // Max - pooling needs Workspace
-      auto workspace_memory = handler.AcquireWorkspaceMemory();
+      auto workspace_memory =
+          handler.AcquireWorkspaceMemory(dev_ctx, ctx.InputName("Out"));
       pool_bwd_p->execute(astream, {{MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
                                     {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
                                     {MKLDNN_ARG_WORKSPACE, *workspace_memory}});
@@ -400,4 +387,5 @@ REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::PoolMKLDNNOpKernel<paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::PoolMKLDNNGradOpKernel<float>);
+                   ops::PoolMKLDNNGradOpKernel<float>,
+                   ops::PoolMKLDNNGradOpKernel<paddle::platform::bfloat16>);

@@ -300,10 +300,6 @@ if(WITH_GPU)
     endif()
 endif()
 
-if(WITH_CINN)
-    include(cinn)
-endif()
-
 if(WITH_ROCM)
     include(hip)
     include(miopen) # set miopen libraries, must before configure
