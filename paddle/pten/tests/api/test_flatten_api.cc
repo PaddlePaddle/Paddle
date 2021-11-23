@@ -21,12 +21,6 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(ManipulationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(ManipulationCUDA);
-#endif
-
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -53,9 +47,9 @@ TEST(API, flatten) {
 
   // 3. check result
   std::vector<int> expect_shape = {3, 4, 3};
-  ASSERT_EQ(out.shape()[0], expect_shape[0]);
-  ASSERT_EQ(out.shape()[1], expect_shape[1]);
-  ASSERT_EQ(out.shape()[2], expect_shape[2]);
+  ASSERT_EQ(out.dims()[0], expect_shape[0]);
+  ASSERT_EQ(out.dims()[1], expect_shape[1]);
+  ASSERT_EQ(out.dims()[2], expect_shape[2]);
   ASSERT_EQ(out.numel(), 36);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);

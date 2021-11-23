@@ -21,12 +21,6 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(LinalgCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(LinalgCUDA);
-#endif
-
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -65,8 +59,8 @@ TEST(API, dot) {
   auto out = paddle::experimental::dot(x, y);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 3);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);

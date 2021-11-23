@@ -14,8 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
-
+#include "paddle/pten/api/ext/exception.h"
 namespace paddle {
 namespace experimental {
 
@@ -46,8 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
       os << "MKLDNN";
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid enum data layout type `%d`.", static_cast<int>(layout)));
+      PD_THROW(
+          "Invalid enum data layout type `", static_cast<int>(layout), "`.");
   }
   return os;
 }

@@ -36,7 +36,7 @@ static void triangular_solve(const DeviceContext& context, const Tensor& x,
   // Tensor broadcast use eigen
   std::vector<int64_t> x_bst_dims_vec;
   std::vector<int64_t> y_bst_dims_vec;
-  std::tie(x_bst_dims_vec, y_bst_dims_vec) = _broadcast_batch_dims(x, y);
+  std::tie(x_bst_dims_vec, y_bst_dims_vec) = get_broadcast_dims(x, y);
 
   Tensor x_bst(x.type());
   TensorExpand<T, DeviceContext>(context, x, &x_bst, x_bst_dims_vec);
@@ -141,7 +141,7 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> x_bst_dims_vec;
     std::vector<int64_t> y_bst_dims_vec;
-    std::tie(x_bst_dims_vec, y_bst_dims_vec) = _broadcast_batch_dims(*x, *y);
+    std::tie(x_bst_dims_vec, y_bst_dims_vec) = get_broadcast_dims(*x, *y);
 
     Tensor dy_bst(y->type());
     if (dy) {

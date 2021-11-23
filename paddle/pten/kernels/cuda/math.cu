@@ -14,9 +14,11 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/cuda/math.h"
 
+#include "paddle/pten/kernels/functions/cuda/elementwise/elementwise.h"
 #include "paddle/pten/kernels/functions/eigen/mean.h"
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
+#include "paddle/pten/kernels/functions/general/elementwise_functor.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -26,6 +28,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -78,7 +81,7 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
       dev_ctx.GetPlace());
   pten::DenseTensor tmp(
       alloc,
-      DenseTensorMeta(x.data_type(),
+      DenseTensorMeta(x.dtype(),
                       paddle::framework::make_ddim(
                           {static_cast<int64_t>(temp_storage_bytes)}),
                       x.layout()));
@@ -121,12 +124,66 @@ void ScaleHost(const CUDAContext& dev_ctx,
                                out);
 }
 
+template <typename T>
+void ElementwiseAdd(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  // allocate memory for out
+  out->mutable_data<T>();
+  outputs.emplace_back(out);
+  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, general::AddFunctor<T>());
+}
+
+template <typename T>
+void ElementwiseSub(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  // allocate memory for out
+  out->mutable_data<T>();
+  outputs.emplace_back(out);
+  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, general::SubFunctor<T>());
+}
+
+template <typename T>
+void ElementwiseDiv(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  // allocate memory for out
+  out->mutable_data<T>();
+  outputs.emplace_back(out);
+  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, general::DivFunctor<T>());
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
 PT_REGISTER_MODULE(MathCUDA);
 
 using float16 = paddle::platform::float16;
+using complex64 = ::paddle::platform::complex<float>;
+using complex128 = ::paddle::platform::complex<double>;
+
 PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
 PT_REGISTER_KERNEL("mean", CUDA, ANY, pten::Mean, float, double, float16) {}
 PT_REGISTER_KERNEL("scale",
@@ -155,3 +212,36 @@ PT_REGISTER_KERNEL("scale.host",
                    int64_t) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
 }
+PT_REGISTER_KERNEL("elementwise_add",
+                   CUDA,
+                   ANY,
+                   pten::ElementwiseAdd,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_sub",
+                   CUDA,
+                   ANY,
+                   pten::ElementwiseSub,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_div",
+                   CUDA,
+                   ANY,
+                   pten::ElementwiseDiv,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
