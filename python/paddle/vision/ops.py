@@ -957,14 +957,14 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
     inputs = {'X': x}
     attrs = {"mode": mode, "num_threads": num_threads}
 
-    helper = LayerHelper("decode", **locals())
+    helper = LayerHelper("batch_decode", **locals())
     out = helper.create_variable(
         name=unique_name.generate("image_decode"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=x.dtype)
     # out = helper.create_variable_for_type_inference('uint8')
     helper.append_op(
-        type="decode", inputs=inputs, attrs=attrs, outputs={"Out": out})
+        type="batch_decode", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
     return out
 

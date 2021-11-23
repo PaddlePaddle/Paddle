@@ -23,6 +23,7 @@
 
 namespace paddle {
 namespace operators {
+namespace data {
 
 template <typename T>
 class CPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
@@ -110,14 +111,15 @@ and 255.
   }
 };
 
+}  // namespace data
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    decode, ops::BatchDecodeJpegOp, ops::BatchDecodeJpegOpMaker,
+    batch_decode, ops::data::BatchDecodeJpegOp, ops::data::BatchDecodeJpegOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(decode, ops::CPUBatchDecodeJpegKernel<uint8_t>)
+REGISTER_OP_CPU_KERNEL(batch_decode, ops::data::CPUBatchDecodeJpegKernel<uint8_t>)
