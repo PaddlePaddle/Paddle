@@ -219,6 +219,7 @@ template PD_DLL_DECL const int32_t *Tensor::data<int32_t>() const;
 template PD_DLL_DECL const uint8_t *Tensor::data<uint8_t>() const;
 template PD_DLL_DECL const int8_t *Tensor::data<int8_t>() const;
 template PD_DLL_DECL const int16_t *Tensor::data<int16_t>() const;
+template PD_DLL_DECL const uint16_t *Tensor::data<uint16_t>() const;
 template PD_DLL_DECL const bool *Tensor::data<bool>() const;
 template PD_DLL_DECL const paddle::platform::complex<float>
     *Tensor::data<paddle::platform::complex<float>>() const;
@@ -226,6 +227,8 @@ template PD_DLL_DECL const paddle::platform::complex<double>
     *Tensor::data<paddle::platform::complex<double>>() const;
 template PD_DLL_DECL const paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>() const;
+template PD_DLL_DECL const paddle::platform::bfloat16 *
+Tensor::data<paddle::platform::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
