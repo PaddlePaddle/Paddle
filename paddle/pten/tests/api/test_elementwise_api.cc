@@ -188,6 +188,6 @@ TEST(API, divide) {
   ASSERT_NEAR(expect_result[0][1], actual_result1, 1e-6f);
   ASSERT_NEAR(expect_result[1][0], actual_result2, 1e-6f);
 }
-  
+
 }  // namespace tests
 }  // namespace paddle
