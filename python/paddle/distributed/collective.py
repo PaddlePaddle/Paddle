@@ -264,6 +264,10 @@ def new_group(ranks=None, backend=None):
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy,
                                          place).init_with_ring_id(ring_id)
+            elif core.is_compiled_with_npu():
+                place = core.NPUPlace(genv.device_id)
+                core.HCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
             else:
                 assert False, ("no cuda device found")
         else:
