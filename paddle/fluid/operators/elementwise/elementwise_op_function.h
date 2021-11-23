@@ -31,6 +31,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/pten/include dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/context.h"
 #include "paddle/pten/kernels/functions/cpu/elementwise.h"
 #include "paddle/pten/kernels/functions/general/elementwise_base.h"
 
@@ -1595,12 +1596,10 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
     return;
   }
 
-  const auto &dev_ctx =
-      ctx.template device_context<platform::CPUDeviceContext>();
-  auto *pten_dev_ctx = reinterpret_cast<typename framework::ConvertContextType<
-      platform::CPUDeviceContext>::TYPE *>(framework::ConvertContext(dev_ctx));
+  auto *dev_ctx = reinterpret_cast<pten::CPUContext *>(
+      paddle::experimental::DeviceContextPool::Instance().Get(ctx.GetPlace()));
   pten::ElementwiseCompute<Functor, T, OutType>(
-      *pten_dev_ctx, *pt_x.get(), *pt_y.get(), axis, func, pt_z.get());
+      *dev_ctx, *pt_x.get(), *pt_y.get(), axis, func, pt_z.get());
 }
 
 // FusedElemwiseAndAct

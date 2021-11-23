@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/pten_utils.h"
 
 // only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/math.h"
@@ -57,12 +58,15 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
 
-    auto& dev_ctx = ctx.device_context<DeviceContext>();
     int axis = ctx.Attr<int>("axis");
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
     auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
-    pten::ElementwiseDiv<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+    auto* dev_ctx = reinterpret_cast<
+        typename framework::ConvertContextType<DeviceContext>::TYPE*>(
+        paddle::experimental::DeviceContextPool::Instance().Get(
+            ctx.GetPlace()));
+    pten::ElementwiseDiv<T>(*dev_ctx, *pt_x.get(), *pt_y.get(), axis,
                             pt_z.get());
   }
 };

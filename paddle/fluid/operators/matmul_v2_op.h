@@ -386,7 +386,6 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
-    auto& dev_ctx = ctx.device_context<DeviceContext>();
     Out->mutable_data<T>(X->place());
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*X);
@@ -394,10 +393,11 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
 
     // call new kernel
-    auto* pten_dev_ctx = reinterpret_cast<
+    auto* dev_ctx = reinterpret_cast<
         typename framework::ConvertContextType<DeviceContext>::TYPE*>(
-        framework::ConvertContext(dev_ctx));
-    pten::Matmul<T>(*pten_dev_ctx, *pt_x.get(), *pt_y.get(), trans_x, trans_y,
+        paddle::experimental::DeviceContextPool::Instance().Get(
+            ctx.GetPlace()));
+    pten::Matmul<T>(*dev_ctx, *pt_x.get(), *pt_y.get(), trans_x, trans_y,
                     pt_out.get());
   }
 };

@@ -191,12 +191,10 @@ void LaunchBroadcastElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  auto *pten_dev_ctx = reinterpret_cast<typename framework::ConvertContextType<
-      platform::CUDADeviceContext>::TYPE *>(
-      framework::ConvertContext(
-          *reinterpret_cast<const platform::DeviceContext *>(&ctx)));
+  auto *dev_ctx = reinterpret_cast<pten::CUDAContext *>(
+      paddle::experimental::DeviceContextPool::Instance().Get(ctx.GetPlace()));
   pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(
-      *pten_dev_ctx, pt_inputs, &pt_outputs, axis, func);
+      *dev_ctx, pt_inputs, &pt_outputs, axis, func);
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
@@ -227,12 +225,10 @@ void LaunchElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  auto *pten_dev_ctx =
-      reinterpret_cast<typename paddle::framework::ConvertContextType<
-          platform::CUDADeviceContext>::TYPE *>(
-          framework::ConvertContext(
-              *reinterpret_cast<const platform::DeviceContext *>(&cuda_ctx)));
-  pten::LaunchElementwiseCudaKernel<ET, InT, OutT>(*pten_dev_ctx, pt_inputs,
+  auto *dev_ctx = reinterpret_cast<pten::CUDAContext *>(
+      paddle::experimental::DeviceContextPool::Instance().Get(
+          cuda_ctx.GetPlace()));
+  pten::LaunchElementwiseCudaKernel<ET, InT, OutT>(*dev_ctx, pt_inputs,
                                                    &pt_outputs, axis, func);
 }
 

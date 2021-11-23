@@ -1113,8 +1113,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-  auto& pten_pool = paddle::experimental::DeviceContextPool::Instance();
-  auto* pten_dev_ctx = pten_pool.Get(place);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
@@ -1185,6 +1183,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (pt_kernel_context_ == nullptr) {
         pt_kernel_context_.reset(new pten::KernelContext());
       }
+      auto& pten_pool = paddle::experimental::DeviceContextPool::Instance();
+      auto* pten_dev_ctx = pten_pool.Get(place);
       BuildPtenKernelContext(*runtime_ctx, pten_dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
 

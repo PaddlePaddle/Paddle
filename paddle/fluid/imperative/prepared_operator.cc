@@ -136,8 +136,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        pten::KernelContext* pt_kernel_context) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-  auto& pt_pool = paddle::experimental::DeviceContextPool::Instance();
-  auto* pt_dev_ctx = pt_pool.Get(place);
 
   framework::RuntimeContext ctx({}, {});
 
@@ -175,6 +173,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
 
+      auto& pt_pool = paddle::experimental::DeviceContextPool::Instance();
+      auto* pt_dev_ctx = pt_pool.Get(place);
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, pt_kernel_context, pt_dev_ctx);

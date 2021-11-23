@@ -204,31 +204,5 @@ std::string KernelSignatureToString(const KernelSignature& signature) {
   return os.str();
 }
 
-pten::DeviceContext* ConvertContext(const platform::DeviceContext& context) {
-  auto& pt_pool = paddle::experimental::DeviceContextPool::Instance();
-  if (platform::is_cpu_place(context.GetPlace())) {
-    auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
-    return reinterpret_cast<pten::CPUContext*>(pt_dev_ctx);
-  }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (platform::is_gpu_place(context.GetPlace())) {  // NOLINT
-    auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
-    return reinterpret_cast<pten::CUDAContext*>(pt_dev_ctx);
-  }
-#endif
-#ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(context.GetPlace())) {  // NOLINT
-    auto* pt_dev_ctx = pt_pool.Get(context.GetPlace());
-    return reinterpret_cast<pten::XPUContext*>(pt_dev_ctx);
-  }
-#endif
-  else {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Unsupported fluid DeviceContext type, we now support CUDA, XPU and "
-        "CPU."));
-    return nullptr;
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle

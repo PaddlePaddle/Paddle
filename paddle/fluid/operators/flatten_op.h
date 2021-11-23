@@ -128,16 +128,16 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
     out->mutable_data(context.GetPlace(), in->type());
     auto &start_axis = context.Attr<int>("start_axis");
     auto &stop_axis = context.Attr<int>("stop_axis");
-    auto &dev_ctx = context.device_context<DeviceContext>();
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    auto *pten_dev_ctx = reinterpret_cast<
+    auto *dev_ctx = reinterpret_cast<
         typename framework::ConvertContextType<DeviceContext>::TYPE *>(
-        framework::ConvertContext(dev_ctx));
-    pten::Flatten<T>(*pten_dev_ctx, *pt_x.get(), start_axis, stop_axis,
+        paddle::experimental::DeviceContextPool::Instance().Get(
+            context.GetPlace()));
+    pten::Flatten<T>(*dev_ctx, *pt_x.get(), start_axis, stop_axis,
                      pt_out.get());
   }
 };

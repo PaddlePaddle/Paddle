@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/creation.h"
 
@@ -63,12 +64,12 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
 
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
-    const auto& dev_ctx = context.template device_context<DeviceContext>();
     // call new kernel
-    auto* pten_dev_ctx = reinterpret_cast<
+    auto* dev_ctx = reinterpret_cast<
         typename framework::ConvertContextType<DeviceContext>::TYPE*>(
-        framework::ConvertContext(dev_ctx));
-    pten::FillAnyLike<T>(*pten_dev_ctx, value, pt_out.get());
+        paddle::experimental::DeviceContextPool::Instance().Get(
+            context.GetPlace()));
+    pten::FillAnyLike<T>(*dev_ctx, value, pt_out.get());
   }
 };
 

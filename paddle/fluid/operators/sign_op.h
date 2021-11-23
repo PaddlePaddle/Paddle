@@ -33,17 +33,17 @@ class SignKernel : public framework::OpKernel<T> {
   virtual void Compute(const framework::ExecutionContext& context) const {
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    auto& dev_ctx = context.device_context<DeviceContext>();
     out->mutable_data<T>(x->place());
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    auto* pten_dev_ctx = reinterpret_cast<
+    auto* dev_ctx = reinterpret_cast<
         typename framework::ConvertContextType<DeviceContext>::TYPE*>(
-        framework::ConvertContext(dev_ctx));
-    pten::Sign<T>(*pten_dev_ctx, *pt_x.get(), pt_out.get());
+        paddle::experimental::DeviceContextPool::Instance().Get(
+            context.GetPlace()));
+    pten::Sign<T>(*dev_ctx, *pt_x.get(), pt_out.get());
   }
 };
 

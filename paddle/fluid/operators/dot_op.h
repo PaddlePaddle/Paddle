@@ -241,7 +241,6 @@ class DotKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
     auto* out = ctx.Output<Tensor>("Out");
-    auto& dev_ctx = ctx.device_context<DeviceContext>();
     out->mutable_data<T>(x->place());
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
@@ -249,10 +248,11 @@ class DotKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    auto* pten_dev_ctx = reinterpret_cast<
+    auto* dev_ctx = reinterpret_cast<
         typename framework::ConvertContextType<DeviceContext>::TYPE*>(
-        framework::ConvertContext(dev_ctx));
-    pten::Dot<T>(*pten_dev_ctx, *pt_x.get(), *pt_y.get(), pt_out.get());
+        paddle::experimental::DeviceContextPool::Instance().Get(
+            ctx.GetPlace()));
+    pten::Dot<T>(*dev_ctx, *pt_x.get(), *pt_y.get(), pt_out.get());
   }
 };
 

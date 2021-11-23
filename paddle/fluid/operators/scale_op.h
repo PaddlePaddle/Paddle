@@ -64,16 +64,16 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     out->mutable_data<T>(in->place());
-    auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    auto* pten_dev_ctx = reinterpret_cast<
+    auto* dev_ctx = reinterpret_cast<
         typename framework::ConvertContextType<DeviceContext>::TYPE*>(
-        framework::ConvertContext(dev_ctx));
-    pten::Scale<T>(*pten_dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,
+        paddle::experimental::DeviceContextPool::Instance().Get(
+            ctx.GetPlace()));
+    pten::Scale<T>(*dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,
                    pt_out.get());
   }
 };

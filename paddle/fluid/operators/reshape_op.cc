@@ -417,28 +417,25 @@ class ReshapeKernel {
         }
       }
       if (platform::is_cpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::CPUContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromVectorDT(*pten_dev_ctx, *pt_x.get(), pt_vec_shape,
-                                  pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::CPUContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromVectorDT(*dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
       }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::CUDAContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromVectorDT(*pten_dev_ctx, *pt_x.get(), pt_vec_shape,
-                                  pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::CUDAContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromVectorDT(*dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
       }
 #endif
 #ifdef PADDLE_WITH_XPU
       if (platform::is_xpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::XPUContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromVectorDT(*pten_dev_ctx, *pt_x.get(), pt_vec_shape,
-                                  pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::XPUContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromVectorDT(*dev_ctx, *pt_x.get(), pt_vec_shape, pt_out);
       }
 #endif
     } else if (shape_tensor) {
@@ -453,28 +450,25 @@ class ReshapeKernel {
       }
 
       if (platform::is_cpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::CPUContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromDT(*pten_dev_ctx, *pt_x.get(), *pt_shape.get(),
-                            pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::CPUContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromDT(*dev_ctx, *pt_x.get(), *pt_shape.get(), pt_out);
       }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::CUDAContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromDT(*pten_dev_ctx, *pt_x.get(), *pt_shape.get(),
-                            pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::CUDAContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromDT(*dev_ctx, *pt_x.get(), *pt_shape.get(), pt_out);
       }
 #endif
 #ifdef PADDLE_WITH_XPU
       if (platform::is_xpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::XPUContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromDT(*pten_dev_ctx, *pt_x.get(), *pt_shape.get(),
-                            pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::XPUContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromDT(*dev_ctx, *pt_x.get(), *pt_shape.get(), pt_out);
       }
 #endif
     } else {
@@ -482,28 +476,25 @@ class ReshapeKernel {
       const std::vector<int64_t> shape_vec(shape_attr.begin(),
                                            shape_attr.end());
       if (platform::is_cpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::CPUContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromVectorVal(*pten_dev_ctx, *pt_x.get(), shape_vec,
-                                   pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::CPUContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromVectorVal(*dev_ctx, *pt_x.get(), shape_vec, pt_out);
       }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::CUDAContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromVectorVal(*pten_dev_ctx, *pt_x.get(), shape_vec,
-                                   pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::CUDAContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromVectorVal(*dev_ctx, *pt_x.get(), shape_vec, pt_out);
       }
 #endif
 #ifdef PADDLE_WITH_XPU
       if (platform::is_xpu_place(ctx.GetPlace())) {
-        auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-        auto *pten_dev_ctx = reinterpret_cast<pten::XPUContext *>(
-            framework::ConvertContext(dev_ctx));
-        pten::ReshapeFromVectorVal(*pten_dev_ctx, *pt_x.get(), shape_vec,
-                                   pt_out);
+        auto *dev_ctx = reinterpret_cast<pten::XPUContext *>(
+            paddle::experimental::DeviceContextPool::Instance().Get(
+                ctx.GetPlace()));
+        pten::ReshapeFromVectorVal(*dev_ctx, *pt_x.get(), shape_vec, pt_out);
       }
 #endif
     }

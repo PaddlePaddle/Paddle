@@ -22,6 +22,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/context.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/functions/cuda/elementwise/elementwise.h"
 
@@ -66,13 +67,10 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  auto *pten_dev_ctx =
-      reinterpret_cast<typename paddle::framework::ConvertContextType<
-          platform::CUDADeviceContext>::TYPE *>(
-          framework::ConvertContext(
-              *reinterpret_cast<const platform::DeviceContext *>(&ctx)));
-  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(
-      *pten_dev_ctx, pt_inputs, &pt_outputs, func);
+  auto *dev_ctx = reinterpret_cast<pten::CUDAContext *>(
+      paddle::experimental::DeviceContextPool::Instance().Get(ctx.GetPlace()));
+  pten::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(*dev_ctx, pt_inputs,
+                                                           &pt_outputs, func);
 }
 
 }  // namespace operators
