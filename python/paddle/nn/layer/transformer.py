@@ -403,7 +403,7 @@ class MultiHeadAttention(Layer):
 
         # scale dot product attention
         product = paddle.matmul(
-            x=q, y=k, transpose_y=True) * (self.head_dim**-0.5)
+            x=q * (self.head_dim**-0.5), y=k, transpose_y=True)
         if attn_mask is not None:
             # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, product.dtype)
