@@ -563,8 +563,7 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker._is_server(
-        ) or self._role_maker._is_heter_worker()
+        return self._role_maker._is_server()
 
     def barrier_worker(self):
         """
@@ -1525,13 +1524,15 @@ class Fleet(object):
         else:
             apply_ir_passes(loss.block.program, startup_program, self)
 
-        program = paddle.static.default_main_program()
-        opt_info = {}
-        opt_info["mpi_size"] = self.worker_num()
-        opt_info["mpi_rank"] = self.worker_index()
-        for k, v in self._user_defined_strategy.trainer_desc_configs.items():
-            opt_info[k] = v
-        program._fleet_opt = opt_info
+        if not self._role_maker._is_heter_parameter_server_mode:
+            program = paddle.static.default_main_program()
+            opt_info = {}
+            opt_info["mpi_size"] = self.worker_num()
+            opt_info["mpi_rank"] = self.worker_index()
+            for k, v in self._user_defined_strategy.trainer_desc_configs.items(
+            ):
+                opt_info[k] = v
+            program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
