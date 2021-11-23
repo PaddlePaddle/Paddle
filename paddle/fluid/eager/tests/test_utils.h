@@ -38,6 +38,7 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
 
   std::vector<T> host_data(grad_dense->numel());
   if (paddle::platform::is_gpu_place(grad_dense->place())) {
+#ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -48,6 +49,7 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
                          paddle::platform::CUDAPlace(), ptr,
                          sizeof(T) * grad_dense->numel(), stream);
     ptr = host_data.data();
+#endif
   }
   VLOG(6) << "CompareGradTensorWithValue";
   for (int i = 0; i < grad_dense->numel(); i++) {
@@ -69,6 +71,7 @@ bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
 
   std::vector<T> host_data(dense_t->numel());
   if (paddle::platform::is_gpu_place(dense_t->place())) {
+#ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -79,6 +82,7 @@ bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
                          paddle::platform::CUDAPlace(), ptr,
                          sizeof(T) * dense_t->numel(), stream);
     ptr = host_data.data();
+#endif
   }
 
   VLOG(6) << "CompareTensorWithValue";
@@ -101,6 +105,7 @@ bool CompareVariableWithValue(const egr::EagerTensor& target, T value) {
 
   std::vector<T> host_data(lod_tensor.numel());
   if (paddle::platform::is_gpu_place(lod_tensor.place())) {
+#ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -111,6 +116,7 @@ bool CompareVariableWithValue(const egr::EagerTensor& target, T value) {
                          paddle::platform::CUDAPlace(), ptr,
                          sizeof(T) * lod_tensor.numel(), stream);
     ptr = host_data.data();
+#endif
   }
   VLOG(6) << "CompareVariableWithValue";
   for (int i = 0; i < lod_tensor.numel(); i++) {
@@ -133,6 +139,7 @@ bool CompareGradVariableWithValue(const egr::EagerTensor& target, T value) {
 
   std::vector<T> host_data(lod_tensor.numel());
   if (paddle::platform::is_gpu_place(lod_tensor.place())) {
+#ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
@@ -143,6 +150,7 @@ bool CompareGradVariableWithValue(const egr::EagerTensor& target, T value) {
                          paddle::platform::CUDAPlace(), ptr,
                          sizeof(T) * lod_tensor.numel(), stream);
     ptr = host_data.data();
+#endif
   }
   VLOG(6) << "CompareGradVariableWithValue";
   for (int i = 0; i < lod_tensor.numel(); i++) {
