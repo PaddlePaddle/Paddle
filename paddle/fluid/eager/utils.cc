@@ -80,12 +80,13 @@ std::vector<egr::EagerTensor> EagerUtils::GetOutputs(
   std::vector<egr::EagerTensor> res;
   res.reserve(outs.size());
   for (const auto& out : outs) {
-    PADDLE_ENFORCE_NOT_NULL(out.get(),
-                            "Eager Tensor %s is null and cannot be copied. "
-                            "We are tring to Get Output tensor from its "
-                            "shared_ptr, this error may indicate some outputs "
-                            "are nullptr",
-                            out->name());
+    PADDLE_ENFORCE_NOT_NULL(
+        out.get(), paddle::platform::errors::Fatal(
+                       "Eager Tensor %s is null and cannot be copied. "
+                       "We are tring to Get Output tensor from its "
+                       "shared_ptr, this error may indicate some outputs "
+                       "are nullptr",
+                       out->name()));
     res.emplace_back((*(out.get())));
   }
   return res;
@@ -93,11 +94,12 @@ std::vector<egr::EagerTensor> EagerUtils::GetOutputs(
 
 egr::EagerTensor EagerUtils::GetOutput(
     const std::shared_ptr<EagerTensor>& out) {
-  PADDLE_ENFORCE_NOT_NULL(out.get(),
-                          "Eager Tensor %s is null and cannot be copied. We "
-                          "are tring to Get Output tensor from its shared_ptr, "
-                          "this error may indicate output is nullptr",
-                          out->name());
+  PADDLE_ENFORCE_NOT_NULL(
+      out.get(), paddle::platform::errors::Fatal(
+                     "Eager Tensor %s is null and cannot be copied. We "
+                     "are tring to Get Output tensor from its shared_ptr, "
+                     "this error may indicate output is nullptr",
+                     out->name()));
   return EagerTensor((*(out.get())));
 }
 
