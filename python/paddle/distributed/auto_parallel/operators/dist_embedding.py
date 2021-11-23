@@ -102,8 +102,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
         if w_dims_mapping[-1] != out_dims_mapping[-1]:
             return False
-
-        print('embedding*************')
+        if ids_dims_mapping != out_dims_mapping[:len(ids_dims_mapping)]:
+            return False
 
         return True
 

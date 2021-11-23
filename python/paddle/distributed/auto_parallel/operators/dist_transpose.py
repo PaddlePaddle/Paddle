@@ -62,9 +62,11 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
             return False
         if new_dims_mapping != out_dims_mapping:
             return False
-        print('transpose*******')
-        print(x_dims_mapping)
-        print(out_dims_mapping)
+        # x_shape为[0, xshape]  input shape [2, 512, 512] x_shape [0, 2, 512, 512] [-1, ]
+        if x_shape_dims_mapping[0] != -1:
+            return False
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
+            return False
 
         return True
 
