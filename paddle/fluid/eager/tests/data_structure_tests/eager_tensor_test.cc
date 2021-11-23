@@ -16,6 +16,7 @@
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 
 // TODO(jiabin): remove nolint here!!!

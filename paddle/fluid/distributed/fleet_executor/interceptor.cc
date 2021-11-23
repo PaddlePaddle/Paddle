@@ -76,7 +76,7 @@ bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
 
 void Interceptor::PoolTheMailbox() {
   // pool the local mailbox, parse the Message
-  while (true) {
+  for (;;) {
     if (local_mailbox_.empty()) {
       // local mailbox is empty, fetch the remote mailbox
       VLOG(3) << interceptor_id_ << "'s local mailbox is empty. "
