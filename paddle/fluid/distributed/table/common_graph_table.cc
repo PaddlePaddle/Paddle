@@ -193,7 +193,6 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
-      count++;
       auto values = paddle::string::split_string<std::string>(line, "\t");
       if (values.size() < 2) continue;
       auto id = std::stoull(values[1]);
@@ -207,7 +206,9 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 
       if (count % 1000000 == 0) {
         VLOG(0) << count << " nodes are loaded from filepath";
+        VLOG(0) << line;
       }
+      count++;
 
       std::string nt = values[0];
       if (nt != node_type) {
@@ -273,6 +274,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       }
       if (count % 1000000 == 0) {
         VLOG(0) << count << " edges are loaded from filepath";
+        VLOG(0) << line;
       }
 
       size_t index = src_shard_id - shard_start;
@@ -394,8 +396,8 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
 }
 int32_t GraphTable::random_sample_neighbors(
     uint64_t *node_ids, int sample_size,
-    std::vector<std::shared_ptr<char>> &buffers,
-    std::vector<int> &actual_sizes) {
+    std::vector<std::shared_ptr<char>> &buffers, std::vector<int> &actual_sizes,
+    bool need_weight) {
   size_t node_num = buffers.size();
   std::function<void(char *)> char_del = [](char *c) { delete[] c; };
   std::vector<std::future<int>> tasks;
@@ -405,7 +407,7 @@ int32_t GraphTable::random_sample_neighbors(
   for (size_t idx = 0; idx < node_num; ++idx) {
     index = get_thread_pool_index(node_ids[idx]);
     seq_id[index].emplace_back(idx);
-    id_list[index].emplace_back(node_ids[idx], sample_size);
+    id_list[index].emplace_back(node_ids[idx], sample_size, need_weight);
   }
   for (int i = 0; i < seq_id.size(); i++) {
     if (seq_id[i].size() == 0) continue;
@@ -440,13 +442,15 @@ int32_t GraphTable::random_sample_neighbors(
           }
           std::shared_ptr<char> &buffer = buffers[idx];
           std::vector<int> res = node->sample_k(sample_size, rng);
-          actual_size = res.size() * (Node::id_size + Node::weight_size);
+          actual_size =
+              res.size() * (need_weight ? (Node::id_size + Node::weight_size)
+                                        : Node::id_size);
           int offset = 0;
           uint64_t id;
           float weight;
           char *buffer_addr = new char[actual_size];
           if (response == LRUResponse::ok) {
-            sample_keys.emplace_back(node_id, sample_size);
+            sample_keys.emplace_back(node_id, sample_size, need_weight);
             sample_res.emplace_back(actual_size, buffer_addr);
             buffer = sample_res.back().buffer;
           } else {
@@ -454,11 +458,13 @@ int32_t GraphTable::random_sample_neighbors(
           }
           for (int &x : res) {
             id = node->get_neighbor_id(x);
-            weight = node->get_neighbor_weight(x);
             memcpy(buffer_addr + offset, &id, Node::id_size);
             offset += Node::id_size;
-            memcpy(buffer_addr + offset, &weight, Node::weight_size);
-            offset += Node::weight_size;
+            if (need_weight) {
+              weight = node->get_neighbor_weight(x);
+              memcpy(buffer_addr + offset, &weight, Node::weight_size);
+              offset += Node::weight_size;
+            }
           }
         }
       }

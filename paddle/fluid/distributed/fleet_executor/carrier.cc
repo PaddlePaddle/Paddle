@@ -15,15 +15,21 @@
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Compute);
+
 void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
+                                         "Carrier is already init."));
   interceptor_id_to_node_ = interceptor_id_to_node;
   CreateInterceptors();
+  is_init_ = true;
 }
 
 bool Carrier::EnqueueInterceptorMessage(
@@ -62,6 +68,24 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
                         interceptor_id));
   return iter->second.get();
 }
+
+void Carrier::Start() {
+  // TODO(fleet_executor dev): this start is a faked one, need replace
+  for (const auto& pair : interceptor_idx_to_interceptor_) {
+    VLOG(3) << "Fake run is sending start to interceptor " << pair.first << ".";
+    InterceptorMessage tmp_msg;
+    tmp_msg.set_src_id(pair.first);
+    tmp_msg.set_dst_id(pair.first);
+    tmp_msg.set_message_type(DATA_IS_READY);
+    MessageBus& message_bus_instance = MessageBus::Instance();
+    PADDLE_ENFORCE_EQ(message_bus_instance.IsInit(), true,
+                      platform::errors::PreconditionNotMet(
+                          "Message bus has not been initialized."));
+    message_bus_instance.Send(tmp_msg);
+  }
+}
+
+bool Carrier::IsInit() const { return is_init_; }
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                                      std::unique_ptr<Interceptor> interceptor) {

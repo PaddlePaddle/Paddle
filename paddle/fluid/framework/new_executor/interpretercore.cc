@@ -22,6 +22,9 @@
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
+                            "Use local_scope in new executor(especially used "
+                            "in UT), can turn off for better performance");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -48,6 +51,14 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   exception_notifier_ = main_thread_blocker_.RegisterEvent(
       kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
 
+  create_local_scope_ = FLAGS_new_executor_use_local_scope;
+  if (FLAGS_new_executor_use_local_scope) {
+    auto local_scope = &global_scope->GetMutableScope()->NewScope();
+    local_scope->AddListener(global_scope->Listener());
+    local_scope_ = local_scope;
+  }
+  VLOG(4) << "create_local_scope_ is " << create_local_scope_;
+
   // prune
 
   // optmize graph pass
@@ -62,10 +73,15 @@ InterpreterCore::~InterpreterCore() {
   async_work_queue_.reset(nullptr);
 }
 
+void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
+  copy_program_ = prog;
+}
+
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
   bool is_build = is_build_;
+  global_scope_->SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
@@ -77,6 +93,55 @@ paddle::framework::FetchList InterpreterCore::Run(
   return *(fetch_var->GetMutable<framework::FetchList>());
 }
 
+paddle::framework::FetchList InterpreterCore::Run() {
+  if (!is_build_) {
+    if (create_local_scope_ &&
+        global_scope_->GetMutableLocalScope() !=
+            global_scope_->GetMutableScope() &&
+        global_scope_->GetMutableLocalScope()) {
+      VLOG(4) << "Clear previous local scope before run";
+      VLOG(4) << global_scope_->GetMutableScope() << " "
+              << global_scope_->GetMutableLocalScope();
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+      // TODO(zhiqiu): clear the tensor holder of all vars in previous local
+      // scope?
+    }
+    global_scope_->SetLocalScope(local_scope_);
+    paddle::framework::interpreter::build_variable_scope(block_, global_scope_,
+                                                         create_local_scope_);
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    paddle::framework::interpreter::build_op_func_list(
+        place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
+    is_build_ = true;
+    // convert vec func_list to graph
+    Convert(&op_func_nodes);
+
+  } else {
+    ExecuteInstructionList(vec_instruction_);
+  }
+
+  // return Fetch Tensors
+  auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
+  return *(fetch_var->GetMutable<framework::FetchList>());
+}
+
+void InterpreterCore::BuildOperatorDependences() {
+  // analysis the dependences between ops, set the dependecy_count_ and Call
+  // Schedule
+  auto op_nums = vec_instruction_.size();
+  dependecy_count_.resize(op_nums);
+  auto op2downstream = interpreter::build_op_downstream_map(vec_instruction_);
+  for (size_t op = 0; op < vec_instruction_.size(); ++op) {
+    auto op_list = op2downstream[op];
+    std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
+    stream_analyzer_.Schedule(downsteam_vector, &vec_instruction_, op);
+
+    for (auto inst_id : op_list) {
+      dependecy_count_[inst_id]++;
+    }
+  }
+}
+
 void InterpreterCore::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = global_scope_->MutableVecMetaInfo();
@@ -86,7 +151,6 @@ void InterpreterCore::Convert(
 
   auto op_nums = nodes.size();
   vec_instruction_.reserve(op_nums);
-  dependecy_count_.resize(op_nums);
 
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
@@ -146,30 +210,7 @@ void InterpreterCore::Convert(
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    std::vector<size_t> vec_temp;
-    for (auto& item : vec_instruction_[i].Outputs()) {
-      for (auto id : item.second) {
-        vec_temp = interpreter::merge_vector(vec_temp, input_var2op_info_[id]);
-      }
-    }
-
-    // In Program, op order is a very important information.
-    // Op can only add op after it as next as next ops.
-    std::vector<size_t> filter_next;
-    filter_next.reserve(vec_temp.size());
-    for (auto item : vec_temp) {
-      if (item > i) {
-        filter_next.push_back(item);
-      }
-    }
-
-    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
-
-    for (auto inst_id : filter_next) {
-      dependecy_count_[inst_id]++;
-    }
-  }
+  BuildOperatorDependences();
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
@@ -289,7 +330,10 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  VLOG(4) << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(global_scope_);
+  Scope* local_scope = create_local_scope_
+                           ? global_scope_->GetMutableLocalScope()
+                           : global_scope_->GetMutableScope();
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
@@ -314,13 +358,14 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
   {
     platform::RecordEvent compute_event("Compute");
-    if (op_with_kernel == nullptr)
-      instr_node.OpBase()->Run(*global_scope_->GetScope(), place_);
-    else
+    if (op_with_kernel == nullptr) {
+      instr_node.OpBase()->Run(*local_scope, place_);
+    } else {
       instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+    }
   }
 
-  VLOG(3) << place << " " << op->DebugStringEx(global_scope_);
+  VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
@@ -361,8 +406,8 @@ void InterpreterCore::ExecuteInstructionList(
     }
   }
 
-  auto event_id = main_thread_blocker_.WaitEvent();
-  VLOG(3) << "event_id " << event_id;
+  auto event_name = main_thread_blocker_.WaitEvent();
+  VLOG(3) << "event_name: " << event_name;
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(4) << "Exception caught " << exception_holder_.Type();
@@ -494,6 +539,8 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
       continue;
     }
     if (is_ready) {
+      VLOG(6) << "Async delete variable with name : "
+              << var_scope.GetNameById(var_id);
       gc_->Add(var_scope.Var(var_id), gc_event_.at(instr_id),
                &instr.DeviceContext());
     }
@@ -510,10 +557,12 @@ void InterpreterCore::Prepare(
                         feed_names.size(), feed_tensors.size()));
 
   auto FeedInput = [&] {
+    VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
       auto* feed_var = global_scope_->FindVar(feed_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(feed_var, platform::errors::NotFound(
-                                            "feed_var shall not be nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          feed_var, platform::errors::NotFound(
+                        "Variable %s should not be nullptr.", feed_names[i]));
 
       auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
@@ -522,11 +571,12 @@ void InterpreterCore::Prepare(
   };
 
   if (!is_build_) {
-    paddle::framework::interpreter::build_variable_scope(block_, global_scope_);
+    paddle::framework::interpreter::build_variable_scope(block_, global_scope_,
+                                                         create_local_scope_);
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &op_func_nodes, global_scope_);
+        place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -534,12 +584,15 @@ void InterpreterCore::Prepare(
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::build_op_func_list, so we should
   // call FeedInput again.
-  if (prepare_feed) FeedInput();
+  if (prepare_feed) {
+    FeedInput();
+  }
 }
 
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+  global_scope_->SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
   {

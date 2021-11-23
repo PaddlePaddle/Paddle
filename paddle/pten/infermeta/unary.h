@@ -40,11 +40,13 @@ DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta);
 DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
                                   int start_axis,
                                   int stop_axis);
+DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
+                              const DataType out_dtype);
 
 DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
                                    DataType dtype,
                                    DataLayout layout);
 
 DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
-                                       const std::vector<int>& shape);
+                                       const std::vector<int64_t>& shape);
 }  // namespace pten

@@ -155,10 +155,9 @@ long_time_test="^test_gru_op$|\
 ^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
-    export FLAGS_fraction_of_gpu_memory_to_use=0.92
     export CUDA_VISIBLE_DEVICES=0
 
-    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
     num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
     echo "Windows 1 card TestCases count is $num"
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -166,19 +165,14 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
         if [[ -f "ut_list" ]]; then
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
+            if [[ "$precision_cases" != "" ]];then
+                python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py
+            fi
         fi
     fi
 
-    set +e
-    if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" )
-        UT_list_prec=$(echo "${UT_list_res}" | grep -v 'PRECISION_TEST')
-        echo "${UT_list_res}" | grep 'PRECISION_TEST'
-        UT_list=$UT_list_prec
-    fi
-    set -e
-
-    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+    # sys.argv[1] may exceed max_arg_length when busybox run parallel_UT_rule in windows
+    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
     cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
     tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
     two_parallel_job=$(echo $output | cut -d ";" -f 3)
@@ -319,6 +313,10 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
             echo "Added UT should pass three additional executions"
             echo "========================================"
             exit 8;
+        fi
+        if nvcc --version | grep 11.2; then
+            echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+            exit 0;
         fi
     fi
     run_unittest_gpu $cpu_parallel_job 10

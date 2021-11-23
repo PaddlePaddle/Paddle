@@ -1051,9 +1051,7 @@ failed_test_lists=''
 tmp_dir=`mktemp -d`
 
 function collect_failed_tests() {
-    echo "collect_failed_tests begineee!!!"
     for file in `ls $tmp_dir`; do
-        echo "fileis $file"
         exit_code=0
         grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
         if [ $exit_code -ne 0 ]; then
@@ -1064,7 +1062,6 @@ function collect_failed_tests() {
             ${failuretest}"
         fi
     done
-    echo "collect_failed_tests finished!!!"
 }
 
 # getting qucik disable ut list 
@@ -1209,15 +1206,17 @@ set +x
         single_card_tests_high_parallel='^job$'             # cases list which would run 24 job each time with single GPU
         single_card_tests_secondary_high_parallel='^job$'   # cases list which would run 15 job each time with single GPU
         single_card_tests_third_high_parallel='^job$'       # cases list which would run 12 job each time with single GPU
-        single_card_tests_medium_parallel='^job$'           # cases list which would run 7 job each time with single GPU
-        single_card_tests_non_parallel='^job$'              # cases list which would run 2 job each time with single GPU
+        single_card_tests_forth_high_parallel='^job$'       # cases list which would run 7 job each time with single GPU
+        single_card_tests_fifth_high_parallel='^job$'       # cases list which would run 4 job each time with single GPU  
+        single_card_tests_lowest_parallel='^job$'           # cases list which would run 2 job each time with single GPU  
+        single_card_tests_non_parallel='^job$'              # cases list which would run 4 job each time with single GPU
         single_card_tests='^job$'                           # all cases list which would take single GPU
         
         multiple_card_tests_medium_parallel='^job$'         # cases list which would run 4 job each time with multiple GPUs, most cases would be two GPUs
-        multiple_card_tests_non_parallel='^job$'            # cases list which would run 2 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests_non_parallel='^job$'            # cases list which would run 3 job each time with multiple GPUs, most cases would be two GPUs
         
-        exclusive_tests_high_parallel='^job$'               # cases list which would run 5 job exclusively(with all GPUs)
-        exclusive_tests_medium_parallel='^job$'             # cases list which would run 3 job exclusively(with all GPUs)
+        exclusive_tests_high_parallel='^job$'               # cases list which would run 7 job exclusively(with all GPUs)
+        exclusive_tests_medium_parallel='^job$'             # cases list which would run 4 job exclusively(with all GPUs)
         exclusive_tests_non_parallel='^job$'                # cases list which would run 2 job exclusively(with all GPUs)
         
         is_exclusive=''           # indicate whether the case is exclusive type
@@ -1225,14 +1224,17 @@ set +x
         is_nightly=''             # indicate whether the case will only run at night
         get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
 
-        UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
-        output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-        cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
-        secondary_cpu_parallel_job=$(echo $output | cut -d ";" -f 2)
-        third_cpu_parallel_job=$(echo $output | cut -d ";" -f 3)
-        tetrad_parallel_job=$(echo $output | cut -d ";" -f 4)
-        two_parallel_job=$(echo $output | cut -d ";" -f 5)
-        non_parallel_job=$(echo $output | cut -d ";" -f 6)
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+        output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
+        high_parallel_job=$(echo $output | cut -d ";" -f 1)
+        secondary_high_parallel_job=$(echo $output | cut -d ";" -f 2)
+        third_high_parallel_job=$(echo $output | cut -d ";" -f 3)
+        fourth_high_parallel_job=$(echo $output | cut -d ";" -f 4)
+        fifth_high_parallel_job=$(echo $output | cut -d ";" -f 5)
+        sixth_high_parallel_job=$(echo $output | cut -d ";" -f 6)
+        lowest_high_parallel_job=$(echo $output | cut -d ";" -f 7)
+        non_parallel_job=$(echo $output | cut -d ";" -f 8)
+        
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1272,30 +1274,33 @@ set +x
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
                   read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
                 fi
-
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         exclusive_tests_high_parallel="$exclusive_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    elif [[ $(echo $fourth_high_parallel_job$fifth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         exclusive_tests_medium_parallel="$exclusive_tests_medium_parallel|^$testcase$"
                     else
                         exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    if [[ $(echo $high_parallel_job$fourth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         multiple_card_tests_medium_parallel="$multiple_card_tests_medium_parallel|^$testcase$"
                     else
                         multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
-                    if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $secondary_cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    elif [[ $(echo $secondary_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_secondary_high_parallel="$single_card_tests_secondary_high_parallel|^$testcase$"
-                    elif [[ $(echo $third_cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                    elif [[ $(echo $third_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_third_high_parallel="$single_card_tests_third_high_parallel|^$testcase$"           
-                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
-                        single_card_tests_medium_parallel="$single_card_tests_medium_parallel|^$testcase$"
+                    elif [[ $(echo $fourth_high_parallel_job$fifth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_forth_high_parallel="$single_card_tests_forth_high_parallel|^$testcase$"
+                    elif [[ $(echo $sixth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_fifth_high_parallel="$single_card_tests_fifth_high_parallel|^$testcase$"               
+                    elif [[ $(echo $lowest_high_parallel_job| grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_lowest_parallel="$single_card_tests_lowest_parallel|^$testcase$"
                     else
                         single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
                     fi
@@ -1312,41 +1317,24 @@ set +x
 
         single_ut_startTime_s=`date +%s`
         card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
-        echo "single_card_tests_high_parallel finished!!!"
         card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
-        echo "single_card_tests_secondary_high_parallel finished!!!"
         card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
-        echo "single_card_tests_third_high_parallel finished!!!"
-        card_test "$single_card_tests_medium_parallel" 1 7              # run cases 7 job each time with single GPU
-        echo "single_card_tests_medium_parallel finished!!!"
-        card_test "$single_card_tests_non_parallel" 1 2                 # run cases 2 job each time with single GPU
-        echo "single_card_tests_non_parallel finished!!!"
+        card_test "$single_card_tests_forth_high_parallel" 1 7          # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_fifth_high_parallel" 1 4          # run cases 4 job each time with single GPU
+        card_test "$single_card_tests_lowest_parallel" 1 2              # run cases 2 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU
         single_ut_endTime_s=`date +%s`
-        echo "single_card_tests finished!!!"
         
         multi_ut_startTime_s=`date +%s`
-        echo "multiple_card_tests begined!!!!!"
         card_test "$multiple_card_tests_medium_parallel" 2 4            # run cases 2 job each time with two GPUs
-        echo "multiple_card_tests_medium_parallel finished!!!"
-        card_test "$multiple_card_tests_non_parallel" 2 2               # run cases 1 job each time with two GPUs
-        echo "multiple_card_tests_non_parallel finished!!!"
+        card_test "$multiple_card_tests_non_parallel" 2 3               # run cases 1 job each time with two GPUs
         multi_ut_endTime_s=`date +%s`
-        echo "multiple_card_tests finished!!!"
         
         exclu_ut_startTime_s=`date +%s`
-        echo "exclu_card_tests begined!!!!!"
-        card_test "$exclusive_tests_high_parallel" -1 5                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        echo "exclusive_tests_high_parallel finished!!!"
-        card_test "$exclusive_tests_medium_parallel" -1 3                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        echo "exclusive_tests_medium_parallel finished!!!"
-        card_test "$exclusive_tests_non_parallel" -1 2                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        echo "exclusive_tests_non_parallel finished!!!"
+        card_test "$exclusive_tests_high_parallel" -1 7                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_medium_parallel" -1 4                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_non_parallel" -1 2                # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         exclu_ut_endTime_s=`date +%s`
-        echo "exclusive_tests finished!!!"
-
-        echo "ipipe_log_param_1aaa_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
-        echo "ipipe_log_param_2aaa_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s"
-        echo "ipipe_log_param_Exclusiveaaaa_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s"
 
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -1393,7 +1381,7 @@ set +x
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                         set -e
-                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "3" ]];then
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "2" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
@@ -1432,45 +1420,34 @@ set +x
                                 fi
 
                             done
-                        echo "rerun one_card_retry beginee!!!"
                         if [[ "$one_card_retry" != "" ]]; then
                             card_test "$one_card_retry" 1 4
                         fi
-                        echo "rerun one_card_retry finished!!!"
-                        
-                        echo "rerun multiple_card_retry beginee!!!"
                         if [[ "$multiple_card_retry" != "" ]]; then
                             card_test "$multiple_card_retry" 2
                         fi
-                        echo "rerun multiple_card_retry finished!!!"
-                        
-                        echo "rerun exclusive_retry beginee!!!"
                         if [[ "$exclusive_retry" != "" ]]; then
                             card_test "$exclusive_retry" -1
                         fi
-                        echo "rerun exclusive_retry finished!!!"
-                        
-                        exec_times=$[$exec_times+1]
                         echo "exec_times: $exec_times"
+                        exec_times=$[$exec_times+1]
                         failed_test_lists=''
                         collect_failed_tests
-                        echo "failed_test_listsssssss: $failed_test_lists"
+                        echo "failed_test_lists: $failed_test_lists"
                         rm -f $tmp_dir/*
                         one_card_retry=''
                         multiple_card_retry=''
                         exclusive_retry='' 
-                    
                     else 
                         break
                     fi 
                 done
+            retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
 
         rerun_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_Rerunaaaa_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" 
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`
-        echo "ipipe_log_param_actualaaaaa_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s"
         echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
@@ -1503,7 +1480,7 @@ function show_ut_retry_result() {
         exit 8;
     else
         retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-        retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+        retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
             echo "There are failed tests, which have been successful after re-run:"
@@ -2324,7 +2301,12 @@ function build_document_preview() {
 
 # origin name: example
 function exec_samplecode_test() {
-    pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+    if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+    else
+        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+    fi
+
     paddle version
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
@@ -2467,7 +2449,7 @@ function build_pr_and_develop() {
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [ ${cmake_change} ];then
+    if [[ ${cmake_change} ]];then
         rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi

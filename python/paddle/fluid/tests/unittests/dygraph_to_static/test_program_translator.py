@@ -297,5 +297,52 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
             self.program_translator.get_program(net.forward, self.x)
 
 
+class SwitchModeNet(paddle.nn.Layer):
+    def __init__(self):
+        super(SwitchModeNet, self).__init__()
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        return x + 1
+
+    @paddle.jit.to_static
+    def foo(self):
+        return True
+
+
+@paddle.jit.to_static
+def switch_mode_funciton():
+    return True
+
+
+class TestFunctionTrainEvalMode(unittest.TestCase):
+    def test_switch_mode(self):
+        paddle.disable_static()
+        switch_mode_funciton.eval()
+        switch_mode_funciton()
+        self.assertEqual(switch_mode_funciton._training, False)
+        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        self.assertEqual(partial_layer.training, False)
+
+        switch_mode_funciton.train()
+        switch_mode_funciton()
+        self.assertEqual(switch_mode_funciton._training, True)
+        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        self.assertEqual(partial_layer.training, True)
+
+    def test_raise_error(self):
+        paddle.disable_static()
+        net = SwitchModeNet()
+
+        self.assertEqual(net.training, True)
+        with self.assertRaises(RuntimeError):
+            net.forward.eval()
+
+        net.eval()
+        self.assertEqual(net.training, False)
+        with self.assertRaises(RuntimeError):
+            net.foo.train()
+
+
 if __name__ == '__main__':
     unittest.main()
