@@ -127,7 +127,7 @@ void MessageBus::ListenPort() {
               << " times. And will retry after " << interval / 1000
               << " seconds.";
     std::this_thread::sleep_for(std::chrono::milliseconds(interval));
-    interval += 2;
+    interval += 2000;
   }
   LOG(INFO) << "Message bus's listen port thread starts successful.";
 #else
