@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle import to_tensor
-from paddle import zeropad2d
+from paddle.nn.functional import zeropad2d
 from paddle.nn import ZeroPad2D
 
 
