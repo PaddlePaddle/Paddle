@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-from .common import infer_shape
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -99,7 +99,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         for mapping in out_dims_mapping[1:]:
             if is_dim_shard(mapping):
                 return False
-        w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
         if w_dims_mapping[-1] != out_dims_mapping[-1]:
             return False
         if ids_dims_mapping != out_dims_mapping[:len(ids_dims_mapping)]:
@@ -198,6 +197,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         check_variable_and_dtype(Ids_var, 'input', ['int32', 'int64'],
                                  'c_embedding')
 
+        # infer new var shape with op dist attr
         out_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(Out_var)
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
@@ -213,7 +213,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=Out_var.stop_gradient)
-        # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+        # set intermediate_var_0's dist_attr with Out_var's dist_attr
         ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                              out_var_dist_attr)
 
@@ -244,6 +244,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
 
+        # set dist op's dist_attr with serial op's dist_attr
         # matmulv2
         embedding_op_dist_attr = OperatorDistributedAttribute()
         embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh

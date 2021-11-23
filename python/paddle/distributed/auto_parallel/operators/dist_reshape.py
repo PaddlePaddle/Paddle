@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -7,7 +7,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,=
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
@@ -52,8 +52,10 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
         if len(x_dims_mapping) != len(out_dims_mapping) - 1:
             return False
+
         return True
 
     def is_output_compatible(self, dist_op):
@@ -63,10 +65,13 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
         if len(x_dims_mapping) != len(out_dims_mapping) - 1:
             return False
+
         if is_dim_shard(out_dims_mapping[-1]):
             return False
+
         return True
 
     def is_auto_compatible(self, dist_op):
@@ -77,28 +82,24 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         x_shape_name = op_desc.output('XShape')[0]
         x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
             x_shape_name)
-
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-
-        # print('reshape***************')
-        # print(x_dims_mapping)
-        # print(out_dims_mapping)
-        # print(x_shape_name)
-        # print(x_shape_dims_mapping)
-
-        # dims = []
-        # for i in range(len(x_dims_mapping)):
-        #     dim_changed = compute_compatible_and_update_dim_mapping([x_dims_mapping, out_dims_mapping], [i, i])
-        #     print('dim_changed',dim_changed)
-        # #     dims.append(dim_changed)
-        # print('dims', dims)
-
         if len(x_dims_mapping) != len(out_dims_mapping) - 1:
             return False
+
         if is_dim_shard(out_dims_mapping[-1]):
             return False
-        if set(x_dims_mapping) != set(out_dims_mapping):
+
+        for idx, item in enumerate(out_dims_mapping[:-2]):
+            if x_dims_mapping[idx] != item:
+                return False
+        if out_dims_mapping[-2] != x_dims_mapping[-1]:
+            return False
+
+        if x_shape_dims_mapping[0] != -1:
+            return False
+
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
             return False
 
         return True
@@ -236,18 +237,33 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_shape_name = op_desc.output('XShape')[0]
-        #print('reshape************')
-        #print(x_shape_name)
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
 
-        if set(x_dims_mapping) != set(out_dims_mapping):
-            return False
-
-        if len(x_dims_mapping) != len(out_dims_mapping) + 1:
+        if len(x_dims_mapping) == len(out_dims_mapping) + 2:
+            if out_dims_mapping[0] != x_dims_mapping[0]:
+                return False
+            if x_dims_mapping[-1] != -1 or x_dims_mapping[-2] != -1:
+                return False
+        elif len(x_dims_mapping) != len(out_dims_mapping) + 1:
             return False
 
         if is_dim_shard(x_dims_mapping[-1]):
+            return False
+
+        for idx, item in enumerate(x_dims_mapping[:-2]):
+            if out_dims_mapping[idx] != item:
+                return False
+
+        if x_dims_mapping[-2] != out_dims_mapping[-1]:
+            return False
+
+        if x_shape_dims_mapping[0] != -1:
+            return False
+
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
             return False
 
         return True

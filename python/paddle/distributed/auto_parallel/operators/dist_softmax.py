@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,13 +46,27 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         axis = op_desc.attr('axis')
-        out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
         if axis != -1 and axis != len(x_dims_mapping) - 1:
             return False
 
         if is_dim_shard(x_dims_mapping[axis]):
+            return False
+
+        return True
+
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        out_name = op_desc.output('Out')[0]
+        axis = op_desc.attr('axis')
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
+        if axis != -1 and axis != len(out_dims_mapping) - 1:
+            return False
+
+        if is_dim_shard(out_dims_mapping[axis]):
             return False
 
         return True
@@ -67,29 +81,11 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         if axis != -1 and axis != len(x_dims_mapping) - 1:
             return False
+
         if is_dim_shard(x_dims_mapping[axis]):
             return False
+
         if x_dims_mapping != out_dims_mapping:
-            return False
-        print('softmax*******')
-        print(x_dims_mapping)
-        print(out_dims_mapping)
-
-        return True
-
-    def is_output_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
-        out_name = op_desc.output('Out')[0]
-        axis = op_desc.attr('axis')
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-
-        if axis != -1 and axis != len(out_dims_mapping) - 1:
-            return False
-
-        if is_dim_shard(out_dims_mapping[axis]):
             return False
 
         return True
