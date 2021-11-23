@@ -667,42 +667,43 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "nearest_interp") {
-      std::vector<std::string> attrs{"data_layout",   "interp_method",
-                                     "align_corners", "scale",
-                                     "out_h",         "out_w"};
+      std::vector<std::string> attrs{"interp_method", "align_corners", "scale",
+                                     "out_h", "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
-      auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
-        return false;
+      if (desc.HasAttr("data_layout")) {
+        auto data_layout = framework::StringToDataLayout(
+            BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+        if (data_layout != framework::DataLayout::kNCHW &&
+            data_layout != framework::DataLayout::kNHWC)
+          return false;
+      }
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
-
-      if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
-          !desc.HasAttr("out_w")) {
-        return false;
-      } else {
-        auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
-        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
-        if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
-          if (out_h <= 0) {
-            VLOG(3) << "out_h must be greater than 0 if scale is not set.";
-            return false;
-          }
-          if (out_w <= 0) {
-            VLOG(3) << "out_w must be greater than 0 if scale is not set.";
-            return false;
-          }
-        }
-        if ((scale <= 0.f) && with_dynamic_shape) {
-          VLOG(3) << "dynamic shape not support scale not set.";
+      auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
+      auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+      auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
+        if (out_h <= 0) {
+          VLOG(3) << "out_h must be greater than 0 if scale is not set.";
           return false;
         }
+        if (out_w <= 0) {
+          VLOG(3) << "out_w must be greater than 0 if scale is not set.";
+          return false;
+        }
+      }
+      if ((scale <= 0.f) && with_dynamic_shape) {
+        VLOG(3) << "dynamic shape not support scale not set.";
+        return false;
+      }
+      // When align_corners = true, the paddle's and trt_layer's results has
+      // diff
+      if (align_corners && scale != 1) {
+        return false;
       }
     }
 

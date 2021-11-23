@@ -22,6 +22,7 @@
 namespace egr {
 class TensorWrapper;
 }
+
 namespace eager_test {
 class GradTestNode : public egr::GradNodeBase {
  public:
