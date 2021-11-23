@@ -24,6 +24,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
@@ -1444,7 +1445,7 @@ set +x
                 done
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
-
+        echo "test-ce"
         rerun_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`

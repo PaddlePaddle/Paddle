@@ -159,7 +159,7 @@ class Linear(Layer):
             shape=[in_features, out_features],
             attr=self._weight_attr,
             dtype=self._dtype,
-            is_bias=False)
+            is_bias=True)
         self.bias = self.create_parameter(
             shape=[out_features],
             attr=self._bias_attr,
