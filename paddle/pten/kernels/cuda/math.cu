@@ -130,23 +130,8 @@ DEFINE_ELEMENTWISE_OP(Add)
 DEFINE_ELEMENTWISE_OP(Sub)
 // Create the definition of ElementwiseMul
 DEFINE_ELEMENTWISE_OP(Mul)
-
-template <typename T>
-void ElementwiseDiv(const CUDAContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  std::vector<DenseTensor*> outputs;
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  // allocate memory for out
-  out->mutable_data<T>();
-  outputs.emplace_back(out);
-  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, axis, general::DivFunctor<T>());
-}
+// Create the definition of ElementwiseDiv
+DEFINE_ELEMENTWISE_OP(Div)
 
 }  // namespace pten
 
