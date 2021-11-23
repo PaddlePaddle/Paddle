@@ -16,12 +16,6 @@
 #include <memory>
 #include <thread>
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
-#include "gflags/gflags.h"
-DECLARE_bool(reuse_addr);
-#endif
-
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -114,8 +108,6 @@ void MessageBus::ListenPort() {
   }
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  // enable brpc to reuse the port, bypass the time_wait status of socket
-  FLAGS_reuse_addr = true;
   // function keep listen the port and handle the message
   InterceptorMessageServiceImpl interceptor_message_service;
   PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service,
