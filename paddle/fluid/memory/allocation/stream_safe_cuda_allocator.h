@@ -26,6 +26,7 @@
 #include <set>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {
@@ -49,7 +50,8 @@ class StreamSafeCUDAAllocator : public Allocator {
  public:
   StreamSafeCUDAAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator,
-      const gpuStream_t default_stream);
+      const platform::CUDAPlace &place, const gpuStream_t default_stream);
+  ~StreamSafeCUDAAllocator();
   bool IsAllocThreadSafe() const override;
 
  protected:
@@ -63,11 +65,17 @@ class StreamSafeCUDAAllocator : public Allocator {
       std::deque<gpuEvent_t> *outstanding_events);
   void FreeStreamSafeCUDAAllocation(Allocation *allocation);
   void ProcessEventsAndFree();
+  uint64_t ProcessEventsAndFreeWithRelease();
+
+  static std::map<platform::CUDAPlace, std::vector<StreamSafeCUDAAllocator *>>
+      allocators_map_;
+  static SpinLock allocators_map_lock_;
 
   std::shared_ptr<Allocator> underlying_allocator_;
+  platform::CUDAPlace place_;
   gpuStream_t default_stream_;
   std::map<Allocation *, std::deque<gpuEvent_t>> outstanding_events_map_;
-  SpinLock spin_lock_;
+  SpinLock outstanding_events_map_lock_;
 };
 
 }  // namespace allocation

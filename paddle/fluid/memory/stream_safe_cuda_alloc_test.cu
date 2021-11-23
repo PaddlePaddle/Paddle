@@ -63,7 +63,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     for (size_t i = 0; i < stream_num_; ++i) {
       size_t allocation_size = data_num_ * sizeof(int);
       std::shared_ptr<Allocation> allocation =
-          AllocShared(place_, streams_[i], allocation_size);
+          AllocShared(place_, allocation_size, streams_[i]);
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
@@ -183,7 +183,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
 
   gpuStream_t default_stream = nullptr;
   allocation::AllocationPtr allocation_unique =
-      Alloc(place, default_stream, alloc_size);
+      Alloc(place, alloc_size, default_stream);
   EXPECT_GE(allocation_unique->size(), alloc_size);
   EXPECT_EQ(allocation_unique->ptr(), address);
 }
@@ -203,12 +203,12 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   size_t alloc_size = available_size / 4 * 3;
 
   std::shared_ptr<Allocation> allocation1 =
-      AllocShared(place, stream1, alloc_size);
+      AllocShared(place, alloc_size, stream1);
   std::shared_ptr<Allocation> allocation2;
 
   std::thread th([&allocation2, &place, &stream2, alloc_size]() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    allocation2 = AllocShared(place, stream2, alloc_size);
+    allocation2 = AllocShared(place, alloc_size, stream2);
   });
   allocation1.reset();  // free but not release
   th.join();

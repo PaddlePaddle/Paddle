@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
@@ -42,38 +43,67 @@ StreamSafeCUDAAllocation::GetRecordedStreams() {
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     const std::shared_ptr<Allocator>& underlying_allocator,
-    const gpuStream_t default_stream)
+    const platform::CUDAPlace& place, const gpuStream_t default_stream)
     : underlying_allocator_(underlying_allocator),
-      default_stream_(default_stream) {}
+      place_(place),
+      default_stream_(default_stream) {
+  std::lock_guard<SpinLock> lock_guard(allocators_map_lock_);
+  allocators_map_[place].emplace_back(this);
+}
+
+StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
+  std::lock_guard<SpinLock> lock_guard(allocators_map_lock_);
+  std::vector<StreamSafeCUDAAllocator*>& allocators = allocators_map_[place_];
+  allocators.erase(std::remove(allocators.begin(), allocators.end(), this),
+                   allocators.end());
+}
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
 Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
-  std::lock_guard<SpinLock> lock_guard(spin_lock_);
   ProcessEventsAndFree();
-  AllocationPtr underlying_allocation = underlying_allocator_->Allocate(size);
+  AllocationPtr underlying_allocation;
+  try {
+    underlying_allocation = underlying_allocator_->Allocate(size);
+  } catch (BadAlloc&) {
+    VLOG(9) << "Allocation failed when allocating " << size << " bytes";
+    uint64_t release_size = ReleaseImpl(place_);
+    VLOG(9) << "Release " << release_size << " bytes memory from all streams";
+    try {
+      underlying_allocation = underlying_allocator_->Allocate(size);
+    } catch (...) {
+      VLOG(9) << "Still allocation failed after release memory";
+      throw;
+    }
+  } catch (...) {
+    throw;
+  }
+
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
       std::move(underlying_allocation), default_stream_);
   return allocation;
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
-  std::lock_guard<SpinLock> lock_guard(spin_lock_);
   if (dynamic_cast<StreamSafeCUDAAllocation*>(allocation)
           ->GetRecordedStreams()
           ->empty()) {
     delete allocation;
   } else {
+    std::lock_guard<SpinLock> lock_guard(outstanding_events_map_lock_);
     FreeStreamSafeCUDAAllocation(allocation);
   }
 }
 
 uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
-  /*lock_guard*/ {
-    std::lock_guard<SpinLock> lock_guard(spin_lock_);
-    ProcessEventsAndFree();
+  std::lock_guard<SpinLock> lock_guard(allocators_map_lock_);
+  std::vector<StreamSafeCUDAAllocator*>& allocators =
+      allocators_map_[BOOST_GET_CONST(platform::CUDAPlace, place)];
+  uint64_t release_size = 0;
+  for (StreamSafeCUDAAllocator* allocator : allocators) {
+    release_size += allocator->ProcessEventsAndFreeWithRelease();
   }
-  return underlying_allocator_->Release(place);
+  return release_size;
 }
 
 void StreamSafeCUDAAllocator::CreateEventForAllRecordedStream(
@@ -116,6 +146,7 @@ void StreamSafeCUDAAllocator::FreeStreamSafeCUDAAllocation(
 }
 
 void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
+  std::lock_guard<SpinLock> lock_guard(outstanding_events_map_lock_);
   for (auto map_it = outstanding_events_map_.begin();
        map_it != outstanding_events_map_.end();) {
     std::deque<gpuEvent_t>& outstanding_events = map_it->second;
@@ -160,6 +191,15 @@ void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
     }
   }
 }
+
+uint64_t StreamSafeCUDAAllocator::ProcessEventsAndFreeWithRelease() {
+  ProcessEventsAndFree();
+  return underlying_allocator_->Release(place_);
+}
+
+std::map<platform::CUDAPlace, std::vector<StreamSafeCUDAAllocator*>>
+    StreamSafeCUDAAllocator::allocators_map_;
+SpinLock StreamSafeCUDAAllocator::allocators_map_lock_;
 
 }  // namespace allocation
 }  // namespace memory

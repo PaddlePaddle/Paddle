@@ -47,6 +47,8 @@ class AllocatorFacade {
 
   static AllocatorFacade& Instance();
 
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
+
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size);
@@ -55,14 +57,12 @@ class AllocatorFacade {
   // Release unused memory pool.
   uint64_t Release(const platform::Place& place);
 
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::shared_ptr<Allocation> AllocShared(const platform::CUDAPlace& place,
-                                          const gpuStream_t& stream,
-                                          size_t size);
-  AllocationPtr Alloc(const platform::CUDAPlace& place,
-                      const gpuStream_t& stream, size_t size);
+                                          size_t size,
+                                          const gpuStream_t& stream);
+  AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+                      const gpuStream_t& stream);
   uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
   void RecordStream(Allocation* allocation, const gpuStream_t& stream);
 #ifdef PADDLE_WITH_CUDA
