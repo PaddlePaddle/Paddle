@@ -107,6 +107,56 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
     return hessian
 
 
+def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
+    no_batch_jacobian = _compute_numerical_jacobian(func, xs, delta, np_dtype)
+    # current shape (num_outs, num_ins, [bs, out_shape], [bs, in_shape])
+    # target shape (num_outs, num_ins, [out_shape], [bs, in_shape])
+    xs = _tensors(xs, "xs")
+    ys = _tensors(func(*xs), "ys")
+    fin_size = len(xs)
+    fout_size = len(ys)
+    bs = xs[0].shape[0]
+    bat_jac = []
+    for i in range(fout_size):
+        batch_jac_i = []
+        for j in range(fin_size):
+            jac = no_batch_jacobian[i][j]
+            jac_shape = jac.shape
+            out_size = jac_shape[0] // bs
+            in_size = jac_shape[1] // bs
+            jac = np.reshape(jac, (bs, out_size, bs, in_size))
+            batch_jac_i_j = np.zeros(shape=(out_size, bs, in_size))
+            for p in range(out_size):
+                for b in range(bs):
+                    for q in range(in_size):
+                        batch_jac_i_j[p][b][q] = jac[b][p][b][q]
+            batch_jac_i_j = np.reshape(batch_jac_i_j, (out_size, -1))
+            batch_jac_i.append(batch_jac_i_j)
+        bat_jac.append(batch_jac_i)
+
+    return bat_jac
+
+
+def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
+    xs = _tensors(xs, "xs")
+    # ys = _tensors(func(*xs), "ys")
+    batch_size = xs[0].shape[0]
+    fin_size = len(xs)
+    hessian = []
+    for b in range(batch_size):
+        x_l = []
+        for j in range(fin_size):
+            x_l.append(xs[j][b])
+        print('x_l: ', x_l)
+        x_b = paddle.stack(x_l, axis=0)
+        # x_b = paddle.reshape(paddle.stack(x_l, axis=0).T, shape=[-1])
+        hes_b = _compute_numerical_hessian(func, x_b, delta, np_dtype)
+        # print("hes_b:", hes_b)
+        hessian.append(hes_b)
+    print("numerical_hessian:", hessian)
+    return hessian
+
+
 def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
     xs = _tensors(xs, "xs")
     jacobian = np.array(_compute_numerical_jacobian(func, xs, delta, np_dtype))

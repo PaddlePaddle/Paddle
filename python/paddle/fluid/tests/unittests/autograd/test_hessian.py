@@ -17,7 +17,7 @@ import numpy as np
 import paddle
 import paddle.compat as cpt
 import paddle.nn.functional as F
-from utils import _compute_numerical_hessian
+from utils import _compute_numerical_hessian, _compute_numerical_batch_hessian
 
 
 class TestHessian(unittest.TestCase):
@@ -134,6 +134,35 @@ class TestHessianFloat64(TestHessian):
         self.atol = 1e-5
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
+
+
+class TestBatchHessian(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        self.x_shape = (4, 2)
+        self.weight_shape = (2, 4)
+        self.other_shape = (4, 2)
+        self.dtype = 'float32'
+        self.np_dtype = np.float32
+        self.numerical_delta = 1e-4
+        self.rtol = 1e-1
+        self.atol = 1e-1
+        paddle.seed(123)
+        self.x = paddle.rand(shape=self.x_shape, dtype=self.dtype)
+        self.weight = paddle.rand(shape=self.weight_shape, dtype=self.dtype)
+        self.other = paddle.rand(shape=self.other_shape, dtype=self.dtype)
+
+    def test_single_input(self):
+        def func(x):
+            return paddle.matmul(x * x, self.weight)[:, 0:1]
+
+        print("self.x:", self.x)
+        numerical_hessian = _compute_numerical_batch_hessian(
+            func, self.x, self.numerical_delta, self.np_dtype)
+        print("numerical_hessian:", numerical_hessian)
+        self.x.stop_gradient = False
+        hessian = paddle.autograd.batch_hessian(func, self.x, create_graph=True)
+        print("batch hessian:", hessian)
 
 
 if __name__ == "__main__":
