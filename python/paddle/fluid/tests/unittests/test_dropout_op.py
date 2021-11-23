@@ -381,7 +381,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 mode='upscale_in_train')
 
             res13 = paddle.nn.functional.dropout(
-                x=input, p=0.5, axis=1, training=True, mode='upscale_in_train')
+                x=input, p=0.7, axis=1, training=True, mode='upscale_in_train')
 
             in_np = np.ones([40, 40]).astype("float32")
             in_np2 = np.ones([1, 500000000]).astype("float32")
@@ -406,7 +406,8 @@ class TestDropoutFAPI(unittest.TestCase):
                                feed={"input": in_np2},
                                fetch_list=[res13])
             self.assertTrue(
-                np.isclose(np.sum(fetches3[0]) / np.sum(in_np), 0.5))
+                np.isclose(
+                    np.sum(fetches3[0]) / np.sum(in_np), 0.7, atol=1e-04))
 
     def test_static(self):
         for place in self.places:
