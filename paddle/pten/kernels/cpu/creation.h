@@ -35,9 +35,9 @@ void FillConstant(const CPUContext& dev_ctx,
                   DenseTensor* out);
 
 template <typename T>
-void FillConstantNew(const CPUContext& dev_ctx,
-                     const ScalarArray& shape,
-                     const Scalar& val,
-                     DenseTensor* out);
+void FillConstantDynamicShape(const CPUContext& dev_ctx,
+                              const ScalarArray& shape,
+                              const Scalar& val,
+                              DenseTensor* out);
 
 }  // namespace pten

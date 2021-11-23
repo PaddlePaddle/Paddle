@@ -214,9 +214,7 @@ const T *Tensor::data() const {
 template PD_DLL_DECL const float *Tensor::data<float>() const;
 template PD_DLL_DECL const double *Tensor::data<double>() const;
 template PD_DLL_DECL const int64_t *Tensor::data<int64_t>() const;
-template PD_DLL_DECL const uint64_t *Tensor::data<uint64_t>() const;
 template PD_DLL_DECL const int32_t *Tensor::data<int32_t>() const;
-template PD_DLL_DECL const uint32_t *Tensor::data<uint32_t>() const;
 template PD_DLL_DECL const uint8_t *Tensor::data<uint8_t>() const;
 template PD_DLL_DECL const int8_t *Tensor::data<int8_t>() const;
 template PD_DLL_DECL const int16_t *Tensor::data<int16_t>() const;

@@ -132,27 +132,7 @@ TEST(API, ones_like) {
   }
 }
 
-TEST(API, full) {
-  float val = 1.0;
-
-  auto out = paddle::experimental::full({3, 2}, val, pten::DataType::FLOAT32);
-
-  ASSERT_EQ(out.shape().size(), 2UL);
-  ASSERT_EQ(out.shape()[0], 3);
-  ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(out.initialized(), true);
-
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
-  auto* actual_result = dense_out->data<float>();
-  for (auto i = 0; i < 6; i++) {
-    ASSERT_NEAR(actual_result[i], val, 1e-6f);
-  }
-}
-
-TEST(API, full_new1) {
+TEST(API, full1) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -180,8 +160,8 @@ TEST(API, full_new1) {
   float val = 1.0;
 
   // 2. test API
-  auto out = paddle::experimental::full_new(
-      tensor_shape, value, pten::DataType::FLOAT32);
+  auto out =
+      paddle::experimental::full(tensor_shape, value, pten::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2UL);
@@ -199,7 +179,7 @@ TEST(API, full_new1) {
   }
 }
 
-TEST(API, full_new2) {
+TEST(API, full2) {
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
@@ -218,7 +198,7 @@ TEST(API, full_new2) {
   float val = 1.0;
 
   auto out =
-      paddle::experimental::full_new(list_shape, val, pten::DataType::FLOAT32);
+      paddle::experimental::full(list_shape, val, pten::DataType::FLOAT32);
 
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
@@ -235,13 +215,13 @@ TEST(API, full_new2) {
   }
 }
 
-TEST(API, full_new3) {
+TEST(API, full3) {
   std::vector<int64_t> vector_shape{2, 3};
 
   float val = 1.0;
 
   auto out =
-      paddle::experimental::full_new(vector_shape, val, pten::DataType::INT32);
+      paddle::experimental::full(vector_shape, val, pten::DataType::INT32);
 
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);

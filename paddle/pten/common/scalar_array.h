@@ -28,6 +28,9 @@ class ScalarArrayBase {
 
   ScalarArrayBase(const std::vector<int64_t>& vec) : array_(vec) {}  // NOLINT
 
+  ScalarArrayBase(std::initializer_list<int64_t> array_list)
+      : array_(array_list) {}
+
   ScalarArrayBase(const int64_t* date_value, int64_t n) {
     AssignData(date_value, n);
   }
@@ -65,7 +68,7 @@ class ScalarArrayBase {
       DataType data_type = tensor_list[0].dtype();
       switch (data_type) {
         case DataType::INT32: {
-          for (size_t i = 0; i < n; i++) {
+          for (size_t i = 0; i < n; ++i) {
             PD_CHECK(tensor_list[i].dtype() == data_type,
                      "The data_type of tensors in the list isn't consistent."
                      "the first tensor is`",
@@ -80,7 +83,7 @@ class ScalarArrayBase {
           break;
         }
         case DataType::INT64: {
-          for (size_t i = 0; i < n; i++) {
+          for (size_t i = 0; i < n; ++i) {
             PD_CHECK(tensor_list[i].dtype() == data_type,
                      "The data_type of tensors in the list isn't consistent."
                      "the first tensor is`",
@@ -105,8 +108,9 @@ class ScalarArrayBase {
     }
   }
 
-  template <typename TT>
-  ScalarArrayBase(const ScalarArrayBase<TT>& other) : array_(other.GetData()) {}
+  template <typename OtherT>
+  ScalarArrayBase(const ScalarArrayBase<OtherT>& other)
+      : array_(other.GetData()) {}
 
   const std::vector<int64_t>& GetData() const { return array_; }
 
@@ -116,7 +120,7 @@ class ScalarArrayBase {
   void AssignData(const TYPE* value_data, int64_t n) {
     if (value_data) {
       array_.reserve(n);
-      for (auto i = 0; i < n; i++) {
+      for (auto i = 0; i < n; ++i) {
         array_.push_back(static_cast<int64_t>(value_data[i]));
       }
     } else {
@@ -124,19 +128,11 @@ class ScalarArrayBase {
     }
   }
 
-  // template <typename TT>
-  // friend paddle::framework::DDim GetDimFromScalarArray(
-  //     const ScalarArrayBase<TT>& scalar_array);
-
  private:
+  // TODO(zhangyunfei) Replace std::vector with a more efficient container
+  // structure.
   std::vector<int64_t> array_;
 };
-
-// template <typename T>
-// paddle::framework::DDim GetDimFromScalarArray(
-//     const ScalarArrayBase<T>& scalar_array) {
-//   return paddle::framework::make_ddim(scalar_array.array_);
-// }
 
 using ScalarArray =
     paddle::experimental::ScalarArrayBase<paddle::experimental::Tensor>;
@@ -148,4 +144,5 @@ namespace pten {
 
 class DenseTensor;
 using ScalarArray = paddle::experimental::ScalarArrayBase<DenseTensor>;
-}
+
+}  // namespace pten

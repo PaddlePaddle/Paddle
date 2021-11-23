@@ -38,10 +38,10 @@ void FillConstant(const CUDAContext& dev_ctx,
                   DenseTensor* out);
 
 template <typename T>
-void FillConstantNew(const CUDAContext& dev_ctx,
-                     const ScalarArray& shape,
-                     const Scalar& val,
-                     DenseTensor* out);
+void FillConstantDynamicShape(const CUDAContext& dev_ctx,
+                              const ScalarArray& shape,
+                              const Scalar& val,
+                              DenseTensor* out);
 
 }  // namespace pten
 

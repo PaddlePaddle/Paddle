@@ -58,10 +58,10 @@ void FillConstant(const CPUContext& dev_ctx,
 }
 
 template <typename T>
-void FillConstantNew(const CPUContext& dev_ctx,
-                     const ScalarArray& shape,
-                     const Scalar& val,
-                     DenseTensor* out) {
+void FillConstantDynamicShape(const CPUContext& dev_ctx,
+                              const ScalarArray& shape,
+                              const Scalar& val,
+                              DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
   eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
 }
@@ -97,10 +97,10 @@ PT_REGISTER_KERNEL("fill_constant.scalar",
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 
-PT_REGISTER_KERNEL("fill_constant.new",
+PT_REGISTER_KERNEL("fill_constant",
                    CPU,
                    ANY,
-                   pten::FillConstantNew,
+                   pten::FillConstantDynamicShape,
                    float,
                    double,
                    uint8_t,

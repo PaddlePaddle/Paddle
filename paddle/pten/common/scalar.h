@@ -26,68 +26,70 @@ template <typename T>
 class ScalarBase {
  public:
   // Constructor support implicit
-  ScalarBase(double val) : data_type_(DataType::FLOAT64) {  // NOLINT
+  ScalarBase(double val) : dtype_(DataType::FLOAT64) {  // NOLINT
     data_.f64 = val;
   }
 
-  ScalarBase(float val) : data_type_(DataType::FLOAT32) {  // NOLINT
+  ScalarBase(float val) : dtype_(DataType::FLOAT32) {  // NOLINT
     data_.f32 = val;
   }
 
-  ScalarBase(float16 val) : data_type_(DataType::FLOAT16) {  // NOLINT
+  ScalarBase(float16 val) : dtype_(DataType::FLOAT16) {  // NOLINT
     data_.f16 = val;
   }
 
-  ScalarBase(bfloat16 val) : data_type_(DataType::BFLOAT16) {  // NOLINT
+  ScalarBase(bfloat16 val) : dtype_(DataType::BFLOAT16) {  // NOLINT
     data_.bf16 = val;
   }
 
-  ScalarBase(int64_t val) : data_type_(DataType::INT64) {  // NOLINT
+  ScalarBase(int64_t val) : dtype_(DataType::INT64) {  // NOLINT
     data_.i64 = val;
   }
 
-  ScalarBase(int32_t val) : data_type_(DataType::INT32) {  // NOLINT
+  ScalarBase(int32_t val) : dtype_(DataType::INT32) {  // NOLINT
     data_.i32 = val;
   }
 
-  ScalarBase(int16_t val) : data_type_(DataType::INT16) {  // NOLINT
+  ScalarBase(int16_t val) : dtype_(DataType::INT16) {  // NOLINT
     data_.i16 = val;
   }
 
-  ScalarBase(int8_t val) : data_type_(DataType::INT8) {  // NOLINT
+  ScalarBase(int8_t val) : dtype_(DataType::INT8) {  // NOLINT
     data_.i8 = val;
   }
 
-  ScalarBase(uint64_t val) : data_type_(DataType::UINT64) {  // NOLINT
+  ScalarBase(uint64_t val) : dtype_(DataType::UINT64) {  // NOLINT
     data_.ui64 = val;
   }
 
-  ScalarBase(uint32_t val) : data_type_(DataType::UINT32) {  // NOLINT
+  ScalarBase(uint32_t val) : dtype_(DataType::UINT32) {  // NOLINT
     data_.ui32 = val;
   }
 
-  ScalarBase(uint16_t val) : data_type_(DataType::UINT16) {  // NOLINT
+  ScalarBase(uint16_t val) : dtype_(DataType::UINT16) {  // NOLINT
     data_.ui16 = val;
   }
 
-  ScalarBase(uint8_t val) : data_type_(DataType::UINT8) {  // NOLINT
+  ScalarBase(uint8_t val) : dtype_(DataType::UINT8) {  // NOLINT
     data_.ui8 = val;
   }
 
-  ScalarBase(bool val) : data_type_(DataType::BOOL) {  // NOLINT
+  ScalarBase(bool val) : dtype_(DataType::BOOL) {  // NOLINT
     data_.b = val;
   }
 
-  ScalarBase(complex64 val) : data_type_(DataType::COMPLEX64) {  // NOLINT
+  ScalarBase(complex64 val) : dtype_(DataType::COMPLEX64) {  // NOLINT
     data_.c64 = val;
   }
 
-  ScalarBase(complex128 val) : data_type_(DataType::COMPLEX128) {  // NOLINT
+  ScalarBase(complex128 val) : dtype_(DataType::COMPLEX128) {  // NOLINT
     data_.c128 = val;
   }
 
-  ScalarBase(const std::string& str_value)  // NOLINT
-      : data_type_(DataType::FLOAT64) {
+  // The compatible method for fliud operators,
+  // and it will be removed in the future.
+  explicit ScalarBase(const std::string& str_value)
+      : dtype_(DataType::FLOAT64) {
     if (str_value == "inf") {
       data_.f64 = std::numeric_limits<double>::infinity();
     } else if (str_value == "-inf") {
@@ -100,13 +102,13 @@ class ScalarBase {
   }
 
   // The Tensor must have one dim
-  ScalarBase(const T& tensor) : data_type_(tensor.dtype()) {  // NOLINT
+  ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
     PD_CHECK(
         tensor.numel() == 1,
         "The Scalar only supports Tensor with 1 element, but now Tensor has `",
         tensor.numel(),
         "` element.");
-    switch (data_type_) {
+    switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
         break;
@@ -131,12 +133,6 @@ class ScalarBase {
       case DataType::INT8:
         data_.i8 = tensor.template data<int8_t>()[0];
         break;
-      case DataType::UINT32:
-        data_.ui32 = tensor.template data<uint32_t>()[0];
-        break;
-      case DataType::UINT64:
-        data_.ui64 = tensor.template data<uint64_t>()[0];
-        break;
       case DataType::UINT16:
         data_.ui16 = tensor.template data<uint16_t>()[0];
         break;
@@ -153,18 +149,18 @@ class ScalarBase {
         data_.c128 = tensor.template data<complex128>()[0];
         break;
       default:
-        PD_THROW("Invalid tensor data type `", data_type_, "`.");
+        PD_THROW("Invalid tensor data type `", dtype_, "`.");
     }
   }
 
-  template <typename TT>
-  ScalarBase(const ScalarBase<TT>& other) {
+  template <typename OtherT>
+  ScalarBase(const ScalarBase<OtherT>& other) {
     CopyScalar(other, this);
   }
 
   template <typename RT>
   inline RT to() const {
-    switch (data_type_) {
+    switch (dtype_) {
       case DataType::FLOAT32:
         return static_cast<RT>(data_.f32);
       case DataType::FLOAT64:
@@ -181,10 +177,6 @@ class ScalarBase {
         return static_cast<RT>(data_.i16);
       case DataType::INT8:
         return static_cast<RT>(data_.i8);
-      case DataType::UINT32:
-        return static_cast<RT>(data_.ui32);
-      case DataType::UINT64:
-        return static_cast<RT>(data_.ui64);
       case DataType::UINT16:
         return static_cast<RT>(data_.ui16);
       case DataType::UINT8:
@@ -196,7 +188,7 @@ class ScalarBase {
       case DataType::COMPLEX128:
         return static_cast<RT>(data_.c128);
       default:
-        PD_THROW("Invalid enum scalar data type `", data_type_, "`.");
+        PD_THROW("Invalid enum scalar data type `", dtype_, "`.");
     }
   }
 
@@ -205,7 +197,7 @@ class ScalarBase {
   friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
 
  private:
-  DataType data_type_;
+  DataType dtype_;
   union data {
     bool b;
     int8_t i8;
@@ -227,7 +219,7 @@ class ScalarBase {
 
 template <typename T1, typename T2>
 void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst) {
-  dst->data_type_ = src.data_type_;
+  dst->dtype_ = src.dtype_;
   dst->data_.c128 = src.data_.c128;
 }
 
