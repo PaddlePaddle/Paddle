@@ -65,56 +65,6 @@ void ScaleHost(const CPUContext& dev_ctx,
 }
 
 template <typename T>
-void ElementwiseAdd(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  // allocate memory for out
-  out->mutable_data<T>();
-
-  if (x.dims() == y.dims()) {
-    SameDimsElementwiseCompute<general::SameDimsAddFunctor<CPUContext, T>>()(
-        dev_ctx, x, y, out);
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::AddFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::AddFunctor<T>(), out);
-    } else {
-      ElementwiseCompute<general::InverseAddFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseAddFunctor<T>(), out);
-    }
-  }
-}
-
-template <typename T>
-void ElementwiseSub(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  // allocate memory for out
-  out->mutable_data<T>();
-
-  if (x.dims() == y.dims()) {
-    SameDimsElementwiseCompute<general::SameDimsSubFunctor<CPUContext, T>>()(
-        dev_ctx, x, y, out);
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::SubFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::SubFunctor<T>(), out);
-    } else {
-      ElementwiseCompute<general::InverseSubFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseSubFunctor<T>(), out);
-    }
-  }
-}
-
-template <typename T>
 void ElementwiseDiv(const CPUContext& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
@@ -137,6 +87,15 @@ void ElementwiseDiv(const CPUContext& dev_ctx,
     }
   }
 }
+
+// Create the definition of ElementwiseAdd
+DEFINE_ELEMENTWISE_OP(Add)
+
+// Create the definition of ElementwiseSub
+DEFINE_ELEMENTWISE_OP(Sub)
+
+// Create the definition of ElementwiseMul
+DEFINE_ELEMENTWISE_OP(Mul)
 
 }  // namespace pten
 
@@ -206,5 +165,16 @@ PT_REGISTER_KERNEL("elementwise_div",
                    double,
                    int,
                    int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_mul",
+                   CPU,
+                   ANY,
+                   pten::ElementwiseMul,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
                    complex64,
                    complex128) {}

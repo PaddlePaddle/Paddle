@@ -69,6 +69,12 @@ void ElementwiseDiv(const CUDAContext& dev_ctx,
                     int axis,
                     DenseTensor* out);
 
+template <typename T>
+void ElementwiseMul(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
 }  // namespace pten
 
 #endif
