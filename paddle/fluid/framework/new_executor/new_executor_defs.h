@@ -369,6 +369,7 @@ class Instruction {
 namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+static constexpr char kFetchVarName[] = "fetch";
 
 static bool IsMemcpyH2D(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyH2D;

@@ -90,7 +90,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*fetch_var->GetMutable<framework::FetchList>());
 }
 
 paddle::framework::FetchList InterpreterCore::Run() {
@@ -122,7 +122,7 @@ paddle::framework::FetchList InterpreterCore::Run() {
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*fetch_var->GetMutable<framework::FetchList>());
 }
 
 void InterpreterCore::BuildOperatorDependences() {

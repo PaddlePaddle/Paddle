@@ -62,6 +62,24 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   return is_transferred;
 }
 
+void DataTranferHelper::RunAndConstructShareNode(
+    const std::string& src_var_name, const std::string& dst_var_name,
+    std::vector<OpFuncNode>* op_func_nodes) {
+  VariableNameMap in_name_map = {{"X", {src_var_name}}};
+  VariableNameMap out_name_map = {{"Out", {dst_var_name}}};
+  AttributeMap attr_map;
+
+  std::string op_type("share_data");
+  auto& op_info = OpInfoMap::Instance().Get(op_type);
+  auto op = std::shared_ptr<OperatorBase>(
+      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+
+  VLOG(3) << string::Sprintf("Insert %s with %s -> %s.", op_type, src_var_name,
+                             dst_var_name);
+
+  RunAndConstructOpFuncNode(op, src_var_name, dst_var_name, op_func_nodes);
+}
+
 void DataTranferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op, const std::string& var_name,
     const std::string& new_var_name,
@@ -98,7 +116,11 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   OpFuncNode new_op_func_node;
   new_op_func_node.input_index["X"] = {var_scope_->VarId(var_name)};
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
+  if (op->Type() == "share_buffer") {
+    new_op_func_node.output_index["Out"] = {var_scope_->VarId(var_name)};
+  }
   new_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
+  VLOG(3) << "Run " << op_type << " ....";
   new_op_func_node.kernel_func_(exec_ctx);
   // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
   // as kQueueSync and execute them in thread pool.
@@ -132,7 +154,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
   AttributeMap attr_map = {{"dst_layout", static_cast<int>(out_layout)}};
 
-  // 3. Create transfer_op
+  // 3. Create transfer_layout_op
   std::string op_type("transfer_layout");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
@@ -143,23 +165,21 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   return op;
 }
 
-std::shared_ptr<OperatorBase> TransferDtype(
-    const std::string& var_name, std::string* new_var_name,
-    proto::VarType::Type in_dtype, proto::VarType::Type out_dtype,
-    VariableScope* var_scope, framework::Scope* local_scope, bool is_inplace) {
+std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
+                                            std::string* new_var_name,
+                                            proto::VarType::Type in_dtype,
+                                            proto::VarType::Type out_dtype,
+                                            VariableScope* var_scope,
+                                            framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
-  if (is_inplace) {
-    *new_var_name = var_name;
-  } else {
-    *new_var_name =
-        var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
-  }
+  *new_var_name =
+      var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
   auto* ptr = local_scope->Var(new_var_name);
+  var_scope->SetVarDesc(var_name, nullptr);
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
   VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
           << ptr << "Variable Type " << var_type;
-  var_scope->SetVarDesc(var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -170,7 +190,7 @@ std::shared_ptr<OperatorBase> TransferDtype(
   // NOTE(Aurelius84): In whice case use_mkldnn = true?
   attr_map["use_mkldnn"] = false;
 
-  // 3. Create transfer_op
+  // 3. Create transfer_dtype_op
   std::string op_type("transfer_dtype");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
@@ -207,7 +227,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                            : platform::is_gpu_place(dst_place) ? 1 : -1;
   AttributeMap attr_map = {{"dst_place_type", dst_place_type}};
 
-  // 3. Create transfer_op
+  // 3. Create memcpy_d2h_op or memcpy_h2d_op
   std::string op_type = get_memcpy_type(src_place, dst_place);
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
@@ -317,27 +337,33 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       auto orig_var_name = framework::GradOriginalVarName(var_name);
       // only focus on gradient var
       if (var_name == orig_var_name) {
+        VLOG(3) << "skip " << var_name << " with same name as "
+                << orig_var_name;
         continue;
       }
       auto* grad_var = vars[i];
       // skip nullptr var
       if (grad_var == nullptr) {
+        VLOG(3) << "skip grad_var with nullptr";
         continue;
       }
       // don't process LoDTensorArray temporarily,
       // add support if necessary for complex number calculations in the future
       if (!framework::VarIsTensor(*grad_var)) {
+        VLOG(3) << "skip grad_var with LoDTensorArray type";
         continue;
       }
       auto* grad_tensor =
           framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
       // skip nullptr tensor
       if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
+        VLOG(3) << "skip with grad_tensor not IsInitialized";
         continue;
       }
       // only focus on complex dtype now
       auto src_type = grad_tensor->type();
       if (!framework::IsComplexType(src_type)) {
+        VLOG(3) << "skip grad_tensor with not complexType";
         continue;
       }
 
@@ -345,9 +371,11 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       auto* var = var_scope->FindVar(orig_var_name);
       // if forward var not exists, do nothing
       if (var == nullptr) {
+        VLOG(3) << "skip " << orig_var_name << " with not found in var_scope";
         continue;
       }
       if (!framework::VarIsTensor(*var)) {
+        VLOG(3) << "skip " << orig_var_name << " with LoDTensorArray.";
         continue;
       }
       const auto* tensor =
@@ -364,16 +392,20 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       }
 
       // 3. cast complex grad to real grad inplacely
-      VLOG(6) << "Transform " << framework::DataTypeToString(src_type)
+      VLOG(3) << "Transform " << framework::DataTypeToString(src_type)
               << " var `" << var_name << "` to "
               << framework::DataTypeToString(dst_type)
               << " real var in static graph.";
 
+      // TODO(Aurelius84): Consider to define a complex2real op to deal this
+      // case.
       std::string new_var_name;
       auto op = TransferDtype(var_name, &new_var_name, src_type, dst_type,
-                              var_scope, local_scope, /*is_inplace*/ true);
+                              var_scope, local_scope);
       data_transfer_helper.RunAndConstructOpFuncNode(op, var_name, new_var_name,
                                                      op_func_nodes);
+      data_transfer_helper.RunAndConstructShareNode(new_var_name, var_name,
+                                                    op_func_nodes);
     }
   }
 }
