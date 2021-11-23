@@ -21,6 +21,8 @@ template <typename data_t>
 void relu_cpu_forward_kernel(const data_t* x_data,
                              data_t* out_data,
                              int64_t x_numel) {
+  PD_CHECK(x_data != nullptr, "x_data is nullptr.");
+  PD_CHECK(out_data != nullptr, "out_data is nullptr.");
   for (int i = 0; i < x_numel; ++i) {
     out_data[i] = std::max(static_cast<data_t>(0.), x_data[i]);
   }
@@ -52,8 +54,7 @@ std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
                                               const paddle::Tensor& out,
                                               const paddle::Tensor& grad_out) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU);
-  grad_x.reshape(x.shape());
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(

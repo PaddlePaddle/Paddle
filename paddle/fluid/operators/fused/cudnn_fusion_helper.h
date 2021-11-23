@@ -38,10 +38,12 @@ class CudnnFusionOp {
         &op_variant_params_, op_id));
   }
 
-  ~CudnnFusionOp() {
-    dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_);
-    dynload::cudnnDestroyFusedOpsConstParamPack(op_const_params_);
-    dynload::cudnnDestroyFusedOpsPlan(op_);
+  ~CudnnFusionOp() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroyFusedOpsConstParamPack(op_const_params_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFusedOpsPlan(op_));
   }
 
   // Execute fused op

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import math
 import unittest
 
 import paddle
@@ -41,6 +42,17 @@ def output_hist(out):
 
 
 class TestConstantInitializer(unittest.TestCase):
+    def test_calculate_gain(self):
+        self.assertEqual(paddle.nn.initializer.calculate_gain('sigmoid'), 1)
+        self.assertEqual(paddle.nn.initializer.calculate_gain('linear'), 1)
+        self.assertEqual(paddle.nn.initializer.calculate_gain('conv2d'), 1)
+        self.assertEqual(paddle.nn.initializer.calculate_gain('tanh'), 5.0 / 3)
+        self.assertEqual(
+            paddle.nn.initializer.calculate_gain('relu'), math.sqrt(2.0))
+        self.assertEqual(
+            paddle.nn.initializer.calculate_gain('leaky_relu', 1), 1)
+        self.assertEqual(paddle.nn.initializer.calculate_gain('selu'), 3.0 / 4)
+
     def test_constant_initializer_default_value(self, dtype="float32"):
         """Test the constant initializer with default value
         """
@@ -714,6 +726,193 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
 
         self.assertTrue(np.array_equal(dynamic_res[0], static_res[0]))
         self.assertTrue(np.array_equal(dynamic_res[1], static_res[1]))
+
+
+# 2-D Parameter with shape: [10, 15]
+class TestOrthogonalInitializer1(unittest.TestCase):
+    """
+    case 1
+    """
+
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Orthogonal(gain=3.0))
+        self.dtype = "float64"
+        self.in_features = 10
+        self.out_features = 15
+        self.num_ops = 9
+
+    def check_result(self, a, b):
+        self.assertTrue(np.array_equal(a, b))
+        self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(10)))
+
+    def test_orthogonal(self):
+        self.config()
+        paddle.set_default_dtype(self.dtype)
+
+        paddle.disable_static()
+        paddle.seed(2021)
+        linear = paddle.nn.Linear(
+            self.in_features, self.out_features, weight_attr=self.weight_attr)
+        res_dygraph = linear.weight.numpy()
+
+        paddle.enable_static()
+        paddle.seed(2021)
+        start_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            linear = paddle.nn.Linear(
+                self.in_features,
+                self.out_features,
+                weight_attr=self.weight_attr)
+
+            block = start_prog.global_block()
+            self.assertEqual(len(block.ops), self.num_ops)
+            self.assertEqual(block.ops[0].type, 'gaussian_random')
+            self.assertEqual(block.ops[1].type, 'qr')
+            self.assertEqual(block.ops[2].type, 'diag_v2')
+            self.assertEqual(block.ops[3].type, 'sign')
+            self.assertEqual(block.ops[4].type, 'elementwise_mul')
+            self.assertEqual(block.ops[-3].type, 'reshape2')
+            self.assertEqual(block.ops[-2].type, 'scale')
+
+            exe = paddle.static.Executor()
+            res_static = exe.run(start_prog, fetch_list=[linear.weight])[0]
+
+        self.check_result(res_dygraph, res_static)
+
+
+# 2-D Parameter with shape: [15, 10]
+class TestOrthogonalInitializer2(TestOrthogonalInitializer1):
+    """
+    case 2
+    """
+
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Orthogonal(gain=2.0))
+        self.dtype = "float64"
+        self.in_features = 15
+        self.out_features = 10
+        self.num_ops = 8
+
+    def check_result(self, a, b):
+        self.assertTrue(np.array_equal(a, b))
+        self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(10)))
+
+
+# 2-D Parameter with shape: [10, 10]
+class TestOrthogonalInitializer3(TestOrthogonalInitializer1):
+    """
+    case 3
+    """
+
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Orthogonal())
+        self.dtype = "float32"
+        self.in_features = 10
+        self.out_features = 10
+        self.num_ops = 8
+
+    def check_result(self, a, b):
+        self.assertTrue(np.array_equal(a, b))
+        self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(10), atol=1.e-6))
+        self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(10), atol=1.e-6))
+
+    def test_error(self):
+        self.config()
+        with self.assertRaises(AssertionError):
+            paddle.nn.Linear(10, 10, bias_attr=self.weight_attr)
+
+
+# 4-D Parameter with shape: [6, 4, 3, 3]
+class TestOrthogonalInitializer4(unittest.TestCase):
+    """
+    case 4
+    """
+
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Orthogonal(gain=3.0))
+        self.dtype = "float64"
+        self.in_features = 4
+        self.out_features = 6
+        self.kernel_size = (3, 3)
+
+    def check_result(self, a, b):
+        self.assertTrue(np.array_equal(a, b))
+        a = a.reshape(6, -1)
+        self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(6)))
+
+    def test_orthogonal(self):
+        self.config()
+        paddle.set_default_dtype(self.dtype)
+
+        paddle.disable_static()
+        paddle.seed(2021)
+        conv2d = paddle.nn.Conv2D(
+            self.in_features,
+            self.out_features,
+            self.kernel_size,
+            weight_attr=self.weight_attr)
+        res_dygraph = conv2d.weight.numpy()
+
+        paddle.enable_static()
+        paddle.seed(2021)
+        start_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            conv2d = paddle.nn.Conv2D(
+                self.in_features,
+                self.out_features,
+                self.kernel_size,
+                weight_attr=self.weight_attr)
+            exe = paddle.static.Executor()
+            res_static = exe.run(paddle.static.default_startup_program(),
+                                 fetch_list=[conv2d.weight])[0]
+        self.check_result(res_dygraph, res_static)
+
+
+# 4-D Parameter with shape: [50, 4, 3, 3]
+class TestOrthogonalInitializer5(TestOrthogonalInitializer4):
+    """
+    case 5
+    """
+
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Orthogonal(gain=2.0))
+        self.dtype = "float64"
+        self.in_features = 4
+        self.out_features = 50
+        self.kernel_size = (3, 3)
+
+    def check_result(self, a, b):
+        self.assertTrue(np.array_equal(a, b))
+        a = a.reshape(50, -1)
+        self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(36)))
+
+
+# 4-D Parameter with shape: [36, 4, 3, 3]
+class TestOrthogonalInitializer6(TestOrthogonalInitializer4):
+    """
+    case 6
+    """
+
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Orthogonal())
+        self.dtype = "float32"
+        self.in_features = 4
+        self.out_features = 36
+        self.kernel_size = (3, 3)
+
+    def check_result(self, a, b):
+        self.assertTrue(np.array_equal(a, b))
+        a = a.reshape(36, -1)
+        self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(36), atol=1.e-6))
+        self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(36), atol=1.e-6))
 
 
 if __name__ == '__main__':

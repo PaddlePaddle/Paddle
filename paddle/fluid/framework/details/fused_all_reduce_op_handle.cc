@@ -19,6 +19,8 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
+DECLARE_bool(allreduce_record_one_event);
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -48,11 +50,80 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
       num_of_all_reduce_(num_of_all_reduce) {}
 #endif
 
+FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto destroy_event = [](gpuEvent_t event) {
+    if (event == nullptr) return;
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
+#endif
+  };
+  destroy_event(start_event_);
+  destroy_event(end_event_);
+#endif
+}
+
 void FusedAllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
   VLOG(4) << this->DebugString();
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  if (FLAGS_allreduce_record_one_event && start_event_ == nullptr) {
+    VLOG(10) << "FLAGS_allreduce_record_one_event=true";
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+                      platform::errors::Unimplemented(
+                          "The hierarchical allreduce does not support "
+                          "FLAGS_allreduce_record_one_event=true"));
+    PADDLE_ENFORCE_EQ(places_.size(), 1,
+                      platform::errors::Unimplemented(
+                          "FLAGS_allreduce_record_one_event=true is only valid "
+                          "when using one GPU device per process."));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(places_[0]), true,
+                      platform::errors::Unimplemented(
+                          "FLAGS_allreduce_record_one_event=true is only valid "
+                          "when using GPU device."));
+    auto create_event = [](gpuEvent_t *event) {
+      if (*event) return;
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          hipEventCreateWithFlags(event, hipEventDisableTiming));
+#else
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaEventCreateWithFlags(event, cudaEventDisableTiming));
+#endif
+    };
+    create_event(&start_event_);
+    create_event(&end_event_);
+  }
+
+  gpuStream_t nccl_stream{nullptr};
+  gpuStream_t compute_stream{nullptr};
+
+  if (FLAGS_allreduce_record_one_event) {
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, places_[0]);
+    compute_stream =
+        platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
+    auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
+    auto &nccl_ctx = flat_nccl_ctxs->at(gpu_place.device);
+    nccl_stream = nccl_ctx.stream();
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(start_event_, compute_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        hipStreamWaitEvent(nccl_stream, start_event_, 0));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(start_event_, compute_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamWaitEvent(nccl_stream, start_event_, 0));
+#endif
+  } else {
+    WaitInputVarGenerated();
+  }
+#else
   WaitInputVarGenerated();
+#endif
+
   // The input: grad0(dev0), grad0(dev1), grad1(dev0), grad1(dev1)...
   // The output: grad0(dev0), grad0(dev1), grad1(dev0), grad1(dev1)...
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
@@ -94,6 +165,20 @@ void FusedAllReduceOpHandle::RunImpl() {
   } else {
     FusedAllReduceFunc(in_var_handles, out_var_handles);
   }
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  if (FLAGS_allreduce_record_one_event) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(end_event_, nccl_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        hipStreamWaitEvent(compute_stream, end_event_, 0));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(end_event_, nccl_stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamWaitEvent(compute_stream, end_event_, 0));
+#endif
+  }
+#endif
 }
 
 void FusedAllReduceOpHandle::FusedAllReduceFunc(

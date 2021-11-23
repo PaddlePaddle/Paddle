@@ -185,6 +185,18 @@ void ZeroCopyTensorCreate(
   tensor.copy_from_cpu(static_cast<const T *>(data.data()));
 }
 
+/// \brief Experimental interface.
+/// Create the Strings tensor from data.
+/// \param tensor The tensor will be created and
+/// the tensor value is same as data.
+/// \param data The input text.
+void ZeroCopyStringTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
+                                const paddle_infer::Strings *data) {
+  size_t shape = data->size();
+  tensor.ReshapeStrings(shape);
+  tensor.copy_strings_from_cpu(data);
+}
+
 template <typename T>
 void PaddleInferTensorCreate(
     paddle_infer::Tensor &tensor,  // NOLINT
@@ -193,6 +205,19 @@ void PaddleInferTensorCreate(
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
+}
+
+/// \brief Experimental interface.
+/// Create the Strings tensor from data.
+/// \param tensor The tensor will be created and
+/// the tensor value is same as data.
+/// \param data The input text.
+void PaddleInferStringTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
+                                   const paddle_infer::Strings *data) {
+  VLOG(3) << "Create PaddleInferTensor, dtype = Strings ";
+  size_t shape = data->size();
+  tensor.ReshapeStrings(shape);
+  tensor.CopyStringsFromCpu(data);
 }
 
 size_t PaddleGetDTypeSize(PaddleDType dt) {
@@ -330,6 +355,8 @@ void BindInferenceApi(py::module *m) {
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("get_version", &paddle_infer::GetVersion);
+  m->def("get_trt_compile_version", &paddle_infer::GetTrtCompileVersion);
+  m->def("get_trt_runtime_version", &paddle_infer::GetTrtRuntimeVersion);
   m->def("get_num_bytes_of_data_type", &paddle_infer::GetNumBytesOfDataType);
 }
 
@@ -724,11 +751,15 @@ void BindPaddleInferPredictor(py::module *m) {
 
 void BindZeroCopyTensor(py::module *m) {
   py::class_<ZeroCopyTensor>(*m, "ZeroCopyTensor")
-      .def("reshape", &ZeroCopyTensor::Reshape)
+      .def("reshape", py::overload_cast<const std::vector<int> &>(
+                          &ZeroCopyTensor::Reshape))
+      .def("reshape", py::overload_cast<const std::size_t &>(
+                          &paddle_infer::Tensor::ReshapeStrings))
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle_infer::float16>)
+      .def("copy_from_cpu", &ZeroCopyStringTensorCreate)
       .def("copy_to_cpu", &ZeroCopyTensorToNumpy)
       .def("shape", &ZeroCopyTensor::shape)
       .def("set_lod", &ZeroCopyTensor::SetLoD)
@@ -738,11 +769,16 @@ void BindZeroCopyTensor(py::module *m) {
 
 void BindPaddleInferTensor(py::module *m) {
   py::class_<paddle_infer::Tensor>(*m, "PaddleInferTensor")
-      .def("reshape", &paddle_infer::Tensor::Reshape)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<int32_t>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<int64_t>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
+      .def("reshape", py::overload_cast<const std::vector<int> &>(
+                          &paddle_infer::Tensor::Reshape))
+      .def("reshape", py::overload_cast<const std::size_t &>(
+                          &paddle_infer::Tensor::ReshapeStrings))
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
+      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
+      .def("copy_from_cpu_bind",
+           &PaddleInferTensorCreate<paddle_infer::float16>)
+      .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)

@@ -43,7 +43,7 @@ class TestClipOp(OpTest):
         else:
             max_v = self.attrs['max']
 
-        input = np.random.random(self.shape).astype("float32")
+        input = np.random.random(self.shape).astype(self.dtype)
         input[np.abs(input - min_v) < self.max_relative_error] = 0.5
         input[np.abs(input - max_v) < self.max_relative_error] = 0.5
         self.inputs['X'] = input
@@ -60,15 +60,17 @@ class TestClipOp(OpTest):
         paddle.disable_static()
 
     def initTestCase(self):
+        self.dtype = np.float32
         self.shape = (4, 10, 10)
         self.max = 0.8
         self.min = 0.3
-        self.inputs['Max'] = np.array([0.8]).astype('float32')
-        self.inputs['Min'] = np.array([0.1]).astype('float32')
+        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
+        self.inputs['Min'] = np.array([0.1]).astype(self.dtype)
 
 
 class TestCase1(TestClipOp):
     def initTestCase(self):
+        self.dtype = np.float32
         self.shape = (8, 16, 8)
         self.max = 0.7
         self.min = 0.0
@@ -76,6 +78,7 @@ class TestCase1(TestClipOp):
 
 class TestCase2(TestClipOp):
     def initTestCase(self):
+        self.dtype = np.float32
         self.shape = (8, 16)
         self.max = 1.0
         self.min = 0.0
@@ -83,6 +86,7 @@ class TestCase2(TestClipOp):
 
 class TestCase3(TestClipOp):
     def initTestCase(self):
+        self.dtype = np.float32
         self.shape = (4, 8, 16)
         self.max = 0.7
         self.min = 0.2
@@ -90,18 +94,30 @@ class TestCase3(TestClipOp):
 
 class TestCase4(TestClipOp):
     def initTestCase(self):
+        self.dtype = np.float32
         self.shape = (4, 8, 8)
         self.max = 0.7
         self.min = 0.2
-        self.inputs['Max'] = np.array([0.8]).astype('float32')
-        self.inputs['Min'] = np.array([0.3]).astype('float32')
+        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
+        self.inputs['Min'] = np.array([0.3]).astype(self.dtype)
 
 
 class TestCase5(TestClipOp):
     def initTestCase(self):
+        self.dtype = np.float32
         self.shape = (4, 8, 16)
         self.max = 0.5
         self.min = 0.5
+
+
+class TestCase6(TestClipOp):
+    def initTestCase(self):
+        self.dtype == np.float16
+        self.shape = (4, 8, 8)
+        self.max = 0.7
+        self.min = 0.2
+        self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
+        self.inputs['Min'] = np.array([0.3]).astype(self.dtype)
 
 
 class TestClipOpError(unittest.TestCase):

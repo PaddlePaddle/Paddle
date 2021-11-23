@@ -23,7 +23,9 @@ namespace framework {
 namespace ir {
 
 MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
-  AddOpCompat(OpCompat("matmul"))
+  op_name_ = "matmul";
+
+  AddOpCompat(OpCompat(op_name_))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -89,7 +91,7 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
   patterns::MatmulTransposeReshapePattern mtrp(gpd.mutable_pattern(),
                                                name_scope_);
 
-  mtrp();
+  mtrp(op_name_);
 
   int found_matmul_transpose_reshape_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -98,7 +100,7 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
       LOG(WARNING) << "Pass in op compat failed.";
       return;
     }
-    VLOG(4) << "handle matmul_transpose_reshape fuse";
+    VLOG(4) << "handle " + op_name_ + "_transpose_reshape fuse";
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op, mtrp);
@@ -118,17 +120,17 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     const bool supported_transpose_axis = std::equal(
         transpose_axis.begin(), transpose_axis.end(), supported_axis.begin());
     if (transpose_out_size != 4) {
-      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
               << "supported rank is 4, received " << transpose_out_size;
       return;
     }
     if (!supported_transpose_axis) {
-      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
               << "supported transpose axis for the fuse are {0, 2, 1, 3}";
       return;
     }
     if (reshape_out_size != 3) {
-      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
               << "reshape_out supported rank is 3, received "
               << reshape_out_size;
       return;
@@ -149,10 +151,12 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
 
   gpd(graph, handler);
   AddStatis(found_matmul_transpose_reshape_count);
-  std::stringstream msg_ss;
-  msg_ss << "---    Fused " << found_matmul_transpose_reshape_count
-         << " MatmulTransposeReshape patterns";
-  paddle::string::PrettyLogDetail(msg_ss.str().c_str());
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+    std::stringstream msg_ss;
+    msg_ss << "---    Fused " << found_matmul_transpose_reshape_count
+           << " MatmulTransposeReshape patterns for " + op_name_ + " Op";
+    paddle::string::PrettyLogDetail(msg_ss.str().c_str());
+  }
 }
 }  // namespace ir
 }  // namespace framework

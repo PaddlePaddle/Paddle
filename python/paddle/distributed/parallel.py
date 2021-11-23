@@ -26,6 +26,7 @@ from paddle import compat as cpt
 from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
+from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
 
@@ -55,34 +56,19 @@ def _start_kv_server(port, http_server_d, size):
     http_server.stop()
 
 
-def _check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'auto']:
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'auto', but got %s"
-            % backend)
+def _is_cpuonly(backend):
+    check_backend(backend)
+    if backend in ['auto', 'nccl', 'bkcl', 'hccl'] and (
+            core.is_compiled_with_cuda() or core.is_compiled_with_xpu() or
+            core.is_compiled_with_npu()):
 
-    if backend == 'nccl' and not core.is_compiled_with_cuda():
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "your paddle is not compiled with cuda but you assign 'nccl' as backend."
-        )
-
-    if backend == 'bkcl' and not core.is_compiled_with_xpu():
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
-        )
-
-    if backend in ['auto', 'nccl', 'bkcl'] and (core.is_compiled_with_cuda() or
-                                                core.is_compiled_with_xpu()):
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:
         return True
 
 
-def init_parallel_env(backend='auto'):
+def init_parallel_env():
     """
     Initialize parallel training environment in dynamic graph mode.
 
@@ -154,10 +140,11 @@ def init_parallel_env(backend='auto'):
         return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
     #                 enable cpu only gloo prarllel training)
-    is_cpu_only = _check_backend(backend)
+    backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
+    is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu, 
     if not (is_cpu_only or core.is_compiled_with_cuda() or
-            core.is_compiled_with_xpu()):
+            core.is_compiled_with_xpu() or core.is_compiled_with_npu()):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend")
 
@@ -219,6 +206,8 @@ def init_parallel_env(backend='auto'):
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
+    elif core.is_compiled_with_npu():
+        place = core.NPUPlace(parallel_env.device_id)
 
     _set_expected_place(place)
     # init nccl or bkcl context
@@ -231,6 +220,9 @@ def init_parallel_env(backend='auto'):
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
+    elif core.is_compiled_with_npu():
+        parallel_helper._set_parallel_ctx(
+            core.HCCLParallelContext(strategy, place))
 
     other_endpoints = strategy.trainer_endpoints[:]
     other_endpoints.remove(strategy.current_endpoint)

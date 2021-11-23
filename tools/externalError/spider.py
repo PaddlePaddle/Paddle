@@ -17,8 +17,10 @@ import re
 import urllib.request
 import json
 import collections
-import sys, getopt
+import sys
+import getopt
 import external_error_pb2
+from html.parser import HTMLParser
 
 
 def parsing(externalErrorDesc):
@@ -334,6 +336,31 @@ def parsing(externalErrorDesc):
         _Messages.code = int(error[1])
         _Messages.message = "'%s'. %s" % (error[0], m_message)
     print("End crawling errorMessage for nvidia NCCL API!\n")
+
+    #*************************************************************************************************#
+    #*********************************** CUFFT Error Message **************************************#
+    print("start crawling errorMessage for nvidia CUFFT API--->")
+    url = 'https://docs.nvidia.com/cuda/cufft/index.html#cufftresult'
+
+    allMessageDesc = externalErrorDesc.errors.add()
+    allMessageDesc.type = external_error_pb2.CUFFT
+
+    html = urllib.request.urlopen(url).read().decode('utf-8')
+
+    class CUFFTHTMLParser(HTMLParser):
+        '''CUFFTHTML Parser
+        '''
+
+        def handle_data(self, data):
+            if 'typedef enum cufftResult_t' in data:
+                for line in data.strip().splitlines()[1:-1]:
+                    status, code, desc = re.split('=|//', line.strip())
+                    _Messages = allMessageDesc.messages.add()
+                    _Messages.code = int(code.strip(' ,'))
+                    _Messages.message = "'%s'. %s" % (status.strip(),
+                                                      desc.strip())
+
+    CUFFTHTMLParser().feed(html)
 
 
 def main(argv):

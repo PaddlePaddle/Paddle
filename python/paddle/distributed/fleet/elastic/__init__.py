@@ -33,7 +33,7 @@ def enable_elastic(args, distribute_mode):
     if not args.job_id and not os.getenv('PADDLE_ELASTIC_JOB_ID'):
         return False
 
-    if not args.np and not int(os.getenv('PADDLE_ELASTIC_NP', 0)):
+    if not args.np and not os.getenv('PADDLE_ELASTIC_NP'):
         return False
 
     return True
@@ -41,7 +41,11 @@ def enable_elastic(args, distribute_mode):
 
 def launch_elastic(args, distribute_mode):
 
-    elastic = ElasticManager(args)
+    server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
+    srv, port = server.split(':')
+    import etcd3
+    etcd_client = etcd3.client(host=srv, port=port)
+    elastic = ElasticManager(args, etcd_client)
 
     signal.signal(signal.SIGTERM, elastic.signal_handler)
     signal.signal(signal.SIGABRT, elastic.signal_handler)
@@ -51,6 +55,9 @@ def launch_elastic(args, distribute_mode):
 
         # wait for all nodes ready to run
         elastic.wait()
+
+        # execute pre hook action, eg: run shell
+        elastic.pre_hook()
 
         # run self with specified launcher
         elastic.run(CollectiveLauncher)

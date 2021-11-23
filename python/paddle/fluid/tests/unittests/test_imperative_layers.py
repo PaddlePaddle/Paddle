@@ -22,6 +22,9 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.ELU(0.2)
         self.assertEqual(str(module), 'ELU(alpha=0.2)')
 
+        module = nn.CELU(0.2)
+        self.assertEqual(str(module), 'CELU(alpha=0.2)')
+
         module = nn.GELU(True)
         self.assertEqual(str(module), 'GELU(approximate=True)')
 

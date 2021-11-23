@@ -137,8 +137,13 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       ++input_index;
     }
 
-    auto dst_mem = in_place ? handler.AcquireDstMemory()
-                            : handler.AcquireDstMemory(output);
+    std::shared_ptr<dnnl::memory> dst_mem = nullptr;
+    if (in_place) {
+      dst_mem = handler.AcquireDstMemory();
+      output->mutable_data<T>(ctx.GetPlace());
+    } else {
+      dst_mem = handler.AcquireDstMemory(output);
+    }
 
     auto sum_p = handler.AcquireForwardPrimitive();
 

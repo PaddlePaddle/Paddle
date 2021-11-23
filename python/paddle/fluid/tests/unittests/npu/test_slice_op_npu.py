@@ -527,5 +527,69 @@ class TestSliceOpDecsDimStartsListTensorFP16(
         self.dtype = np.float16
 
 
+class TestSliceOpInt64(OpTest):
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
+
+    def setUp(self):
+        self.op_type = "slice"
+        self.set_npu()
+        self.init_dtype()
+        self.config()
+        self.inputs = {'Input': self.input}
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'infer_flags': self.infer_flags
+        }
+
+    def config(self):
+        self.input = np.random.randint(
+            100, size=(3, 4, 5, 6)).astype(self.dtype)
+        self.starts = [1, 0, 2]
+        self.ends = [3, 3, 4]
+        self.axes = [0, 1, 2]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[1:3, 0:3, 2:4, :]
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
+class TestSliceOpTensorInt64(TestSliceOpInt64):
+    def setUp(self):
+        self.op_type = "slice"
+        self.set_npu()
+        self.init_dtype()
+        self.config()
+        self.inputs = {
+            'Input': self.input,
+            'StartsTensor': self.starts,
+            'EndsTensor': self.ends
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': [-1, -1, -1],
+            'ends': [-1, -1, -1],
+            'infer_flags': self.infer_flags
+        }
+
+    def config(self):
+        self.input = np.random.randint(
+            100, size=(3, 4, 5, 6)).astype(self.dtype)
+        self.starts = np.array([1, 0, 2]).astype('int32')
+        self.ends = np.array([3, 3, 4]).astype('int32')
+        self.axes = [0, 1, 2]
+        self.infer_flags = [-1, -1, -1]
+        self.out = self.input[1:3, 0:3, 2:4, :]
+
+
 if __name__ == '__main__':
     unittest.main()

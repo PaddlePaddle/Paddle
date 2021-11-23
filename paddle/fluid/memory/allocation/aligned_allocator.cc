@@ -20,6 +20,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// For memory address alignment
 class AlignedAllocation : public Allocation {
  public:
   AlignedAllocation(AllocationPtr underlying_allocation, size_t offset)

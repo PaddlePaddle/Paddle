@@ -17,14 +17,15 @@ endfunction()
 
 if (WITH_ASCEND_CL)
     detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu box_coder_op_npu.cc)
+    detection_library(density_prior_box_op SRCS density_prior_box_op.cc density_prior_box_op.cu density_prior_box_op_npu.cc)
 else()
     detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu)
+    detection_library(density_prior_box_op SRCS density_prior_box_op.cc density_prior_box_op.cu)
 endif()
 
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
 detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
-detection_library(density_prior_box_op SRCS density_prior_box_op.cc density_prior_box_op.cu)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
 anchor_generator_op.cu)
 detection_library(target_assign_op SRCS target_assign_op.cc
@@ -63,6 +64,8 @@ endif()
 
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_xpu.cc)
+elseif(WITH_ASCEND_CL)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_npu.cc)
 else()
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op.cu)
 endif()

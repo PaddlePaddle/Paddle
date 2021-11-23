@@ -66,7 +66,7 @@ struct DropoutParam {
     } else {
       pre_fix = pre_fix + "_";
     }
-    dropout_prob = context.Attr<float>(pre_fix + "prob");
+    dropout_prob = context.Attr<float>(pre_fix + "rate");
     auto& dropout_implementation =
         context.Attr<std::string>(pre_fix + "implementation");
     is_upscale_in_train = (dropout_implementation == "upscale_in_train");

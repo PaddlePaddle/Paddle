@@ -681,6 +681,70 @@ PADDLE_DEFINE_EXPORTED_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
+/**
+ * Pt kernel related FLAG
+ * Name: FLAGS_run_pten_kernel
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_run_pten_kernel=true would use the pt kernel to compute in the
+ * Op.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
+                            "It controls whether to use pten kernel");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_allreduce_record_one_event
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_allreduce_record_one_event=true makes the allreduce
+ *          operations would only wait one event instead of multiple events.
+ * Note: Make the allreduce operations would only wait one event instead of
+ *       multiple events. Currently, only fuse allreduce supports this.
+ *       Otherwise, the precision may be wrong.
+ */
+PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
+                            "It controls whether the allreduce operations "
+                            "would only wait one event instead of multiple "
+                            "events. Currently, only fuse allreduce supports "
+                            "this. Otherwise, the precision may be wrong.");
+
+#ifdef PADDLE_WITH_CINN
+/*
+ * CINN related FLAG
+ * Name: FLAGS_use_cinn
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_allow_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_allow_cinn_ops="mul;relu" would only cover `mul` and `relu`
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
+                              "It controls the cinn op subset to be used, "
+                              "which has the highest priority.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_deny_cinn_ops="mul;relu" would block `mul` and `relu` two ops
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
+                              "It controls the cinn op subset to be not used.");
+#endif
+
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
@@ -688,3 +752,5 @@ DEFINE_bool(enable_slotpool_wait_release, false,
             "enable slotrecord obejct wait release, default false");
 DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
+DEFINE_bool(enable_ins_parser_file, false,
+            "enable parser ins file , default false");

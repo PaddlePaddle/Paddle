@@ -39,10 +39,12 @@ import numpy as np
 if six.PY3:
     import subprocess
     import sys
-    if sys.platform == 'win32':
-        interpreter = sys.exec_prefix + "\\" + "python.exe"
-    else:
-        interpreter = sys.executable
+    import os
+    interpreter = sys.executable
+    # Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
+    # will be the C++ execubable on Windows
+    if sys.platform == 'win32' and 'python.exe' not in interpreter:
+        interpreter = sys.exec_prefix + os.sep + 'python.exe'
     import_cv2_proc = subprocess.Popen(
         [interpreter, "-c", "import cv2"],
         stdout=subprocess.PIPE,

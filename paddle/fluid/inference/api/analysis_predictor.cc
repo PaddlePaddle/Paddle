@@ -24,7 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -36,6 +35,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -45,6 +45,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/api/ext/op_meta_info.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -56,6 +57,7 @@
 
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 
@@ -617,6 +619,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    argument_.SetXpuDeviceId(config_.xpu_device_id_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
@@ -1403,6 +1406,7 @@ USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(nearest_interp);
+USE_TRT_CONVERTER(nearest_interp_v2);
 USE_TRT_CONVERTER(reshape);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
@@ -1410,6 +1414,9 @@ USE_TRT_CONVERTER(reduce_mean);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
+USE_TRT_CONVERTER(mish);
+USE_TRT_CONVERTER(deformable_conv);
+USE_TRT_CONVERTER(pool3d)
 #endif
 
 namespace paddle_infer {
@@ -1468,6 +1475,22 @@ int GetNumBytesOfDataType(DataType dtype) {
 }
 
 std::string GetVersion() { return paddle::get_version(); }
+
+std::tuple<int, int, int> GetTrtCompileVersion() {
+#ifdef PADDLE_WITH_TENSORRT
+  return paddle::inference::tensorrt::GetTrtCompileVersion();
+#else
+  return std::tuple<int, int, int>{0, 0, 0};
+#endif
+}
+
+std::tuple<int, int, int> GetTrtRuntimeVersion() {
+#ifdef PADDLE_WITH_TENSORRT
+  return paddle::inference::tensorrt::GetTrtRuntimeVersion();
+#else
+  return std::tuple<int, int, int>{0, 0, 0};
+#endif
+}
 
 std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);

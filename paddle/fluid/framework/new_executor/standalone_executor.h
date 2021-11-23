@@ -28,7 +28,7 @@ class ExecutorBase {
   virtual ~ExecutorBase() {}
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::Tensor>& feed_tensors,
+      const std::vector<framework::LoDTensor>& feed_tensors,
       const std::vector<std::string>& fetch_names) = 0;
 };
 
@@ -40,26 +40,32 @@ class StandaloneExecutor : public ExecutorBase {
 
   ~StandaloneExecutor() {}
 
-  virtual paddle::framework::FetchList Run(
+  paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::Tensor>& feed_tensors,
+      const std::vector<framework::LoDTensor>& feed_tensors,
       const std::vector<std::string>& fetch_names);
 
-  const CostInfo& DryRun(const std::vector<std::string>& feed_names,
-                         const std::vector<framework::Tensor>& feed_tensors);
+  // NOTE(zhiqiu): feed_names are only used for caching interpretercore.
+  // fetch_names are used for caching interpretercore and inserting fetch ops,
+  // the latter can be moved to python side.
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   const std::vector<std::string>& fetch_names);
+
+  framework::interpreter::CostInfo DryRun(
+      const std::vector<std::string>& feed_names,
+      const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
-  void BuildVariableOuterScope(const framework::ProgramDesc& pdesc,
-                               VariableScope* var_scope, Scope* outer_scope);
+  void BuildVariableScope(const framework::ProgramDesc& pdesc,
+                          VariableScope* var_scope);
 
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
       const std::vector<std::string>& feed_names,
-      const std::vector<std::string>& fetch_names);
+      const std::vector<std::string>& fetch_names, bool add_fetch_op);
 
   const platform::Place& place_;
   const ProgramDesc& startup_prog_;
   const ProgramDesc& main_prog_;
-  Scope* outer_scope_;
   VariableScope global_scope_;
 
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
