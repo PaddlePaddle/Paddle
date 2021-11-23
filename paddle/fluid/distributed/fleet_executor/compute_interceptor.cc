@@ -30,14 +30,14 @@ void ComputeInterceptor::PrepareDeps() {
   auto& downstream = GetTaskNode()->downstream();
 
   // TODO(wangxi): get from task node
-  int64_t in_buff_size = 2;
+  int64_t in_buff_size = std::numeric_limits<int64_t>::max();
   int64_t out_buff_size = 2;
 
   for (auto up_id : upstream) {
-    in_readys_.emplace(up_id, {in_buff_size, 0});
+    in_readys_.emplace(up_id, std::make_pair(in_buff_size, 0));
   }
   for (auto down_id : downstream) {
-    out_buffs_.emplace(down_id, {out_buff_size, 0});
+    out_buffs_.emplace(down_id, std::make_pair(out_buff_size, 0));
   }
 }
 
@@ -63,7 +63,6 @@ void ComputeInterceptor::DecreaseBuff(int64_t down_id) {
   PADDLE_ENFORCE_NE(it, out_buffs_.end(),
                     platform::errors::NotFound(
                         "Cannot find downstream=%lld in out_buffs.", down_id));
-  auto max_buff_size = it->second.first;
   auto used_size = it->second.second;
   used_size -= 1;
   PADDLE_ENFORCE_GE(
@@ -105,6 +104,7 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
                                      "max_buff_size, but now used_size=%lld, "
                                      "max_buff_size=%lld",
                                      down_id, used_size, max_buff_size));
+    outs.second.second = used_size;
 
     InterceptorMessage ready_msg;
     ready_msg.set_message_type(DATA_IS_READY);
@@ -123,6 +123,7 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
         platform::errors::OutOfRange(
             "upstream=%lld ready_size must >= 0, but now got %lld", up_id,
             ready_size));
+    ins.second.second = ready_size;
 
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATE_IS_USELESS);
@@ -147,7 +148,7 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
     IncreaseReady(msg.src_id());
     Run();
-  } else if (msg.message_type == DATE_IS_USELESS) {
+  } else if (msg.message_type() == DATE_IS_USELESS) {
     DecreaseBuff(msg.src_id());
     Run();
   }
