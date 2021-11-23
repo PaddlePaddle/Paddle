@@ -484,7 +484,7 @@ class PD_DLL_DECL Tensor final {
    * Tensor name: used to adapt original execution mechanism and debug analysis
    * in the development of new dygraph. It may be removed in the future.
    */
-  std::string name_;
+  std::string name_{""};
 };
 
 }  // namespace experimental
