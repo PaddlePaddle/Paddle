@@ -58,7 +58,7 @@ class DistributedOperatorImpl:
             self.is_output_compatible(dist_op)
 
     def is_auto_compatible(self, dist_op):
-        return self.is_auto_compatible(dist_op)
+        raise NotImplementedError("Please Implement this method in Subclass.")
 
     def update_dims_mapping(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
