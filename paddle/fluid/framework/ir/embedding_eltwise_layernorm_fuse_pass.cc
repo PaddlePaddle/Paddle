@@ -314,14 +314,17 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     new_op_desc.SetType("fused_embedding_eltwise_layernorm");
     new_op_desc.SetInput("Ids", ids);
     new_op_desc.SetInput("Embs", embs);
-
     new_op_desc.SetInput("WordId", {ids[0]});
     new_op_desc.SetInput("PosId", {ids[1]});
-    new_op_desc.SetInput("SentId", {ids[2]});
+    if (ids.size() > 2) {
+      new_op_desc.SetInput("SentId", {ids[2]});
+    }
 
     new_op_desc.SetInput("WordEmbedding", {embs[0]});
     new_op_desc.SetInput("PosEmbedding", {embs[1]});
-    new_op_desc.SetInput("SentEmbedding", {embs[2]});
+    if (embs.size() > 2) {
+      new_op_desc.SetInput("SentEmbedding", {embs[2]});
+    }
 
     new_op_desc.SetInput("Bias", {end_pattern_biases[k]->Name()});
     new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
@@ -429,6 +432,6 @@ REGISTER_PASS(embedding_eltwise_layernorm_fuse_pass,
 REGISTER_PASS_CAPABILITY(embedding_eltwise_layernorm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("lookup_table", 0)
+            .LE("lookup_table", 1)
             .LE("lookup_table_v2", 1)
-            .EQ("elementweise_add", 0));
+            .LE("elementweise_add", 1));

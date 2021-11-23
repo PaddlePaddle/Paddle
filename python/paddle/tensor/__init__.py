@@ -72,6 +72,7 @@ from .logic import bitwise_xor  # noqa: F401
 from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
 from .logic import allclose  # noqa: F401
+from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
 from .manipulation import cast  # noqa: F401
@@ -197,6 +198,7 @@ from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
+from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
@@ -330,6 +332,7 @@ tensor_method_func  = [ #noqa
            'logical_xor',
            'not_equal',
            'allclose',
+           'isclose',
            'is_tensor',
            'cast',
            'concat',
