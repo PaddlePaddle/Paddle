@@ -356,7 +356,7 @@ def _uncompress_file_tar(filepath, mode="r:*"):
 
 
 def _is_a_single_file(file_list):
-    if len(file_list) == 1 and file_list[0].find(os.sep) < -1:
+    if len(file_list) == 1 and file_list[0].find(os.sep) < 0:
         return True
     return False
 
