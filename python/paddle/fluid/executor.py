@@ -1330,11 +1330,12 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        def _can_use_interpreter_core(program):
+        def _can_use_interpreter_core(program, place):
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): only single card compiled program is supported 
             if compiled:
-                if len(program._places) == 1:
+                if program._is_data_parallel and len(
+                        program._get_places(place, program._places)) == 1:
                     return True
                 else:
                     return False
@@ -1344,7 +1345,8 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and _can_use_interpreter_core(program):
+        if self._enable_interpreter_core and _can_use_interpreter_core(
+                program, self.place):
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
             if not inner_program._is_start_up_program_:
