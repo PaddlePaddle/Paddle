@@ -16,7 +16,6 @@
 
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include "cinn/hlir/framework/graph_compiler.h"
@@ -27,7 +26,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -155,8 +153,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     const auto& place = ctx.GetPlace();
     void* stream = details::GetStream<DeviceContext>(ctx);
     // Step 1. Find graph object and prepare input
-    platform::RecordEvent record_event_1(
-        "Step 1. Find graph object and prepare input");
     PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey), true,
                       platform::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
@@ -178,8 +174,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                    });
 
     // Step 2. Get compilation result of the graph
-    platform::RecordEvent record_event_2(
-        "Step 2. Get compilation result of the graph");
     auto target = details::PlaceToCinnTarget(place);
     const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
         compilation_key, inputs_name2tensor, target, stream);
@@ -189,7 +183,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         std::make_unique<details::CinnLaunchContext>(cinn_compiled_object);
 
     // Step 3. Prepare arguments needed for the compiled executable program.
-    platform::RecordEvent record_event_3("Step 3. Prepare arguments.");
     VLOG(4) << "CinnLaunchOp prepare arguments";
 
     // 3.1 Prepare input variables: tensors of input variables have
@@ -244,11 +237,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     }
 
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
-    platform::RecordEvent record_event_4("Step 4. Set CINN runtime FLAGS.");
     details::SetCinnRuntimeFlags();
 
     // Step 5. Launch CINN to execute the compiled executable program
-    platform::RecordEvent record_event_5("Step 5. Execute CINN program.");
     VLOG(4) << "Run Cinn compiled executable program with stream: " << stream;
     details::LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
     VLOG(4) << "CinnLaunchOp launch execution done.";
