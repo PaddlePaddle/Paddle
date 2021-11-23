@@ -48,12 +48,14 @@ class Device:
         self._local_id = local_id
         self._machine = machine
         self._type = None
-        # different device have different models, such as 
+        # Different device have different models, such as 
         # "Tesla V100-SXM2-32GB" and "A100-SXM4-40GB" etc.
         self._model = None
+        # Double precision GFLOPS
         self._dp_gflops = None
+        # Single precision GFLOPS
         self._sp_gflops = None
-        # memory is stored by GB 
+        # Memory is stored by GB 
         self._memory = None
 
     @property
