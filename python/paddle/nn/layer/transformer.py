@@ -112,6 +112,12 @@ class CUDNNSeqInfo:
         self.max_seq_len = max_seq_len
         self.low_hi_win_idx = paddle.concat([low_win_idx, hi_win_idx], axis=0)
         self.qo_kv_seqlen = paddle.concat([qo_seqlen, kv_seqlen], axis=0)
+        # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
+        # converting dygraph to static. Since to_static would build ParallelExecutor which 
+        # would run ops async if there is no dependence. Moreover, static.save_inference_model 
+        # would prune graphs. If the nodes is not related the data flow from inputs to outputs, 
+        # it would be removed.
+        self.fake_input = None
 
 
 class CUDNNSeqInfoInfer(Layer):
@@ -135,7 +141,12 @@ class CUDNNSeqInfoInfer(Layer):
         
         seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen)
         if self.enable_cache:
-            seq_info.qo_kv_seqlen = F.mha_seq_data_prep(seq_info, self.id)
+            # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
+            # converting dygraph to static. Since to_static would build ParallelExecutor which 
+            # would run ops async if there is no dependence. Moreover, static.save_inference_model 
+            # would prune graphs. If the nodes is not related the data flow from inputs to outputs, 
+            # it would be removed.
+            seq_info.fake_input = F.mha_seq_data_prep(seq_info, self.id)
         return seq_info
 
 

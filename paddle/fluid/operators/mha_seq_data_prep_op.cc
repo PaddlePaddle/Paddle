@@ -35,9 +35,6 @@ class MHASeqDataPrepOp : public framework::OperatorWithKernel {
     for (int i = 0; i < qkvo_input_dims.size(); ++i) {
       qkvo_output_dims.push_back(qkvo_input_dims[i]);
     }
-
-    ctx->SetOutputDim("QKVO_seqlen_for_output", framework::make_ddim(qkvo_output_dims));
-    ctx->ShareLoD("QKVO_seqlen", /*->*/ "QKVO_seqlen_for_output");
   }
 };
 
@@ -51,7 +48,7 @@ class MHASeqDataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
     // Since to_static would build ParallelExecutor which would run ops async if there is 
     // no dependence. Moreover, static.save_inference_model would prune graphs. If the nodes is 
     // not related the data flow from inputs to outputs, it would be removed.
-    AddOutput("QKVO_seqlen_for_output", "(Tensor), QKVO_seqlen_for_output");
+    AddOutput("fake_output", "(bool), fake_output");
 
     AddAttr<std::string>("cache_key", "");
 

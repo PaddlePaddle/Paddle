@@ -109,6 +109,11 @@ class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W", "(Tensor), V");
     AddInput("QO_KV_Seqlen", "(Tensor), QO_KV_Seqlen");
     AddInput("low_high_windows", "(Tensor), low_windows and high_windows").AsDispensable();
+    // This is for connecting computing graphs with MHA_SEQ_DATA_Prep Op when converting dygraph to static.
+    // Since to_static would build ParallelExecutor which would run ops async if there is 
+    // no dependence. Moreover, static.save_inference_model would prune graphs. If the nodes is 
+    // not related the data flow from inputs to outputs, it would be removed.
+    AddInput("fake_input", "(bool)").AsDispensable();
 
     AddOutput("O", "(Tensor), O");
 

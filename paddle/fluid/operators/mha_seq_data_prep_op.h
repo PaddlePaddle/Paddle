@@ -51,13 +51,8 @@ class MHASeqDataPrepKernel : public framework::OpKernel<T> {
                     low_high_windows->dims()[0] * sizeof(int),
                     cudaMemcpyDeviceToHost));
 
-    Tensor* qkvo_seqlen_for_output = context.Output<Tensor>("QKVO_seqlen_for_output");
-    qkvo_seqlen_for_output->mutable_data<int>(context.GetPlace());
-    int* qkvo_seqlen_for_output_data = qkvo_seqlen_for_output->data<int>();
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpyAsync(reinterpret_cast<void*>(qkvo_seqlen_for_output_data),
-                   reinterpret_cast<const void*>(qo_kv_slen_data),
-                   qkvo_seqlen_size, cudaMemcpyDeviceToDevice));
+    Tensor* fake_output = context.Output<Tensor>("fake_output");
+    fake_output->mutable_data<bool>(context.GetPlace());
   }
 };
 

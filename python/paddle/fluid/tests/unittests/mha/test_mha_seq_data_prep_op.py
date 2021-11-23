@@ -45,7 +45,9 @@ class TestMHASeqDataPrepOp(OpTest):
             'cache_key': str(id(type(self)))
         }
 
-        self.outputs = {'QKVO_seqlen_for_output': qkvo_seqlen_ref}
+        # The op donot set False value to output, we rely on compilers (NVCC) to do so.
+        # That could save about 20 mu seconds.
+        self.outputs = {'fake_output': np.array([False], dtype=np.bool)}
 
     def init_dtype_type(self):
         self.dtype = np.int32

@@ -34,9 +34,9 @@ def mha_seq_data_prep(seq_data_info, seq_data_cache_key):
         'cache_key': seq_data_cache_key
     }
 
-    output = helper.create_variable_for_type_inference(seq_data_info.qo_kv_seqlen.dtype, stop_gradient=True)
+    output = helper.create_variable_for_type_inference(np.bool, stop_gradient=True)
     helper.append_op(
-        type='mha_seq_data_prep', inputs=inputs, outputs={'QKVO_seqlen_for_output': output}, attrs=attrs)
+        type='mha_seq_data_prep', inputs=inputs, outputs={'fake_output': output}, attrs=attrs)
     return output
 
 def multi_head_attn(q, k, v, weight, meta_data, seq_data_info, seq_data_cache_key=None):
@@ -66,6 +66,14 @@ def multi_head_attn(q, k, v, weight, meta_data, seq_data_info, seq_data_cache_ke
         'W': weight,
         'QO_KV_Seqlen': seq_data_info.qo_kv_seqlen,
     }
+
+    if seq_data_info.fake_input is not None:
+        # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
+        # converting dygraph to static. Since to_static would build ParallelExecutor which 
+        # would run ops async if there is no dependence. Moreover, static.save_inference_model 
+        # would prune graphs. If the nodes is not related the data flow from inputs to outputs, 
+        # it would be removed.
+        inputs['fake_input'] = seq_data_info.fake_input
 
     attrs = {
         'cache_key': weight.name,
