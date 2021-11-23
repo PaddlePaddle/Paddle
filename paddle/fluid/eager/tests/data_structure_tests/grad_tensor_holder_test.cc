@@ -23,12 +23,6 @@
 
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
-
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 

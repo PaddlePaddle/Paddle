@@ -1,2 +1,2 @@
-set(eager_deps pten pten_api grad_node_info grad_tensor_holder)
+set(eager_deps pten pten_api pten_tensor grad_node_info grad_tensor_holder gradient_accumulation accumulation_node)
 add_subdirectory(data_structure_tests)
