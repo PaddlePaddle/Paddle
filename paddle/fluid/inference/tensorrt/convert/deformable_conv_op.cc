@@ -70,7 +70,8 @@ class DeformableConvOpConverter : public OpConverter {
 
     nvinfer1::Weights weights;
     weights.count = filter_tensor->numel();
-    if (engine_->WithFp16()) {
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    if (with_fp16) {
       auto half_filter_data = new half[filter_tensor->numel()];
       for (int i = 0; i < filter_tensor->numel(); i++) {
         half_filter_data[i] = static_cast<half>(filter_data[i]);
@@ -82,10 +83,9 @@ class DeformableConvOpConverter : public OpConverter {
       weights.values = filter_data;
     }
     auto* deformable_conv_plugin = new plugin::DeformableConvPlugin(
-        engine_->WithFp16() ? nvinfer1::DataType::kHALF
-                            : nvinfer1::DataType::kFLOAT,
+        with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
         weights, kernel_dims, strides, paddings, dilations, groups,
-        deformable_groups, im2col_step);
+        deformable_groups, im2col_step, with_fp16);
 
     std::vector<nvinfer1::ITensor*> deformable_conv_inputs;
     deformable_conv_inputs.push_back(input_tensor);

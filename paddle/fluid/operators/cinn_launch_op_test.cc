@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
 #include <stdlib.h>
+#include <mutex>
 #include <random>
 #include <string>
 #include "gtest/gtest.h"
@@ -188,114 +189,134 @@ TEST(CinnLaunchOpHelperTest, TestPlaceToCinnTarget) {
                paddle::platform::EnforceNotMet);
 }
 
-TEST(CinnLaunchOpHelperTest, TestMapPaddleVariablesToCinn) {
-  std::unordered_map<std::string, std::string> varmap(
-      {{"var1", "cinn_var1"}, {"var2", "cinn_var2"}, {"var3", "cinn_var3"}});
+const CinnCompiledObject& GetDefaultCompiledObj() {
+  static std::once_flag initialized;
+  static CinnCompiledObject compiled_object;
+  std::call_once(initialized, [&compiled_object]() {
+    auto& scope = compiled_object.scope;
+    scope = std::make_shared<CinnScope>();
 
-  auto cinn_names = MapPaddleVariablesToCinn({"var1", "var3"}, varmap);
-  ASSERT_EQ(cinn_names.size(), 2);
-  EXPECT_EQ(cinn_names, std::vector<std::string>({"cinn_var1", "cinn_var3"}));
-  ASSERT_THROW(MapPaddleVariablesToCinn({"var1", "not_exist"}, varmap),
-               paddle::platform::EnforceNotMet);
+    scope->Var<CinnTensor>("cinn_var1");
+    scope->GetTensor("cinn_var1")->Resize(CinnShape({3, 4}));
+    scope->Var<CinnTensor>("cinn_var2");
+    scope->GetTensor("cinn_var2")->Resize(CinnShape({6, 7, 8}));
+    scope->Var<CinnTensor>("cinn_var3");
+    scope->GetTensor("cinn_var3")->Resize(CinnShape({10, 16}));
+
+    auto& varmap = compiled_object.paddle2cinn_varmap;
+    varmap = {
+        {"var1", "cinn_var1"}, {"var3", "cinn_var3"}, {"var4", "cinn_var4"}};
+  });
+  return compiled_object;
 }
 
-TEST(CinnLaunchOpHelperTest, TestGetCinnTensorsFromCompiledScope) {
-  CinnScope cinn_scope;
-  cinn_scope.Var<CinnTensor>("cinn_var1");
-  cinn_scope.Var<CinnTensor>("cinn_var2");
-  cinn_scope.Var<CinnTensor>("cinn_var3");
+TEST(CinnLaunchContextTest, TestIsVariableUsed) {
+  auto launch_context =
+      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
 
-  auto cinn_tensors =
-      GetCinnTensorsFromCompiledScope({"cinn_var1", "cinn_var3"}, cinn_scope);
-  ASSERT_EQ(cinn_tensors.size(), 2);
-  ASSERT_EQ(cinn_tensors.front().get(),
-            cinn_scope.GetTensor("cinn_var1").get());
-  ASSERT_EQ(cinn_tensors.back().get(), cinn_scope.GetTensor("cinn_var3").get());
-  ASSERT_THROW(
-      GetCinnTensorsFromCompiledScope({"cinn_var1", "not_exist"}, cinn_scope),
-      paddle::platform::EnforceNotMet);
+  ASSERT_EQ(launch_context->IsVariableUsed("var1"), true);
+  ASSERT_EQ(launch_context->IsVariableUsed("var4"), false);
 }
 
-TEST(CinnLaunchOpHelperTest, TestCheckTensorEquivalent) {
+TEST(CinnLaunchContextTest, TestGetInternalVariableNames) {
+  auto launch_context =
+      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
+  auto internal_variable_names = launch_context->GetInternalVariableNames();
+  ASSERT_EQ(internal_variable_names.size(), 1);
+  EXPECT_EQ(*internal_variable_names.begin(), "cinn_var2");
+}
+
+TEST(CinnLaunchContextTest, TestMutableTensorData) {
   platform::CPUPlace place;
   framework::Scope scope;
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
-  tensor1->mutable_data<float>(framework::make_ddim({5, 8}), place);
+  auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
 
-  CinnScope cinn_scope;
-  cinn_scope.Var<CinnTensor>("cinn_var1");
-  auto cinn_tensor1 = cinn_scope.GetTensor("cinn_var1");
-  cinn_tensor1->Resize(CinnShape({5, 8}));
-  cinn_tensor1->set_type(::cinn::common::type_of<float>());
-
-  ASSERT_NO_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1));
-  auto tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
-  ASSERT_THROW(CheckTensorEquivalent("var2", tensor2, cinn_tensor1),
-               paddle::platform::EnforceNotMet);
-
-  cinn_tensor1->Resize(CinnShape({5, 7}));
-  ASSERT_THROW(CheckTensorEquivalent("var1", tensor1, cinn_tensor1),
-               paddle::platform::EnforceNotMet);
-}
-
-TEST(CinnLaunchOpHelperTest, TestTensorMutableDataWithCinnInfo) {
-  platform::CPUPlace place;
-  framework::Scope scope;
-  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
-  CinnScope cinn_scope;
-  cinn_scope.Var<CinnTensor>("cinn_var1");
-  auto cinn_tensor1 = cinn_scope.GetTensor("cinn_var1");
-  cinn_tensor1->Resize(CinnShape({5, 8}));
-
-  ASSERT_NO_THROW(TensorMutableDataWithCinnInfo(place, cinn_tensor1, tensor1));
+  auto launch_context =
+      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
+  // mutable_data on external variable
+  ASSERT_NO_THROW(launch_context->MutableTensorData("var1", place, tensor1));
   ASSERT_TRUE(tensor1->IsInitialized());
-  ASSERT_EQ(tensor1->dims(), framework::make_ddim({5, 8}));
+  ASSERT_EQ(tensor1->dims(), framework::make_ddim({3, 4}));
+  ASSERT_THROW(launch_context->MutableTensorData("not_exist", place, tensor1),
+               paddle::platform::EnforceNotMet);
+
+  // mutable_data on internal variable
+  ASSERT_NO_THROW(
+      launch_context->MutableTensorData("cinn_var2", place, tensor2, true));
+  ASSERT_TRUE(tensor2->IsInitialized());
+  ASSERT_EQ(tensor2->dims(), framework::make_ddim({6, 7, 8}));
 }
 
-TEST(CinnLaunchOpHelperTest, TestSeperateTempVar) {
-  CinnScope cinn_scope;
-  cinn_scope.Var<CinnTensor>("cinn_var1");
-  cinn_scope.Var<CinnTensor>("cinn_var2");
-  cinn_scope.Var<CinnTensor>("cinn_var3");
-  cinn_scope.Var<CinnTensor>("cinn_var4");
-
-  auto temp_names =
-      SeperateTempVar(cinn_scope, {"cinn_var1", "cinn_var2"}, {"cinn_var4"});
-  ASSERT_EQ(temp_names.size(), 1);
-  EXPECT_EQ(temp_names.front(), "cinn_var3");
-}
-
-TEST(CinnLaunchOpHelperTest, TestShareTensorWithCinnBuffer) {
+TEST(CinnLaunchContextTest, TestCheckTensorEquivalent) {
+  auto launch_context =
+      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
   platform::CPUPlace place;
   framework::Scope scope;
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
-  tensor1->mutable_data<float>(framework::make_ddim({5, 6}), place);
+
+  // CheckTensorEquivalent: tensor is not initialized
+  ASSERT_THROW(launch_context->AssignExternalVariable("var1", tensor1),
+               paddle::platform::EnforceNotMet);
+  // CheckTensorEquivalent: tensor dimension not equivalent
+  tensor1->mutable_data<float>(framework::make_ddim({3, 5}), place);
+  ASSERT_THROW(launch_context->AssignExternalVariable("var1", tensor1),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchContextTest, TestAssignVariablePreCondition) {
+  auto launch_context =
+      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
+  platform::CPUPlace place;
+  framework::Scope scope;
+  auto* tensor4 = scope.Var("var4")->GetMutable<LoDTensor>();
+
+  // not used
+  ASSERT_THROW(launch_context->AssignExternalVariable("var4", tensor4),
+               paddle::platform::EnforceNotMet);
+  // not found
+  ASSERT_THROW(launch_context->AssignExternalVariable("cinn_var4", tensor4),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CinnLaunchContextTest, TestSetArgument) {
+  auto launch_context =
+      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
+
+  platform::CPUPlace place;
+  framework::Scope scope;
+  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  tensor1->mutable_data<float>(framework::make_ddim({3, 4}), place);
   auto* data1 = tensor1->data<float>();
   data1[0] = 9.99f;
   data1[10] = 19.99f;
 
-  auto cinn_buffer = ShareTensorWithCinnBuffer(tensor1);
+  // assign external variable
+  ASSERT_NO_THROW(launch_context->AssignExternalVariable("var1", tensor1));
+  auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
+  tensor2->mutable_data<float>(framework::make_ddim({6, 7, 8}), place);
+  ASSERT_NO_THROW(launch_context->AssignInternalVariable("cinn_var2", tensor2));
+  // FinalizeArguments not missed check
+  ASSERT_THROW(launch_context->FinalizeArguments(),
+               paddle::platform::EnforceNotMet);
+  auto* tensor3 = scope.Var("var3")->GetMutable<LoDTensor>();
+  tensor3->mutable_data<float>(framework::make_ddim({10, 16}), place);
+  ASSERT_NO_THROW(launch_context->AssignExternalVariable("var3", tensor3));
+
+  auto name2argument = launch_context->FinalizeArguments();
+  ASSERT_EQ(name2argument.size(), 3);
+  ASSERT_EQ(name2argument.count("cinn_var1"), 1);
+  // check ShareTensorWithCinnBuffer
+  auto* cinn_buffer =
+      static_cast<cinn_buffer_t*>(name2argument.at("cinn_var1"));
+
   ASSERT_NE(cinn_buffer->memory, nullptr);
-  ASSERT_EQ(cinn_buffer->num_elements(), 30);
+  ASSERT_EQ(cinn_buffer->num_elements(), 12);
   auto* shadow_data = reinterpret_cast<float*>(cinn_buffer->memory);
   EXPECT_FLOAT_EQ(shadow_data[0], 9.99f);
   EXPECT_FLOAT_EQ(shadow_data[10], 19.99f);
 }
 
-TEST(CinnLaunchOpHelperTest, TestCheckArgumentsNotMissed) {
-  CinnScope cinn_scope;
-  cinn_scope.Var<CinnTensor>("cinn_var1");
-  cinn_scope.Var<CinnTensor>("cinn_var2");
-  std::map<std::string, cinn_pod_value_t> name2argument(
-      {{"cinn_var1", cinn_pod_value_t()}, {"cinn_var2", cinn_pod_value_t()}});
-
-  ASSERT_NO_THROW(CheckArgumentsNotMissed(cinn_scope, name2argument));
-  name2argument.erase("cinn_var2");
-  ASSERT_THROW(CheckArgumentsNotMissed(cinn_scope, name2argument),
-               paddle::platform::EnforceNotMet);
-}
-
 }  // namespace details
-
 }  // namespace operators
 }  // namespace paddle

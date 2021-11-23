@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+#include <string>
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
@@ -31,20 +32,18 @@ class MessageBus;
 class FleetExecutor final {
  public:
   FleetExecutor() = delete;
-  FleetExecutor(const std::string& exe_desc_str);
+  explicit FleetExecutor(const std::string& exe_desc_str);
   ~FleetExecutor();
   void Init(const paddle::framework::ProgramDesc& program_desc);
   void Run();
   void Release();
-  static std::shared_ptr<Carrier> GetCarrier();
-  static std::shared_ptr<MessageBus> GetMessageBus();
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   FleetExecutorDesc exe_desc_;
   std::unique_ptr<RuntimeGraph> runtime_graph_;
-  static std::shared_ptr<Carrier> global_carrier_;
-  static std::shared_ptr<MessageBus> global_message_bus_;
+  void InitMessageBus();
+  void InitCarrier();
 };
 
 }  // namespace distributed

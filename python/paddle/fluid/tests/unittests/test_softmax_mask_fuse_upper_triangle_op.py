@@ -43,7 +43,7 @@ def _get_softmax_upper(x, fp16=True):
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
-        x = np.random.random((1, 1, 32, 32)).astype("float16")
+        x = np.random.random((1, 4, 32, 32)).astype("float16")
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
         self.outputs = {'Out': rst}
@@ -60,7 +60,7 @@ class TestSoftmaxMaskFuseOp(OpTest):
 class TestSoftmaxMaskFuseOp1(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
-        x = np.random.random((1, 1, 32, 32))
+        x = np.random.random((1, 4, 32, 32))
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
         self.outputs = {'Out': rst}
@@ -90,10 +90,10 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
         for dtype in self.dtypes:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 input_x = fluid.data(
-                    name="x", shape=[1, 1, 32, 32], dtype=dtype)
+                    name="x", shape=[1, 4, 32, 32], dtype=dtype)
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)
 
-                x_in_np = np.random.random((1, 1, 32, 32)).astype(dtype)
+                x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
 
                 exe = fluid.Executor(fluid.CUDAPlace(0))
@@ -105,7 +105,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     def test_dygraph(self):
         for dtype in self.dtypes:
             with fluid.dygraph.guard(fluid.CUDAPlace(0)):
-                x_in_np = np.random.random((1, 1, 32, 32)).astype(dtype)
+                x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
                 input_x = fluid.dygraph.to_variable(x_in_np)
 

@@ -61,6 +61,8 @@ USE_OP(elementwise_max);
 USE_OP(elementwise_div);
 USE_OP(sgd);
 USE_OP(squared_l2_norm);
+USE_OP(memcpy_h2d);
+USE_OP(memcpy_d2h);
 
 paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -75,6 +77,7 @@ paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
 }
 
 int main(int argc, char* argv[]) {
+  paddle::framework::InitDevices();
   std::cout << "main" << std::endl;
   int64_t batch_size = std::stoi(argv[1]);
   paddle::framework::InitDevices();
