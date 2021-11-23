@@ -80,7 +80,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    platform::NPUStreamSync(stream);
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

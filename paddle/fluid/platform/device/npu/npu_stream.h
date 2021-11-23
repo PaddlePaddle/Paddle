@@ -44,16 +44,12 @@ class NPUStream final {
   template <typename Callback>
   void RecordEvent(aclrtEvent ev, Callback callback) const {
     callback();
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(ev, stream_));
+    NPUEventRecord(ev, stream_);
   }
 
-  void RecordEvent(aclrtEvent ev) const {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(ev, stream_));
-  }
+  void RecordEvent(aclrtEvent ev) const { NPUEventRecord(ev, stream_); }
 
-  void WaitEvent(aclrtEvent ev) const {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtStreamWaitEvent(stream_, ev));
-  }
+  void WaitEvent(aclrtEvent ev) const { NPUStreamWaitEvent(stream_, ev); }
 
   void Wait() const;
   void WaitCallback() const { callback_manager_->Wait(); }

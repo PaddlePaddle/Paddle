@@ -326,14 +326,14 @@ void* NPUPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all NPU contexts.
-  auto result = aclrtMallocHost(&p, size);
+  auto result = platform::NPUHostMalloc(&p, size);
 
   if (result == ACL_ERROR_NONE) {
     *index = 1;  // PINNED memory
     npu_pinnd_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "aclrtMallocHost failed.";
+    LOG(WARNING) << "NPUHostMalloc failed.";
     return nullptr;
   }
 
@@ -351,14 +351,13 @@ void NPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
                         "allocated npu pinned memory (%d)",
                         size, npu_pinnd_alloc_size_));
   npu_pinnd_alloc_size_ -= size;
-  err = aclrtFreeHost(p);
+  err = platform::NPUHostFree(p);
 
   if (err != ACL_ERROR_NONE) {
     PADDLE_ENFORCE_EQ(
         err, 0,
         platform::errors::Fatal(
-            "aclrtFreeHost failed in NPUPinnedAllocator, error code is %d",
-            err));
+            "NPUHostFree failed in NPUPinnedAllocator, error code is %d", err));
   }
 }
 

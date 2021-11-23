@@ -74,6 +74,10 @@ int GetCurrentNPUDeviceId() {
   return device_id;
 }
 
+void GetCurrentNPUContext(aclrtContext *context) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(context));
+}
+
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedNPUDevices() {
   // use user specified NPUs in single-node multi-process mode.
@@ -215,6 +219,11 @@ void NPUMemcpyPeerSync(void *dst, int dst_device, const void *src, size_t count,
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(dst, dst_max_count, src, count, kind));
 }
 
+void NPUMemsetSync(void *dst, int value, size_t count, size_t max_count) {
+  max_count = max_count ? max_count : count;
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemset(dst, max_count, value, count));
+}
+
 void NPUMemsetAsync(void *dst, int value, size_t count, aclrtStream stream,
                     size_t max_count) {
   max_count = max_count ? max_count : count;
@@ -222,8 +231,36 @@ void NPUMemsetAsync(void *dst, int value, size_t count, aclrtStream stream,
       aclrtMemsetAsync(dst, max_count, value, count, stream));
 }
 
+void NPUStreamCreate(aclrtStream *stream) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateStream(stream));
+}
+
 void NPUStreamSync(aclrtStream stream) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+}
+
+void NPUStreamDestroy(aclrtStream stream) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyStream(stream));
+}
+
+void NPUEventCreate(aclrtEvent *event) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateEvent(event));
+}
+
+void NPUEventDestroy(aclrtEvent event) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyEvent(event));
+}
+
+void NPUEventRecord(aclrtEvent event, aclrtStream stream) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(event, stream));
+}
+
+void NPUEventQuery(aclrtEvent event, aclrtEventStatus *status) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, status));
+}
+
+void NPUStreamWaitEvent(aclrtStream stream, aclrtEvent event) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtStreamWaitEvent(stream, event));
 }
 
 static void RaiseNonOutOfMemoryError(aclError *status) {
@@ -376,6 +413,18 @@ uint64_t RecordedNPUMallocSize(int dev_id) {
 
 bool IsNPUMallocRecorded(int dev_id) {
   return RecordedNPUMallocHelper::Instance(dev_id)->NeedRecord();
+}
+
+aclError NPUHostMalloc(void **ptr, size_t size) {
+  return aclrtMallocHost(ptr, size);
+}
+
+aclError NPUHostFree(void *ptr) { return aclrtFreeHost(ptr); }
+
+void NPULaunchCallback(aclrtCallback fn, void *userData,
+                       aclrtCallbackBlockType blockType, aclrtStream stream) {
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      aclrtLaunchCallback(fn, userData, blockType, stream));
 }
 
 AclInstance::~AclInstance() {}

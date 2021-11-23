@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include "acl/acl.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -32,11 +31,15 @@ int GetNPUDeviceCount();
 
 //! Get the runtime version of the ith NPU
 std::string GetNPURuntimeVersion(int id);
+
 //! Check if this device can access peer or not.
 int NPUCanAccessPeer(int src, int dst);
 
 //! Get the current NPU device id in system.
 int GetCurrentNPUDeviceId();
+
+//! Get the current NPU context.
+void GetCurrentNPUContext(aclrtContext *context);
 
 //! Get the current NPU stream.
 int GetCurrentStream();
@@ -81,6 +84,9 @@ void NPUMemcpyAsync(void *dst, const void *src, size_t count,
 void NPUMemcpySync(void *dst, const void *src, size_t count,
                    enum aclrtMemcpyKind kind, size_t dst_max_count = 0);
 
+//! Set memory dst with value count size synchronously.
+void NPUMemsetSync(void *dst, int value, size_t count, size_t max_count = 0);
+
 //! Set memory dst with value count size asynchronously
 void NPUMemsetAsync(void *dst, int value, size_t count, aclrtStream stream,
                     size_t max_count = 0);
@@ -94,8 +100,35 @@ void NPUMemcpyPeerAsync(void *dst, int dst_device, const void *src,
 void NPUMemcpyPeerSync(void *dst, int dst_device, const void *src,
                        int src_device, size_t count, size_t max_count = 0);
 
+//! Create NPU stream.
+void NPUStreamCreate(aclrtStream *stream);
+
 //! Blocks until stream has completed all operations.
 void NPUStreamSync(aclrtStream stream);
+
+//! Destroy NPU stream.
+void NPUStreamDestroy(aclrtStream stream);
+
+//! Create NPU Event.
+void NPUEventCreate(aclrtEvent *event);
+
+//! Destroy NPU Event.
+void NPUEventDestroy(aclrtEvent event);
+
+//! Query NPU event status.
+void NPUEventQuery(aclrtEvent event, aclrtEventStatus *status);
+
+//! Record NPU event in the stream.
+void NPUEventRecord(aclrtEvent event, aclrtStream stream);
+
+//! Makes a stream wait on an event.
+void NPUStreamWaitEvent(aclrtStream stream, aclrtEvent event);
+
+//! Alloc host or device memory.
+aclError NPUHostMalloc(void **ptr, size_t size);
+
+//! Frees host or device memory.
+aclError NPUHostFree(void *ptr);
 
 //! aclrtMalloc with recorded info
 aclError RecordedNPUMalloc(void **ptr, size_t size, int dev_id);
@@ -111,6 +144,10 @@ bool RecordedNPUMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
 uint64_t RecordedNPUMallocSize(int dev_id);
 
 bool IsNPUMallocRecorded(int dev_id);
+
+//! Adds a callback function executed on the host or device to the stream.
+void NPULaunchCallback(aclrtCallback fn, void *userData,
+                       aclrtCallbackBlockType blockType, aclrtStream stream);
 
 class NPUDeviceGuard {
  public:

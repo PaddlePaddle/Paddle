@@ -27,12 +27,11 @@
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/dynload/hccl.h"
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #endif
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/enforce_npu.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
 #define HCCL_ID_VARNAME "HCCLID"
@@ -138,7 +137,7 @@ struct HCCLContextMap {
           }
           VLOG(1) << "init hccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          aclrtSetDevice(gpu_id);
+          SetNPUDeviceId(gpu_id);
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclCommInitRootInfo(
               nranks, hccl_id, rank, comms.get() + i));
         }

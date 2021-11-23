@@ -25,7 +25,7 @@ bool NPUStream::Init(const Place& place) {
                         "NPU stream must be created using npu place."));
   place_ = place;
   NPUDeviceGuard guard(BOOST_GET_CONST(NPUPlace, place_).device);
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateStream(&stream_));
+  NPUStreamCreate(&stream_);
   callback_manager_.reset(new StreamCallbackManager<aclrtStream>(stream_));
   VLOG(3) << "NPUStream Init stream: " << stream_;
   return true;
@@ -36,14 +36,12 @@ void NPUStream::Destroy() {
   Wait();
   WaitCallback();
   if (stream_) {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyStream(stream_));
+    NPUStreamDestroy(stream_);
   }
   stream_ = nullptr;
 }
 
-void NPUStream::Wait() const {
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
-}
+void NPUStream::Wait() const { NPUStreamSync(stream_); }
 
 }  // namespace stream
 }  // namespace platform
