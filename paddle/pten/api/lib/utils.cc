@@ -18,16 +18,23 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/registry.h"
+#include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infershape.h"
+
+PT_DECLARE_MODULE(UtilsCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(UtilsCUDA);
+#endif
 
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor to(const Tensor& x, Backend backend, bool blocking) {
+PD_DLL_DECL Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
