@@ -19,7 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/transform.h"
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/context.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/manipulation.h"
 
