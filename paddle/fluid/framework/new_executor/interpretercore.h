@@ -40,9 +40,10 @@ using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
  public:
-  InterpreterCore(const platform::Place& place, const BlockDesc& block,
-                  VariableScope* global_scope,
-                  const std::string& fetch_var_name = "");
+  InterpreterCore(
+      const platform::Place& place, const BlockDesc& block,
+      VariableScope* global_scope,
+      const std::string& fetch_var_name = interpreter::kFetchVarName);
 
   ~InterpreterCore();
 
