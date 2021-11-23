@@ -209,6 +209,8 @@ void BindGraphPyClient(py::module* m) {
       .def("start_client", &GraphPyClient::start_client)
       .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighbors)
       .def("batch_sample_neighbors", &GraphPyClient::batch_sample_neighbors)
+      .def("use_neighbors_sample_cache",
+           &GraphPyClient::use_neighbors_sample_cache)
       .def("remove_graph_node", &GraphPyClient::remove_graph_node)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
       .def("stop_server", &GraphPyClient::stop_server)

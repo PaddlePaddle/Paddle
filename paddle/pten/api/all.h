@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/pten/api/include/manipulation.h"
 #include "paddle/pten/api/include/math.h"
 #include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/api/include/utils.h"
 
 // pten common headers
 #include "paddle/pten/common/backend.h"
@@ -43,11 +44,3 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/api/ext/op_meta_info.h"
 #include "paddle/pten/api/ext/place.h"
-
-// api symbols declare, remove in the future
-#include "paddle/pten/api/include/registry.h"
-
-PT_DECLARE_API(Creation);
-PT_DECLARE_API(Linalg);
-PT_DECLARE_API(Manipulation);
-PT_DECLARE_API(Math);

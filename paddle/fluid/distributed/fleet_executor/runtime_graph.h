@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
@@ -43,6 +44,7 @@ class RuntimeGraph final {
   const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank() const {
     return intercepter_id_to_rank_;
   }
+  std::string DebugString() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
