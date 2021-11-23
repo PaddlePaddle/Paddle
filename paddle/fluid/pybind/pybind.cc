@@ -119,6 +119,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/npu_profiler.h"
 #endif
@@ -2123,6 +2124,16 @@ All parameter, weight, gradient are variables in Paddle.
              }
              return py::cast(std::move(ret));
            })
+      .def("run",
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names,
+              std::vector<std::string> fetch_names) {
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, fetch_names);
+             }
+             return py::cast(std::move(ret));
+           })
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
@@ -2443,6 +2454,8 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
   m.def("npu_finalize", []() {
+    platform::HCCLCommContext::Instance().ReleaseHCCLComms();
+
     auto &pool = platform::DeviceContextPool::Instance();
     auto devices = platform::GetSelectedNPUDevices();
     for (size_t i = 0; i < devices.size(); ++i) {
@@ -2498,13 +2511,13 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
-  m.def("register_pass", [](const std::string &pass_type,
-                            const py::object &callable) {
+  m.def("register_pass", [](const std::string &pass_type, py::object callable) {
     PADDLE_ENFORCE_EQ(
         framework::ir::PassRegistry::Instance().Has(pass_type), false,
         platform::errors::AlreadyExists(
             "Pass '%s' is registered more than once. Please use another name.",
             pass_type));
+    callable.inc_ref();
     framework::ir::PassRegistry::Instance().Insert(pass_type, [pass_type,
                                                                callable]() {
       py::gil_scoped_acquire guard;

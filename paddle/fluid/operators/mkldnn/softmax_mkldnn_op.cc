@@ -103,9 +103,13 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     // For Inplace src and and dst are the same memory object
-    auto softmax_dst_memory_p =
-        is_inplaced ? softmax_src_memory_p : handler.AcquireDstMemory(output);
-
+    std::shared_ptr<dnnl::memory> softmax_dst_memory_p = nullptr;
+    if (is_inplaced) {
+      softmax_dst_memory_p = softmax_src_memory_p;
+      output->mutable_data<T>(ctx.GetPlace());
+    } else {
+      softmax_dst_memory_p = handler.AcquireDstMemory(output);
+    }
     auto softmax_p = handler.AcquireForwardPrimitive();
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();

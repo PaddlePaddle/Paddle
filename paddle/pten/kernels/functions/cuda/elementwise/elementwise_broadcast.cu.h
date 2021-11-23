@@ -196,7 +196,7 @@ template <typename InT,
           int VecSize,
           int Rank,
           bool IsBoundary = false>
-__device__ void DealSegment(
+__device__ void ElementwiseBroadcastKernelImpl(
     const paddle::framework::Array<const InT *__restrict__, Arity> &ins,
     OutT *out,
     const paddle::framework::Array<bool, Arity> &use_broadcast,
@@ -204,11 +204,10 @@ __device__ void DealSegment(
     const paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
         &configs,
     int num,
+    int block_offset,
     Functor func) {
   InT args[Arity][VecSize];
   OutT result[VecSize];
-
-  int block_offset = blockIdx.x * blockDim.x * VecSize;
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -240,27 +239,73 @@ template <typename InT,
           int Arity,
           int VecSize,
           int Rank>
-__global__ void BroadcastKernel(
+__global__ void ElementwiseBroadcastKernel(
     paddle::framework::Array<const InT *__restrict__, Arity> ins,
     OutT *out,
     paddle::framework::Array<bool, Arity> use_broadcast,
     uint32_t numel,
     paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
         configs,
-    int main_tid,
+    int main_offset,
     int tail_tid,
     Functor func) {
-  int block_offset = blockIdx.x * blockDim.x * VecSize;
-  // data offset of this block
-  if (blockIdx.x < main_tid) {
-    int num = blockDim.x * VecSize;  // blockIdx.x < main_tid
-    pten::DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, false>(
-        ins, out, use_broadcast, numel, configs, num, func);
-  } else {  // reminder
-    int num = tail_tid;
-    pten::DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, true>(
-        ins, out, use_broadcast, numel, configs, num, func);
+  int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
+  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+#ifdef PADDLE_WITH_XPU2
+  for (; block_offset < main_offset; block_offset += stride) {
+    ElementwiseBroadcastKernelImpl<InT,
+                                   OutT,
+                                   Functor,
+                                   Arity,
+                                   VecSize,
+                                   Rank,
+                                   false>(ins,
+                                          out,
+                                          use_broadcast,
+                                          numel,
+                                          configs,
+                                          BLOCK_NUM_X * VecSize,
+                                          block_offset,
+                                          func);
   }
+  if (block_offset < numel) {
+    ElementwiseBroadcastKernelImpl<InT,
+                                   OutT,
+                                   Functor,
+                                   Arity,
+                                   VecSize,
+                                   Rank,
+                                   true>(
+        ins, out, use_broadcast, numel, configs, tail_tid, block_offset, func);
+  }
+
+#else
+  if (block_offset < main_offset) {
+    ElementwiseBroadcastKernelImpl<InT,
+                                   OutT,
+                                   Functor,
+                                   Arity,
+                                   VecSize,
+                                   Rank,
+                                   false>(ins,
+                                          out,
+                                          use_broadcast,
+                                          numel,
+                                          configs,
+                                          BLOCK_NUM_X * VecSize,
+                                          block_offset,
+                                          func);
+  } else {
+    ElementwiseBroadcastKernelImpl<InT,
+                                   OutT,
+                                   Functor,
+                                   Arity,
+                                   VecSize,
+                                   Rank,
+                                   true>(
+        ins, out, use_broadcast, numel, configs, tail_tid, block_offset, func);
+  }
+#endif
 }
 
 template <typename InT,
@@ -278,7 +323,7 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
   const int threads = 256;
   int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
 
-  int main_tid = numel / (VecSize * threads);
+  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
   int tail_tid = numel % (VecSize * threads);
   auto stream = ctx.stream();
   OutT *out_data = out->mutable_data<OutT>();
@@ -298,20 +343,40 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
-
-  BroadcastKernel<InT,
-                  OutT,
-                  Functor,
-                  Arity,
-                  VecSize,
-                  Rank><<<blocks, threads, 0, stream>>>(ins_data,
-                                                        out_data,
-                                                        use_broadcast,
-                                                        numel,
-                                                        configs,
-                                                        main_tid,
-                                                        tail_tid,
-                                                        func);
+#ifdef PADDLE_WITH_XPU2
+  threads = 128;
+  blocks = 8;
+  main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  tail_tid = numel % (VecSize * threads);
+  ElementwiseBroadcastKernel<InT,
+                             OutT,
+                             Functor,
+                             Arity,
+                             VecSize,
+                             Rank><<<blocks, threads, stream>>>(ins_data,
+                                                                out_data,
+                                                                use_broadcast,
+                                                                numel,
+                                                                configs,
+                                                                main_offset,
+                                                                tail_tid,
+                                                                func);
+#else
+  ElementwiseBroadcastKernel<InT,
+                             OutT,
+                             Functor,
+                             Arity,
+                             VecSize,
+                             Rank><<<blocks, threads, 0, stream>>>(
+      ins_data,
+      out_data,
+      use_broadcast,
+      numel,
+      configs,
+      main_offset,
+      tail_tid,
+      func);
+#endif
 }
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>

@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
+#include "paddle/fluid/imperative/hccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -549,13 +550,20 @@ static void ParseIndexingSlice(
   // specified_dims is the number of dimensions which indexed by Interger,
   // Slices.
   int specified_dims = 0;
+  int ell_count = 0;
   for (int dim = 0; dim < size; ++dim) {
     PyObject *slice_item = PyTuple_GetItem(index, dim);
     if (PyCheckInteger(slice_item) || PySlice_Check(slice_item)) {
       specified_dims++;
+    } else if (slice_item == Py_Ellipsis) {
+      ell_count++;
     }
   }
 
+  PADDLE_ENFORCE_LE(ell_count, 1,
+                    platform::errors::InvalidArgument(
+                        "An index can only have a single ellipsis ('...')"));
+  int none_count = 0;
   for (int i = 0, dim = 0; i < size; ++i) {
     PyObject *slice_item = PyTuple_GetItem(index, i);
 
@@ -601,7 +609,8 @@ static void ParseIndexingSlice(
     } else if (slice_item == Py_Ellipsis) {
       dim += rank - specified_dims;
     } else if (slice_item == Py_None) {
-      none_axes->push_back(dim);
+      none_axes->push_back(dim + none_count);
+      none_count++;
     } else if (PyList_Check(slice_item)) {
       *list_select_flag = true;
       PADDLE_ENFORCE_EQ(
@@ -660,7 +669,7 @@ static void ParseIndexingSlice(
   }
 
   // valid_index is the number of dimensions exclude None index
-  const int valid_indexs = size - none_axes->size();
+  const int valid_indexs = size - none_axes->size() - ell_count;
   PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
                     platform::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",
@@ -1207,29 +1216,6 @@ void BindImperative(py::module *m_ptr) {
                    axis -= len;
                  }
 
-                 // Deal with cases that there are more than one
-                 // prefix none index, For example:
-                 // [None, None, :, :, None]
-                 // the none_axes int the return of ParseIndexingSlice is:
-                 // [0,    0,          2   ]
-                 // according to the interface of "unsqueeze2",
-                 // we should convert it to:
-                 // [0,    0,          4   ]
-                 int prefix_zero_cnt = 0;
-                 for (const auto &axis : none_axes) {
-                   if (axis == 0) {
-                     prefix_zero_cnt++;
-                   } else {
-                     break;
-                   }
-                 }
-                 if (prefix_zero_cnt > 0) {
-                   int none_axes_num = static_cast<int>(none_axes.size());
-                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
-                     none_axes[i] += prefix_zero_cnt;
-                   }
-                 }
-
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
                  framework::AttributeMap attrs = {{"axes", none_axes}};
                  auto new_out = std::shared_ptr<imperative::VarBase>(
@@ -1633,6 +1619,21 @@ void BindImperative(py::module *m_ptr) {
                      "gradient or without gradient."));
              return self.GradVarBase()->RemoveVariableWrapperHook(hook_id);
            })
+      .def("_register_void_function_post_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register void function post hook on a Tensor that "
+                     "stop "
+                     "gradient or without gradient."));
+             auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
+             auto grad_node = self.MutableGradVarBase()->GradNode();
+             for (auto &cur_op : *grad_node) {
+               cur_op.AddVoidFunctionPostHook(
+                   std::make_shared<std::function<void()>>(py_func));
+             }
+           })
       .def("_register_backward_hook",
            [](imperative::VarBase &self, const py::handle &hook) {
              PADDLE_ENFORCE_EQ(
@@ -1903,54 +1904,50 @@ void BindImperative(py::module *m_ptr) {
       .def("_clear",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              t->clear();
            })
       .def("_offset",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->offset();
            })
-      .def("_share_buffer_with",
+      .def("_share_buffer_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
-              std::shared_ptr<imperative::VarBase> &target_t) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *t_t =
-                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             t->ShareBufferWith(*t_t);
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 src->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             dst_->ShareBufferWith(*src);
            })
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
-              std::shared_ptr<imperative::VarBase> &target_t) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *t_t =
-                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             return t->IsSharedBufferWith(*t_t);
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+               return false;
+             }
+             return dst_->IsSharedBufferWith(*src);
            })
       .def("_slice",
            [](const std::shared_ptr<imperative::VarBase> &self,
               int64_t begin_idx, int64_t end_idx) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->Slice(begin_idx, end_idx);
            })
       .def("_copy_gradient_from",
@@ -1959,9 +1956,10 @@ void BindImperative(py::module *m_ptr) {
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,
@@ -2328,6 +2326,18 @@ void BindImperative(py::module *m_ptr) {
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HCCLParallelContext>>(
+      m, "HCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::NPUPlace &>())
+      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::HCCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
 

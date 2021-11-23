@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/backend.h"
 
 TEST(Backend, OStream) {
@@ -42,7 +43,7 @@ TEST(Backend, OStream) {
   oss.str("");
   try {
     oss << pten::Backend::NUM_BACKENDS;
-  } catch (paddle::platform::EnforceNotMet &exception) {
+  } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum backend type") != std::string::npos);
   }

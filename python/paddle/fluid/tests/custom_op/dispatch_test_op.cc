@@ -27,8 +27,7 @@ void assign_cpu_kernel(const data_t* x_data,
 }
 
 std::vector<paddle::Tensor> DispatchTestInterger(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_INTEGRAL_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -46,8 +45,7 @@ PD_BUILD_OP(dispatch_test_integer)
 
 std::vector<paddle::Tensor> DispatchTestFloatAndInteger(
     const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -64,8 +62,7 @@ PD_BUILD_OP(dispatch_test_float_and_integer)
     .SetKernelFn(PD_KERNEL(DispatchTestFloatAndInteger));
 
 std::vector<paddle::Tensor> DispatchTestComplex(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_COMPLEX_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -83,8 +80,7 @@ PD_BUILD_OP(dispatch_test_complex)
 
 std::vector<paddle::Tensor> DispatchTestFloatAndComplex(
     const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -102,8 +98,7 @@ PD_BUILD_OP(dispatch_test_float_and_complex)
 
 std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAndComplex(
     const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -120,8 +115,7 @@ PD_BUILD_OP(dispatch_test_float_and_integer_and_complex)
     .SetKernelFn(PD_KERNEL(DispatchTestFloatAndIntegerAndComplex));
 
 std::vector<paddle::Tensor> DispatchTestFloatAndHalf(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_AND_HALF_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
