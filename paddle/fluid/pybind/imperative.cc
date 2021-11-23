@@ -1628,15 +1628,10 @@ void BindImperative(py::module *m_ptr) {
                      "stop "
                      "gradient or without gradient."));
              auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
-             VLOG(1) << 111;
              auto grad_node = self.MutableGradVarBase()->GradNode();
-             VLOG(1) << 222;
-             VLOG(1) << (grad_node == nullptr);
              for (auto &cur_op : *grad_node) {
-               VLOG(1) << 333;
                cur_op.AddVoidFunctionPostHook(
                    std::make_shared<std::function<void()>>(py_func));
-               VLOG(1) << 444;
              }
            })
       .def("_register_backward_hook",

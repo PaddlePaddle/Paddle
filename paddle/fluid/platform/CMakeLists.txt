@@ -68,11 +68,6 @@ ENDIF()
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
-if(WITH_XPU)
-cc_library(xpu_info SRCS xpu/xpu_info.cc DEPS gflags glog enforce xpulib)
-cc_library(xpu_op_list SRCS xpu/xpu_op_list.cc DEPS gflags glog enforce xpulib device_context)
-endif()
-
 add_subdirectory(device)
 add_subdirectory(dynload)
 add_subdirectory(stream)
