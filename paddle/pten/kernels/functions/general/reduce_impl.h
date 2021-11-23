@@ -69,7 +69,7 @@ void Reduce(const DeviceContext& dev_ctx,
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(
-        out_dtype, "SumKernelImpl", ([&] {
+        out_dtype, "ReduceKernlImpl", ([&] {
           pten::eigen::ReduceKernlImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
