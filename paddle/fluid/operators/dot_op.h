@@ -20,7 +20,9 @@
 #include "paddle/fluid/platform/for_range.h"
 
 // only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/context.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/linalg.h"
 

@@ -34,6 +34,7 @@ class DeviceContext {
 
   virtual ~DeviceContext() {}
 
+  // TODO(wilber): Should not be a virtual function?
   virtual void Wait() {}
 
  protected:

@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 // only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/device_context_pool.h"
+#include "paddle/pten/core/context.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/math.h"
 

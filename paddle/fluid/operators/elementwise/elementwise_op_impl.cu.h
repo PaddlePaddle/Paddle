@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/function_traits.h"
 
 // only can include the headers in paddle/top/api dirs
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/context.h"
 #include "paddle/pten/include/core.h"

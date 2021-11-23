@@ -17,6 +17,8 @@
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
+#include "paddle/pten/api/lib/device_context_pool.h"
+#include "paddle/pten/core/context.h"
 
 namespace paddle {
 namespace operators {

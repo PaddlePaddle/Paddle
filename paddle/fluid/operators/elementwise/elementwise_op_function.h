@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/transform.h"
 
 // only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/api/lib/device_context_pool.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/context.h"
 #include "paddle/pten/kernels/functions/cpu/elementwise.h"
