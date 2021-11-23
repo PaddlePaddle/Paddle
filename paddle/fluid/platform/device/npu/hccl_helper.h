@@ -14,8 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#ifdef PADDLE_WITH_ASCEND_CL
 
 #include <stdio.h>
 #include <memory>
@@ -25,10 +24,8 @@
 #include <unordered_map>
 #include <vector>
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/dynload/hccl.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
-#endif
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/collective_helper.h"
