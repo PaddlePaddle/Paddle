@@ -195,4 +195,50 @@ namespace paddle {
 
 // TODO(chenweihang): Add more Marcos in the future if needed
 
+#define PD_VISIT_ALL_TYPES(TYPE, NAME, ...)                                   \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::pten::DataType::BOOL, bool, __VA_ARGS__)   \
+      PD_PRIVATE_CASE_TYPE(NAME, ::pten::DataType::INT8, int8_t, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::UINT8, uint8_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::INT16, int16_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::UINT16, uint16_t, __VA_ARGS__)              \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::INT32, int32_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::UINT32, uint32_t, __VA_ARGS__)              \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::INT64, int64_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::UINT64, uint64_t, __VA_ARGS__)              \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           ::pten::DataType::BFLOAT16,                        \
+                           paddle::experimental::bfloat16,                    \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           ::pten::DataType::FLOAT16,                         \
+                           paddle::experimental::float16,                     \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::FLOAT32, float, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::pten::DataType::FLOAT64, double, __VA_ARGS__)               \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           ::pten::DataType::COMPLEX64,                       \
+                           paddle::experimental::complex64,                   \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           ::pten::DataType::COMPLEX128,                      \
+                           paddle::experimental::complex128,                  \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(               \
+            "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));    \
+    }                                                                         \
+  }()
+
 }  // namespace paddle
