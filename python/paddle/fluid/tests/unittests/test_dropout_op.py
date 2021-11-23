@@ -407,7 +407,7 @@ class TestDropoutFAPI(unittest.TestCase):
                                fetch_list=[res13])
             self.assertTrue(
                 np.isclose(
-                    np.sum(fetches3[0]) / np.sum(in_np), 0.7, atol=1e-04))
+                    np.sum(fetches3[0]) / np.sum(in_np2), 0.7, atol=1e-04))
 
     def test_static(self):
         for place in self.places:
