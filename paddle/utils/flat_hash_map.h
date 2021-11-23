@@ -590,9 +590,9 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
       }
     }
     if (end_it == this->end()) return this->end();
-    ptrdiff_t num_to_move =
-        (std::min)(static_cast<ptrdiff_t>(end_it.current->distance_from_desired),
-                 end_it.current - begin_it.current);
+    ptrdiff_t num_to_move = (std::min)(
+        static_cast<ptrdiff_t>(end_it.current->distance_from_desired),
+        end_it.current - begin_it.current);
     EntryPointer to_return = end_it.current - num_to_move;
     for (EntryPointer it = end_it.current; !it->is_at_desired_position();) {
       EntryPointer target = it - num_to_move;
@@ -600,8 +600,8 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
                       std::move(it->value));
       it->destroy_value();
       ++it;
-      num_to_move = (std::min)(static_cast<ptrdiff_t>(it->distance_from_desired),
-                             num_to_move);
+      num_to_move = (std::min)(
+          static_cast<ptrdiff_t>(it->distance_from_desired), num_to_move);
     }
     return {to_return};
   }
@@ -683,8 +683,8 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
         num_elements / (std::min)(0.5, static_cast<double>(_max_load_factor))));
   }
   void rehash_for_other_container(const sherwood_v3_table &other) {
-    rehash(
-        (std::min)(num_buckets_for_reserve(other.size()), other.bucket_count()));
+    rehash((std::min)(num_buckets_for_reserve(other.size()),
+                      other.bucket_count()));
   }
 
   void swap_pointers(sherwood_v3_table &other) {
