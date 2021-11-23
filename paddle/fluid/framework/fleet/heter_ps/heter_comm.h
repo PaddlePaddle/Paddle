@@ -178,7 +178,7 @@ class HeterComm {
   std::vector<Table*> tables_;
   std::shared_ptr<HeterPsResource> resource_;
   CustomGradMerger merger_;
-  int topo_aware_{1};
+  int topo_aware_{0};
   std::vector<std::vector<Path>> path_;
   std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};

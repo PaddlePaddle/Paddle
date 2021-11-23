@@ -115,14 +115,14 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
   path_.resize(total_gpu);
 
   if (!topo_aware_) {
-    VLOG(3) << "init path without topo aware";
+    VLOG(0) << "init path without topo aware";
     for (int i = 0; i < total_gpu; ++i) {
       path_[i].resize(total_gpu);
       for (int j = 0; j < total_gpu; ++j) {
         auto& nodes = path_[i][j].nodes_;
         nodes.resize(1);
         nodes[0].in_stream = resource_->comm_stream(i, j);
-        nodes[0].out_stream = resource_->comm_stream(j, i);
+        nodes[0].out_stream = resource_->comm_stream(i, j);
         nodes[0].key_storage = NULL;
         nodes[0].val_storage = NULL;
         nodes[0].sync = 0;
@@ -130,7 +130,7 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
       }
     }
   } else {
-    VLOG(3) << "init path with topo aware";
+    VLOG(0) << "init path with topo aware";
     for (int i = 0; i < total_gpu; ++i) {
       path_[i].resize(total_gpu);
       for (int j = 0; j < total_gpu; ++j) {
@@ -482,8 +482,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
-  cudaMemset(d_left_ptr, -1, total_gpu * sizeof(int));
-  cudaMemset(d_right_ptr, -1, total_gpu * sizeof(int));
+  cudaMemsetAsync(d_left_ptr, -1, total_gpu * sizeof(int), stream);
+  cudaMemsetAsync(d_right_ptr, -1, total_gpu * sizeof(int), stream);
   //
   auto d_idx = memory::AllocShared(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
@@ -505,43 +505,50 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   cudaMemcpy(h_right, d_right_ptr, total_gpu * sizeof(int),
              cudaMemcpyDeviceToHost);
 
-  std::vector<std::shared_ptr<memory::Allocation>> local_storage;
+  //std::vector<std::shared_ptr<memory::Allocation>> local_storage;
 
-  for (int i = 0; i < total_gpu; ++i) {
-    int shard_len = h_right[i] - h_left[i] + 1;
-    if (shard_len == 0) {
-      continue;
-    }
-    create_storage(num, i, shard_len * sizeof(KeyType),
-                   shard_len * sizeof(ValType), local_storage);
-  }
+  //for (int i = 0; i < total_gpu; ++i) {
+  //  int shard_len = h_right[i] - h_left[i] + 1;
+  //  if (shard_len == 0) {
+  //    continue;
+  //  }
+  //  create_storage(num, i, shard_len * sizeof(KeyType),
+  //                 shard_len * sizeof(ValType), local_storage);
+  //}
 
-  walk_to_dest(num, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
+  //walk_to_dest(num, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
 
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
       continue;
     }
-    auto& node = path_[num][i].nodes_.back();
-    cudaStreamSynchronize(node.in_stream);
+    // auto& node = path_[num][i].nodes_.back();
+    // cudaStreamSynchronize(node.in_stream);
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     tables_[i]->rwlock_->RDLock();
-    tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
-                    reinterpret_cast<ValType*>(node.val_storage),
+    //tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+    //                reinterpret_cast<ValType*>(node.val_storage),
+    //                h_right[i] - h_left[i] + 1,
+    //                resource_->remote_stream(i, num));
+    tables_[i]->get(d_shard_keys_ptr + h_left[i],
+                    d_shard_vals_ptr + h_left[i],
                     h_right[i] - h_left[i] + 1,
                     resource_->remote_stream(i, num));
   }
   for (int i = 0; i < total_gpu; ++i) {
     cudaStreamSynchronize(resource_->remote_stream(i, num));
+    if (h_left[i] == -1) {
+      continue;
+    }
     tables_[i]->rwlock_->UNLock();
   }
 
-  walk_to_src(num, total_gpu, h_left, h_right, d_shard_vals_ptr);
+  //walk_to_src(num, total_gpu, h_left, h_right, d_shard_vals_ptr);
 
-  for (int i = 0; i < total_gpu; ++i) {
-    auto& node = path_[num][i].nodes_.front();
-    cudaStreamSynchronize(node.out_stream);
-  }
+  //for (int i = 0; i < total_gpu; ++i) {
+  //  auto& node = path_[num][i].nodes_.front();
+  //  cudaStreamSynchronize(node.out_stream);
+  //}
 
   fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, d_vals,
                                                     d_idx_ptr, len);
@@ -572,8 +579,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
-  cudaMemset(d_left_ptr, -1, total_gpu * sizeof(int));
-  cudaMemset(d_right_ptr, -1, total_gpu * sizeof(int));
+  cudaMemsetAsync(d_left_ptr, -1, total_gpu * sizeof(int), stream);
+  cudaMemsetAsync(d_right_ptr, -1, total_gpu * sizeof(int), stream);
   //
   auto d_idx = memory::AllocShared(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
@@ -603,36 +610,42 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
   cudaMemcpy(h_right, d_right_ptr, total_gpu * sizeof(int),
              cudaMemcpyDeviceToHost);
 
-  std::vector<std::shared_ptr<memory::Allocation>> local_storage;
+  //std::vector<std::shared_ptr<memory::Allocation>> local_storage;
+  //for (int i = 0; i < total_gpu; ++i) {
+  //  int shard_len = h_right[i] - h_left[i] + 1;
+  //  if (h_left[i] == -1 || h_right[i] == -1) {
+  //    continue;
+  //  }
+  //  create_storage(gpu_num, i, shard_len * sizeof(KeyType),
+  //                 shard_len * sizeof(GradType), local_storage);
+  //}
+
+  //walk_to_dest(gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr,
+  //             d_shard_grads_ptr);
+
   for (int i = 0; i < total_gpu; ++i) {
-    int shard_len = h_right[i] - h_left[i] + 1;
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
-    create_storage(gpu_num, i, shard_len * sizeof(KeyType),
-                   shard_len * sizeof(GradType), local_storage);
-  }
-
-  walk_to_dest(gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr,
-               d_shard_grads_ptr);
-
-  for (int i = 0; i < total_gpu; ++i) {
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
-    }
-    auto& node = path_[gpu_num][i].nodes_.back();
-    cudaStreamSynchronize(node.in_stream);
+    //auto& node = path_[gpu_num][i].nodes_.back();
+    //cudaStreamSynchronize(node.in_stream);
 
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     tables_[i]->rwlock_->WRLock();
-    tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
-                       reinterpret_cast<GradType*>(node.val_storage),
+    //tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
+    //                   reinterpret_cast<GradType*>(node.val_storage),
+    //                   h_right[i] - h_left[i] + 1, sgd,
+    //                   resource_->remote_stream(i, gpu_num));
+    tables_[i]->update(d_shard_keys_ptr + h_left[i],
+                       d_shard_grads_ptr + h_left[i],
                        h_right[i] - h_left[i] + 1, sgd,
                        resource_->remote_stream(i, gpu_num));
   }
   for (int i = 0; i < total_gpu; ++i) {
     cudaStreamSynchronize(resource_->remote_stream(i, gpu_num));
-    tables_[i]->rwlock_->UNLock();
+    if (h_left[i] != -1) {
+        tables_[i]->rwlock_->UNLock();
+    }
   }
 }
 
