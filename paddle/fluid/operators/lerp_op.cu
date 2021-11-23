@@ -17,17 +17,11 @@
 REGISTER_OP_CUDA_KERNEL(
     lerp,
     paddle::operators::LerpKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::LerpKernel<paddle::platform::CUDADeviceContext, double>,
-    paddle::operators::LerpKernel<paddle::platform::CUDADeviceContext, int>,
-    paddle::operators::LerpKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+    paddle::operators::LerpKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     lerp_grad,
     paddle::operators::LerpGradKernel<paddle::platform::CUDADeviceContext,
                                       float>,
     paddle::operators::LerpGradKernel<paddle::platform::CUDADeviceContext,
-                                      double>,
-    paddle::operators::LerpGradKernel<paddle::platform::CUDADeviceContext, int>,
-    paddle::operators::LerpGradKernel<paddle::platform::CUDADeviceContext,
-                                      int64_t>);
+                                      double>);

@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
+import paddle.fluid.core as core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -34,15 +35,12 @@ class TestLerp(OpTest):
     def setUp(self):
         self.op_type = "lerp"
         self.init_dtype()
-        x = np.arange(1., 5.).astype(self.dtype)
-        y = np.full(4, 10.).astype(self.dtype)
-        w = np.asarray([0.5]).astype(self.dtype)
-        self.inputs = {
-            'X': x,
-            'Y': y,
-            'Weight': w,
-        }
-        self.outputs = {'Out': x + w * (y - x)}
+        x = np.arange(1., 101.).astype(self.dtype)
+        y = np.full(100, 10.).astype(self.dtype)
+        # w = np.asarray([0.5]).astype(self.dtype)
+        self.attrs = {'WeightValue': 0.5}
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': x + 0.5 * (y - x)}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -52,18 +50,6 @@ class TestLerp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
-
-
-class TestLerpFloat(TestLerp):
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X1', 'X2'],
-            'Out',
-            user_defined_grads=lerp_grad(self.inputs['X'], self.inputs['Y'],
-                                         self.outputs['Out']))
 
 
 class TestLerpAPI(unittest.TestCase):
@@ -89,9 +75,12 @@ class TestLerpAPI(unittest.TestCase):
                 y = paddle.fluid.data('y', [1, 4], dtype=self.dtype)
                 out = paddle.lerp(x, y, 0.5)
                 exe = paddle.static.Executor(place)
-                res = exe.run(feed={'x': self.x, 'y': self.y})
+                res = exe.run(feed={
+                    'x': self.x.reshape([1, 4]),
+                    'y': self.y.reshape([1, 4])
+                })
             for r in res:
-                self.assertEqual(np.allclose(self.out_ref, r), True)
+                self.assertEqual(np.allclose(self.res_ref, r), True)
 
         for place in self.place:
             run(place)
@@ -102,11 +91,20 @@ class TestLerpAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
             out = paddle.lerp(x, y, 0.5)
-            self.assertEqual(np.allclose(self.out_ref, out.numpy()), True)
+            self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
             paddle.enable_static()
 
         for place in self.place:
             run(place)
+
+    def test_broadcast(self):
+        paddle.disable_static()
+        x = np.arange(1., 21.).astype(self.dtype).reshape([2, 2, 5])
+        y = np.full(30, 10.).astype(self.dtype).reshape([3, 2, 1, 5])
+        out = paddle.lerp(paddle.to_tensor(x), paddle.to_tensor(y), 0.5)
+        res_ref = x + 0.5 * (y - x)
+        self.assertEqual(np.allclose(res_ref, out.numpy()), True)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
