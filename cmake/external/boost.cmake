@@ -28,7 +28,6 @@ set(BOOST_VER   "1.41.0")
 # so if you need to change boost, you may need to block the warning similarly.
 set(BOOST_TAR   "boost_1_41_0_2021_10" CACHE STRING "" FORCE)
 set(BOOST_URL   "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
-
 MESSAGE(STATUS "BOOST_VERSION: ${BOOST_VER}, BOOST_URL: ${BOOST_URL}")
 
 set(BOOST_PREFIX_DIR ${THIRD_PARTY_PATH}/boost)
