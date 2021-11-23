@@ -16,6 +16,12 @@
 #include <memory>
 #include <thread>
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+#include "gflags/gflags.h"
+DECLARE_bool(reuse_port);
+#endif
+
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -108,6 +114,8 @@ void MessageBus::ListenPort() {
   }
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
+  // enable brpc to reuse the port, bypass the time_wait status of socket
+  FLAGS_reuse_port = true;
   // function keep listen the port and handle the message
   InterceptorMessageServiceImpl interceptor_message_service;
   PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service,
@@ -120,11 +128,14 @@ void MessageBus::ListenPort() {
   brpc::ServerOptions options;
   options.idle_timeout_sec = -1;
   int retry_times = 0;
+  int interval = 1000;
   while (server_.Start(ip_for_brpc, &options) != 0) {
     ++retry_times;
     VLOG(3) << "Message bus is retring for starting brpc for " << retry_times
-            << " times.";
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+            << " times. And will retry after " << interval / 1000
+            << " seconds.";
+    std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+    interval += 2;
   }
   VLOG(3) << "Message bus's listen port thread starts successful.";
 #else
