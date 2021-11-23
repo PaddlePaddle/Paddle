@@ -130,18 +130,20 @@ void ReleaseResource(const std::vector<void*>& resources, void* stream) {
   delete buffers;
 }
 
-template <>
-void ReleaseResource<platform::CUDADeviceContext>(
-    const std::vector<void*>& resources, void* stream);
-
 template <typename DeviceContext>
 void* GetStream(const framework::ExecutionContext& ctx) {
   return nullptr;
 }
 
+#ifdef PADDLE_WITH_CUDA
+template <>
+void ReleaseResource<platform::CUDADeviceContext>(
+    const std::vector<void*>& resources, void* stream);
+
 template <>
 void* GetStream<platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx);
+#endif
 
 }  // namespace details
 

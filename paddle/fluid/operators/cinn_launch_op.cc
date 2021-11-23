@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
-#include <cuda_runtime.h>
-#include <memory>
 #include <vector>
-#include "cinn/hlir/framework/scope.h"
 #include "paddle/fluid/string/string_helper.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
 
 DECLARE_bool(cudnn_deterministic);
 
@@ -208,6 +209,7 @@ CinnLaunchContext::FinalizeArguments() const {
   return name2argument_;
 }
 
+#ifdef PADDLE_WITH_CUDA
 void CUDART_CB ReleaseScope(void* data) {
   auto* temp_scope = static_cast<framework::Scope*>(data);
   delete temp_scope;
@@ -235,6 +237,7 @@ void* GetStream<platform::CUDADeviceContext>(
       ctx.template device_context<platform::CUDADeviceContext>();
   return dev_ctx.stream();
 }
+#endif
 
 }  // namespace details
 
