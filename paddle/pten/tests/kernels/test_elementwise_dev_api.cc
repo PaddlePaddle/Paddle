@@ -65,8 +65,8 @@ TEST(DEV_API, add) {
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
-  ASSERT_EQ(dense_out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(dense_out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out.dtype(), pten::DataType::FLOAT32);
+  ASSERT_EQ(dense_out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = sum;
   auto actual_result0 = dense_out.data<float>()[0];
@@ -171,8 +171,8 @@ TEST(DEV_API, divide) {
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
-  ASSERT_EQ(dense_out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(dense_out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out.dtype(), pten::DataType::FLOAT32);
+  ASSERT_EQ(dense_out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = div;
   auto actual_result0 = dense_out.data<float>()[0];
@@ -224,8 +224,8 @@ TEST(DEV_API, multiply) {
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
   ASSERT_EQ(dense_out.dims()[0], 3);
-  ASSERT_EQ(dense_out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(dense_out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out.dtype(), pten::DataType::FLOAT32);
+  ASSERT_EQ(dense_out.layout(), pten::DataLayout::NCHW);
 
   auto expect_result = mul;
   auto actual_result0 = dense_out.data<float>()[0];
