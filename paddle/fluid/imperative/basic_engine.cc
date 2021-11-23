@@ -569,6 +569,13 @@ void BasicEngine::Execute() {
         }
       }
 
+      // Function Post Hook
+      if (cur_op.HasVoidFunctionPostHook()) {
+        for (const auto& hook : cur_op.GetVoidFunctionPostHooks()) {
+          (*hook)();
+        }
+      }
+
       for (auto& pair : inplace_output_grad_var_list_) {
         *pair.first = std::move(*pair.second);
       }

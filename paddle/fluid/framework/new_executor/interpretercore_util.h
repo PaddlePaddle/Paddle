@@ -51,7 +51,7 @@ namespace framework {
 namespace interpreter {
 
 using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
-static constexpr char kFetchVarName[] = "fetch_vars";
+static constexpr char kFetchVarName[] = "fetch";
 
 class AsyncWorkQueue {
  public:
@@ -94,16 +94,14 @@ class AsyncWorkQueue {
   AtomicVectorSizeT atomic_var_ref_;
 };
 
-std::string get_memcpy_type(const platform::Place& src_place,
-                            const platform::Place& dst_place);
-
 void build_variable_scope(const framework::BlockDesc& block,
-                          VariableScope* var_scope);
+                          VariableScope* var_scope,
+                          bool use_local_scope = true);
 
 void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope);
+                        VariableScope* var_scope, bool use_local_scope = true);
 
 std::map<int, std::list<int>> build_op_downstream_map(
     const std::vector<Instruction>& vec_instruction);
