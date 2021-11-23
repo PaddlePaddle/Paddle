@@ -54,6 +54,14 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         std::vector<OpFuncNode>* op_func_nodes,
                         bool use_local_scope = true);
 
+void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
+                                 const platform::Place& place,
+                                 const VariableNameMap& out_names,
+                                 VariableValueMap* out_vars,
+                                 VariableScope* var_scope,
+                                 std::vector<OpFuncNode>* op_func_nodes,
+                                 framework::Scope* local_scope);
+
 std::string get_memcpy_type(const platform::Place& src_place,
                             const platform::Place& dst_place);
 
