@@ -143,12 +143,12 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
 ////////////// ReduceKernel
 
 template <typename DeviceContext, typename T, typename OutT, typename Functor>
-void ReduceKernlImpl(const DeviceContext& dev_ctx,
-                     const pten::DenseTensor& input,
-                     pten::DenseTensor* output,
-                     const std::vector<int64_t>& dims,
-                     bool keep_dim,
-                     bool reduce_all) {
+void ReduceKernelImpl(const DeviceContext& dev_ctx,
+                      const pten::DenseTensor& input,
+                      pten::DenseTensor* output,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      bool reduce_all) {
   output->mutable_data<OutT>();
 
   if (reduce_all) {

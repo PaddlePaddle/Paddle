@@ -46,15 +46,12 @@ void Reduce(const DeviceContext& dev_ctx,
     if (out_dtype == pten::DataType::UNDEFINED) {
       out_dtype = x.dtype();
     }
-
     // do reduce sum
-    PD_VISIT_ALL_TYPES(out_dtype, "SumKernelImpl", ([&] {
-                         pten::eigen::ReduceKernlImpl<DeviceContext,
-                                                      T,
-                                                      data_t,
-                                                      pten::eigen::SumFunctor>(
-                             dev_ctx, x, out, dims, keep_dim, reduce_all);
-                       }));
+    PD_VISIT_ALL_TYPES(
+        out_dtype, "ReduceKernelImpl", ([&] {
+          pten::eigen::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+              dev_ctx, x, out, dims, keep_dim, reduce_all);
+        }));
   } else {
     const auto alloc =
         std::make_shared<paddle::experimental::DefaultAllocator>(x.place());
@@ -69,8 +66,8 @@ void Reduce(const DeviceContext& dev_ctx,
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(
-        out_dtype, "ReduceKernlImpl", ([&] {
-          pten::eigen::ReduceKernlImpl<DeviceContext, T, data_t, Functor>(
+        out_dtype, "ReduceKernelImpl", ([&] {
+          pten::eigen::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }
