@@ -84,17 +84,39 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
 
 void Carrier::Start() {
   // TODO(fleet_executor dev): this start is a faked one, need replace
-  for (const auto& pair : interceptor_idx_to_interceptor_) {
-    VLOG(3) << "Fake run is sending start to interceptor " << pair.first << ".";
-    InterceptorMessage tmp_msg;
-    tmp_msg.set_src_id(pair.first);
-    tmp_msg.set_dst_id(pair.first);
-    tmp_msg.set_message_type(DATA_IS_READY);
-    MessageBus& message_bus_instance = MessageBus::Instance();
-    PADDLE_ENFORCE_EQ(message_bus_instance.IsInit(), true,
-                      platform::errors::PreconditionNotMet(
-                          "Message bus has not been initialized."));
-    message_bus_instance.Send(tmp_msg);
+  status = false;
+  MessageBus& message_bus_instance = MessageBus::Instance();
+  PADDLE_ENFORCE_EQ(message_bus_instance.IsInit(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Message bus has not been initialized."));
+  for (auto& iter : interceptor_idx_to_interceptor_) {
+    LOG(INFO) << "Fake run is sending reset to interceptor " << iter.first
+              << ".";
+    InterceptorMessage reset_msg;
+    reset_msg.set_src_id(iter.first);
+    reset_msg.set_dst_id(iter.first);
+    reset_msg.set_message_type(RESET);
+    message_bus_instance.Send(reset_msg);
+  }
+  int64_t first_id = std::numeric_limits<int64_t>::max();
+  for (auto& pair : interceptor_idx_to_interceptor_) {
+    if (pair.first < first_id) {
+      first_id = pair.first;
+    }
+  }
+  auto iter = interceptor_idx_to_interceptor_.find(first_id);
+  LOG(INFO) << "Fake run is sending start to interceptor " << iter->first
+            << ".";
+  InterceptorMessage tmp_msg;
+  tmp_msg.set_src_id(iter->first);
+  tmp_msg.set_dst_id(iter->first);
+  tmp_msg.set_message_type(DATA_IS_READY);
+  message_bus_instance.Send(tmp_msg);
+
+  while (status == false) {
+    LOG(INFO) << "Carrier is waiting for the status to be reported. Next check "
+                 "in 5 seconds.";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
 }
 

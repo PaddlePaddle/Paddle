@@ -61,6 +61,8 @@ class Carrier final {
 
   bool IsInit() const;
 
+  bool status{false};
+
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
  private:

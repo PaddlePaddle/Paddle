@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
+#include <thread>
+
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -21,6 +25,22 @@ namespace distributed {
 
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
     : interceptor_id_(interceptor_id), node_(node) {
+  LOG(INFO) << "Interceptor " << interceptor_id_
+            << "'s task role is: " << node_->role() << ".";
+  LOG(INFO) << "Interceptor " << interceptor_id_
+            << "'s max_run_times is: " << node_->max_run_times() << ".";
+  LOG(INFO) << "Interceptor " << interceptor_id_
+            << "'s max_slot_nums is: " << node_->max_slot_nums() << ".";
+  for (int64_t upstream : node_->upstream()) {
+    LOG(INFO) << "Interceptor " << interceptor_id_
+              << "'s upstream has: " << upstream << ".";
+    std::vector<bool> tmp_value(node_->max_run_times(), false);
+    ready_flags_.insert({upstream, tmp_value});
+  }
+  for (int64_t downstream : node_->downstream()) {
+    LOG(INFO) << "Interceptor " << interceptor_id_
+              << "'s downstream has: " << downstream << ".";
+  }
   interceptor_thread_ = std::thread([this]() {
     VLOG(3) << "Interceptor " << interceptor_id_
             << " starts the thread pooling it's local mailbox.";
@@ -42,14 +62,157 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
   if (handle_) {
     handle_(msg);
   } else {
-    VLOG(3) << "Interceptor is using default message handler. This handler is "
-               "only used for test purpose. Check whether you init interceptor "
-               "in the proper way.";
-    if (msg.message_type() == DATA_IS_READY) {
-      VLOG(3) << "Fake handler is sending stop message to it self.";
-      InterceptorMessage msg;
-      msg.set_message_type(STOP);
-      Send(interceptor_id_, msg);
+    // This default handler is faking 1F1B scheduler from section worker.
+    LOG(WARNING)
+        << "Interceptor is using default message handler. This handler is "
+           "only used for test purpose. Check whether you init interceptor "
+           "in the proper way. All log will be shown under this handler.";
+    if (msg.message_type() == RESET) {
+      LOG(INFO) << "Fake handler is resetting the interceptor's status.";
+      already_run_times_ = 0;
+      used_slot_nums_ = 0;
+      for (int64_t upstream : node_->upstream()) {
+        for (int i = 0; i < node_->max_run_times(); ++i) {
+          ready_flags_.at(upstream)[i] = false;
+        }
+      }
+    } else if (msg.message_type() == DATA_IS_READY) {
+      LOG(INFO) << "Interceptor " << interceptor_id_
+                << " receives DATA_IS_READY from " << msg.src_id() << ".";
+      if (node_->upstream().size() != 0) {
+        for (int i = 0; i < node_->max_run_times(); ++i) {
+          if (ready_flags_.at(msg.src_id())[i] == false) {
+            ready_flags_.at(msg.src_id())[i] = true;
+            if (msg.src_id() % 4 != 0) {
+              break;
+            }
+          }
+        }
+      }
+      bool can_run = true;
+      if (node_->upstream().size() != 0) {
+        for (int64_t upstream : node_->upstream()) {
+          can_run = can_run && ready_flags_.at(upstream)[already_run_times_];
+        }
+      }
+      if (!can_run) {
+        LOG(INFO) << "Interceptor " << interceptor_id_
+                  << " doesn't have empty slot or not every upstream is ready,"
+                     " it will store the DATA_IS_READY info.";
+      }
+      while (can_run && used_slot_nums_ < node_->max_slot_nums() &&
+             already_run_times_ < node_->max_run_times()) {
+        used_slot_nums_++;
+        already_run_times_++;
+        LOG(INFO) << "Interceptor " << interceptor_id_
+                  << " is running op for the " << already_run_times_
+                  << " times.";
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        for (int64_t downstream : node_->downstream()) {
+          if (node_->role() == 1 &&
+              already_run_times_ < node_->max_run_times() &&
+              downstream == interceptor_id_ + 1) {
+            LOG(INFO) << "Interceptor " << interceptor_id_
+                      << " won't send DATA_IS_READY to it's downstream: "
+                      << downstream << " since it's not the time for opt.";
+            continue;
+          }
+          LOG(INFO) << "Interceptor " << interceptor_id_
+                    << " sends DATA_IS_READY to it's downstream: " << downstream
+                    << ".";
+          InterceptorMessage tmp_msg;
+          tmp_msg.set_message_type(DATA_IS_READY);
+          tmp_msg.set_dst_id(downstream);
+          while (!Send(downstream, tmp_msg)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+          }
+        }
+        if (node_->role() == 1) {
+          for (int64_t upstream : node_->upstream()) {
+            LOG(INFO) << "Interceptor " << interceptor_id_
+                      << " sends DATE_IS_USELESS to it's upstream: " << upstream
+                      << ".";
+            InterceptorMessage tmp_msg;
+            tmp_msg.set_message_type(DATE_IS_USELESS);
+            tmp_msg.set_dst_id(upstream);
+            while (!Send(upstream, tmp_msg)) {
+              std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            }
+          }
+        } else if (node_->role() == 2) {
+          Carrier& carrier_instance = Carrier::Instance();
+          carrier_instance.status = true;
+        }
+        if (node_->upstream().size() != 0) {
+          for (int64_t upstream : node_->upstream()) {
+            can_run = can_run && ready_flags_.at(upstream)[already_run_times_];
+          }
+        }
+      }
+    } else if (msg.message_type() == DATE_IS_USELESS) {
+      LOG(INFO) << "Interceptor " << interceptor_id_
+                << " receives DATA_IS_USELESS from " << msg.src_id() << ".";
+      used_slot_nums_ -= 1;
+      bool can_run = true;
+      if (node_->upstream().size() != 0) {
+        for (int64_t upstream : node_->upstream()) {
+          can_run = can_run && ready_flags_.at(upstream)[already_run_times_];
+        }
+      }
+      if (!can_run) {
+        LOG(INFO) << "Interceptor " << interceptor_id_
+                  << " doesn't have empty slot or not every upstream is ready,"
+                     " it will store the DATA_IS_READY info.";
+      }
+      while (can_run && used_slot_nums_ < node_->max_slot_nums() &&
+             already_run_times_ < node_->max_run_times()) {
+        already_run_times_++;
+        used_slot_nums_++;
+        LOG(INFO) << "Interceptor " << interceptor_id_ << " runs for the "
+                  << already_run_times_
+                  << " times since all upstreams are ready.";
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        for (int64_t downstream : node_->downstream()) {
+          if (node_->role() == 1 &&
+              already_run_times_ < node_->max_run_times() &&
+              downstream == interceptor_id_ + 1) {
+            LOG(INFO) << "Interceptor " << interceptor_id_
+                      << " won't send DATA_IS_READY to it's downstream: "
+                      << downstream << " since it's not the time for opt.";
+            continue;
+          }
+          LOG(INFO) << "Interceptor " << interceptor_id_
+                    << " sends DATA_IS_READY to it's downstream: " << downstream
+                    << ".";
+          InterceptorMessage tmp_msg;
+          tmp_msg.set_message_type(DATA_IS_READY);
+          tmp_msg.set_dst_id(downstream);
+          while (!Send(downstream, tmp_msg)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+          }
+        }
+        if (node_->role() == 1) {
+          for (int64_t upstream : node_->upstream()) {
+            LOG(INFO) << "Interceptor " << interceptor_id_
+                      << " sends DATE_IS_USELESS to it's upstream: " << upstream
+                      << ".";
+            InterceptorMessage tmp_msg;
+            tmp_msg.set_message_type(DATE_IS_USELESS);
+            tmp_msg.set_dst_id(upstream);
+            while (!Send(upstream, tmp_msg)) {
+              std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            }
+          }
+        } else if (node_->role() == 2) {
+          Carrier& carrier_instance = Carrier::Instance();
+          carrier_instance.status = true;
+        }
+        if (node_->upstream().size() != 0) {
+          for (int64_t upstream : node_->upstream()) {
+            can_run = can_run && ready_flags_.at(upstream)[already_run_times_];
+          }
+        }
+      }
     }
   }
 }

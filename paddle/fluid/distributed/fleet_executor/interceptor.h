@@ -105,8 +105,10 @@ class Interceptor {
   // read by PoolTheMailbox()
   std::queue<InterceptorMessage> local_mailbox_;
 
+  // NOTE: these three vars probably will be only used for fake run
   int64_t already_run_times_{0};
   int64_t used_slot_nums_{0};
+  std::unordered_map<int64_t, std::vector<bool>> ready_flags_;
 };
 
 class InterceptorFactory {
