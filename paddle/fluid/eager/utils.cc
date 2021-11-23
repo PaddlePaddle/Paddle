@@ -81,7 +81,10 @@ std::vector<egr::EagerTensor> EagerUtils::GetOutputs(
   res.reserve(outs.size());
   for (const auto& out : outs) {
     PADDLE_ENFORCE_NOT_NULL(out.get(),
-                            "Eager Tensor %s is null and cannot be copied.",
+                            "Eager Tensor %s is null and cannot be copied. "
+                            "We are tring to Get Output tensor from its "
+                            "shared_ptr, this error may indicate some outputs "
+                            "are nullptr",
                             out->name());
     res.emplace_back((*(out.get())));
   }
@@ -90,8 +93,11 @@ std::vector<egr::EagerTensor> EagerUtils::GetOutputs(
 
 egr::EagerTensor EagerUtils::GetOutput(
     const std::shared_ptr<EagerTensor>& out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      out.get(), "Eager Tensor %s is null and cannot be copied.", out->name());
+  PADDLE_ENFORCE_NOT_NULL(out.get(),
+                          "Eager Tensor %s is null and cannot be copied. We "
+                          "are tring to Get Output tensor from its shared_ptr, "
+                          "this error may indicate output is nullptr",
+                          out->name());
   return EagerTensor((*(out.get())));
 }
 
@@ -99,7 +105,9 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   PADDLE_ENFORCE(p_autograd_meta,
                  paddle::platform::errors::Fatal(
-                     "Null autograd_meta gotten from unsafe_autograd_meta()"));
+                     "Null autograd_meta gotten from unsafe_autograd_meta(), "
+                     "if you are using unsafe_autograd_meta, please make sure "
+                     "your tensor's autograd_meta is set"));
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
