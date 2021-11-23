@@ -200,6 +200,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param device_id device_id the GPU card to use (default is 0).
   ///
   void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
+
+  void SetDistributeCommunicateConfig(std::vector<int> ring_ids,
+        std::vector<std::string> endpoints,
+        std::vector<std::vector<std::string>> other_endpoints);
   ///
   /// \brief Turn off GPU.
   ///
@@ -284,6 +288,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The initial size in MB of the GPU memory pool.
   ///
   int memory_pool_init_size_mb() const { return memory_pool_init_size_mb_; }
+
   ///
   /// \brief Get the proportion of the initial memory pool size compared to the
   /// device.

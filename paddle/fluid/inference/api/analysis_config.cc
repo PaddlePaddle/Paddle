@@ -28,6 +28,7 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(initial_gpu_memory_in_mb);
+extern std::map<int, std::vector<std::string>> g_temp_distribute_inference_config;
 #endif
 
 namespace paddle {
@@ -94,6 +95,25 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 
   Update();
 }
+
+void AnalysisConfig::SetDistributeCommunicateConfig(std::vector<int> ring_ids,
+        std::vector<std::string> endpoints,
+        std::vector<std::vector<std::string>> other_endpoints) {
+
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  //TO DO：改成全局变量得了
+  for (size_t i = 0; i < ring_ids.size(); i++) {
+    g_temp_distribute_inference_config[ring_ids[i]] = other_endpoints[i];
+    g_temp_distribute_inference_config[ring_ids[i]].push_back(endpoints[i]);
+  }
+#else
+  (void)ring_ids;
+  (void)endpoints;
+  (void)other_endpoints;
+#endif
+}
+
 void AnalysisConfig::DisableGpu() {
   use_gpu_ = false;
 

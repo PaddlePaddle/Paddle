@@ -20,6 +20,9 @@ limitations under the License. */
 PADDLE_DEFINE_EXPORTED_bool(convert_all_blocks, true,
                             "Convert all blocks in program into SSAgraphs");
 
+std::map<int, std::vector<std::string>> g_temp_distribute_inference_config = {};
+
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -128,6 +131,40 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   for (auto i = start_op_index; i < end_op_index; ++i) {
     auto *op = all_ops[i];
     VLOG(3) << "create OpNode by " << op->Type();
+    if (op->Type() == "c_gen_nccl_id") {
+      std::string end_point = BOOST_GET_CONST(std::string, op->GetAttr("endpoint"));
+      std::vector<std::string> other_endpoints = BOOST_GET_CONST(std::vector<std::string>, op->GetAttr("other_endpoints"));
+      int ring_id = BOOST_GET_CONST(int, op->GetAttr("ring_id"));
+
+
+      std::cout << "ring id " << ring_id << " before replace\n";
+      std::cout << "attr endpoint:" << end_point.c_str() << std::endl;
+      std::cout << "attr other_endpoints:";
+      for (auto ep : other_endpoints) {
+        std::cout << ep.c_str() << ",";
+      }
+      std::cout << std::endl;
+
+      if (g_temp_distribute_inference_config.find(ring_id) != g_temp_distribute_inference_config.end()) {
+        auto eps = g_temp_distribute_inference_config[ring_id];
+        op->SetAttr("endpoint", eps.back());
+        eps.pop_back();
+        op->SetAttr("other_endpoints", eps);
+      } else {
+        std::cout << "====> g_temp_distribute_inference_config " << ring_id << " not defined, use config in model" << std::endl;
+      }
+
+      end_point = BOOST_GET_CONST(std::string, op->GetAttr("endpoint"));
+      other_endpoints = BOOST_GET_CONST(std::vector<std::string>, op->GetAttr("other_endpoints"));
+      ring_id = BOOST_GET_CONST(int, op->GetAttr("ring_id"));
+      std::cout << "ring id " << ring_id << " after replace\n";
+      std::cout << "attr endpoint:" << end_point.c_str() << std::endl;
+      std::cout << "attr other_endpoints:";
+      for (auto ep : other_endpoints) {
+        std::cout << ep.c_str() << ",";
+      }
+      std::cout << std::endl;
+    }
     ir::Node *node = CreateOpNode(op);
     node->SetDescOrder(desc_order);
     ++desc_order;
