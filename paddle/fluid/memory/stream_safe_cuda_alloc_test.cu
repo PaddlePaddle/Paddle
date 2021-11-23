@@ -160,17 +160,35 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   std::vector<std::shared_ptr<Allocation>> allocations_;
 };
 
-TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStream) {
+TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
   MultiStreamRun();
   CheckResult();
 }
 
-TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStream) {
+TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStreamTest) {
   MultiThreadMUltiStreamRun();
   CheckResult();
 }
 
-TEST(StreamSafeCUDAAllocRetryTest, StreamSafeCUDAAllocRetry) {
+TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  size_t alloc_size = 256;
+
+  std::shared_ptr<Allocation> allocation_implicit_stream =
+      AllocShared(place, alloc_size);
+  EXPECT_GE(allocation_implicit_stream->size(), alloc_size);
+
+  void *address = allocation_implicit_stream->ptr();
+  allocation_implicit_stream.reset();
+
+  gpuStream_t default_stream = nullptr;
+  allocation::AllocationPtr allocation_unique =
+      Alloc(place, default_stream, alloc_size);
+  EXPECT_GE(allocation_unique->size(), alloc_size);
+  EXPECT_EQ(allocation_unique->ptr(), address);
+}
+
+TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   gpuStream_t stream1, stream2;
 #ifdef PADDLE_WITH_CUDA
