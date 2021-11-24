@@ -584,7 +584,7 @@ class _ExecutorCache(object):
         new_exe = self._get_exe_from_cache(program, scope)
         return new_exe.run(feed, fetch_list, return_numpy)
 
-    def _get_exe_from_cache(self, program, scope):
+    def _get_exe_from_cache(self, program, scope, feed, fetch_list):
         """
         Return cached _StandaloneExecutor instance. If not found, create associated 
         _StandaloneExecutor instance with given program and cache it.
@@ -593,12 +593,13 @@ class _ExecutorCache(object):
             program, Program), "Required type(Program), but received {}".format(
                 type(program).__name__)
 
-        if str(program) not in self._cached_executors:
+        key = _get_strong_program_cache_key(program, feed, fetch_list)
+        if key not in self._cached_executors:
             new_program = program.clone()
             new_exe = _StandaloneExecutor(self._place, new_program, scope)
-            self._cached_executors[str(program)] = new_exe
+            self._cached_executors[key] = new_exe
 
-        return self._cached_executors[str(program)]
+        return self._cached_executors[key]
 
 
 class Executor(object):
@@ -1370,8 +1371,8 @@ class Executor(object):
 
                 # NPTE(zhiqiu): Construct standalone_executor first, so 
                 # the scope is binded with the variable_scope of standalone_executor
-                new_exe = self._executor_cache._get_exe_from_cache(program,
-                                                                   scope)
+                new_exe = self._executor_cache._get_exe_from_cache(
+                    program, scope, feed, fetch_list)
 
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
