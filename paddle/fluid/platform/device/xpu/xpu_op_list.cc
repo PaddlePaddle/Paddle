@@ -13,10 +13,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "paddle/fluid/platform/xpu/xpu1_op_list.h"
-#include "paddle/fluid/platform/xpu/xpu2_op_list.h"
-#include "paddle/fluid/platform/xpu/xpu_info.h"
-#include "paddle/fluid/platform/xpu/xpu_op_list.h"
+#include "paddle/fluid/platform/device/xpu/xpu1_op_list.h"
+#include "paddle/fluid/platform/device/xpu/xpu2_op_list.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 
 namespace paddle {
 namespace platform {

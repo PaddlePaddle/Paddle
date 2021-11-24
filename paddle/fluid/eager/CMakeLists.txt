@@ -1,3 +1,5 @@
 add_subdirectory(tests)
+add_subdirectory(api)
 cc_library(grad_node_info SRCS grad_node_info.cc DEPS pten pten_api)
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS pten pten_api)
+cc_library(utils SRCS utils.cc DEPS pten pten_api autograd_meta eager_api)

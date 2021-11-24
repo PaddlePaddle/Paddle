@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 
 namespace paddle {
@@ -25,12 +27,24 @@ class ComputeInterceptor : public Interceptor {
 
   void PrepareDeps();
 
-  void SendDataReadyToDownStream();
+  void IncreaseReady(int64_t up_id);
+  void DecreaseBuff(int64_t down_id);
+  bool IsInputReady();
+  bool CanWriteOutput();
 
+  void SendDataReadyToDownStream();
+  void ReplyCompletedToUpStream();
+
+  void Run();
   void Compute(const InterceptorMessage& msg);
 
  private:
-  std::unordered_set<int64_t> upstream_deps_;
+  // FIXME(wangxi): if use step_ and max_steps_, how to restart step_ from 0
+  int64_t step_{0};
+  // upstream_id-->(max_ready_size, ready_size)
+  std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
+  // downstream_id-->(max_buffer_size, used_size)
+  std::map<int64_t, std::pair<int64_t, int64_t>> out_buffs_{};
 };
 
 }  // namespace distributed
