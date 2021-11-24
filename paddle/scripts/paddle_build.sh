@@ -2446,6 +2446,7 @@ function trt_convert_test() {
 
 function build_pr_and_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
@@ -2456,6 +2457,7 @@ function build_pr_and_develop() {
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    generate_api_spec "$1" "DEV"
     mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
 }
 
